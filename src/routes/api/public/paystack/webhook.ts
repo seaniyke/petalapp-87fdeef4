@@ -59,7 +59,7 @@ export const Route = createFileRoute("/api/public/paystack/webhook")({
           {
             id: eventId,
             type: payload.event,
-            payload: payload as unknown as Record<string, unknown>,
+            payload: JSON.parse(rawBody),
           },
         ]);
 
