@@ -28,7 +28,7 @@ export function SiteHeader() {
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
           <a href="/#features" className="hover:text-foreground transition-colors">Features</a>
           <a href="/#how" className="hover:text-foreground transition-colors">How it works</a>
-          <a href="/#showcase" className="hover:text-foreground transition-colors">Showcase</a>
+          <Link to="/gallery" className="hover:text-foreground transition-colors">Gallery</Link>
         </nav>
         <div className="flex items-center gap-2">
           {user ? (
