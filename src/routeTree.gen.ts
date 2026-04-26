@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
+import { Route as ApiDomainsRouteImport } from './routes/api/domains'
 import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
 import { Route as ApiBackendRouteImport } from './routes/api/backend'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
@@ -57,6 +58,11 @@ const ApiGenerateRoute = ApiGenerateRouteImport.update({
   path: '/api/generate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDomainsRoute = ApiDomainsRouteImport.update({
+  id: '/api/domains',
+  path: '/api/domains',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDiscussRoute = ApiDiscussRouteImport.update({
   id: '/api/discuss',
   path: '/api/discuss',
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/projects': typeof ProjectsRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/discuss': typeof ApiDiscussRoute
+  '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/projects': typeof ProjectsRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/discuss': typeof ApiDiscussRoute
+  '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/projects': typeof ProjectsRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/discuss': typeof ApiDiscussRoute
+  '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/api/backend'
     | '/api/discuss'
+    | '/api/domains'
     | '/api/generate'
     | '/p/$slug'
     | '/api/builds/trigger'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/api/backend'
     | '/api/discuss'
+    | '/api/domains'
     | '/api/generate'
     | '/p/$slug'
     | '/api/builds/trigger'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/api/backend'
     | '/api/discuss'
+    | '/api/domains'
     | '/api/generate'
     | '/p/$slug'
     | '/api/builds/trigger'
@@ -179,6 +191,7 @@ export interface RootRouteChildren {
   ProjectsRoute: typeof ProjectsRoute
   ApiBackendRoute: typeof ApiBackendRoute
   ApiDiscussRoute: typeof ApiDiscussRoute
+  ApiDomainsRoute: typeof ApiDomainsRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
   PSlugRoute: typeof PSlugRoute
   ApiBuildsTriggerRoute: typeof ApiBuildsTriggerRoute
@@ -237,6 +250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGenerateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/domains': {
+      id: '/api/domains'
+      path: '/api/domains'
+      fullPath: '/api/domains'
+      preLoaderRoute: typeof ApiDomainsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/discuss': {
       id: '/api/discuss'
       path: '/api/discuss'
@@ -283,6 +303,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsRoute: ProjectsRoute,
   ApiBackendRoute: ApiBackendRoute,
   ApiDiscussRoute: ApiDiscussRoute,
+  ApiDomainsRoute: ApiDomainsRoute,
   ApiGenerateRoute: ApiGenerateRoute,
   PSlugRoute: PSlugRoute,
   ApiBuildsTriggerRoute: ApiBuildsTriggerRoute,
