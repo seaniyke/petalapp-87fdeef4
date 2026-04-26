@@ -32,6 +32,7 @@ import { requestDiscussion } from "@/lib/discuss";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useBuildActivity } from "@/hooks/use-build-activity";
+import { useAuthReady } from "@/lib/auth";
 import {
   type Phase,
   type PhaseId,
