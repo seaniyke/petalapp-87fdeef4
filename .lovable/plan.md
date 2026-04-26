@@ -1,89 +1,183 @@
-# Mobile build & preview — Phase 7.1
+# Phase 7.2 — CDN-served preview, the Lovable model
 
-## Context: how the others do it
+## Goal
 
-I researched Bolt, Lovable, and Base44:
+Replace the WebContainer-on-the-client approach with **server-built, CDN-served previews** so mobile devices (and every device) see real, interactive React/Vite apps in the preview pane — exactly like Lovable does it.
 
-- **Bolt.new** — explicitly tells mobile users it isn't supported. Same dead-end you're hitting now. They picked correctness over UX.
-- **Lovable (real one)** — ships every project as a published PWA. On mobile, the "preview" you see is the *published deployment* served from their CDN, not a WebContainer. Editing happens via chat, deploys auto-update.
-- **Base44** — renders previews server-side (their apps run as normal SSR web pages, not in-browser Node), so mobile previews "just work." They also added a desktop-only "Mobile preview mode" that simulates a phone frame.
-- **WebContainers themselves** — *do* technically run on iOS 16.4+ Safari (since April 2023, still beta), but installing 200 packages of a fresh Vite + React project over a phone network reliably exceeds our 3-minute timeout. The current "iOS = unsupported" message is too aggressive but the underlying constraint is real.
+You picked **per-project Cloudflare Pages deploys**, which is the correct production architecture. But before I plan that directly I want to flag two findings from research that change how we should sequence this:
 
-## What we'll do
+### Constraints I confirmed
 
-Adopt the **Lovable model**: on mobile, swap the WebContainer for a snapshot of the *last successfully built* version, served as a normal iframe. The user can keep chatting and re-generating; the preview updates whenever a new version saves.
+1. **Our Cloudflare Worker can't run `npm install` or `vite build`.** `child_process` is stubbed in the Worker runtime. So the build step has to happen either (a) on Cloudflare Pages' own build infra (triggered via Git integration), (b) on a small external Node service we run, or (c) inside the Worker using **esbuild's WASM bundle** with deps pulled from `esm.sh` (no npm install needed).
 
-For projects that have never been built (brand-new), we show the static `buildPreviewDoc` placeholder you already have, but with a clearer message.
+2. **Cloudflare Pages free tier: 500 builds/month total, 1 concurrent build, 20-min timeout.** Pro: 5,000/month at $20. Business: 20,000/month at $200. At ~10 generations/day across just 2 active users, the free tier lasts ~25 days. Worth being intentional about which generations actually trigger a deploy.
 
-We also fix the layout so chat + preview no longer fight for space on a 430px viewport.
+3. **Pages Direct Upload requires pre-built `dist/`.** The API only accepts already-built static assets. So even with Pages, we still need a builder somewhere upstream.
 
-### 1. Tabbed Chat / Preview layout on mobile
+### Recommended sequencing — two phases
 
-Today the builder uses a 2-column grid (`md:grid-cols-[360px_1fr]`) that stacks vertically below `md`. On a phone you scroll past the chat to find the preview. Replace the mobile stack with a **tab bar** at the top: `Chat | Preview`. Desktop layout stays unchanged.
+**Phase 7.2a (this PR): In-house esbuild-WASM build on the Worker.** Ship mobile-working previews fast, in-house, no external infra, no per-build quotas. Output goes to Supabase Storage and serves from `/preview/$projectId/*`. This will work for 95% of generated apps (single-bundle React/Vite) and gives us immediate wins.
 
-- Add `mobileTab` state (`"chat" | "preview"`, default `"chat"`).
-- Below `md`, render only the active panel; above `md`, show both side-by-side as today.
-- The tab bar lives directly under the header, with a small dot indicator on `Preview` when files have changed since last view.
+**Phase 7.2b (next PR, after we validate): Cloudflare Pages Direct Upload.** Once we know the pipeline works end-to-end, swap the storage backend from Supabase Storage to Cloudflare Pages for true CDN delivery, custom subdomains (`project--$slug.petalapp.lovable.app`), and production-grade caching. The build step stays the same.
 
-### 2. Mobile-aware preview component
+This gives you the Lovable model in two safe steps instead of one big risky step. **If you'd rather skip Phase 7.2a and go straight to Pages, I can do that** — but it requires a Cloudflare API token, a separate build worker on Railway/Fly, and we'll spend 2–3x more code on infra wiring than on user-visible behavior. Phase 7.2a is the same code path minus the "upload to Pages" final step.
 
-Create a `<MobilePreviewFallback />` that replaces `<WebContainerPreview />` when:
-- `useIsMobile()` is true, **or**
-- `detectUnsupportedBrowser()` returns a message.
+---
 
-Behavior of the fallback:
-- If the project has at least one saved version → render an iframe pointing to a server route that returns `buildPreviewDoc(files)` (a self-contained HTML doc — already exists in `src/lib/preview.ts`). Reason for a route vs. `srcDoc`: srcDoc breaks COEP isolation in some mobile browsers; a same-origin route inherits our CORP headers cleanly.
-- If no version yet → friendly empty state: "Your preview will appear here as soon as Petal generates it." with a spinner that pulses while a generation is in flight.
-- A small banner at the bottom: "Static preview — interactive features need a desktop browser to run live. [Learn why]" with a popover explaining WebContainers + linking back to chat.
+## What we'll build (Phase 7.2a, in-house)
 
-### 3. New server route for the static preview
+### 1. Server-side build pipeline
 
-Add `src/routes/api/preview.$projectId.tsx` (TanStack server route, `GET` handler):
-- Loads the project's latest files via the existing `getProjectFiles` server function.
-- Auth-checks the caller (must own the project or it must be public via `is_featured` / `share_slug`).
-- Returns `new Response(buildPreviewDoc(files), { headers: { "Content-Type": "text/html", "Cross-Origin-Resource-Policy": "same-origin" } })`.
-- Wrapped in CORS headers per the troubleshooting guide so the iframe loads cleanly under our COEP.
+**New file: `src/server/build.server.ts`** — a server function `buildProjectArtifacts(projectId)` that:
 
-The mobile fallback iframe `src` becomes `/api/preview/${projectId}?v=${versionCount}` so it busts cache when a new version saves.
+1. Loads the project's `ProjectFile[]` from Supabase.
+2. Runs **esbuild's WASM build** (`esbuild-wasm` package) directly inside the Worker — esbuild has an official WASM build that runs in Workers/edge and does not need `npm install`.
+3. Resolves npm imports (`react`, `react-dom`, anything in `package.json`) by rewriting them to `https://esm.sh/<pkg>@<version>` URLs *at bundle time*, so the bundle has no remaining bare imports. esbuild's `external` + a small resolver plugin handles this.
+4. Inlines `index.html`, the bundled JS, and CSS into a single static `dist/` tree (`index.html`, `assets/main-<hash>.js`, `assets/main-<hash>.css`).
+5. Uploads `dist/` to a **Supabase Storage bucket** `project-builds` under the path `<projectId>/<buildId>/...`.
+6. Records the build in a new `project_builds` table: `(id, project_id, status, created_at, dist_path, error_message)`.
 
-### 4. Smarter desktop detection
+**Why esbuild-WASM specifically:** It's the only mature bundler that runs inside a Cloudflare Worker. Vite under the hood uses esbuild for prod bundling, so the output is functionally equivalent for the simple apps Petal generates. Tradeoff: no Vite plugins, no PostCSS plugin pipeline — but our generated apps don't use those (no Tailwind config, no shadcn).
 
-Soften `detectUnsupportedBrowser()` in `src/components/WebContainerPreview.tsx`:
-- Keep returning a message for iOS / non-Chromium Android (the real-world install rarely succeeds), but pass that message *up* to the parent instead of rendering the dead-end card.
-- The parent (builder) decides what to render — on mobile it picks the fallback; on a desktop browser that *happens* to be unsupported (rare: old Firefox, Safari < 16.4) it still shows the existing card.
+### 2. New `/preview/$projectId/$buildId/*` route
 
-### 5. Tighten install UX on slow desktops
+**New file: `src/routes/preview.$projectId.$buildId.$.ts`** — TanStack server route that:
 
-While we're in here:
-- Show install progress as `npm install (47s elapsed)` instead of just "Installing dependencies…" so 60-90s installs feel less stuck.
-- Bump the timeout from 3 → 5 minutes (cold installs on shared CI-style runners can cross 3min).
-- Add a "Cancel and retry" button next to the timer.
+- `GET` reads the file from Supabase Storage (`project-builds/<projectId>/<buildId>/<splat>`).
+- Sets correct `Content-Type` per extension (`.html`, `.js`, `.css`, images).
+- Sets `Cross-Origin-Resource-Policy: same-origin` so it embeds cleanly under our global COEP header.
+- Sets `Cache-Control: public, max-age=31536000, immutable` for hashed assets (the buildId in the URL guarantees cache safety).
+- Auth: same as `api/preview.$projectId.ts` — public projects open, private ones gated by Bearer/`?t=` token of the owner.
 
-### 6. Out of scope for this pass
+### 3. Trigger builds from the existing generate flow
 
-- **Real WebContainer-on-iOS attempt**: not worth it given network reality; revisit if StackBlitz publishes perf benchmarks.
-- **PWA manifest for generated apps** (Base44/Lovable feature): bigger lift, separate phase.
-- **Mobile frame simulator in desktop editor** (Base44 "Mobile preview mode"): nice-to-have, defer.
+In `src/server/generate.server.ts` (or wherever `appendMessages` finalizes a generation), after files are saved, **fire-and-forget call** `buildProjectArtifacts(projectId)`. The build runs async, the chat continues. The client gets the new `buildId` via either:
 
-## Files touched
+- A new column `latest_build_id` on `projects`, polled by the builder route after generation finishes, or
+- A Supabase Realtime subscription on `project_builds` for that project.
 
-- `src/routes/builder.tsx` — add `mobileTab` state + tab bar, swap component on mobile.
-- `src/components/WebContainerPreview.tsx` — surface unsupported message via callback, add elapsed timer, raise timeout.
-- `src/components/MobilePreviewFallback.tsx` — **new**, renders the static iframe + empty state + info banner.
-- `src/routes/api/preview.$projectId.tsx` — **new**, TanStack server route returning static preview HTML with CORS + CORP headers.
-- `src/lib/preview.ts` — minor: tweak the placeholder copy to mention "open on desktop for live preview."
-- No new dependencies; no DB changes.
+I'll use the column + a refetch on generation complete (simpler, no realtime bus).
 
-## Risks
+### 4. Replace `MobilePreviewFallback` and the fallback path
 
-- **Auth on the new route**: must reuse the same Supabase server client / RLS path used by `getProjectFiles`. If we get this wrong, we leak private project source. I'll mirror the exact pattern from `src/server/generate.server.ts`.
-- **COEP/iframe interaction**: our global `Cross-Origin-Embedder-Policy: require-corp` middleware (in `src/start.ts`) means the iframe's response *must* send `Cross-Origin-Resource-Policy: same-origin` — already planned, but worth flagging.
-- **Cache invalidation**: the `?v=` query bust relies on the version counter being available client-side. It is (we already pass it to `WebContainerPreview` as `reloadKey`).
+Both **mobile** and **desktop** previews switch to the new `<CdnPreview projectId buildId />` iframe component. WebContainers stay only as an opt-in "Advanced live preview" toggle (or removed entirely in a follow-up). This means:
 
-## Verification plan after build
+- **No more `npm install` on the user's device, ever.**
+- Same UX on iPhone Safari, desktop Chrome, anywhere.
+- First preview after generation = build time (~3–8s for a small Vite project with esbuild-WASM) + tiny iframe load.
+- Subsequent edits = same build cycle. With esbuild this is *fast* — orders of magnitude faster than `npm install`.
 
-1. Desktop Chrome: existing WebContainer flow unchanged, builds + previews React app.
-2. Desktop Firefox: same.
-3. iOS Safari (your phone): tabs visible; "Chat" works; "Preview" tab shows static render of the kanban app within ~1s of generation completing.
-4. Brand-new empty project on iOS: friendly empty state, not the broken-spinner card.
-5. Confirm the published `/p/$slug` and `/gallery` routes still work (they share `buildPreviewDoc`).
+### 5. Empty/loading/error states
+
+The `<CdnPreview />` component shows:
+
+- **Building…** while `latest_build_id` is null and a build is in-flight (poll `project_builds.status` every 1s).
+- **Build failed** with the captured `error_message` and a "Retry build" button (calls `buildProjectArtifacts` again).
+- **Iframe** once `status='ready'`.
+
+### 6. Cleanup of old artifacts
+
+A cron-style server function `pruneOldBuilds()` deletes everything but the latest 5 builds per project from Supabase Storage. We don't need to wire it to a scheduler now — manual or post-MVP.
+
+---
+
+## What changes in the database
+
+One migration:
+
+```sql
+-- New table: track each build attempt
+create table public.project_builds (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects(id) on delete cascade,
+  status text not null check (status in ('pending','building','ready','failed')) default 'pending',
+  dist_path text,                    -- e.g. "abc-123/xyz-789"
+  error_message text,
+  created_at timestamptz not null default now(),
+  ready_at timestamptz
+);
+
+create index idx_project_builds_project on public.project_builds(project_id, created_at desc);
+
+alter table public.project_builds enable row level security;
+
+-- Owners can read their own builds; public projects' builds readable by anyone
+create policy "read own or public builds" on public.project_builds
+  for select using (
+    exists (
+      select 1 from public.projects p
+      where p.id = project_id
+        and (p.owner_id = auth.uid() or p.is_public = true)
+    )
+  );
+
+-- Add latest_build_id to projects for cheap lookups
+alter table public.projects add column latest_build_id uuid references public.project_builds(id);
+
+-- Storage bucket (created via dashboard or migration): "project-builds", private,
+-- with RLS allowing public-project paths + owner paths.
+```
+
+The Supabase Storage bucket `project-builds` will be created with policies mirroring the table.
+
+---
+
+## Files touched (Phase 7.2a)
+
+**New:**
+- `src/server/build.server.ts` — esbuild-WASM bundler + storage upload
+- `src/routes/preview.$projectId.$buildId.$.ts` — CDN-style asset route
+- `src/components/CdnPreview.tsx` — iframe component with build status polling
+- `supabase/migrations/<ts>_project_builds.sql` — table + RLS + bucket setup
+
+**Updated:**
+- `src/server/generate.server.ts` — kick off `buildProjectArtifacts` after each save
+- `src/routes/builder.tsx` — swap `WebContainerPreview` and `MobilePreviewFallback` for `CdnPreview` (keep WebContainer as opt-in dev toggle)
+- `src/lib/projects.ts` — add `getLatestBuild(projectId)` helper
+
+**Removed (or deprecated):**
+- `src/routes/api/preview.$projectId.ts` — superseded by `/preview/$id/$buildId/*`
+- `src/components/MobilePreviewFallback.tsx` — replaced by `CdnPreview`
+
+**Dependencies:**
+- `esbuild-wasm` (~9MB, but tree-shaken; runs server-side only)
+
+---
+
+## Phase 7.2b (next PR — Cloudflare Pages Direct Upload)
+
+Once 7.2a is shipped and stable, swap the *upload target* from Supabase Storage to Cloudflare Pages:
+
+- Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets.
+- Replace `uploadToSupabaseStorage()` with `uploadToPages(projectName, distDir)` using Pages' Direct Upload API.
+- Each Petal project gets one Pages project (`petal-<shortId>`); each generation creates a new deployment under it.
+- Preview URL becomes `https://<deploymentHash>.petal-<shortId>.pages.dev` and the iframe loads that directly — no proxy through our Worker.
+- Free-tier cost: monitor build count; alert at 400/500 monthly. Likely upgrade to Pro ($20/mo) before opening to broader users.
+
+I'll only start 7.2b after you confirm 7.2a works on your phone.
+
+---
+
+## Risks I see
+
+1. **esbuild-WASM cold-start on the Worker**: ~500ms first invocation, then warm. Acceptable, but I'll measure.
+2. **Apps using imports esm.sh can't resolve** (e.g., a package that does dynamic `require()` at runtime) will fail to bundle. Mitigation: catch the error, surface it clearly, and tighten the system prompt to constrain dependencies to ESM-only (which the prompt already does — only `react` + `react-dom` by default).
+3. **Supabase Storage egress cost** at scale. For 7.2a it's fine; 7.2b on Pages eliminates it entirely.
+4. **WebContainer code becomes dead weight**. I'll keep it behind a toggle in 7.2a and delete it in 7.2b once we're confident.
+
+---
+
+## Verification after build (7.2a)
+
+1. iPhone Safari: generate a kanban app → preview tab shows real interactive app within 5–10s.
+2. Desktop Chrome: same flow, no WebContainer warm-up.
+3. Edit one component → new build kicks off → iframe refreshes when ready, no manual reload.
+4. Build error (deliberately request a broken package) → error state with message and retry button.
+5. Public `/p/$slug` and `/gallery` still render via `buildPreviewDoc` (or migrate them too — TBD in 7.2b).
+
+---
+
+## Two questions I need answered before I start coding
+
+1. **Phase 7.2a first, or jump straight to 7.2b (Cloudflare Pages)?** 7.2a ships in 1 PR with no new secrets and no external infra. 7.2b needs a Cloudflare API token, account ID, and accepts the 500-build/month free-tier ceiling (or $20/mo Pro).
+2. **What happens to WebContainers?** Keep as an opt-in "Live coding mode" toggle for desktop power users, or delete entirely? My vote: keep behind a toggle for now, delete after 30 days if nobody uses it.
