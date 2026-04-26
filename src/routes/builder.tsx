@@ -510,7 +510,8 @@ function Builder() {
   // the AI replied to the Nth user message, then trim chat history accordingly.
   // We rely on the invariant that send() creates one auto-version per turn,
   // labelled with the user's prompt. We match by ordinal.
-  const revertToMessage = useCallback(
+  // Step 1: look up the target snapshot and open the diff-preview dialog.
+  const prepareRevertToMessage = useCallback(
     async (userMsgIndex: number) => {
       if (!project) return;
       const userMsg = messages[userMsgIndex];
@@ -518,14 +519,7 @@ function Builder() {
       const userOrdinal = messages
         .slice(0, userMsgIndex + 1)
         .filter((m) => m.role === "user").length;
-      if (
-        !confirm(
-          "Revert your project to right after this message? Files will be restored and any later chat will be removed. (Your current state is saved as a snapshot first.)",
-        )
-      ) {
-        return;
-      }
-      setRevertingIndex(userMsgIndex);
+      setRevertPreparing(userMsgIndex);
       try {
         const versions = await listVersions(project.id);
         const autoVersionsOldestFirst = versions
@@ -536,36 +530,57 @@ function Builder() {
           toast.error("Couldn't find a snapshot for that message.");
           return;
         }
-        if (files.length) {
-          await createVersion(project.id, files, {
-            origin: "auto",
-            label: "Before revert",
-          });
-        }
-        await saveProjectFiles(project.id, target.files);
-        const keep = userOrdinal * 2;
-        await truncateMessagesToCount(project.id, keep);
-        setFiles(target.files);
-        setMessages((prev) => prev.slice(0, keep));
-        setLastDiscussIndex(null);
-        setPreviewKey((k) => k + 1);
-        setHistoryKey((k) => k + 1);
-        toast.success("Reverted");
-        void triggerBuild(project.id)
-          .then(async () => {
-            const r = await getProject(project.id);
-            if (r) setProject(r);
-          })
-          .catch((err: unknown) => console.error("triggerBuild failed", err));
+        setRevertPreview({
+          userMsgIndex,
+          userOrdinal,
+          targetFiles: target.files,
+          label: userMsg.content.replace(/\s+/g, " ").trim().slice(0, 80),
+        });
       } catch (e) {
         console.error(e);
-        toast.error(e instanceof Error ? e.message : "Couldn't revert");
+        toast.error(e instanceof Error ? e.message : "Couldn't load snapshot");
       } finally {
-        setRevertingIndex(null);
+        setRevertPreparing(null);
       }
     },
-    [project, messages, files],
+    [project, messages],
   );
+
+  // Step 2: actually perform the revert after the user confirms.
+  const commitRevertToMessage = useCallback(async () => {
+    if (!project || !revertPreview) return;
+    const { userMsgIndex, userOrdinal, targetFiles } = revertPreview;
+    setRevertingIndex(userMsgIndex);
+    try {
+      if (files.length) {
+        await createVersion(project.id, files, {
+          origin: "auto",
+          label: "Before revert",
+        });
+      }
+      await saveProjectFiles(project.id, targetFiles);
+      const keep = userOrdinal * 2;
+      await truncateMessagesToCount(project.id, keep);
+      setFiles(targetFiles);
+      setMessages((prev) => prev.slice(0, keep));
+      setLastDiscussIndex(null);
+      setPreviewKey((k) => k + 1);
+      setHistoryKey((k) => k + 1);
+      setRevertPreview(null);
+      toast.success("Reverted");
+      void triggerBuild(project.id)
+        .then(async () => {
+          const r = await getProject(project.id);
+          if (r) setProject(r);
+        })
+        .catch((err: unknown) => console.error("triggerBuild failed", err));
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Couldn't revert");
+    } finally {
+      setRevertingIndex(null);
+    }
+  }, [project, revertPreview, files]);
 
   const stopGeneration = useCallback(() => {
     abortRef.current?.abort();
