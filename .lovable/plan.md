@@ -1,64 +1,142 @@
 ## Goal
 
-Match the polish of the Lovable mobile UI (image 3 reference) on Petal's builder screen. Concretely, fix two confirmed issues visible in the screenshots:
+Let Petal users put their published app on their own domain (e.g. `acme.com`), matching the UX every major competitor uses (Lovable, Vercel/v0, Bolt/Netlify): **Publish first → Settings → Domains → enter domain → add DNS records → verified → SSL → Live**.
 
-1. **Header is hidden behind the iOS status bar** (image 1). The `/builder` page uses `h-screen` and renders edge-to-edge, but the header has no safe-area padding, and the global `viewport` meta is missing `viewport-fit=cover`, so iOS doesn't expose `env(safe-area-inset-top)` to the layout.
-2. **Long code/path strings overflow horizontally** in chat messages (visible in both screenshots — `node_modules/...` and `file:///app/builds/...` push the bubble wider than the viewport, contributing to the "cut off" feel).
+## Competitor research summary
 
-While we're in the area, apply small, verified mobile-responsiveness improvements that don't change desktop behavior.
+All three flagship competitors use the exact same shape:
 
-## Verified findings (read-only)
+| Step | Lovable | Vercel/v0 | Bolt (Netlify) |
+|---|---|---|---|
+| Where | Project → Settings → Domains, *or* Publish modal → "Add custom domain" | Project → Settings → Domains | Publish → Custom domain |
+| Required first | Project must be **published** | Project must be deployed | Project must be published |
+| Records | `A @ → 185.158.133.1` + `A www → 185.158.133.1` + `TXT _lovable → lovable_verify=…` | `A @ → 76.76.21.21` (or CNAME) | `CNAME` to Netlify |
+| Verification | TXT record proves ownership | TXT or DNS validation | TXT/DNS |
+| SSL | Auto via Let's Encrypt | Auto | Auto |
+| Statuses shown | Pending → Verifying → Setting up → Active (or Offline/Failed) | Pending → Valid Configuration → Active | Awaiting DNS → Live |
+| Optional | "Buy domain" via registrar inside the product (Entri partner) | Vercel Domains marketplace | Netlify Domains |
+| Proxy mode | "Domain uses Cloudflare" toggle switches A→CNAME setup | Same idea | — |
 
-- `src/routes/__root.tsx:33` sets `viewport` to `width=device-width, initial-scale=1` — **no `viewport-fit=cover`**. This is why iOS Safari draws content under the status bar without exposing safe-area insets.
-- `src/routes/builder.tsx:890` wraps the page in `flex h-screen flex-col` and the header at line 892 is `flex h-14 ... px-4` with no top padding. Combined with the missing viewport-fit, the header sits *under* the iOS status bar.
-- `src/routes/builder.tsx:892` header is **not sticky** — when iOS Safari collapses the URL bar on scroll, the page can shift such that the header appears partially clipped.
-- `src/components/MarkdownMessage.tsx:67` `<pre>` uses `overflow-x-auto` (good), but the `<code>` inline element (line 58) has no `break-all`/`overflow-wrap`, so very long unbroken paths inside paragraphs can stretch the parent bubble. The chat bubble itself also has no `min-w-0` on its flex parent, which is what causes the bubble to grow past the viewport.
-- `src/components/RevertPreviewDialog.tsx:111` uses `max-w-xl` only, with no horizontal margin clamp — fine on most phones but feels edge-to-edge.
+**Conclusion:** we copy the Lovable shape almost verbatim. Buying domains in-product and the Entri auto-DNS partner are nice-to-haves we explicitly defer; the manual A+TXT path is what 90 % of users actually hit and it's straightforward to ship.
 
-## Scope (small, surgical)
+## Where Petal stands today
 
-### 1. Add `viewport-fit=cover` and safe-area support
-- **`src/routes/__root.tsx`** (line 33): change viewport content to `width=device-width, initial-scale=1, viewport-fit=cover`.
-- **`src/styles.css`**: add a tiny utility `.safe-top { padding-top: env(safe-area-inset-top); }` and `.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }` so we can opt in without changing global behavior.
+- Builds already deploy to Cloudflare Pages; the deployment URL lives in `project_builds.dist_path` (e.g. `https://abc123.pages.dev`) and is referenced by `projects.latest_build_id`.
+- "Share" today (`SharePopover`) only flips `projects.is_public` and exposes `/p/<slug>` on **petal's** domain — there is no notion of a "published" public URL, and no domains UI anywhere.
+- `ProjectSettingsSheet` currently has just two sections (instructions + BYO Supabase backend), so there's a clean home for a new "Domains" section.
+- No SSL/edge plumbing for arbitrary hostnames exists yet.
 
-### 2. Make the builder header safe-area-aware and sticky
-- **`src/routes/builder.tsx`** (~line 892): apply `safe-top` + `sticky top-0 z-30` to the header so it always stays visible and clears the iOS status bar. Also apply `safe-bottom` to the chat composer footer area (line ~1312-1357) so the input is not hidden behind the iOS home indicator.
-- The mobile Chat/Preview tab bar (line 1022) becomes `sticky top-14 z-20` so it stays under the header during chat scrolling.
+## Recommended approach: Cloudflare for SaaS
 
-### 3. Prevent long code strings from blowing out chat bubbles
-- **`src/components/MarkdownMessage.tsx`**: 
-  - Add `break-words` to the wrapper `div` (line 38) and `overflow-wrap-anywhere` to inline `<code>` (line 58) so long unbroken tokens wrap.
-  - Keep `<pre>` as-is (already has `overflow-x-auto`).
-- **`src/routes/builder.tsx`** chat message bubble (line ~1080+ where messages render): add `min-w-0` to the flex parent and `max-w-full` to the bubble so flexbox actually allows children to shrink. (Read confirmed the bubble structure earlier; we'll only add `min-w-0` where it's missing.)
+Since builds already live on **Cloudflare Pages**, the cheapest and best-fit way to terminate `acme.com` for an arbitrary user is **Cloudflare for SaaS** (Custom Hostnames API). It gives us:
 
-### 4. Modal/sheet polish for small screens
-- **`src/components/RevertPreviewDialog.tsx`** (line 111): change `max-w-xl` → `max-w-[calc(100vw-1.5rem)] sm:max-w-xl` so the dialog gets a comfortable 12px gutter on phones.
-- **`src/components/ProjectSettingsSheet.tsx`** (line 112): already `w-full max-w-md` — fine. No change.
-- **`src/components/HistoryPanel.tsx`** (line 147): already `w-full ... sm:max-w-md` — fine. No change.
+- Automatic Let's Encrypt SSL per hostname
+- TXT-based ownership verification
+- A single fallback origin (our Pages project) that fans out by hostname
+- A REST API we call from a server route — no per-customer infra
 
-## Out of scope (won't touch this turn)
+The UX and DNS records we expose to users are platform-agnostic, so if we ever swap providers (e.g. self-managed proxy) the user-facing flow doesn't change.
 
-- Restructuring the builder layout, theming, or the WebContainer preview.
-- Changes to the index/landing page or auth screens.
-- The previously-cancelled "modal and sheet layouts" sweep — only the one mobile clamp on `RevertPreviewDialog` is included here because it's directly adjacent.
-- Any change to `src/integrations/supabase/*`, `routeTree.gen.ts`, or generated files.
+## Proposed scope (Tier A — ship now)
 
-## Verification
+### 1. Database
 
-- `bunx tsc --noEmit` to confirm no type regressions.
-- Visually verify on the 430×661 viewport (current preview) that:
-  - Header is fully visible below the iOS status bar.
-  - Header stays put while scrolling the conversation.
-  - The Chat/Preview tab bar stays under the header.
-  - A pasted long path (e.g., `node_modules/@tailwindcss/...`) wraps inside the bubble instead of pushing it wider than the viewport.
-  - The chat composer is not obscured by the iOS home indicator.
+New migration adding a `project_domains` table:
 
-## Files to edit
+```
+project_domains (
+  id uuid pk,
+  project_id uuid fk → projects (cascade delete),
+  hostname text unique citext,        -- e.g. "acme.com" or "blog.acme.com"
+  status text not null default 'pending',
+    -- pending | verifying | active | failed | offline | removed
+  is_primary boolean default false,
+  verification_txt_name text,         -- "_petal-verify"
+  verification_txt_value text,        -- random nonce
+  cf_hostname_id text,                -- Cloudflare custom-hostname id
+  ssl_status text,                    -- mirrored from CF
+  last_checked_at timestamptz,
+  error_message text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+)
+```
 
-- `src/routes/__root.tsx` — viewport meta
-- `src/styles.css` — `.safe-top` / `.safe-bottom` utilities
-- `src/routes/builder.tsx` — sticky safe-area header, sticky tab bar, safe-area composer, `min-w-0` on chat bubbles
-- `src/components/MarkdownMessage.tsx` — wrap long inline code/text
-- `src/components/RevertPreviewDialog.tsx` — mobile width clamp
+- RLS: project owner can `select/insert/delete`; `update` limited to `is_primary` (status changes done by service role only).
+- Trigger to enforce a single `is_primary=true` per project.
+- Add `projects.primary_domain_id` (nullable FK) so the runtime knows which hostname to advertise.
+- Realtime enabled on `project_domains` so the UI can react to verification flips.
 
-Six total edits, all narrowly scoped, no behavior changes on desktop.
+### 2. Server routes (TanStack Start)
+
+| Route | Purpose |
+|---|---|
+| `POST /api/domains?action=add` | Body `{projectId, hostname}`. Validates hostname (FQDN, length, no AAAA-only requirement check), generates TXT nonce, calls **Cloudflare for SaaS** `POST /custom_hostnames`, stores row as `pending`. |
+| `POST /api/domains?action=verify` | Re-checks Cloudflare status + DNS, updates row, returns latest. |
+| `POST /api/domains?action=set-primary` | Marks one domain primary, updates `projects.primary_domain_id`. |
+| `POST /api/domains?action=remove` | Calls Cloudflare delete, removes row. |
+| Background: a tiny pg_cron-style poll (or on-demand from the UI) that hits `verify` for any non-active domain in the last 24 h. |
+
+All routes verify the Supabase JWT and project ownership, mirroring `src/routes/api/backend.ts`.
+
+Secrets needed (added via `add_secret`):
+- `CLOUDFLARE_API_TOKEN` (scoped to SSL: Edit + DNS: Edit on the SaaS zone)
+- `CLOUDFLARE_SAAS_ZONE_ID`
+- `CLOUDFLARE_FALLBACK_ORIGIN` (e.g. `proxy.petal.app`, the CNAME users would see if we go CNAME-mode)
+
+### 3. UI — `ProjectSettingsSheet` gets a new "Domains" section
+
+Place it **above** Backend, since it's the more common need. Shape mirrors `BackendSection`:
+
+- **Empty state**: "Custom domain · Use your own domain like `acme.com`" + `Add domain` button. Copy explains "publish first" if `latest_build_id` is null and disables the button.
+- **Add form**: single input + advanced toggle ("My domain uses Cloudflare or another proxy" → switches A-record instructions to CNAME).
+- **Connected list**: each row shows hostname, status pill (Pending / Verifying / Active / Failed), and a `⋯` menu (View DNS records, Set as primary, Remove).
+- **DNS instructions modal** (shown right after add, and re-openable): two records to add at the registrar:
+  - `A   @   185.158.133.1` *(or CNAME to fallback origin in proxy mode)*
+  - `TXT _petal-verify   <nonce>`
+  Copy buttons on every value, "Check status" button that calls the `verify` action, helper note that DNS can take up to 72 h.
+- **Realtime**: subscribe to `project_domains` row updates so status flips live.
+
+Plus a **secondary entry point in `SharePopover`**: when the project is public, add a small "Use a custom domain" link that opens the settings sheet on the Domains tab — matches Lovable's "Publish modal → Add custom domain" affordance.
+
+### 4. Runtime: serving the custom hostname
+
+When Cloudflare for SaaS routes `acme.com` traffic to our Pages project, the request's `Host` header is `acme.com`. We:
+
+1. In our Worker / Pages function, look up `project_domains.hostname = req.host` → get `project_id` → get `latest_build_id` → serve that deployment.
+2. Set canonical/OG tags on `__root.tsx` so the published app advertises the user's primary domain when present (today they advertise the `.lovable.app` / `pages.dev` URL).
+
+This is the only piece that touches the published-app rendering path. It's small and isolated.
+
+### 5. Mobile + a11y
+
+- The Domains section in the sheet must wrap long hostnames (`break-words`) and the DNS-records modal must clamp width to `max-w-[calc(100vw-1.5rem)]` like `RevertPreviewDialog` already does.
+- Status pills use the same calm phase animation we just added to `BuildActivityCard`.
+- All copy buttons announce "Copied" via `aria-live`.
+
+## Out of scope (Tier B/C — explicitly deferred)
+
+- **Buying domains in-product** (registrar + Stripe checkout). Big project; users can buy elsewhere and bring it.
+- **Entri-style automatic DNS** (one-click OAuth into GoDaddy/Cloudflare/etc.). Add later — manual A+TXT covers most cases and the UI is identical.
+- **Workspace-level domains** shared across projects. Petal doesn't have workspaces yet.
+- **Wildcard / apex SSL nuances** beyond what Cloudflare for SaaS gives us by default.
+- Email DNS (MX/SPF/DKIM) — out of scope for hosting.
+- Paid-plan gating: Lovable gates this behind paid plans; we'll skip the gate for v1 unless you want it.
+
+## Risks / things to confirm before building
+
+1. **SSL provider**: Cloudflare for SaaS is the recommended path because builds already run on CF Pages. If you'd rather self-manage with Caddy / a custom proxy, the DB + UI stay the same but step 4 changes.
+2. **Plan gating**: do we lock custom domains to a paid tier (Lovable does, Vercel does on Hobby+Custom)?
+3. **Domain cap**: Lovable allows multiple per project (root + www, plus subdomains). Suggest defaulting to **5 domains per project** to match.
+4. **Apex `A` vs CNAME-flat**: we'll require `A 185.158.133.1` (or whatever IP CF SaaS assigns us) for the apex; users on Cloudflare can flip the proxy toggle and use CNAME instead, mirroring Lovable's Advanced toggle.
+
+## Suggested build order (one PR each, all on the same plan)
+
+1. **Migration + RLS + realtime** for `project_domains` and `projects.primary_domain_id`.
+2. **`/api/domains` server route** with add/verify/set-primary/remove (talks to Cloudflare for SaaS). Add the three Cloudflare secrets.
+3. **`DomainsSection` in `ProjectSettingsSheet`** + DNS records modal + realtime subscription.
+4. **`SharePopover` cross-link** to open the Domains tab.
+5. **Worker routing** (`Host` → project lookup → serve `latest_build_id`) and canonical/OG tag updates.
+6. Docs + in-product copy review.
+
+I'll wait for your sign-off on the four open questions above (SSL provider choice, plan gating, domain cap, apex strategy) before writing the migration.
