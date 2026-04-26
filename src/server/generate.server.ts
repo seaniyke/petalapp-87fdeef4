@@ -32,13 +32,22 @@ The scaffold ALREADY EXISTS — these files will be auto-injected, do NOT emit t
 - "src/components/ui/table.tsx" — <Table>, <TableHeader>, <TableBody>, <TableFooter>, <TableRow>, <TableHead>, <TableCell>, <TableCaption>
 - "src/components/ui/sheet.tsx" — <Sheet>, <SheetTrigger asChild>, <SheetContent side="top|right|bottom|left">, <SheetHeader>, <SheetTitle>, <SheetDescription>, <SheetFooter>
 - "src/components/ui/toast.tsx" — exports { Toaster, toast } from sonner. Mount <Toaster /> once in App.tsx, then call toast.success("...") / toast.error("...") anywhere
+- "src/components/ui/theme-provider.tsx" — <ThemeProvider defaultTheme="system">. Wrap your app once in main.tsx. Provides useTheme() returning { theme, resolvedTheme, setTheme }.
+- "src/components/ui/theme-toggle.tsx" — <ThemeToggle />. Drop-in dropdown (Light / Dark / System) using lucide icons. Place it in your header.
+
+DARK MODE (built-in, automatic):
+The scaffold ships dark-mode tokens out of the box. The \`.dark\` class on <html> swaps every semantic color automatically, and the system preference is respected when no class is set.
+- ALWAYS wrap your app in <ThemeProvider defaultTheme="system"> in main.tsx so theming works.
+- Include <ThemeToggle /> in your header by default unless the user explicitly says no.
+- Because you use semantic tokens (\`bg-background\`, \`text-foreground\`, \`bg-card\`, \`bg-primary\`, etc.), your UI works in both themes for free. Do NOT write \`dark:bg-black\` overrides — the tokens already handle it.
+- ONLY use the \`dark:\` Tailwind variant for things that genuinely differ per theme (e.g. swapping a logo image).
 
 Files YOU MUST emit (the actual app):
 - "package.json" — list ONLY app-specific extra deps (we auto-inject react, react-dom, tailwind, shadcn deps, etc.). Use caret ranges. Always include "type": "module".
 - "index.html" at the root — loads "/src/main.tsx" as a module, has a <div id="root">.
-- "src/main.tsx" — mounts <App /> into #root, imports "./styles.css".
+- "src/main.tsx" — mounts <App /> into #root, imports "./styles.css", AND wraps <App /> in <ThemeProvider defaultTheme="system">.
 - "src/App.tsx" — the actual app the user asked for.
-- (Optional) "src/styles.css" — the scaffold provides one with theme tokens; only emit if you need to ADD styles. Always start it with \`@import "tailwindcss";\` followed by an \`@theme\` block.
+- (Optional) "src/styles.css" — the scaffold provides one with light + dark theme tokens; only emit if you need to ADD styles. Always start it with \`@import "tailwindcss";\` followed by an \`@theme\` block.
 - (Optional) Any feature components under "src/components/*" (NOT in src/components/ui/ — that's reserved for the kit).
 
 REUSE-FIRST PROTOCOL (most important rule):
