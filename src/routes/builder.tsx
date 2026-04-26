@@ -423,7 +423,9 @@ function Builder() {
   const discuss = useCallback(
     async (content: string) => {
       const text = content.trim();
-      if (!text || busy || discussBusy || !project) return;
+      if (!text || busy || discussBusy) return;
+      const proj = await ensureProject();
+      if (!proj) return;
       setError(null);
       setFriendlyError(null);
       const userMsg: ChatMessage = { role: "user", content: text };
@@ -436,7 +438,7 @@ function Builder() {
         const reply = await requestDiscussion({
           messages: nextMessages,
           currentFiles: files,
-          customInstructions: project.custom_instructions ?? undefined,
+          customInstructions: proj.custom_instructions ?? undefined,
         });
         const assistantMsg: ChatMessage = { role: "assistant", content: reply };
         setMessages((prev) => {
@@ -447,7 +449,7 @@ function Builder() {
         // Persist the conversation so it survives reloads — but don't write
         // any project files (that's the whole point of Discuss).
         try {
-          await appendMessages(project.id, [userMsg, assistantMsg]);
+          await appendMessages(proj.id, [userMsg, assistantMsg]);
         } catch (persistErr) {
           console.error(persistErr);
         }
@@ -460,7 +462,7 @@ function Builder() {
         setDiscussBusy(false);
       }
     },
-    [busy, discussBusy, project, messages, files],
+    [busy, discussBusy, project, messages, files, ensureProject],
   );
 
   // Apply the most recent Discuss reply by switching to Build mode and asking
