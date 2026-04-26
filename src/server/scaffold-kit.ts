@@ -1501,6 +1501,504 @@ Grid.displayName = "Grid";
 
 
 /**
+ * Reference patterns. NOT user-visible routes. The AI is told these files
+ * exist purely as a copy-from source for richer interactions (Dialog + Sheet +
+ * Tabs + Table together). They live under src/components/examples/* so they
+ * never accidentally collide with user feature components.
+ *
+ * The AI MUST NOT import these from App.tsx — they are read-only references.
+ */
+const EXAMPLE_DATA_TABLE_DIALOG = `import * as React from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+/**
+ * PATTERN: Table rows that open a Dialog for row-level edits.
+ * - Single source of truth for selected row in local state.
+ * - Dialog is controlled (open/onOpenChange) so it closes after save.
+ * - Edits are applied immutably to the rows array.
+ */
+
+type Row = { id: string; name: string; email: string; role: "admin" | "member" };
+
+const SEED: Row[] = [
+  { id: "1", name: "Ada Lovelace", email: "ada@example.com", role: "admin" },
+  { id: "2", name: "Linus Torvalds", email: "linus@example.com", role: "member" },
+  { id: "3", name: "Grace Hopper", email: "grace@example.com", role: "admin" },
+];
+
+export function ExampleDataTableDialog() {
+  const [rows, setRows] = React.useState<Row[]>(SEED);
+  const [editing, setEditing] = React.useState<Row | null>(null);
+
+  const save = (next: Row) => {
+    setRows((rs) => rs.map((r) => (r.id === next.id ? next : r)));
+    setEditing(null);
+  };
+
+  return (
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead className="w-24 text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r) => (
+            <TableRow key={r.id}>
+              <TableCell className="font-medium">{r.name}</TableCell>
+              <TableCell className="text-muted-foreground">{r.email}</TableCell>
+              <TableCell>
+                <Badge variant={r.role === "admin" ? "default" : "secondary"}>{r.role}</Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                <Button size="sm" variant="outline" onClick={() => setEditing(r)}>
+                  Edit
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit user</DialogTitle>
+            <DialogDescription>Update the row and save your changes.</DialogDescription>
+          </DialogHeader>
+          {editing && (
+            <div className="grid gap-4 py-2">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  value={editing.name}
+                  onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={editing.email}
+                  onChange={(e) => setEditing({ ...editing, email: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Cancel
+            </Button>
+            <Button onClick={() => editing && save(editing)}>Save changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+`;
+
+const EXAMPLE_TABS_TABLE_DASHBOARD = `import * as React from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Stack } from "@/components/ui/stack";
+import { Grid } from "@/components/ui/grid";
+
+/**
+ * PATTERN: Dashboard with Tabs switching between summary cards and a
+ * detailed Table. Same dataset, two views — Tabs are the right primitive
+ * (NOT separate routes) when the user needs quick view-toggling.
+ */
+
+const ORDERS = [
+  { id: "1001", customer: "Acme Inc.", total: 1240, status: "paid" as const },
+  { id: "1002", customer: "Globex", total: 89, status: "pending" as const },
+  { id: "1003", customer: "Initech", total: 540, status: "paid" as const },
+  { id: "1004", customer: "Umbrella", total: 320, status: "refunded" as const },
+];
+
+const STATUS_VARIANT: Record<(typeof ORDERS)[number]["status"], "default" | "secondary" | "destructive"> = {
+  paid: "default",
+  pending: "secondary",
+  refunded: "destructive",
+};
+
+export function ExampleTabsTableDashboard() {
+  const totalRevenue = ORDERS.filter((o) => o.status === "paid").reduce((s, o) => s + o.total, 0);
+  const pending = ORDERS.filter((o) => o.status === "pending").length;
+  const refunded = ORDERS.filter((o) => o.status === "refunded").length;
+
+  return (
+    <Tabs defaultValue="overview">
+      <TabsList>
+        <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="orders">Orders</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="overview">
+        <Grid preset="stats">
+          <Card>
+            <CardHeader>
+              <CardDescription>Revenue</CardDescription>
+              <CardTitle className="text-3xl">{"$" + totalRevenue.toLocaleString()}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardDescription>Pending</CardDescription>
+              <CardTitle className="text-3xl">{pending}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardDescription>Refunded</CardDescription>
+              <CardTitle className="text-3xl">{refunded}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardDescription>Total orders</CardDescription>
+              <CardTitle className="text-3xl">{ORDERS.length}</CardTitle>
+            </CardHeader>
+          </Card>
+        </Grid>
+      </TabsContent>
+
+      <TabsContent value="orders">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent orders</CardTitle>
+            <CardDescription>The latest activity across your store.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Stack gap={4}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Order</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ORDERS.map((o) => (
+                    <TableRow key={o.id}>
+                      <TableCell className="font-mono">#{o.id}</TableCell>
+                      <TableCell>{o.customer}</TableCell>
+                      <TableCell className="text-right">{"$" + o.total}</TableCell>
+                      <TableCell>
+                        <Badge variant={STATUS_VARIANT[o.status]}>{o.status}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Stack>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+  );
+}
+`;
+
+const EXAMPLE_SHEET_DETAIL_PANEL = `import * as React from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Stack } from "@/components/ui/stack";
+
+/**
+ * PATTERN: Master/detail using a side Sheet instead of navigating away.
+ * Use a Sheet (not a Dialog) when the detail content is long-form,
+ * scrollable, or the user might keep the table visible mentally.
+ */
+
+type Invoice = {
+  id: string;
+  client: string;
+  amount: number;
+  status: "draft" | "sent" | "paid";
+  items: { label: string; qty: number; price: number }[];
+};
+
+const INVOICES: Invoice[] = [
+  {
+    id: "INV-001",
+    client: "Acme Inc.",
+    amount: 1240,
+    status: "paid",
+    items: [
+      { label: "Design retainer", qty: 1, price: 1000 },
+      { label: "Revisions", qty: 4, price: 60 },
+    ],
+  },
+  {
+    id: "INV-002",
+    client: "Globex",
+    amount: 540,
+    status: "sent",
+    items: [{ label: "Consulting", qty: 6, price: 90 }],
+  },
+];
+
+export function ExampleSheetDetailPanel() {
+  const [selected, setSelected] = React.useState<Invoice | null>(null);
+
+  return (
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Invoice</TableHead>
+            <TableHead>Client</TableHead>
+            <TableHead className="text-right">Amount</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="w-20" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {INVOICES.map((inv) => (
+            <TableRow key={inv.id}>
+              <TableCell className="font-mono">{inv.id}</TableCell>
+              <TableCell>{inv.client}</TableCell>
+              <TableCell className="text-right">{"$" + inv.amount}</TableCell>
+              <TableCell>
+                <Badge variant={inv.status === "paid" ? "default" : "secondary"}>{inv.status}</Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                <Button variant="ghost" size="sm" onClick={() => setSelected(inv)}>
+                  View
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>{selected?.id}</SheetTitle>
+            <SheetDescription>{selected?.client}</SheetDescription>
+          </SheetHeader>
+          {selected && (
+            <Stack gap={4} className="py-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selected.items.map((it, i) => (
+                    <TableRow key={i}>
+                      <TableCell>{it.label}</TableCell>
+                      <TableCell className="text-right">{it.qty}</TableCell>
+                      <TableCell className="text-right">{"$" + it.price}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <Separator />
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Total</span>
+                <span className="font-semibold">{"$" + selected.amount}</span>
+              </div>
+            </Stack>
+          )}
+          <SheetFooter>
+            <Button variant="outline" onClick={() => setSelected(null)}>
+              Close
+            </Button>
+            <Button>Mark as paid</Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}
+`;
+
+const EXAMPLE_TABS_SHEET_SETTINGS = `import * as React from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Stack } from "@/components/ui/stack";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+/**
+ * PATTERN: Settings page where Tabs partition sections (Profile / Notifications)
+ * and a Sheet hosts a focused destructive flow ("Delete account") so it doesn't
+ * disrupt the surrounding page state.
+ */
+
+export function ExampleTabsSheetSettings() {
+  const [name, setName] = React.useState("Ada Lovelace");
+  const [emailNotif, setEmailNotif] = React.useState(true);
+  const [pushNotif, setPushNotif] = React.useState(false);
+
+  return (
+    <Tabs defaultValue="profile">
+      <TabsList>
+        <TabsTrigger value="profile">Profile</TabsTrigger>
+        <TabsTrigger value="notifications">Notifications</TabsTrigger>
+        <TabsTrigger value="danger">Danger zone</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="profile">
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+            <CardDescription>How others see you on the platform.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Stack gap={4}>
+              <div className="grid gap-2">
+                <Label htmlFor="display-name">Display name</Label>
+                <Input id="display-name" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <Button className="w-fit">Save</Button>
+            </Stack>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="notifications">
+        <Card>
+          <CardHeader>
+            <CardTitle>Notifications</CardTitle>
+            <CardDescription>Choose how you want to be reached.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Stack gap={4}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Email</Label>
+                  <p className="text-sm text-muted-foreground">Weekly summaries and important alerts.</p>
+                </div>
+                <Switch checked={emailNotif} onCheckedChange={setEmailNotif} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Push</Label>
+                  <p className="text-sm text-muted-foreground">Real-time mentions and replies.</p>
+                </div>
+                <Switch checked={pushNotif} onCheckedChange={setPushNotif} />
+              </div>
+            </Stack>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="danger">
+        <Card>
+          <CardHeader>
+            <CardTitle>Delete account</CardTitle>
+            <CardDescription>This action is permanent and cannot be undone.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="destructive">Delete account</Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:max-w-md">
+                <SheetHeader>
+                  <SheetTitle>Delete your account?</SheetTitle>
+                  <SheetDescription>
+                    Type your name to confirm. All your data will be removed.
+                  </SheetDescription>
+                </SheetHeader>
+                <Stack gap={3} className="py-4">
+                  <Label htmlFor="confirm">Confirm name</Label>
+                  <Input id="confirm" placeholder={name} />
+                </Stack>
+                <SheetFooter>
+                  <Button variant="ghost">Cancel</Button>
+                  <Button variant="destructive">Permanently delete</Button>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+  );
+}
+`;
+
+/**
  * Files that are ALWAYS injected/overwritten on initial scaffold. The AI is
  * told these exist and not to emit them; if it does, we replace them anyway
  * to keep the kit canonical.
