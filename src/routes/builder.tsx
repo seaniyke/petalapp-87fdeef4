@@ -254,6 +254,12 @@ function Builder() {
   // Bootstrap: load existing project, or create a new one if no id in URL.
   useEffect(() => {
     let cancelled = false;
+    if (!isReady) return;
+    if (!user) {
+      navigate({ to: "/auth", search: { mode: "signin", redirect: window.location.pathname + window.location.search } });
+      return;
+    }
+    setBootstrapping(true);
     (async () => {
       try {
         if (searchId) {
@@ -286,7 +292,7 @@ function Builder() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchId]);
+  }, [isReady, user, searchId]);
 
   // Auto-send the prompt from the landing page once, after bootstrap.
   // Note: project may be null here when arriving with ?prompt but no ?id —
