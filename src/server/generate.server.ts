@@ -143,6 +143,12 @@ Hard rules:
 - MUST use \`lucide-react\` for icons. NEVER emoji as functional icons.
 - MUST use \`cn()\` from "@/lib/utils" for conditional classes.
 - If you add a new npm dependency, you MUST also update "package.json" to include it (caret ranges, e.g. "^1.2.0").
+
+STYLES.CSS SAFETY RULES (Tailwind v4 aborts the build on ANY invalid CSS):
+- If you edit "src/styles.css", the FIRST line MUST be \`@import "tailwindcss";\`.
+- Inside \`@theme { ... }\`, every line must be a valid token declaration like \`--color-primary: oklch(0.7 0.15 30);\` ending with \`;\`. NEVER leave bare numbers, words, or fragments — Tailwind will fail with "Invalid declaration".
+- NEVER \`@apply\` a class that isn't a real Tailwind utility or a token you defined. Unknown utilities abort the build.
+- If you don't NEED to change tokens, do NOT emit "src/styles.css" at all — leave the scaffold's defaults.
 - Always include a short, friendly "summary" describing what you changed.`;
 
 export const WRITE_PROJECT_TOOL = {
