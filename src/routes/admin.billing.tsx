@@ -56,7 +56,7 @@ function AdminBillingPage() {
   useEffect(() => {
     if (!isReady) return;
     if (!user) {
-      navigate({ to: "/auth" });
+      navigate({ to: "/auth", search: { redirect: "/admin/billing" } });
       return;
     }
     if (!adminLoading && !isAdmin) {

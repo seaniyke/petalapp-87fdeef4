@@ -20,6 +20,7 @@ import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 import { Route as ApiDomainsRouteImport } from './routes/api/domains'
 import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
 import { Route as ApiBackendRouteImport } from './routes/api/backend'
+import { Route as AdminBillingRouteImport } from './routes/admin.billing'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
 import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigger'
 import { Route as ApiBillingVerifyRouteImport } from './routes/api/billing/verify'
@@ -82,6 +83,11 @@ const ApiBackendRoute = ApiBackendRouteImport.update({
   path: '/api/backend',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminBillingRoute = AdminBillingRouteImport.update({
+  id: '/admin/billing',
+  path: '/admin/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPreviewProjectIdRoute = ApiPreviewProjectIdRouteImport.update({
   id: '/api/preview/$projectId',
   path: '/api/preview/$projectId',
@@ -120,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/builder': typeof BuilderRoute
   '/gallery': typeof GalleryRoute
   '/projects': typeof ProjectsRoute
+  '/admin/billing': typeof AdminBillingRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/builder': typeof BuilderRoute
   '/gallery': typeof GalleryRoute
   '/projects': typeof ProjectsRoute
+  '/admin/billing': typeof AdminBillingRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/builder': typeof BuilderRoute
   '/gallery': typeof GalleryRoute
   '/projects': typeof ProjectsRoute
+  '/admin/billing': typeof AdminBillingRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/builder'
     | '/gallery'
     | '/projects'
+    | '/admin/billing'
     | '/api/backend'
     | '/api/discuss'
     | '/api/domains'
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/builder'
     | '/gallery'
     | '/projects'
+    | '/admin/billing'
     | '/api/backend'
     | '/api/discuss'
     | '/api/domains'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/builder'
     | '/gallery'
     | '/projects'
+    | '/admin/billing'
     | '/api/backend'
     | '/api/discuss'
     | '/api/domains'
@@ -238,6 +250,7 @@ export interface RootRouteChildren {
   BuilderRoute: typeof BuilderRoute
   GalleryRoute: typeof GalleryRoute
   ProjectsRoute: typeof ProjectsRoute
+  AdminBillingRoute: typeof AdminBillingRoute
   ApiBackendRoute: typeof ApiBackendRoute
   ApiDiscussRoute: typeof ApiDiscussRoute
   ApiDomainsRoute: typeof ApiDomainsRoute
@@ -331,6 +344,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBackendRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/billing': {
+      id: '/admin/billing'
+      path: '/admin/billing'
+      fullPath: '/admin/billing'
+      preLoaderRoute: typeof AdminBillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/preview/$projectId': {
       id: '/api/preview/$projectId'
       path: '/api/preview/$projectId'
@@ -382,6 +402,7 @@ const rootRouteChildren: RootRouteChildren = {
   BuilderRoute: BuilderRoute,
   GalleryRoute: GalleryRoute,
   ProjectsRoute: ProjectsRoute,
+  AdminBillingRoute: AdminBillingRoute,
   ApiBackendRoute: ApiBackendRoute,
   ApiDiscussRoute: ApiDiscussRoute,
   ApiDomainsRoute: ApiDomainsRoute,
