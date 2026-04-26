@@ -78,6 +78,12 @@ export async function streamGenerate(
           case "tool":
             handlers.onTool?.(evt.name);
             break;
+          case "phase":
+            handlers.onPhase?.(evt.phase);
+            break;
+          case "file_progress":
+            handlers.onFileProgress?.(evt.written, evt.latestPath);
+            break;
           case "result":
             handlers.onResult?.(evt.files, evt.summary);
             break;
