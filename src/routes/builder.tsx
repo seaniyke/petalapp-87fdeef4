@@ -380,6 +380,14 @@ function Builder() {
             </button>
           </div>
           <button
+            onClick={() => setPaletteOpen(true)}
+            className="hidden h-8 items-center gap-1.5 rounded-lg border border-border px-2 text-xs text-muted-foreground transition hover:bg-muted md:inline-flex"
+            title="Command palette (⌘K)"
+          >
+            <CommandIcon className="h-3.5 w-3.5" />
+            <span className="font-mono">⌘K</span>
+          </button>
+          <button
             onClick={() => setPreviewKey((k) => k + 1)}
             disabled={!files.length}
             className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"
