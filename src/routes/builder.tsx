@@ -272,6 +272,67 @@ function Builder() {
 
   const activeContent = files.find((f) => f.path === activeFile)?.content ?? "";
 
+  // ⌘K / Ctrl+K to open command palette.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const paletteItems: PaletteItem[] = useMemo(() => {
+    const items: PaletteItem[] = [
+      {
+        id: "view-preview",
+        label: "Show preview",
+        group: "View",
+        icon: <Eye className="h-3.5 w-3.5" />,
+        onSelect: () => setView("preview"),
+      },
+      {
+        id: "view-code",
+        label: "Show code",
+        group: "View",
+        icon: <Code2 className="h-3.5 w-3.5" />,
+        onSelect: () => setView("code"),
+      },
+      {
+        id: "reload",
+        label: "Reload preview",
+        group: "Actions",
+        icon: <RotateCw className="h-3.5 w-3.5" />,
+        onSelect: () => setPreviewKey((k) => k + 1),
+      },
+    ];
+    if (lastUserPrompt) {
+      items.push({
+        id: "regenerate",
+        label: "Regenerate last prompt",
+        hint: lastUserPrompt.slice(0, 40),
+        group: "Actions",
+        icon: <RefreshCcw className="h-3.5 w-3.5" />,
+        onSelect: () => void send(lastUserPrompt, { isRetry: true }),
+      });
+    }
+    for (const f of files) {
+      items.push({
+        id: `file-${f.path}`,
+        label: f.path,
+        group: "Files",
+        icon: <FileCode2 className="h-3.5 w-3.5" />,
+        onSelect: () => {
+          setView("code");
+          setActiveFile(f.path);
+        },
+      });
+    }
+    return items;
+  }, [files, lastUserPrompt, send]);
+
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
       {/* Top bar */}
