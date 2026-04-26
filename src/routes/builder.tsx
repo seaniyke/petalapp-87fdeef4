@@ -385,7 +385,7 @@ function Builder() {
         setBusy(false);
       }
     },
-    [busy, project, messages, files],
+    [busy, project, messages, files, modelPreset],
   );
 
   // Discuss mode: ask Petal a question without touching files. The reply is
