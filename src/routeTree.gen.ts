@@ -21,7 +21,11 @@ import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
 import { Route as ApiBackendRouteImport } from './routes/api/backend'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
 import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigger'
+import { Route as ApiBillingSetupTaxCodesRouteImport } from './routes/api/billing/setup-tax-codes'
+import { Route as ApiBillingCreatePortalSessionRouteImport } from './routes/api/billing/create-portal-session'
+import { Route as ApiBillingCreateCheckoutRouteImport } from './routes/api/billing/create-checkout'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
+import { Route as ApiPublicBillingWebhookRouteImport } from './routes/api/public/billing/webhook'
 
 const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
@@ -83,9 +87,31 @@ const ApiBuildsTriggerRoute = ApiBuildsTriggerRouteImport.update({
   path: '/api/builds/trigger',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBillingSetupTaxCodesRoute = ApiBillingSetupTaxCodesRouteImport.update({
+  id: '/api/billing/setup-tax-codes',
+  path: '/api/billing/setup-tax-codes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBillingCreatePortalSessionRoute =
+  ApiBillingCreatePortalSessionRouteImport.update({
+    id: '/api/billing/create-portal-session',
+    path: '/api/billing/create-portal-session',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiBillingCreateCheckoutRoute =
+  ApiBillingCreateCheckoutRouteImport.update({
+    id: '/api/billing/create-checkout',
+    path: '/api/billing/create-checkout',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicBuildsCallbackRoute = ApiPublicBuildsCallbackRouteImport.update({
   id: '/api/public/builds/callback',
   path: '/api/public/builds/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicBillingWebhookRoute = ApiPublicBillingWebhookRouteImport.update({
+  id: '/api/public/billing/webhook',
+  path: '/api/public/billing/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -100,8 +126,12 @@ export interface FileRoutesByFullPath {
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
+  '/api/billing/create-checkout': typeof ApiBillingCreateCheckoutRoute
+  '/api/billing/create-portal-session': typeof ApiBillingCreatePortalSessionRoute
+  '/api/billing/setup-tax-codes': typeof ApiBillingSetupTaxCodesRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
+  '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
 }
 export interface FileRoutesByTo {
@@ -115,8 +145,12 @@ export interface FileRoutesByTo {
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
+  '/api/billing/create-checkout': typeof ApiBillingCreateCheckoutRoute
+  '/api/billing/create-portal-session': typeof ApiBillingCreatePortalSessionRoute
+  '/api/billing/setup-tax-codes': typeof ApiBillingSetupTaxCodesRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
+  '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
 }
 export interface FileRoutesById {
@@ -131,8 +165,12 @@ export interface FileRoutesById {
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
+  '/api/billing/create-checkout': typeof ApiBillingCreateCheckoutRoute
+  '/api/billing/create-portal-session': typeof ApiBillingCreatePortalSessionRoute
+  '/api/billing/setup-tax-codes': typeof ApiBillingSetupTaxCodesRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
+  '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
 }
 export interface FileRouteTypes {
@@ -148,8 +186,12 @@ export interface FileRouteTypes {
     | '/api/domains'
     | '/api/generate'
     | '/p/$slug'
+    | '/api/billing/create-checkout'
+    | '/api/billing/create-portal-session'
+    | '/api/billing/setup-tax-codes'
     | '/api/builds/trigger'
     | '/api/preview/$projectId'
+    | '/api/public/billing/webhook'
     | '/api/public/builds/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -163,8 +205,12 @@ export interface FileRouteTypes {
     | '/api/domains'
     | '/api/generate'
     | '/p/$slug'
+    | '/api/billing/create-checkout'
+    | '/api/billing/create-portal-session'
+    | '/api/billing/setup-tax-codes'
     | '/api/builds/trigger'
     | '/api/preview/$projectId'
+    | '/api/public/billing/webhook'
     | '/api/public/builds/callback'
   id:
     | '__root__'
@@ -178,8 +224,12 @@ export interface FileRouteTypes {
     | '/api/domains'
     | '/api/generate'
     | '/p/$slug'
+    | '/api/billing/create-checkout'
+    | '/api/billing/create-portal-session'
+    | '/api/billing/setup-tax-codes'
     | '/api/builds/trigger'
     | '/api/preview/$projectId'
+    | '/api/public/billing/webhook'
     | '/api/public/builds/callback'
   fileRoutesById: FileRoutesById
 }
@@ -194,8 +244,12 @@ export interface RootRouteChildren {
   ApiDomainsRoute: typeof ApiDomainsRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
   PSlugRoute: typeof PSlugRoute
+  ApiBillingCreateCheckoutRoute: typeof ApiBillingCreateCheckoutRoute
+  ApiBillingCreatePortalSessionRoute: typeof ApiBillingCreatePortalSessionRoute
+  ApiBillingSetupTaxCodesRoute: typeof ApiBillingSetupTaxCodesRoute
   ApiBuildsTriggerRoute: typeof ApiBuildsTriggerRoute
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
+  ApiPublicBillingWebhookRoute: typeof ApiPublicBillingWebhookRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
 }
 
@@ -285,11 +339,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBuildsTriggerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/billing/setup-tax-codes': {
+      id: '/api/billing/setup-tax-codes'
+      path: '/api/billing/setup-tax-codes'
+      fullPath: '/api/billing/setup-tax-codes'
+      preLoaderRoute: typeof ApiBillingSetupTaxCodesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/billing/create-portal-session': {
+      id: '/api/billing/create-portal-session'
+      path: '/api/billing/create-portal-session'
+      fullPath: '/api/billing/create-portal-session'
+      preLoaderRoute: typeof ApiBillingCreatePortalSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/billing/create-checkout': {
+      id: '/api/billing/create-checkout'
+      path: '/api/billing/create-checkout'
+      fullPath: '/api/billing/create-checkout'
+      preLoaderRoute: typeof ApiBillingCreateCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/builds/callback': {
       id: '/api/public/builds/callback'
       path: '/api/public/builds/callback'
       fullPath: '/api/public/builds/callback'
       preLoaderRoute: typeof ApiPublicBuildsCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/billing/webhook': {
+      id: '/api/public/billing/webhook'
+      path: '/api/public/billing/webhook'
+      fullPath: '/api/public/billing/webhook'
+      preLoaderRoute: typeof ApiPublicBillingWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -306,8 +388,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDomainsRoute: ApiDomainsRoute,
   ApiGenerateRoute: ApiGenerateRoute,
   PSlugRoute: PSlugRoute,
+  ApiBillingCreateCheckoutRoute: ApiBillingCreateCheckoutRoute,
+  ApiBillingCreatePortalSessionRoute: ApiBillingCreatePortalSessionRoute,
+  ApiBillingSetupTaxCodesRoute: ApiBillingSetupTaxCodesRoute,
   ApiBuildsTriggerRoute: ApiBuildsTriggerRoute,
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
+  ApiPublicBillingWebhookRoute: ApiPublicBillingWebhookRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
 }
 export const routeTree = rootRouteImport

@@ -60,6 +60,8 @@ export const Route = createFileRoute("/api/billing/create-checkout")({
         const isRecurring = stripePrice.type === "recurring";
 
         try {
+          // `managed_payments` is supported by the Stripe API but not yet in
+          // the SDK's TS types — cast just the create() params.
           const session = await stripe.checkout.sessions.create({
             line_items: [{ price: stripePrice.id, quantity: 1 }],
             mode: isRecurring ? "subscription" : "payment",
@@ -76,7 +78,7 @@ export const Route = createFileRoute("/api/billing/create-checkout")({
               },
             }),
             managed_payments: { enabled: true },
-          });
+          } as Parameters<typeof stripe.checkout.sessions.create>[0]);
 
           return new Response(
             JSON.stringify({ clientSecret: session.client_secret }),
