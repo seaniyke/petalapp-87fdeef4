@@ -315,11 +315,17 @@ function PhaseRow({
                     {change && (change.addedLines > 0 || change.removedLines > 0) && (
                       <span className="text-[10px]">
                         {change.addedLines > 0 && (
-                          <span className="text-mint-foreground/80">+{change.addedLines}</span>
+                          <span className="font-semibold text-foreground/80">
+                            +{change.addedLines}
+                          </span>
                         )}
-                        {change.addedLines > 0 && change.removedLines > 0 && " "}
+                        {change.addedLines > 0 && change.removedLines > 0 && (
+                          <span className="opacity-50"> </span>
+                        )}
                         {change.removedLines > 0 && (
-                          <span className="text-destructive/80">−{change.removedLines}</span>
+                          <span className="font-semibold text-destructive/80">
+                            −{change.removedLines}
+                          </span>
                         )}
                       </span>
                     )}
