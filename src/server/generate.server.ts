@@ -38,6 +38,13 @@ The scaffold ALREADY EXISTS — these files will be auto-injected, do NOT emit t
 - "src/components/ui/stack.tsx" — <Stack gap={4} align="start|center|end|stretch" justify="..."> for vertical columns; <Inline gap={2} align="center" wrap> for horizontal rows. Use these instead of writing flex/gap utility chains by hand.
 - "src/components/ui/grid.tsx" — <Grid preset="..."> for instant dashboard layouts. Presets: "stats" (1->2->4 stat cards), "kpis" (2->4->6 dense tiles), "dashboard" (1->2->3 widgets), "cards" (1->2->3->4 product/feature cards), "features" (1->2->3 marketing), "pricing" (1->3 tiers), "split" (1->2 two-column), "gallery" (2->3->4 media). Or compose manually: <Grid cols={1} sm={2} md={3} lg={4} gap={6}>. Allowed cols values: 1, 2, 3, 4, 6, 12. Explicit props override the preset.
 
+REFERENCE PATTERNS (copy-from, do NOT import directly):
+The scaffold also injects working examples under "src/components/examples/*". They exist purely as a reference you can read and adapt — DO NOT import them into App.tsx, and DO NOT emit them yourself (they are auto-injected). When the user asks for the matching interaction, copy the pattern into your own feature component.
+- "src/components/examples/data-table-dialog.tsx" — Table rows + per-row Edit Dialog (controlled open/onOpenChange, immutable row update).
+- "src/components/examples/tabs-table-dashboard.tsx" — Tabs switching an Overview (stat Grid) and an Orders Table over the same dataset.
+- "src/components/examples/sheet-detail-panel.tsx" — Master Table + side Sheet detail view (use Sheet over Dialog for long-form / scrollable detail).
+- "src/components/examples/tabs-sheet-settings.tsx" — Settings Tabs (Profile / Notifications / Danger zone) with a Sheet hosting a destructive confirm flow.
+
 DARK MODE (built-in, automatic):
 The scaffold ships dark-mode tokens out of the box. The \`.dark\` class on <html> swaps every semantic color automatically, and the system preference is respected when no class is set.
 - ALWAYS wrap your app in <ThemeProvider defaultTheme="system"> in main.tsx so theming works.
@@ -98,7 +105,7 @@ INCREMENTAL EDIT PROTOCOL (mandatory):
 - Only emit ops for files that actually need to change. Do NOT re-emit untouched files.
 - Prefer surgical updates: change a single component, add one new file, tweak one section. Do NOT rewrite App.tsx wholesale unless the user explicitly asks for a full redesign.
 - If the user asks to "redo" or "rebuild" something, scope it to the affected feature — do not nuke the rest of the app.
-- NEVER emit ops for files under "src/components/ui/*", "vite.config.ts", "tsconfig.json", or "src/lib/utils.ts" — these are managed by the scaffold and the server will drop those ops.
+- NEVER emit ops for files under "src/components/ui/*", "src/components/examples/*", "vite.config.ts", "tsconfig.json", or "src/lib/utils.ts" — these are managed by the scaffold and the server will drop those ops. The "examples/*" files are read-only reference patterns (Dialog+Sheet+Tabs+Table compositions) that you may READ and copy into NEW feature components under "src/components/" (NOT under examples/), but never modify in place.
 
 Each operation is one of:
 - { "op": "update", "path": "...", "content": "FULL new contents of the file" }
