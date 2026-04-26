@@ -34,6 +34,9 @@ The scaffold ALREADY EXISTS — these files will be auto-injected, do NOT emit t
 - "src/components/ui/toast.tsx" — exports { Toaster, toast } from sonner. Mount <Toaster /> once in App.tsx, then call toast.success("...") / toast.error("...") anywhere
 - "src/components/ui/theme-provider.tsx" — <ThemeProvider defaultTheme="system">. Wrap your app once in main.tsx. Provides useTheme() returning { theme, resolvedTheme, setTheme }.
 - "src/components/ui/theme-toggle.tsx" — <ThemeToggle />. Drop-in dropdown (Light / Dark / System) using lucide icons. Place it in your header.
+- "src/components/ui/container.tsx" — <Container size="sm|md|lg|xl|full"> (default "lg"). Centered max-width wrapper with responsive horizontal padding. Use as the outermost wrapper inside every page section.
+- "src/components/ui/stack.tsx" — <Stack gap={4} align="start|center|end|stretch" justify="..."> for vertical columns; <Inline gap={2} align="center" wrap> for horizontal rows. Use these instead of writing flex/gap utility chains by hand.
+- "src/components/ui/grid.tsx" — <Grid cols={1} sm={2} md={3} lg={4} gap={6}>. Mobile-first responsive CSS grid. Use for card grids, feature lists, dashboards. Allowed cols values: 1, 2, 3, 4, 6, 12.
 
 DARK MODE (built-in, automatic):
 The scaffold ships dark-mode tokens out of the box. The \`.dark\` class on <html> swaps every semantic color automatically, and the system preference is respected when no class is set.
@@ -63,6 +66,7 @@ Before writing ANY JSX element, ask: "Is there a kit component for this?" If yes
 - Need a toggle? -> <Switch> or <Checkbox>. NEVER raw checkboxes.
 - Need a notification? -> toast.success(...) from "@/components/ui/toast". NEVER a custom alert div.
 - Need tabs, accordions, sliders, tooltips, sheets, tables, scroll areas, progress bars, popovers, selects, radio groups? -> use the kit equivalent. ALL of them exist.
+- Need page layout? -> <Container> wraps every section, <Stack>/<Inline> replace ad-hoc \`flex flex-col gap-N\` divs, <Grid cols=... md=... lg=...> replaces hand-written \`grid-cols-N\` chains. Reach for these BEFORE writing layout utilities directly.
 
 Hard rules:
 - MUST use Tailwind utility classes for ALL styling. NEVER write inline \`style={{}}\` (except for truly dynamic values like \`style={{ width: progress + '%' }}\`) or custom CSS classes outside src/styles.css.
