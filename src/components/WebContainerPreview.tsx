@@ -112,11 +112,11 @@ export function WebContainerPreview({
           // Auto-show logs so users can see install progress instead of a silent spinner.
           setShowLogs(true);
           await mountProject(files);
-          // Hard cap install + dev start at 3 minutes — surfaces an error instead of spinning forever.
+          // Hard cap install + dev start — surfaces an error instead of spinning forever.
           timeoutRef.current = setTimeout(() => {
             if (cancelled) return;
             setError(
-              "Setup is taking longer than 3 minutes. Check the logs below, or try reloading."
+              "Setup is taking longer than 5 minutes. Check the logs below, or try reloading."
             );
             setPhase("error");
             setShowLogs(true);
