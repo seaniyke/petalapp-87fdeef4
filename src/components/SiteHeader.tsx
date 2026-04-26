@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Sparkles, LogOut, FolderOpen, User as UserIcon } from "lucide-react";
+import { Sparkles, LogOut, FolderOpen, User as UserIcon, Settings } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { CreditBadge } from "@/components/CreditBadge";
 import {
   DropdownMenu,
@@ -13,6 +14,7 @@ import {
 
 export function SiteHeader() {
   const { user, signOut } = useAuth();
+  const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
 
   const initial = (user?.email ?? "?")[0]?.toUpperCase() ?? "?";
@@ -54,6 +56,11 @@ export function SiteHeader() {
                   <DropdownMenuItem onSelect={() => navigate({ to: "/projects" })}>
                     <FolderOpen className="mr-2 h-4 w-4" /> My projects
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/admin/billing" })}>
+                      <Settings className="mr-2 h-4 w-4" /> Billing settings
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     onSelect={async () => {
                       await signOut();
