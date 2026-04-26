@@ -1604,7 +1604,8 @@ import { Stack } from "@/components/ui/stack";
 ## Inline — horizontal row
 
 \`\`\`tsx
-import { Inline } from "@/components/ui/stack";
+import { Inline } from "@/components/ui/inline";
+// (Re-exported from "@/components/ui/stack" too, for back-compat.)
 
 <Inline gap={2}>
   <Button>Save</Button>
