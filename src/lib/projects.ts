@@ -143,10 +143,12 @@ export async function loadProjectMessages(projectId: string): Promise<ChatMessag
  * happen in a single transaction — a failed save never empties the project.
  */
 export async function saveProjectFiles(projectId: string, files: ProjectFile[]) {
-  const { error } = await supabase.rpc("replace_project_files", {
-    _project_id: projectId,
-    _files: files as unknown as object,
-  });
+  // Cast: the generated types treat jsonb args narrowly, but our payload is a
+  // plain JSON array of {path, content} which the RPC handles natively.
+  const { error } = await supabase.rpc(
+    "replace_project_files",
+    { _project_id: projectId, _files: files } as never
+  );
   if (error) throw error;
 }
 
