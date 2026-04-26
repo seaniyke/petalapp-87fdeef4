@@ -62,6 +62,10 @@ export function BuildActivityCard({
   // Auto-collapse 3s after success.
   const [collapsed, setCollapsed] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  // While building, the steps list is hidden by default — competitors (Lovable,
+  // Bolt, v0) all show a single calm evolving status line. Power users can
+  // still expand for the full timeline.
+  const [stepsOpen, setStepsOpen] = useState(false);
   useEffect(() => {
     if (!isComplete || error) return;
     const t = setTimeout(() => setCollapsed(true), 3000);
@@ -78,6 +82,31 @@ export function BuildActivityCard({
     const t = setInterval(() => setTick((n) => n + 1), 1000);
     return () => clearInterval(t);
   }, [isActive]);
+
+  // The currently-active phase drives the single status line. Falls back to
+  // the last completed phase (e.g. right between phases) or the first phase.
+  const currentPhase: Phase =
+    phases.find((p) => p.status === "active") ??
+    [...phases].reverse().find((p) => p.status === "done") ??
+    phases[0];
+
+  // Optional sub-caption shown under the status line. Mirrors the per-phase
+  // micro-context the old expanded view showed inline.
+  let subCaption: string | undefined;
+  if (currentPhase?.id === "designing" && designCaption) {
+    subCaption = designCaption;
+  } else if (currentPhase?.id === "writing") {
+    if (latestPath) subCaption = latestPath;
+    else if (filesWritten && filesWritten > 0)
+      subCaption = `${filesWritten} file${filesWritten === 1 ? "" : "s"} so far`;
+  } else if (
+    isActive &&
+    currentPhase?.startedAt &&
+    Date.now() - currentPhase.startedAt > 10000 &&
+    currentPhase.reassurance
+  ) {
+    subCaption = currentPhase.reassurance;
+  }
 
   // ─── Collapsed success state ─────────────────────────────────────────────
   if (collapsed && isComplete && !error) {
