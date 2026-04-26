@@ -85,6 +85,129 @@ export async function mountProject(files: ProjectFile[]): Promise<void> {
   await wc.mount(tree);
 }
 
+/**
+ * Picker script injected into running projects so the parent can pick an
+ * element by clicking inside the iframe. Cross-origin iframes can't be
+ * inspected from the parent, so the script lives inside the running app and
+ * communicates back via window.postMessage. It is dormant until the parent
+ * sends `{ type: "petal:pick:enable" }`.
+ */
+const PICKER_SCRIPT = `(() => {
+  if (window.__petalPickerLoaded) return;
+  window.__petalPickerLoaded = true;
+  let active = false;
+  let outline = null;
+  let label = null;
+  let lastTarget = null;
+  function ensureOverlay() {
+    if (outline) return;
+    outline = document.createElement('div');
+    outline.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483646;border:2px solid #ec4899;background:rgba(236,72,153,0.08);border-radius:4px;transition:all 60ms ease;display:none;';
+    label = document.createElement('div');
+    label.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;background:#ec4899;color:#fff;font:600 11px/1.2 system-ui,sans-serif;padding:3px 6px;border-radius:4px;display:none;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;';
+    document.documentElement.appendChild(outline);
+    document.documentElement.appendChild(label);
+  }
+  function paint(el) {
+    if (!el || !outline) return;
+    const r = el.getBoundingClientRect();
+    outline.style.display = 'block';
+    outline.style.left = r.left + 'px';
+    outline.style.top = r.top + 'px';
+    outline.style.width = r.width + 'px';
+    outline.style.height = r.height + 'px';
+    label.style.display = 'block';
+    label.style.left = r.left + 'px';
+    label.style.top = Math.max(0, r.top - 20) + 'px';
+    const text = (el.textContent || '').trim().slice(0, 40);
+    label.textContent = '<' + el.tagName.toLowerCase() + '>' + (text ? ' "' + text + '"' : '');
+  }
+  function clear() {
+    if (outline) outline.style.display = 'none';
+    if (label) label.style.display = 'none';
+    lastTarget = null;
+  }
+  function describe(el) {
+    const text = (el.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 120);
+    return {
+      tag: el.tagName.toLowerCase(),
+      id: el.id || null,
+      classes: (el.className && typeof el.className === 'string') ? el.className.slice(0, 200) : null,
+      text,
+      role: el.getAttribute('role') || null,
+      ariaLabel: el.getAttribute('aria-label') || null,
+      sourceFile: el.getAttribute('data-source-file') || null,
+      sourceLine: el.getAttribute('data-source-line') || null,
+    };
+  }
+  function onMove(e) {
+    if (!active) return;
+    const t = e.target;
+    if (!t || t === lastTarget) return;
+    lastTarget = t;
+    paint(t);
+  }
+  function onClick(e) {
+    if (!active) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const t = e.target;
+    if (!t) return;
+    parent.postMessage({ type: 'petal:pick:selected', payload: describe(t) }, '*');
+    setActive(false);
+  }
+  function onKey(e) {
+    if (active && e.key === 'Escape') {
+      parent.postMessage({ type: 'petal:pick:cancelled' }, '*');
+      setActive(false);
+    }
+  }
+  function setActive(v) {
+    active = v;
+    if (v) {
+      ensureOverlay();
+      document.documentElement.style.cursor = 'crosshair';
+    } else {
+      document.documentElement.style.cursor = '';
+      clear();
+    }
+  }
+  window.addEventListener('message', (e) => {
+    const data = e.data;
+    if (!data || typeof data !== 'object') return;
+    if (data.type === 'petal:pick:enable') setActive(true);
+    if (data.type === 'petal:pick:disable') setActive(false);
+  });
+  document.addEventListener('mousemove', onMove, true);
+  document.addEventListener('click', onClick, true);
+  document.addEventListener('keydown', onKey, true);
+  parent.postMessage({ type: 'petal:pick:ready' }, '*');
+})();`;
+
+/**
+ * Ensure the picker script and a script tag in index.html exist in the
+ * running container. Vite's HMR will pick up the change without a full
+ * reload of the dev server. Idempotent.
+ */
+export async function ensurePickerInstalled(currentIndexHtml: string | undefined): Promise<void> {
+  const wc = await getContainer();
+  // Drop the picker as a public asset Vite will serve at /__petal_picker.js.
+  try {
+    await wc.fs.mkdir("public", { recursive: true });
+  } catch {
+    /* ignore */
+  }
+  await wc.fs.writeFile("public/__petal_picker.js", PICKER_SCRIPT);
+  // Patch index.html to include the script if not already present.
+  if (currentIndexHtml && !currentIndexHtml.includes("__petal_picker.js")) {
+    const tag = '<script src="/__petal_picker.js"></script>';
+    const next = currentIndexHtml.includes("</body>")
+      ? currentIndexHtml.replace("</body>", `  ${tag}\n  </body>`)
+      : `${currentIndexHtml}\n${tag}`;
+    await wc.fs.writeFile("index.html", next);
+  }
+}
+
 /** Patch only changed files into a running container — no remount needed. */
 export async function patchFiles(
   ops: { path: string; content?: string; deleted?: boolean }[]
