@@ -382,48 +382,54 @@ function Builder() {
     <div className="flex h-screen flex-col bg-background text-foreground">
       {/* Top bar */}
       <header className="flex h-14 items-center justify-between border-b border-border bg-card/70 px-4 backdrop-blur">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Link
             to="/projects"
-            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
           >
             <ArrowLeft className="h-4 w-4" />
-            Projects
+            <span className="hidden sm:inline">Projects</span>
           </Link>
-          <div className="h-5 w-px bg-border" />
-          <div className="flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-md bg-primary text-primary-foreground">
+          <div className="hidden h-5 w-px bg-border sm:block" />
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
               <Sparkles className="h-3.5 w-3.5" />
             </span>
-            <div className="flex flex-col leading-tight">
-              <span className="font-display text-base">{project?.title ?? "Loading…"}</span>
+            <div className="flex min-w-0 flex-col leading-tight">
+              <span
+                className="truncate font-display text-base"
+                title={project?.title ?? undefined}
+              >
+                {project?.title ?? "Loading…"}
+              </span>
               {project?.summary && (
-                <span className="line-clamp-1 max-w-[280px] text-[11px] text-muted-foreground">
+                <span className="hidden truncate text-[11px] text-muted-foreground sm:block">
                   {project.summary}
                 </span>
               )}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <div className="flex items-center rounded-lg border border-border bg-background p-0.5 text-sm">
             <button
               onClick={() => setView("preview")}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition ${
+              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition sm:px-3 ${
                 view === "preview" ? "bg-foreground text-background" : "text-muted-foreground"
               }`}
             >
-              <Eye className="h-3.5 w-3.5" /> Preview
+              <Eye className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Preview</span>
             </button>
             <button
               onClick={() => setView("code")}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition ${
+              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition sm:px-3 ${
                 view === "code" ? "bg-foreground text-background" : "text-muted-foreground"
               }`}
             >
-              <Code2 className="h-3.5 w-3.5" /> Code
+              <Code2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Code</span>
             </button>
           </div>
+          {/* Desktop toolbar */}
           <button
             onClick={() => setPaletteOpen(true)}
             className="hidden h-8 items-center gap-1.5 rounded-lg border border-border px-2 text-xs text-muted-foreground transition hover:bg-muted md:inline-flex"
@@ -435,27 +441,53 @@ function Builder() {
           <button
             onClick={() => setPreviewKey((k) => k + 1)}
             disabled={!files.length}
-            className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+            className="hidden h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40 md:grid"
             title="Reload preview"
           >
             <RotateCw className="h-4 w-4" />
           </button>
           {project && (
-            <HistoryPanel
-              projectId={project.id}
-              currentFiles={files}
-              onRestore={handleRestore}
-              refreshKey={historyKey}
-            />
+            <div className="hidden md:block">
+              <HistoryPanel
+                projectId={project.id}
+                currentFiles={files}
+                onRestore={handleRestore}
+                refreshKey={historyKey}
+              />
+            </div>
           )}
-          {project && <SharePopover project={project} onChange={setProject} />}
+          {project && (
+            <div className="hidden md:block">
+              <SharePopover project={project} onChange={setProject} />
+            </div>
+          )}
           <button
             onClick={downloadProject}
             disabled={!files.length}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+            className="hidden h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted disabled:opacity-40 md:inline-flex"
           >
-            <Download className="h-3.5 w-3.5" /> Export .zip
+            <Download className="h-3.5 w-3.5" /> Export
           </button>
+          {/* Mobile overflow menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted md:hidden"
+              aria-label="More actions"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onSelect={() => setPreviewKey((k) => k + 1)} disabled={!files.length}>
+                <RotateCw className="mr-2 h-3.5 w-3.5" /> Reload preview
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setPaletteOpen(true)}>
+                <CommandIcon className="mr-2 h-3.5 w-3.5" /> Commands
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void downloadProject()} disabled={!files.length}>
+                <Download className="mr-2 h-3.5 w-3.5" /> Export .zip
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
