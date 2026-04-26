@@ -2639,6 +2639,15 @@ matching file below and adapt — do not invent layouts from scratch.
 - \`dashboard-activity-feed.tsx\` — vertical timeline of team events
 - \`dashboard-empty-state.tsx\` — friendly empty list/table block
 
+## Dashboard widgets (combinable atoms)
+- \`widget-kpi-card.tsx\` — single KPI tile, prop-driven (label/value/delta/icon)
+- \`widget-filter-bar.tsx\` — search + segment tabs + date range + actions toolbar
+- \`widget-chart-area.tsx\` — area-chart card placeholder (pure SVG, swap for recharts)
+- \`widget-chart-bar.tsx\` — bar-chart card placeholder (pure SVG)
+- \`widget-chart-donut.tsx\` — donut chart with inline legend (pure SVG)
+- \`widget-activity-log.tsx\` — compact log-style feed (info/success/warn/commit)
+- \`widget-table-sortable.tsx\` — generic sortable + selectable data table
+
 ## Pricing
 - \`pricing-three-tier.tsx\` — three-plan grid with featured tier
 - \`pricing-toggle-billing.tsx\` — monthly / annual toggle
