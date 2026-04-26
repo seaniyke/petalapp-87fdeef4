@@ -34,7 +34,6 @@ function ProjectsPage() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -44,15 +43,11 @@ function ProjectsPage() {
       .finally(() => setLoading(false));
   }, [user]);
 
-  async function handleCreate() {
-    setCreating(true);
-    try {
-      const p = await createProject();
-      navigate({ to: "/builder", search: { id: p.id, prompt: undefined } });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not create project");
-      setCreating(false);
-    }
+  // Note: we deliberately do NOT pre-create a project row here. Empty rows pile up
+  // when users click "New project" and bounce. The builder lazy-creates the project
+  // on the first user prompt (see ensureProject in builder.tsx).
+  function handleCreate() {
+    navigate({ to: "/builder", search: { id: undefined, prompt: undefined } });
   }
 
   async function handleDelete(id: string) {
