@@ -125,13 +125,39 @@ export function toFriendlyError(raw: unknown): FriendlyError {
 /** Friendly copy specifically for a failed Cloudflare Pages build.
  *  We pass the raw log into the friendly error so the user can read it
  *  under "Show details" — and `askPetalToFix` in builder.tsx forwards the
- *  same log to the AI as the next prompt. */
+ *  same log to the AI as the next prompt.
+ *
+ *  We sniff for a few well-known failure shapes (CSS / Tailwind, missing
+ *  imports, TypeScript) so the user gets a hint about WHICH layer broke,
+ *  not just "your app needs a fix". The AI still sees the full log. */
 export function friendlyBuildFailure(rawLog: string | null | undefined): FriendlyError {
   if (rawLog) {
     console.error("[petal] build failed:", rawLog);
   }
   // Show the most useful tail (compilers put the error at the bottom).
   const tail = rawLog ? rawLog.split("\n").slice(-40).join("\n").slice(-2500) : undefined;
+
+  // Tailwind v4 aborts the whole build on any invalid CSS. The error always
+  // mentions the @tailwindcss/vite plugin and "Invalid declaration" / a
+  // styles.css path. Surface it as a styling issue so the user knows what's
+  // about to be fixed.
+  const isCssError =
+    !!rawLog &&
+    (/@tailwindcss\/vite/i.test(rawLog) ||
+      /Invalid declaration/i.test(rawLog) ||
+      /Cannot apply unknown utility/i.test(rawLog) ||
+      /styles\.css/i.test(rawLog));
+  if (isCssError) {
+    return {
+      title: "A styling rule isn't quite right",
+      message:
+        "There's a small problem in the app's stylesheet. Click below and Petal will fix it.",
+      actionLabel: "Ask Petal to fix it",
+      actionKind: "ask-fix",
+      technicalDetail: tail,
+    };
+  }
+
   return {
     title: "Your app needs a small fix",
     message:
