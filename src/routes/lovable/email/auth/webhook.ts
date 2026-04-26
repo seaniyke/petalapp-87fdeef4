@@ -31,7 +31,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "petalapp"
+const SITE_NAME = "Petal"
 const SENDER_DOMAIN = "notify.buildwithpetal.com"
 const ROOT_DOMAIN = "buildwithpetal.com"
 const FROM_DOMAIN = "buildwithpetal.com"
