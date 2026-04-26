@@ -1,92 +1,104 @@
-# Base44-style "Add Backend" for Petal
+# Hybrid backend: BYO now, Managed later
 
-Silently provision a real backend (auth + database + storage) per generated app, and inject pre-configured client credentials into the project's source so the AI can write `supabase.from(...)`, `supabase.auth.signIn(...)`, and `supabase.storage.from(...)` immediately — no user setup, no copy-paste, no env vars to fill in.
+## Why hybrid (and why this order)
 
-This mirrors how Base44 / Lovable Cloud feel from the user's perspective, while keeping ops realistic by using the **Supabase Management API** under the hood. We do not build our own Postgres/auth stack — that path is months of work and on-call duty for a side project.
+- **BYO first** = zero infra cost, zero on-call, no Supabase Pro org needed. Ships in ~1 week.
+- **Managed later** = same generated-app surface, just a different provisioner. Layer on top once you have ~50+ projects and real signal.
 
----
-
-## 1. Operational model (read first — this is the load-bearing decision)
-
-- A single **Supabase organization that you own** hosts every Petal user's backend as a separate Supabase **project**.
-- The Petal server holds one secret: `SUPABASE_MANAGEMENT_TOKEN` (a Personal Access Token scoped to that org).
-- When a user clicks "Add Backend", Petal calls the Supabase Management API to create a fresh project, then stores its URL + anon key + service role key keyed to the Petal `projects.id`.
-- The generated app gets those credentials baked into `src/integrations/backend/client.ts` at build time. The end user never sees them as "Supabase".
-- Cost reality: free-tier Supabase orgs allow only **2 active projects**. To go past two real users you need a Pro org (~$25/mo + per-project compute). This plan ships behind a feature flag so you can pilot without committing.
+The load-bearing decision is the **abstraction**: every generated app imports from `@/integrations/backend/*`, never from `@supabase/supabase-js` directly. Whether the credentials came from the user's own Supabase project (v1) or a Petal-provisioned one (v2) is invisible to the AI and to the generated code. **Generated apps written today keep working when we flip to managed mode tomorrow.**
 
 ---
 
-## 2. New database schema (one migration)
+## v1 scope (what we ship now)
 
-Add a `project_backends` table to track each provisioned backend:
+### 1. User flow
+1. In a Petal project, user opens Settings → "Backend" → clicks **Connect a backend**.
+2. We show a 3-field form:
+   - Supabase project URL (`https://xxx.supabase.co`)
+   - Supabase anon/publishable key
+   - Supabase service role key (optional, server-only, used later for migrations)
+3. We validate by hitting `${url}/auth/v1/health` with the anon key and store the result.
+4. From the next AI generation onward, `@/integrations/backend/*` is injected with their credentials baked in. AI starts writing `supabase.from(...)`, `useAuth()`, `uploadFile(...)`.
+
+No OAuth in v1 — a paste-form is faster to ship and works for technical users. We add Supabase OAuth in v1.5 once the abstraction has shaken out.
+
+### 2. New table: `project_backends`
 
 ```sql
 create table public.project_backends (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
-  status text not null default 'provisioning'
-    check (status in ('provisioning','ready','failed','paused')),
-  supabase_project_ref text,           -- e.g. "kbszbczzmjoiiezyifsd"
-  supabase_url text,                   -- public, injected into generated app
-  anon_key text,                       -- public, injected into generated app
-  service_role_key text,               -- SECRET — never sent to client / never injected
-  region text default 'us-east-1',
+  provider text not null default 'byo_supabase'
+    check (provider in ('byo_supabase','managed_supabase')),  -- v2 adds 'managed_supabase'
+  status text not null default 'ready'
+    check (status in ('connecting','ready','failed','paused')),
+  supabase_url text not null,
+  anon_key text not null,                  -- public, safe to inject into generated app
+  service_role_key text,                   -- SECRET — never returned to client
+  health_checked_at timestamptz,
   error_message text,
   created_at timestamptz not null default now(),
-  ready_at timestamptz,
   unique (project_id)
 );
 alter table public.project_backends enable row level security;
 
--- Owners can SEE that a backend exists, but never the service_role_key.
--- We enforce this in the server function (no SELECT policy returns service_role_key column to client).
-create policy "Owners view their backend status"
+-- Owners can SEE that a backend exists.
+-- service_role_key is stripped at the server-function boundary, never via SELECT.
+create policy "Owners view their backend"
   on public.project_backends for select
+  using (exists (select 1 from public.projects p
+                 where p.id = project_backends.project_id and p.owner_id = auth.uid()));
+
+create policy "Owners can connect a backend"
+  on public.project_backends for insert
+  with check (exists (select 1 from public.projects p
+                      where p.id = project_backends.project_id and p.owner_id = auth.uid()));
+
+create policy "Owners can update their backend"
+  on public.project_backends for update
+  using (exists (select 1 from public.projects p
+                 where p.id = project_backends.project_id and p.owner_id = auth.uid()));
+
+create policy "Owners can disconnect their backend"
+  on public.project_backends for delete
   using (exists (select 1 from public.projects p
                  where p.id = project_backends.project_id and p.owner_id = auth.uid()));
 ```
 
-Critically: **`service_role_key` is never returned to client code.** All reads from `useBackend()` go through a server function that strips that column. The column exists only so server functions and edge functions can use it.
+The `provider` enum is what makes managed-mode-later painless: same table, same shape, same downstream code, just a new value.
 
----
+### 3. New server module: `src/server/backend-connector.server.ts`
 
-## 3. Provisioning server function
+Three server functions, all behind `requireSupabaseAuth`:
 
-New file: `src/server/backend-provisioner.server.ts`
+- **`connectByoBackend({ projectId, supabaseUrl, anonKey, serviceRoleKey? })`**
+  - Validates URL shape (`https://*.supabase.co`).
+  - Calls `${supabaseUrl}/auth/v1/health` with the anon key as bearer; expects 200.
+  - Verifies project ownership.
+  - Upserts a `project_backends` row with `provider='byo_supabase'`, `status='ready'`.
+  - Returns `{ status, supabaseUrl, anonKey }` — never service_role_key.
 
-- Wraps the Supabase Management API:
-  - `POST /v1/projects` to create a project (org_id, name = `petal-<projectId-short>`, db_pass = random, region).
-  - Poll `GET /v1/projects/{ref}` until `status === "ACTIVE_HEALTHY"` (typically 60–120s).
-  - `GET /v1/projects/{ref}/api-keys` to fetch anon + service_role.
-  - `POST /v1/projects/{ref}/database/query` to run a small bootstrap migration (creates `profiles`, `user_roles`, `has_role`, `handle_new_user` trigger — same shape Petal already uses).
-  - Enable Auth providers: email/password (default on), and optionally Google OAuth via `PATCH /v1/projects/{ref}/config/auth`.
-  - Create a default storage bucket `uploads` (private) via `POST /v1/projects/{ref}/storage/buckets`.
+- **`getBackendStatus({ projectId })`**
+  - Returns `{ status, provider, supabaseUrl, anonKey } | null`. Strips service_role_key.
 
-Exposed as two server functions in `src/server/backend-provisioner.server.ts`:
+- **`disconnectBackend({ projectId })`**
+  - Deletes the row. Generated app loses the injected client on next AI turn.
 
-```ts
-export const provisionBackend = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((i: { projectId: string }) => i)
-  .handler(async ({ data, context }) => { /* … */ });
+This file is where managed-mode hooks in later: a future `provisionManagedBackend(...)` writes to the same table with `provider='managed_supabase'`, and everything downstream is unchanged.
 
-export const getBackendStatus = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((i: { projectId: string }) => i)
-  .handler(async ({ data, context }) => {
-    // Returns { status, supabaseUrl, anonKey } — NEVER serviceRoleKey.
-  });
-```
+### 4. New module: `src/server/backend-kit.ts`
 
-Provisioning runs async: the function inserts a `project_backends` row with `status='provisioning'`, kicks off the Management API calls in the background (fire-and-forget with logging), and returns immediately. The UI polls `getBackendStatus` every 3s.
+Mirrors `scaffold-kit.ts` style — a list of file blobs with `overwrite: true` that get merged in. Files injected into every generated app **only when a backend is connected**:
 
----
+- **`src/integrations/backend/client.ts`** — pre-configured `createClient(url, anonKey)` with localStorage persistence. URL + anon key hard-coded at injection time (these are public values, safe).
+- **`src/integrations/backend/auth.tsx`** — `<AuthProvider>` + `useAuth()` hook (mirrors Petal's own `src/lib/auth.tsx`).
+- **`src/integrations/backend/storage.ts`** — `uploadFile(file, bucket, path)`, `getPublicUrl(bucket, path)`, `listFiles(bucket, prefix)`.
+- **`src/integrations/backend/types.ts`** — v1 ships `export type Database = any`. (v2: regenerate from the user's actual schema.)
+- **`src/components/examples/BACKEND.md`** — read-only reference for the AI describing the exposed surface, the same way `LAYOUT.md` documents layout primitives. Tells the AI exactly which imports to use and forbids `createClient` and direct `@supabase/supabase-js` imports.
 
-## 4. Injecting credentials into the generated app
+### 5. Wire-up: `src/server/scaffold-kit.ts`
 
-Today `applyScaffoldKit(aiFiles)` in `src/server/scaffold-kit.ts` merges in the static UI kit. Extend it to also merge a **dynamic backend kit** when a backend exists.
-
-New signature:
+Extend the public function:
 ```ts
 export function applyScaffoldKit(
   aiFiles: ProjectFile[],
@@ -94,100 +106,93 @@ export function applyScaffoldKit(
 ): ProjectFile[]
 ```
 
-When `opts.backend` is present, inject these files (all `overwrite: true`, all under `src/components/ui/`-style protected paths so the AI can't break them):
+When `opts.backend` is present, merge in `backendKit(opts.backend)` after the static UI kit, all `overwrite: true`. Also add `@supabase/supabase-js` to `REQUIRED_DEPS` so generated `package.json` always has it when a backend is attached.
 
-- **`src/integrations/backend/client.ts`** — pre-configured `createClient(url, anonKey)` with localStorage persistence. Hard-coded URL + anon key (these are public values, safe to bake in).
-- **`src/integrations/backend/auth.tsx`** — `<AuthProvider>` + `useAuth()` hook (mirrors Petal's own `src/lib/auth.tsx`).
-- **`src/integrations/backend/types.ts`** — minimal typed `Database` shape covering `profiles` + `user_roles`. Regenerated whenever the AI runs migrations (out of scope for v1; v1 ships `Database = any`).
-- **`src/integrations/backend/storage.ts`** — thin wrapper: `uploadFile(file, path)`, `getPublicUrl(path)`, `listFiles(prefix)`.
-- **`README-backend.md`** — short reference for the AI (similar to the new `LAYOUT.md`) describing the exposed surface so it knows to import from `@/integrations/backend/client` instead of writing its own.
+### 6. Wire-up: `src/routes/api/generate.ts`
 
-Wire-up in `src/routes/api/generate.ts`:
-1. After auth, look up `project_backends` for the current project.
-2. If `status='ready'`, pass `{ url, anonKey }` to `applyScaffoldKit(...)` (both initial generation and patch flows).
-3. Add `src/integrations/backend/` to the `isProtectedPath` list so the AI can never overwrite or delete the injected client.
+1. After auth, look up the project's backend via `getBackendStatus(projectId)` (server-side direct DB call, not the server fn).
+2. If `status='ready'`, pass `{ url, anonKey }` to `applyScaffoldKit(...)` for both initial generation and patches.
+3. Extend `isProtectedPath` to also cover `src/integrations/backend/`. AI cannot delete or overwrite the injected client/auth/storage files.
 
----
+### 7. Prompt updates: `src/server/generate.server.ts`
 
-## 5. System prompt updates (`src/server/generate.server.ts`)
+Append a conditional "Backend" section to both `SYSTEM_PROMPT_INITIAL` and `SYSTEM_PROMPT_PATCH`, only when a backend is attached:
 
-Add a new "Backend" section to both `SYSTEM_PROMPT_INITIAL` and `SYSTEM_PROMPT_PATCH`, conditionally appended only when a backend is attached:
+> ### Backend (auth + database + storage) is connected
+> The user's project has a backend. Use the pre-configured client:
+> - `import { supabase } from "@/integrations/backend/client"`
+> - `import { useAuth, AuthProvider } from "@/integrations/backend/auth"`
+> - `import { uploadFile, getPublicUrl } from "@/integrations/backend/storage"`
+>
+> Hard rules:
+> - NEVER write `createClient(...)` yourself.
+> - NEVER hard-code Supabase URLs or keys.
+> - NEVER import from `@supabase/supabase-js` directly.
+> - NEVER overwrite anything under `src/integrations/backend/`.
+>
+> If you need a new table, emit a fenced ```sql block at the end of your summary prefixed `MIGRATION:` — do NOT try to run it. The user runs migrations manually in v1.
+>
+> See `src/components/examples/BACKEND.md` for the full reference.
 
-> ### Backend (auth + database + storage) is available
-> The user's project has an attached backend. Import the pre-configured client:
-> `import { supabase } from "@/integrations/backend/client";`
-> - Auth: `import { useAuth, AuthProvider } from "@/integrations/backend/auth";`
-> - Storage: `import { uploadFile, getPublicUrl } from "@/integrations/backend/storage";`
-> NEVER write `createClient(...)` yourself. NEVER hard-code URLs or keys. NEVER import from `@supabase/supabase-js` directly.
-> If you need a new table, emit a `// MIGRATION:` comment block describing the SQL — do not try to run it.
+### 8. UI: `src/components/ProjectSettingsSheet.tsx`
 
-The "MIGRATION comment" pattern keeps v1 scope tight: the AI signals intent, but actual schema changes still go through a human-approved flow (see §7).
+Add a "Backend" section above "Project Knowledge" with three states:
 
----
+- **Disconnected**: short explainer + **Connect a backend** button → opens an inline form (URL, anon key, optional service role key) with a "Where do I find these?" link to Supabase docs. Submit calls `connectByoBackend(...)`.
+- **Connecting**: spinner during the health check (~1–2s).
+- **Connected**: green check + "Auth, database, and file storage are connected to `xxx.supabase.co`." Plus a small **Disconnect** button (with confirmation).
 
-## 6. UI: the "Add Backend" button
+No mention of "Supabase" in copy beyond what's necessary for the user to enter their own credentials. Per Lovable Cloud terminology rules elsewhere, we say "backend" / "database" in marketing copy and only surface "Supabase" inside the connect form.
 
-Add a single entry point in `src/components/ProjectSettingsSheet.tsx`:
+### 9. Helper: `src/lib/projects.ts`
 
-- New section "Backend" with three states:
-  - **None**: large `Add Backend` button → calls `provisionBackend({ projectId })`, toasts "Provisioning your backend… (~1 min)".
-  - **Provisioning**: spinner + status text, polls `getBackendStatus` every 3s.
-  - **Ready**: green check + "Auth, database, and file storage are connected." Plus a small `View tables` link that opens a future built-in inspector (out of scope; for v1 just hide this).
-
-No mention of "Supabase" anywhere in the UI — per Lovable Cloud terminology rules in the system context.
-
-Optionally surface the same button inline in the chat sidebar of `src/routes/builder.tsx` as a one-time prompt the first time the AI generates code that looks like it needs persistence (heuristic: AI emits a `// MIGRATION:` comment or imports anything from `@/integrations/backend/` while no backend is attached). v1 can ship without this — settings sheet is enough.
+Add `getProjectBackend(projectId)` and `disconnectProjectBackend(projectId)` thin wrappers around the new server functions for the settings sheet to call.
 
 ---
 
-## 7. What's intentionally NOT in v1
+## What's intentionally NOT in v1
 
-To keep this shippable in ~1–2 weeks rather than 2 months:
-
-- **No AI-driven schema migrations.** AI emits `// MIGRATION:` SQL comments; running them is manual. v2: a "Run pending migrations" button in settings that POSTs to `/database/query`.
-- **No typed `Database` regeneration.** v1 ships `Database = any`. v2: regenerate types after each migration via Management API.
-- **No edge functions in the generated app.** Cloudflare Pages is static; if the AI needs server logic later, that's a separate "Add server functions" feature.
-- **No billing/quotas/abuse limits.** Hard-cap at 2 backends total during pilot (free tier limit). Add a feature flag `ENABLE_BACKEND_PROVISIONING` defaulting to `false` so you can gate it to your own account first.
-- **No "remove backend" flow.** Pausing/deleting a Supabase project via Management API is a v2 polish.
-- **No managed Google OAuth.** Email/password only in v1; Google OAuth in v2 (requires per-project OAuth credentials, which is its own UX problem).
+- ❌ **Managed provisioning.** That's v2 — same `project_backends` table, new `provider='managed_supabase'`, new `provisionManagedBackend` server fn that calls the Supabase Management API. Generated apps don't change.
+- ❌ **Supabase OAuth flow** ("Connect with Supabase" button). v1.5 polish; the paste form unblocks shipping.
+- ❌ **AI-driven schema migrations.** AI emits `MIGRATION: ...sql...` comments; user copy-pastes into Supabase SQL editor. v2 adds a "Run pending migrations" button using the stored service_role_key.
+- ❌ **Typed `Database` regeneration.** v1 ships `Database = any`. v2 regenerates after migrations.
+- ❌ **Storage bucket auto-creation.** v1 docs tell users to create an `uploads` bucket manually. v2 automates it via the Management API (managed mode) or service_role_key (BYO).
+- ❌ **Edge functions.** Generated apps are static (Cloudflare Pages); server logic is a separate "Add server functions" feature later.
 
 ---
 
-## 8. Files touched (concrete list)
+## Files touched
 
-**New files:**
-- `supabase/migrations/<timestamp>_project_backends.sql` (the table + RLS above)
-- `src/server/backend-provisioner.server.ts` (Management API client + 2 server functions)
-- `src/server/backend-kit.ts` (the injected `client.ts`/`auth.tsx`/`storage.ts`/`README-backend.md` strings, mirroring `scaffold-kit.ts` style)
+**New:**
+- `supabase/migrations/<timestamp>_project_backends.sql` — table + RLS above
+- `src/server/backend-connector.server.ts` — 3 server functions
+- `src/server/backend-kit.ts` — injected `client.ts` / `auth.tsx` / `storage.ts` / `types.ts` / `BACKEND.md` blobs
 
 **Modified:**
-- `src/server/scaffold-kit.ts` — extend `applyScaffoldKit` signature with `opts.backend`.
-- `src/routes/api/generate.ts` — look up backend, pass to `applyScaffoldKit`, extend `isProtectedPath` to cover `src/integrations/backend/`.
-- `src/server/generate.server.ts` — append conditional "Backend" section to both system prompts.
-- `src/components/ProjectSettingsSheet.tsx` — new "Backend" section with provision button + polling status.
-- `src/lib/projects.ts` — add `getProjectBackend(projectId)` helper that calls the new server function.
+- `src/server/scaffold-kit.ts` — extend `applyScaffoldKit` signature with `opts.backend`; add `@supabase/supabase-js` to `REQUIRED_DEPS` (added only when backend present, via a small conditional in `mergePackageJson` or by passing the dep set into `applyScaffoldKit`)
+- `src/routes/api/generate.ts` — look up backend, pass to `applyScaffoldKit`, extend `isProtectedPath` to cover `src/integrations/backend/`
+- `src/server/generate.server.ts` — append conditional "Backend" section to both prompts
+- `src/components/ProjectSettingsSheet.tsx` — new "Backend" section with connect form + status
+- `src/lib/projects.ts` — `getProjectBackend` / `disconnectProjectBackend` helpers
 
-**New secret to add (one-time, manual):**
-- `SUPABASE_MANAGEMENT_TOKEN` — Personal Access Token from `https://supabase.com/dashboard/account/tokens`, scoped to your org. I'll prompt for this via `add_secret` after the plan is approved.
-
----
-
-## 9. Risk callouts
-
-- **Free-tier 2-project cap is hard.** The very first time a third user clicks "Add Backend" you must either upgrade the org to Pro (~$25/mo + ~$10/project compute) or refuse provisioning. Plan the feature flag accordingly.
-- **Provisioning takes 60–120 seconds.** UX must communicate this clearly; a hung-looking spinner will feel broken. The polling design above handles it.
-- **Service role keys are dynamite.** They're stored in `project_backends.service_role_key` and must never leave the server. The schema and server functions in this plan enforce that, but any future code that reads this table must be reviewed.
-- **You become responsible for every user's data.** A bug in the AI's generated SQL, an RLS hole, or a Supabase outage all become Petal's problem from the user's perspective. v1 should ship with a visible "Beta — your data lives in a Petal-managed backend" banner.
+**No new secrets in v1.** (Managed mode in v2 will need `SUPABASE_MANAGEMENT_TOKEN`.)
 
 ---
 
-## 10. Suggested approval path
+## Risk callouts
 
-If you approve this plan, the implementation order is:
-1. Add the `SUPABASE_MANAGEMENT_TOKEN` secret.
-2. Run the migration for `project_backends`.
-3. Build `backend-provisioner.server.ts` and test end-to-end against your own Supabase org with a throwaway project.
-4. Add `backend-kit.ts` + wire into `applyScaffoldKit`.
-5. Update prompts + protected paths.
-6. Add the Settings UI.
-7. Generate a test project, click "Add Backend", confirm the AI writes working `supabase.from(...)` code on the next turn.
+- **Service role key in our DB.** Even with strict server-side stripping, storing user-provided service_role_keys is a meaningful liability. v1 mitigation: make it **optional** in the connect form and document clearly that it's only needed for future migration features. Many BYO users will skip it entirely in v1.
+- **No isolation between Petal and the user's Supabase data.** That's the point of BYO — but be explicit in the UI: "This connects your existing Supabase project. Anything the AI writes will affect data in that project."
+- **AI may try to bypass the abstraction.** Protected-path enforcement + prompt rules cover most cases; the patch-validator silently drops protected ops, so the worst case is "AI's edit had no effect" rather than a broken client.
+- **Future managed-mode swap requires the abstraction to be airtight.** If even one early generated app imports `@supabase/supabase-js` directly, that app won't benefit from the swap. The protected-path + system-prompt enforcement here is what makes v2 cheap; if we cut that corner, v2 gets expensive.
+
+---
+
+## Suggested implementation order (when you approve)
+
+1. Migration for `project_backends` (1 step, fast).
+2. `backend-connector.server.ts` with the 3 server fns.
+3. `backend-kit.ts` + extend `applyScaffoldKit`.
+4. Protected-path + prompt updates in `generate.ts` and `generate.server.ts`.
+5. Settings sheet UI.
+6. End-to-end test: create a throwaway Supabase project, paste credentials into Petal, ask the AI to "build a todo list with login", confirm it imports from `@/integrations/backend/*` and the resulting app actually works.
