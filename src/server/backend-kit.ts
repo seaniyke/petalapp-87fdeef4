@@ -117,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       return { error: error ? new Error(error.message) : null };
     },
+  };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
