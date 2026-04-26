@@ -1189,7 +1189,15 @@ function Builder() {
                       </div>
                     }
                   >
-                    <WebContainerPreview files={files} reloadKey={previewKey} />
+                    <WebContainerPreview
+                      files={files}
+                      reloadKey={previewKey}
+                      onPick={(el) => {
+                        setPickedElement(el);
+                        setPickInstruction("");
+                      }}
+                    />
+
                   </Suspense>
                 ) : (
                   <EmptyPreview />
