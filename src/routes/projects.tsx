@@ -1,11 +1,10 @@
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Loader2, Trash2, ExternalLink, Sparkles, Globe, Lock } from "lucide-react";
+import { Plus, Trash2, Sparkles, Globe, Lock } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAuth } from "@/lib/auth";
 import {
   listProjects,
-  createProject,
   deleteProject,
   type ProjectRow,
 } from "@/lib/projects";
@@ -34,7 +33,6 @@ function ProjectsPage() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -44,15 +42,11 @@ function ProjectsPage() {
       .finally(() => setLoading(false));
   }, [user]);
 
-  async function handleCreate() {
-    setCreating(true);
-    try {
-      const p = await createProject();
-      navigate({ to: "/builder", search: { id: p.id, prompt: undefined } });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not create project");
-      setCreating(false);
-    }
+  // Note: we deliberately do NOT pre-create a project row here. Empty rows pile up
+  // when users click "New project" and bounce. The builder lazy-creates the project
+  // on the first user prompt (see ensureProject in builder.tsx).
+  function handleCreate() {
+    navigate({ to: "/builder", search: { id: undefined, prompt: undefined } });
   }
 
   async function handleDelete(id: string) {
@@ -80,10 +74,9 @@ function ProjectsPage() {
           </div>
           <button
             onClick={handleCreate}
-            disabled={creating}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-60"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:brightness-105"
           >
-            {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            <Plus className="h-4 w-4" />
             New project
           </button>
         </div>
@@ -96,7 +89,7 @@ function ProjectsPage() {
               ))}
             </div>
           ) : projects.length === 0 ? (
-            <EmptyState onCreate={handleCreate} creating={creating} />
+            <EmptyState onCreate={handleCreate} />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {projects.map((p) => (
@@ -153,7 +146,7 @@ function ProjectCard({ project, onDelete }: { project: ProjectRow; onDelete: () 
   );
 }
 
-function EmptyState({ onCreate, creating }: { onCreate: () => void; creating: boolean }) {
+function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="rounded-3xl border border-dashed border-border bg-card/60 p-12 text-center">
       <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-butter">
@@ -166,10 +159,9 @@ function EmptyState({ onCreate, creating }: { onCreate: () => void; creating: bo
       </p>
       <button
         onClick={onCreate}
-        disabled={creating}
-        className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-60"
+        className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:brightness-105"
       >
-        {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+        <Plus className="h-4 w-4" />
         Create your first project
       </button>
     </div>
