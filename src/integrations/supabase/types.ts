@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      billing_addons: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          duration_days: number
+          is_active: boolean
+          name: string
+          price_cents: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          duration_days: number
+          is_active?: boolean
+          name: string
+          price_cents: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          duration_days?: number
+          is_active?: boolean
+          name?: string
+          price_cents?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       billing_currencies: {
         Row: {
           code: string
@@ -196,6 +232,83 @@ export type Database = {
         }
         Relationships: []
       }
+      domain_slots: {
+        Row: {
+          addon_code: string
+          amount_minor: number
+          consumed_by_domain_id: string | null
+          created_at: string
+          currency_code: string
+          environment: string
+          expires_at: string
+          id: string
+          paystack_reference: string
+          project_id: string
+          purchased_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          addon_code: string
+          amount_minor: number
+          consumed_by_domain_id?: string | null
+          created_at?: string
+          currency_code: string
+          environment?: string
+          expires_at: string
+          id?: string
+          paystack_reference: string
+          project_id: string
+          purchased_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          addon_code?: string
+          amount_minor?: number
+          consumed_by_domain_id?: string | null
+          created_at?: string
+          currency_code?: string
+          environment?: string
+          expires_at?: string
+          id?: string
+          paystack_reference?: string
+          project_id?: string
+          purchased_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domain_slots_addon_code_fkey"
+            columns: ["addon_code"]
+            isOneToOne: false
+            referencedRelation: "billing_addons"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "domain_slots_consumed_by_domain_id_fkey"
+            columns: ["consumed_by_domain_id"]
+            isOneToOne: false
+            referencedRelation: "project_domains"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "domain_slots_currency_code_fkey"
+            columns: ["currency_code"]
+            isOneToOne: false
+            referencedRelation: "billing_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "domain_slots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -260,6 +373,7 @@ export type Database = {
           item_code: string
           paid_at: string | null
           paystack_reference: string | null
+          project_id: string | null
           purpose: string
           reference: string
           status: string
@@ -277,6 +391,7 @@ export type Database = {
           item_code: string
           paid_at?: string | null
           paystack_reference?: string | null
+          project_id?: string | null
           purpose: string
           reference: string
           status?: string
@@ -294,6 +409,7 @@ export type Database = {
           item_code?: string
           paid_at?: string | null
           paystack_reference?: string | null
+          project_id?: string | null
           purpose?: string
           reference?: string
           status?: string
@@ -308,6 +424,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "billing_currencies"
             referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "paystack_transactions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -842,6 +965,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      apply_paystack_domain_slot: {
+        Args: {
+          _addon_code: string
+          _amount_minor: number
+          _currency_code: string
+          _environment: string
+          _project_id: string
+          _reference: string
+          _user_id: string
+        }
+        Returns: string
+      }
       apply_paystack_plan_grant: {
         Args: { _plan_code: string; _reference: string; _user_id: string }
         Returns: undefined
@@ -875,6 +1010,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      expire_domain_slots: { Args: never; Returns: undefined }
       expire_paystack_plans: { Args: never; Returns: undefined }
       expire_topup_lots: { Args: never; Returns: undefined }
       grant_credits: {

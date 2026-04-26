@@ -47,9 +47,13 @@ import {
   verifyDomain,
   setPrimaryDomain,
   removeDomain,
+  listDomainSlots,
   PETAL_DOMAIN_CNAME_TARGET,
+  DomainSlotRequiredError,
   type ProjectDomain,
+  type DomainSlot,
 } from "@/lib/domains";
+import { BuyDomainSlotDialog } from "@/components/BuyDomainSlotDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 type Props = {
@@ -61,19 +65,45 @@ type Props = {
 export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
   const [loading, setLoading] = useState(true);
   const [domains, setDomains] = useState<ProjectDomain[]>([]);
+  const [slots, setSlots] = useState<DomainSlot[]>([]);
   const [showAdd, setShowAdd] = useState(false);
+  const [showBuySlot, setShowBuySlot] = useState(false);
   const [recordsFor, setRecordsFor] = useState<ProjectDomain | null>(null);
+
+  const now = Date.now();
+  const availableSlots = useMemo(
+    () =>
+      slots.filter(
+        (s) => !s.consumed_by_domain_id && new Date(s.expires_at).getTime() > now,
+      ),
+    [slots, now],
+  );
+  const hasAvailableSlot = availableSlots.length > 0;
+
+  async function refreshSlots() {
+    try {
+      const rows = await listDomainSlots(projectId);
+      setSlots(rows);
+    } catch {
+      /* ignore */
+    }
+  }
 
   // Initial load
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    listDomains(projectId)
-      .then((rows) => {
-        if (!cancelled) setDomains(rows);
+    Promise.all([listDomains(projectId), listDomainSlots(projectId)])
+      .then(([rows, slotRows]) => {
+        if (cancelled) return;
+        setDomains(rows);
+        setSlots(slotRows);
       })
       .catch(() => {
-        if (!cancelled) setDomains([]);
+        if (!cancelled) {
+          setDomains([]);
+          setSlots([]);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -82,6 +112,14 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
       cancelled = true;
     };
   }, [projectId]);
+
+  function openAddFlow() {
+    if (hasAvailableSlot) {
+      setShowAdd(true);
+    } else {
+      setShowBuySlot(true);
+    }
+  }
 
   // Realtime: flip status pills as the verification job runs
   useEffect(() => {
@@ -151,11 +189,21 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
     try {
       await removeDomain(projectId, d.id);
       setDomains((prev) => prev.filter((x) => x.id !== d.id));
-      toast.success("Domain removed");
+      // FK is ON DELETE SET NULL, so the slot is freed server-side; refresh.
+      void refreshSlots();
+      toast.success("Domain removed — slot freed for another domain");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't remove");
     }
   }
+
+  // Soonest-expiring available slot, for the summary line.
+  const nextExpiry = useMemo(() => {
+    if (availableSlots.length === 0) return null;
+    return availableSlots
+      .map((s) => new Date(s.expires_at))
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+  }, [availableSlots]);
 
   return (
     <div className="mt-6">
@@ -167,7 +215,7 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setShowAdd(true)}
+            onClick={openAddFlow}
             className="inline-flex items-center gap-1.5"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -183,6 +231,35 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
             Publish your project first. Once it's live on the Petal subdomain,
             you can connect your own domain here.
           </p>
+        </div>
+      )}
+
+      {hasPublishedBuild && !loading && (
+        <div className="mb-3 rounded-lg border border-border bg-muted/20 p-2.5 text-[11px]">
+          {hasAvailableSlot ? (
+            <p className="text-muted-foreground">
+              <span className="font-medium text-foreground">
+                {availableSlots.length} domain slot{availableSlots.length === 1 ? "" : "s"} available
+              </span>
+              {nextExpiry && (
+                <> · expires {nextExpiry.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</>
+              )}
+            </p>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-muted-foreground">
+                Custom domains require a slot — $12 for 12 months.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowBuySlot(true)}
+                className="h-7 px-2 text-[11px]"
+              >
+                Buy slot
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -203,11 +280,11 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
           <Button
             size="sm"
             disabled={!hasPublishedBuild}
-            onClick={() => setShowAdd(true)}
+            onClick={openAddFlow}
             className="mt-3 inline-flex items-center gap-1.5"
           >
             <Plus className="h-3.5 w-3.5" />
-            Connect a domain
+            {hasAvailableSlot ? "Connect a domain" : "Buy a slot to connect a domain"}
           </Button>
         </div>
       ) : (
@@ -233,7 +310,18 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
           upsertLocal(d);
           setShowAdd(false);
           setRecordsFor(d);
+          void refreshSlots();
         }}
+        onPaymentRequired={() => {
+          setShowAdd(false);
+          setShowBuySlot(true);
+        }}
+      />
+
+      <BuyDomainSlotDialog
+        open={showBuySlot}
+        onOpenChange={setShowBuySlot}
+        projectId={projectId}
       />
 
       <DnsRecordsDialog

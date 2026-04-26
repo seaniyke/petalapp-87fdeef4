@@ -1,195 +1,146 @@
 ## Goal
+Gate the "Add custom domain" flow behind a one-time Paystack payment. Each purchased slot is **valid for 12 months** from the date of purchase. After 12 months, the slot expires and the attached domain is automatically deactivated until the user renews.
 
-- Hide all Stripe UI/code paths.
-- Use **Paystack** for every purchase.
-- Support **NGN, GHS, KES, ZAR, USD**.
-- Per-currency price overrides set by admin (USD is the default; admin can set exact local amounts, otherwise an exchange rate is applied).
-- **No recurring subscriptions** — Pro/Business become one-time monthly top-ups that grant a month of credits per purchase.
-- User picks billing currency in the billing sheet.
+This is consistent with the existing Paystack top-up model (one-time purchases, no recurring subscriptions) and with how `topup_lots` already track a 12-month expiry.
 
 ---
 
-## 1. Database changes (one migration)
+## 1. Database migration
 
-### New tables
+### New table: `domain_slots`
+Tracks each purchased slot, which project it belongs to, when it expires, and which domain (if any) is currently consuming it.
 
-- `billing_currencies`
-  - `code` (PK, text — `NGN`, `GHS`, `KES`, `ZAR`, `USD`)
-  - `name` (text)
-  - `symbol` (text)
-  - `usd_rate` (numeric — units of this currency per 1 USD; admin-edited; `USD` row = 1)
-  - `is_active` (bool)
-  - `paystack_supported` (bool)
-  - `sort_order` (int)
+```
+id                    uuid PK
+user_id               uuid not null
+project_id            uuid not null  -- slot is bound to a project
+purchased_at          timestamptz not null default now()
+expires_at            timestamptz not null  -- purchased_at + 12 months
+consumed_by_domain_id uuid null   -- FK-style reference to project_domains.id
+paystack_reference    text not null unique  -- idempotency
+amount_minor          bigint not null
+currency_code         text not null
+environment           text not null default 'test'
+created_at / updated_at
+```
 
-- `billing_price_overrides` — optional admin-set local price (overrides rate-based math)
-  - `(item_kind, item_code, currency_code)` PK where `item_kind in ('plan','pack')`
-  - `amount_minor` (bigint — kobo/pesewas/cents in that currency)
-  - `updated_at`
+RLS: users can `SELECT` their own rows; only service role writes.
 
-- `paystack_events` — webhook idempotency (mirror of `stripe_events`)
-  - `id` (text PK = Paystack event reference)
-  - `type`, `payload`, `processed_at`
+### New table: `billing_addons`
+Catalog row for the domain slot SKU so admins can change the base USD price without code edits.
 
-- `paystack_transactions` — every initiated purchase
-  - `id` (uuid PK)
-  - `user_id`, `reference` (unique — what we send to Paystack), `purpose` (`plan` or `pack`), `item_code`, `currency_code`
-  - `amount_minor`, `usd_amount_cents` (locked at init for audit), `status` (`pending|success|failed|abandoned`)
-  - `paystack_reference` (returned by Paystack), `channel`, `paid_at`, `created_at`
+```
+code         text PK   -- e.g. 'domain_slot'
+name         text      -- 'Custom domain (12 months)'
+price_cents  integer   -- USD base price, default 1200 ($12)
+duration_days integer  -- 365
+is_active    boolean
+```
 
-### Wallet additions
+RLS: public `SELECT`; admin-only writes.
 
-- `user_wallets.preferred_currency` (text, default `USD`) — last currency the user picked.
+### Extend existing tables
+- `billing_price_overrides.item_kind`: allow value `'addon'` (currently allows `'plan' | 'pack'`).
+- `paystack_transactions.purpose`: allow value `'addon'`. Add nullable `project_id uuid` column so we know which project a slot purchase is for.
 
-### RPC changes
+### New RPC: `apply_paystack_domain_slot(_user_id, _project_id, _addon_code, _reference, _amount_minor, _currency_code, _environment)`
+- Idempotent on `paystack_reference` (early return if a row already exists).
+- Looks up `duration_days` from `billing_addons`.
+- Inserts a `domain_slots` row with `expires_at = now() + duration_days * interval '1 day'`.
+- `SECURITY DEFINER`, `search_path = public`.
 
-- New `apply_paystack_topup(_user_id, _pack_code, _reference, _environment)` — same shape as `apply_topup_purchase` but keyed on Paystack reference; idempotent.
-- New `apply_paystack_plan_grant(_user_id, _plan_code, _reference)` — grants `monthly_credits` for the plan to `monthly_credits_remaining`, sets `plan_code`, `current_period_end = now() + 30 days`, `subscription_status = 'active'`. Idempotent on reference.
-- Daily cron call (server-side, in existing `apply_period_end_changes` style) to **revert plans to `free`** when `current_period_end < now()` and there is no fresh Paystack grant — gives the "monthly top-up" feel without recurring billing.
-
-### RLS
-
-- Public `SELECT` on `billing_currencies` and `billing_price_overrides` (read-only catalog).
-- Admin-only `INSERT/UPDATE` via service role / admin policies on currencies + overrides.
-- `paystack_events` and `paystack_transactions`: service role only; users can `SELECT` their own `paystack_transactions`.
+### New RPC: `expire_domain_slots()`
+Daily maintenance — to be called from the existing daily cron alongside `expire_paystack_plans`:
+- For each `domain_slots` row where `expires_at < now()` and `consumed_by_domain_id is not null`:
+  - Set the linked `project_domains.status = 'offline'` and `error_message = 'Domain slot expired — renew to reactivate'`.
+  - Null out `consumed_by_domain_id` so the slot is fully closed.
+- Leaves the domain row in place so the user can renew and reattach it without re-entering DNS records.
 
 ### Seed data
-
-- Five rows in `billing_currencies` with a sensible starting `usd_rate` (e.g. NGN 1600, GHS 15, KES 130, ZAR 18, USD 1) — admin will tune these.
-
-> Stripe tables (`stripe_events`, `subscriptions`, existing `stripe_*` columns on `user_wallets`) are **kept in place** to preserve history but become unused. No destructive drops.
+Insert one row in `billing_addons`:
+- `code = 'domain_slot'`, `name = 'Custom domain (12 months)'`, `price_cents = 1200`, `duration_days = 365`.
 
 ---
 
-## 2. Server: hide Stripe, add Paystack
+## 2. Server-side changes
 
-### Files to remove from active routing (delete files)
+### `src/server/billing-pricing.server.ts`
+Extend `ItemKind` to `'plan' | 'pack' | 'addon'` and add an `'addon'` branch that reads from `billing_addons` (mirrors the existing plan/pack branches, including override lookup).
 
-- `src/server/stripe.server.ts`
-- `src/server/stripe-tax-setup.server.ts`
-- `src/lib/stripe.ts`
-- `src/components/StripeEmbeddedCheckout.tsx`
-- `src/components/PaymentTestModeBanner.tsx`
-- `src/routes/api/billing/create-checkout.ts`
-- `src/routes/api/billing/create-portal-session.ts`
-- `src/routes/api/billing/setup-tax-codes.ts`
-- `src/routes/api/public/billing/webhook.ts`
-- `src/routes/checkout.return.tsx`
+### `src/routes/api/billing/initialize.ts`
+- Add `'addon'` to the `purpose` enum.
+- Require `projectId` in the request body when `purpose === 'addon'`; verify the caller owns the project.
+- Pass `project_id` into the inserted `paystack_transactions` row.
+- Metadata sent to Paystack includes `project_id` and `addon_code` so the webhook can fulfill correctly.
 
-(All Stripe imports in `__root.tsx`, `BillingSheet.tsx`, `CreditBadge.tsx` get rewired to Paystack equivalents.)
+### `src/routes/api/billing/verify.ts` and `src/routes/api/public/paystack/webhook.ts`
+Add a third fulfillment branch:
+- If `purpose === 'addon'` and `item_code === 'domain_slot'`, call `apply_paystack_domain_slot(...)` with the transaction's `user_id`, `project_id`, `reference`, `amount_minor`, `currency_code`, and `environment`.
 
-### New Paystack server module
+### `src/routes/api/domains.ts` — gate `handleAdd`
+Before calling Cloudflare:
+1. Count available slots for the project: `domain_slots` where `project_id = ?`, `expires_at > now()`, `consumed_by_domain_id IS NULL`.
+2. If zero, return **HTTP 402** with JSON `{ error: "payment_required", code: "no_domain_slot" }`.
+3. If a slot is available, proceed with `createCustomHostname` as today, then in the same transaction set `consumed_by_domain_id = <new domain id>` on the oldest available slot.
 
-- `src/server/paystack.server.ts`
-  - Reads `PAYSTACK_SECRET_KEY` (test or live based on `PAYSTACK_ENV` secret).
-  - `initializeTransaction({ email, amount_minor, currency, reference, callback_url, metadata })` → returns `authorization_url` + `access_code` + `reference`.
-  - `verifyTransaction(reference)` — used by callback + webhook for double-confirmation.
-  - `verifyWebhookSignature(rawBody, signatureHeader)` — HMAC-SHA512 with `PAYSTACK_SECRET_KEY` (Paystack standard).
+In `handleRemove`: when a domain is deleted, free its slot (set `consumed_by_domain_id = null`) so the slot can be reused for a different domain within its 12-month window.
 
-### New routes
-
-- `POST /api/billing/initialize` (auth required)
-  - Body: `{ purpose: 'plan'|'pack', itemCode: string, currency: 'NGN'|'GHS'|'KES'|'ZAR'|'USD' }`
-  - Resolves USD price from `billing_plans`/`credit_packs`, looks up override or applies `usd_rate` from `billing_currencies`, rounds up to whole minor unit.
-  - Inserts `paystack_transactions` row with `status='pending'` and a generated `reference` (`pt_<uuid>`).
-  - Calls Paystack initialize; returns `{ authorization_url, reference }`.
-  - Updates `user_wallets.preferred_currency`.
-
-- `POST /api/public/paystack/webhook`
-  - Verifies signature.
-  - Looks up `paystack_transactions` by reference.
-  - On `charge.success`: marks success, runs `apply_paystack_topup` or `apply_paystack_plan_grant` based on `purpose`.
-  - Records in `paystack_events` for idempotency.
-
-- `GET /api/billing/verify?reference=...` (auth required) — used by the return page to surface result immediately even if webhook hasn't fired yet (calls Paystack verify, then runs the same RPC under a unique-event guard).
-
-### Replacement of "manage subscription"
-
-- Remove the Stripe portal link.
-- Add a small **"Renew now"** button when `current_period_end < now() + 5 days` or status is `expired`. It just opens the same plan checkout.
+### Daily cron
+Add `SELECT public.expire_domain_slots();` to the existing daily expiry cron (alongside `expire_paystack_plans`).
 
 ---
 
-## 3. Client UI
+## 3. Client-side changes
 
-### `BillingSheet.tsx` rewrite
+### `src/lib/domains.ts`
+- New helper `purchaseDomainSlot(projectId, currency)` that calls `/api/billing/initialize` with `purpose: 'addon'`, `itemCode: 'domain_slot'`, `projectId`, and a `returnUrl` of `/billing/return?next=/projects/<id>/settings`.
+- New helper `listDomainSlots(projectId)` returning active/expired slots so the UI can show "1 slot available" or "Expires in 47 days".
+- Update `addDomain` to detect a 402 response and surface a typed `PaymentRequiredError` so the UI can react.
 
-- **Currency selector** (segmented control: NGN ₦ / GHS ₵ / KES KSh / ZAR R / USD $) — defaults to `wallet.preferred_currency` or geo guess (cheap, optional: skip geo for v1, just default `USD`).
-- Plan/pack cards display the **converted local price** based on the selected currency (using overrides + rates fetched from `billing_currencies` / `billing_price_overrides`).
-- Buy button → calls `/api/billing/initialize`, then `window.location.assign(authorization_url)` for Paystack hosted checkout (simplest, avoids the React 19 / embedded race we just fixed).
-- Drop the embedded-checkout view entirely.
+### `src/components/DomainsSection.tsx`
+- Show a "Domain slots" summary near the top: e.g. *"You have 1 unused slot (expires Apr 26, 2027)"* or *"Buy a slot to add a custom domain — $12 for 12 months"*.
+- When the user clicks "Add custom domain":
+  - If a free slot exists, open the existing `AddDomainDialog` unchanged.
+  - Otherwise, open a new `BuyDomainSlotDialog` with currency selector (reuses `fetchCurrencies` + `convertPrice` + `formatMoney` from `src/lib/billing.ts`), a "$12 / 12 months" headline, and a "Pay with Paystack" button that redirects to the Paystack checkout URL.
+- Catch the `PaymentRequiredError` from `addDomain` and route the user into `BuyDomainSlotDialog` automatically.
+- After returning from `/billing/return` with `next=...`, refresh the slots list and reopen the add-domain dialog.
 
-### New return page
-
-- `src/routes/billing.return.tsx` (`/billing/return?reference=...`)
-  - Calls `GET /api/billing/verify`, shows success/failed state, refreshes wallet a couple times like the old `/checkout/return`.
-
-### `CreditBadge.tsx`
-
-- No structural change beyond removing Stripe imports.
-
-### `__root.tsx`
-
-- Remove `<PaymentTestModeBanner />`. Optionally add a tiny "Paystack test mode" badge driven by `VITE_PAYSTACK_ENV === 'test'` (reads a non-secret `VITE_PAYSTACK_PUBLIC_KEY` so users see a banner in test).
-
-### `src/lib/billing.ts`
-
-- Drop `stripe_price_id` from `CreditPack`.
-- Add `fetchCurrencies()`, `fetchPriceOverrides()`, and a `convertUsdToLocal(usdCents, currency, rates, overrides, item)` helper.
-- Add `BillingCurrency` and `PriceOverride` types.
-
-### `use-wallet.ts`
-
-- No structural change. The wallet still exposes `current_period_end` and `subscription_status`; UI uses them to show "expires in N days / Renew".
+### `src/routes/billing.return.tsx`
+Already verifies the transaction. Add support for the optional `next` search param so users land back on the project's domain settings after paying.
 
 ---
 
-## 4. Admin settings (exchange rates + overrides)
+## 4. Admin UI
 
-New page: `src/routes/admin.billing.tsx` (gated by `useIsAdmin`) with two sections:
-
-1. **Currencies** table: edit `usd_rate`, toggle `is_active`. Saves via a small admin-only server route `POST /api/admin/billing/currencies` that `requireSupabaseAuth` + `has_role('admin')` checks before writing with `supabaseAdmin`.
-2. **Price overrides** table: for each `(plan|pack) × currency`, optional explicit `amount_minor`. Empty = use rate. Saves via `POST /api/admin/billing/price-overrides`.
-
-Both routes validate input with Zod (currency in enum, amounts positive, etc.).
-
-Add a "Billing settings" entry to admin nav (wherever existing admin tools live — if none, this page is reachable directly at `/admin/billing`).
+### `src/routes/admin.billing.tsx`
+- Add an **"Add-ons"** tab listing `billing_addons`. Admins can edit `price_cents` (USD) and `duration_days` for `domain_slot` (and any future addons) inline.
+- The existing **Price overrides** tab already supports per-currency overrides; extend its `item_kind` selector to include `'addon'` so admins can pin, e.g., `domain_slot` to ₦18,000 in NGN.
 
 ---
 
-## 5. Secrets needed
+## 5. Files touched
 
-After plan approval (default mode), I'll prompt for:
+**New**
+- `supabase/migrations/<timestamp>_domain_slots.sql`
+- `src/components/BuyDomainSlotDialog.tsx`
 
-- `PAYSTACK_SECRET_KEY` — single key works for test (`sk_test_...`) or live (`sk_live_...`); webhook signature uses the same key.
-- `PAYSTACK_ENV` — `test` or `live` (informational, for UI banner + log labels).
-- `VITE_PAYSTACK_PUBLIC_KEY` — public key, used only to show the test-mode banner client-side. Optional.
-
-Existing Stripe secrets (`STRIPE_SANDBOX_API_KEY`, `PAYMENTS_SANDBOX_WEBHOOK_SECRET`) are **left untouched** but no code reads them anymore.
-
----
-
-## 6. Webhook configuration
-
-After deploying, the user (you) will need to add this URL in the Paystack dashboard:
-
-- `https://buildwithpetal.com/api/public/paystack/webhook`
-
-(I'll surface this URL in the success message after implementation.)
+**Edited**
+- `src/server/billing-pricing.server.ts` — add `'addon'` branch
+- `src/routes/api/billing/initialize.ts` — accept `purpose: 'addon'` + `projectId`
+- `src/routes/api/billing/verify.ts` — fulfill addon
+- `src/routes/api/public/paystack/webhook.ts` — fulfill addon
+- `src/routes/api/domains.ts` — gate add, free slot on remove
+- `src/lib/domains.ts` — new helpers, 402 handling
+- `src/lib/billing.ts` — extend `ItemKind` to `'addon'` in `convertPrice`
+- `src/components/DomainsSection.tsx` — slots summary + paywall flow
+- `src/routes/billing.return.tsx` — honor `next` param
+- `src/routes/admin.billing.tsx` — Add-ons tab + extend overrides selector
 
 ---
 
-## 7. Rollout / verification
-
-1. Migration creates new tables, seeds currencies, adds `preferred_currency`.
-2. New routes + components shipped; old Stripe files removed in same change.
-3. Build and typecheck.
-4. End-to-end manual check (you sign in, open billing sheet, switch currency to NGN, click a pack → land on Paystack hosted page; on test card success, return page shows "credits added" and badge updates).
-5. Admin page lets you tune rates without a redeploy.
-
-## Open items I'm NOT doing unless you say so
-
-- True recurring Paystack subscriptions (would only work for NGN/GHS reliably — you chose the simpler one-time monthly model, so I'm skipping plans/subscriptions API entirely).
-- Refunds UI.
-- Multi-currency price display on the marketing landing page (only inside the billing sheet for v1).
-- Migration of existing Stripe customers (none in production yet based on the schema).
+## 6. Behavior summary
+- **Buy once, valid 12 months.** Paying $12 (or local equivalent) gives the project one domain slot good for 365 days from purchase.
+- **Reusable within the window.** Removing a domain frees its slot so a different domain can take its place until the slot expires.
+- **Auto-deactivation at expiry.** A daily job marks expired slots' domains as `offline`; the DNS/Cloudflare record is left intact so renewal reactivates instantly.
+- **Admin-controlled pricing.** Base price (USD) and per-currency overrides are editable from `/admin/billing` without a redeploy.
+- **No subscriptions.** Renewal is a fresh one-time purchase, matching the rest of the Paystack billing model.
