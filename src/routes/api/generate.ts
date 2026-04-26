@@ -53,7 +53,7 @@ type ParsedTool = {
 async function relayAndCollect(
   upstream: Response,
   controller: ReadableStreamDefaultController<Uint8Array>,
-  encoder: TextEncoder
+  encoder: TextEncoder,
 ): Promise<ParsedTool> {
   const reader = upstream.body!.getReader();
   const decoder = new TextDecoder();
@@ -117,9 +117,7 @@ async function relayAndCollect(
             }
             if (decoded.length > summaryEmitted.length) {
               if (!designingPhaseSent) {
-                controller.enqueue(
-                  encoder.encode(sse({ type: "phase", phase: "designing" }))
-                );
+                controller.enqueue(encoder.encode(sse({ type: "phase", phase: "designing" })));
                 designingPhaseSent = true;
               }
               const tail = decoded.slice(summaryEmitted.length);
@@ -144,9 +142,7 @@ async function relayAndCollect(
             }
             lastPathCount = count;
             controller.enqueue(
-              encoder.encode(
-                sse({ type: "file_progress", written: count, latestPath: latest })
-              )
+              encoder.encode(sse({ type: "file_progress", written: count, latestPath: latest })),
             );
           }
         }
@@ -229,18 +225,12 @@ export const Route = createFileRoute("/api/generate")({
         const stream = new ReadableStream<Uint8Array>({
           async start(controller) {
             try {
-              controller.enqueue(
-                encoder.encode(sse({ type: "phase", phase: "thinking" }))
-              );
-              controller.enqueue(
-                encoder.encode(sse({ type: "status", message: "Thinking…" }))
-              );
+              controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
+              controller.enqueue(encoder.encode(sse({ type: "status", message: "Thinking…" })));
               const collected = await relayAndCollect(upstream, controller, encoder);
+              controller.enqueue(encoder.encode(sse({ type: "phase", phase: "polishing" })));
               controller.enqueue(
-                encoder.encode(sse({ type: "phase", phase: "polishing" }))
-              );
-              controller.enqueue(
-                encoder.encode(sse({ type: "status", message: "Applying changes…" }))
+                encoder.encode(sse({ type: "status", message: "Applying changes…" })),
               );
 
               if (!collected.name || !collected.args) {
@@ -269,7 +259,7 @@ export const Route = createFileRoute("/api/generate")({
               }
 
               controller.enqueue(
-                encoder.encode(sse({ type: "result", files: nextFiles, summary }))
+                encoder.encode(sse({ type: "result", files: nextFiles, summary })),
               );
             } catch (e) {
               const message = e instanceof Error ? e.message : "Generation failed.";

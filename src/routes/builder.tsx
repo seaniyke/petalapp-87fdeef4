@@ -27,11 +27,7 @@ import {
   defaultPhases,
   markFailed,
 } from "@/lib/build-phases";
-import {
-  friendlyBuildFailure,
-  toFriendlyError,
-  type FriendlyError,
-} from "@/lib/friendly-errors";
+import { friendlyBuildFailure, toFriendlyError, type FriendlyError } from "@/lib/friendly-errors";
 import { BuildActivityCard } from "@/components/BuildActivityCard";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -60,19 +56,19 @@ import { toast } from "sonner";
 // Lazy: keep CodeMirror, cmdk, react-markdown, rehype-highlight out of the
 // initial /builder bundle. Most users see Preview first.
 const CodeEditor = lazy(() =>
-  import("@/components/CodeEditor").then((m) => ({ default: m.CodeEditor }))
+  import("@/components/CodeEditor").then((m) => ({ default: m.CodeEditor })),
 );
 const CommandPalette = lazy(() =>
-  import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette }))
+  import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })),
 );
 const MarkdownMessage = lazy(() =>
-  import("@/components/MarkdownMessage").then((m) => ({ default: m.MarkdownMessage }))
+  import("@/components/MarkdownMessage").then((m) => ({ default: m.MarkdownMessage })),
 );
 const WebContainerPreview = lazy(() =>
-  import("@/components/WebContainerPreview").then((m) => ({ default: m.WebContainerPreview }))
+  import("@/components/WebContainerPreview").then((m) => ({ default: m.WebContainerPreview })),
 );
 const MobilePreviewFallback = lazy(() =>
-  import("@/components/MobilePreviewFallback").then((m) => ({ default: m.MobilePreviewFallback }))
+  import("@/components/MobilePreviewFallback").then((m) => ({ default: m.MobilePreviewFallback })),
 );
 type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
@@ -189,10 +185,7 @@ function Builder() {
             navigate({ to: "/projects" });
             return;
           }
-          const [fs, ms] = await Promise.all([
-            loadProjectFiles(p.id),
-            loadProjectMessages(p.id),
-          ]);
+          const [fs, ms] = await Promise.all([loadProjectFiles(p.id), loadProjectMessages(p.id)]);
           if (cancelled) return;
           setProject(p);
           setFiles(fs);
@@ -244,9 +237,7 @@ function Builder() {
       setFriendlyError(null);
       const userMsg: ChatMessage = { role: "user", content: text };
       // On retry, the failing user message is already in `messages` — don't double-append.
-      const nextMessages: ChatMessage[] = opts.isRetry
-        ? messages
-        : [...messages, userMsg];
+      const nextMessages: ChatMessage[] = opts.isRetry ? messages : [...messages, userMsg];
       if (!opts.isRetry) setMessages(nextMessages);
       setLastUserPrompt(text);
       setInput("");
@@ -288,7 +279,7 @@ function Builder() {
               streamError = m;
             },
           },
-          controller.signal
+          controller.signal,
         );
 
         if (controller.signal.aborted) return;
@@ -352,7 +343,7 @@ function Builder() {
         setBusy(false);
       }
     },
-    [busy, project, messages, files]
+    [busy, project, messages, files],
   );
 
   const stopGeneration = useCallback(() => {
@@ -390,11 +381,12 @@ function Builder() {
     if (!project) return;
     await saveProjectFiles(project.id, restored);
     setFiles(restored);
-    setActiveFile((prev) =>
-      restored.find((f) => f.path === prev)?.path ??
-      restored.find((f) => f.path === "index.html")?.path ??
-      restored[0]?.path ??
-      null
+    setActiveFile(
+      (prev) =>
+        restored.find((f) => f.path === prev)?.path ??
+        restored.find((f) => f.path === "index.html")?.path ??
+        restored[0]?.path ??
+        null,
     );
     setPreviewKey((k) => k + 1);
     setMessages((prev) => [
@@ -494,10 +486,7 @@ function Builder() {
               <Sparkles className="h-3.5 w-3.5" />
             </span>
             <div className="flex min-w-0 flex-col leading-tight">
-              <span
-                className="truncate font-display text-base"
-                title={project?.title ?? undefined}
-              >
+              <span className="truncate font-display text-base" title={project?.title ?? undefined}>
                 {project?.title ?? "Loading…"}
               </span>
               {project?.summary && (
@@ -575,7 +564,10 @@ function Builder() {
               <MoreHorizontal className="h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onSelect={() => setPreviewKey((k) => k + 1)} disabled={!files.length}>
+              <DropdownMenuItem
+                onSelect={() => setPreviewKey((k) => k + 1)}
+                disabled={!files.length}
+              >
                 <RotateCw className="mr-2 h-3.5 w-3.5" /> Reload preview
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setPaletteOpen(true)}>
@@ -640,8 +632,8 @@ function Builder() {
             )}
             {!bootstrapping && messages.length === 0 && !busy && (
               <div className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
-                Describe an app to start. Try "a calm pomodoro timer with stats"
-                or "a recipe card generator".
+                Describe an app to start. Try "a calm pomodoro timer with stats" or "a recipe card
+                generator".
               </div>
             )}
             {messages.map((m, i) => (
@@ -698,9 +690,7 @@ function Builder() {
                   }
                 }}
                 placeholder={
-                  files.length
-                    ? "Ask for a change…"
-                    : "Describe the app you want to build…"
+                  files.length ? "Ask for a change…" : "Describe the app you want to build…"
                 }
                 rows={2}
                 className="max-h-40 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
@@ -711,11 +701,7 @@ function Builder() {
                 disabled={busy || bootstrapping || !input.trim()}
                 className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground transition hover:brightness-105 disabled:opacity-40"
               >
-                {busy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </button>
             </div>
             {/* Errors are shown inside <BuildActivityCard /> with friendly copy. */}
@@ -767,9 +753,7 @@ function Builder() {
                   Files
                 </div>
                 {files.length === 0 && (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">
-                    No files yet.
-                  </div>
+                  <div className="px-3 py-2 text-xs text-muted-foreground">No files yet.</div>
                 )}
                 {files.map((f) => (
                   <button
@@ -800,9 +784,7 @@ function Builder() {
                       value={activeContent}
                       onChange={(next) => {
                         setFiles((prev) =>
-                          prev.map((f) =>
-                            f.path === activeFile ? { ...f, content: next } : f
-                          )
+                          prev.map((f) => (f.path === activeFile ? { ...f, content: next } : f)),
                         );
                       }}
                       onBlur={async () => {
@@ -843,8 +825,8 @@ function EmptyPreview() {
       </div>
       <h3 className="mt-4 font-display text-2xl">Your app will appear here</h3>
       <p className="mt-2 text-sm text-muted-foreground">
-        Send a message in the chat to generate your first project. Petal will
-        write the files and reload this preview automatically.
+        Send a message in the chat to generate your first project. Petal will write the files and
+        reload this preview automatically.
       </p>
       <Link
         to="/projects"

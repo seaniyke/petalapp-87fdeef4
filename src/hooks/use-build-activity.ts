@@ -61,7 +61,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
             distPath: next.dist_path ?? null,
             errorMessage: next.error_message ?? null,
           });
-        }
+        },
       )
       .subscribe();
 

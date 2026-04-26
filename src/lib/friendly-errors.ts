@@ -108,14 +108,10 @@ const GENERIC: FriendlyError = {
 
 export function toFriendlyError(raw: unknown): FriendlyError {
   const text =
-    raw instanceof Error
-      ? raw.message
-      : typeof raw === "string"
-        ? raw
-        : JSON.stringify(raw);
+    raw instanceof Error ? raw.message : typeof raw === "string" ? raw : JSON.stringify(raw);
 
   // Always log the original for our own debugging.
-  // eslint-disable-next-line no-console
+
   console.error("[petal] generation/build error:", raw);
 
   for (const p of PATTERNS) {
@@ -129,13 +125,11 @@ export function toFriendlyError(raw: unknown): FriendlyError {
 /** Friendly copy specifically for a failed Cloudflare Pages build. */
 export function friendlyBuildFailure(rawLog: string | null | undefined): FriendlyError {
   if (rawLog) {
-    // eslint-disable-next-line no-console
     console.error("[petal] build failed:", rawLog);
   }
   return {
     title: "Your app needs a small fix",
-    message:
-      "There's an error in the code Petal wrote. Ask Petal to fix it and we'll try again.",
+    message: "There's an error in the code Petal wrote. Ask Petal to fix it and we'll try again.",
     actionLabel: "Ask Petal to fix it",
     actionKind: "ask-fix",
     technicalDetail: rawLog?.slice(-2000) ?? undefined,

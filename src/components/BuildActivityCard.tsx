@@ -7,11 +7,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, RefreshCcw, Wrench, X, Square } from "lucide-react";
-import {
-  type Phase,
-  type PhaseId,
-  totalElapsedSeconds,
-} from "@/lib/build-phases";
+import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
 import type { FriendlyError } from "@/lib/friendly-errors";
 
 type Props = {
@@ -227,8 +223,7 @@ function PhaseRow({
   const isFailed = phase.status === "failed";
 
   // Show reassurance after 10s on the active phase.
-  const showReassurance =
-    isActive && phase.startedAt && Date.now() - phase.startedAt > 10000;
+  const showReassurance = isActive && phase.startedAt && Date.now() - phase.startedAt > 10000;
 
   // Build the per-phase headline. For "writing", inject the file counter.
   let headline = isDone ? phase.doneLabel : phase.label;
@@ -267,9 +262,7 @@ function PhaseRow({
           </div>
         )}
         {showReassurance && phase.reassurance && (
-          <div className="mt-0.5 text-[11px] text-muted-foreground">
-            {phase.reassurance}
-          </div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">{phase.reassurance}</div>
         )}
       </div>
     </li>

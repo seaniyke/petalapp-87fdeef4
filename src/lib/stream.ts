@@ -1,9 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type {
-  ChatMessage,
-  ProjectFile,
-  StreamEvent,
-} from "@/server/generate.server";
+import type { ChatMessage, ProjectFile, StreamEvent } from "@/server/generate.server";
 
 type Handlers = {
   onStatus?: (message: string) => void;
@@ -19,7 +15,7 @@ type Handlers = {
 export async function streamGenerate(
   body: { messages: ChatMessage[]; currentFiles: ProjectFile[] },
   handlers: Handlers,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<void> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;

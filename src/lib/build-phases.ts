@@ -7,13 +7,7 @@
  * a one-line action, and an optional reassurance line if it runs long.
  */
 
-export type PhaseId =
-  | "thinking"
-  | "designing"
-  | "writing"
-  | "polishing"
-  | "deploying"
-  | "live";
+export type PhaseId = "thinking" | "designing" | "writing" | "polishing" | "deploying" | "live";
 
 export type PhaseStatus = "pending" | "active" | "done" | "failed";
 
@@ -131,12 +125,8 @@ export function markFailed(phases: Phase[], failedId?: PhaseId, now = Date.now()
 
 /** Total elapsed wall-clock time across the whole flow, in seconds. */
 export function totalElapsedSeconds(phases: Phase[]): number {
-  const starts = phases
-    .map((p) => p.startedAt)
-    .filter((t): t is number => typeof t === "number");
-  const ends = phases
-    .map((p) => p.endedAt)
-    .filter((t): t is number => typeof t === "number");
+  const starts = phases.map((p) => p.startedAt).filter((t): t is number => typeof t === "number");
+  const ends = phases.map((p) => p.endedAt).filter((t): t is number => typeof t === "number");
   if (starts.length === 0) return 0;
   const first = Math.min(...starts);
   const last = ends.length ? Math.max(...ends) : Date.now();
