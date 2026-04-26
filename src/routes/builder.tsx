@@ -355,7 +355,63 @@ function Builder() {
     [busy, project, messages, files],
   );
 
-  const stopGeneration = useCallback(() => {
+  // Discuss mode: ask Petal a question without touching files. The reply is
+  // appended as a normal assistant message and tagged so we can show an
+  // "Apply this plan" button under it.
+  const discuss = useCallback(
+    async (content: string) => {
+      const text = content.trim();
+      if (!text || busy || discussBusy || !project) return;
+      setError(null);
+      setFriendlyError(null);
+      const userMsg: ChatMessage = { role: "user", content: text };
+      const nextMessages: ChatMessage[] = [...messages, userMsg];
+      setMessages(nextMessages);
+      setInput("");
+      setDiscussBusy(true);
+
+      try {
+        const reply = await requestDiscussion({
+          messages: nextMessages,
+          currentFiles: files,
+        });
+        const assistantMsg: ChatMessage = { role: "assistant", content: reply };
+        setMessages((prev) => {
+          const updated = [...prev, assistantMsg];
+          setLastDiscussIndex(updated.length - 1);
+          return updated;
+        });
+        // Persist the conversation so it survives reloads — but don't write
+        // any project files (that's the whole point of Discuss).
+        try {
+          await appendMessages(project.id, [userMsg, assistantMsg]);
+        } catch (persistErr) {
+          console.error(persistErr);
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Discussion failed.";
+        toast.error(msg);
+        // Roll back the unanswered user message so the chat doesn't look stuck.
+        setMessages((prev) => prev.slice(0, -1));
+      } finally {
+        setDiscussBusy(false);
+      }
+    },
+    [busy, discussBusy, project, messages, files],
+  );
+
+  // Apply the most recent Discuss reply by switching to Build mode and asking
+  // Petal to implement what it just proposed.
+  const applyDiscussedPlan = useCallback(() => {
+    if (lastDiscussIndex == null) return;
+    const plan = messages[lastDiscussIndex]?.content?.trim();
+    if (!plan) return;
+    setMode("build");
+    setLastDiscussIndex(null);
+    void send(
+      `Please implement the plan you just proposed:\n\n${plan}\n\nMake the changes now.`,
+    );
+  }, [lastDiscussIndex, messages, send]);
     abortRef.current?.abort();
     abortRef.current = null;
     setBusy(false);
