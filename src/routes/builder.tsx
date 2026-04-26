@@ -27,6 +27,8 @@ import {
   saveProjectFiles,
   type ProjectRow,
 } from "@/lib/projects";
+import { createVersion } from "@/lib/versions";
+import { HistoryPanel } from "@/components/HistoryPanel";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/builder")({
