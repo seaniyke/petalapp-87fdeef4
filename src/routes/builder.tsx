@@ -569,30 +569,33 @@ function Builder() {
                   </button>
                 ))}
               </div>
-              <div className="min-h-0 overflow-auto bg-card">
-                <textarea
-                  value={activeContent}
-                  onChange={(e) => {
-                    if (!activeFile) return;
-                    setFiles((prev) =>
-                      prev.map((f) =>
-                        f.path === activeFile ? { ...f, content: e.target.value } : f
-                      )
-                    );
-                  }}
-                  onBlur={async () => {
-                    if (!project) return;
-                    try {
-                      await saveProjectFiles(project.id, files);
-                    } catch (e) {
-                      toast.error("Couldn't save edits");
-                      console.error(e);
-                    }
-                  }}
-                  spellCheck={false}
-                  className="h-full min-h-[400px] w-full resize-none bg-transparent p-4 font-mono text-xs leading-relaxed outline-none"
-                  placeholder="Select a file to edit."
-                />
+              <div className="min-h-0 overflow-hidden bg-card">
+                {activeFile ? (
+                  <CodeEditor
+                    path={activeFile}
+                    value={activeContent}
+                    onChange={(next) => {
+                      setFiles((prev) =>
+                        prev.map((f) =>
+                          f.path === activeFile ? { ...f, content: next } : f
+                        )
+                      );
+                    }}
+                    onBlur={async () => {
+                      if (!project) return;
+                      try {
+                        await saveProjectFiles(project.id, files);
+                      } catch (e) {
+                        toast.error("Couldn't save edits");
+                        console.error(e);
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="grid h-full place-items-center p-6 text-xs text-muted-foreground">
+                    Select a file to edit.
+                  </div>
+                )}
               </div>
             </div>
           )}
