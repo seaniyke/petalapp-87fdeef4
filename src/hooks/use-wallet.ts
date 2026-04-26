@@ -27,12 +27,13 @@ export type UseWalletResult = {
 };
 
 export function useWallet(): UseWalletResult {
-  const { user } = useAuth();
+  const { user, isReady } = useAuth();
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = async () => {
+    if (!isReady) return;
     if (!user) {
       setWallet(null);
       setLoading(false);
@@ -47,6 +48,7 @@ export function useWallet(): UseWalletResult {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    if (!isReady) return;
     if (!user) {
       setWallet(null);
       setPlans([]);
@@ -88,7 +90,7 @@ export function useWallet(): UseWalletResult {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [isReady, user]);
 
   const plan = wallet ? plans.find((p) => p.code === wallet.plan_code) ?? null : null;
   const breakdown = computeBreakdown(wallet, plan);

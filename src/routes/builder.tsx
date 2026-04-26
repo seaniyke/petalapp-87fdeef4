@@ -32,6 +32,7 @@ import { requestDiscussion } from "@/lib/discuss";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useBuildActivity } from "@/hooks/use-build-activity";
+import { useAuthReady } from "@/lib/auth";
 import {
   type Phase,
   type PhaseId,
@@ -113,6 +114,7 @@ type ViewMode = "preview" | "code";
 
 function Builder() {
   const { prompt: initialPrompt, id: searchId } = Route.useSearch();
+  const { user, isReady } = useAuthReady();
   const navigate = useNavigate();
 
   const [project, setProject] = useState<ProjectRow | null>(null);
@@ -252,6 +254,12 @@ function Builder() {
   // Bootstrap: load existing project, or create a new one if no id in URL.
   useEffect(() => {
     let cancelled = false;
+    if (!isReady) return;
+    if (!user) {
+      navigate({ to: "/auth", search: { mode: "signin", redirect: window.location.pathname + window.location.search } });
+      return;
+    }
+    setBootstrapping(true);
     (async () => {
       try {
         if (searchId) {
@@ -284,7 +292,7 @@ function Builder() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchId]);
+  }, [isReady, user, searchId]);
 
   // Auto-send the prompt from the landing page once, after bootstrap.
   // Note: project may be null here when arriving with ?prompt but no ?id —
@@ -305,6 +313,10 @@ function Builder() {
   // Lazily create the underlying project row on first use, so /builder visits
   // that never send a message don't leave behind empty "Untitled project" rows.
   const ensureProject = useCallback(async (): Promise<ProjectRow | null> => {
+    if (!isReady || !user) {
+      navigate({ to: "/auth", search: { mode: "signin", redirect: window.location.pathname + window.location.search } });
+      return null;
+    }
     if (project) return project;
     try {
       const p = await createProject();
@@ -319,7 +331,7 @@ function Builder() {
       toast.error(e instanceof Error ? e.message : "Could not start project");
       return null;
     }
-  }, [project, navigate, initialPrompt]);
+  }, [isReady, user, project, navigate, initialPrompt]);
 
   const send = useCallback(
     async (content: string, opts: { isRetry?: boolean } = {}) => {

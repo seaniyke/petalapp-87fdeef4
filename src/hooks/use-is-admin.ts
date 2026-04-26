@@ -4,12 +4,13 @@ import { useAuth } from "@/lib/auth";
 
 /** Returns true if the current user has the 'admin' role. */
 export function useIsAdmin(): { isAdmin: boolean; loading: boolean } {
-  const { user } = useAuth();
+  const { user, isReady } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
+    if (!isReady) return;
     if (!user) {
       setIsAdmin(false);
       setLoading(false);
@@ -30,7 +31,7 @@ export function useIsAdmin(): { isAdmin: boolean; loading: boolean } {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [isReady, user]);
 
   return { isAdmin, loading };
 }
