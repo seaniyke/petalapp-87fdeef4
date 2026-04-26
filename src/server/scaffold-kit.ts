@@ -1358,8 +1358,36 @@ export const Stack = React.forwardRef<HTMLDivElement, StackProps>(
 );
 Stack.displayName = "Stack";
 
-/** Horizontal flex row. Use for inline groups (toolbars, button rows, badges). */
-export const Inline = React.forwardRef<HTMLDivElement, StackProps & { wrap?: boolean }>(
+// Re-export Inline from its dedicated file so existing imports keep working.
+export { Inline, type InlineProps } from "./inline";
+// Internal helper exports — used by inline.tsx so the maps stay in sync.
+export { gapMap as _gapMap, alignMap as _alignMap, justifyMap as _justifyMap };
+`;
+
+const INLINE = `import * as React from "react";
+import { cn } from "@/lib/utils";
+import { _gapMap as gapMap, _alignMap as alignMap, _justifyMap as justifyMap } from "./stack";
+
+export interface InlineProps extends React.HTMLAttributes<HTMLDivElement> {
+  gap?: keyof typeof gapMap;
+  align?: keyof typeof alignMap;
+  justify?: keyof typeof justifyMap;
+  /** Allow children to wrap to the next line on overflow. */
+  wrap?: boolean;
+}
+
+/**
+ * Horizontal flex row. Use for inline groups: toolbars, button rows, badge
+ * clusters, icon + label pairs. Items are vertically centered by default.
+ *
+ * \`\`\`tsx
+ * <Inline gap={2} justify="between">
+ *   <Inline gap={2}><Icon /><span>Label</span></Inline>
+ *   <Button>Save</Button>
+ * </Inline>
+ * \`\`\`
+ */
+export const Inline = React.forwardRef<HTMLDivElement, InlineProps>(
   ({ className, gap = 2, align = "center", justify, wrap, ...props }, ref) => (
     <div
       ref={ref}
