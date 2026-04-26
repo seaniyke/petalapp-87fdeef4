@@ -15,18 +15,16 @@ import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
-import { Route as CheckoutReturnRouteImport } from './routes/checkout.return'
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 import { Route as ApiDomainsRouteImport } from './routes/api/domains'
 import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
 import { Route as ApiBackendRouteImport } from './routes/api/backend'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
 import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigger'
-import { Route as ApiBillingSetupTaxCodesRouteImport } from './routes/api/billing/setup-tax-codes'
-import { Route as ApiBillingCreatePortalSessionRouteImport } from './routes/api/billing/create-portal-session'
-import { Route as ApiBillingCreateCheckoutRouteImport } from './routes/api/billing/create-checkout'
+import { Route as ApiBillingVerifyRouteImport } from './routes/api/billing/verify'
+import { Route as ApiBillingInitializeRouteImport } from './routes/api/billing/initialize'
+import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
-import { Route as ApiPublicBillingWebhookRouteImport } from './routes/api/public/billing/webhook'
 
 const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
@@ -56,11 +54,6 @@ const IndexRoute = IndexRouteImport.update({
 const PSlugRoute = PSlugRouteImport.update({
   id: '/p/$slug',
   path: '/p/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CheckoutReturnRoute = CheckoutReturnRouteImport.update({
-  id: '/checkout/return',
-  path: '/checkout/return',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGenerateRoute = ApiGenerateRouteImport.update({
@@ -93,31 +86,25 @@ const ApiBuildsTriggerRoute = ApiBuildsTriggerRouteImport.update({
   path: '/api/builds/trigger',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiBillingSetupTaxCodesRoute = ApiBillingSetupTaxCodesRouteImport.update({
-  id: '/api/billing/setup-tax-codes',
-  path: '/api/billing/setup-tax-codes',
+const ApiBillingVerifyRoute = ApiBillingVerifyRouteImport.update({
+  id: '/api/billing/verify',
+  path: '/api/billing/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiBillingCreatePortalSessionRoute =
-  ApiBillingCreatePortalSessionRouteImport.update({
-    id: '/api/billing/create-portal-session',
-    path: '/api/billing/create-portal-session',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiBillingCreateCheckoutRoute =
-  ApiBillingCreateCheckoutRouteImport.update({
-    id: '/api/billing/create-checkout',
-    path: '/api/billing/create-checkout',
+const ApiBillingInitializeRoute = ApiBillingInitializeRouteImport.update({
+  id: '/api/billing/initialize',
+  path: '/api/billing/initialize',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicPaystackWebhookRoute =
+  ApiPublicPaystackWebhookRouteImport.update({
+    id: '/api/public/paystack/webhook',
+    path: '/api/public/paystack/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicBuildsCallbackRoute = ApiPublicBuildsCallbackRouteImport.update({
   id: '/api/public/builds/callback',
   path: '/api/public/builds/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicBillingWebhookRoute = ApiPublicBillingWebhookRouteImport.update({
-  id: '/api/public/billing/webhook',
-  path: '/api/public/billing/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -131,15 +118,13 @@ export interface FileRoutesByFullPath {
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
-  '/checkout/return': typeof CheckoutReturnRoute
   '/p/$slug': typeof PSlugRoute
-  '/api/billing/create-checkout': typeof ApiBillingCreateCheckoutRoute
-  '/api/billing/create-portal-session': typeof ApiBillingCreatePortalSessionRoute
-  '/api/billing/setup-tax-codes': typeof ApiBillingSetupTaxCodesRoute
+  '/api/billing/initialize': typeof ApiBillingInitializeRoute
+  '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
-  '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -151,15 +136,13 @@ export interface FileRoutesByTo {
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
-  '/checkout/return': typeof CheckoutReturnRoute
   '/p/$slug': typeof PSlugRoute
-  '/api/billing/create-checkout': typeof ApiBillingCreateCheckoutRoute
-  '/api/billing/create-portal-session': typeof ApiBillingCreatePortalSessionRoute
-  '/api/billing/setup-tax-codes': typeof ApiBillingSetupTaxCodesRoute
+  '/api/billing/initialize': typeof ApiBillingInitializeRoute
+  '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
-  '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -172,15 +155,13 @@ export interface FileRoutesById {
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
-  '/checkout/return': typeof CheckoutReturnRoute
   '/p/$slug': typeof PSlugRoute
-  '/api/billing/create-checkout': typeof ApiBillingCreateCheckoutRoute
-  '/api/billing/create-portal-session': typeof ApiBillingCreatePortalSessionRoute
-  '/api/billing/setup-tax-codes': typeof ApiBillingSetupTaxCodesRoute
+  '/api/billing/initialize': typeof ApiBillingInitializeRoute
+  '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
-  '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -194,15 +175,13 @@ export interface FileRouteTypes {
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
-    | '/checkout/return'
     | '/p/$slug'
-    | '/api/billing/create-checkout'
-    | '/api/billing/create-portal-session'
-    | '/api/billing/setup-tax-codes'
+    | '/api/billing/initialize'
+    | '/api/billing/verify'
     | '/api/builds/trigger'
     | '/api/preview/$projectId'
-    | '/api/public/billing/webhook'
     | '/api/public/builds/callback'
+    | '/api/public/paystack/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -214,15 +193,13 @@ export interface FileRouteTypes {
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
-    | '/checkout/return'
     | '/p/$slug'
-    | '/api/billing/create-checkout'
-    | '/api/billing/create-portal-session'
-    | '/api/billing/setup-tax-codes'
+    | '/api/billing/initialize'
+    | '/api/billing/verify'
     | '/api/builds/trigger'
     | '/api/preview/$projectId'
-    | '/api/public/billing/webhook'
     | '/api/public/builds/callback'
+    | '/api/public/paystack/webhook'
   id:
     | '__root__'
     | '/'
@@ -234,15 +211,13 @@ export interface FileRouteTypes {
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
-    | '/checkout/return'
     | '/p/$slug'
-    | '/api/billing/create-checkout'
-    | '/api/billing/create-portal-session'
-    | '/api/billing/setup-tax-codes'
+    | '/api/billing/initialize'
+    | '/api/billing/verify'
     | '/api/builds/trigger'
     | '/api/preview/$projectId'
-    | '/api/public/billing/webhook'
     | '/api/public/builds/callback'
+    | '/api/public/paystack/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -255,15 +230,13 @@ export interface RootRouteChildren {
   ApiDiscussRoute: typeof ApiDiscussRoute
   ApiDomainsRoute: typeof ApiDomainsRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
-  CheckoutReturnRoute: typeof CheckoutReturnRoute
   PSlugRoute: typeof PSlugRoute
-  ApiBillingCreateCheckoutRoute: typeof ApiBillingCreateCheckoutRoute
-  ApiBillingCreatePortalSessionRoute: typeof ApiBillingCreatePortalSessionRoute
-  ApiBillingSetupTaxCodesRoute: typeof ApiBillingSetupTaxCodesRoute
+  ApiBillingInitializeRoute: typeof ApiBillingInitializeRoute
+  ApiBillingVerifyRoute: typeof ApiBillingVerifyRoute
   ApiBuildsTriggerRoute: typeof ApiBuildsTriggerRoute
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
-  ApiPublicBillingWebhookRoute: typeof ApiPublicBillingWebhookRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
+  ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -310,13 +283,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/checkout/return': {
-      id: '/checkout/return'
-      path: '/checkout/return'
-      fullPath: '/checkout/return'
-      preLoaderRoute: typeof CheckoutReturnRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/generate': {
       id: '/api/generate'
       path: '/api/generate'
@@ -359,25 +325,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBuildsTriggerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/billing/setup-tax-codes': {
-      id: '/api/billing/setup-tax-codes'
-      path: '/api/billing/setup-tax-codes'
-      fullPath: '/api/billing/setup-tax-codes'
-      preLoaderRoute: typeof ApiBillingSetupTaxCodesRouteImport
+    '/api/billing/verify': {
+      id: '/api/billing/verify'
+      path: '/api/billing/verify'
+      fullPath: '/api/billing/verify'
+      preLoaderRoute: typeof ApiBillingVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/billing/create-portal-session': {
-      id: '/api/billing/create-portal-session'
-      path: '/api/billing/create-portal-session'
-      fullPath: '/api/billing/create-portal-session'
-      preLoaderRoute: typeof ApiBillingCreatePortalSessionRouteImport
+    '/api/billing/initialize': {
+      id: '/api/billing/initialize'
+      path: '/api/billing/initialize'
+      fullPath: '/api/billing/initialize'
+      preLoaderRoute: typeof ApiBillingInitializeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/billing/create-checkout': {
-      id: '/api/billing/create-checkout'
-      path: '/api/billing/create-checkout'
-      fullPath: '/api/billing/create-checkout'
-      preLoaderRoute: typeof ApiBillingCreateCheckoutRouteImport
+    '/api/public/paystack/webhook': {
+      id: '/api/public/paystack/webhook'
+      path: '/api/public/paystack/webhook'
+      fullPath: '/api/public/paystack/webhook'
+      preLoaderRoute: typeof ApiPublicPaystackWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/builds/callback': {
@@ -385,13 +351,6 @@ declare module '@tanstack/react-router' {
       path: '/api/public/builds/callback'
       fullPath: '/api/public/builds/callback'
       preLoaderRoute: typeof ApiPublicBuildsCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/billing/webhook': {
-      id: '/api/public/billing/webhook'
-      path: '/api/public/billing/webhook'
-      fullPath: '/api/public/billing/webhook'
-      preLoaderRoute: typeof ApiPublicBillingWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -407,15 +366,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDiscussRoute: ApiDiscussRoute,
   ApiDomainsRoute: ApiDomainsRoute,
   ApiGenerateRoute: ApiGenerateRoute,
-  CheckoutReturnRoute: CheckoutReturnRoute,
   PSlugRoute: PSlugRoute,
-  ApiBillingCreateCheckoutRoute: ApiBillingCreateCheckoutRoute,
-  ApiBillingCreatePortalSessionRoute: ApiBillingCreatePortalSessionRoute,
-  ApiBillingSetupTaxCodesRoute: ApiBillingSetupTaxCodesRoute,
+  ApiBillingInitializeRoute: ApiBillingInitializeRoute,
+  ApiBillingVerifyRoute: ApiBillingVerifyRoute,
   ApiBuildsTriggerRoute: ApiBuildsTriggerRoute,
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
-  ApiPublicBillingWebhookRoute: ApiPublicBillingWebhookRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
+  ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
