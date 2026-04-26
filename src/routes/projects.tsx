@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Sparkles, Globe, Lock } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -9,7 +9,6 @@ import {
   type ProjectRow,
 } from "@/lib/projects";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/projects")({
   beforeLoad: async () => {
