@@ -353,9 +353,17 @@ function Builder() {
               </div>
             ))}
             {busy && (
-              <div className="mr-6 inline-flex items-center gap-2 rounded-2xl bg-mint/50 px-3.5 py-2.5 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Petal is building…
+              <div className="mr-6 rounded-2xl bg-mint/50 px-3.5 py-2.5 text-sm">
+                <div className="mb-1 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-foreground/70">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {streamStatus || "Petal is building…"}
+                </div>
+                {streamingSummary && (
+                  <div className="whitespace-pre-wrap leading-relaxed">
+                    {streamingSummary}
+                    <span className="ml-0.5 inline-block h-3.5 w-1.5 -mb-0.5 animate-pulse bg-foreground/40" />
+                  </div>
+                )}
               </div>
             )}
             <div ref={chatEndRef} />
