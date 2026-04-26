@@ -1425,8 +1425,36 @@ const colsLg = {
 } as const;
 
 type Cols = keyof typeof colsBase;
+type Gap = keyof typeof gapMap;
+
+/**
+ * Named responsive layouts for common dashboard / marketing patterns.
+ * Each preset maps to { cols, sm?, md?, lg?, gap }. Explicit props override the preset.
+ */
+const presets = {
+  /** Stat cards across the top of a dashboard: 1 -> 2 -> 4. */
+  stats: { cols: 1, sm: 2, lg: 4, gap: 4 },
+  /** KPI tiles, denser than \`stats\`: 2 -> 4 -> 6. */
+  kpis: { cols: 2, sm: 4, lg: 6, gap: 3 },
+  /** Standard dashboard widget grid: 1 -> 2 -> 3. */
+  dashboard: { cols: 1, md: 2, lg: 3, gap: 6 },
+  /** Card grid for product / feature listings: 1 -> 2 -> 3 -> 4. */
+  cards: { cols: 1, sm: 2, md: 3, lg: 4, gap: 6 },
+  /** Marketing feature grid: 1 -> 2 -> 3. */
+  features: { cols: 1, md: 2, lg: 3, gap: 8 },
+  /** Pricing tiers: 1 -> 3. */
+  pricing: { cols: 1, md: 3, gap: 6 },
+  /** Two-column layout (e.g. main + sidebar at desktop). */
+  split: { cols: 1, md: 2, gap: 6 },
+  /** Photo / media gallery: 2 -> 3 -> 4. */
+  gallery: { cols: 2, sm: 3, lg: 4, gap: 3 },
+} as const satisfies Record<string, { cols: Cols; sm?: Cols; md?: Cols; lg?: Cols; gap: Gap }>;
+
+export type GridPreset = keyof typeof presets;
 
 export interface GridProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Named layout preset. Explicit cols/sm/md/lg/gap override preset values. */
+  preset?: GridPreset;
   /** Default column count (mobile-first). */
   cols?: Cols;
   /** Column count at >=640px. */
@@ -1435,26 +1463,38 @@ export interface GridProps extends React.HTMLAttributes<HTMLDivElement> {
   md?: Cols;
   /** Column count at >=1024px. */
   lg?: Cols;
-  gap?: keyof typeof gapMap;
+  gap?: Gap;
 }
 
-/** Responsive CSS grid. Mobile-first: \`<Grid cols={1} md={2} lg={3} gap={6} />\`. */
+/**
+ * Responsive CSS grid.
+ * Use a preset for common patterns: \`<Grid preset="dashboard" />\`.
+ * Or compose manually: \`<Grid cols={1} md={2} lg={3} gap={6} />\`.
+ */
 export const Grid = React.forwardRef<HTMLDivElement, GridProps>(
-  ({ className, cols = 1, sm, md, lg, gap = 4, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        "grid",
-        colsBase[cols],
-        sm && colsSm[sm],
-        md && colsMd[md],
-        lg && colsLg[lg],
-        gapMap[gap],
-        className,
-      )}
-      {...props}
-    />
-  ),
+  ({ className, preset, cols, sm, md, lg, gap, ...props }, ref) => {
+    const p = preset ? presets[preset] : undefined;
+    const _cols = (cols ?? p?.cols ?? 1) as Cols;
+    const _sm = (sm ?? p?.sm) as Cols | undefined;
+    const _md = (md ?? p?.md) as Cols | undefined;
+    const _lg = (lg ?? p?.lg) as Cols | undefined;
+    const _gap = (gap ?? p?.gap ?? 4) as Gap;
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "grid",
+          colsBase[_cols],
+          _sm && colsSm[_sm],
+          _md && colsMd[_md],
+          _lg && colsLg[_lg],
+          gapMap[_gap],
+          className,
+        )}
+        {...props}
+      />
+    );
+  },
 );
 Grid.displayName = "Grid";
 `;
