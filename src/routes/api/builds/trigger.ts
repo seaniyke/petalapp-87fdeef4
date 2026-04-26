@@ -106,6 +106,23 @@ export const Route = createFileRoute("/api/builds/trigger")({
           return Response.json({ error: "Project has no files to build" }, { status: 400 });
         }
 
+        // 2b) Re-apply the canonical scaffold kit so the build is self-healing.
+        //     Without this, any project whose `project_files` rows are missing
+        //     `src/components/ui/*`, `src/lib/utils.ts`, or the `@/*` paths
+        //     alias in `tsconfig.json` (e.g. older projects, or rows that were
+        //     never persisted) will fail with "Rollup failed to resolve import
+        //     '@/components/ui/...'". `applyScaffoldKit` is a no-op for healthy
+        //     projects (overwrite paths get re-set to the same content).
+        const { data: backendRow } = await supabaseAdmin
+          .from("project_backends")
+          .select("supabase_url, anon_key")
+          .eq("project_id", projectId)
+          .maybeSingle();
+        const backend = backendRow
+          ? { url: backendRow.supabase_url, anonKey: backendRow.anon_key }
+          : undefined;
+        const buildFiles = applyScaffoldKit(files, { backend });
+
         // 3) Insert pending build row + bump latest_build_id BEFORE calling
         //    Railway, so a fast callback never races ahead of our own write.
         const { data: build, error: insertErr } = await supabaseAdmin
@@ -127,7 +144,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
 
         // 4) Fire the build. If the network call fails, mark the row as failed.
         try {
-          await postBuildToRailway({ projectId, buildId: build.id, files });
+          await postBuildToRailway({ projectId, buildId: build.id, files: buildFiles });
         } catch (e) {
           const message = e instanceof Error ? e.message : "Failed to reach builder";
           console.error("postBuildToRailway failed", message);
