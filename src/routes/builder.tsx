@@ -148,30 +148,54 @@ function Builder() {
     setMessages(nextMessages);
     setInput("");
     setBusy(true);
+    setStreamStatus("Thinking…");
+    setStreamingSummary("");
+
+    let resultFiles: ProjectFile[] | null = null;
+    let resultSummary = "";
+    let streamError: string | null = null;
+
     try {
-      const result = await generateProject({
-        data: { messages: nextMessages, currentFiles: files },
-      });
-      const assistantMsg: ChatMessage = { role: "assistant", content: result.summary };
-      setFiles(result.files);
+      await streamGenerate(
+        { messages: nextMessages, currentFiles: files },
+        {
+          onStatus: (m) => setStreamStatus(m),
+          onSummaryDelta: (d) => setStreamingSummary((s) => s + d),
+          onTool: (name) =>
+            setStreamStatus(name === "patch_files" ? "Editing files…" : "Writing project…"),
+          onResult: (f, s) => {
+            resultFiles = f;
+            resultSummary = s;
+          },
+          onError: (m) => {
+            streamError = m;
+          },
+        }
+      );
+
+      if (streamError) throw new Error(streamError);
+      if (!resultFiles) throw new Error("No result returned.");
+
+      const files2: ProjectFile[] = resultFiles;
+      const summary2: string = resultSummary || "Updated the project.";
+      const assistantMsg: ChatMessage = { role: "assistant", content: summary2 };
+      setFiles(files2);
       setActiveFile((prev) => prev ?? "index.html");
       setMessages((prev) => [...prev, assistantMsg]);
       setPreviewKey((k) => k + 1);
 
-      // Persist
       try {
         await Promise.all([
-          saveProjectFiles(project.id, result.files),
+          saveProjectFiles(project.id, files2),
           appendMessages(project.id, [userMsg, assistantMsg]),
-          maybeAutoTitleProject(project, result.summary, text),
-          createVersion(project.id, result.files, {
+          maybeAutoTitleProject(project, summary2, text),
+          createVersion(project.id, files2, {
             origin: "auto",
             label: text.slice(0, 60),
-            summary: result.summary,
+            summary: summary2,
           }),
         ]);
         setHistoryKey((k) => k + 1);
-        // Refresh project meta so title/summary in the UI stay current
         const refreshed = await getProject(project.id);
         if (refreshed) setProject(refreshed);
       } catch (persistErr) {
@@ -184,6 +208,8 @@ function Builder() {
       setMessages((prev) => [...prev, { role: "assistant", content: `⚠️ ${msg}` }]);
     } finally {
       setBusy(false);
+      setStreamStatus("");
+      setStreamingSummary("");
     }
   }
 
