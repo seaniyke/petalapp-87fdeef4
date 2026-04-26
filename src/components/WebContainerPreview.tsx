@@ -38,33 +38,7 @@ export function detectUnsupportedBrowser(): string | null {
 
 const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
 
-/** WebContainers require SharedArrayBuffer + a Chromium/Firefox-class engine.
- * iOS Safari (and all iOS browsers, which are forced to use WebKit) cannot run
- * them. We detect this up-front so users see a clear message instead of a
- * spinner that will never resolve. */
-function detectUnsupportedBrowser(): string | null {
-  if (typeof navigator === "undefined") return null;
-  const ua = navigator.userAgent;
-  // iOS / iPadOS — all browsers there are WebKit, none support WebContainers.
-  const isIOS =
-    /iPad|iPhone|iPod/.test(ua) ||
-    (navigator.platform === "MacIntel" && (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints! > 1);
-  if (isIOS) {
-    return "Live preview isn't supported on iOS — open this project on desktop Chrome, Edge, or Firefox to run it.";
-  }
-  // Android Chrome works, but other mobile WebKit-based browsers don't.
-  const isAndroid = /Android/.test(ua);
-  const isChromium = /Chrome|Chromium|Edg/.test(ua) && !/OPR\//.test(ua);
-  if (isAndroid && !isChromium) {
-    return "Live preview needs Chrome on Android. Try opening this project on desktop for the best experience.";
-  }
-  if (typeof SharedArrayBuffer === "undefined") {
-    return "Your browser doesn't support SharedArrayBuffer, which is required to run the preview. Try desktop Chrome, Edge, or Firefox.";
-  }
-  return null;
-}
 
-const INSTALL_TIMEOUT_MS = 3 * 60 * 1000;
 
 export function WebContainerPreview({
   files,
