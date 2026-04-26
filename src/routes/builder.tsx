@@ -114,8 +114,12 @@ function Builder() {
   const [view, setView] = useState<ViewMode>("preview");
   const [previewKey, setPreviewKey] = useState(0);
   const [historyKey, setHistoryKey] = useState(0);
-  const [streamStatus, setStreamStatus] = useState<string>("");
-  const [streamingSummary, setStreamingSummary] = useState<string>("");
+  const [phases, setPhases] = useState<Phase[]>(defaultPhases);
+  const [designCaption, setDesignCaption] = useState<string>("");
+  const [filesWritten, setFilesWritten] = useState<number>(0);
+  const [latestPath, setLatestPath] = useState<string | undefined>(undefined);
+  const [activityVisible, setActivityVisible] = useState(false);
+  const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   // Mobile-only: which panel is visible. On desktop both render side-by-side.
