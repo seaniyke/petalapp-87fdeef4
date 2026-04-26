@@ -130,6 +130,35 @@ function Builder() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Subscribe to the live Cloudflare build for this project so we can fold
+  // its status into the activity feed seamlessly with AI generation.
+  const buildSnap = useBuildActivity(project?.latest_build_id ?? null);
+  const isDeploying = buildSnap?.status === "pending";
+  const isLive = buildSnap?.status === "ready";
+  const isBuildFailed = buildSnap?.status === "failed";
+
+  // Reflect Cloudflare build state into the phase timeline + friendly errors.
+  useEffect(() => {
+    if (!buildSnap) return;
+    if (buildSnap.status === "ready") {
+      setPhases((p) => completeThrough(p, "live"));
+    } else if (buildSnap.status === "pending") {
+      setPhases((p) => advanceTo(p, "deploying"));
+    } else if (buildSnap.status === "failed") {
+      setPhases((p) => markFailed(p, "deploying"));
+      setFriendlyError(friendlyBuildFailure(buildSnap.errorMessage));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildSnap?.status, buildSnap?.errorMessage]);
+
+  // Auto-hide the success card a little after the app goes live so the chat
+  // returns to a calm state. The card itself also self-collapses.
+  useEffect(() => {
+    if (!isLive || friendlyError) return;
+    const t = setTimeout(() => setActivityVisible(false), 12000);
+    return () => clearTimeout(t);
+  }, [isLive, friendlyError]);
+
   // Cancel any in-flight generation on unmount or when switching projects.
   useEffect(() => {
     return () => {
@@ -137,8 +166,6 @@ function Builder() {
       abortRef.current = null;
     };
   }, [searchId]);
-
-  
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
