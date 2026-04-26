@@ -1,8 +1,34 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ProjectFile, ChatMessage } from "@/server/generate.server";
 import type { Database } from "@/integrations/supabase/types";
+import {
+  connectByoBackend,
+  getBackendStatus,
+  disconnectBackend,
+  type BackendStatus,
+} from "@/server/backend-connector.server";
 
 export type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
+
+/** Look up the backend attached to a project, if any. */
+export async function getProjectBackend(projectId: string): Promise<BackendStatus> {
+  return getBackendStatus({ data: { projectId } });
+}
+
+/** Connect a BYO Supabase backend to a project. */
+export async function connectProjectBackend(input: {
+  projectId: string;
+  supabaseUrl: string;
+  anonKey: string;
+  serviceRoleKey?: string;
+}) {
+  return connectByoBackend({ data: input });
+}
+
+/** Disconnect the backend from a project. */
+export async function disconnectProjectBackend(projectId: string) {
+  return disconnectBackend({ data: { projectId } });
+}
 
 export async function listProjects(): Promise<ProjectRow[]> {
   const { data, error } = await supabase
