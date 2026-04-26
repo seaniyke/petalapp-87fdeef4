@@ -29,18 +29,34 @@ export const Route = createFileRoute("/projects")({
 });
 
 function ProjectsPage() {
-  const { user } = useAuth();
+  const { user, isReady } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    let cancelled = false;
+    if (!isReady) return;
+    if (!user) {
+      setProjects([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     listProjects()
-      .then(setProjects)
-      .catch((e) => toast.error(e.message))
-      .finally(() => setLoading(false));
-  }, [user]);
+      .then((rows) => {
+        if (!cancelled) setProjects(rows);
+      })
+      .catch((e) => {
+        if (!cancelled) toast.error(e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, user]);
 
   // Note: we deliberately do NOT pre-create a project row here. Empty rows pile up
   // when users click "New project" and bounce. The builder lazy-creates the project
