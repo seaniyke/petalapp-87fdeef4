@@ -205,6 +205,8 @@ export function BuildActivityCard({
             designCaption={p.id === "designing" ? designCaption : undefined}
             filesWritten={p.id === "writing" ? filesWritten : undefined}
             latestPath={p.id === "writing" ? latestPath : undefined}
+            writtenPaths={p.id === "writing" ? writtenPaths : undefined}
+            finalFileLines={p.id === "writing" ? finalFileLines : undefined}
           />
         ))}
       </ol>
