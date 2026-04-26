@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Send,
@@ -11,6 +11,9 @@ import {
   RotateCw,
   Download,
   FolderOpen,
+  Command as CommandIcon,
+  RefreshCcw,
+  AlertCircle,
 } from "lucide-react";
 import JSZip from "jszip";
 import { streamGenerate } from "@/lib/stream";
@@ -30,6 +33,9 @@ import {
 import { createVersion } from "@/lib/versions";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
+import { MarkdownMessage } from "@/components/MarkdownMessage";
+import { CodeEditor } from "@/components/CodeEditor";
+import { CommandPalette, type PaletteItem } from "@/components/CommandPalette";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/builder")({
