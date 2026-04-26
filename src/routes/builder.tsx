@@ -13,7 +13,7 @@ import {
   FolderOpen,
 } from "lucide-react";
 import JSZip from "jszip";
-import { generateProject } from "@/server/generate.functions";
+import { streamGenerate } from "@/lib/stream";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { buildPreviewDoc } from "@/lib/preview";
 import { supabase } from "@/integrations/supabase/client";
