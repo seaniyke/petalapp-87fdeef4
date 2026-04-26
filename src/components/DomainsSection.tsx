@@ -474,11 +474,13 @@ function AddDomainDialog({
   onOpenChange,
   projectId,
   onAdded,
+  onPaymentRequired,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   projectId: string;
   onAdded: (d: ProjectDomain) => void;
+  onPaymentRequired?: () => void;
 }) {
   const [hostname, setHostname] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -499,6 +501,11 @@ function AddDomainDialog({
       onAdded(d);
       toast.success("Domain added — now point your DNS at Petal");
     } catch (e) {
+      if (e instanceof DomainSlotRequiredError) {
+        onOpenChange(false);
+        onPaymentRequired?.();
+        return;
+      }
       toast.error(e instanceof Error ? e.message : "Couldn't add domain");
     } finally {
       setSubmitting(false);
