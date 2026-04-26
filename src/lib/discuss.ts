@@ -8,7 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 
 export async function requestDiscussion(
-  body: { messages: ChatMessage[]; currentFiles: ProjectFile[] },
+  body: {
+    messages: ChatMessage[];
+    currentFiles: ProjectFile[];
+    customInstructions?: string;
+  },
   signal?: AbortSignal,
 ): Promise<string> {
   const { data } = await supabase.auth.getSession();
