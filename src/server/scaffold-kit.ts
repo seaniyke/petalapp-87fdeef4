@@ -55,26 +55,102 @@ const TSCONFIG = `{
 
 const STYLES_CSS = `@import "tailwindcss";
 
+/* Enable class-based dark mode (\`<html class="dark">\`).
+   Tailwind v4 also auto-respects the system preference via the dark variant. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --color-background: oklch(0.99 0.005 90);
-  --color-foreground: oklch(0.18 0.02 280);
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.18 0.02 280);
-  --color-primary: oklch(0.55 0.18 280);
-  --color-primary-foreground: oklch(0.99 0.005 90);
-  --color-secondary: oklch(0.96 0.01 280);
-  --color-secondary-foreground: oklch(0.22 0.03 280);
-  --color-muted: oklch(0.96 0.01 280);
-  --color-muted-foreground: oklch(0.5 0.02 280);
-  --color-accent: oklch(0.92 0.04 320);
-  --color-accent-foreground: oklch(0.22 0.03 280);
-  --color-destructive: oklch(0.6 0.22 25);
-  --color-destructive-foreground: oklch(0.99 0.005 90);
-  --color-border: oklch(0.92 0.01 280);
-  --color-input: oklch(0.92 0.01 280);
-  --color-ring: oklch(0.55 0.18 280);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --radius: 0.625rem;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+:root {
+  --background: oklch(0.99 0.005 90);
+  --foreground: oklch(0.18 0.02 280);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 280);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 280);
+  --primary: oklch(0.55 0.18 280);
+  --primary-foreground: oklch(0.99 0.005 90);
+  --secondary: oklch(0.96 0.01 280);
+  --secondary-foreground: oklch(0.22 0.03 280);
+  --muted: oklch(0.96 0.01 280);
+  --muted-foreground: oklch(0.5 0.02 280);
+  --accent: oklch(0.92 0.04 320);
+  --accent-foreground: oklch(0.22 0.03 280);
+  --destructive: oklch(0.6 0.22 25);
+  --destructive-foreground: oklch(0.99 0.005 90);
+  --border: oklch(0.92 0.01 280);
+  --input: oklch(0.92 0.01 280);
+  --ring: oklch(0.55 0.18 280);
+}
+
+.dark {
+  --background: oklch(0.16 0.02 280);
+  --foreground: oklch(0.96 0.01 90);
+  --card: oklch(0.20 0.02 280);
+  --card-foreground: oklch(0.96 0.01 90);
+  --popover: oklch(0.20 0.02 280);
+  --popover-foreground: oklch(0.96 0.01 90);
+  --primary: oklch(0.72 0.16 280);
+  --primary-foreground: oklch(0.16 0.02 280);
+  --secondary: oklch(0.26 0.02 280);
+  --secondary-foreground: oklch(0.96 0.01 90);
+  --muted: oklch(0.26 0.02 280);
+  --muted-foreground: oklch(0.7 0.02 280);
+  --accent: oklch(0.32 0.05 320);
+  --accent-foreground: oklch(0.96 0.01 90);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0.01 90);
+  --border: oklch(0.28 0.02 280);
+  --input: oklch(0.28 0.02 280);
+  --ring: oklch(0.72 0.16 280);
+}
+
+/* Auto-apply dark tokens when the OS prefers dark, unless the app explicitly
+   set a theme on <html> (\`.light\` or \`.dark\`). */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not(.dark) {
+    --background: oklch(0.16 0.02 280);
+    --foreground: oklch(0.96 0.01 90);
+    --card: oklch(0.20 0.02 280);
+    --card-foreground: oklch(0.96 0.01 90);
+    --popover: oklch(0.20 0.02 280);
+    --popover-foreground: oklch(0.96 0.01 90);
+    --primary: oklch(0.72 0.16 280);
+    --primary-foreground: oklch(0.16 0.02 280);
+    --secondary: oklch(0.26 0.02 280);
+    --secondary-foreground: oklch(0.96 0.01 90);
+    --muted: oklch(0.26 0.02 280);
+    --muted-foreground: oklch(0.7 0.02 280);
+    --accent: oklch(0.32 0.05 320);
+    --accent-foreground: oklch(0.96 0.01 90);
+    --destructive: oklch(0.55 0.22 25);
+    --destructive-foreground: oklch(0.98 0.01 90);
+    --border: oklch(0.28 0.02 280);
+    --input: oklch(0.28 0.02 280);
+    --ring: oklch(0.72 0.16 280);
+  }
 }
 
 html, body, #root { height: 100%; }
@@ -85,6 +161,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 `;
+
 
 const UTILS_TS = `import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
