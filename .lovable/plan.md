@@ -73,18 +73,18 @@ Shipped:
 - Looks up the matching auto-version (by ordinal — the Nth user message ↔ the Nth auto snapshot, oldest-first), restores its files via `saveProjectFiles`, trims chat via the new `truncateMessagesToCount` helper, and re-triggers a Cloudflare build.
 - Saves a "Before revert" snapshot first so the revert itself can be undone.
 
-## Phase 4 — Smart model routing + Project Knowledge
+## Phase 4 — Smart model routing + Project Knowledge ✅ Shipped
 
 **Smart routing:**
-- In `/api/generate.ts`, simple heuristic: if prompt mentions "refactor / redesign / architecture / all pages" or the patch will likely touch >5 files, switch from `gemini-3-flash-preview` to `gemini-2.5-pro` or `gpt-5-mini`.
-- **"Smart / Fast / Best"** dropdown in the toolbar (matches Base44 Automatic/Manual). Defaults to Smart.
+- `/api/generate` now accepts a `model` preset (`"fast" | "smart" | "best"`, default `"smart"`).
+- Heuristic in `pickSmartModel()`: prompts mentioning *refactor / redesign / architecture / from scratch / overhaul* (or long prompts on big projects) get `google/gemini-2.5-pro`; everything else stays on `google/gemini-3-flash-preview`.
+- New compact dropdown in the chat toolbar with **Smart / Fast / Best** options. Choice is persisted to `localStorage` so it sticks across sessions.
 
 **Project Knowledge:**
-- Add `projects.custom_instructions` text column.
-- "Project settings → Instructions" sheet ("Always use a pastel palette", "This is for KeshPay — be cautious", etc.).
-- Prepend to the system prompt on every generate call.
-
-**Effort:** ~2 hours.
+- Added `projects.custom_instructions` text column (migration applied).
+- New `ProjectSettingsSheet` ("Knowledge" button in the toolbar; "Project knowledge" item in the mobile overflow menu). Sheet shows a textarea capped at 4000 chars with examples + dirty-state save button.
+- The owner's instructions are sent to **both** `/api/generate` and `/api/discuss` and prepended to the system prompt as a "Project Knowledge" block on every turn.
+- A small "knowledge active" pill appears under the chat input whenever the field is non-empty so users remember it's in effect.
 
 ## Phase 5 — Visual element edit (the magic moment)
 
