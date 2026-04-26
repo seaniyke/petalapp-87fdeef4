@@ -270,6 +270,19 @@ export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey }:
           )}
         </div>
       </SheetContent>
+      <RevertPreviewDialog
+        open={previewVersion !== null}
+        onOpenChange={(o) => {
+          if (!o) setPreviewVersion(null);
+        }}
+        title={`Restore "${previewVersion?.label ?? (previewVersion ? timeAgo(previewVersion.created_at) : "")}"`}
+        description="Review which files will change. Your current state is saved as an automatic snapshot first, so nothing is lost — you can always restore back."
+        currentFiles={currentFiles}
+        targetFiles={previewVersion?.files ?? []}
+        busy={busyId === previewVersion?.id}
+        onConfirm={confirmRestore}
+        confirmLabel="Restore this version"
+      />
     </Sheet>
   );
 }
