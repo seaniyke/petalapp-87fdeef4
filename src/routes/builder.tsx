@@ -1048,6 +1048,23 @@ function Builder() {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
               </div>
             )}
+            {/* Live, token-by-token reply while Petal works. Promoted to a real
+                message in `messages` once the run completes. */}
+            {busy && streamingAssistant && (
+              <div className="mr-6 rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm leading-relaxed">
+                <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span>petal</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-primary">
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" /> writing
+                  </span>
+                </div>
+                <Suspense
+                  fallback={<div className="whitespace-pre-wrap">{streamingAssistant}</div>}
+                >
+                  <MarkdownMessage content={streamingAssistant} />
+                </Suspense>
+              </div>
+            )}
             {activityVisible && (
               <BuildActivityCard
                 phases={phases}
@@ -1057,6 +1074,8 @@ function Builder() {
                 designCaption={designCaption}
                 latestPath={latestPath}
                 filesWritten={filesWritten}
+                writtenPaths={writtenPaths}
+                finalFileLines={finalFileLines}
                 onStop={busy ? stopGeneration : undefined}
                 onRetry={lastUserPrompt ? retry : undefined}
                 onAskFix={askPetalToFix}
