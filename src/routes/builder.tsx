@@ -504,8 +504,22 @@ function Builder() {
               </button>
             </div>
             {error && (
-              <div className="mt-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                {error}
+              <div className="mt-2 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <div className="flex-1">
+                  <div className="font-medium">Generation failed</div>
+                  <div className="mt-0.5 break-words opacity-90">{error}</div>
+                </div>
+                {lastUserPrompt && (
+                  <button
+                    type="button"
+                    onClick={() => retry()}
+                    disabled={busy}
+                    className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md bg-destructive px-2 text-[11px] font-medium text-destructive-foreground transition hover:brightness-110 disabled:opacity-50"
+                  >
+                    <RefreshCcw className="h-3 w-3" /> Retry
+                  </button>
+                )}
               </div>
             )}
           </form>
