@@ -13,13 +13,26 @@ import {
   FolderOpen,
   Command as CommandIcon,
   RefreshCcw,
-  AlertCircle,
   MoreHorizontal,
-  Square,
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useBuildActivity } from "@/hooks/use-build-activity";
+import {
+  type Phase,
+  type PhaseId,
+  advanceTo,
+  completeThrough,
+  defaultPhases,
+  markFailed,
+} from "@/lib/build-phases";
+import {
+  friendlyBuildFailure,
+  toFriendlyError,
+  type FriendlyError,
+} from "@/lib/friendly-errors";
+import { BuildActivityCard } from "@/components/BuildActivityCard";
 
 import { supabase } from "@/integrations/supabase/client";
 import {
