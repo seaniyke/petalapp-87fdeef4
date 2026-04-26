@@ -158,6 +158,8 @@ function Builder() {
   const [revertingIndex, setRevertingIndex] = useState<number | null>(null);
   // Mobile-only: which panel is visible. On desktop both render side-by-side.
   const [mobileTab, setMobileTab] = useState<"chat" | "preview">("chat");
+  // Project Knowledge sheet — also opens from the mobile overflow menu.
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
   const isMobile = useIsMobile();
   const initialSent = useRef(false);
