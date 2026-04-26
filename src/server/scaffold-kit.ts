@@ -55,26 +55,102 @@ const TSCONFIG = `{
 
 const STYLES_CSS = `@import "tailwindcss";
 
+/* Enable class-based dark mode (\`<html class="dark">\`).
+   Tailwind v4 also auto-respects the system preference via the dark variant. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --color-background: oklch(0.99 0.005 90);
-  --color-foreground: oklch(0.18 0.02 280);
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.18 0.02 280);
-  --color-primary: oklch(0.55 0.18 280);
-  --color-primary-foreground: oklch(0.99 0.005 90);
-  --color-secondary: oklch(0.96 0.01 280);
-  --color-secondary-foreground: oklch(0.22 0.03 280);
-  --color-muted: oklch(0.96 0.01 280);
-  --color-muted-foreground: oklch(0.5 0.02 280);
-  --color-accent: oklch(0.92 0.04 320);
-  --color-accent-foreground: oklch(0.22 0.03 280);
-  --color-destructive: oklch(0.6 0.22 25);
-  --color-destructive-foreground: oklch(0.99 0.005 90);
-  --color-border: oklch(0.92 0.01 280);
-  --color-input: oklch(0.92 0.01 280);
-  --color-ring: oklch(0.55 0.18 280);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --radius: 0.625rem;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+:root {
+  --background: oklch(0.99 0.005 90);
+  --foreground: oklch(0.18 0.02 280);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 280);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 280);
+  --primary: oklch(0.55 0.18 280);
+  --primary-foreground: oklch(0.99 0.005 90);
+  --secondary: oklch(0.96 0.01 280);
+  --secondary-foreground: oklch(0.22 0.03 280);
+  --muted: oklch(0.96 0.01 280);
+  --muted-foreground: oklch(0.5 0.02 280);
+  --accent: oklch(0.92 0.04 320);
+  --accent-foreground: oklch(0.22 0.03 280);
+  --destructive: oklch(0.6 0.22 25);
+  --destructive-foreground: oklch(0.99 0.005 90);
+  --border: oklch(0.92 0.01 280);
+  --input: oklch(0.92 0.01 280);
+  --ring: oklch(0.55 0.18 280);
+}
+
+.dark {
+  --background: oklch(0.16 0.02 280);
+  --foreground: oklch(0.96 0.01 90);
+  --card: oklch(0.20 0.02 280);
+  --card-foreground: oklch(0.96 0.01 90);
+  --popover: oklch(0.20 0.02 280);
+  --popover-foreground: oklch(0.96 0.01 90);
+  --primary: oklch(0.72 0.16 280);
+  --primary-foreground: oklch(0.16 0.02 280);
+  --secondary: oklch(0.26 0.02 280);
+  --secondary-foreground: oklch(0.96 0.01 90);
+  --muted: oklch(0.26 0.02 280);
+  --muted-foreground: oklch(0.7 0.02 280);
+  --accent: oklch(0.32 0.05 320);
+  --accent-foreground: oklch(0.96 0.01 90);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0.01 90);
+  --border: oklch(0.28 0.02 280);
+  --input: oklch(0.28 0.02 280);
+  --ring: oklch(0.72 0.16 280);
+}
+
+/* Auto-apply dark tokens when the OS prefers dark, unless the app explicitly
+   set a theme on <html> (\`.light\` or \`.dark\`). */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not(.dark) {
+    --background: oklch(0.16 0.02 280);
+    --foreground: oklch(0.96 0.01 90);
+    --card: oklch(0.20 0.02 280);
+    --card-foreground: oklch(0.96 0.01 90);
+    --popover: oklch(0.20 0.02 280);
+    --popover-foreground: oklch(0.96 0.01 90);
+    --primary: oklch(0.72 0.16 280);
+    --primary-foreground: oklch(0.16 0.02 280);
+    --secondary: oklch(0.26 0.02 280);
+    --secondary-foreground: oklch(0.96 0.01 90);
+    --muted: oklch(0.26 0.02 280);
+    --muted-foreground: oklch(0.7 0.02 280);
+    --accent: oklch(0.32 0.05 320);
+    --accent-foreground: oklch(0.96 0.01 90);
+    --destructive: oklch(0.55 0.22 25);
+    --destructive-foreground: oklch(0.98 0.01 90);
+    --border: oklch(0.28 0.02 280);
+    --input: oklch(0.28 0.02 280);
+    --ring: oklch(0.72 0.16 280);
+  }
 }
 
 html, body, #root { height: 100%; }
@@ -85,6 +161,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 `;
+
 
 const UTILS_TS = `import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -1086,6 +1163,116 @@ export { Toaster } from "sonner";
 export { toast } from "sonner";
 `;
 
+const THEME_PROVIDER = `import * as React from "react";
+
+export type Theme = "light" | "dark" | "system";
+
+type ThemeContextValue = {
+  theme: Theme;
+  resolvedTheme: "light" | "dark";
+  setTheme: (theme: Theme) => void;
+};
+
+const ThemeContext = React.createContext<ThemeContextValue | null>(null);
+
+const STORAGE_KEY = "ui-theme";
+
+function getSystemTheme(): "light" | "dark" {
+  if (typeof window === "undefined") return "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyTheme(theme: Theme): "light" | "dark" {
+  const resolved = theme === "system" ? getSystemTheme() : theme;
+  const root = document.documentElement;
+  root.classList.remove("light", "dark");
+  // Only add an explicit class when the user picked one. For "system" we let
+  // the CSS \`prefers-color-scheme\` media query handle it (no class).
+  if (theme !== "system") root.classList.add(resolved);
+  return resolved;
+}
+
+export function ThemeProvider({
+  children,
+  defaultTheme = "system",
+}: {
+  children: React.ReactNode;
+  defaultTheme?: Theme;
+}) {
+  const [theme, setThemeState] = React.useState<Theme>(() => {
+    if (typeof window === "undefined") return defaultTheme;
+    return (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? defaultTheme;
+  });
+  const [resolvedTheme, setResolvedTheme] = React.useState<"light" | "dark">("light");
+
+  React.useEffect(() => {
+    setResolvedTheme(applyTheme(theme));
+  }, [theme]);
+
+  React.useEffect(() => {
+    if (theme !== "system") return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setResolvedTheme(applyTheme("system"));
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, [theme]);
+
+  const setTheme = React.useCallback((next: Theme) => {
+    localStorage.setItem(STORAGE_KEY, next);
+    setThemeState(next);
+  }, []);
+
+  const value = React.useMemo(
+    () => ({ theme, resolvedTheme, setTheme }),
+    [theme, resolvedTheme, setTheme],
+  );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
+export function useTheme(): ThemeContextValue {
+  const ctx = React.useContext(ThemeContext);
+  if (!ctx) throw new Error("useTheme must be used within <ThemeProvider>");
+  return ctx;
+}
+`;
+
+const THEME_TOGGLE = `import { Moon, Sun, Monitor } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useTheme } from "@/components/ui/theme-provider";
+
+export function ThemeToggle() {
+  const { setTheme } = useTheme();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Toggle theme">
+          <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={() => setTheme("light")}>
+          <Sun className="mr-2 h-4 w-4" /> Light
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setTheme("dark")}>
+          <Moon className="mr-2 h-4 w-4" /> Dark
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setTheme("system")}>
+          <Monitor className="mr-2 h-4 w-4" /> System
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+`;
+
 
 /**
  * Files that are ALWAYS injected/overwritten on initial scaffold. The AI is
@@ -1123,6 +1310,8 @@ const KIT: KitFile[] = [
   { path: "src/components/ui/table.tsx", content: TABLE, overwrite: true },
   { path: "src/components/ui/sheet.tsx", content: SHEET, overwrite: true },
   { path: "src/components/ui/toast.tsx", content: TOAST, overwrite: true },
+  { path: "src/components/ui/theme-provider.tsx", content: THEME_PROVIDER, overwrite: true },
+  { path: "src/components/ui/theme-toggle.tsx", content: THEME_TOGGLE, overwrite: true },
 ];
 
 /**
