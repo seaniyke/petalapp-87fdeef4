@@ -127,6 +127,19 @@ function Builder() {
   const [designCaption, setDesignCaption] = useState<string>("");
   const [filesWritten, setFilesWritten] = useState<number>(0);
   const [latestPath, setLatestPath] = useState<string | undefined>(undefined);
+  // Ordered, deduped list of every path Petal streams during the writing phase.
+  // Drives the per-file progress list in BuildActivityCard.
+  const [writtenPaths, setWrittenPaths] = useState<string[]>([]);
+  // Final per-file line counts, populated after a successful run.
+  const [finalFileLines, setFinalFileLines] = useState<Record<string, number>>({});
+  // Live, token-by-token assistant reply rendered in the chat thread while busy.
+  // This mirrors what Lovable/Bolt/v0 do — the user sees Petal "talking" in real
+  // time, not just a structured timeline. Cleared when the run completes.
+  const [streamingAssistant, setStreamingAssistant] = useState<string>("");
+  // Preview device frame: phone | tablet | desktop. Affects only the wrapper
+  // around WebContainerPreview / MobilePreviewFallback — they get the iframe
+  // sized to a realistic device width so users can spot responsive issues.
+  const [previewDevice, setPreviewDevice] = useState<"phone" | "tablet" | "desktop">("desktop");
   const [activityVisible, setActivityVisible] = useState(false);
   const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
