@@ -47,7 +47,7 @@ import {
   verifyDomain,
   setPrimaryDomain,
   removeDomain,
-  PETAL_DOMAIN_A_RECORD,
+  PETAL_DOMAIN_CNAME_TARGET,
   type ProjectDomain,
 } from "@/lib/domains";
 import { supabase } from "@/integrations/supabase/client";
