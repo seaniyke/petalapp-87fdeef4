@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Sparkles, Loader2, Mail, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,18 +39,19 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const { mode: initialMode, redirect } = Route.useSearch();
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Already logged in → bounce to projects (or wherever they came from)
+  // Already logged in → bounce to projects (or wherever they came from).
+  // Use browser navigation here so internal redirect paths with their own query
+  // strings (e.g. /builder?prompt=...) are not re-serialized as a route path.
   useEffect(() => {
     if (!loading && user) {
-      navigate({ to: redirect ?? "/projects" });
+      window.location.assign(redirect ?? "/projects");
     }
-  }, [loading, user, redirect, navigate]);
+  }, [loading, user, redirect]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
