@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Terminal, RotateCw, AlertCircle } from "lucide-react";
+import { Loader2, Terminal, RotateCw, AlertCircle, Smartphone } from "lucide-react";
 import type { ProjectFile } from "@/server/generate.server";
 import {
   getContainer,
@@ -11,7 +11,35 @@ import {
   subscribeServer,
 } from "@/lib/webcontainer";
 
-type Phase = "idle" | "booting" | "installing" | "starting" | "ready" | "error";
+type Phase = "idle" | "booting" | "installing" | "starting" | "ready" | "error" | "unsupported";
+
+/** WebContainers require SharedArrayBuffer + a Chromium/Firefox-class engine.
+ * iOS Safari (and all iOS browsers, which are forced to use WebKit) cannot run
+ * them. We detect this up-front so users see a clear message instead of a
+ * spinner that will never resolve. */
+function detectUnsupportedBrowser(): string | null {
+  if (typeof navigator === "undefined") return null;
+  const ua = navigator.userAgent;
+  // iOS / iPadOS — all browsers there are WebKit, none support WebContainers.
+  const isIOS =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === "MacIntel" && (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints! > 1);
+  if (isIOS) {
+    return "Live preview isn't supported on iOS — open this project on desktop Chrome, Edge, or Firefox to run it.";
+  }
+  // Android Chrome works, but other mobile WebKit-based browsers don't.
+  const isAndroid = /Android/.test(ua);
+  const isChromium = /Chrome|Chromium|Edg/.test(ua) && !/OPR\//.test(ua);
+  if (isAndroid && !isChromium) {
+    return "Live preview needs Chrome on Android. Try opening this project on desktop for the best experience.";
+  }
+  if (typeof SharedArrayBuffer === "undefined") {
+    return "Your browser doesn't support SharedArrayBuffer, which is required to run the preview. Try desktop Chrome, Edge, or Firefox.";
+  }
+  return null;
+}
+
+const INSTALL_TIMEOUT_MS = 3 * 60 * 1000;
 
 export function WebContainerPreview({
   files,
@@ -30,6 +58,7 @@ export function WebContainerPreview({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const bootedRef = useRef(false);
   const mountedFilesSig = useRef<string>("");
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Subscribe to logs + server URL once.
   useEffect(() => {
@@ -65,6 +94,12 @@ export function WebContainerPreview({
       try {
         if (isFirstBoot) {
           bootedRef.current = true;
+          const unsupported = detectUnsupportedBrowser();
+          if (unsupported) {
+            setError(unsupported);
+            setPhase("unsupported");
+            return;
+          }
           if (!isCrossOriginIsolated()) {
             setError(
               "This page isn't cross-origin isolated. WebContainer needs SharedArrayBuffer — refresh the page."
@@ -75,10 +110,22 @@ export function WebContainerPreview({
           setPhase("booting");
           await getContainer();
           setPhase("installing");
+          // Auto-show logs so users can see install progress instead of a silent spinner.
+          setShowLogs(true);
           await mountProject(files);
+          // Hard cap install + dev start at 3 minutes — surfaces an error instead of spinning forever.
+          timeoutRef.current = setTimeout(() => {
+            if (cancelled) return;
+            setError(
+              "Setup is taking longer than 3 minutes. Check the logs below, or try reloading."
+            );
+            setPhase("error");
+            setShowLogs(true);
+          }, INSTALL_TIMEOUT_MS);
           const code = await installDeps();
           if (cancelled) return;
           if (code !== 0) {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
             setError(`npm install failed (exit ${code}). See logs.`);
             setPhase("error");
             setShowLogs(true);
@@ -86,6 +133,7 @@ export function WebContainerPreview({
           }
           setPhase("starting");
           await startDevServer();
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
           setPhase("ready");
         } else {
           // Subsequent changes: just patch the filesystem, dev server hot-reloads.
@@ -93,6 +141,7 @@ export function WebContainerPreview({
         }
       } catch (e) {
         if (cancelled) return;
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
         setError(e instanceof Error ? e.message : "WebContainer failed to start.");
         setPhase("error");
         setShowLogs(true);
@@ -101,6 +150,7 @@ export function WebContainerPreview({
 
     return () => {
       cancelled = true;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [files]);
 
@@ -115,6 +165,22 @@ export function WebContainerPreview({
   useEffect(() => {
     setIframeKey((k) => k + 1);
   }, [reloadKey]);
+
+  if (phase === "unsupported") {
+    return (
+      <div className="grid h-full w-full place-items-center bg-aurora p-6">
+        <div className="max-w-sm rounded-2xl border border-border bg-card/90 p-5 text-center shadow-sm backdrop-blur">
+          <Smartphone className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+          <h3 className="mb-1 text-sm font-semibold text-foreground">Preview not available here</h3>
+          <p className="text-xs leading-relaxed text-muted-foreground">{error}</p>
+          <p className="mt-3 text-[11px] text-muted-foreground/80">
+            You can keep editing — your changes are saved and will run as soon as you open this project on a supported
+            desktop browser.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex h-full w-full flex-col">
@@ -210,6 +276,8 @@ function phaseLabel(p: Phase): string {
       return "Ready";
     case "error":
       return "Failed";
+    case "unsupported":
+      return "Not supported";
     default:
       return "Preparing…";
   }
