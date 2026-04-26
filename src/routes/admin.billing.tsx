@@ -376,12 +376,14 @@ function OverridesPanel() {
     }
   }
 
-  function nameFor(kind: "plan" | "pack", code: string): string {
+  function nameFor(kind: "plan" | "pack" | "addon", code: string): string {
     if (kind === "plan") return plans.find((p) => p.code === code)?.name ?? code;
-    return packs.find((p) => p.code === code)?.name ?? code;
+    if (kind === "pack") return packs.find((p) => p.code === code)?.name ?? code;
+    return code;
   }
 
-  function usdPriceFor(kind: "plan" | "pack", code: string): string {
+  function usdPriceFor(kind: "plan" | "pack" | "addon", code: string): string {
+    if (kind === "addon") return "—";
     const cents = kind === "plan"
       ? plans.find((p) => p.code === code)?.price_cents
       : packs.find((p) => p.code === code)?.price_cents;
