@@ -148,79 +148,93 @@ function Builder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapping, project, initialPrompt]);
 
-  async function send(content: string) {
-    const text = content.trim();
-    if (!text || busy || !project) return;
-    setError(null);
-    const userMsg: ChatMessage = { role: "user", content: text };
-    const nextMessages: ChatMessage[] = [...messages, userMsg];
-    setMessages(nextMessages);
-    setInput("");
-    setBusy(true);
-    setStreamStatus("Thinking…");
-    setStreamingSummary("");
+  const send = useCallback(
+    async (content: string, opts: { isRetry?: boolean } = {}) => {
+      const text = content.trim();
+      if (!text || busy || !project) return;
+      setError(null);
+      const userMsg: ChatMessage = { role: "user", content: text };
+      // On retry, the failing user message is already in `messages` — don't double-append.
+      const nextMessages: ChatMessage[] = opts.isRetry
+        ? messages
+        : [...messages, userMsg];
+      if (!opts.isRetry) setMessages(nextMessages);
+      setLastUserPrompt(text);
+      setInput("");
+      setBusy(true);
+      setStreamStatus("Thinking…");
+      setStreamingSummary("");
 
-    let resultFiles: ProjectFile[] | null = null;
-    let resultSummary = "";
-    let streamError: string | null = null;
-
-    try {
-      await streamGenerate(
-        { messages: nextMessages, currentFiles: files },
-        {
-          onStatus: (m) => setStreamStatus(m),
-          onSummaryDelta: (d) => setStreamingSummary((s) => s + d),
-          onTool: (name) =>
-            setStreamStatus(name === "patch_files" ? "Editing files…" : "Writing project…"),
-          onResult: (f, s) => {
-            resultFiles = f;
-            resultSummary = s;
-          },
-          onError: (m) => {
-            streamError = m;
-          },
-        }
-      );
-
-      if (streamError) throw new Error(streamError);
-      if (!resultFiles) throw new Error("No result returned.");
-
-      const files2: ProjectFile[] = resultFiles;
-      const summary2: string = resultSummary || "Updated the project.";
-      const assistantMsg: ChatMessage = { role: "assistant", content: summary2 };
-      setFiles(files2);
-      setActiveFile((prev) => prev ?? "index.html");
-      setMessages((prev) => [...prev, assistantMsg]);
-      setPreviewKey((k) => k + 1);
+      let resultFiles: ProjectFile[] | null = null;
+      let resultSummary = "";
+      let streamError: string | null = null;
 
       try {
-        await Promise.all([
-          saveProjectFiles(project.id, files2),
-          appendMessages(project.id, [userMsg, assistantMsg]),
-          maybeAutoTitleProject(project, summary2, text),
-          createVersion(project.id, files2, {
-            origin: "auto",
-            label: text.slice(0, 60),
-            summary: summary2,
-          }),
-        ]);
-        setHistoryKey((k) => k + 1);
-        const refreshed = await getProject(project.id);
-        if (refreshed) setProject(refreshed);
-      } catch (persistErr) {
-        console.error(persistErr);
-        toast.error("Generated, but couldn't save changes.");
+        await streamGenerate(
+          { messages: nextMessages, currentFiles: files },
+          {
+            onStatus: (m) => setStreamStatus(m),
+            onSummaryDelta: (d) => setStreamingSummary((s) => s + d),
+            onTool: (name) =>
+              setStreamStatus(name === "patch_files" ? "Editing files…" : "Writing project…"),
+            onResult: (f, s) => {
+              resultFiles = f;
+              resultSummary = s;
+            },
+            onError: (m) => {
+              streamError = m;
+            },
+          }
+        );
+
+        if (streamError) throw new Error(streamError);
+        if (!resultFiles) throw new Error("No result returned.");
+
+        const files2: ProjectFile[] = resultFiles;
+        const summary2: string = resultSummary || "Updated the project.";
+        const assistantMsg: ChatMessage = { role: "assistant", content: summary2 };
+        setFiles(files2);
+        setActiveFile((prev) => prev ?? "index.html");
+        setMessages((prev) => [...prev, assistantMsg]);
+        setPreviewKey((k) => k + 1);
+        setLastUserPrompt(null);
+
+        try {
+          const persistMsgs: ChatMessage[] = opts.isRetry
+            ? [assistantMsg]
+            : [userMsg, assistantMsg];
+          await Promise.all([
+            saveProjectFiles(project.id, files2),
+            appendMessages(project.id, persistMsgs),
+            maybeAutoTitleProject(project, summary2, text),
+            createVersion(project.id, files2, {
+              origin: "auto",
+              label: text.slice(0, 60),
+              summary: summary2,
+            }),
+          ]);
+          setHistoryKey((k) => k + 1);
+          const refreshed = await getProject(project.id);
+          if (refreshed) setProject(refreshed);
+        } catch (persistErr) {
+          console.error(persistErr);
+          toast.error("Generated, but couldn't save changes.");
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Something went wrong.";
+        setError(msg);
+      } finally {
+        setBusy(false);
+        setStreamStatus("");
+        setStreamingSummary("");
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Something went wrong.";
-      setError(msg);
-      setMessages((prev) => [...prev, { role: "assistant", content: `⚠️ ${msg}` }]);
-    } finally {
-      setBusy(false);
-      setStreamStatus("");
-      setStreamingSummary("");
-    }
-  }
+    },
+    [busy, project, messages, files]
+  );
+
+  const retry = useCallback(() => {
+    if (lastUserPrompt) void send(lastUserPrompt, { isRetry: true });
+  }, [lastUserPrompt, send]);
 
   async function downloadProject() {
     if (!files.length) return;
