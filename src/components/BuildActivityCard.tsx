@@ -24,6 +24,10 @@ type Props = {
   latestPath?: string;
   /** Number of files written so far (during the writing phase). */
   filesWritten?: number;
+  /** Ordered list of every file path written so far (deduped). */
+  writtenPaths?: string[];
+  /** After completion, final line counts keyed by path — drives the "X lines" badge. */
+  finalFileLines?: Record<string, number>;
   onStop?: () => void;
   onRetry?: () => void;
   onAskFix?: () => void;
