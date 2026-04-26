@@ -104,6 +104,10 @@ function Builder() {
   const [streamingSummary, setStreamingSummary] = useState<string>("");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
+  // Mobile-only: which panel is visible. On desktop both render side-by-side.
+  const [mobileTab, setMobileTab] = useState<"chat" | "preview">("chat");
+  const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
+  const isMobile = useIsMobile();
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
