@@ -122,6 +122,12 @@ function Builder() {
   const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
+  // Build vs Discuss mode. Discuss = chat-only, no file changes (Base44/Lovable parity).
+  const [mode, setMode] = useState<"build" | "discuss">("build");
+  // Index of the most recent assistant message that came from Discuss mode,
+  // so we can render an "Apply this plan" button under it.
+  const [lastDiscussIndex, setLastDiscussIndex] = useState<number | null>(null);
+  const [discussBusy, setDiscussBusy] = useState(false);
   // Mobile-only: which panel is visible. On desktop both render side-by-side.
   const [mobileTab, setMobileTab] = useState<"chat" | "preview">("chat");
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
