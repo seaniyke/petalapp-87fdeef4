@@ -78,6 +78,8 @@ function Builder() {
   const [historyKey, setHistoryKey] = useState(0);
   const [streamStatus, setStreamStatus] = useState<string>("");
   const [streamingSummary, setStreamingSummary] = useState<string>("");
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
