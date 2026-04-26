@@ -556,6 +556,537 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
 Select.displayName = "Select";
 `;
 
+const CHECKBOX = `import * as React from "react";
+import { Check } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {}
+
+export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
+  ({ className, checked, onChange, ...props }, ref) => (
+    <label className={cn("relative inline-flex h-4 w-4 items-center justify-center", className)}>
+      <input type="checkbox" ref={ref} checked={checked} onChange={onChange} className="peer sr-only" {...props} />
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-primary bg-background peer-checked:bg-primary peer-checked:text-primary-foreground peer-disabled:opacity-50">
+        {checked ? <Check className="h-3 w-3" /> : null}
+      </span>
+    </label>
+  )
+);
+Checkbox.displayName = "Checkbox";
+`;
+
+const RADIO_GROUP = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+type RadioContextValue = { name: string; value?: string; onValueChange?: (v: string) => void };
+const RadioContext = React.createContext<RadioContextValue | null>(null);
+
+export function RadioGroup({
+  value,
+  onValueChange,
+  name,
+  className,
+  children,
+}: {
+  value?: string;
+  onValueChange?: (v: string) => void;
+  name?: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const generatedName = React.useId();
+  return (
+    <RadioContext.Provider value={{ name: name ?? generatedName, value, onValueChange }}>
+      <div role="radiogroup" className={cn("grid gap-2", className)}>{children}</div>
+    </RadioContext.Provider>
+  );
+}
+
+export function RadioGroupItem({ value, className, ...props }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "name"> & { value: string }) {
+  const ctx = React.useContext(RadioContext);
+  if (!ctx) throw new Error("RadioGroupItem must be inside RadioGroup");
+  const checked = ctx.value === value;
+  return (
+    <label className={cn("relative inline-flex h-4 w-4 items-center justify-center", className)}>
+      <input
+        type="radio"
+        name={ctx.name}
+        value={value}
+        checked={checked}
+        onChange={() => ctx.onValueChange?.(value)}
+        className="peer sr-only"
+        {...props}
+      />
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-primary bg-background peer-disabled:opacity-50">
+        {checked ? <span className="h-2 w-2 rounded-full bg-primary" /> : null}
+      </span>
+    </label>
+  );
+}
+`;
+
+const SLIDER = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+export interface SliderProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {}
+
+export const Slider = React.forwardRef<HTMLInputElement, SliderProps>(
+  ({ className, ...props }, ref) => (
+    <input
+      type="range"
+      ref={ref}
+      className={cn(
+        "h-2 w-full cursor-pointer appearance-none rounded-full bg-secondary [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  )
+);
+Slider.displayName = "Slider";
+`;
+
+const PROGRESS = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+export interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
+  value?: number; // 0-100
+}
+
+export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
+  ({ className, value = 0, ...props }, ref) => (
+    <div
+      ref={ref}
+      role="progressbar"
+      aria-valuenow={value}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      className={cn("relative h-2 w-full overflow-hidden rounded-full bg-secondary", className)}
+      {...props}
+    >
+      <div className="h-full bg-primary transition-all" style={{ width: \`\${Math.max(0, Math.min(100, value))}%\` }} />
+    </div>
+  )
+);
+Progress.displayName = "Progress";
+`;
+
+const TOOLTIP = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+export function Tooltip({ children, content, side = "top", className }: {
+  children: React.ReactElement;
+  content: React.ReactNode;
+  side?: "top" | "bottom" | "left" | "right";
+  className?: string;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const sideClasses: Record<string, string> = {
+    top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
+    bottom: "top-full left-1/2 -translate-x-1/2 mt-2",
+    left: "right-full top-1/2 -translate-y-1/2 mr-2",
+    right: "left-full top-1/2 -translate-y-1/2 ml-2",
+  };
+  return (
+    <span className="relative inline-flex">
+      {React.cloneElement(children, {
+        onMouseEnter: () => setOpen(true),
+        onMouseLeave: () => setOpen(false),
+        onFocus: () => setOpen(true),
+        onBlur: () => setOpen(false),
+      } as React.HTMLAttributes<HTMLElement>)}
+      {open ? (
+        <span
+          role="tooltip"
+          className={cn(
+            "pointer-events-none absolute z-50 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background shadow",
+            sideClasses[side],
+            className
+          )}
+        >
+          {content}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+`;
+
+const POPOVER = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+type PopoverContextValue = { open: boolean; setOpen: (v: boolean) => void };
+const PopoverContext = React.createContext<PopoverContextValue | null>(null);
+
+export function Popover({
+  open: controlled,
+  defaultOpen = false,
+  onOpenChange,
+  children,
+}: {
+  open?: boolean;
+  defaultOpen?: boolean;
+  onOpenChange?: (v: boolean) => void;
+  children: React.ReactNode;
+}) {
+  const [internal, setInternal] = React.useState(defaultOpen);
+  const open = controlled ?? internal;
+  const setOpen = (v: boolean) => {
+    if (controlled === undefined) setInternal(v);
+    onOpenChange?.(v);
+  };
+  return <PopoverContext.Provider value={{ open, setOpen }}>{children}</PopoverContext.Provider>;
+}
+
+export function PopoverTrigger({ asChild: _asChild, children }: { asChild?: boolean; children: React.ReactElement }) {
+  const ctx = React.useContext(PopoverContext);
+  if (!ctx) throw new Error("PopoverTrigger must be inside Popover");
+  return React.cloneElement(children, { onClick: () => ctx.setOpen(!ctx.open) } as React.HTMLAttributes<HTMLElement>);
+}
+
+export function PopoverContent({ className, align = "center", children, ...props }: React.HTMLAttributes<HTMLDivElement> & { align?: "start" | "center" | "end" }) {
+  const ctx = React.useContext(PopoverContext);
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!ctx?.open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) ctx.setOpen(false);
+    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") ctx.setOpen(false); };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onEsc);
+    return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onEsc); };
+  }, [ctx]);
+  if (!ctx?.open) return null;
+  const alignClass = align === "start" ? "left-0" : align === "end" ? "right-0" : "left-1/2 -translate-x-1/2";
+  return (
+    <div className={cn("absolute z-50 mt-2", alignClass)}>
+      <div
+        ref={ref}
+        className={cn("min-w-[8rem] rounded-md border bg-popover p-4 text-popover-foreground shadow-md", className)}
+        {...props}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+`;
+
+const DROPDOWN_MENU = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+type Ctx = { open: boolean; setOpen: (v: boolean) => void };
+const DMCtx = React.createContext<Ctx | null>(null);
+
+export function DropdownMenu({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = React.useState(false);
+  return <DMCtx.Provider value={{ open, setOpen }}>{children}</DMCtx.Provider>;
+}
+
+export function DropdownMenuTrigger({ asChild: _asChild, children }: { asChild?: boolean; children: React.ReactElement }) {
+  const ctx = React.useContext(DMCtx);
+  if (!ctx) throw new Error("DropdownMenuTrigger must be inside DropdownMenu");
+  return React.cloneElement(children, { onClick: () => ctx.setOpen(!ctx.open) } as React.HTMLAttributes<HTMLElement>);
+}
+
+export function DropdownMenuContent({ className, align = "end", children, ...props }: React.HTMLAttributes<HTMLDivElement> & { align?: "start" | "end" }) {
+  const ctx = React.useContext(DMCtx);
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!ctx?.open) return;
+    const onClick = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) ctx.setOpen(false); };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") ctx.setOpen(false); };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onEsc);
+    return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onEsc); };
+  }, [ctx]);
+  if (!ctx?.open) return null;
+  const alignClass = align === "end" ? "right-0" : "left-0";
+  return (
+    <div className={cn("absolute z-50 mt-2", alignClass)}>
+      <div
+        ref={ref}
+        role="menu"
+        className={cn("min-w-[10rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md", className)}
+        {...props}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function DropdownMenuItem({ className, onSelect, children, ...props }: React.HTMLAttributes<HTMLDivElement> & { onSelect?: () => void }) {
+  const ctx = React.useContext(DMCtx);
+  return (
+    <div
+      role="menuitem"
+      tabIndex={0}
+      onClick={() => { onSelect?.(); ctx?.setOpen(false); }}
+      className={cn("relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground", className)}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function DropdownMenuLabel({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("px-2 py-1.5 text-sm font-semibold", className)} {...props} />;
+}
+
+export function DropdownMenuSeparator({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("-mx-1 my-1 h-px bg-muted", className)} {...props} />;
+}
+`;
+
+const ACCORDION = `import * as React from "react";
+import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type AccordionContextValue = {
+  type: "single" | "multiple";
+  value: string[];
+  toggle: (v: string) => void;
+};
+const AccordionContext = React.createContext<AccordionContextValue | null>(null);
+
+export function Accordion({
+  type = "single",
+  defaultValue,
+  className,
+  children,
+}: {
+  type?: "single" | "multiple";
+  defaultValue?: string | string[];
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const initial = Array.isArray(defaultValue) ? defaultValue : defaultValue ? [defaultValue] : [];
+  const [value, setValue] = React.useState<string[]>(initial);
+  const toggle = (v: string) => {
+    setValue((cur) => {
+      if (cur.includes(v)) return cur.filter((x) => x !== v);
+      return type === "single" ? [v] : [...cur, v];
+    });
+  };
+  return (
+    <AccordionContext.Provider value={{ type, value, toggle }}>
+      <div className={className}>{children}</div>
+    </AccordionContext.Provider>
+  );
+}
+
+const ItemCtx = React.createContext<string>("");
+
+export function AccordionItem({ value, className, children }: { value: string; className?: string; children: React.ReactNode }) {
+  return (
+    <ItemCtx.Provider value={value}>
+      <div className={cn("border-b", className)}>{children}</div>
+    </ItemCtx.Provider>
+  );
+}
+
+export function AccordionTrigger({ className, children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const ctx = React.useContext(AccordionContext);
+  const item = React.useContext(ItemCtx);
+  const open = !!ctx?.value.includes(item);
+  return (
+    <button
+      type="button"
+      onClick={() => ctx?.toggle(item)}
+      aria-expanded={open}
+      className={cn("flex flex-1 items-center justify-between py-4 text-sm font-medium transition-all hover:underline w-full", className)}
+      {...props}
+    >
+      {children}
+      <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", open && "rotate-180")} />
+    </button>
+  );
+}
+
+export function AccordionContent({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  const ctx = React.useContext(AccordionContext);
+  const item = React.useContext(ItemCtx);
+  const open = !!ctx?.value.includes(item);
+  if (!open) return null;
+  return (
+    <div className={cn("overflow-hidden text-sm pb-4 pt-0", className)} {...props}>
+      {children}
+    </div>
+  );
+}
+`;
+
+const SCROLL_AREA = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+export const ScrollArea = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, children, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "relative overflow-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+);
+ScrollArea.displayName = "ScrollArea";
+`;
+
+const TABLE = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+export const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
+  ({ className, ...props }, ref) => (
+    <div className="relative w-full overflow-auto">
+      <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
+    </div>
+  )
+);
+Table.displayName = "Table";
+
+export const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
+  ({ className, ...props }, ref) => <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+);
+TableHeader.displayName = "TableHeader";
+
+export const TableBody = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
+  ({ className, ...props }, ref) => <tbody ref={ref} className={cn("[&_tr:last-child]:border-0", className)} {...props} />
+);
+TableBody.displayName = "TableBody";
+
+export const TableFooter = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
+  ({ className, ...props }, ref) => <tfoot ref={ref} className={cn("border-t bg-muted/50 font-medium", className)} {...props} />
+);
+TableFooter.displayName = "TableFooter";
+
+export const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTMLTableRowElement>>(
+  ({ className, ...props }, ref) => (
+    <tr ref={ref} className={cn("border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted", className)} {...props} />
+  )
+);
+TableRow.displayName = "TableRow";
+
+export const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<HTMLTableCellElement>>(
+  ({ className, ...props }, ref) => (
+    <th ref={ref} className={cn("h-10 px-2 text-left align-middle font-medium text-muted-foreground", className)} {...props} />
+  )
+);
+TableHead.displayName = "TableHead";
+
+export const TableCell = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<HTMLTableCellElement>>(
+  ({ className, ...props }, ref) => (
+    <td ref={ref} className={cn("p-2 align-middle", className)} {...props} />
+  )
+);
+TableCell.displayName = "TableCell";
+
+export const TableCaption = React.forwardRef<HTMLTableCaptionElement, React.HTMLAttributes<HTMLTableCaptionElement>>(
+  ({ className, ...props }, ref) => (
+    <caption ref={ref} className={cn("mt-4 text-sm text-muted-foreground", className)} {...props} />
+  )
+);
+TableCaption.displayName = "TableCaption";
+`;
+
+const SHEET = `import * as React from "react";
+import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type SheetContextValue = { open: boolean; setOpen: (v: boolean) => void };
+const SheetContext = React.createContext<SheetContextValue | null>(null);
+
+export function Sheet({
+  open: controlled,
+  defaultOpen = false,
+  onOpenChange,
+  children,
+}: {
+  open?: boolean;
+  defaultOpen?: boolean;
+  onOpenChange?: (v: boolean) => void;
+  children: React.ReactNode;
+}) {
+  const [internal, setInternal] = React.useState(defaultOpen);
+  const open = controlled ?? internal;
+  const setOpen = (v: boolean) => {
+    if (controlled === undefined) setInternal(v);
+    onOpenChange?.(v);
+  };
+  return <SheetContext.Provider value={{ open, setOpen }}>{children}</SheetContext.Provider>;
+}
+
+export function SheetTrigger({ asChild: _asChild, children }: { asChild?: boolean; children: React.ReactElement }) {
+  const ctx = React.useContext(SheetContext);
+  if (!ctx) throw new Error("SheetTrigger must be inside Sheet");
+  return React.cloneElement(children, { onClick: () => ctx.setOpen(true) } as React.HTMLAttributes<HTMLElement>);
+}
+
+export function SheetContent({
+  side = "right",
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement> & { side?: "top" | "right" | "bottom" | "left" }) {
+  const ctx = React.useContext(SheetContext);
+  if (!ctx?.open) return null;
+  const sideClass: Record<string, string> = {
+    right: "inset-y-0 right-0 h-full w-3/4 max-w-sm border-l",
+    left: "inset-y-0 left-0 h-full w-3/4 max-w-sm border-r",
+    top: "inset-x-0 top-0 h-1/3 border-b",
+    bottom: "inset-x-0 bottom-0 h-1/3 border-t",
+  };
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/50" onClick={() => ctx.setOpen(false)} />
+      <div
+        className={cn("absolute bg-background p-6 shadow-lg transition-all", sideClass[side], className)}
+        {...props}
+      >
+        <button
+          type="button"
+          onClick={() => ctx.setOpen(false)}
+          className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function SheetHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("flex flex-col space-y-2 text-center sm:text-left", className)} {...props} />;
+}
+
+export function SheetTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+  return <h2 className={cn("text-lg font-semibold text-foreground", className)} {...props} />;
+}
+
+export function SheetDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
+  return <p className={cn("text-sm text-muted-foreground", className)} {...props} />;
+}
+
+export function SheetFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("mt-4 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />;
+}
+`;
+
+const TOAST = `// Re-exports sonner for a familiar shadcn-style toast API.
+// Mount <Toaster /> once at the root, then call \`toast(...)\`, \`toast.success(...)\`, etc.
+export { Toaster } from "sonner";
+export { toast } from "sonner";
+`;
+
+
 /**
  * Files that are ALWAYS injected/overwritten on initial scaffold. The AI is
  * told these exist and not to emit them; if it does, we replace them anyway
