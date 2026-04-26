@@ -14,8 +14,12 @@ import {
   Command as CommandIcon,
   RefreshCcw,
   MoreHorizontal,
+  MessageSquare,
+  Hammer,
+  Wand2,
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
+import { requestDiscussion } from "@/lib/discuss";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useBuildActivity } from "@/hooks/use-build-activity";
