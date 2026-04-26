@@ -14,6 +14,7 @@
  *   us a stable URL — preview deploys would each have their own random subdomain.
  */
 import { spawn } from "node:child_process";
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 export type BuildResult = {
