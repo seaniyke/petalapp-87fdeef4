@@ -92,7 +92,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut: async () => {
       await supabase.auth.signOut();
     },
-  };
+    signInWithOtp: async (email) => {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
+      });
+      return { error: error ? new Error(error.message) : null };
+    },
+    verifyOtp: async (email, token) => {
+      const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+      return { error: error ? new Error(error.message) : null };
+    },
+    resendSignupOtp: async (email) => {
+      const { error } = await supabase.auth.resend({ type: "signup", email });
+      return { error: error ? new Error(error.message) : null };
+    },
+    resetPasswordForEmail: async (email) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: typeof window !== "undefined" ? \`\${window.location.origin}/reset-password\` : undefined,
+      });
+      return { error: error ? new Error(error.message) : null };
+    },
+    updatePassword: async (newPassword) => {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      return { error: error ? new Error(error.message) : null };
+    },
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
