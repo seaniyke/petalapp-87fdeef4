@@ -1784,7 +1784,7 @@ export default function OnboardingSuccess({ onContinue, appName = "Acme" }: Succ
 `;
 
 const ONBOARDING_FLOW = `import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import OnboardingWelcome from "./onboarding-welcome";
 import OnboardingSignupStep from "./onboarding-signup-step";
 import OnboardingVerifyStep from "./onboarding-verify-step";
@@ -1800,13 +1800,13 @@ import { useAuth } from "@/integrations/backend/auth";
  *
  * Wired to \`useAuth()\` from \`@/integrations/backend/auth\`:
  *   - signup submit  → signUpWithPassword (sends confirmation OTP)
- *   - OTP verify     → verifyOtp
+ *   - OTP verify     → verifySignupOtp   (signup-type code, NOT generic email OTP)
  *   - resend         → resendSignupOtp
  */
 type Step = "welcome" | "signup" | "verify" | "done" | "forgot";
 
 export default function OnboardingFlow({ appName = "Acme" }: { appName?: string }) {
-  const { signUpWithPassword, verifyOtp, resendSignupOtp } = useAuth();
+  const { signUpWithPassword, verifySignupOtp, resendSignupOtp } = useAuth();
   const [step, setStep] = useState<Step>("welcome");
   const [email, setEmail] = useState("");
 
@@ -1842,7 +1842,7 @@ export default function OnboardingFlow({ appName = "Acme" }: { appName?: string 
           email={email}
           onBack={() => setStep("signup")}
           onVerify={async (code) => {
-            const { error } = await verifyOtp(email, code);
+            const { error } = await verifySignupOtp(email, code);
             if (error) {
               toast.error(error.message);
               return;
@@ -1861,8 +1861,10 @@ export default function OnboardingFlow({ appName = "Acme" }: { appName?: string 
       );
 
     case "forgot":
-      // \`AuthForgotPassword\` is a self-contained screen; users return via its own
-      // "Back to sign in" link — wire that to setStep("welcome") in your app.
+      // \`AuthForgotPassword\`'s "Back to sign in" link does a full-page nav
+      // to "/", which naturally resets this state machine to "welcome" on
+      // reload. If you add a router, wire its onClick to setStep("welcome")
+      // instead.
       return <AuthForgotPassword />;
 
     case "done":
