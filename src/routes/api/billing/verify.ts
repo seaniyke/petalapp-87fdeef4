@@ -61,6 +61,19 @@ export const Route = createFileRoute("/api/billing/verify")({
                 _reference: q.reference,
                 _environment: tx.environment,
               });
+            } else if (tx.purpose === "addon") {
+              if (!tx.project_id) {
+                throw new Error("Add-on transaction missing project_id");
+              }
+              await supabaseAdmin.rpc("apply_paystack_domain_slot", {
+                _user_id: tx.user_id,
+                _project_id: tx.project_id,
+                _addon_code: tx.item_code,
+                _reference: q.reference,
+                _amount_minor: tx.amount_minor,
+                _currency_code: tx.currency_code,
+                _environment: tx.environment,
+              });
             } else {
               await supabaseAdmin.rpc("apply_paystack_plan_grant", {
                 _user_id: tx.user_id,
