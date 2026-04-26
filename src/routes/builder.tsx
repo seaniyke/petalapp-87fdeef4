@@ -135,6 +135,15 @@ function Builder() {
   const [writtenPaths, setWrittenPaths] = useState<string[]>([]);
   // Final per-file line counts, populated after a successful run.
   const [finalFileLines, setFinalFileLines] = useState<Record<string, number>>({});
+  // Per-file change summary computed against the pre-run snapshot. Drives the
+  // "added/modified/deleted" badges and ±line deltas under the writing phase.
+  // Empty object until a run completes successfully.
+  const [fileChanges, setFileChanges] = useState<
+    Record<
+      string,
+      { kind: "added" | "modified" | "unchanged" | "deleted"; addedLines: number; removedLines: number }
+    >
+  >({});
   // Live, token-by-token assistant reply rendered in the chat thread while busy.
   // This mirrors what Lovable/Bolt/v0 do — the user sees Petal "talking" in real
   // time, not just a structured timeline. Cleared when the run completes.
