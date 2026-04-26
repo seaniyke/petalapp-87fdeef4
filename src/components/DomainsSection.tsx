@@ -215,7 +215,7 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setShowAdd(true)}
+            onClick={openAddFlow}
             className="inline-flex items-center gap-1.5"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -231,6 +231,35 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
             Publish your project first. Once it's live on the Petal subdomain,
             you can connect your own domain here.
           </p>
+        </div>
+      )}
+
+      {hasPublishedBuild && !loading && (
+        <div className="mb-3 rounded-lg border border-border bg-muted/20 p-2.5 text-[11px]">
+          {hasAvailableSlot ? (
+            <p className="text-muted-foreground">
+              <span className="font-medium text-foreground">
+                {availableSlots.length} domain slot{availableSlots.length === 1 ? "" : "s"} available
+              </span>
+              {nextExpiry && (
+                <> · expires {nextExpiry.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</>
+              )}
+            </p>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-muted-foreground">
+                Custom domains require a slot — $12 for 12 months.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowBuySlot(true)}
+                className="h-7 px-2 text-[11px]"
+              >
+                Buy slot
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -251,11 +280,11 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
           <Button
             size="sm"
             disabled={!hasPublishedBuild}
-            onClick={() => setShowAdd(true)}
+            onClick={openAddFlow}
             className="mt-3 inline-flex items-center gap-1.5"
           >
             <Plus className="h-3.5 w-3.5" />
-            Connect a domain
+            {hasAvailableSlot ? "Connect a domain" : "Buy a slot to connect a domain"}
           </Button>
         </div>
       ) : (
@@ -281,7 +310,18 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
           upsertLocal(d);
           setShowAdd(false);
           setRecordsFor(d);
+          void refreshSlots();
         }}
+        onPaymentRequired={() => {
+          setShowAdd(false);
+          setShowBuySlot(true);
+        }}
+      />
+
+      <BuyDomainSlotDialog
+        open={showBuySlot}
+        onOpenChange={setShowBuySlot}
+        projectId={projectId}
       />
 
       <DnsRecordsDialog
