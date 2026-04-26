@@ -1784,11 +1784,13 @@ export default function OnboardingSuccess({ onContinue, appName = "Acme" }: Succ
 `;
 
 const ONBOARDING_FLOW = `import { useState } from "react";
+import { toast } from "sonner";
 import OnboardingWelcome from "./onboarding-welcome";
 import OnboardingSignupStep from "./onboarding-signup-step";
 import OnboardingVerifyStep from "./onboarding-verify-step";
 import OnboardingSuccess from "./onboarding-success";
 import AuthForgotPassword from "./auth-forgot-password";
+import { useAuth } from "@/integrations/backend/auth";
 
 /**
  * Complete onboarding flow orchestrator.
@@ -1796,13 +1798,15 @@ import AuthForgotPassword from "./auth-forgot-password";
  * State machine: welcome → signup → verify → done
  * Side branch:   welcome → forgot-password → welcome
  *
- * This is a presentational reference — replace the placeholder handlers
- * (signup submit, OTP verify, resend) with calls into your real auth
- * provider (e.g. \`@/integrations/backend/auth\`).
+ * Wired to \`useAuth()\` from \`@/integrations/backend/auth\`:
+ *   - signup submit  → signUpWithPassword (sends confirmation OTP)
+ *   - OTP verify     → verifyOtp
+ *   - resend         → resendSignupOtp
  */
 type Step = "welcome" | "signup" | "verify" | "done" | "forgot";
 
 export default function OnboardingFlow({ appName = "Acme" }: { appName?: string }) {
+  const { signUpWithPassword, verifyOtp, resendSignupOtp } = useAuth();
   const [step, setStep] = useState<Step>("welcome");
   const [email, setEmail] = useState("");
 
@@ -1820,8 +1824,12 @@ export default function OnboardingFlow({ appName = "Acme" }: { appName?: string 
       return (
         <OnboardingSignupStep
           onBack={() => setStep("welcome")}
-          onSubmit={async ({ email: e }) => {
-            // TODO: call your real signup API here (sends OTP email)
+          onSubmit={async ({ email: e, password }) => {
+            const { error } = await signUpWithPassword(e, password);
+            if (error) {
+              toast.error(error.message);
+              return;
+            }
             setEmail(e);
             setStep("verify");
           }}
@@ -1833,12 +1841,21 @@ export default function OnboardingFlow({ appName = "Acme" }: { appName?: string 
         <OnboardingVerifyStep
           email={email}
           onBack={() => setStep("signup")}
-          onVerify={async () => {
-            // TODO: call your real verify API here
+          onVerify={async (code) => {
+            const { error } = await verifyOtp(email, code);
+            if (error) {
+              toast.error(error.message);
+              return;
+            }
             setStep("done");
           }}
           onResend={async () => {
-            // TODO: call your real resend API here
+            const { error } = await resendSignupOtp(email);
+            if (error) {
+              toast.error(error.message);
+              return;
+            }
+            toast.success("Code resent — check your inbox.");
           }}
         />
       );
