@@ -1294,6 +1294,23 @@ function Builder() {
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} items={paletteItems} />
         </Suspense>
       )}
+      <RevertPreviewDialog
+        open={revertPreview !== null}
+        onOpenChange={(o) => {
+          if (!o && revertingIndex === null) setRevertPreview(null);
+        }}
+        title="Revert to this message"
+        description={
+          revertPreview
+            ? `Restore the project to right after Petal's reply to "${revertPreview.label}". Any later messages and edits will be removed. Your current state is saved as a snapshot first — this is non-destructive.`
+            : ""
+        }
+        currentFiles={files}
+        targetFiles={revertPreview?.targetFiles ?? []}
+        busy={revertingIndex !== null}
+        onConfirm={commitRevertToMessage}
+        confirmLabel="Revert to here"
+      />
       {pickedElement && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4 backdrop-blur-sm"
