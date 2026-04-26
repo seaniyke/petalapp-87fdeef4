@@ -939,12 +939,12 @@ function Builder() {
                     )}
                     {canRevert && (
                       <button
-                        onClick={() => void revertToMessage(i)}
-                        disabled={revertingIndex !== null}
+                        onClick={() => void prepareRevertToMessage(i)}
+                        disabled={revertingIndex !== null || revertPreparing !== null}
                         className="absolute -top-2 right-2 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground opacity-0 shadow-sm transition group-hover:opacity-100 hover:text-foreground disabled:opacity-40"
-                        title="Revert the project to right after Petal's reply to this message"
+                        title="Preview & revert the project to right after Petal's reply to this message"
                       >
-                        {revertingIndex === i ? (
+                        {revertingIndex === i || revertPreparing === i ? (
                           <Loader2 className="h-2.5 w-2.5 animate-spin" />
                         ) : (
                           <Undo2 className="h-2.5 w-2.5" />
