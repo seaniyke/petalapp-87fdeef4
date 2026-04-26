@@ -150,7 +150,7 @@ export async function fetchPriceOverrides(): Promise<PriceOverride[]> {
  * any admin override first. Returns the amount in MINOR units (e.g. kobo).
  */
 export function convertPrice(args: {
-  itemKind: "plan" | "pack";
+  itemKind: "plan" | "pack" | "addon";
   itemCode: string;
   usdCents: number;
   currency: string;
