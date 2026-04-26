@@ -126,6 +126,12 @@ function Builder() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
 
+  // Show a "new" dot on the Preview tab when files change while Chat is active.
+  useEffect(() => {
+    if (files.length === 0) return;
+    if (isMobile && mobileTab === "chat") setPreviewHasUpdate(true);
+  }, [files, isMobile, mobileTab]);
+
   // Bootstrap: load existing project, or create a new one if no id in URL.
   useEffect(() => {
     let cancelled = false;
