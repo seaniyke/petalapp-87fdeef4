@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Send,
@@ -11,6 +11,9 @@ import {
   RotateCw,
   Download,
   FolderOpen,
+  Command as CommandIcon,
+  RefreshCcw,
+  AlertCircle,
 } from "lucide-react";
 import JSZip from "jszip";
 import { streamGenerate } from "@/lib/stream";
@@ -30,6 +33,9 @@ import {
 import { createVersion } from "@/lib/versions";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
+import { MarkdownMessage } from "@/components/MarkdownMessage";
+import { CodeEditor } from "@/components/CodeEditor";
+import { CommandPalette, type PaletteItem } from "@/components/CommandPalette";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/builder")({
@@ -72,6 +78,8 @@ function Builder() {
   const [historyKey, setHistoryKey] = useState(0);
   const [streamStatus, setStreamStatus] = useState<string>("");
   const [streamingSummary, setStreamingSummary] = useState<string>("");
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -140,79 +148,93 @@ function Builder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapping, project, initialPrompt]);
 
-  async function send(content: string) {
-    const text = content.trim();
-    if (!text || busy || !project) return;
-    setError(null);
-    const userMsg: ChatMessage = { role: "user", content: text };
-    const nextMessages: ChatMessage[] = [...messages, userMsg];
-    setMessages(nextMessages);
-    setInput("");
-    setBusy(true);
-    setStreamStatus("Thinking…");
-    setStreamingSummary("");
+  const send = useCallback(
+    async (content: string, opts: { isRetry?: boolean } = {}) => {
+      const text = content.trim();
+      if (!text || busy || !project) return;
+      setError(null);
+      const userMsg: ChatMessage = { role: "user", content: text };
+      // On retry, the failing user message is already in `messages` — don't double-append.
+      const nextMessages: ChatMessage[] = opts.isRetry
+        ? messages
+        : [...messages, userMsg];
+      if (!opts.isRetry) setMessages(nextMessages);
+      setLastUserPrompt(text);
+      setInput("");
+      setBusy(true);
+      setStreamStatus("Thinking…");
+      setStreamingSummary("");
 
-    let resultFiles: ProjectFile[] | null = null;
-    let resultSummary = "";
-    let streamError: string | null = null;
-
-    try {
-      await streamGenerate(
-        { messages: nextMessages, currentFiles: files },
-        {
-          onStatus: (m) => setStreamStatus(m),
-          onSummaryDelta: (d) => setStreamingSummary((s) => s + d),
-          onTool: (name) =>
-            setStreamStatus(name === "patch_files" ? "Editing files…" : "Writing project…"),
-          onResult: (f, s) => {
-            resultFiles = f;
-            resultSummary = s;
-          },
-          onError: (m) => {
-            streamError = m;
-          },
-        }
-      );
-
-      if (streamError) throw new Error(streamError);
-      if (!resultFiles) throw new Error("No result returned.");
-
-      const files2: ProjectFile[] = resultFiles;
-      const summary2: string = resultSummary || "Updated the project.";
-      const assistantMsg: ChatMessage = { role: "assistant", content: summary2 };
-      setFiles(files2);
-      setActiveFile((prev) => prev ?? "index.html");
-      setMessages((prev) => [...prev, assistantMsg]);
-      setPreviewKey((k) => k + 1);
+      let resultFiles: ProjectFile[] | null = null;
+      let resultSummary = "";
+      let streamError: string | null = null;
 
       try {
-        await Promise.all([
-          saveProjectFiles(project.id, files2),
-          appendMessages(project.id, [userMsg, assistantMsg]),
-          maybeAutoTitleProject(project, summary2, text),
-          createVersion(project.id, files2, {
-            origin: "auto",
-            label: text.slice(0, 60),
-            summary: summary2,
-          }),
-        ]);
-        setHistoryKey((k) => k + 1);
-        const refreshed = await getProject(project.id);
-        if (refreshed) setProject(refreshed);
-      } catch (persistErr) {
-        console.error(persistErr);
-        toast.error("Generated, but couldn't save changes.");
+        await streamGenerate(
+          { messages: nextMessages, currentFiles: files },
+          {
+            onStatus: (m) => setStreamStatus(m),
+            onSummaryDelta: (d) => setStreamingSummary((s) => s + d),
+            onTool: (name) =>
+              setStreamStatus(name === "patch_files" ? "Editing files…" : "Writing project…"),
+            onResult: (f, s) => {
+              resultFiles = f;
+              resultSummary = s;
+            },
+            onError: (m) => {
+              streamError = m;
+            },
+          }
+        );
+
+        if (streamError) throw new Error(streamError);
+        if (!resultFiles) throw new Error("No result returned.");
+
+        const files2: ProjectFile[] = resultFiles;
+        const summary2: string = resultSummary || "Updated the project.";
+        const assistantMsg: ChatMessage = { role: "assistant", content: summary2 };
+        setFiles(files2);
+        setActiveFile((prev) => prev ?? "index.html");
+        setMessages((prev) => [...prev, assistantMsg]);
+        setPreviewKey((k) => k + 1);
+        setLastUserPrompt(null);
+
+        try {
+          const persistMsgs: ChatMessage[] = opts.isRetry
+            ? [assistantMsg]
+            : [userMsg, assistantMsg];
+          await Promise.all([
+            saveProjectFiles(project.id, files2),
+            appendMessages(project.id, persistMsgs),
+            maybeAutoTitleProject(project, summary2, text),
+            createVersion(project.id, files2, {
+              origin: "auto",
+              label: text.slice(0, 60),
+              summary: summary2,
+            }),
+          ]);
+          setHistoryKey((k) => k + 1);
+          const refreshed = await getProject(project.id);
+          if (refreshed) setProject(refreshed);
+        } catch (persistErr) {
+          console.error(persistErr);
+          toast.error("Generated, but couldn't save changes.");
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Something went wrong.";
+        setError(msg);
+      } finally {
+        setBusy(false);
+        setStreamStatus("");
+        setStreamingSummary("");
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Something went wrong.";
-      setError(msg);
-      setMessages((prev) => [...prev, { role: "assistant", content: `⚠️ ${msg}` }]);
-    } finally {
-      setBusy(false);
-      setStreamStatus("");
-      setStreamingSummary("");
-    }
-  }
+    },
+    [busy, project, messages, files]
+  );
+
+  const retry = useCallback(() => {
+    if (lastUserPrompt) void send(lastUserPrompt, { isRetry: true });
+  }, [lastUserPrompt, send]);
 
   async function downloadProject() {
     if (!files.length) return;
@@ -249,6 +271,67 @@ function Builder() {
   }
 
   const activeContent = files.find((f) => f.path === activeFile)?.content ?? "";
+
+  // ⌘K / Ctrl+K to open command palette.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const paletteItems: PaletteItem[] = useMemo(() => {
+    const items: PaletteItem[] = [
+      {
+        id: "view-preview",
+        label: "Show preview",
+        group: "View",
+        icon: <Eye className="h-3.5 w-3.5" />,
+        onSelect: () => setView("preview"),
+      },
+      {
+        id: "view-code",
+        label: "Show code",
+        group: "View",
+        icon: <Code2 className="h-3.5 w-3.5" />,
+        onSelect: () => setView("code"),
+      },
+      {
+        id: "reload",
+        label: "Reload preview",
+        group: "Actions",
+        icon: <RotateCw className="h-3.5 w-3.5" />,
+        onSelect: () => setPreviewKey((k) => k + 1),
+      },
+    ];
+    if (lastUserPrompt) {
+      items.push({
+        id: "regenerate",
+        label: "Regenerate last prompt",
+        hint: lastUserPrompt.slice(0, 40),
+        group: "Actions",
+        icon: <RefreshCcw className="h-3.5 w-3.5" />,
+        onSelect: () => void send(lastUserPrompt, { isRetry: true }),
+      });
+    }
+    for (const f of files) {
+      items.push({
+        id: `file-${f.path}`,
+        label: f.path,
+        group: "Files",
+        icon: <FileCode2 className="h-3.5 w-3.5" />,
+        onSelect: () => {
+          setView("code");
+          setActiveFile(f.path);
+        },
+      });
+    }
+    return items;
+  }, [files, lastUserPrompt, send]);
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
@@ -296,6 +379,14 @@ function Builder() {
               <Code2 className="h-3.5 w-3.5" /> Code
             </button>
           </div>
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="hidden h-8 items-center gap-1.5 rounded-lg border border-border px-2 text-xs text-muted-foreground transition hover:bg-muted md:inline-flex"
+            title="Command palette (⌘K)"
+          >
+            <CommandIcon className="h-3.5 w-3.5" />
+            <span className="font-mono">⌘K</span>
+          </button>
           <button
             onClick={() => setPreviewKey((k) => k + 1)}
             disabled={!files.length}
@@ -348,10 +439,14 @@ function Builder() {
                   m.role === "user" ? "ml-6 bg-card" : "mr-6 bg-butter/60"
                 }`}
               >
-                <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {m.role === "user" ? "you" : "petal"}
                 </div>
-                <div className="whitespace-pre-wrap">{m.content}</div>
+                {m.role === "assistant" ? (
+                  <MarkdownMessage content={m.content} />
+                ) : (
+                  <div className="whitespace-pre-wrap">{m.content}</div>
+                )}
               </div>
             ))}
             {busy && (
@@ -409,8 +504,22 @@ function Builder() {
               </button>
             </div>
             {error && (
-              <div className="mt-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                {error}
+              <div className="mt-2 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <div className="flex-1">
+                  <div className="font-medium">Generation failed</div>
+                  <div className="mt-0.5 break-words opacity-90">{error}</div>
+                </div>
+                {lastUserPrompt && (
+                  <button
+                    type="button"
+                    onClick={() => retry()}
+                    disabled={busy}
+                    className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md bg-destructive px-2 text-[11px] font-medium text-destructive-foreground transition hover:brightness-110 disabled:opacity-50"
+                  >
+                    <RefreshCcw className="h-3 w-3" /> Retry
+                  </button>
+                )}
               </div>
             )}
           </form>
@@ -460,35 +569,39 @@ function Builder() {
                   </button>
                 ))}
               </div>
-              <div className="min-h-0 overflow-auto bg-card">
-                <textarea
-                  value={activeContent}
-                  onChange={(e) => {
-                    if (!activeFile) return;
-                    setFiles((prev) =>
-                      prev.map((f) =>
-                        f.path === activeFile ? { ...f, content: e.target.value } : f
-                      )
-                    );
-                  }}
-                  onBlur={async () => {
-                    if (!project) return;
-                    try {
-                      await saveProjectFiles(project.id, files);
-                    } catch (e) {
-                      toast.error("Couldn't save edits");
-                      console.error(e);
-                    }
-                  }}
-                  spellCheck={false}
-                  className="h-full min-h-[400px] w-full resize-none bg-transparent p-4 font-mono text-xs leading-relaxed outline-none"
-                  placeholder="Select a file to edit."
-                />
+              <div className="min-h-0 overflow-hidden bg-card">
+                {activeFile ? (
+                  <CodeEditor
+                    path={activeFile}
+                    value={activeContent}
+                    onChange={(next) => {
+                      setFiles((prev) =>
+                        prev.map((f) =>
+                          f.path === activeFile ? { ...f, content: next } : f
+                        )
+                      );
+                    }}
+                    onBlur={async () => {
+                      if (!project) return;
+                      try {
+                        await saveProjectFiles(project.id, files);
+                      } catch (e) {
+                        toast.error("Couldn't save edits");
+                        console.error(e);
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="grid h-full place-items-center p-6 text-xs text-muted-foreground">
+                    Select a file to edit.
+                  </div>
+                )}
               </div>
             </div>
           )}
         </main>
       </div>
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} items={paletteItems} />
     </div>
   );
 }
