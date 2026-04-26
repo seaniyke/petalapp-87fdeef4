@@ -827,41 +827,63 @@ function Builder() {
                 generator".
               </div>
             )}
-            {messages.map((m, i) => (
-              <div key={i}>
-                <div
-                  className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                    m.role === "user" ? "ml-6 bg-card" : "mr-6 bg-butter/60"
-                  }`}
-                >
-                  <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    <span>{m.role === "user" ? "you" : "petal"}</span>
-                    {m.role === "assistant" && i === lastDiscussIndex && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-foreground/70">
-                        <MessageSquare className="h-2.5 w-2.5" /> discuss
-                      </span>
+            {messages.map((m, i) => {
+              const isUser = m.role === "user";
+              // Only allow revert if Petal already replied to this user
+              // message (so a snapshot exists) and we're not mid-generation.
+              const hasReply = isUser && messages[i + 1]?.role === "assistant";
+              const canRevert = hasReply && !busy && !discussBusy;
+              return (
+                <div key={i} className="group">
+                  <div
+                    className={`relative rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                      isUser ? "ml-6 bg-card" : "mr-6 bg-butter/60"
+                    }`}
+                  >
+                    <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <span>{isUser ? "you" : "petal"}</span>
+                      {m.role === "assistant" && i === lastDiscussIndex && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-foreground/70">
+                          <MessageSquare className="h-2.5 w-2.5" /> discuss
+                        </span>
+                      )}
+                    </div>
+                    {m.role === "assistant" ? (
+                      <Suspense fallback={<div className="whitespace-pre-wrap">{m.content}</div>}>
+                        <MarkdownMessage content={m.content} />
+                      </Suspense>
+                    ) : (
+                      <div className="whitespace-pre-wrap">{m.content}</div>
+                    )}
+                    {canRevert && (
+                      <button
+                        onClick={() => void revertToMessage(i)}
+                        disabled={revertingIndex !== null}
+                        className="absolute -top-2 right-2 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground opacity-0 shadow-sm transition group-hover:opacity-100 hover:text-foreground disabled:opacity-40"
+                        title="Revert the project to right after Petal's reply to this message"
+                      >
+                        {revertingIndex === i ? (
+                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                        ) : (
+                          <Undo2 className="h-2.5 w-2.5" />
+                        )}
+                        Revert to here
+                      </button>
                     )}
                   </div>
-                  {m.role === "assistant" ? (
-                    <Suspense fallback={<div className="whitespace-pre-wrap">{m.content}</div>}>
-                      <MarkdownMessage content={m.content} />
-                    </Suspense>
-                  ) : (
-                    <div className="whitespace-pre-wrap">{m.content}</div>
+                  {m.role === "assistant" && i === lastDiscussIndex && !busy && !discussBusy && (
+                    <div className="mr-6 mt-1.5 flex justify-end">
+                      <button
+                        onClick={applyDiscussedPlan}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition hover:brightness-105"
+                      >
+                        <Wand2 className="h-3 w-3" /> Apply this plan
+                      </button>
+                    </div>
                   )}
                 </div>
-                {m.role === "assistant" && i === lastDiscussIndex && !busy && !discussBusy && (
-                  <div className="mr-6 mt-1.5 flex justify-end">
-                    <button
-                      onClick={applyDiscussedPlan}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition hover:brightness-105"
-                    >
-                      <Wand2 className="h-3 w-3" /> Apply this plan
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
             {discussBusy && (
               <div className="mr-6 inline-flex items-center gap-2 rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
