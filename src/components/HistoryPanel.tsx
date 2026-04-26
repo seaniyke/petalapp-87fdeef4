@@ -17,6 +17,7 @@ import {
 } from "@/lib/versions";
 import type { ProjectFile } from "@/server/generate.server";
 import { toast } from "sonner";
+import { RevertPreviewDialog } from "@/components/RevertPreviewDialog";
 
 type Props = {
   projectId: string;
@@ -43,6 +44,7 @@ export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey }:
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [previewVersion, setPreviewVersion] = useState<VersionRow | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -77,10 +79,13 @@ export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey }:
     }
   }
 
-  async function handleRestore(v: VersionRow) {
-    if (!confirm(`Restore to "${v.label ?? timeAgo(v.created_at)}"? Your current state will be saved as a snapshot first.`)) {
-      return;
-    }
+  function requestRestore(v: VersionRow) {
+    setPreviewVersion(v);
+  }
+
+  async function confirmRestore() {
+    const v = previewVersion;
+    if (!v) return;
     setBusyId(v.id);
     try {
       // Snapshot current state before overwriting
@@ -92,6 +97,7 @@ export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey }:
       }
       await onRestore(v.files);
       toast.success("Restored");
+      setPreviewVersion(null);
       await refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't restore");
