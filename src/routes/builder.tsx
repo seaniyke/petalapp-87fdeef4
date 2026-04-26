@@ -135,6 +135,15 @@ function Builder() {
   const [writtenPaths, setWrittenPaths] = useState<string[]>([]);
   // Final per-file line counts, populated after a successful run.
   const [finalFileLines, setFinalFileLines] = useState<Record<string, number>>({});
+  // Per-file change summary computed against the pre-run snapshot. Drives the
+  // "added/modified/deleted" badges and ±line deltas under the writing phase.
+  // Empty object until a run completes successfully.
+  const [fileChanges, setFileChanges] = useState<
+    Record<
+      string,
+      { kind: "added" | "modified" | "unchanged" | "deleted"; addedLines: number; removedLines: number }
+    >
+  >({});
   // Live, token-by-token assistant reply rendered in the chat thread while busy.
   // This mirrors what Lovable/Bolt/v0 do — the user sees Petal "talking" in real
   // time, not just a structured timeline. Cleared when the run completes.
@@ -332,6 +341,7 @@ function Builder() {
       setLatestPath(undefined);
       setWrittenPaths([]);
       setFinalFileLines({});
+      setFileChanges({});
       setStreamingAssistant("");
       setActivityVisible(true);
 
@@ -414,6 +424,61 @@ function Builder() {
           }
           return map;
         });
+
+        // Diff against the pre-run snapshot. `files` (closure-captured at
+        // function entry) is the "before" state — `files2` is the "after".
+        // We surface added / modified / deleted with line +/- so users see
+        // exactly what Petal touched, not just total file sizes.
+        const beforeMap = new Map(files.map((f) => [f.path, f.content]));
+        const afterMap = new Map(files2.map((f) => [f.path, f.content]));
+        const changes: Record<
+          string,
+          { kind: "added" | "modified" | "unchanged" | "deleted"; addedLines: number; removedLines: number }
+        > = {};
+        for (const f of files2) {
+          const before = beforeMap.get(f.path);
+          const afterLines = f.content.split("\n").length;
+          if (before === undefined) {
+            changes[f.path] = { kind: "added", addedLines: afterLines, removedLines: 0 };
+          } else if (before === f.content) {
+            changes[f.path] = { kind: "unchanged", addedLines: 0, removedLines: 0 };
+          } else {
+            const beforeLines = before.split("\n").length;
+            // We deliberately don't ship a real LCS diff — the bundle cost
+            // isn't worth it for an inline activity badge. Instead we report
+            // the line-count delta. A modified file with the same line count
+            // shows "~ modified" with no number, which is more honest than
+            // a fake +N/-N from a heuristic.
+            const delta = afterLines - beforeLines;
+            changes[f.path] = {
+              kind: "modified",
+              addedLines: Math.max(delta, 0),
+              removedLines: Math.max(-delta, 0),
+            };
+          }
+        }
+        // Surface deletions too: anything that was in `before` but not in `after`.
+        const deletedPaths: string[] = [];
+        for (const f of files) {
+          if (!afterMap.has(f.path)) {
+            const removedLines = f.content.split("\n").length;
+            changes[f.path] = { kind: "deleted", addedLines: 0, removedLines };
+            deletedPaths.push(f.path);
+          }
+        }
+        setFileChanges(changes);
+        // Make deleted paths visible in the writing-phase file list too,
+        // otherwise the user has no way to know a file is gone.
+        if (deletedPaths.length > 0) {
+          setWrittenPaths((prev) => {
+            const set = new Set(prev);
+            const next = [...prev];
+            for (const p of deletedPaths) {
+              if (!set.has(p)) next.push(p);
+            }
+            return next;
+          });
+        }
 
         // AI work is fully done — mark polishing complete and move to deploying.
         setPhases((p) => completeThrough(p, "polishing"));
@@ -1098,6 +1163,7 @@ function Builder() {
                 filesWritten={filesWritten}
                 writtenPaths={writtenPaths}
                 finalFileLines={finalFileLines}
+                fileChanges={fileChanges}
                 onStop={busy ? stopGeneration : undefined}
                 onRetry={lastUserPrompt ? retry : undefined}
                 onAskFix={askPetalToFix}
