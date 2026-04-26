@@ -138,7 +138,7 @@ export async function deleteProject(id: string) {
 
 export async function updateProject(
   id: string,
-  patch: Partial<Pick<ProjectRow, "title" | "summary" | "is_public" | "custom_instructions">>
+  patch: Partial<Pick<ProjectRow, "title" | "summary" | "is_public" | "custom_instructions" | "slug">>
 ): Promise<ProjectRow> {
   const { data, error } = await supabase
     .from("projects")
@@ -237,10 +237,25 @@ export function truncateSummary(s: string, max = 200): string {
   return (lastSpace > max * 0.6 ? slice.slice(0, lastSpace) : slice).trimEnd() + "…";
 }
 
+/** Build a URL-safe slug from arbitrary text, with a short id suffix for uniqueness. */
+export function slugifyForProject(text: string, projectId: string): string {
+  const base = text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "project";
+  const suffix = projectId.replace(/-/g, "").slice(0, 6);
+  return `${base}-${suffix}`;
+}
+
 /** Update the project title from a generated summary if still default. */
 export async function maybeAutoTitleProject(project: ProjectRow, summary: string, firstUserPrompt: string) {
   if (project.title !== "Untitled project") return;
   const candidate = firstUserPrompt.replace(/\s+/g, " ").trim().slice(0, 60);
   if (!candidate) return;
-  await updateProject(project.id, { title: candidate, summary: truncateSummary(summary) });
+  await updateProject(project.id, {
+    title: candidate,
+    summary: truncateSummary(summary),
+    slug: slugifyForProject(candidate, project.id),
+  });
 }

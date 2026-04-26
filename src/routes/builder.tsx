@@ -240,15 +240,11 @@ function Builder() {
           setMessages(ms);
           setActiveFile(fs.find((f) => f.path === "index.html")?.path ?? fs[0]?.path ?? null);
         } else {
-          // Fresh project: create row, then update URL
-          const p = await createProject();
+          // No project id in the URL: don't create a row yet. We'll create one
+          // lazily on the first send/discuss so empty "Untitled project" rows
+          // never get persisted (and the slug reflects the real first prompt).
           if (cancelled) return;
-          setProject(p);
-          navigate({
-            to: "/builder",
-            search: { id: p.id, prompt: initialPrompt },
-            replace: true,
-          });
+          setProject(null);
         }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Could not open project");
@@ -263,10 +259,11 @@ function Builder() {
   }, [searchId]);
 
   // Auto-send the prompt from the landing page once, after bootstrap.
+  // Note: project may be null here when arriving with ?prompt but no ?id —
+  // send() will lazily create the project on first use.
   useEffect(() => {
     if (
       !bootstrapping &&
-      project &&
       initialPrompt &&
       !initialSent.current &&
       messages.length === 0
@@ -275,12 +272,33 @@ function Builder() {
       void send(initialPrompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bootstrapping, project, initialPrompt]);
+  }, [bootstrapping, initialPrompt]);
+
+  // Lazily create the underlying project row on first use, so /builder visits
+  // that never send a message don't leave behind empty "Untitled project" rows.
+  const ensureProject = useCallback(async (): Promise<ProjectRow | null> => {
+    if (project) return project;
+    try {
+      const p = await createProject();
+      setProject(p);
+      navigate({
+        to: "/builder",
+        search: { id: p.id, prompt: initialPrompt },
+        replace: true,
+      });
+      return p;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not start project");
+      return null;
+    }
+  }, [project, navigate, initialPrompt]);
 
   const send = useCallback(
     async (content: string, opts: { isRetry?: boolean } = {}) => {
       const text = content.trim();
-      if (!text || busy || !project) return;
+      if (!text || busy) return;
+      const proj = await ensureProject();
+      if (!proj) return;
       setError(null);
       setFriendlyError(null);
       const userMsg: ChatMessage = { role: "user", content: text };
@@ -313,8 +331,8 @@ function Builder() {
             messages: nextMessages,
             currentFiles: files,
             model: "smart",
-            customInstructions: project.custom_instructions ?? undefined,
-            projectId: project.id,
+            customInstructions: proj.custom_instructions ?? undefined,
+            projectId: proj.id,
           },
           {
             onPhase: (phase: PhaseId) => {
@@ -358,24 +376,24 @@ function Builder() {
             ? [assistantMsg]
             : [userMsg, assistantMsg];
           await Promise.all([
-            saveProjectFiles(project.id, files2),
-            appendMessages(project.id, persistMsgs),
-            maybeAutoTitleProject(project, summary2, text),
-            createVersion(project.id, files2, {
+            saveProjectFiles(proj.id, files2),
+            appendMessages(proj.id, persistMsgs),
+            maybeAutoTitleProject(proj, summary2, text),
+            createVersion(proj.id, files2, {
               origin: "auto",
               label: text.slice(0, 60),
               summary: summary2,
             }),
           ]);
           setHistoryKey((k) => k + 1);
-          const refreshed = await getProject(project.id);
+          const refreshed = await getProject(proj.id);
           if (refreshed) setProject(refreshed);
 
           // Kick off a Cloudflare Pages build. Fire-and-forget — the activity
           // card subscribes to project_builds via useBuildActivity().
-          void triggerBuild(project.id)
+          void triggerBuild(proj.id)
             .then(async () => {
-              const r = await getProject(project.id);
+              const r = await getProject(proj.id);
               if (r) setProject(r);
             })
             .catch((err: unknown) => {
@@ -397,7 +415,7 @@ function Builder() {
         setBusy(false);
       }
     },
-    [busy, project, messages, files],
+    [busy, messages, files, ensureProject],
   );
 
   // Discuss mode: ask Petal a question without touching files. The reply is
@@ -406,7 +424,9 @@ function Builder() {
   const discuss = useCallback(
     async (content: string) => {
       const text = content.trim();
-      if (!text || busy || discussBusy || !project) return;
+      if (!text || busy || discussBusy) return;
+      const proj = await ensureProject();
+      if (!proj) return;
       setError(null);
       setFriendlyError(null);
       const userMsg: ChatMessage = { role: "user", content: text };
@@ -419,7 +439,7 @@ function Builder() {
         const reply = await requestDiscussion({
           messages: nextMessages,
           currentFiles: files,
-          customInstructions: project.custom_instructions ?? undefined,
+          customInstructions: proj.custom_instructions ?? undefined,
         });
         const assistantMsg: ChatMessage = { role: "assistant", content: reply };
         setMessages((prev) => {
@@ -430,7 +450,7 @@ function Builder() {
         // Persist the conversation so it survives reloads — but don't write
         // any project files (that's the whole point of Discuss).
         try {
-          await appendMessages(project.id, [userMsg, assistantMsg]);
+          await appendMessages(proj.id, [userMsg, assistantMsg]);
         } catch (persistErr) {
           console.error(persistErr);
         }
@@ -443,7 +463,7 @@ function Builder() {
         setDiscussBusy(false);
       }
     },
-    [busy, discussBusy, project, messages, files],
+    [busy, discussBusy, project, messages, files, ensureProject],
   );
 
   // Apply the most recent Discuss reply by switching to Build mode and asking
