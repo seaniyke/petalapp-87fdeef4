@@ -24,6 +24,8 @@ import {
   Crown,
   BookOpen,
   ChevronDown,
+  ChevronUp,
+  GripVertical,
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
 import { requestDiscussion } from "@/lib/discuss";
