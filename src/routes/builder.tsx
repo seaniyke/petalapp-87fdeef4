@@ -313,6 +313,10 @@ function Builder() {
   // Lazily create the underlying project row on first use, so /builder visits
   // that never send a message don't leave behind empty "Untitled project" rows.
   const ensureProject = useCallback(async (): Promise<ProjectRow | null> => {
+    if (!isReady || !user) {
+      navigate({ to: "/auth", search: { mode: "signin", redirect: window.location.pathname + window.location.search } });
+      return null;
+    }
     if (project) return project;
     try {
       const p = await createProject();
@@ -327,7 +331,7 @@ function Builder() {
       toast.error(e instanceof Error ? e.message : "Could not start project");
       return null;
     }
-  }, [project, navigate, initialPrompt]);
+  }, [isReady, user, project, navigate, initialPrompt]);
 
   const send = useCallback(
     async (content: string, opts: { isRetry?: boolean } = {}) => {
