@@ -15,6 +15,7 @@
  * Files marked `overwrite: false` only fill in if the AI didn't produce them.
  */
 import type { ProjectFile } from "./generate.server";
+import { backendKit, BACKEND_DEPS } from "./backend-kit";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
@@ -2459,9 +2460,6 @@ export function applyScaffoldKit(
   // own them.
   let extraDeps: Record<string, string> = {};
   if (opts?.backend) {
-    // Lazy require to avoid pulling backend-kit into bundles that don't need it.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { backendKit, BACKEND_DEPS } = require("./backend-kit") as typeof import("./backend-kit");
     for (const f of backendKit(opts.backend)) {
       map.set(f.path, f.content);
     }
