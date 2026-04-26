@@ -189,11 +189,21 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
     try {
       await removeDomain(projectId, d.id);
       setDomains((prev) => prev.filter((x) => x.id !== d.id));
-      toast.success("Domain removed");
+      // FK is ON DELETE SET NULL, so the slot is freed server-side; refresh.
+      void refreshSlots();
+      toast.success("Domain removed — slot freed for another domain");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't remove");
     }
   }
+
+  // Soonest-expiring available slot, for the summary line.
+  const nextExpiry = useMemo(() => {
+    if (availableSlots.length === 0) return null;
+    return availableSlots
+      .map((s) => new Date(s.expires_at))
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+  }, [availableSlots]);
 
   return (
     <div className="mt-6">
