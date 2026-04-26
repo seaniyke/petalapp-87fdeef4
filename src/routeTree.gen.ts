@@ -15,6 +15,7 @@ import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
+import { Route as CheckoutReturnRouteImport } from './routes/checkout.return'
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 import { Route as ApiDomainsRouteImport } from './routes/api/domains'
 import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
@@ -55,6 +56,11 @@ const IndexRoute = IndexRouteImport.update({
 const PSlugRoute = PSlugRouteImport.update({
   id: '/p/$slug',
   path: '/p/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutReturnRoute = CheckoutReturnRouteImport.update({
+  id: '/checkout/return',
+  path: '/checkout/return',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGenerateRoute = ApiGenerateRouteImport.update({
@@ -125,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/checkout/return': typeof CheckoutReturnRoute
   '/p/$slug': typeof PSlugRoute
   '/api/billing/create-checkout': typeof ApiBillingCreateCheckoutRoute
   '/api/billing/create-portal-session': typeof ApiBillingCreatePortalSessionRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/checkout/return': typeof CheckoutReturnRoute
   '/p/$slug': typeof PSlugRoute
   '/api/billing/create-checkout': typeof ApiBillingCreateCheckoutRoute
   '/api/billing/create-portal-session': typeof ApiBillingCreatePortalSessionRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/checkout/return': typeof CheckoutReturnRoute
   '/p/$slug': typeof PSlugRoute
   '/api/billing/create-checkout': typeof ApiBillingCreateCheckoutRoute
   '/api/billing/create-portal-session': typeof ApiBillingCreatePortalSessionRoute
@@ -185,6 +194,7 @@ export interface FileRouteTypes {
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
+    | '/checkout/return'
     | '/p/$slug'
     | '/api/billing/create-checkout'
     | '/api/billing/create-portal-session'
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
+    | '/checkout/return'
     | '/p/$slug'
     | '/api/billing/create-checkout'
     | '/api/billing/create-portal-session'
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
+    | '/checkout/return'
     | '/p/$slug'
     | '/api/billing/create-checkout'
     | '/api/billing/create-portal-session'
@@ -243,6 +255,7 @@ export interface RootRouteChildren {
   ApiDiscussRoute: typeof ApiDiscussRoute
   ApiDomainsRoute: typeof ApiDomainsRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
+  CheckoutReturnRoute: typeof CheckoutReturnRoute
   PSlugRoute: typeof PSlugRoute
   ApiBillingCreateCheckoutRoute: typeof ApiBillingCreateCheckoutRoute
   ApiBillingCreatePortalSessionRoute: typeof ApiBillingCreatePortalSessionRoute
@@ -295,6 +308,13 @@ declare module '@tanstack/react-router' {
       path: '/p/$slug'
       fullPath: '/p/$slug'
       preLoaderRoute: typeof PSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout/return': {
+      id: '/checkout/return'
+      path: '/checkout/return'
+      fullPath: '/checkout/return'
+      preLoaderRoute: typeof CheckoutReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/generate': {
@@ -387,6 +407,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDiscussRoute: ApiDiscussRoute,
   ApiDomainsRoute: ApiDomainsRoute,
   ApiGenerateRoute: ApiGenerateRoute,
+  CheckoutReturnRoute: CheckoutReturnRoute,
   PSlugRoute: PSlugRoute,
   ApiBillingCreateCheckoutRoute: ApiBillingCreateCheckoutRoute,
   ApiBillingCreatePortalSessionRoute: ApiBillingCreatePortalSessionRoute,
@@ -399,3 +420,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
