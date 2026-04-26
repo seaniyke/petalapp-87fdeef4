@@ -2603,6 +2603,487 @@ export default function SortableTable<T extends { id: string | number }>({
 `;
 
 /* =================================================================
+ * VARIANTS — forms & tables (3)
+ * ================================================================= */
+
+const TABLE_INLINE_EDIT = `import { useState } from "react";
+import { Check, Pencil, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+/**
+ * InlineEditTable — click the pencil to edit a row in place.
+ * Each row toggles between read and edit mode; Save/Cancel commit or revert.
+ * Pure presentational reference: swap \`useState\` for your data layer.
+ */
+type Row = { id: string; name: string; email: string; role: string };
+
+const SEED: Row[] = [
+  { id: "1", name: "Ava Stone", email: "ava@acme.dev", role: "Admin" },
+  { id: "2", name: "Ben Liu", email: "ben@acme.dev", role: "Editor" },
+  { id: "3", name: "Cara Vex", email: "cara@acme.dev", role: "Viewer" },
+];
+
+export default function InlineEditTable() {
+  const [rows, setRows] = useState<Row[]>(SEED);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Row | null>(null);
+
+  const startEdit = (row: Row) => {
+    setEditingId(row.id);
+    setDraft({ ...row });
+  };
+  const cancel = () => {
+    setEditingId(null);
+    setDraft(null);
+  };
+  const save = () => {
+    if (!draft) return;
+    setRows((rs) => rs.map((r) => (r.id === draft.id ? draft : r)));
+    cancel();
+  };
+
+  return (
+    <div className="rounded-lg border border-border bg-card">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead className="w-24 text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => {
+            const isEditing = editingId === row.id && draft;
+            return (
+              <TableRow key={row.id}>
+                <TableCell>
+                  {isEditing ? (
+                    <Input
+                      value={draft!.name}
+                      onChange={(e) => setDraft({ ...draft!, name: e.target.value })}
+                      className="h-8"
+                    />
+                  ) : (
+                    <span className="font-medium">{row.name}</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {isEditing ? (
+                    <Input
+                      type="email"
+                      value={draft!.email}
+                      onChange={(e) => setDraft({ ...draft!, email: e.target.value })}
+                      className="h-8"
+                    />
+                  ) : (
+                    <span className="text-muted-foreground">{row.email}</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {isEditing ? (
+                    <Input
+                      value={draft!.role}
+                      onChange={(e) => setDraft({ ...draft!, role: e.target.value })}
+                      className="h-8"
+                    />
+                  ) : (
+                    row.role
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
+                  {isEditing ? (
+                    <div className="flex justify-end gap-1">
+                      <Button size="icon" variant="ghost" onClick={save} aria-label="Save">
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={cancel} aria-label="Cancel">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button size="icon" variant="ghost" onClick={() => startEdit(row)} aria-label="Edit">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+`;
+
+const TABLE_DESTRUCTIVE_CONFIRM = `import { useState } from "react";
+import { Trash2, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+/**
+ * DestructiveConfirmTable — irreversible delete with type-to-confirm guard.
+ * Use for "delete project", "remove member", "drop database" actions.
+ * The confirm button stays disabled until the user types the exact target name.
+ */
+type Item = { id: string; name: string; owner: string };
+
+const SEED: Item[] = [
+  { id: "p1", name: "marketing-site", owner: "Ava" },
+  { id: "p2", name: "internal-tools", owner: "Ben" },
+  { id: "p3", name: "petal-prod", owner: "Cara" },
+];
+
+export default function DestructiveConfirmTable() {
+  const [items, setItems] = useState<Item[]>(SEED);
+  const [target, setTarget] = useState<Item | null>(null);
+  const [confirmText, setConfirmText] = useState("");
+
+  const open = (item: Item) => {
+    setTarget(item);
+    setConfirmText("");
+  };
+  const close = () => {
+    setTarget(null);
+    setConfirmText("");
+  };
+  const confirm = () => {
+    if (!target) return;
+    setItems((xs) => xs.filter((x) => x.id !== target.id));
+    close();
+  };
+
+  const matches = target !== null && confirmText === target.name;
+
+  return (
+    <>
+      <div className="rounded-lg border border-border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Project</TableHead>
+              <TableHead>Owner</TableHead>
+              <TableHead className="w-20 text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell className="font-medium">{item.name}</TableCell>
+                <TableCell className="text-muted-foreground">{item.owner}</TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => open(item)}
+                    aria-label={\`Delete \${item.name}\`}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <AlertDialog open={target !== null} onOpenChange={(v) => !v && close()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-destructive/10 p-2 text-destructive">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <AlertDialogTitle>Delete {target?.name}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. All data, history, and integrations
+                  for this project will be permanently removed.
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+
+          <div className="space-y-2">
+            <Label htmlFor="confirm">
+              Type <span className="font-mono font-semibold text-foreground">{target?.name}</span> to confirm
+            </Label>
+            <Input
+              id="confirm"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={target?.name ?? ""}
+              autoComplete="off"
+            />
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirm}
+              disabled={!matches}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+`;
+
+const FORM_MULTI_STEP_ERROR = `import { useState } from "react";
+import { ArrowLeft, ArrowRight, AlertCircle, Check, Loader2, RotateCcw } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+
+/**
+ * MultiStepFormErrorState — three-step wizard with submit-time failure handling.
+ * Demonstrates: per-step field errors, blocking inline alert on submit failure,
+ * retry without losing data, and a recovery path back to a previous step.
+ */
+type Step = 0 | 1 | 2;
+type Data = { name: string; email: string; company: string; team: string; plan: string };
+
+const STEPS = ["Account", "Workspace", "Plan"] as const;
+const EMPTY: Data = { name: "", email: "", company: "", team: "", plan: "" };
+
+export default function MultiStepFormErrorState() {
+  const [step, setStep] = useState<Step>(0);
+  const [data, setData] = useState<Data>(EMPTY);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof Data, string>>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<{ title: string; detail: string; recoverStep?: Step } | null>(null);
+  const [done, setDone] = useState(false);
+
+  const set = <K extends keyof Data>(k: K, v: Data[K]) => {
+    setData((d) => ({ ...d, [k]: v }));
+    if (fieldErrors[k]) setFieldErrors((e) => ({ ...e, [k]: undefined }));
+  };
+
+  const validateStep = (s: Step): boolean => {
+    const errs: Partial<Record<keyof Data, string>> = {};
+    if (s === 0) {
+      if (!data.name.trim()) errs.name = "Name is required";
+      if (!/^\\S+@\\S+\\.\\S+$/.test(data.email)) errs.email = "Enter a valid email";
+    } else if (s === 1) {
+      if (!data.company.trim()) errs.company = "Company is required";
+      if (!data.team.trim()) errs.team = "Team name is required";
+    } else if (s === 2) {
+      if (!data.plan) errs.plan = "Pick a plan to continue";
+    }
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const next = () => {
+    if (!validateStep(step)) return;
+    setStep((s) => Math.min(2, s + 1) as Step);
+  };
+  const back = () => {
+    setSubmitError(null);
+    setStep((s) => Math.max(0, s - 1) as Step);
+  };
+
+  const submit = async () => {
+    if (!validateStep(2)) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      // Simulated failure — swap for your real call.
+      await new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("EMAIL_TAKEN")), 800),
+      );
+      setDone(true);
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "UNKNOWN";
+      if (code === "EMAIL_TAKEN") {
+        setSubmitError({
+          title: "That email is already in use",
+          detail: "An account with this email already exists. Go back to step 1 to use a different one, or sign in instead.",
+          recoverStep: 0,
+        });
+      } else {
+        setSubmitError({
+          title: "We couldn't create your workspace",
+          detail: "Something went wrong on our end. Your details are safe — please try again.",
+        });
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (done) {
+    return (
+      <Card className="mx-auto max-w-lg">
+        <CardHeader className="items-center text-center">
+          <div className="mb-3 rounded-full bg-primary/10 p-3 text-primary">
+            <Check className="h-6 w-6" />
+          </div>
+          <CardTitle>Workspace ready</CardTitle>
+          <CardDescription>You're all set, {data.name.split(" ")[0] || "there"}.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="mx-auto max-w-lg">
+      <CardHeader>
+        <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+          <span>Step {step + 1} of {STEPS.length}</span>
+          <span>{STEPS[step]}</span>
+        </div>
+        <Progress value={((step + 1) / STEPS.length) * 100} className="h-1.5" />
+        <CardTitle className="mt-4">{STEPS[step]}</CardTitle>
+        <CardDescription>
+          {step === 0 && "Tell us who you are."}
+          {step === 1 && "Set up your workspace."}
+          {step === 2 && "Pick a plan to finish."}
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {submitError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>{submitError.title}</AlertTitle>
+            <AlertDescription className="space-y-3">
+              <p>{submitError.detail}</p>
+              <div className="flex gap-2">
+                {submitError.recoverStep !== undefined && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setStep(submitError.recoverStep!);
+                      setSubmitError(null);
+                    }}
+                  >
+                    <ArrowLeft className="mr-1 h-3 w-3" />
+                    Back to {STEPS[submitError.recoverStep]}
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={submit} disabled={submitting}>
+                  <RotateCcw className="mr-1 h-3 w-3" />
+                  Try again
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {step === 0 && (
+          <>
+            <Field label="Full name" id="name" error={fieldErrors.name}>
+              <Input id="name" value={data.name} onChange={(e) => set("name", e.target.value)} />
+            </Field>
+            <Field label="Work email" id="email" error={fieldErrors.email}>
+              <Input id="email" type="email" value={data.email} onChange={(e) => set("email", e.target.value)} />
+            </Field>
+          </>
+        )}
+        {step === 1 && (
+          <>
+            <Field label="Company" id="company" error={fieldErrors.company}>
+              <Input id="company" value={data.company} onChange={(e) => set("company", e.target.value)} />
+            </Field>
+            <Field label="Team name" id="team" error={fieldErrors.team}>
+              <Input id="team" value={data.team} onChange={(e) => set("team", e.target.value)} />
+            </Field>
+          </>
+        )}
+        {step === 2 && (
+          <Field label="Plan" id="plan" error={fieldErrors.plan}>
+            <div className="grid grid-cols-2 gap-2">
+              {(["Starter", "Pro"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => set("plan", p)}
+                  className={
+                    "rounded-md border p-3 text-left text-sm transition-colors " +
+                    (data.plan === p
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-accent")
+                  }
+                >
+                  <div className="font-medium">{p}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {p === "Starter" ? "Free for 14 days" : "$19/mo per seat"}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </Field>
+        )}
+      </CardContent>
+
+      <CardFooter className="justify-between">
+        <Button variant="ghost" onClick={back} disabled={step === 0 || submitting}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back
+        </Button>
+        {step < 2 ? (
+          <Button onClick={next}>
+            Continue <ArrowRight className="ml-1 h-4 w-4" />
+          </Button>
+        ) : (
+          <Button onClick={submit} disabled={submitting}>
+            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {submitting ? "Creating..." : "Finish"}
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
+  );
+}
+
+function Field({
+  label,
+  id,
+  error,
+  children,
+}: {
+  label: string;
+  id: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      {children}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+`;
+
+/* =================================================================
  * INDEX MARKDOWN
  * ================================================================= */
 
