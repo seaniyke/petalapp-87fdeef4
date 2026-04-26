@@ -211,7 +211,11 @@ export function BuildActivityCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 text-sm leading-snug text-foreground">
-            <span className="truncate font-medium">
+            {/* Phase label crossfades on change via key-based remount. */}
+            <span
+              key={`label-${currentPhase?.id ?? "init"}`}
+              className="truncate font-medium animate-fade-in motion-reduce:animate-none"
+            >
               {currentPhase?.label ?? "Working…"}
             </span>
             {elapsed > 0 && (
@@ -220,8 +224,14 @@ export function BuildActivityCard({
               </span>
             )}
           </div>
+          {/* Sub-caption fades whenever its text changes (e.g. new file path
+              while writing). Using the caption itself as the key gives a
+              fresh fade per-message without extra state. */}
           {subCaption && (
-            <div className="mt-0.5 truncate text-xs text-muted-foreground">
+            <div
+              key={`cap-${subCaption}`}
+              className="mt-0.5 truncate text-xs text-muted-foreground animate-fade-in motion-reduce:animate-none"
+            >
               {subCaption}
             </div>
           )}
