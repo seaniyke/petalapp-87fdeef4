@@ -1,142 +1,248 @@
-## Goal
+# Credit & Billing System — Full Plan
 
-Let Petal users put their published app on their own domain (e.g. `acme.com`), matching the UX every major competitor uses (Lovable, Vercel/v0, Bolt/Netlify): **Publish first → Settings → Domains → enter domain → add DNS records → verified → SSL → Live**.
+## Goals
+- Every AI message (`/api/generate`, `/api/discuss`) costs **1 credit**.
+- Every user gets **5 free credits/day, capped at 30/month** (Free plan).
+- Paid users (Pro / Business) get monthly credit grants + can buy top-up packs.
+- Stripe handles checkout, subscriptions, and top-ups. Petal handles the ledger.
+- Admins can grant/revoke credits manually.
 
-## Competitor research summary
+## Why this shape
+This mirrors **Lovable** almost verbatim (5 daily / 30 monthly free, monthly grants, top-ups in 50-credit increments). It's the proven pattern for this category and it's what your users will expect.
 
-All three flagship competitors use the exact same shape:
+---
 
-| Step | Lovable | Vercel/v0 | Bolt (Netlify) |
-|---|---|---|---|
-| Where | Project → Settings → Domains, *or* Publish modal → "Add custom domain" | Project → Settings → Domains | Publish → Custom domain |
-| Required first | Project must be **published** | Project must be deployed | Project must be published |
-| Records | `A @ → 185.158.133.1` + `A www → 185.158.133.1` + `TXT _lovable → lovable_verify=…` | `A @ → 76.76.21.21` (or CNAME) | `CNAME` to Netlify |
-| Verification | TXT record proves ownership | TXT or DNS validation | TXT/DNS |
-| SSL | Auto via Let's Encrypt | Auto | Auto |
-| Statuses shown | Pending → Verifying → Setting up → Active (or Offline/Failed) | Pending → Valid Configuration → Active | Awaiting DNS → Live |
-| Optional | "Buy domain" via registrar inside the product (Entri partner) | Vercel Domains marketplace | Netlify Domains |
-| Proxy mode | "Domain uses Cloudflare" toggle switches A→CNAME setup | Same idea | — |
+## Phase 1 — Database (foundation)
 
-**Conclusion:** we copy the Lovable shape almost verbatim. Buying domains in-product and the Entri auto-DNS partner are nice-to-haves we explicitly defer; the manual A+TXT path is what 90 % of users actually hit and it's straightforward to ship.
+A clean **wallet + ledger + plans** model. The wallet is a fast-read cache; the ledger is the source of truth.
 
-## Where Petal stands today
+### New tables
 
-- Builds already deploy to Cloudflare Pages; the deployment URL lives in `project_builds.dist_path` (e.g. `https://abc123.pages.dev`) and is referenced by `projects.latest_build_id`.
-- "Share" today (`SharePopover`) only flips `projects.is_public` and exposes `/p/<slug>` on **petal's** domain — there is no notion of a "published" public URL, and no domains UI anywhere.
-- `ProjectSettingsSheet` currently has just two sections (instructions + BYO Supabase backend), so there's a clean home for a new "Domains" section.
-- No SSL/edge plumbing for arbitrary hostnames exists yet.
-
-## Recommended approach: Cloudflare for SaaS
-
-Since builds already live on **Cloudflare Pages**, the cheapest and best-fit way to terminate `acme.com` for an arbitrary user is **Cloudflare for SaaS** (Custom Hostnames API). It gives us:
-
-- Automatic Let's Encrypt SSL per hostname
-- TXT-based ownership verification
-- A single fallback origin (our Pages project) that fans out by hostname
-- A REST API we call from a server route — no per-customer infra
-
-The UX and DNS records we expose to users are platform-agnostic, so if we ever swap providers (e.g. self-managed proxy) the user-facing flow doesn't change.
-
-## Proposed scope (Tier A — ship now)
-
-### 1. Database
-
-New migration adding a `project_domains` table:
-
+**`billing_plans`** — seeded catalog of plans (no user data)
 ```
-project_domains (
-  id uuid pk,
-  project_id uuid fk → projects (cascade delete),
-  hostname text unique citext,        -- e.g. "acme.com" or "blog.acme.com"
-  status text not null default 'pending',
-    -- pending | verifying | active | failed | offline | removed
-  is_primary boolean default false,
-  verification_txt_name text,         -- "_petal-verify"
-  verification_txt_value text,        -- random nonce
-  cf_hostname_id text,                -- Cloudflare custom-hostname id
-  ssl_status text,                    -- mirrored from CF
-  last_checked_at timestamptz,
-  error_message text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-)
+code (text, PK)         -- 'free', 'pro_100', 'pro_500', 'business_500', 'business_2000'
+name (text)
+tier (text)             -- 'free' | 'pro' | 'business'
+monthly_credits (int)   -- granted on each renewal (0 for free)
+daily_free_credits (int)-- 5 for everyone
+monthly_free_cap (int)  -- 30 for free, NULL for paid (no cap)
+stripe_price_id (text)  -- nullable for free
+price_cents (int)
+features (jsonb)        -- { custom_domain: true, hide_badge: true, ... }
+sort_order (int)
+is_active (bool)
 ```
 
-- RLS: project owner can `select/insert/delete`; `update` limited to `is_primary` (status changes done by service role only).
-- Trigger to enforce a single `is_primary=true` per project.
-- Add `projects.primary_domain_id` (nullable FK) so the runtime knows which hostname to advertise.
-- Realtime enabled on `project_domains` so the UI can react to verification flips.
+**`credit_packs`** — top-up SKUs
+```
+code (text, PK)         -- 'pack_50', 'pack_200', 'pack_1000'
+credits (int)
+price_cents (int)
+stripe_price_id (text)
+is_active (bool)
+```
 
-### 2. Server routes (TanStack Start)
+**`user_wallets`** — one row per user (fast-read snapshot)
+```
+user_id (uuid, PK, FK auth.users)
+plan_code (text, FK billing_plans, default 'free')
+balance (int)                     -- monthly + topup combined for fast reads
+monthly_credits_remaining (int)   -- resets on renewal
+topup_credits_remaining (int)     -- 12-month rolling
+daily_free_used (int)             -- resets at UTC midnight
+daily_free_reset_at (date)
+monthly_free_used (int)           -- resets at calendar month
+monthly_free_reset_at (date)
+stripe_customer_id (text)
+stripe_subscription_id (text)
+subscription_status (text)        -- 'active' | 'past_due' | 'canceled' | 'trialing' | null
+current_period_end (timestamptz)
+created_at, updated_at
+```
 
-| Route | Purpose |
-|---|---|
-| `POST /api/domains?action=add` | Body `{projectId, hostname}`. Validates hostname (FQDN, length, no AAAA-only requirement check), generates TXT nonce, calls **Cloudflare for SaaS** `POST /custom_hostnames`, stores row as `pending`. |
-| `POST /api/domains?action=verify` | Re-checks Cloudflare status + DNS, updates row, returns latest. |
-| `POST /api/domains?action=set-primary` | Marks one domain primary, updates `projects.primary_domain_id`. |
-| `POST /api/domains?action=remove` | Calls Cloudflare delete, removes row. |
-| Background: a tiny pg_cron-style poll (or on-demand from the UI) that hits `verify` for any non-active domain in the last 24 h. |
+**`credit_ledger`** — append-only audit trail
+```
+id (uuid PK)
+user_id (uuid FK)
+delta (int)                       -- negative for spend, positive for grant/topup
+reason (text)                     -- 'ai_message' | 'monthly_grant' | 'topup' | 'daily_free' | 'admin_grant' | 'refund' | 'rollover'
+balance_after (int)
+project_id (uuid, nullable)       -- which project burned it
+metadata (jsonb)                  -- { route, model, stripe_invoice_id, admin_id, ... }
+created_at (timestamptz)
+```
 
-All routes verify the Supabase JWT and project ownership, mirroring `src/routes/api/backend.ts`.
+**`stripe_events`** — webhook idempotency (every event id stored once)
+```
+id (text PK)                      -- Stripe event id
+type (text)
+processed_at (timestamptz)
+payload (jsonb)
+```
 
-Secrets needed (added via `add_secret`):
-- `CLOUDFLARE_API_TOKEN` (scoped to SSL: Edit + DNS: Edit on the SaaS zone)
-- `CLOUDFLARE_SAAS_ZONE_ID`
-- `CLOUDFLARE_FALLBACK_ORIGIN` (e.g. `proxy.petal.app`, the CNAME users would see if we go CNAME-mode)
+### Triggers / functions
+- **`handle_new_user`** (extend existing) → also create `user_wallets` row on signup with `plan_code='free'`.
+- **`spend_credit(user_id, reason, project_id, metadata) returns boolean`** — single SQL function that:
+  1. Locks the wallet row (`FOR UPDATE`).
+  2. Refills daily/monthly free buckets if reset dates passed.
+  3. Tries free → monthly → top-up in that order.
+  4. Returns `false` if nothing available; otherwise writes ledger row + decrements balance.
+  5. Atomic — no race conditions even with concurrent AI calls.
+- **`grant_credits(user_id, amount, reason, metadata)`** — admin / webhook entry point.
 
-### 3. UI — `ProjectSettingsSheet` gets a new "Domains" section
+### RLS
+- `user_wallets` — users SELECT their own; only service role writes (via `spend_credit` / webhooks).
+- `credit_ledger` — users SELECT their own; INSERT only via security-definer functions.
+- `billing_plans`, `credit_packs` — public read.
+- `stripe_events` — service role only.
 
-Place it **above** Backend, since it's the more common need. Shape mirrors `BackendSection`:
+---
 
-- **Empty state**: "Custom domain · Use your own domain like `acme.com`" + `Add domain` button. Copy explains "publish first" if `latest_build_id` is null and disables the button.
-- **Add form**: single input + advanced toggle ("My domain uses Cloudflare or another proxy" → switches A-record instructions to CNAME).
-- **Connected list**: each row shows hostname, status pill (Pending / Verifying / Active / Failed), and a `⋯` menu (View DNS records, Set as primary, Remove).
-- **DNS instructions modal** (shown right after add, and re-openable): two records to add at the registrar:
-  - `A   @   185.158.133.1` *(or CNAME to fallback origin in proxy mode)*
-  - `TXT _petal-verify   <nonce>`
-  Copy buttons on every value, "Check status" button that calls the `verify` action, helper note that DNS can take up to 72 h.
-- **Realtime**: subscribe to `project_domains` row updates so status flips live.
+## Phase 2 — Stripe integration
 
-Plus a **secondary entry point in `SharePopover`**: when the project is public, add a small "Use a custom domain" link that opens the settings sheet on the Domains tab — matches Lovable's "Publish modal → Add custom domain" affordance.
+Use Lovable's built-in Stripe (`enable_stripe_payments`). Zero account setup, test mode out of the box.
 
-### 4. Runtime: serving the custom hostname
+### Setup steps (in order)
+1. Run `recommend_payment_provider` → confirm Stripe fits (Petal is SaaS).
+2. Run `enable_stripe_payments`.
+3. Choose tax mode: **option 2 (calculation only, +0.5%)** — recommended default for a global SaaS without the burden of full filing yet.
+4. Use `batch_create_product` to create Stripe products that mirror `billing_plans` and `credit_packs`. Each product gets a tax code.
+5. Store the returned `stripe_price_id` values back into our seed data.
 
-When Cloudflare for SaaS routes `acme.com` traffic to our Pages project, the request's `Host` header is `acme.com`. We:
+### Server routes (TanStack `/api/*`)
+- **`POST /api/billing/checkout`** — creates a Stripe checkout session for a `plan_code` or `pack_code`. Auth-gated. Sets `client_reference_id = user_id`.
+- **`POST /api/billing/portal`** — creates a Stripe Customer Portal session (manage card, cancel sub).
+- **`POST /api/public/stripe/webhook`** — public endpoint, signature-verified with `STRIPE_WEBHOOK_SECRET`. Handles:
+  - `checkout.session.completed` → grant initial credits
+  - `invoice.paid` → monthly grant on renewal (Lovable-style: unused monthly credits roll over while sub active)
+  - `invoice.payment_failed` → mark `past_due`, freeze paid credits but keep free daily
+  - `customer.subscription.updated` / `.deleted` → update plan / downgrade to free
+  - All events stored in `stripe_events` for idempotency
 
-1. In our Worker / Pages function, look up `project_domains.hostname = req.host` → get `project_id` → get `latest_build_id` → serve that deployment.
-2. Set canonical/OG tags on `__root.tsx` so the published app advertises the user's primary domain when present (today they advertise the `.lovable.app` / `pages.dev` URL).
+### Secrets needed
+- `STRIPE_SECRET_KEY` — auto-set by `enable_stripe_payments`
+- `STRIPE_WEBHOOK_SECRET` — auto-set by `enable_stripe_payments`
 
-This is the only piece that touches the published-app rendering path. It's small and isolated.
+---
 
-### 5. Mobile + a11y
+## Phase 3 — Wire credits into the AI endpoints (the deduction)
 
-- The Domains section in the sheet must wrap long hostnames (`break-words`) and the DNS-records modal must clamp width to `max-w-[calc(100vw-1.5rem)]` like `RevertPreviewDialog` already does.
-- Status pills use the same calm phase animation we just added to `BuildActivityCard`.
-- All copy buttons announce "Copied" via `aria-live`.
+Smallest, safest change. Both `/api/generate` and `/api/discuss` already authorize the user — we add **one call** before the AI request:
 
-## Out of scope (Tier B/C — explicitly deferred)
+```ts
+const { data: ok } = await supabaseAdmin.rpc('spend_credit', {
+  _user_id: userId,
+  _reason: 'ai_message',
+  _project_id: projectId,
+  _metadata: { route: 'generate', model }
+});
+if (!ok) {
+  return new Response(JSON.stringify({ error: 'OUT_OF_CREDITS' }), { status: 402 });
+}
+```
 
-- **Buying domains in-product** (registrar + Stripe checkout). Big project; users can buy elsewhere and bring it.
-- **Entri-style automatic DNS** (one-click OAuth into GoDaddy/Cloudflare/etc.). Add later — manual A+TXT covers most cases and the UI is identical.
-- **Workspace-level domains** shared across projects. Petal doesn't have workspaces yet.
-- **Wildcard / apex SSL nuances** beyond what Cloudflare for SaaS gives us by default.
-- Email DNS (MX/SPF/DKIM) — out of scope for hosting.
-- Paid-plan gating: Lovable gates this behind paid plans; we'll skip the gate for v1 unless you want it.
+- 402 = the standard "Payment Required" status; frontend uses it to show the upgrade dialog.
+- "Try to fix" calls (when the user clicks the auto-fix button) skip the deduction, matching Lovable.
+- Failures **after** the spend (model errors) do **not** auto-refund in v1 — Lovable doesn't either. Refunds happen via admin tool when a user reports an issue.
 
-## Risks / things to confirm before building
+---
 
-1. **SSL provider**: Cloudflare for SaaS is the recommended path because builds already run on CF Pages. If you'd rather self-manage with Caddy / a custom proxy, the DB + UI stay the same but step 4 changes.
-2. **Plan gating**: do we lock custom domains to a paid tier (Lovable does, Vercel does on Hobby+Custom)?
-3. **Domain cap**: Lovable allows multiple per project (root + www, plus subdomains). Suggest defaulting to **5 domains per project** to match.
-4. **Apex `A` vs CNAME-flat**: we'll require `A 185.158.133.1` (or whatever IP CF SaaS assigns us) for the apex; users on Cloudflare can flip the proxy toggle and use CNAME instead, mirroring Lovable's Advanced toggle.
+## Phase 4 — UI
 
-## Suggested build order (one PR each, all on the same plan)
+### Header credit badge (`SiteHeader.tsx`)
+- Pill showing `{balance} credits`, color shifts amber <10, red <3.
+- Hover shows breakdown: `5 daily · 25 monthly · 100 top-up`.
+- Click → opens billing sheet.
 
-1. **Migration + RLS + realtime** for `project_domains` and `projects.primary_domain_id`.
-2. **`/api/domains` server route** with add/verify/set-primary/remove (talks to Cloudflare for SaaS). Add the three Cloudflare secrets.
-3. **`DomainsSection` in `ProjectSettingsSheet`** + DNS records modal + realtime subscription.
-4. **`SharePopover` cross-link** to open the Domains tab.
-5. **Worker routing** (`Host` → project lookup → serve `latest_build_id`) and canonical/OG tag updates.
-6. Docs + in-product copy review.
+### New `BillingSheet.tsx` (sheet, opened from header + settings)
+- **Current plan** card — name, renewal date, balance breakdown, "Manage subscription" → portal.
+- **Upgrade** section — three plan cards (Free / Pro / Business) with credit allowance, features, "Choose plan" button.
+- **Top-up** section (paid users only) — pack_50 / pack_200 / pack_1000 buttons.
+- **Usage history** — last 30 ledger entries (date, reason, delta, project link).
 
-I'll wait for your sign-off on the four open questions above (SSL provider choice, plan gating, domain cap, apex strategy) before writing the migration.
+### `OutOfCreditsDialog.tsx`
+- Triggered globally when any AI call returns 402.
+- Shows current plan, free credits reset countdown, "Upgrade" CTA opening `BillingSheet`.
+
+### `/auth/success` route
+- Stripe `success_url` → confirms checkout, polls wallet for the granted credits, then redirects to last project.
+
+---
+
+## Phase 5 — Admin tools
+
+In existing admin surface (gated by `has_role('admin')`):
+- **Users page** — table of users + plan + balance + last activity.
+- Per-user actions: **Grant credits** (amount + reason note), **View ledger**, **Reset daily**, **Switch plan manually** (for refund cases).
+- **Plans editor** — toggle plans active/inactive, edit credit allotments. Stripe prices stay in Stripe.
+- **Stripe events log** — last 100 webhook events, status, retry button.
+
+Server route: `POST /api/admin/credits` (action: grant | reset | switch_plan), guarded by `has_role`.
+
+---
+
+## Phase 6 — Background jobs
+
+One scheduled job (pg_cron or external cron hitting `/api/public/cron/billing`):
+- **Daily** (00:05 UTC) — reset `daily_free_used = 0` for everyone, log `daily_free` ledger rows lazily on next spend.
+- **Monthly** (1st 00:10 UTC) — reset `monthly_free_used = 0` for free-tier users; expire top-ups older than 12 months.
+
+Stripe handles the monthly subscription grant via `invoice.paid` webhook — no cron needed for that.
+
+---
+
+## Files I'll create / modify
+
+**New migrations**
+- `xxx_billing_plans.sql` — tables, indexes, RLS
+- `xxx_billing_seed.sql` — seed plans + packs
+- `xxx_billing_functions.sql` — `spend_credit`, `grant_credits`, wallet trigger
+
+**New server routes**
+- `src/routes/api/billing/checkout.ts`
+- `src/routes/api/billing/portal.ts`
+- `src/routes/api/public/stripe/webhook.ts`
+- `src/routes/api/public/cron/billing.ts`
+- `src/routes/api/admin/credits.ts`
+
+**Modified server routes**
+- `src/routes/api/generate.ts` — add `spend_credit` call + 402 path
+- `src/routes/api/discuss.ts` — same
+
+**New client modules**
+- `src/lib/billing.ts` — fetch wallet, fetch plans, start checkout, open portal
+- `src/hooks/use-wallet.ts` — TanStack Query hook with realtime subscription on `user_wallets`
+
+**New components**
+- `src/components/CreditBadge.tsx` (header pill)
+- `src/components/BillingSheet.tsx`
+- `src/components/OutOfCreditsDialog.tsx`
+- `src/components/admin/CreditAdminPanel.tsx`
+
+**Modified components**
+- `src/components/SiteHeader.tsx` — mount `CreditBadge`
+- `src/lib/auth.tsx` — wrap app with `OutOfCreditsDialog` provider (listens to 402 globally)
+
+---
+
+## Rollout strategy (live-system safety)
+
+Because Petal is in production, I'll ship in **3 deploys**, each independently safe:
+
+1. **Deploy 1 — Schema + ledger only.** New tables, `spend_credit` function, wallet auto-created on signup. Backfill wallets for existing users with `plan_code='free'` and 5 daily / 30 monthly free credits. **No deduction enforced yet.** Header badge ships in "preview" mode showing balance but with no gating. Zero risk to existing flows.
+
+2. **Deploy 2 — Enable enforcement + Stripe.** Turn on `spend_credit` in `/api/generate` + `/api/discuss`. Ship `BillingSheet`, `OutOfCreditsDialog`, Stripe checkout, webhook. Existing users land on Free plan and immediately have 30 free monthly credits, so nobody is blocked on day one.
+
+3. **Deploy 3 — Top-ups + admin tools + cron.** Lower-risk polish.
+
+After each deploy I'll verify the build is clean and ask you to spot-check the preview before moving to the next phase.
+
+---
+
+## Open decisions to confirm before I start
+1. **Plan pricing.** I'll seed Lovable-style defaults (Pro $25/mo for 100 credits, Pro $50/mo for 250, Business $100/mo for 500, etc.) — confirm or send me your numbers.
+2. **Free monthly cap.** 30 credits/month (Lovable's number) or different?
+3. **Top-up sizes.** 50 / 200 / 1000 with proportional pricing — confirm?
+4. **Backfill for existing users** — give everyone the standard Free plan, or grant a one-time bonus (e.g. 50 credits) as a thank-you to early users?
+
+I'll wait for your confirmation on these four, then proceed with Deploy 1.
