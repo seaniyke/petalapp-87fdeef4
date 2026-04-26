@@ -14,8 +14,12 @@ import {
   Command as CommandIcon,
   RefreshCcw,
   MoreHorizontal,
+  MessageSquare,
+  Hammer,
+  Wand2,
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
+import { requestDiscussion } from "@/lib/discuss";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useBuildActivity } from "@/hooks/use-build-activity";
@@ -118,6 +122,12 @@ function Builder() {
   const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
+  // Build vs Discuss mode. Discuss = chat-only, no file changes (Base44/Lovable parity).
+  const [mode, setMode] = useState<"build" | "discuss">("build");
+  // Index of the most recent assistant message that came from Discuss mode,
+  // so we can render an "Apply this plan" button under it.
+  const [lastDiscussIndex, setLastDiscussIndex] = useState<number | null>(null);
+  const [discussBusy, setDiscussBusy] = useState(false);
   // Mobile-only: which panel is visible. On desktop both render side-by-side.
   const [mobileTab, setMobileTab] = useState<"chat" | "preview">("chat");
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
@@ -344,6 +354,64 @@ function Builder() {
     },
     [busy, project, messages, files],
   );
+
+  // Discuss mode: ask Petal a question without touching files. The reply is
+  // appended as a normal assistant message and tagged so we can show an
+  // "Apply this plan" button under it.
+  const discuss = useCallback(
+    async (content: string) => {
+      const text = content.trim();
+      if (!text || busy || discussBusy || !project) return;
+      setError(null);
+      setFriendlyError(null);
+      const userMsg: ChatMessage = { role: "user", content: text };
+      const nextMessages: ChatMessage[] = [...messages, userMsg];
+      setMessages(nextMessages);
+      setInput("");
+      setDiscussBusy(true);
+
+      try {
+        const reply = await requestDiscussion({
+          messages: nextMessages,
+          currentFiles: files,
+        });
+        const assistantMsg: ChatMessage = { role: "assistant", content: reply };
+        setMessages((prev) => {
+          const updated = [...prev, assistantMsg];
+          setLastDiscussIndex(updated.length - 1);
+          return updated;
+        });
+        // Persist the conversation so it survives reloads — but don't write
+        // any project files (that's the whole point of Discuss).
+        try {
+          await appendMessages(project.id, [userMsg, assistantMsg]);
+        } catch (persistErr) {
+          console.error(persistErr);
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Discussion failed.";
+        toast.error(msg);
+        // Roll back the unanswered user message so the chat doesn't look stuck.
+        setMessages((prev) => prev.slice(0, -1));
+      } finally {
+        setDiscussBusy(false);
+      }
+    },
+    [busy, discussBusy, project, messages, files],
+  );
+
+  // Apply the most recent Discuss reply by switching to Build mode and asking
+  // Petal to implement what it just proposed.
+  const applyDiscussedPlan = useCallback(() => {
+    if (lastDiscussIndex == null) return;
+    const plan = messages[lastDiscussIndex]?.content?.trim();
+    if (!plan) return;
+    setMode("build");
+    setLastDiscussIndex(null);
+    void send(
+      `Please implement the plan you just proposed:\n\n${plan}\n\nMake the changes now.`,
+    );
+  }, [lastDiscussIndex, messages, send]);
 
   const stopGeneration = useCallback(() => {
     abortRef.current?.abort();
@@ -654,24 +722,45 @@ function Builder() {
               </div>
             )}
             {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                  m.role === "user" ? "ml-6 bg-card" : "mr-6 bg-butter/60"
-                }`}
-              >
-                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {m.role === "user" ? "you" : "petal"}
+              <div key={i}>
+                <div
+                  className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                    m.role === "user" ? "ml-6 bg-card" : "mr-6 bg-butter/60"
+                  }`}
+                >
+                  <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span>{m.role === "user" ? "you" : "petal"}</span>
+                    {m.role === "assistant" && i === lastDiscussIndex && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-foreground/70">
+                        <MessageSquare className="h-2.5 w-2.5" /> discuss
+                      </span>
+                    )}
+                  </div>
+                  {m.role === "assistant" ? (
+                    <Suspense fallback={<div className="whitespace-pre-wrap">{m.content}</div>}>
+                      <MarkdownMessage content={m.content} />
+                    </Suspense>
+                  ) : (
+                    <div className="whitespace-pre-wrap">{m.content}</div>
+                  )}
                 </div>
-                {m.role === "assistant" ? (
-                  <Suspense fallback={<div className="whitespace-pre-wrap">{m.content}</div>}>
-                    <MarkdownMessage content={m.content} />
-                  </Suspense>
-                ) : (
-                  <div className="whitespace-pre-wrap">{m.content}</div>
+                {m.role === "assistant" && i === lastDiscussIndex && !busy && !discussBusy && (
+                  <div className="mr-6 mt-1.5 flex justify-end">
+                    <button
+                      onClick={applyDiscussedPlan}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition hover:brightness-105"
+                    >
+                      <Wand2 className="h-3 w-3" /> Apply this plan
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
+            {discussBusy && (
+              <div className="mr-6 inline-flex items-center gap-2 rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
+              </div>
+            )}
             {activityVisible && (
               <BuildActivityCard
                 phases={phases}
@@ -692,33 +781,82 @@ function Builder() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              void send(input);
+              if (mode === "discuss") void discuss(input);
+              else void send(input);
             }}
             className="border-t border-border bg-card p-3"
           >
-            <div className="flex items-end gap-2 rounded-2xl border border-border bg-background p-2 focus-within:border-primary">
+            {/* Build / Discuss mode toggle (Base44/Lovable parity). */}
+            <div className="mb-2 flex items-center justify-between">
+              <div className="inline-flex items-center rounded-full border border-border bg-background p-0.5 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setMode("build")}
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
+                    mode === "build"
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  title="Petal will write code and update your app"
+                >
+                  <Hammer className="h-3 w-3" /> Build
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("discuss")}
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
+                    mode === "discuss"
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  title="Chat about changes without touching your files"
+                >
+                  <MessageSquare className="h-3 w-3" /> Discuss
+                </button>
+              </div>
+              <span className="text-[10px] text-muted-foreground">
+                {mode === "discuss" ? "Chat only · no file changes" : "Petal will edit files"}
+              </span>
+            </div>
+            <div
+              className={`flex items-end gap-2 rounded-2xl border bg-background p-2 focus-within:border-primary ${
+                mode === "discuss" ? "border-foreground/20" : "border-border"
+              }`}
+            >
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    void send(input);
+                    if (mode === "discuss") void discuss(input);
+                    else void send(input);
                   }
                 }}
                 placeholder={
-                  files.length ? "Ask for a change…" : "Describe the app you want to build…"
+                  mode === "discuss"
+                    ? "Ask Petal anything about your app…"
+                    : files.length
+                      ? "Ask for a change…"
+                      : "Describe the app you want to build…"
                 }
                 rows={2}
                 className="max-h-40 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
-                disabled={busy || bootstrapping}
+                disabled={busy || discussBusy || bootstrapping}
               />
               <button
                 type="submit"
-                disabled={busy || bootstrapping || !input.trim()}
+                disabled={busy || discussBusy || bootstrapping || !input.trim()}
                 className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground transition hover:brightness-105 disabled:opacity-40"
+                title={mode === "discuss" ? "Send (chat only)" : "Send (build changes)"}
               >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {busy || discussBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : mode === "discuss" ? (
+                  <MessageSquare className="h-4 w-4" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
               </button>
             </div>
             {/* Errors are shown inside <BuildActivityCard /> with friendly copy. */}

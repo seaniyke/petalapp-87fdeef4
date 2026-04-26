@@ -52,18 +52,14 @@ Changes:
   > ```
   > Look at the relevant files and fix it."
 
-**Effort:** ~1 hour. **Impact:** turns dead-ends into one-click recoveries.
+**Effort:** ~1 hour. **Impact:** turns dead-ends into one-click recoveries. ✅ Shipped.
 
-## Phase 2 — Discuss mode (Base44's killer feature for non-technical users)
+## Phase 2 — Discuss mode (Base44's killer feature for non-technical users) ✅ Shipped
 
-Today every prompt costs an AI call AND mutates files. Non-technical users are scared to ask "can you also make it work on mobile?" because they think it'll break things.
-
-Changes:
-- **Discuss / Build** toggle next to the chat input (default: Build).
-- New `/api/discuss` route: same chat history + current files context, but emits **plain markdown advice** (no tool call). Reply renders as a normal assistant message; no patches applied.
-- Mirrors Base44 Discuss + Lovable Plan exactly. Cheap (always `gemini-3-flash-preview`), safe.
-
-**Effort:** ~2 hours.
+Shipped:
+- **Discuss / Build** toggle in the chat input (default: Build).
+- New `/api/discuss` route: same chat history + compact files context, emits **plain markdown advice** (no tool call). Reply renders as a normal assistant message tagged "discuss"; no patches applied.
+- **"Apply this plan"** button under the latest discuss reply auto-switches to Build and feeds the plan into `send()` so the user can chat → preview → commit in one flow.
 
 ## Phase 3 — Message queue + per-message revert
 
