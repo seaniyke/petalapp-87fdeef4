@@ -474,11 +474,13 @@ function AddDomainDialog({
   onOpenChange,
   projectId,
   onAdded,
+  onPaymentRequired,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   projectId: string;
   onAdded: (d: ProjectDomain) => void;
+  onPaymentRequired?: () => void;
 }) {
   const [hostname, setHostname] = useState("");
   const [submitting, setSubmitting] = useState(false);
