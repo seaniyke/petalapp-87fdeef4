@@ -70,8 +70,15 @@ export function useWallet(): UseWalletResult {
       });
 
     // Realtime: any UPDATE/INSERT on this user's wallet row updates the badge.
-    const channel = supabase
-      .channel(`wallet:${user.id}`)
+    // IMPORTANT: include a unique suffix in the channel name. Reusing a
+    // fixed name (e.g. `wallet:<uid>`) across effect re-runs collides with
+    // the still-registered prior channel inside supabase-js's Realtime
+    // client, which then throws:
+    //   "cannot add `postgres_changes` callbacks for realtime:... after subscribe()"
+    // That error bubbles up to the router error boundary and shows the
+    // "Something went wrong" screen right after login.
+    const channel = supabase.channel(`wallet:${user.id}:${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    channel
       .on(
         "postgres_changes",
         {
