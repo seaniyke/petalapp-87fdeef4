@@ -94,18 +94,6 @@ export const Route = createFileRoute("/builder")({
     prompt: typeof search.prompt === "string" ? search.prompt : undefined,
     id: typeof search.id === "string" ? search.id : undefined,
   }),
-  beforeLoad: async ({ search }) => {
-    // Only enforce on the client — server has no session storage and would falsely
-    // redirect, stripping any auth tokens from the URL hash (#access_token=...) that
-    // email-confirmation / OAuth implicit flow relies on.
-    if (typeof window === "undefined") return;
-    if (window.location.hash.includes("access_token=")) return;
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) {
-      const dest = `/builder${search.id ? `?id=${search.id}` : ""}`;
-      throw redirect({ to: "/auth", search: { mode: "signin", redirect: dest } });
-    }
-  },
   head: () => ({
     meta: [
       { title: "Builder · Petal" },
