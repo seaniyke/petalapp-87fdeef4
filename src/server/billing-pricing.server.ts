@@ -8,7 +8,7 @@
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-export type ItemKind = "plan" | "pack";
+export type ItemKind = "plan" | "pack" | "addon";
 
 export type ResolvedPrice = {
   currency: string;
@@ -42,13 +42,21 @@ export async function resolvePrice(
       .maybeSingle();
     if (!data || !data.is_active) throw new Error(`Unknown plan: ${itemCode}`);
     usdCents = data.price_cents;
-  } else {
+  } else if (kind === "pack") {
     const { data } = await supabaseAdmin
       .from("credit_packs")
       .select("price_cents, is_active")
       .eq("code", itemCode)
       .maybeSingle();
     if (!data || !data.is_active) throw new Error(`Unknown pack: ${itemCode}`);
+    usdCents = data.price_cents;
+  } else {
+    const { data } = await supabaseAdmin
+      .from("billing_addons")
+      .select("price_cents, is_active")
+      .eq("code", itemCode)
+      .maybeSingle();
+    if (!data || !data.is_active) throw new Error(`Unknown add-on: ${itemCode}`);
     usdCents = data.price_cents;
   }
 
