@@ -36,8 +36,12 @@ function getRetryAfterSeconds(error: unknown): number {
 }
 
 // Move a message to the dead letter queue and log the reason.
+// Note: supabase is typed as `any` here because the moveToDlq helper accepts
+// the client created with createClient<any, any, any>() in the route handler;
+// without explicit generics, ReturnType<typeof createClient> infers a
+// `never`-schema variant that's incompatible with real client instances.
 async function moveToDlq(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   queue: string,
   msg: { msg_id: number; message: Record<string, unknown> },
   reason: string
