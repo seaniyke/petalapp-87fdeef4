@@ -20,6 +20,18 @@ The scaffold ALREADY EXISTS — these files will be auto-injected, do NOT emit t
 - "src/components/ui/tabs.tsx" — <Tabs defaultValue>, <TabsList>, <TabsTrigger value>, <TabsContent value>
 - "src/components/ui/dialog.tsx" — <Dialog>, <DialogTrigger asChild>, <DialogContent>, <DialogHeader>, <DialogTitle>, <DialogDescription>, <DialogFooter>
 - "src/components/ui/select.tsx" — <Select options={[{label,value}]} placeholder onChange>
+- "src/components/ui/checkbox.tsx" — <Checkbox checked onChange>
+- "src/components/ui/radio-group.tsx" — <RadioGroup value onValueChange>, <RadioGroupItem value>
+- "src/components/ui/slider.tsx" — <Slider min max step value onChange>
+- "src/components/ui/progress.tsx" — <Progress value={0..100}>
+- "src/components/ui/tooltip.tsx" — <Tooltip content side="top|bottom|left|right">
+- "src/components/ui/popover.tsx" — <Popover>, <PopoverTrigger asChild>, <PopoverContent align="start|center|end">
+- "src/components/ui/dropdown-menu.tsx" — <DropdownMenu>, <DropdownMenuTrigger asChild>, <DropdownMenuContent>, <DropdownMenuItem onSelect>, <DropdownMenuLabel>, <DropdownMenuSeparator>
+- "src/components/ui/accordion.tsx" — <Accordion type="single|multiple" defaultValue>, <AccordionItem value>, <AccordionTrigger>, <AccordionContent>
+- "src/components/ui/scroll-area.tsx" — <ScrollArea>
+- "src/components/ui/table.tsx" — <Table>, <TableHeader>, <TableBody>, <TableFooter>, <TableRow>, <TableHead>, <TableCell>, <TableCaption>
+- "src/components/ui/sheet.tsx" — <Sheet>, <SheetTrigger asChild>, <SheetContent side="top|right|bottom|left">, <SheetHeader>, <SheetTitle>, <SheetDescription>, <SheetFooter>
+- "src/components/ui/toast.tsx" — exports { Toaster, toast } from sonner. Mount <Toaster /> once in App.tsx, then call toast.success("...") / toast.error("...") anywhere
 
 Files YOU MUST emit (the actual app):
 - "package.json" — list ONLY app-specific extra deps (we auto-inject react, react-dom, tailwind, shadcn deps, etc.). Use caret ranges. Always include "type": "module".
