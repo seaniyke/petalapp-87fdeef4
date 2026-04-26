@@ -19,9 +19,6 @@ import {
   Wand2,
   Undo2,
   X,
-  Zap,
-  Gauge,
-  Crown,
   BookOpen,
   ChevronDown,
   ChevronUp,
@@ -136,19 +133,8 @@ function Builder() {
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   // Build vs Discuss mode. Discuss = chat-only, no file changes (Base44/Lovable parity).
   const [mode, setMode] = useState<"build" | "discuss">("build");
-  // Smart model routing (Base44's Automatic / Manual). Default = "smart".
-  // Persisted per-browser so the choice sticks across sessions.
-  type ModelPreset = "fast" | "smart" | "best";
-  const [modelPreset, setModelPreset] = useState<ModelPreset>(() => {
-    if (typeof window === "undefined") return "smart";
-    const v = window.localStorage.getItem("petal:modelPreset");
-    return v === "fast" || v === "best" ? v : "smart";
-  });
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("petal:modelPreset", modelPreset);
-    }
-  }, [modelPreset]);
+  // Smart model routing is always on. The /api/generate endpoint auto-picks
+  // Pro for big/complex changes and Flash otherwise — users shouldn't choose.
   // Index of the most recent assistant message that came from Discuss mode,
   // so we can render an "Apply this plan" button under it.
   const [lastDiscussIndex, setLastDiscussIndex] = useState<number | null>(null);
@@ -326,7 +312,7 @@ function Builder() {
           {
             messages: nextMessages,
             currentFiles: files,
-            model: modelPreset,
+            model: "smart",
             customInstructions: project.custom_instructions ?? undefined,
           },
           {
@@ -410,7 +396,7 @@ function Builder() {
         setBusy(false);
       }
     },
-    [busy, project, messages, files, modelPreset],
+    [busy, project, messages, files],
   );
 
   // Discuss mode: ask Petal a question without touching files. The reply is
@@ -1132,52 +1118,6 @@ function Builder() {
                   <MessageSquare className="h-3 w-3" /> Discuss
                 </button>
               </div>
-              {/* Smart model picker (Base44 Automatic / Manual parity). */}
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition hover:text-foreground"
-                  title="Choose how Petal picks its AI model"
-                >
-                  {modelPreset === "fast" ? (
-                    <Zap className="h-3 w-3" />
-                  ) : modelPreset === "best" ? (
-                    <Crown className="h-3 w-3" />
-                  ) : (
-                    <Gauge className="h-3 w-3" />
-                  )}
-                  <span className="capitalize">{modelPreset}</span>
-                  <ChevronDown className="h-3 w-3 opacity-60" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onSelect={() => setModelPreset("smart")}>
-                    <Gauge className="mr-2 h-3.5 w-3.5" />
-                    <div className="flex flex-col">
-                      <span className="text-sm">Smart {modelPreset === "smart" && "·"}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        Auto-pick: Pro for big changes, Flash otherwise
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setModelPreset("fast")}>
-                    <Zap className="mr-2 h-3.5 w-3.5" />
-                    <div className="flex flex-col">
-                      <span className="text-sm">Fast</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        Always Flash — quickest + cheapest
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setModelPreset("best")}>
-                    <Crown className="mr-2 h-3.5 w-3.5" />
-                    <div className="flex flex-col">
-                      <span className="text-sm">Best</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        Always Pro — strongest reasoning
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
             <div className="mb-2 flex items-center justify-between text-[10px] text-muted-foreground">
               <span>
