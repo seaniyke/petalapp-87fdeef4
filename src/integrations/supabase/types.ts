@@ -489,6 +489,99 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          environment: string
+          id: string
+          pending_plan_code: string | null
+          plan_code: string
+          price_id: string
+          product_id: string | null
+          status: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          environment?: string
+          id?: string
+          pending_plan_code?: string | null
+          plan_code: string
+          price_id: string
+          product_id?: string | null
+          status?: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          environment?: string
+          id?: string
+          pending_plan_code?: string | null
+          plan_code?: string
+          price_id?: string
+          product_id?: string | null
+          status?: string
+          stripe_customer_id?: string
+          stripe_subscription_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      topup_lots: {
+        Row: {
+          created_at: string
+          credits_granted: number
+          credits_remaining: number
+          environment: string
+          expires_at: string
+          id: string
+          pack_code: string
+          stripe_session_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits_granted: number
+          credits_remaining: number
+          environment?: string
+          expires_at: string
+          id?: string
+          pack_code: string
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits_granted?: number
+          credits_remaining?: number
+          environment?: string
+          expires_at?: string
+          id?: string
+          pack_code?: string
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -519,6 +612,8 @@ export type Database = {
           monthly_credits_remaining: number
           monthly_free_reset_at: string
           monthly_free_used: number
+          pending_plan_change_at: string | null
+          pending_plan_code: string | null
           plan_code: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
@@ -535,6 +630,8 @@ export type Database = {
           monthly_credits_remaining?: number
           monthly_free_reset_at?: string
           monthly_free_used?: number
+          pending_plan_change_at?: string | null
+          pending_plan_code?: string | null
           plan_code?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -551,6 +648,8 @@ export type Database = {
           monthly_credits_remaining?: number
           monthly_free_reset_at?: string
           monthly_free_used?: number
+          pending_plan_change_at?: string | null
+          pending_plan_code?: string | null
           plan_code?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -574,6 +673,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_monthly_renewal: {
+        Args: {
+          _current_period_end: string
+          _plan_code: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      apply_period_end_changes: { Args: never; Returns: undefined }
+      apply_subscription_activated: {
+        Args: {
+          _current_period_end: string
+          _plan_code: string
+          _stripe_customer_id: string
+          _stripe_subscription_id: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      apply_topup_purchase: {
+        Args: {
+          _environment: string
+          _pack_code: string
+          _stripe_session_id: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      expire_topup_lots: { Args: never; Returns: undefined }
       grant_credits: {
         Args: {
           _amount: number

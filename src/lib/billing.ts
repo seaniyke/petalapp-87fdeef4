@@ -20,6 +20,16 @@ export type Wallet = {
   monthly_free_reset_at: string;
   subscription_status: string | null;
   current_period_end: string | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+};
+
+export type CreditPack = {
+  code: string;
+  name: string;
+  credits: number;
+  price_cents: number;
+  stripe_price_id: string | null;
 };
 
 export type Plan = {
@@ -57,7 +67,7 @@ export async function fetchWallet(userId: string): Promise<Wallet | null> {
   const { data, error } = await supabase
     .from("user_wallets")
     .select(
-      "user_id, plan_code, monthly_credits_remaining, topup_credits_remaining, daily_free_used, daily_free_reset_at, monthly_free_used, monthly_free_reset_at, subscription_status, current_period_end"
+      "user_id, plan_code, monthly_credits_remaining, topup_credits_remaining, daily_free_used, daily_free_reset_at, monthly_free_used, monthly_free_reset_at, subscription_status, current_period_end, stripe_customer_id, stripe_subscription_id"
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -75,4 +85,14 @@ export async function fetchPlans(): Promise<Plan[]> {
     .order("sort_order", { ascending: true });
   if (error) throw error;
   return (data ?? []) as Plan[];
+}
+
+export async function fetchCreditPacks(): Promise<CreditPack[]> {
+  const { data, error } = await supabase
+    .from("credit_packs")
+    .select("code, name, credits, price_cents, stripe_price_id")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as CreditPack[];
 }
