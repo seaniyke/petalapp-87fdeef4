@@ -138,16 +138,15 @@ export async function loadProjectMessages(projectId: string): Promise<ChatMessag
 }
 
 /**
- * Replace all files for a project with the given set (matches the AI's full-project rewrite).
+ * Atomically replace all files for a project with the given set.
+ * Uses a server-side function so the delete-of-removed and upsert-of-changed
+ * happen in a single transaction — a failed save never empties the project.
  */
 export async function saveProjectFiles(projectId: string, files: ProjectFile[]) {
-  // Wipe existing rows then bulk-insert. Two RTTs but simple and correct.
-  const del = await supabase.from("project_files").delete().eq("project_id", projectId);
-  if (del.error) throw del.error;
-  if (files.length === 0) return;
-  const { error } = await supabase
-    .from("project_files")
-    .insert(files.map((f) => ({ project_id: projectId, path: f.path, content: f.content })));
+  const { error } = await supabase.rpc("replace_project_files", {
+    _project_id: projectId,
+    _files: files as unknown as object,
+  });
   if (error) throw error;
 }
 
