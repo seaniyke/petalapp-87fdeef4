@@ -2163,6 +2163,12 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/auth-forgot-password.tsx", content: AUTH_FORGOT_PASSWORD, overwrite: true },
   { path: "src/components/examples/auth-otp-card.tsx", content: AUTH_OTP_CARD, overwrite: true },
 
+  // Auth modals (Dialog / Sheet)
+  { path: "src/components/examples/auth-sign-up-dialog.tsx", content: AUTH_SIGN_UP_DIALOG, overwrite: true },
+  { path: "src/components/examples/auth-sign-in-dialog.tsx", content: AUTH_SIGN_IN_DIALOG, overwrite: true },
+  { path: "src/components/examples/auth-password-reset-sheet.tsx", content: AUTH_PASSWORD_RESET_SHEET, overwrite: true },
+  { path: "src/components/examples/auth-magic-link-dialog.tsx", content: AUTH_MAGIC_LINK_DIALOG, overwrite: true },
+
   // Onboarding flow
   { path: "src/components/examples/onboarding-welcome.tsx", content: ONBOARDING_WELCOME, overwrite: true },
   { path: "src/components/examples/onboarding-signup-step.tsx", content: ONBOARDING_SIGNUP_STEP, overwrite: true },
