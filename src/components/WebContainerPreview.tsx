@@ -276,6 +276,8 @@ function phaseLabel(p: Phase): string {
       return "Ready";
     case "error":
       return "Failed";
+    case "unsupported":
+      return "Not supported";
     default:
       return "Preparing…";
   }
