@@ -223,7 +223,7 @@ async function handleVerify(userId: string, body: unknown): Promise<Response> {
   const txt = extractTxtValidation(cf);
 
   // Build the patch — only overwrite TXT fields if Cloudflare has issued one.
-  const patch: Record<string, unknown> = {
+  const patch: Database["public"]["Tables"]["project_domains"]["Update"] = {
     status: mapped.status,
     ssl_status: mapped.ssl_status,
     error_message: mapped.error_message,
