@@ -393,6 +393,19 @@ function Builder() {
         setMessages((prev) => [...prev, assistantMsg]);
         setPreviewKey((k) => k + 1);
         setLastUserPrompt(null);
+        // The streaming bubble has been promoted into a real message — clear it.
+        setStreamingAssistant("");
+
+        // Compute final per-file line counts for the activity card. We only
+        // surface counts for files Petal actually wrote in this run, so the
+        // list matches what the user just saw stream in.
+        setFinalFileLines(() => {
+          const map: Record<string, number> = {};
+          for (const f of files2) {
+            map[f.path] = f.content.split("\n").length;
+          }
+          return map;
+        });
 
         // AI work is fully done — mark polishing complete and move to deploying.
         setPhases((p) => completeThrough(p, "polishing"));
