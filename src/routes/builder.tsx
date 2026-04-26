@@ -909,11 +909,52 @@ function Builder() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (mode === "discuss") void discuss(input);
-              else void send(input);
+              submitPrompt(input);
             }}
             className="border-t border-border bg-card p-3"
           >
+            {/* Queued messages — shown when the user typed while Petal was busy. */}
+            {pendingQueue.length > 0 && (
+              <div className="mb-2 space-y-1">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Up next ({pendingQueue.length})
+                </div>
+                <div className="space-y-1">
+                  {pendingQueue.map((q) => (
+                    <div
+                      key={q.id}
+                      className="flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-background/60 px-2 py-1 text-xs"
+                    >
+                      <span
+                        className={`grid h-4 w-4 shrink-0 place-items-center rounded ${
+                          q.mode === "discuss"
+                            ? "bg-foreground/10 text-foreground/70"
+                            : "bg-primary/15 text-primary"
+                        }`}
+                        title={q.mode === "discuss" ? "Will chat (no file changes)" : "Will build"}
+                      >
+                        {q.mode === "discuss" ? (
+                          <MessageSquare className="h-2.5 w-2.5" />
+                        ) : (
+                          <Hammer className="h-2.5 w-2.5" />
+                        )}
+                      </span>
+                      <span className="flex-1 truncate text-foreground/80" title={q.text}>
+                        {q.text}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeFromQueue(q.id)}
+                        className="grid h-5 w-5 place-items-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        title="Remove from queue"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Build / Discuss mode toggle (Base44/Lovable parity). */}
             <div className="mb-2 flex items-center justify-between">
               <div className="inline-flex items-center rounded-full border border-border bg-background p-0.5 text-[11px]">
@@ -943,7 +984,11 @@ function Builder() {
                 </button>
               </div>
               <span className="text-[10px] text-muted-foreground">
-                {mode === "discuss" ? "Chat only · no file changes" : "Petal will edit files"}
+                {busy || discussBusy
+                  ? "Petal is working — your next message will queue"
+                  : mode === "discuss"
+                    ? "Chat only · no file changes"
+                    : "Petal will edit files"}
               </span>
             </div>
             <div
@@ -957,30 +1002,35 @@ function Builder() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    if (mode === "discuss") void discuss(input);
-                    else void send(input);
+                    submitPrompt(input);
                   }
                 }}
                 placeholder={
-                  mode === "discuss"
-                    ? "Ask Petal anything about your app…"
-                    : files.length
-                      ? "Ask for a change…"
-                      : "Describe the app you want to build…"
+                  busy || discussBusy
+                    ? "Type to queue your next message…"
+                    : mode === "discuss"
+                      ? "Ask Petal anything about your app…"
+                      : files.length
+                        ? "Ask for a change…"
+                        : "Describe the app you want to build…"
                 }
                 rows={2}
                 className="max-h-40 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
-                disabled={busy || discussBusy || bootstrapping}
+                disabled={bootstrapping}
               />
               <button
                 type="submit"
-                disabled={busy || discussBusy || bootstrapping || !input.trim()}
+                disabled={bootstrapping || !input.trim()}
                 className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground transition hover:brightness-105 disabled:opacity-40"
-                title={mode === "discuss" ? "Send (chat only)" : "Send (build changes)"}
+                title={
+                  busy || discussBusy
+                    ? "Add to queue"
+                    : mode === "discuss"
+                      ? "Send (chat only)"
+                      : "Send (build changes)"
+                }
               >
-                {busy || discussBusy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : mode === "discuss" ? (
+                {mode === "discuss" ? (
                   <MessageSquare className="h-4 w-4" />
                 ) : (
                   <Send className="h-4 w-4" />
