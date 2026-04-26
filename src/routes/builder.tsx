@@ -58,6 +58,7 @@ import { triggerBuild } from "@/lib/builds";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
 import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
+import { RevertPreviewDialog } from "@/components/RevertPreviewDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -156,6 +157,13 @@ function Builder() {
   const [pendingQueue, setPendingQueue] = useState<QueuedMessage[]>([]);
   // Per-message revert: which user-message index is being reverted (for spinner).
   const [revertingIndex, setRevertingIndex] = useState<number | null>(null);
+  const [revertPreview, setRevertPreview] = useState<{
+    userMsgIndex: number;
+    userOrdinal: number;
+    targetFiles: ProjectFile[];
+    label: string;
+  } | null>(null);
+  const [revertPreparing, setRevertPreparing] = useState<number | null>(null);
   // Mobile-only: which panel is visible. On desktop both render side-by-side.
   const [mobileTab, setMobileTab] = useState<"chat" | "preview">("chat");
   // Project Knowledge sheet — also opens from the mobile overflow menu.
