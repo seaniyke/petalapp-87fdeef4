@@ -60,7 +60,7 @@ export type BillingCurrency = {
 };
 
 export type PriceOverride = {
-  item_kind: "plan" | "pack";
+  item_kind: "plan" | "pack" | "addon";
   item_code: string;
   currency_code: string;
   amount_minor: number;
