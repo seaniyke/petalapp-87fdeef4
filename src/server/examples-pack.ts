@@ -1709,6 +1709,380 @@ export default function OnboardingFlow({ appName = "Acme" }: { appName?: string 
 `;
 
 /* =================================================================
+ * AUTH MODALS (4) — Dialog / Sheet variants
+ *
+ * Modal/overlay versions of the auth screens for apps that prefer to
+ * surface auth inline (e.g. "Sign in" button in a marketing nav) rather
+ * than route to a dedicated page. Each is controlled (\`open\` + \`onOpenChange\`)
+ * so the parent owns state. Submit handlers are placeholders — wire them
+ * to your real auth provider.
+ * ================================================================= */
+
+const AUTH_SIGN_UP_DIALOG = `import { useState, type FormEvent } from "react";
+import { Loader2, Mail, Lock, User } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+
+/**
+ * Modal sign-up form. Use when auth should overlay the current page
+ * (e.g. paywall, "claim your free trial" CTA on a landing page).
+ */
+export interface SignUpDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSwitchToSignIn?: () => void;
+  onSubmit?: (data: { name: string; email: string; password: string }) => void | Promise<void>;
+}
+
+export default function SignUpDialog({ open, onOpenChange, onSwitchToSignIn, onSubmit }: SignUpDialogProps) {
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    setLoading(true);
+    try {
+      await onSubmit?.({
+        name: String(fd.get("name") ?? ""),
+        email: String(fd.get("email") ?? ""),
+        password: String(fd.get("password") ?? ""),
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader className="text-center sm:text-left">
+          <DialogTitle>Create your account</DialogTitle>
+          <DialogDescription>Free forever for personal use. No credit card required.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="su-name">Full name</Label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input id="su-name" name="name" placeholder="Ada Lovelace" className="pl-9" required />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="su-email">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input id="su-email" name="email" type="email" placeholder="you@company.com" className="pl-9" required />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="su-password">Password</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input id="su-password" name="password" type="password" placeholder="At least 8 characters" minLength={8} className="pl-9" required />
+            </div>
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Create account
+          </Button>
+          <div className="flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground">or</span>
+            <Separator className="flex-1" />
+          </div>
+          <Button type="button" variant="outline" className="w-full">Continue with Google</Button>
+        </form>
+        <DialogFooter className="sm:justify-center">
+          <p className="text-center text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <button type="button" onClick={onSwitchToSignIn} className="font-medium text-foreground hover:underline">
+              Sign in
+            </button>
+          </p>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+`;
+
+const AUTH_SIGN_IN_DIALOG = `import { useState, type FormEvent } from "react";
+import { Loader2, Mail, Lock } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+
+/**
+ * Modal sign-in form. Mirror of \`auth-sign-up-dialog\` for the return-user flow.
+ * Includes hooks for switching to sign-up and opening the password-reset sheet.
+ */
+export interface SignInDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSwitchToSignUp?: () => void;
+  onForgotPassword?: () => void;
+  onSubmit?: (data: { email: string; password: string }) => void | Promise<void>;
+}
+
+export default function SignInDialog({ open, onOpenChange, onSwitchToSignUp, onForgotPassword, onSubmit }: SignInDialogProps) {
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    setLoading(true);
+    try {
+      await onSubmit?.({
+        email: String(fd.get("email") ?? ""),
+        password: String(fd.get("password") ?? ""),
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader className="text-center sm:text-left">
+          <DialogTitle>Welcome back</DialogTitle>
+          <DialogDescription>Sign in to continue to your workspace.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="si-email">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input id="si-email" name="email" type="email" placeholder="you@company.com" className="pl-9" required />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="si-password">Password</Label>
+              <button type="button" onClick={onForgotPassword} className="text-xs text-muted-foreground hover:text-foreground">
+                Forgot?
+              </button>
+            </div>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input id="si-password" name="password" type="password" placeholder="••••••••" className="pl-9" required />
+            </div>
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Sign in
+          </Button>
+          <div className="flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground">or</span>
+            <Separator className="flex-1" />
+          </div>
+          <Button type="button" variant="outline" className="w-full">Continue with Google</Button>
+        </form>
+        <DialogFooter className="sm:justify-center">
+          <p className="text-center text-sm text-muted-foreground">
+            New here?{" "}
+            <button type="button" onClick={onSwitchToSignUp} className="font-medium text-foreground hover:underline">
+              Create an account
+            </button>
+          </p>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+`;
+
+const AUTH_PASSWORD_RESET_SHEET = `import { useState, type FormEvent } from "react";
+import { Loader2, MailCheck, KeyRound } from "lucide-react";
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+/**
+ * Side-sheet password reset. Sheet is preferred over Dialog when the
+ * action is secondary (slides in from the side without dimming the
+ * primary auth modal behind it on desktop).
+ *
+ * Two-state UI: form → success confirmation. Reset to the form by
+ * closing and reopening.
+ */
+export interface PasswordResetSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit?: (email: string) => void | Promise<void>;
+  side?: "left" | "right" | "top" | "bottom";
+}
+
+export default function PasswordResetSheet({ open, onOpenChange, onSubmit, side = "right" }: PasswordResetSheetProps) {
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const email = String(fd.get("email") ?? "");
+    setLoading(true);
+    try {
+      await onSubmit?.(email);
+      setSent(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleOpenChange(next: boolean) {
+    onOpenChange(next);
+    if (!next) {
+      // reset to form view next time the sheet opens
+      setTimeout(() => setSent(false), 200);
+    }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      <SheetContent side={side} className="sm:max-w-md">
+        <SheetHeader>
+          <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <KeyRound className="h-5 w-5" />
+          </div>
+          <SheetTitle>Reset your password</SheetTitle>
+          <SheetDescription>
+            Enter the email associated with your account and we'll send you a link to choose a new password.
+          </SheetDescription>
+        </SheetHeader>
+
+        {sent ? (
+          <div className="mt-6 flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-4 text-sm">
+            <MailCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <div>
+              <p className="font-medium text-foreground">Check your inbox</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                If an account exists for that email, a reset link is on its way.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="mt-6 space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="pr-email">Email</Label>
+              <Input id="pr-email" name="email" type="email" placeholder="you@company.com" required />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Send reset link
+            </Button>
+          </form>
+        )}
+
+        <SheetFooter className="mt-6">
+          <Button type="button" variant="ghost" className="w-full" onClick={() => handleOpenChange(false)}>
+            Back to sign in
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
+`;
+
+const AUTH_MAGIC_LINK_DIALOG = `import { useState, type FormEvent } from "react";
+import { Loader2, Mail, Sparkles, MailCheck } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+/**
+ * Modal magic-link / passwordless auth. Single email field → success state.
+ * Use as the primary auth surface for apps that prefer passwordless flows.
+ */
+export interface MagicLinkDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit?: (email: string) => void | Promise<void>;
+  onUsePassword?: () => void;
+}
+
+export default function MagicLinkDialog({ open, onOpenChange, onSubmit, onUsePassword }: MagicLinkDialogProps) {
+  const [loading, setLoading] = useState(false);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const email = String(fd.get("email") ?? "");
+    setLoading(true);
+    try {
+      await onSubmit?.(email);
+      setSentTo(email);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleOpenChange(next: boolean) {
+    onOpenChange(next);
+    if (!next) setTimeout(() => setSentTo(null), 200);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader className="text-center sm:text-left">
+          <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <DialogTitle>Sign in with a magic link</DialogTitle>
+          <DialogDescription>
+            No password needed. We'll email you a link that signs you in instantly.
+          </DialogDescription>
+        </DialogHeader>
+
+        {sentTo ? (
+          <div className="mt-2 flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-4 text-sm">
+            <MailCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <div>
+              <p className="font-medium text-foreground">Magic link sent</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Open the link we just sent to <span className="font-medium text-foreground">{sentTo}</span> to finish signing in. You can close this window.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="ml-email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input id="ml-email" name="email" type="email" placeholder="you@company.com" className="pl-9" required />
+              </div>
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Send magic link
+            </Button>
+          </form>
+        )}
+
+        <DialogFooter className="sm:justify-center">
+          <button type="button" onClick={onUsePassword} className="text-sm text-muted-foreground hover:text-foreground">
+            Sign in with a password instead
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+`;
+
+/* =================================================================
  * INDEX MARKDOWN
  * ================================================================= */
 
