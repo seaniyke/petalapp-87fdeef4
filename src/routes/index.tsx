@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
+import { useAuth } from "@/lib/auth";
 import {
   ArrowRight,
   MessageSquare,
@@ -25,6 +26,7 @@ const samplePrompts = [
 
 function Landing() {
   const [prompt, setPrompt] = useState("");
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -62,7 +64,13 @@ function Landing() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              const q = encodeURIComponent(prompt.trim());
+              const trimmed = prompt.trim();
+              if (!user) {
+                const q = encodeURIComponent(trimmed);
+                window.location.href = `/auth?mode=signup${q ? `&redirect=${encodeURIComponent("/builder?prompt=" + q)}` : ""}`;
+                return;
+              }
+              const q = encodeURIComponent(trimmed);
               window.location.href = `/builder${q ? `?prompt=${q}` : ""}`;
             }}
             className="mx-auto mt-10 max-w-2xl"
@@ -304,13 +312,24 @@ function Landing() {
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
             Open the builder, describe an idea, and watch it come to life.
           </p>
-          <Link
-            to="/builder"
-            className="mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-7 text-base font-medium text-primary-foreground transition hover:brightness-105"
-          >
-            Start building free
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          {user ? (
+            <Link
+              to="/projects"
+              className="mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-7 text-base font-medium text-primary-foreground transition hover:brightness-105"
+            >
+              Open my projects
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <Link
+              to="/auth"
+              search={{ mode: "signup", redirect: undefined }}
+              className="mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-7 text-base font-medium text-primary-foreground transition hover:brightness-105"
+            >
+              Start building free
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          )}
         </div>
       </section>
 
