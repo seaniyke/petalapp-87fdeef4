@@ -44,7 +44,7 @@ import {
 import { friendlyBuildFailure, toFriendlyError, type FriendlyError } from "@/lib/friendly-errors";
 import { BuildActivityCard } from "@/components/BuildActivityCard";
 
-import { supabase } from "@/integrations/supabase/client";
+
 import {
   appendMessages,
   createProject,
