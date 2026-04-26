@@ -7,7 +7,7 @@
  *
  * Conventions:
  * - Pages project name = `petal-${slug}` where slug is derived from projectId.
- *   We create the project on the first deploy if it doesn't exist (--commit-dirty).
+ *   We create the project on the first deploy before asking wrangler to upload.
  * - Each deployment is unique; the project's stable URL `petal-<slug>.pages.dev`
  *   always points to the latest "production" deploy.
  * - We use --branch=main so every deploy is a "production" deployment, giving
