@@ -508,9 +508,46 @@ function Builder() {
         </div>
       </header>
 
+      {/* Mobile-only tab bar (Chat | Preview). Desktop uses the grid below. */}
+      <div className="flex shrink-0 items-center gap-1 border-b border-border bg-card/60 px-3 py-1.5 backdrop-blur md:hidden">
+        <button
+          onClick={() => setMobileTab("chat")}
+          className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+            mobileTab === "chat"
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          Chat
+        </button>
+        <button
+          onClick={() => {
+            setMobileTab("preview");
+            setPreviewHasUpdate(false);
+          }}
+          className={`relative flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+            mobileTab === "preview"
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          Preview
+          {previewHasUpdate && mobileTab !== "preview" && (
+            <span
+              aria-hidden
+              className="absolute right-2 top-1.5 h-1.5 w-1.5 rounded-full bg-primary"
+            />
+          )}
+        </button>
+      </div>
+
       <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[360px_1fr]">
         {/* Chat */}
-        <aside className="flex min-h-0 flex-col border-b border-border bg-sidebar md:border-b-0 md:border-r">
+        <aside
+          className={`flex min-h-0 flex-col border-b border-border bg-sidebar md:flex md:border-b-0 md:border-r ${
+            mobileTab === "chat" ? "flex" : "hidden"
+          }`}
+        >
           <div className="border-b border-border px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Conversation
           </div>
