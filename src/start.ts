@@ -1,5 +1,10 @@
 import { createStart, createMiddleware } from "@tanstack/react-start";
-import { setResponseHeader } from "@tanstack/react-start/server";
+import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
+import {
+  isReservedHost,
+  proxyToPages,
+  resolveHost,
+} from "@/server/host-routing.server";
 
 /**
  * Global request middleware that sets cross-origin isolation headers on every
@@ -28,6 +33,26 @@ const crossOriginIsolation = createMiddleware().server(async ({ next }) => {
   return next();
 });
 
+/**
+ * Custom-domain reverse proxy. Runs before everything else so requests to
+ * customer hostnames (e.g. acme.com) are forwarded to the right project's
+ * Cloudflare Pages deployment instead of falling through to Petal's own app.
+ *
+ * Reserved hosts (Petal's own marketing site, *.lovable.app, localhost) skip
+ * the proxy and continue down the normal middleware chain.
+ */
+const customDomainProxy = createMiddleware().server(async ({ next }) => {
+  const request = getRequest();
+  const host = new URL(request.url).host;
+
+  if (isReservedHost(host)) return next();
+
+  const target = await resolveHost(host);
+  if (!target) return next(); // unknown domain → fall through to Petal app
+
+  return proxyToPages(request, target.pagesUrl);
+});
+
 export const startInstance = createStart(() => ({
-  requestMiddleware: [crossOriginIsolation],
+  requestMiddleware: [customDomainProxy, crossOriginIsolation],
 }));
