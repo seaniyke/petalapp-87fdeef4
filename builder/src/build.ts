@@ -123,6 +123,17 @@ export async function buildAndDeploy(
 
   const distDir = join(projectDir, "dist");
 
+  // 2b) Write a Cloudflare Pages `_headers` file into dist/ so every response
+  //     from the deployed preview includes `Cross-Origin-Resource-Policy:
+  //     cross-origin`. Without this, the petal app (which sets COEP on its own
+  //     pages to enable WebContainers) cannot embed the deployed preview in
+  //     an iframe — the iframe renders blank. We do this in the builder rather
+  //     than the AI template so existing projects also pick up the fix on
+  //     their next deploy.
+  //     See: https://developers.cloudflare.com/pages/configuration/headers/
+  const headersFile = `/*\n  Cross-Origin-Resource-Policy: cross-origin\n  Access-Control-Allow-Origin: *\n`;
+  await writeFile(join(distDir, "_headers"), headersFile, "utf8");
+
   // 3) Ensure the Cloudflare Pages project exists. Recent wrangler versions no
   //    longer reliably auto-create a project from `pages deploy --project-name`,
   //    so we create it explicitly and ignore the "already exists" case.
