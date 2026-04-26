@@ -61,19 +61,17 @@ Shipped:
 - New `/api/discuss` route: same chat history + compact files context, emits **plain markdown advice** (no tool call). Reply renders as a normal assistant message tagged "discuss"; no patches applied.
 - **"Apply this plan"** button under the latest discuss reply auto-switches to Build and feeds the plan into `send()` so the user can chat → preview → commit in one flow.
 
-## Phase 3 — Message queue + per-message revert
+## Phase 3 — Message queue + per-message revert ✅ Shipped
 
 **Message queue:**
-- When `busy` is true and the user submits a new prompt, push it into a `pendingQueue` state instead of disabling the input.
-- Queued items render as faded chips above the input with remove + drag-reorder.
-- When `send()` finishes, automatically dequeue the next.
+- Typing while Petal is busy now pushes the prompt into a `pendingQueue` (each entry remembers its mode — Build or Discuss — at queue time).
+- Queued items render as chips above the input with a per-chip remove (×). The textarea stays enabled with a "Type to queue your next message…" hint.
+- An effect auto-dequeues the next prompt as soon as `busy` and `discussBusy` both clear.
 
-**Per-message revert** (we already have all the pieces):
-- We already create a `version` row for every assistant turn.
-- Surface a **"Revert to here"** menu under each user message in the chat.
-- Loads that version's files via the existing `handleRestore` flow and trims chat history back.
-
-**Effort:** ~3 hours combined.
+**Per-message revert:**
+- A "Revert to here" pill appears on hover under any user message that already has a Petal reply.
+- Looks up the matching auto-version (by ordinal — the Nth user message ↔ the Nth auto snapshot, oldest-first), restores its files via `saveProjectFiles`, trims chat via the new `truncateMessagesToCount` helper, and re-triggers a Cloudflare build.
+- Saves a "Before revert" snapshot first so the revert itself can be undone.
 
 ## Phase 4 — Smart model routing + Project Knowledge
 

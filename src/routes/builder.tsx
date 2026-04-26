@@ -17,6 +17,8 @@ import {
   MessageSquare,
   Hammer,
   Wand2,
+  Undo2,
+  X,
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
 import { requestDiscussion } from "@/lib/discuss";
@@ -43,9 +45,10 @@ import {
   loadProjectMessages,
   maybeAutoTitleProject,
   saveProjectFiles,
+  truncateMessagesToCount,
   type ProjectRow,
 } from "@/lib/projects";
-import { createVersion } from "@/lib/versions";
+import { createVersion, listVersions } from "@/lib/versions";
 import { triggerBuild } from "@/lib/builds";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
@@ -128,6 +131,12 @@ function Builder() {
   // so we can render an "Apply this plan" button under it.
   const [lastDiscussIndex, setLastDiscussIndex] = useState<number | null>(null);
   const [discussBusy, setDiscussBusy] = useState(false);
+  // Message queue: prompts the user types while Petal is busy. Each entry
+  // remembers which mode it was queued in so the dispatch is faithful.
+  type QueuedMessage = { id: string; text: string; mode: "build" | "discuss" };
+  const [pendingQueue, setPendingQueue] = useState<QueuedMessage[]>([]);
+  // Per-message revert: which user-message index is being reverted (for spinner).
+  const [revertingIndex, setRevertingIndex] = useState<number | null>(null);
   // Mobile-only: which panel is visible. On desktop both render side-by-side.
   const [mobileTab, setMobileTab] = useState<"chat" | "preview">("chat");
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
@@ -412,6 +421,103 @@ function Builder() {
       `Please implement the plan you just proposed:\n\n${plan}\n\nMake the changes now.`,
     );
   }, [lastDiscussIndex, messages, send]);
+
+  // Either dispatch the prompt now (if Petal is free) or queue it. The queue
+  // remembers the mode the user picked when they typed it, so a discuss-mode
+  // queued message stays a discussion even if mode changes later.
+  const submitPrompt = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || !project || bootstrapping) return;
+      if (busy || discussBusy) {
+        setPendingQueue((q) => [
+          ...q,
+          { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text: trimmed, mode },
+        ]);
+        setInput("");
+        return;
+      }
+      if (mode === "discuss") void discuss(trimmed);
+      else void send(trimmed);
+    },
+    [project, bootstrapping, busy, discussBusy, mode, discuss, send],
+  );
+
+  // Auto-dequeue the next prompt as soon as Petal frees up.
+  useEffect(() => {
+    if (busy || discussBusy) return;
+    if (pendingQueue.length === 0) return;
+    const [next, ...rest] = pendingQueue;
+    setPendingQueue(rest);
+    if (next.mode === "discuss") void discuss(next.text);
+    else void send(next.text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, discussBusy, pendingQueue]);
+
+  const removeFromQueue = useCallback((id: string) => {
+    setPendingQueue((q) => q.filter((m) => m.id !== id));
+  }, []);
+
+  // Per-message revert: restore the project to the snapshot taken right after
+  // the AI replied to the Nth user message, then trim chat history accordingly.
+  // We rely on the invariant that send() creates one auto-version per turn,
+  // labelled with the user's prompt. We match by ordinal.
+  const revertToMessage = useCallback(
+    async (userMsgIndex: number) => {
+      if (!project) return;
+      const userMsg = messages[userMsgIndex];
+      if (!userMsg || userMsg.role !== "user") return;
+      const userOrdinal = messages
+        .slice(0, userMsgIndex + 1)
+        .filter((m) => m.role === "user").length;
+      if (
+        !confirm(
+          "Revert your project to right after this message? Files will be restored and any later chat will be removed. (Your current state is saved as a snapshot first.)",
+        )
+      ) {
+        return;
+      }
+      setRevertingIndex(userMsgIndex);
+      try {
+        const versions = await listVersions(project.id);
+        const autoVersionsOldestFirst = versions
+          .filter((v) => v.origin === "auto" && v.label !== "Before restore" && v.label !== "Before revert")
+          .reverse();
+        const target = autoVersionsOldestFirst[userOrdinal - 1];
+        if (!target) {
+          toast.error("Couldn't find a snapshot for that message.");
+          return;
+        }
+        if (files.length) {
+          await createVersion(project.id, files, {
+            origin: "auto",
+            label: "Before revert",
+          });
+        }
+        await saveProjectFiles(project.id, target.files);
+        const keep = userOrdinal * 2;
+        await truncateMessagesToCount(project.id, keep);
+        setFiles(target.files);
+        setMessages((prev) => prev.slice(0, keep));
+        setLastDiscussIndex(null);
+        setPreviewKey((k) => k + 1);
+        setHistoryKey((k) => k + 1);
+        toast.success("Reverted");
+        void triggerBuild(project.id)
+          .then(async () => {
+            const r = await getProject(project.id);
+            if (r) setProject(r);
+          })
+          .catch((err: unknown) => console.error("triggerBuild failed", err));
+      } catch (e) {
+        console.error(e);
+        toast.error(e instanceof Error ? e.message : "Couldn't revert");
+      } finally {
+        setRevertingIndex(null);
+      }
+    },
+    [project, messages, files],
+  );
 
   const stopGeneration = useCallback(() => {
     abortRef.current?.abort();
@@ -721,41 +827,63 @@ function Builder() {
                 generator".
               </div>
             )}
-            {messages.map((m, i) => (
-              <div key={i}>
-                <div
-                  className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                    m.role === "user" ? "ml-6 bg-card" : "mr-6 bg-butter/60"
-                  }`}
-                >
-                  <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    <span>{m.role === "user" ? "you" : "petal"}</span>
-                    {m.role === "assistant" && i === lastDiscussIndex && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-foreground/70">
-                        <MessageSquare className="h-2.5 w-2.5" /> discuss
-                      </span>
+            {messages.map((m, i) => {
+              const isUser = m.role === "user";
+              // Only allow revert if Petal already replied to this user
+              // message (so a snapshot exists) and we're not mid-generation.
+              const hasReply = isUser && messages[i + 1]?.role === "assistant";
+              const canRevert = hasReply && !busy && !discussBusy;
+              return (
+                <div key={i} className="group">
+                  <div
+                    className={`relative rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                      isUser ? "ml-6 bg-card" : "mr-6 bg-butter/60"
+                    }`}
+                  >
+                    <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <span>{isUser ? "you" : "petal"}</span>
+                      {m.role === "assistant" && i === lastDiscussIndex && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-foreground/70">
+                          <MessageSquare className="h-2.5 w-2.5" /> discuss
+                        </span>
+                      )}
+                    </div>
+                    {m.role === "assistant" ? (
+                      <Suspense fallback={<div className="whitespace-pre-wrap">{m.content}</div>}>
+                        <MarkdownMessage content={m.content} />
+                      </Suspense>
+                    ) : (
+                      <div className="whitespace-pre-wrap">{m.content}</div>
+                    )}
+                    {canRevert && (
+                      <button
+                        onClick={() => void revertToMessage(i)}
+                        disabled={revertingIndex !== null}
+                        className="absolute -top-2 right-2 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground opacity-0 shadow-sm transition group-hover:opacity-100 hover:text-foreground disabled:opacity-40"
+                        title="Revert the project to right after Petal's reply to this message"
+                      >
+                        {revertingIndex === i ? (
+                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                        ) : (
+                          <Undo2 className="h-2.5 w-2.5" />
+                        )}
+                        Revert to here
+                      </button>
                     )}
                   </div>
-                  {m.role === "assistant" ? (
-                    <Suspense fallback={<div className="whitespace-pre-wrap">{m.content}</div>}>
-                      <MarkdownMessage content={m.content} />
-                    </Suspense>
-                  ) : (
-                    <div className="whitespace-pre-wrap">{m.content}</div>
+                  {m.role === "assistant" && i === lastDiscussIndex && !busy && !discussBusy && (
+                    <div className="mr-6 mt-1.5 flex justify-end">
+                      <button
+                        onClick={applyDiscussedPlan}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition hover:brightness-105"
+                      >
+                        <Wand2 className="h-3 w-3" /> Apply this plan
+                      </button>
+                    </div>
                   )}
                 </div>
-                {m.role === "assistant" && i === lastDiscussIndex && !busy && !discussBusy && (
-                  <div className="mr-6 mt-1.5 flex justify-end">
-                    <button
-                      onClick={applyDiscussedPlan}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition hover:brightness-105"
-                    >
-                      <Wand2 className="h-3 w-3" /> Apply this plan
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
             {discussBusy && (
               <div className="mr-6 inline-flex items-center gap-2 rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
@@ -781,11 +909,52 @@ function Builder() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (mode === "discuss") void discuss(input);
-              else void send(input);
+              submitPrompt(input);
             }}
             className="border-t border-border bg-card p-3"
           >
+            {/* Queued messages — shown when the user typed while Petal was busy. */}
+            {pendingQueue.length > 0 && (
+              <div className="mb-2 space-y-1">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Up next ({pendingQueue.length})
+                </div>
+                <div className="space-y-1">
+                  {pendingQueue.map((q) => (
+                    <div
+                      key={q.id}
+                      className="flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-background/60 px-2 py-1 text-xs"
+                    >
+                      <span
+                        className={`grid h-4 w-4 shrink-0 place-items-center rounded ${
+                          q.mode === "discuss"
+                            ? "bg-foreground/10 text-foreground/70"
+                            : "bg-primary/15 text-primary"
+                        }`}
+                        title={q.mode === "discuss" ? "Will chat (no file changes)" : "Will build"}
+                      >
+                        {q.mode === "discuss" ? (
+                          <MessageSquare className="h-2.5 w-2.5" />
+                        ) : (
+                          <Hammer className="h-2.5 w-2.5" />
+                        )}
+                      </span>
+                      <span className="flex-1 truncate text-foreground/80" title={q.text}>
+                        {q.text}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeFromQueue(q.id)}
+                        className="grid h-5 w-5 place-items-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        title="Remove from queue"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Build / Discuss mode toggle (Base44/Lovable parity). */}
             <div className="mb-2 flex items-center justify-between">
               <div className="inline-flex items-center rounded-full border border-border bg-background p-0.5 text-[11px]">
@@ -815,7 +984,11 @@ function Builder() {
                 </button>
               </div>
               <span className="text-[10px] text-muted-foreground">
-                {mode === "discuss" ? "Chat only · no file changes" : "Petal will edit files"}
+                {busy || discussBusy
+                  ? "Petal is working — your next message will queue"
+                  : mode === "discuss"
+                    ? "Chat only · no file changes"
+                    : "Petal will edit files"}
               </span>
             </div>
             <div
@@ -829,30 +1002,35 @@ function Builder() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    if (mode === "discuss") void discuss(input);
-                    else void send(input);
+                    submitPrompt(input);
                   }
                 }}
                 placeholder={
-                  mode === "discuss"
-                    ? "Ask Petal anything about your app…"
-                    : files.length
-                      ? "Ask for a change…"
-                      : "Describe the app you want to build…"
+                  busy || discussBusy
+                    ? "Type to queue your next message…"
+                    : mode === "discuss"
+                      ? "Ask Petal anything about your app…"
+                      : files.length
+                        ? "Ask for a change…"
+                        : "Describe the app you want to build…"
                 }
                 rows={2}
                 className="max-h-40 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
-                disabled={busy || discussBusy || bootstrapping}
+                disabled={bootstrapping}
               />
               <button
                 type="submit"
-                disabled={busy || discussBusy || bootstrapping || !input.trim()}
+                disabled={bootstrapping || !input.trim()}
                 className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground transition hover:brightness-105 disabled:opacity-40"
-                title={mode === "discuss" ? "Send (chat only)" : "Send (build changes)"}
+                title={
+                  busy || discussBusy
+                    ? "Add to queue"
+                    : mode === "discuss"
+                      ? "Send (chat only)"
+                      : "Send (build changes)"
+                }
               >
-                {busy || discussBusy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : mode === "discuss" ? (
+                {mode === "discuss" ? (
                   <MessageSquare className="h-4 w-4" />
                 ) : (
                   <Send className="h-4 w-4" />
