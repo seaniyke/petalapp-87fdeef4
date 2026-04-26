@@ -358,8 +358,26 @@ function Builder() {
 
   const askPetalToFix = useCallback(() => {
     setFriendlyError(null);
-    void send("Please fix the build error and try again.", { isRetry: false });
-  }, [send]);
+    // Feed the actual build error/log back into the next prompt so the AI
+    // can patch the real cause (this is what Lovable, Bolt and Base44 do).
+    // The Railway callback already concatenates logs into error_message.
+    const rawLog = buildSnap?.errorMessage?.trim();
+    const tail = rawLog
+      ? rawLog.split("\n").slice(-60).join("\n").slice(-3500)
+      : "";
+    const prompt = tail
+      ? [
+          "The build just failed with this error from the bundler:",
+          "",
+          "```",
+          tail,
+          "```",
+          "",
+          "Please look at the relevant files in the project, identify the root cause, and fix it. Make the smallest change that will let the build succeed.",
+        ].join("\n")
+      : "The build failed but no error log was captured. Please review the project files for obvious mistakes (missing imports, syntax errors, typos in package.json) and fix them.";
+    void send(prompt, { isRetry: false });
+  }, [send, buildSnap]);
 
   async function downloadProject() {
     if (!files.length) return;
