@@ -424,6 +424,59 @@ function Builder() {
           return map;
         });
 
+        // Diff against the pre-run snapshot. `files` (closure-captured at
+        // function entry) is the "before" state — `files2` is the "after".
+        // We surface added / modified / deleted with line +/- so users see
+        // exactly what Petal touched, not just total file sizes.
+        const beforeMap = new Map(files.map((f) => [f.path, f.content]));
+        const afterMap = new Map(files2.map((f) => [f.path, f.content]));
+        const changes: Record<
+          string,
+          { kind: "added" | "modified" | "unchanged" | "deleted"; addedLines: number; removedLines: number }
+        > = {};
+        for (const f of files2) {
+          const before = beforeMap.get(f.path);
+          const afterLines = f.content.split("\n").length;
+          if (before === undefined) {
+            changes[f.path] = { kind: "added", addedLines: afterLines, removedLines: 0 };
+          } else if (before === f.content) {
+            changes[f.path] = { kind: "unchanged", addedLines: 0, removedLines: 0 };
+          } else {
+            const beforeLines = before.split("\n").length;
+            // Cheap heuristic — actual added/removed without a real LCS diff.
+            // It's directionally correct for the common case (mostly-additive
+            // edits) and lets us avoid pulling a diff library into the bundle.
+            const delta = afterLines - beforeLines;
+            changes[f.path] = {
+              kind: "modified",
+              addedLines: Math.max(delta, 0) + Math.min(beforeLines, 1),
+              removedLines: Math.max(-delta, 0) + Math.min(beforeLines, 1),
+            };
+          }
+        }
+        // Surface deletions too: anything that was in `before` but not in `after`.
+        const deletedPaths: string[] = [];
+        for (const f of files) {
+          if (!afterMap.has(f.path)) {
+            const removedLines = f.content.split("\n").length;
+            changes[f.path] = { kind: "deleted", addedLines: 0, removedLines };
+            deletedPaths.push(f.path);
+          }
+        }
+        setFileChanges(changes);
+        // Make deleted paths visible in the writing-phase file list too,
+        // otherwise the user has no way to know a file is gone.
+        if (deletedPaths.length > 0) {
+          setWrittenPaths((prev) => {
+            const set = new Set(prev);
+            const next = [...prev];
+            for (const p of deletedPaths) {
+              if (!set.has(p)) next.push(p);
+            }
+            return next;
+          });
+        }
+
         // AI work is fully done — mark polishing complete and move to deploying.
         setPhases((p) => completeThrough(p, "polishing"));
         setPhases((p) => advanceTo(p, "deploying"));
