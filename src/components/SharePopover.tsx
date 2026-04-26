@@ -108,6 +108,19 @@ export function SharePopover({ project, onChange }: Props) {
             </p>
           )}
         </div>
+        {onConnectDomain && (
+          <button
+            type="button"
+            onClick={onConnectDomain}
+            className="flex w-full items-center justify-between gap-2 border-t border-border px-4 py-3 text-left text-xs text-muted-foreground transition hover:bg-muted/40 hover:text-foreground"
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Globe className="h-3.5 w-3.5" />
+              Use a custom domain
+            </span>
+            <ArrowRight className="h-3 w-3" />
+          </button>
+        )}
       </PopoverContent>
     </Popover>
   );
