@@ -17,6 +17,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
+import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigger'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
 
 const ProjectsRoute = ProjectsRouteImport.update({
@@ -59,6 +60,11 @@ const ApiPreviewProjectIdRoute = ApiPreviewProjectIdRouteImport.update({
   path: '/api/preview/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBuildsTriggerRoute = ApiBuildsTriggerRouteImport.update({
+  id: '/api/builds/trigger',
+  path: '/api/builds/trigger',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicBuildsCallbackRoute = ApiPublicBuildsCallbackRouteImport.update({
   id: '/api/public/builds/callback',
   path: '/api/public/builds/callback',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/projects': typeof ProjectsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
+  '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/projects': typeof ProjectsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
+  '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/projects': typeof ProjectsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
+  '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/api/generate'
     | '/p/$slug'
+    | '/api/builds/trigger'
     | '/api/preview/$projectId'
     | '/api/public/builds/callback'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/api/generate'
     | '/p/$slug'
+    | '/api/builds/trigger'
     | '/api/preview/$projectId'
     | '/api/public/builds/callback'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/api/generate'
     | '/p/$slug'
+    | '/api/builds/trigger'
     | '/api/preview/$projectId'
     | '/api/public/builds/callback'
   fileRoutesById: FileRoutesById
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   ProjectsRoute: typeof ProjectsRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
   PSlugRoute: typeof PSlugRoute
+  ApiBuildsTriggerRoute: typeof ApiBuildsTriggerRoute
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
 }
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPreviewProjectIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/builds/trigger': {
+      id: '/api/builds/trigger'
+      path: '/api/builds/trigger'
+      fullPath: '/api/builds/trigger'
+      preLoaderRoute: typeof ApiBuildsTriggerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/builds/callback': {
       id: '/api/public/builds/callback'
       path: '/api/public/builds/callback'
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsRoute: ProjectsRoute,
   ApiGenerateRoute: ApiGenerateRoute,
   PSlugRoute: PSlugRoute,
+  ApiBuildsTriggerRoute: ApiBuildsTriggerRoute,
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
 }

@@ -33,7 +33,7 @@ import {
   type ProjectRow,
 } from "@/lib/projects";
 import { createVersion } from "@/lib/versions";
-import { triggerProjectBuild } from "@/server/builds.functions";
+import { triggerBuild } from "@/lib/builds";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
 import {
@@ -270,14 +270,14 @@ function Builder() {
 
           // Kick off a Cloudflare Pages build. Fire-and-forget — the preview
           // pane subscribes to project_builds and updates itself when ready.
-          void triggerProjectBuild({ data: { projectId: project.id } })
+          void triggerBuild(project.id)
             .then(async () => {
               // Pull the project row again so latest_build_id is in state.
               const r = await getProject(project.id);
               if (r) setProject(r);
             })
-            .catch((err) => {
-              console.error("triggerProjectBuild failed", err);
+            .catch((err: unknown) => {
+              console.error("triggerBuild failed", err);
               toast.error("Couldn't start the live build.");
             });
         } catch (persistErr) {
@@ -344,12 +344,12 @@ function Builder() {
       { role: "assistant", content: "↩️ Restored a previous version." },
     ]);
     setHistoryKey((k) => k + 1);
-    void triggerProjectBuild({ data: { projectId: project.id } })
+    void triggerBuild(project.id)
       .then(async () => {
         const r = await getProject(project.id);
         if (r) setProject(r);
       })
-      .catch((err) => console.error("triggerProjectBuild failed", err));
+      .catch((err: unknown) => console.error("triggerBuild failed", err));
   }
 
   const activeContent = files.find((f) => f.path === activeFile)?.content ?? "";
