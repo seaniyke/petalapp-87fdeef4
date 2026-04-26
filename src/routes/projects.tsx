@@ -1,11 +1,10 @@
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Loader2, Trash2, ExternalLink, Sparkles, Globe, Lock } from "lucide-react";
+import { Plus, Trash2, Sparkles, Globe, Lock } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAuth } from "@/lib/auth";
 import {
   listProjects,
-  createProject,
   deleteProject,
   type ProjectRow,
 } from "@/lib/projects";
@@ -147,7 +146,7 @@ function ProjectCard({ project, onDelete }: { project: ProjectRow; onDelete: () 
   );
 }
 
-function EmptyState({ onCreate, creating }: { onCreate: () => void; creating: boolean }) {
+function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="rounded-3xl border border-dashed border-border bg-card/60 p-12 text-center">
       <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-butter">
@@ -160,10 +159,9 @@ function EmptyState({ onCreate, creating }: { onCreate: () => void; creating: bo
       </p>
       <button
         onClick={onCreate}
-        disabled={creating}
-        className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-60"
+        className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:brightness-105"
       >
-        {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+        <Plus className="h-4 w-4" />
         Create your first project
       </button>
     </div>
