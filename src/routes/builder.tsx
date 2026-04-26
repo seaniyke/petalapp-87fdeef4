@@ -281,6 +281,8 @@ function Builder() {
 
   async function downloadProject() {
     if (!files.length) return;
+    // Lazy-load jszip — keeps ~100KB out of the initial /builder bundle.
+    const { default: JSZip } = await import("jszip");
     const zip = new JSZip();
     for (const f of files) zip.file(f.path, f.content);
     const blob = await zip.generateAsync({ type: "blob" });
