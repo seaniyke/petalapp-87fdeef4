@@ -43,8 +43,13 @@ const crossOriginIsolation = createMiddleware().server(async ({ next }) => {
  */
 const customDomainProxy = createMiddleware().server(async ({ next }) => {
   const request = getRequest();
-  const host = new URL(request.url).host;
+  const url = new URL(request.url);
 
+  // Lovable email/cron/webhook routes must always run on the Petal app —
+  // never proxy them to a customer's deployed site.
+  if (url.pathname.startsWith("/lovable/")) return next();
+
+  const host = url.host;
   if (isReservedHost(host)) return next();
 
   const target = await resolveHost(host);
