@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Send,
@@ -14,8 +14,9 @@ import {
   Command as CommandIcon,
   RefreshCcw,
   AlertCircle,
+  MoreHorizontal,
+  Square,
 } from "lucide-react";
-import JSZip from "jszip";
 import { streamGenerate } from "@/lib/stream";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { buildPreviewDoc } from "@/lib/preview";
@@ -33,10 +34,26 @@ import {
 import { createVersion } from "@/lib/versions";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
-import { MarkdownMessage } from "@/components/MarkdownMessage";
-import { CodeEditor } from "@/components/CodeEditor";
-import { CommandPalette, type PaletteItem } from "@/components/CommandPalette";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+
+// Lazy: keep CodeMirror, cmdk, react-markdown, rehype-highlight out of the
+// initial /builder bundle. Most users see Preview first.
+const CodeEditor = lazy(() =>
+  import("@/components/CodeEditor").then((m) => ({ default: m.CodeEditor }))
+);
+const CommandPalette = lazy(() =>
+  import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette }))
+);
+const MarkdownMessage = lazy(() =>
+  import("@/components/MarkdownMessage").then((m) => ({ default: m.MarkdownMessage }))
+);
+type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
 export const Route = createFileRoute("/builder")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -82,6 +99,15 @@ function Builder() {
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Cancel any in-flight generation on unmount or when switching projects.
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+    };
+  }, [searchId]);
 
   const previewDoc = useMemo(() => buildPreviewDoc(files), [files]);
 
@@ -169,6 +195,11 @@ function Builder() {
       let resultSummary = "";
       let streamError: string | null = null;
 
+      // Cancel any prior in-flight request before starting a new one.
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       try {
         await streamGenerate(
           { messages: nextMessages, currentFiles: files },
@@ -184,9 +215,11 @@ function Builder() {
             onError: (m) => {
               streamError = m;
             },
-          }
+          },
+          controller.signal
         );
 
+        if (controller.signal.aborted) return;
         if (streamError) throw new Error(streamError);
         if (!resultFiles) throw new Error("No result returned.");
 
@@ -221,9 +254,11 @@ function Builder() {
           toast.error("Generated, but couldn't save changes.");
         }
       } catch (e) {
+        if (controller.signal.aborted) return;
         const msg = e instanceof Error ? e.message : "Something went wrong.";
         setError(msg);
       } finally {
+        if (abortRef.current === controller) abortRef.current = null;
         setBusy(false);
         setStreamStatus("");
         setStreamingSummary("");
@@ -232,12 +267,22 @@ function Builder() {
     [busy, project, messages, files]
   );
 
+  const stopGeneration = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setBusy(false);
+    setStreamStatus("");
+    setStreamingSummary("");
+  }, []);
+
   const retry = useCallback(() => {
     if (lastUserPrompt) void send(lastUserPrompt, { isRetry: true });
   }, [lastUserPrompt, send]);
 
   async function downloadProject() {
     if (!files.length) return;
+    // Lazy-load jszip — keeps ~100KB out of the initial /builder bundle.
+    const { default: JSZip } = await import("jszip");
     const zip = new JSZip();
     for (const f of files) zip.file(f.path, f.content);
     const blob = await zip.generateAsync({ type: "blob" });
@@ -337,48 +382,54 @@ function Builder() {
     <div className="flex h-screen flex-col bg-background text-foreground">
       {/* Top bar */}
       <header className="flex h-14 items-center justify-between border-b border-border bg-card/70 px-4 backdrop-blur">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Link
             to="/projects"
-            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
           >
             <ArrowLeft className="h-4 w-4" />
-            Projects
+            <span className="hidden sm:inline">Projects</span>
           </Link>
-          <div className="h-5 w-px bg-border" />
-          <div className="flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-md bg-primary text-primary-foreground">
+          <div className="hidden h-5 w-px bg-border sm:block" />
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
               <Sparkles className="h-3.5 w-3.5" />
             </span>
-            <div className="flex flex-col leading-tight">
-              <span className="font-display text-base">{project?.title ?? "Loading…"}</span>
+            <div className="flex min-w-0 flex-col leading-tight">
+              <span
+                className="truncate font-display text-base"
+                title={project?.title ?? undefined}
+              >
+                {project?.title ?? "Loading…"}
+              </span>
               {project?.summary && (
-                <span className="line-clamp-1 max-w-[280px] text-[11px] text-muted-foreground">
+                <span className="hidden truncate text-[11px] text-muted-foreground sm:block">
                   {project.summary}
                 </span>
               )}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <div className="flex items-center rounded-lg border border-border bg-background p-0.5 text-sm">
             <button
               onClick={() => setView("preview")}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition ${
+              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition sm:px-3 ${
                 view === "preview" ? "bg-foreground text-background" : "text-muted-foreground"
               }`}
             >
-              <Eye className="h-3.5 w-3.5" /> Preview
+              <Eye className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Preview</span>
             </button>
             <button
               onClick={() => setView("code")}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition ${
+              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition sm:px-3 ${
                 view === "code" ? "bg-foreground text-background" : "text-muted-foreground"
               }`}
             >
-              <Code2 className="h-3.5 w-3.5" /> Code
+              <Code2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Code</span>
             </button>
           </div>
+          {/* Desktop toolbar */}
           <button
             onClick={() => setPaletteOpen(true)}
             className="hidden h-8 items-center gap-1.5 rounded-lg border border-border px-2 text-xs text-muted-foreground transition hover:bg-muted md:inline-flex"
@@ -390,27 +441,53 @@ function Builder() {
           <button
             onClick={() => setPreviewKey((k) => k + 1)}
             disabled={!files.length}
-            className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+            className="hidden h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40 md:grid"
             title="Reload preview"
           >
             <RotateCw className="h-4 w-4" />
           </button>
           {project && (
-            <HistoryPanel
-              projectId={project.id}
-              currentFiles={files}
-              onRestore={handleRestore}
-              refreshKey={historyKey}
-            />
+            <div className="hidden md:block">
+              <HistoryPanel
+                projectId={project.id}
+                currentFiles={files}
+                onRestore={handleRestore}
+                refreshKey={historyKey}
+              />
+            </div>
           )}
-          {project && <SharePopover project={project} onChange={setProject} />}
+          {project && (
+            <div className="hidden md:block">
+              <SharePopover project={project} onChange={setProject} />
+            </div>
+          )}
           <button
             onClick={downloadProject}
             disabled={!files.length}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+            className="hidden h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted disabled:opacity-40 md:inline-flex"
           >
-            <Download className="h-3.5 w-3.5" /> Export .zip
+            <Download className="h-3.5 w-3.5" /> Export
           </button>
+          {/* Mobile overflow menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted md:hidden"
+              aria-label="More actions"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onSelect={() => setPreviewKey((k) => k + 1)} disabled={!files.length}>
+                <RotateCw className="mr-2 h-3.5 w-3.5" /> Reload preview
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setPaletteOpen(true)}>
+                <CommandIcon className="mr-2 h-3.5 w-3.5" /> Commands
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void downloadProject()} disabled={!files.length}>
+                <Download className="mr-2 h-3.5 w-3.5" /> Export .zip
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -443,7 +520,9 @@ function Builder() {
                   {m.role === "user" ? "you" : "petal"}
                 </div>
                 {m.role === "assistant" ? (
-                  <MarkdownMessage content={m.content} />
+                  <Suspense fallback={<div className="whitespace-pre-wrap">{m.content}</div>}>
+                    <MarkdownMessage content={m.content} />
+                  </Suspense>
                 ) : (
                   <div className="whitespace-pre-wrap">{m.content}</div>
                 )}
@@ -451,9 +530,18 @@ function Builder() {
             ))}
             {busy && (
               <div className="mr-6 rounded-2xl bg-mint/50 px-3.5 py-2.5 text-sm">
-                <div className="mb-1 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-foreground/70">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  {streamStatus || "Petal is building…"}
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-foreground/70">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {streamStatus || "Petal is building…"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={stopGeneration}
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:bg-background hover:text-foreground"
+                  >
+                    <Square className="h-2.5 w-2.5 fill-current" /> Stop
+                  </button>
                 </div>
                 {streamingSummary && (
                   <div className="whitespace-pre-wrap leading-relaxed">
@@ -571,26 +659,34 @@ function Builder() {
               </div>
               <div className="min-h-0 overflow-hidden bg-card">
                 {activeFile ? (
-                  <CodeEditor
-                    path={activeFile}
-                    value={activeContent}
-                    onChange={(next) => {
-                      setFiles((prev) =>
-                        prev.map((f) =>
-                          f.path === activeFile ? { ...f, content: next } : f
-                        )
-                      );
-                    }}
-                    onBlur={async () => {
-                      if (!project) return;
-                      try {
-                        await saveProjectFiles(project.id, files);
-                      } catch (e) {
-                        toast.error("Couldn't save edits");
-                        console.error(e);
-                      }
-                    }}
-                  />
+                  <Suspense
+                    fallback={
+                      <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    }
+                  >
+                    <CodeEditor
+                      path={activeFile}
+                      value={activeContent}
+                      onChange={(next) => {
+                        setFiles((prev) =>
+                          prev.map((f) =>
+                            f.path === activeFile ? { ...f, content: next } : f
+                          )
+                        );
+                      }}
+                      onBlur={async () => {
+                        if (!project) return;
+                        try {
+                          await saveProjectFiles(project.id, files);
+                        } catch (e) {
+                          toast.error("Couldn't save edits");
+                          console.error(e);
+                        }
+                      }}
+                    />
+                  </Suspense>
                 ) : (
                   <div className="grid h-full place-items-center p-6 text-xs text-muted-foreground">
                     Select a file to edit.
@@ -601,7 +697,11 @@ function Builder() {
           )}
         </main>
       </div>
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} items={paletteItems} />
+      {paletteOpen && (
+        <Suspense fallback={null}>
+          <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} items={paletteItems} />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -138,16 +138,17 @@ export async function loadProjectMessages(projectId: string): Promise<ChatMessag
 }
 
 /**
- * Replace all files for a project with the given set (matches the AI's full-project rewrite).
+ * Atomically replace all files for a project with the given set.
+ * Uses a server-side function so the delete-of-removed and upsert-of-changed
+ * happen in a single transaction — a failed save never empties the project.
  */
 export async function saveProjectFiles(projectId: string, files: ProjectFile[]) {
-  // Wipe existing rows then bulk-insert. Two RTTs but simple and correct.
-  const del = await supabase.from("project_files").delete().eq("project_id", projectId);
-  if (del.error) throw del.error;
-  if (files.length === 0) return;
-  const { error } = await supabase
-    .from("project_files")
-    .insert(files.map((f) => ({ project_id: projectId, path: f.path, content: f.content })));
+  // Cast: the generated types treat jsonb args narrowly, but our payload is a
+  // plain JSON array of {path, content} which the RPC handles natively.
+  const { error } = await supabase.rpc(
+    "replace_project_files",
+    { _project_id: projectId, _files: files } as never
+  );
   if (error) throw error;
 }
 
@@ -159,11 +160,19 @@ export async function appendMessages(projectId: string, msgs: ChatMessage[]) {
   if (error) throw error;
 }
 
+/** Truncate to ~200 chars on a word boundary. Used to keep summaries SEO-friendly. */
+export function truncateSummary(s: string, max = 200): string {
+  const clean = s.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+  const slice = clean.slice(0, max);
+  const lastSpace = slice.lastIndexOf(" ");
+  return (lastSpace > max * 0.6 ? slice.slice(0, lastSpace) : slice).trimEnd() + "…";
+}
+
 /** Update the project title from a generated summary if still default. */
 export async function maybeAutoTitleProject(project: ProjectRow, summary: string, firstUserPrompt: string) {
   if (project.title !== "Untitled project") return;
-  // Use the user's first prompt as the title (trimmed)
   const candidate = firstUserPrompt.replace(/\s+/g, " ").trim().slice(0, 60);
   if (!candidate) return;
-  await updateProject(project.id, { title: candidate, summary });
+  await updateProject(project.id, { title: candidate, summary: truncateSummary(summary) });
 }

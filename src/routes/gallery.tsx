@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, GitFork, Star, Loader2, ArrowUpRight, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -201,13 +201,35 @@ function GalleryCard({
 
 /**
  * Renders a tiny live iframe of the project, scaled down. Files are fetched
- * lazily from public RLS-readable rows.
+ * lazily, and the iframe only mounts when the card scrolls into view (and
+ * unmounts when scrolled out) so we never run 60 model contexts at once.
  */
 function Thumbnail({ projectId }: { projectId: string }) {
   const [doc, setDoc] = useState<string | null>(null);
   const [error, setError] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
+  // Observe visibility — only fetch + render when on screen.
   useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setVisible(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) setVisible(entry.isIntersecting);
+      },
+      { rootMargin: "200px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // Fetch files only once, the first time we become visible.
+  useEffect(() => {
+    if (!visible || doc !== null || error) return;
     let cancelled = false;
     loadProjectFiles(projectId)
       .then((files) => {
@@ -224,12 +246,12 @@ function Thumbnail({ projectId }: { projectId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [visible, projectId, doc, error]);
 
   return (
-    <div className="relative h-40 overflow-hidden bg-aurora">
+    <div ref={ref} className="relative h-40 overflow-hidden bg-aurora">
       <div className="absolute inset-0 bg-grain opacity-30" aria-hidden />
-      {doc ? (
+      {visible && doc ? (
         <div
           className="pointer-events-none absolute left-0 top-0"
           style={{
@@ -243,6 +265,7 @@ function Thumbnail({ projectId }: { projectId: string }) {
             title="preview"
             srcDoc={doc}
             sandbox="allow-scripts"
+            loading="lazy"
             className="h-full w-full border-0 bg-white"
           />
         </div>
