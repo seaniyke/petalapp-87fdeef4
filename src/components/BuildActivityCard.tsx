@@ -198,9 +198,12 @@ export function BuildActivityCard({
   return (
     <div className="mr-6 overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur transition-all">
       <div className="flex items-center gap-2.5 px-3.5 py-2.5">
+        {/* Emoji crossfades when the phase changes. The `key` triggers a
+            remount so the `animate-fade-in` keyframe replays each time. */}
         <span
-          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center text-[14px] ${
-            isActive ? "animate-pulse" : ""
+          key={`emoji-${currentPhase?.id ?? "init"}`}
+          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center text-[14px] animate-fade-in ${
+            isActive ? "animate-pulse motion-reduce:animate-none" : ""
           }`}
           aria-hidden
         >
@@ -208,7 +211,11 @@ export function BuildActivityCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 text-sm leading-snug text-foreground">
-            <span className="truncate font-medium">
+            {/* Phase label crossfades on change via key-based remount. */}
+            <span
+              key={`label-${currentPhase?.id ?? "init"}`}
+              className="truncate font-medium animate-fade-in motion-reduce:animate-none"
+            >
               {currentPhase?.label ?? "Working…"}
             </span>
             {elapsed > 0 && (
@@ -217,8 +224,14 @@ export function BuildActivityCard({
               </span>
             )}
           </div>
+          {/* Sub-caption fades whenever its text changes (e.g. new file path
+              while writing). Using the caption itself as the key gives a
+              fresh fade per-message without extra state. */}
           {subCaption && (
-            <div className="mt-0.5 truncate text-xs text-muted-foreground">
+            <div
+              key={`cap-${subCaption}`}
+              className="mt-0.5 truncate text-xs text-muted-foreground animate-fade-in motion-reduce:animate-none"
+            >
               {subCaption}
             </div>
           )}
