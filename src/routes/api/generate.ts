@@ -12,6 +12,7 @@ import {
   type FileOp,
   type StreamEvent,
 } from "@/server/generate.server";
+import { applyScaffoldKit } from "@/server/scaffold-kit";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -302,7 +303,9 @@ export const Route = createFileRoute("/api/generate")({
               let nextFiles: ProjectFile[];
               if (collected.name === "write_project") {
                 if (!parsed.files?.length) throw new Error("AI returned no files.");
-                nextFiles = parsed.files;
+                // Inject the canonical scaffold (Tailwind v4 + shadcn-style UI kit)
+                // so the AI never has to emit boilerplate it can't reliably reproduce.
+                nextFiles = applyScaffoldKit(parsed.files);
               } else {
                 if (!Array.isArray(parsed.ops)) throw new Error("AI returned no ops.");
                 nextFiles = applyOps(currentFiles, parsed.ops);
