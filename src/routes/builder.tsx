@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
-import { buildPreviewDoc } from "@/lib/preview";
+
 import { supabase } from "@/integrations/supabase/client";
 import {
   appendMessages,
@@ -112,7 +112,7 @@ function Builder() {
     };
   }, [searchId]);
 
-  const previewDoc = useMemo(() => buildPreviewDoc(files), [files]);
+  
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
