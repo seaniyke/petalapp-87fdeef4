@@ -6,10 +6,26 @@ import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
+/**
+ * Only allow internal, same-origin redirect targets. Rejects:
+ *   - absolute URLs (https://evil.com/x)
+ *   - protocol-relative URLs (//evil.com/x, /\evil.com/x)
+ *   - anything that isn't a path starting with "/"
+ * Returns a safe path or `undefined`.
+ */
+function sanitizeRedirect(raw: unknown): string | undefined {
+  if (typeof raw !== "string" || raw.length === 0) return undefined;
+  // Must start with a single "/" — no "//" or "/\" (protocol-relative tricks).
+  if (raw[0] !== "/" || raw[1] === "/" || raw[1] === "\\") return undefined;
+  // Reject anything that parses as an absolute URL with a scheme.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return undefined;
+  return raw;
+}
+
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
     mode: search.mode === "signup" ? ("signup" as const) : ("signin" as const),
-    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+    redirect: sanitizeRedirect(search.redirect),
   }),
   head: () => ({
     meta: [
