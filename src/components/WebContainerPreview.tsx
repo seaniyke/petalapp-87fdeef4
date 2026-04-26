@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Terminal, RotateCw, AlertCircle, Smartphone } from "lucide-react";
+import { Loader2, Terminal, RotateCw, AlertCircle, Smartphone, MousePointerClick } from "lucide-react";
 import type { ProjectFile } from "@/server/generate.server";
 import {
+  ensurePickerInstalled,
   getContainer,
   installDeps,
   mountProject,
@@ -10,6 +11,17 @@ import {
   subscribeLogs,
   subscribeServer,
 } from "@/lib/webcontainer";
+
+export type PickedElement = {
+  tag: string;
+  id: string | null;
+  classes: string | null;
+  text: string;
+  role: string | null;
+  ariaLabel: string | null;
+  sourceFile: string | null;
+  sourceLine: string | null;
+};
 
 type Phase = "idle" | "booting" | "installing" | "starting" | "ready" | "error" | "unsupported";
 
