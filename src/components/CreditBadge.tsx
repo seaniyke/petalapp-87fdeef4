@@ -2,7 +2,7 @@
  * Credit balance pill in the site header.
  *
  * Hover for breakdown across daily / monthly / top-up. Click opens the
- * BillingSheet (upgrade plans, top up, or open Stripe billing portal).
+ * BillingSheet (upgrade plans or top up via Paystack).
  */
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
