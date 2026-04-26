@@ -149,10 +149,15 @@ export function WebContainerPreview({
           setPhase("starting");
           await startDevServer();
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          // Inject the element-picker helper. Best-effort — don't fail the boot if this errors.
+          const indexHtml = files.find((f) => f.path === "index.html")?.content;
+          ensurePickerInstalled(indexHtml).catch(() => {});
           setPhase("ready");
         } else {
           // Subsequent changes: just patch the filesystem, dev server hot-reloads.
           await mountProject(files);
+          const indexHtml = files.find((f) => f.path === "index.html")?.content;
+          ensurePickerInstalled(indexHtml).catch(() => {});
         }
       } catch (e) {
         if (cancelled) return;
