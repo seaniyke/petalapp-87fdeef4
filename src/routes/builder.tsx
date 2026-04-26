@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
-import { buildPreviewDoc } from "@/lib/preview";
+
 import { supabase } from "@/integrations/supabase/client";
 import {
   appendMessages,
@@ -52,6 +52,9 @@ const CommandPalette = lazy(() =>
 );
 const MarkdownMessage = lazy(() =>
   import("@/components/MarkdownMessage").then((m) => ({ default: m.MarkdownMessage }))
+);
+const WebContainerPreview = lazy(() =>
+  import("@/components/WebContainerPreview").then((m) => ({ default: m.WebContainerPreview }))
 );
 type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
@@ -109,7 +112,7 @@ function Builder() {
     };
   }, [searchId]);
 
-  const previewDoc = useMemo(() => buildPreviewDoc(files), [files]);
+  
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -619,13 +622,15 @@ function Builder() {
             <div className="flex min-h-0 flex-1 flex-col p-3">
               <div className="flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-white">
                 {files.length ? (
-                  <iframe
-                    key={previewKey}
-                    title="preview"
-                    sandbox="allow-scripts allow-forms allow-modals"
-                    srcDoc={previewDoc}
-                    className="h-full w-full"
-                  />
+                  <Suspense
+                    fallback={
+                      <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    }
+                  >
+                    <WebContainerPreview files={files} reloadKey={previewKey} />
+                  </Suspense>
                 ) : (
                   <EmptyPreview />
                 )}
