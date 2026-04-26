@@ -161,6 +161,19 @@ function Builder() {
   // Project Knowledge sheet — also opens from the mobile overflow menu.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
+  // Visual element edit (Phase 5): selected element from the preview iframe.
+  type PickedElement = {
+    tag: string;
+    id: string | null;
+    classes: string | null;
+    text: string;
+    role: string | null;
+    ariaLabel: string | null;
+    sourceFile: string | null;
+    sourceLine: string | null;
+  };
+  const [pickedElement, setPickedElement] = useState<PickedElement | null>(null);
+  const [pickInstruction, setPickInstruction] = useState("");
   const isMobile = useIsMobile();
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
