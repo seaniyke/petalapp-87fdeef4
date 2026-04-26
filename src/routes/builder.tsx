@@ -214,6 +214,7 @@ function Builder() {
       const text = content.trim();
       if (!text || busy || !project) return;
       setError(null);
+      setFriendlyError(null);
       const userMsg: ChatMessage = { role: "user", content: text };
       // On retry, the failing user message is already in `messages` — don't double-append.
       const nextMessages: ChatMessage[] = opts.isRetry
@@ -223,8 +224,13 @@ function Builder() {
       setLastUserPrompt(text);
       setInput("");
       setBusy(true);
-      setStreamStatus("Thinking…");
-      setStreamingSummary("");
+
+      // Fresh activity feed for this run.
+      setPhases(defaultPhases());
+      setDesignCaption("");
+      setFilesWritten(0);
+      setLatestPath(undefined);
+      setActivityVisible(true);
 
       let resultFiles: ProjectFile[] | null = null;
       let resultSummary = "";
@@ -239,10 +245,14 @@ function Builder() {
         await streamGenerate(
           { messages: nextMessages, currentFiles: files },
           {
-            onStatus: (m) => setStreamStatus(m),
-            onSummaryDelta: (d) => setStreamingSummary((s) => s + d),
-            onTool: (name) =>
-              setStreamStatus(name === "patch_files" ? "Editing files…" : "Writing project…"),
+            onPhase: (phase: PhaseId) => {
+              setPhases((p) => advanceTo(p, phase));
+            },
+            onSummaryDelta: (d) => setDesignCaption((s) => s + d),
+            onFileProgress: (n, path) => {
+              setFilesWritten(n);
+              if (path) setLatestPath(path);
+            },
             onResult: (f, s) => {
               resultFiles = f;
               resultSummary = s;
@@ -267,6 +277,10 @@ function Builder() {
         setPreviewKey((k) => k + 1);
         setLastUserPrompt(null);
 
+        // AI work is fully done — mark polishing complete and move to deploying.
+        setPhases((p) => completeThrough(p, "polishing"));
+        setPhases((p) => advanceTo(p, "deploying"));
+
         try {
           const persistMsgs: ChatMessage[] = opts.isRetry
             ? [assistantMsg]
@@ -285,17 +299,16 @@ function Builder() {
           const refreshed = await getProject(project.id);
           if (refreshed) setProject(refreshed);
 
-          // Kick off a Cloudflare Pages build. Fire-and-forget — the preview
-          // pane subscribes to project_builds and updates itself when ready.
+          // Kick off a Cloudflare Pages build. Fire-and-forget — the activity
+          // card subscribes to project_builds via useBuildActivity().
           void triggerBuild(project.id)
             .then(async () => {
-              // Pull the project row again so latest_build_id is in state.
               const r = await getProject(project.id);
               if (r) setProject(r);
             })
             .catch((err: unknown) => {
-              console.error("triggerBuild failed", err);
-              toast.error("Couldn't start the live build.");
+              setFriendlyError(toFriendlyError(err));
+              setPhases((p) => markFailed(p, "deploying"));
             });
         } catch (persistErr) {
           console.error(persistErr);
@@ -305,11 +318,11 @@ function Builder() {
         if (controller.signal.aborted) return;
         const msg = e instanceof Error ? e.message : "Something went wrong.";
         setError(msg);
+        setFriendlyError(toFriendlyError(e));
+        setPhases((p) => markFailed(p));
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
         setBusy(false);
-        setStreamStatus("");
-        setStreamingSummary("");
       }
     },
     [busy, project, messages, files]
@@ -319,13 +332,17 @@ function Builder() {
     abortRef.current?.abort();
     abortRef.current = null;
     setBusy(false);
-    setStreamStatus("");
-    setStreamingSummary("");
+    setActivityVisible(false);
   }, []);
 
   const retry = useCallback(() => {
     if (lastUserPrompt) void send(lastUserPrompt, { isRetry: true });
   }, [lastUserPrompt, send]);
+
+  const askPetalToFix = useCallback(() => {
+    setFriendlyError(null);
+    void send("Please fix the build error and try again.", { isRetry: false });
+  }, [send]);
 
   async function downloadProject() {
     if (!files.length) return;
