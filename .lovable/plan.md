@@ -86,14 +86,16 @@ Shipped:
 - The owner's instructions are sent to **both** `/api/generate` and `/api/discuss` and prepended to the system prompt as a "Project Knowledge" block on every turn.
 - A small "knowledge active" pill appears under the chat input whenever the field is non-empty so users remember it's in effect.
 
-## Phase 5 — Visual element edit (the magic moment)
+## Phase 5 — Visual element edit ✅ Shipped (cheap version)
 
-Lovable's headline demo: click an element in the preview iframe → describe a change → AI edits only that element's component.
+The "click an element → tell Petal what to change" flow is wired end-to-end:
 
-How: inject a small script into the iframe that listens for clicks, draws a hover outline, `postMessage`s the clicked element's selector back to the parent. Parent opens an "Edit element" prompt that becomes *"In `src/App.tsx`, the `<button>` with text 'Sign up' should be larger and green"*.
+- **Picker script injected into the running app** (`src/lib/webcontainer.ts → ensurePickerInstalled`). After dev server boot we drop `public/__petal_picker.js` and append a `<script>` tag to `index.html`. The script is dormant until the parent window posts `petal:pick:enable`. Cross-origin safe — runs *inside* the WebContainer iframe.
+- **Hover outline + click capture** in the picker: pink overlay box with a tag/text label that follows the cursor. Click captures the element; Esc cancels. The capture posts `{ type: "petal:pick:selected", payload: { tag, id, classes, text, role, ariaLabel, sourceFile, sourceLine } }` back to the parent.
+- **Pick toggle button** (crosshair icon) on the preview toolbar in `WebContainerPreview`. Toggles a banner "Click an element in the preview · Esc to cancel" and pushes enable/disable into the iframe via `postMessage`.
+- **Edit dialog** in `builder.tsx`: when an element is picked, shows a small modal with the element's tag/text/id and a textarea. ⌘/Ctrl+Enter or "Send to Petal" composes a structured prompt (tag, text, classes, role, aria-label, optional file:line) and pipes it through the existing `submitPrompt()` so it respects queue, mode, and model routing.
 
-- **Cheap version (~half a day):** capture `tagName`, `textContent`, CSS classes; send to AI as context.
-- **Real version (~2 days):** add `babel-plugin-transform-react-jsx-source` for exact file+line mapping (what Lovable does). Recommend cheap version first.
+**Real version (deferred):** add `babel-plugin-transform-react-jsx-source` to the generated Vite config so each rendered element carries `data-source-file`/`data-source-line` attributes — the picker already reads them and forwards them to the AI. Wire that into the system prompt for a future polish pass.
 
 ---
 

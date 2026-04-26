@@ -161,6 +161,19 @@ function Builder() {
   // Project Knowledge sheet — also opens from the mobile overflow menu.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
+  // Visual element edit (Phase 5): selected element from the preview iframe.
+  type PickedElement = {
+    tag: string;
+    id: string | null;
+    classes: string | null;
+    text: string;
+    role: string | null;
+    ariaLabel: string | null;
+    sourceFile: string | null;
+    sourceLine: string | null;
+  };
+  const [pickedElement, setPickedElement] = useState<PickedElement | null>(null);
+  const [pickInstruction, setPickInstruction] = useState("");
   const isMobile = useIsMobile();
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -1176,7 +1189,15 @@ function Builder() {
                       </div>
                     }
                   >
-                    <WebContainerPreview files={files} reloadKey={previewKey} />
+                    <WebContainerPreview
+                      files={files}
+                      reloadKey={previewKey}
+                      onPick={(el) => {
+                        setPickedElement(el);
+                        setPickInstruction("");
+                      }}
+                    />
+
                   </Suspense>
                 ) : (
                   <EmptyPreview />
@@ -1249,6 +1270,110 @@ function Builder() {
         <Suspense fallback={null}>
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} items={paletteItems} />
         </Suspense>
+      )}
+      {pickedElement && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4 backdrop-blur-sm"
+          onClick={() => setPickedElement(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-display text-lg">Edit this element</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Tell Petal what to change. We'll include the element's details automatically.
+                </p>
+              </div>
+              <button
+                onClick={() => setPickedElement(null)}
+                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                title="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-3 rounded-lg bg-muted/60 px-3 py-2 text-[11px] text-muted-foreground">
+              <code className="text-foreground">&lt;{pickedElement.tag}&gt;</code>
+              {pickedElement.text && (
+                <> · "<span className="text-foreground">{pickedElement.text.slice(0, 60)}</span>"</>
+              )}
+              {pickedElement.id && <> · #{pickedElement.id}</>}
+            </div>
+            <textarea
+              autoFocus
+              value={pickInstruction}
+              onChange={(e) => setPickInstruction(e.target.value)}
+              placeholder="Make it larger and pink…"
+              rows={3}
+              className="mt-3 w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  if (!pickInstruction.trim()) return;
+                  const el = pickedElement;
+                  const lines: string[] = [
+                    `Edit a single element in the preview:`,
+                    `- Tag: <${el.tag}>`,
+                  ];
+                  if (el.text) lines.push(`- Visible text: "${el.text}"`);
+                  if (el.id) lines.push(`- id: ${el.id}`);
+                  if (el.classes) lines.push(`- className: ${el.classes}`);
+                  if (el.role) lines.push(`- role: ${el.role}`);
+                  if (el.ariaLabel) lines.push(`- aria-label: ${el.ariaLabel}`);
+                  if (el.sourceFile) {
+                    lines.push(`- Source file: ${el.sourceFile}${el.sourceLine ? `:${el.sourceLine}` : ""}`);
+                  }
+                  lines.push("", `Change requested: ${pickInstruction.trim()}`);
+                  lines.push("", `Find this exact element in the project and apply the change. Make the smallest possible edit; do not redesign other parts of the app.`);
+                  submitPrompt(lines.join("\n"));
+                  setPickedElement(null);
+                  setPickInstruction("");
+                }
+              }}
+            />
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground">⌘/Ctrl + Enter to send</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPickedElement(null)}
+                  className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={!pickInstruction.trim()}
+                  onClick={() => {
+                    const el = pickedElement;
+                    if (!el) return;
+                    const lines: string[] = [
+                      `Edit a single element in the preview:`,
+                      `- Tag: <${el.tag}>`,
+                    ];
+                    if (el.text) lines.push(`- Visible text: "${el.text}"`);
+                    if (el.id) lines.push(`- id: ${el.id}`);
+                    if (el.classes) lines.push(`- className: ${el.classes}`);
+                    if (el.role) lines.push(`- role: ${el.role}`);
+                    if (el.ariaLabel) lines.push(`- aria-label: ${el.ariaLabel}`);
+                    if (el.sourceFile) {
+                      lines.push(`- Source file: ${el.sourceFile}${el.sourceLine ? `:${el.sourceLine}` : ""}`);
+                    }
+                    lines.push("", `Change requested: ${pickInstruction.trim()}`);
+                    lines.push("", `Find this exact element in the project and apply the change. Make the smallest possible edit; do not redesign other parts of the app.`);
+                    submitPrompt(lines.join("\n"));
+                    setPickedElement(null);
+                    setPickInstruction("");
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-40"
+                >
+                  <Wand2 className="h-3.5 w-3.5" /> Send to Petal
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Terminal, RotateCw, AlertCircle, Smartphone } from "lucide-react";
+import { Loader2, Terminal, RotateCw, AlertCircle, Smartphone, MousePointerClick } from "lucide-react";
 import type { ProjectFile } from "@/server/generate.server";
 import {
+  ensurePickerInstalled,
   getContainer,
   installDeps,
   mountProject,
@@ -10,6 +11,17 @@ import {
   subscribeLogs,
   subscribeServer,
 } from "@/lib/webcontainer";
+
+export type PickedElement = {
+  tag: string;
+  id: string | null;
+  classes: string | null;
+  text: string;
+  role: string | null;
+  ariaLabel: string | null;
+  sourceFile: string | null;
+  sourceLine: string | null;
+};
 
 type Phase = "idle" | "booting" | "installing" | "starting" | "ready" | "error" | "unsupported";
 
@@ -43,10 +55,13 @@ const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
 export function WebContainerPreview({
   files,
   reloadKey,
+  onPick,
 }: {
   files: ProjectFile[];
   /** Bump this number to force the iframe to reload (e.g. after restoring a version). */
   reloadKey: number;
+  /** Called when a user picks an element via the in-iframe overlay. */
+  onPick?: (el: PickedElement) => void;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [serverUrl, setServerUrl] = useState<string | null>(null);
@@ -54,6 +69,7 @@ export function WebContainerPreview({
   const [error, setError] = useState<string | null>(null);
   const [showLogs, setShowLogs] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
+  const [pickActive, setPickActive] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const bootedRef = useRef(false);
   const mountedFilesSig = useRef<string>("");
@@ -133,10 +149,15 @@ export function WebContainerPreview({
           setPhase("starting");
           await startDevServer();
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          // Inject the element-picker helper. Best-effort — don't fail the boot if this errors.
+          const indexHtml = files.find((f) => f.path === "index.html")?.content;
+          ensurePickerInstalled(indexHtml).catch(() => {});
           setPhase("ready");
         } else {
           // Subsequent changes: just patch the filesystem, dev server hot-reloads.
           await mountProject(files);
+          const indexHtml = files.find((f) => f.path === "index.html")?.content;
+          ensurePickerInstalled(indexHtml).catch(() => {});
         }
       } catch (e) {
         if (cancelled) return;
@@ -164,6 +185,30 @@ export function WebContainerPreview({
   useEffect(() => {
     setIframeKey((k) => k + 1);
   }, [reloadKey]);
+
+  // Listen for picker messages from the iframe (cross-origin postMessage).
+  useEffect(() => {
+    if (!onPick) return;
+    const handler = (e: MessageEvent) => {
+      const data = e.data as { type?: string; payload?: PickedElement } | null;
+      if (!data || typeof data !== "object") return;
+      if (data.type === "petal:pick:selected" && data.payload) {
+        onPick(data.payload);
+        setPickActive(false);
+      } else if (data.type === "petal:pick:cancelled") {
+        setPickActive(false);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [onPick]);
+
+  // Push enable/disable into the iframe whenever pickActive flips.
+  useEffect(() => {
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    win.postMessage({ type: pickActive ? "petal:pick:enable" : "petal:pick:disable" }, "*");
+  }, [pickActive, iframeKey]);
 
   if (phase === "unsupported") {
     return (
@@ -201,6 +246,19 @@ export function WebContainerPreview({
       )}
       {phase === "ready" && (
         <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
+          {onPick && (
+            <button
+              onClick={() => setPickActive((p) => !p)}
+              className={`grid h-7 w-7 place-items-center rounded-md border backdrop-blur transition ${
+                pickActive
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card/90 text-muted-foreground hover:text-foreground"
+              }`}
+              title={pickActive ? "Cancel element pick (Esc)" : "Pick an element to edit"}
+            >
+              <MousePointerClick className="h-3.5 w-3.5" />
+            </button>
+          )}
           <button
             onClick={() => setIframeKey((k) => k + 1)}
             className="grid h-7 w-7 place-items-center rounded-md border border-border bg-card/90 text-muted-foreground backdrop-blur transition hover:text-foreground"
@@ -215,6 +273,11 @@ export function WebContainerPreview({
           >
             <Terminal className="h-3.5 w-3.5" />
           </button>
+        </div>
+      )}
+      {pickActive && (
+        <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary backdrop-blur">
+          Click an element in the preview · Esc to cancel
         </div>
       )}
 
