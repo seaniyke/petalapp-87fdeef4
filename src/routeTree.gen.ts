@@ -17,6 +17,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
+import { Route as ApiBackendRouteImport } from './routes/api/backend'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
 import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigger'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
@@ -61,6 +62,11 @@ const ApiDiscussRoute = ApiDiscussRouteImport.update({
   path: '/api/discuss',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBackendRoute = ApiBackendRouteImport.update({
+  id: '/api/backend',
+  path: '/api/backend',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPreviewProjectIdRoute = ApiPreviewProjectIdRouteImport.update({
   id: '/api/preview/$projectId',
   path: '/api/preview/$projectId',
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/builder': typeof BuilderRoute
   '/gallery': typeof GalleryRoute
   '/projects': typeof ProjectsRoute
+  '/api/backend': typeof ApiBackendRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/builder': typeof BuilderRoute
   '/gallery': typeof GalleryRoute
   '/projects': typeof ProjectsRoute
+  '/api/backend': typeof ApiBackendRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/builder': typeof BuilderRoute
   '/gallery': typeof GalleryRoute
   '/projects': typeof ProjectsRoute
+  '/api/backend': typeof ApiBackendRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/builder'
     | '/gallery'
     | '/projects'
+    | '/api/backend'
     | '/api/discuss'
     | '/api/generate'
     | '/p/$slug'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/builder'
     | '/gallery'
     | '/projects'
+    | '/api/backend'
     | '/api/discuss'
     | '/api/generate'
     | '/p/$slug'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/builder'
     | '/gallery'
     | '/projects'
+    | '/api/backend'
     | '/api/discuss'
     | '/api/generate'
     | '/p/$slug'
@@ -165,6 +177,7 @@ export interface RootRouteChildren {
   BuilderRoute: typeof BuilderRoute
   GalleryRoute: typeof GalleryRoute
   ProjectsRoute: typeof ProjectsRoute
+  ApiBackendRoute: typeof ApiBackendRoute
   ApiDiscussRoute: typeof ApiDiscussRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
   PSlugRoute: typeof PSlugRoute
@@ -231,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDiscussRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/backend': {
+      id: '/api/backend'
+      path: '/api/backend'
+      fullPath: '/api/backend'
+      preLoaderRoute: typeof ApiBackendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/preview/$projectId': {
       id: '/api/preview/$projectId'
       path: '/api/preview/$projectId'
@@ -261,6 +281,7 @@ const rootRouteChildren: RootRouteChildren = {
   BuilderRoute: BuilderRoute,
   GalleryRoute: GalleryRoute,
   ProjectsRoute: ProjectsRoute,
+  ApiBackendRoute: ApiBackendRoute,
   ApiDiscussRoute: ApiDiscussRoute,
   ApiGenerateRoute: ApiGenerateRoute,
   PSlugRoute: PSlugRoute,

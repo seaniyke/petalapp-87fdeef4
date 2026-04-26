@@ -70,6 +70,53 @@ export type Database = {
         }
         Relationships: []
       }
+      project_backends: {
+        Row: {
+          anon_key: string
+          created_at: string
+          error_message: string | null
+          health_checked_at: string | null
+          id: string
+          project_id: string
+          provider: string
+          service_role_key: string | null
+          status: string
+          supabase_url: string
+        }
+        Insert: {
+          anon_key: string
+          created_at?: string
+          error_message?: string | null
+          health_checked_at?: string | null
+          id?: string
+          project_id: string
+          provider?: string
+          service_role_key?: string | null
+          status?: string
+          supabase_url: string
+        }
+        Update: {
+          anon_key?: string
+          created_at?: string
+          error_message?: string | null
+          health_checked_at?: string | null
+          id?: string
+          project_id?: string
+          provider?: string
+          service_role_key?: string | null
+          status?: string
+          supabase_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_backends_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_builds: {
         Row: {
           created_at: string

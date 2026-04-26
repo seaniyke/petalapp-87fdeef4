@@ -1,11 +1,17 @@
 /**
- * ProjectSettingsSheet — edit a project's custom instructions
- * ("Project Knowledge"). Mirrors Lovable / Base44's Custom Instructions
- * feature: a small piece of context the owner attaches to the project
- * that Petal silently honors on every change.
+ * ProjectSettingsSheet — edit a project's custom instructions and manage
+ * the attached backend (BYO Supabase v1).
  */
 import { useEffect, useState } from "react";
-import { BookOpen, Loader2, Save } from "lucide-react";
+import {
+  BookOpen,
+  Database,
+  Loader2,
+  Save,
+  Plug,
+  CheckCircle2,
+  Unplug,
+} from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -15,8 +21,17 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { updateProject, type ProjectRow } from "@/lib/projects";
+import {
+  updateProject,
+  getProjectBackend,
+  connectProjectBackend,
+  disconnectProjectBackend,
+  type ProjectRow,
+  type ProjectBackend,
+} from "@/lib/projects";
 import { toast } from "sonner";
 
 const MAX_LEN = 4000;
@@ -31,14 +46,18 @@ const PLACEHOLDER = `Examples:
 type Props = {
   project: ProjectRow;
   onChange: (next: ProjectRow) => void;
-  /** Optional render-prop trigger override. Default is a small toolbar button. */
   trigger?: React.ReactNode;
-  /** Optional controlled open state (so it can be opened from a parent menu). */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 };
 
-export function ProjectSettingsSheet({ project, onChange, trigger, open: openProp, onOpenChange }: Props) {
+export function ProjectSettingsSheet({
+  project,
+  onChange,
+  trigger,
+  open: openProp,
+  onOpenChange,
+}: Props) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = openProp !== undefined;
   const open = isControlled ? !!openProp : internalOpen;
@@ -49,7 +68,6 @@ export function ProjectSettingsSheet({ project, onChange, trigger, open: openPro
   const [value, setValue] = useState(project.custom_instructions ?? "");
   const [saving, setSaving] = useState(false);
 
-  // Re-sync when the sheet opens or the underlying project changes.
   useEffect(() => {
     if (open) setValue(project.custom_instructions ?? "");
   }, [open, project.custom_instructions]);
@@ -62,7 +80,6 @@ export function ProjectSettingsSheet({ project, onChange, trigger, open: openPro
       } as never);
       onChange(next);
       toast.success("Project knowledge saved");
-      setOpen(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't save");
     } finally {
@@ -78,10 +95,10 @@ export function ProjectSettingsSheet({ project, onChange, trigger, open: openPro
         {trigger ?? (
           <button
             className="hidden h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted md:inline-flex"
-            title="Project knowledge — instructions Petal always follows"
+            title="Project settings"
           >
             <BookOpen className="h-3.5 w-3.5" />
-            <span>Knowledge</span>
+            <span>Settings</span>
             {project.custom_instructions && (
               <span
                 aria-hidden
@@ -92,56 +109,265 @@ export function ProjectSettingsSheet({ project, onChange, trigger, open: openPro
           </button>
         )}
       </SheetTrigger>
-      <SheetContent side="right" className="w-full max-w-md">
+      <SheetContent side="right" className="w-full max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4" /> Project Knowledge
+            <BookOpen className="h-4 w-4" /> Project Settings
           </SheetTitle>
           <SheetDescription>
-            Anything you write here is sent to Petal on every change so it stays consistent. Keep
-            it short — a few rules work best.
+            Backend connection and project knowledge for this project.
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-4 space-y-2">
+        {/* Backend section */}
+        <BackendSection projectId={project.id} />
+
+        <div className="mt-8 border-t border-border pt-6">
+          <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
+            <BookOpen className="h-4 w-4" /> Project Knowledge
+          </h3>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Anything you write here is sent to Petal on every change so it stays consistent.
+            Keep it short — a few rules work best.
+          </p>
           <Textarea
             value={value}
             onChange={(e) => setValue(e.target.value.slice(0, MAX_LEN))}
             placeholder={PLACEHOLDER}
-            rows={14}
+            rows={12}
             className="resize-none font-sans text-sm leading-relaxed"
           />
-          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>Tip: write rules, not stories. Petal reads this every turn.</span>
+          <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>Tip: write rules, not stories.</span>
             <span>
               {value.length} / {MAX_LEN}
             </span>
           </div>
-        </div>
-
-        <div className="mt-6 flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            onClick={() => setOpen(false)}
-            disabled={saving}
-            className="text-sm"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={save}
-            disabled={saving || !dirty}
-            className="inline-flex items-center gap-1.5 text-sm"
-          >
-            {saving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Save className="h-3.5 w-3.5" />
-            )}
-            Save knowledge
-          </Button>
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <Button
+              onClick={save}
+              disabled={saving || !dirty}
+              size="sm"
+              className="inline-flex items-center gap-1.5"
+            >
+              {saving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              Save knowledge
+            </Button>
+          </div>
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+/* ---------------- Backend section ---------------- */
+
+function BackendSection({ projectId }: { projectId: string }) {
+  const [loading, setLoading] = useState(true);
+  const [backend, setBackend] = useState<ProjectBackend>(null);
+  const [showForm, setShowForm] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getProjectBackend(projectId)
+      .then((b) => {
+        if (!cancelled) setBackend(b);
+      })
+      .catch(() => {
+        if (!cancelled) setBackend(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  async function handleDisconnect() {
+    if (!confirm("Disconnect this backend? Your generated app will lose access to it on the next change.")) {
+      return;
+    }
+    try {
+      await disconnectProjectBackend(projectId);
+      setBackend(null);
+      toast.success("Backend disconnected");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't disconnect");
+    }
+  }
+
+  return (
+    <div className="mt-6">
+      <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
+        <Database className="h-4 w-4" /> Backend
+      </h3>
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking…
+        </div>
+      ) : backend?.status === "ready" ? (
+        <div className="rounded-lg border border-border bg-muted/30 p-3">
+          <div className="flex items-start gap-2">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
+            <div className="flex-1 text-sm">
+              <div className="font-medium">Connected</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                Auth, database, and file storage are connected to{" "}
+                <code className="rounded bg-background px-1 py-0.5 text-[11px]">
+                  {new URL(backend.supabaseUrl).hostname}
+                </code>
+                .
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDisconnect}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+            >
+              <Unplug className="h-3 w-3" />
+              Disconnect
+            </Button>
+          </div>
+        </div>
+      ) : showForm ? (
+        <ConnectForm
+          projectId={projectId}
+          onCancel={() => setShowForm(false)}
+          onConnected={(b) => {
+            setBackend(b);
+            setShowForm(false);
+          }}
+        />
+      ) : (
+        <div className="rounded-lg border border-dashed border-border p-3">
+          <p className="text-xs text-muted-foreground">
+            Add auth, a database, and file storage to your generated app. Connect a Supabase
+            project you own — Petal will inject a pre-configured client into the app.
+          </p>
+          <Button
+            size="sm"
+            onClick={() => setShowForm(true)}
+            className="mt-3 inline-flex items-center gap-1.5"
+          >
+            <Plug className="h-3.5 w-3.5" />
+            Connect a backend
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConnectForm({
+  projectId,
+  onCancel,
+  onConnected,
+}: {
+  projectId: string;
+  onCancel: () => void;
+  onConnected: (b: NonNullable<ProjectBackend>) => void;
+}) {
+  const [url, setUrl] = useState("");
+  const [anonKey, setAnonKey] = useState("");
+  const [serviceRoleKey, setServiceRoleKey] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const result = await connectProjectBackend({
+        projectId,
+        supabaseUrl: url.trim(),
+        anonKey: anonKey.trim(),
+        serviceRoleKey: serviceRoleKey.trim() || undefined,
+      });
+      toast.success("Backend connected");
+      onConnected(result);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't connect");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3 rounded-lg border border-border p-3">
+      <p className="text-xs text-muted-foreground">
+        Find these in your Supabase project under Settings → API.
+      </p>
+      <div className="space-y-1">
+        <Label htmlFor="b-url" className="text-xs">
+          Project URL
+        </Label>
+        <Input
+          id="b-url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://xxx.supabase.co"
+          required
+          autoComplete="off"
+          className="text-sm"
+        />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="b-anon" className="text-xs">
+          Anon (public) key
+        </Label>
+        <Input
+          id="b-anon"
+          value={anonKey}
+          onChange={(e) => setAnonKey(e.target.value)}
+          placeholder="eyJhbGci…"
+          required
+          autoComplete="off"
+          className="font-mono text-xs"
+        />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="b-srk" className="text-xs">
+          Service role key{" "}
+          <span className="text-muted-foreground">(optional, for future migrations)</span>
+        </Label>
+        <Input
+          id="b-srk"
+          value={serviceRoleKey}
+          onChange={(e) => setServiceRoleKey(e.target.value)}
+          placeholder="eyJhbGci…"
+          type="password"
+          autoComplete="off"
+          className="font-mono text-xs"
+        />
+      </div>
+      <div className="flex items-center justify-end gap-2 pt-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          disabled={submitting}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" size="sm" disabled={submitting} className="inline-flex items-center gap-1.5">
+          {submitting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Plug className="h-3.5 w-3.5" />
+          )}
+          Connect
+        </Button>
+      </div>
+    </form>
   );
 }

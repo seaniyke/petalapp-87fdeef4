@@ -15,6 +15,7 @@
  * Files marked `overwrite: false` only fill in if the AI didn't produce them.
  */
 import type { ProjectFile } from "./generate.server";
+import { backendKit, BACKEND_DEPS } from "./backend-kit";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
@@ -2406,7 +2407,10 @@ const REQUIRED_DEV_DEPS: Record<string, string> = {
 };
 
 /** Merge AI-emitted package.json with our required deps. */
-function mergePackageJson(aiContent: string | undefined): string {
+function mergePackageJson(
+  aiContent: string | undefined,
+  extraDeps: Record<string, string> = {},
+): string {
   let pkg: Record<string, unknown> = {};
   if (aiContent) {
     try {
@@ -2425,7 +2429,7 @@ function mergePackageJson(aiContent: string | undefined): string {
   };
   const aiDeps = (pkg.dependencies as Record<string, string> | undefined) ?? {};
   const aiDevDeps = (pkg.devDependencies as Record<string, string> | undefined) ?? {};
-  pkg.dependencies = { ...aiDeps, ...REQUIRED_DEPS };
+  pkg.dependencies = { ...aiDeps, ...REQUIRED_DEPS, ...extraDeps };
   pkg.devDependencies = { ...aiDevDeps, ...REQUIRED_DEV_DEPS };
   return JSON.stringify(pkg, null, 2) + "\n";
 }
@@ -2433,8 +2437,15 @@ function mergePackageJson(aiContent: string | undefined): string {
 /**
  * Inject the kit into the AI-emitted file list. Called only for INITIAL
  * generations (write_project), not patches.
+ *
+ * When `opts.backend` is provided, also merge in the backend kit
+ * (pre-configured client, auth provider, storage helpers) so the AI can
+ * import from `@/integrations/backend/*` without setting anything up.
  */
-export function applyScaffoldKit(aiFiles: ProjectFile[]): ProjectFile[] {
+export function applyScaffoldKit(
+  aiFiles: ProjectFile[],
+  opts?: { backend?: { url: string; anonKey: string } },
+): ProjectFile[] {
   const map = new Map<string, string>();
   for (const f of aiFiles) map.set(f.path, f.content);
 
@@ -2444,8 +2455,19 @@ export function applyScaffoldKit(aiFiles: ProjectFile[]): ProjectFile[] {
     }
   }
 
-  // Always fix package.json (merge deps).
-  map.set("package.json", mergePackageJson(map.get("package.json")));
+  // Backend kit: only injected when a backend is connected to the project.
+  // All entries overwrite — these files are protected and the AI must not
+  // own them.
+  let extraDeps: Record<string, string> = {};
+  if (opts?.backend) {
+    for (const f of backendKit(opts.backend)) {
+      map.set(f.path, f.content);
+    }
+    extraDeps = BACKEND_DEPS;
+  }
+
+  // Always fix package.json (merge deps + any backend deps).
+  map.set("package.json", mergePackageJson(map.get("package.json"), extraDeps));
 
   return Array.from(map, ([path, content]) => ({ path, content }));
 }

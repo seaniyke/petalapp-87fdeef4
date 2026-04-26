@@ -13,6 +13,7 @@ import {
   type StreamEvent,
 } from "@/server/generate.server";
 import { applyScaffoldKit } from "@/server/scaffold-kit";
+import { lookupBackendForGenerate } from "@/server/backend-connector.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -26,6 +27,8 @@ type Body = {
   currentFiles: ProjectFile[];
   model?: ModelPreset;
   customInstructions?: string;
+  /** Required to look up the project's attached backend (BYO Supabase). */
+  projectId?: string;
 };
 
 const MODEL_FAST = "google/gemini-3-flash-preview";
@@ -220,6 +223,16 @@ export const Route = createFileRoute("/api/generate")({
         const isInitial = currentFiles.length === 0;
         const baseSystem = isInitial ? SYSTEM_PROMPT_INITIAL : SYSTEM_PROMPT_PATCH;
 
+        // Look up the project's attached backend (BYO Supabase). When present,
+        // we both inject the pre-configured client and tell the AI it exists.
+        const backend = body.projectId
+          ? await lookupBackendForGenerate(body.projectId)
+          : null;
+
+        const backendBlock = backend
+          ? `\n\n### Backend (auth + database + storage) is connected\nThe project has a backend. Use the pre-configured client — never call createClient yourself, never import from @supabase/supabase-js directly, never hard-code URLs or keys.\n\nImports:\n- import { supabase } from "@/integrations/backend/client"\n- import { useAuth, AuthProvider } from "@/integrations/backend/auth"\n- import { uploadFile, getPublicUrl } from "@/integrations/backend/storage"\n\nWrap the app once with <AuthProvider>. Never overwrite anything under src/integrations/backend/ — those files are protected.\n\nIf you need a new table, end your summary with a fenced sql block prefixed "MIGRATION:" — do not try to run it. The user runs migrations manually.\n`
+          : "";
+
         // Project Knowledge: small piece of context the owner attached to the
         // project ("always use a pastel palette", etc.). Prepended on every turn.
         const knowledge = (body.customInstructions ?? "").trim().slice(0, 4000);
@@ -235,7 +248,7 @@ export const Route = createFileRoute("/api/generate")({
         const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
 
         const chatMessages = [
-          { role: "system", content: baseSystem + knowledgeBlock + filesContext },
+          { role: "system", content: baseSystem + backendBlock + knowledgeBlock + filesContext },
           ...messages.map((m) => ({ role: m.role, content: m.content })),
         ];
 
@@ -319,7 +332,10 @@ export const Route = createFileRoute("/api/generate")({
                 if (!parsed.files?.length) throw new Error("AI returned no files.");
                 // Inject the canonical scaffold (Tailwind v4 + shadcn-style UI kit)
                 // so the AI never has to emit boilerplate it can't reliably reproduce.
-                nextFiles = applyScaffoldKit(parsed.files);
+                // Also inject the backend kit when a backend is attached.
+                nextFiles = applyScaffoldKit(parsed.files, {
+                  backend: backend ?? undefined,
+                });
               } else {
                 if (!Array.isArray(parsed.ops)) throw new Error("AI returned no ops.");
                 // Defense-in-depth: reject patches that touch the canonical UI kit
@@ -332,6 +348,7 @@ export const Route = createFileRoute("/api/generate")({
                 const isProtectedPath = (p: string) =>
                   p.startsWith("src/components/ui/") ||
                   p.startsWith("src/components/examples/") ||
+                  p.startsWith("src/integrations/backend/") ||
                   PROTECTED.includes(p);
                 const violations = parsed.ops.filter((op) => isProtectedPath(op.path));
                 if (violations.length) {

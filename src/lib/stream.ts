@@ -18,6 +18,7 @@ export async function streamGenerate(
     currentFiles: ProjectFile[];
     model?: "fast" | "smart" | "best";
     customInstructions?: string;
+    projectId?: string;
   },
   handlers: Handlers,
   signal?: AbortSignal,
