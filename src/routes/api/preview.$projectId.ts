@@ -81,10 +81,14 @@ export const Route = createFileRoute("/api/preview/$projectId")({
         if (projectErr) return htmlError(500, "Couldn't load this project.");
         if (!project) return htmlError(404, "Project not found.");
 
-        // If private, require a Bearer token from the owner.
+        // If private, require a token from the owner. Iframes can't set
+        // Authorization headers, so we also accept ?t=<jwt> as a fallback.
         if (!project.is_public) {
           const auth = request.headers.get("authorization");
-          const token = auth?.startsWith("Bearer ") ? auth.slice("Bearer ".length) : null;
+          const headerToken = auth?.startsWith("Bearer ") ? auth.slice("Bearer ".length) : null;
+          const url = new URL(request.url);
+          const queryToken = url.searchParams.get("t");
+          const token = headerToken ?? queryToken;
           if (!token) return htmlError(401, "Sign in to view this preview.");
           const { data: claims, error: claimsErr } = await anon.auth.getClaims(token);
           if (claimsErr || claims?.claims?.sub !== project.owner_id) {
