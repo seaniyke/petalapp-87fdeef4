@@ -291,6 +291,20 @@ export const Route = createFileRoute("/api/generate")({
                 throw new Error("AI did not return a project. Try rephrasing.");
               }
 
+              // INVARIANT: write_project is only allowed when the project is
+              // empty (turn 1). Every subsequent turn MUST go through patch_files
+              // so we keep an auditable diff history and never blow away user work.
+              if (collected.name === "write_project" && !isInitial) {
+                throw new Error(
+                  "AI tried to rewrite the whole project. Edits must be incremental patches.",
+                );
+              }
+              if (collected.name === "patch_files" && isInitial) {
+                throw new Error(
+                  "AI tried to patch an empty project. Initial generation must create files.",
+                );
+              }
+
               let parsed: { summary?: string; files?: ProjectFile[]; ops?: FileOp[] };
               try {
                 parsed = JSON.parse(collected.args);
@@ -308,11 +322,31 @@ export const Route = createFileRoute("/api/generate")({
                 nextFiles = applyScaffoldKit(parsed.files);
               } else {
                 if (!Array.isArray(parsed.ops)) throw new Error("AI returned no ops.");
-                nextFiles = applyOps(currentFiles, parsed.ops);
+                // Defense-in-depth: reject patches that touch the canonical UI kit
+                // or scaffold config files. The AI should never need to.
+                const PROTECTED = [
+                  "vite.config.ts",
+                  "tsconfig.json",
+                  "src/lib/utils.ts",
+                ];
+                const violations = parsed.ops.filter(
+                  (op) => op.path.startsWith("src/components/ui/") || PROTECTED.includes(op.path),
+                );
+                if (violations.length) {
+                  console.warn(
+                    "Dropping protected-path ops:",
+                    violations.map((v) => `${v.op} ${v.path}`).join(", "),
+                  );
+                }
+                const safeOps = parsed.ops.filter(
+                  (op) => !op.path.startsWith("src/components/ui/") && !PROTECTED.includes(op.path),
+                );
+                nextFiles = applyOps(currentFiles, safeOps);
               }
               if (!nextFiles.some((f) => f.path === "index.html")) {
                 throw new Error("Project is missing index.html.");
               }
+
 
               controller.enqueue(
                 encoder.encode(sse({ type: "result", files: nextFiles, summary })),
