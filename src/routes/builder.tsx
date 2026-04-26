@@ -33,6 +33,7 @@ import {
   type ProjectRow,
 } from "@/lib/projects";
 import { createVersion } from "@/lib/versions";
+import { triggerProjectBuild } from "@/server/builds.functions";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
 import {
@@ -686,8 +687,7 @@ function Builder() {
                   >
                     <MobilePreviewFallback
                       projectId={project?.id ?? null}
-                      files={files}
-                      reloadKey={previewKey}
+                      latestBuildId={project?.latest_build_id ?? null}
                       isGenerating={busy}
                     />
                   </Suspense>
