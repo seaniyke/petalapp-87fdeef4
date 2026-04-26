@@ -889,7 +889,7 @@ function Builder() {
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
       {/* Top bar */}
-      <header className="flex h-14 items-center justify-between border-b border-border bg-card/70 px-4 backdrop-blur">
+      <header className="safe-top sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/80 px-3 backdrop-blur sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
           <Link
             to="/projects"
@@ -1019,7 +1019,7 @@ function Builder() {
       </header>
 
       {/* Mobile-only tab bar (Chat | Preview). Desktop uses the grid below. */}
-      <div className="flex shrink-0 items-center gap-1 border-b border-border bg-card/60 px-3 py-1.5 backdrop-blur md:hidden">
+      <div className="sticky top-[calc(env(safe-area-inset-top)+3.5rem)] z-20 flex shrink-0 items-center gap-1 border-b border-border bg-card/80 px-3 py-1.5 backdrop-blur md:hidden">
         <button
           onClick={() => setMobileTab("chat")}
           className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
@@ -1080,9 +1080,9 @@ function Builder() {
               const hasReply = isUser && messages[i + 1]?.role === "assistant";
               const canRevert = hasReply && !busy && !discussBusy;
               return (
-                <div key={i} className="group">
+                <div key={i} className="group min-w-0">
                   <div
-                    className={`relative rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                    className={`relative min-w-0 overflow-hidden rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                       isUser ? "ml-6 bg-card" : "mr-6 bg-butter/60"
                     }`}
                   >
@@ -1177,7 +1177,7 @@ function Builder() {
               e.preventDefault();
               submitPrompt(input);
             }}
-            className="border-t border-border bg-card p-3"
+            className="safe-bottom border-t border-border bg-card p-3"
           >
             {/* Queued messages — shown when the user typed while Petal was busy. */}
             {pendingQueue.length > 0 && (

@@ -35,7 +35,7 @@ const languages = {
  */
 export function MarkdownMessage({ content }: { content: string }) {
   return (
-    <div className="markdown prose prose-sm max-w-none text-sm leading-relaxed">
+    <div className="markdown prose prose-sm max-w-none text-sm leading-relaxed wrap-anywhere">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[
@@ -56,7 +56,7 @@ export function MarkdownMessage({ content }: { content: string }) {
             }
             return (
               <code
-                className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]"
+                className="wrap-anywhere rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]"
                 {...rest}
               >
                 {children}

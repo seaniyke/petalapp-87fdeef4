@@ -108,7 +108,7 @@ export function RevertPreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-[calc(100vw-1.5rem)] sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>

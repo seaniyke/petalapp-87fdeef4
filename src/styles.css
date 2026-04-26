@@ -172,4 +172,10 @@
       radial-gradient(50% 40% at 20% 90%, oklch(0.78 0.13 25 / 0.4), transparent 60%);
   }
   .text-balance { text-wrap: balance; }
+  /* iOS safe-area helpers — opt-in so we don't change desktop spacing.
+     Requires `viewport-fit=cover` on the viewport meta (set in __root.tsx). */
+  .safe-top { padding-top: env(safe-area-inset-top); }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  /* Tailwind v4 doesn't ship `overflow-wrap-anywhere` by default. */
+  .wrap-anywhere { overflow-wrap: anywhere; word-break: break-word; }
 }
