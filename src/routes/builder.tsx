@@ -267,6 +267,19 @@ function Builder() {
           setHistoryKey((k) => k + 1);
           const refreshed = await getProject(project.id);
           if (refreshed) setProject(refreshed);
+
+          // Kick off a Cloudflare Pages build. Fire-and-forget — the preview
+          // pane subscribes to project_builds and updates itself when ready.
+          void triggerProjectBuild({ data: { projectId: project.id } })
+            .then(async () => {
+              // Pull the project row again so latest_build_id is in state.
+              const r = await getProject(project.id);
+              if (r) setProject(r);
+            })
+            .catch((err) => {
+              console.error("triggerProjectBuild failed", err);
+              toast.error("Couldn't start the live build.");
+            });
         } catch (persistErr) {
           console.error(persistErr);
           toast.error("Generated, but couldn't save changes.");
