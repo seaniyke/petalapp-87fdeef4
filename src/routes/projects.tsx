@@ -13,7 +13,14 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/projects")({
   beforeLoad: async () => {
-    // Auth gate
+    // Auth gate — only enforce on the client. On the server we have no access to the
+    // user's session (it lives in localStorage), so a server-side check would falsely
+    // redirect every visit to /auth and strip any URL hash tokens (e.g. #access_token=...)
+    // that the email-confirmation link relies on.
+    if (typeof window === "undefined") return;
+    // If the URL hash contains auth tokens (email confirm / OAuth implicit flow), let
+    // the client process them first instead of redirecting and losing the tokens.
+    if (window.location.hash.includes("access_token=")) return;
     const { data } = await supabase.auth.getSession();
     if (!data.session) {
       throw redirect({ to: "/auth", search: { mode: "signin", redirect: "/projects" } });
