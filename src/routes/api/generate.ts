@@ -13,10 +13,50 @@ import {
   type StreamEvent,
 } from "@/server/generate.server";
 
+/** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
+ *  - "fast"  : cheapest + quickest, good for trivial edits
+ *  - "smart" : default — flash for small turns, pro for big refactors
+ *  - "best"  : always use the strongest model
+ */
+type ModelPreset = "fast" | "smart" | "best";
+
 type Body = {
   messages: ChatMessage[];
   currentFiles: ProjectFile[];
+  model?: ModelPreset;
+  customInstructions?: string;
 };
+
+const MODEL_FAST = "google/gemini-3-flash-preview";
+const MODEL_BEST = "google/gemini-2.5-pro";
+
+/** Heuristic: when in "smart" mode, decide whether the turn deserves the Pro model. */
+function pickSmartModel(latestPrompt: string, fileCount: number): string {
+  const p = latestPrompt.toLowerCase();
+  const heavyKeywords = [
+    "refactor",
+    "redesign",
+    "rewrite",
+    "architecture",
+    "all pages",
+    "every page",
+    "entire app",
+    "from scratch",
+    "overhaul",
+    "restructure",
+    "migrate",
+  ];
+  if (heavyKeywords.some((k) => p.includes(k))) return MODEL_BEST;
+  // Big projects + long prompts also benefit from the stronger model.
+  if (fileCount > 12 && latestPrompt.length > 240) return MODEL_BEST;
+  return MODEL_FAST;
+}
+
+function resolveModel(preset: ModelPreset, latestPrompt: string, fileCount: number): string {
+  if (preset === "fast") return MODEL_FAST;
+  if (preset === "best") return MODEL_BEST;
+  return pickSmartModel(latestPrompt, fileCount);
+}
 
 function sse(event: StreamEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;
