@@ -114,6 +114,7 @@ type ViewMode = "preview" | "code";
 
 function Builder() {
   const { prompt: initialPrompt, id: searchId } = Route.useSearch();
+  const { user, isReady } = useAuthReady();
   const navigate = useNavigate();
 
   const [project, setProject] = useState<ProjectRow | null>(null);
