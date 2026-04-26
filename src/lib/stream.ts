@@ -23,15 +23,21 @@ export async function streamGenerate(
   const token = data.session?.access_token;
   if (!token) throw new Error("Not signed in");
 
-  const resp = await fetch("/api/generate", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-    signal,
-  });
+  let resp: Response;
+  try {
+    resp = await fetch("/api/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (e) {
+    if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
+    throw e;
+  }
 
   if (!resp.ok || !resp.body) {
     const text = await resp.text().catch(() => "");
@@ -42,40 +48,45 @@ export async function streamGenerate(
   const decoder = new TextDecoder();
   let buf = "";
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    const parts = buf.split("\n\n");
-    buf = parts.pop() ?? "";
-    for (const block of parts) {
-      const line = block.split("\n").find((l) => l.startsWith("data:"));
-      if (!line) continue;
-      const payload = line.slice(5).trim();
-      if (!payload) continue;
-      let evt: StreamEvent;
-      try {
-        evt = JSON.parse(payload) as StreamEvent;
-      } catch {
-        continue;
-      }
-      switch (evt.type) {
-        case "status":
-          handlers.onStatus?.(evt.message);
-          break;
-        case "summary_delta":
-          handlers.onSummaryDelta?.(evt.delta);
-          break;
-        case "tool":
-          handlers.onTool?.(evt.name);
-          break;
-        case "result":
-          handlers.onResult?.(evt.files, evt.summary);
-          break;
-        case "error":
-          handlers.onError?.(evt.message);
-          break;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const parts = buf.split("\n\n");
+      buf = parts.pop() ?? "";
+      for (const block of parts) {
+        const line = block.split("\n").find((l) => l.startsWith("data:"));
+        if (!line) continue;
+        const payload = line.slice(5).trim();
+        if (!payload) continue;
+        let evt: StreamEvent;
+        try {
+          evt = JSON.parse(payload) as StreamEvent;
+        } catch {
+          continue;
+        }
+        switch (evt.type) {
+          case "status":
+            handlers.onStatus?.(evt.message);
+            break;
+          case "summary_delta":
+            handlers.onSummaryDelta?.(evt.delta);
+            break;
+          case "tool":
+            handlers.onTool?.(evt.name);
+            break;
+          case "result":
+            handlers.onResult?.(evt.files, evt.summary);
+            break;
+          case "error":
+            handlers.onError?.(evt.message);
+            break;
+        }
       }
     }
+  } catch (e) {
+    if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
+    throw e;
   }
 }
