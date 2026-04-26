@@ -273,10 +273,31 @@ function Builder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapping, project, initialPrompt]);
 
+  // Lazily create the underlying project row on first use, so /builder visits
+  // that never send a message don't leave behind empty "Untitled project" rows.
+  const ensureProject = useCallback(async (): Promise<ProjectRow | null> => {
+    if (project) return project;
+    try {
+      const p = await createProject();
+      setProject(p);
+      navigate({
+        to: "/builder",
+        search: { id: p.id, prompt: initialPrompt },
+        replace: true,
+      });
+      return p;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not start project");
+      return null;
+    }
+  }, [project, navigate, initialPrompt]);
+
   const send = useCallback(
     async (content: string, opts: { isRetry?: boolean } = {}) => {
       const text = content.trim();
-      if (!text || busy || !project) return;
+      if (!text || busy) return;
+      const proj = await ensureProject();
+      if (!proj) return;
       setError(null);
       setFriendlyError(null);
       const userMsg: ChatMessage = { role: "user", content: text };
