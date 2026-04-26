@@ -75,10 +75,9 @@ function ProjectsPage() {
           </div>
           <button
             onClick={handleCreate}
-            disabled={creating}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-60"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:brightness-105"
           >
-            {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            <Plus className="h-4 w-4" />
             New project
           </button>
         </div>
@@ -91,7 +90,7 @@ function ProjectsPage() {
               ))}
             </div>
           ) : projects.length === 0 ? (
-            <EmptyState onCreate={handleCreate} creating={creating} />
+            <EmptyState onCreate={handleCreate} />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {projects.map((p) => (
