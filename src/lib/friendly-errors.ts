@@ -122,16 +122,22 @@ export function toFriendlyError(raw: unknown): FriendlyError {
   return { ...GENERIC, technicalDetail: text };
 }
 
-/** Friendly copy specifically for a failed Cloudflare Pages build. */
+/** Friendly copy specifically for a failed Cloudflare Pages build.
+ *  We pass the raw log into the friendly error so the user can read it
+ *  under "Show details" — and `askPetalToFix` in builder.tsx forwards the
+ *  same log to the AI as the next prompt. */
 export function friendlyBuildFailure(rawLog: string | null | undefined): FriendlyError {
   if (rawLog) {
     console.error("[petal] build failed:", rawLog);
   }
+  // Show the most useful tail (compilers put the error at the bottom).
+  const tail = rawLog ? rawLog.split("\n").slice(-40).join("\n").slice(-2500) : undefined;
   return {
     title: "Your app needs a small fix",
-    message: "There's an error in the code Petal wrote. Ask Petal to fix it and we'll try again.",
+    message:
+      "There's an error in the code Petal wrote. Click below and Petal will read the build log and fix it.",
     actionLabel: "Ask Petal to fix it",
     actionKind: "ask-fix",
-    technicalDetail: rawLog?.slice(-2000) ?? undefined,
+    technicalDetail: tail,
   };
 }
