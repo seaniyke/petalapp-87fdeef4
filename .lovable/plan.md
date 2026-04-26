@@ -1,52 +1,28 @@
-## Why the build failed
+# Hide the model picker — always route to Smart
 
-The bundler said `Cannot find package 'vite'` and `Could not resolve '@vitejs/plugin-react'`. Both are listed in the generated project's `package.json` under `devDependencies` (see `src/server/generate.server.ts` line 10). They didn't end up in `node_modules`.
+## Why
 
-Root cause: the Railway builder container runs with `NODE_ENV=production` (Railway's default for Node services). When `NODE_ENV=production`, **`npm install` silently skips `devDependencies`** — so `vite`, `@vitejs/plugin-react`, `typescript`, and the React types never get installed. Then `npx vite build` fails to resolve them.
+Users shouldn't be picking AI models — they don't know which one is right, and exposing the choice creates decision friction (and, as you saw, awkward overlapping menus on mobile). The "Smart" preset already does the right thing: it picks `google/gemini-2.5-pro` for big/complex changes and `google/gemini-2.5-flash` for small ones, automatically (logic lives in `pickSmartModel()` in `src/routes/api/generate.ts`).
 
-The "Project not found" error from `wrangler pages deploy` lower in the log is a downstream symptom: no `dist/` was produced because the build crashed, so Cloudflare never got a successful first deploy to auto-create the project. Fixing the install fixes the deploy automatically.
+So the fix is to **lock the preset to "smart" permanently and remove the picker from the UI**. No backend changes needed — `/api/generate` already accepts and respects the preset.
 
-This is a **builder-service bug**, not a problem with the user's app. Every Petal-generated project hits it.
+## Changes
 
-## The fix (one line)
+**File: `src/routes/builder.tsx`**
 
-In `builder/src/build.ts`, change the `npm install` arguments to force devDependencies regardless of `NODE_ENV`:
+1. Remove the `modelPreset` state, the `useEffect` that persists it to localStorage, and the import of `Zap`/`Crown`/`Gauge`/`ChevronDown` icons (if not used elsewhere).
+2. Hardcode `preset: "smart"` in the `streamGenerate` call(s) where `modelPreset` is currently passed.
+3. Delete the entire DropdownMenu block (lines ~1135–1180) that renders the Smart/Fast/Best picker.
+4. Keep the `Build / Discuss` toggle next to where the picker used to be — that one's a meaningful user choice and should stay.
 
-```ts
-// Before
-const install = await run("npm", ["install", "--no-audit", "--no-fund", "--prefer-offline"], { ... });
+**No other files need changes.** The backend (`src/routes/api/generate.ts`) already defaults to "smart" routing if no preset is sent, so this is purely a UI cleanup.
 
-// After
-const install = await run(
-  "npm",
-  ["install", "--include=dev", "--no-audit", "--no-fund", "--prefer-offline"],
-  { ... }
-);
-```
+## What stays the same
 
-`--include=dev` is npm's explicit, supported flag that overrides the `NODE_ENV=production` skip. It's the smallest possible change.
+- Smart auto-routing logic in `pickSmartModel()` — untouched.
+- Build/Discuss mode toggle — untouched.
+- Everything else in the builder UI — untouched.
 
-## Why not other approaches
+## Out of scope (but worth a future conversation)
 
-- **Move vite to `dependencies`** in the system prompt — works but bloats every user's `package.json` with build-only packages, which is wrong semantically and hurts published bundle introspection.
-- **Unset `NODE_ENV` in the spawned env** — works, but more invasive (changes behaviour of any other npm script that reads `NODE_ENV`) and easier to regress.
-- **`npm ci` instead of `npm install`** — would also respect `--include=dev`, but requires a `package-lock.json` we don't generate.
-
-`--include=dev` is the minimum-risk, intent-revealing fix.
-
-## Files to change
-
-- `builder/src/build.ts` — add `--include=dev` to the npm install args (one line).
-
-## Deployment note
-
-The builder runs on Railway as a separate service (see `builder/README.md`). After this code change is merged, **the builder must be redeployed to Railway** for the fix to take effect. The Lovable Cloud Worker (which runs `/api/builds/trigger`) does not need redeploying — it just forwards build requests.
-
-## Verification
-
-After redeploy:
-1. Trigger a new build from any Petal project.
-2. The "deploying" phase should complete and the `petal-<id>.pages.dev` URL should go live.
-3. The first build for any project also creates the Cloudflare Pages project automatically (per `--commit-dirty=true` in the wrangler call), so the "Project not found" error disappears on its own.
-
-If the very next build still says "Project not found" for a project whose previous build failed, that's expected for one more attempt — the project gets auto-created on the first *successful* deploy. The build after that will work.
+The bigger architectural question you raised — *should Petal pre-install Tailwind + shadcn in the scaffold so generated apps look as polished as Lovable's?* — is a separate, larger change that would touch `SYSTEM_PROMPT_INITIAL`, the scaffold's `package.json`, and `WebContainerPreview.tsx`. Worth doing, but as its own focused task once you decide.
