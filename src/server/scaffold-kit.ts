@@ -2039,6 +2039,28 @@ const KIT: KitFile[] = [
   { path: "src/components/ui/container.tsx", content: CONTAINER, overwrite: true },
   { path: "src/components/ui/stack.tsx", content: STACK, overwrite: true },
   { path: "src/components/ui/grid.tsx", content: GRID, overwrite: true },
+  // Reference patterns — read-only examples for the AI to copy from.
+  // NOT imported by App.tsx unless the user asks for that exact pattern.
+  {
+    path: "src/components/examples/data-table-dialog.tsx",
+    content: EXAMPLE_DATA_TABLE_DIALOG,
+    overwrite: true,
+  },
+  {
+    path: "src/components/examples/tabs-table-dashboard.tsx",
+    content: EXAMPLE_TABS_TABLE_DASHBOARD,
+    overwrite: true,
+  },
+  {
+    path: "src/components/examples/sheet-detail-panel.tsx",
+    content: EXAMPLE_SHEET_DETAIL_PANEL,
+    overwrite: true,
+  },
+  {
+    path: "src/components/examples/tabs-sheet-settings.tsx",
+    content: EXAMPLE_TABS_SHEET_SETTINGS,
+    overwrite: true,
+  },
 ];
 
 /**
