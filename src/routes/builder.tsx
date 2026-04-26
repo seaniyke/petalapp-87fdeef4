@@ -68,6 +68,7 @@ function Builder() {
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("preview");
   const [previewKey, setPreviewKey] = useState(0);
+  const [historyKey, setHistoryKey] = useState(0);
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
