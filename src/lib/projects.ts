@@ -91,7 +91,7 @@ export async function deleteProject(id: string) {
 
 export async function updateProject(
   id: string,
-  patch: Partial<Pick<ProjectRow, "title" | "summary" | "is_public">>
+  patch: Partial<Pick<ProjectRow, "title" | "summary" | "is_public" | "custom_instructions">>
 ): Promise<ProjectRow> {
   const { data, error } = await supabase
     .from("projects")
