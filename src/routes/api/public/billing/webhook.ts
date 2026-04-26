@@ -118,15 +118,13 @@ async function handleSubscriptionCreated(sub: Stripe.Subscription, env: StripeEn
 
   // Grant monthly credits immediately on activation. Statuses we accept as
   // "paid + active": active, trialing.
-  if (sub.status === "active" || sub.status === "trialing") {
+  if ((sub.status === "active" || sub.status === "trialing") && result.periodEnd) {
     const { error } = await supabaseAdmin.rpc("apply_subscription_activated", {
       _user_id: result.userId,
       _plan_code: result.planCode,
       _stripe_customer_id: sub.customer as string,
       _stripe_subscription_id: sub.id,
-      _current_period_end: result.periodEnd
-        ? new Date(result.periodEnd * 1000).toISOString()
-        : null,
+      _current_period_end: new Date(result.periodEnd * 1000).toISOString(),
     });
     if (error) console.error("[webhook] apply_subscription_activated failed", error);
   }
@@ -180,7 +178,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice, env: StripeEnv) {
     .eq("stripe_subscription_id", subscriptionId)
     .eq("environment", env)
     .maybeSingle();
-  if (!row) return;
+  if (!row || !row.current_period_end) return;
 
   const { error } = await supabaseAdmin.rpc("apply_monthly_renewal", {
     _user_id: row.user_id,
