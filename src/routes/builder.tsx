@@ -99,6 +99,15 @@ function Builder() {
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Cancel any in-flight generation on unmount or when switching projects.
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+    };
+  }, [searchId]);
 
   const previewDoc = useMemo(() => buildPreviewDoc(files), [files]);
 
