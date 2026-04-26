@@ -12,7 +12,7 @@ type Props = {
   onConnectDomain?: () => void;
 };
 
-export function SharePopover({ project, onChange }: Props) {
+export function SharePopover({ project, onChange, onConnectDomain }: Props) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 

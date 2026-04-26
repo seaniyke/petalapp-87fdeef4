@@ -181,6 +181,9 @@ function Builder() {
   const [mobileTab, setMobileTab] = useState<"chat" | "preview">("chat");
   // Project Knowledge sheet — also opens from the mobile overflow menu.
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsScrollTo, setSettingsScrollTo] = useState<
+    "domains" | "backend" | "knowledge" | null
+  >(null);
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
   // Visual element edit (Phase 5): selected element from the preview iframe.
   type PickedElement = {
