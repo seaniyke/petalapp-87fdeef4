@@ -3260,7 +3260,8 @@ matching file below and adapt — do not invent layouts from scratch.
 ## Auth
 - \`auth-sign-in-card.tsx\` — centered sign-in with email/password + OAuth
 - \`auth-sign-up-split.tsx\` — split-screen onboarding (brand left, form right)
-- \`auth-forgot-password.tsx\` — reset flow with success state
+- \`auth-forgot-password.tsx\` — reset request form (calls \`resetPasswordForEmail\`)
+- \`auth-reset-password.tsx\` — landing page for the reset link (calls \`updatePassword\`); mount at \`/reset-password\`
 - \`auth-otp-card.tsx\` — six-digit code verification
 
 ## Auth modals (Dialog / Sheet)
@@ -3339,6 +3340,7 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/auth-sign-in-card.tsx", content: AUTH_SIGN_IN_CARD, overwrite: true },
   { path: "src/components/examples/auth-sign-up-split.tsx", content: AUTH_SIGN_UP_SPLIT, overwrite: true },
   { path: "src/components/examples/auth-forgot-password.tsx", content: AUTH_FORGOT_PASSWORD, overwrite: true },
+  { path: "src/components/examples/auth-reset-password.tsx", content: AUTH_RESET_PASSWORD, overwrite: true },
   { path: "src/components/examples/auth-otp-card.tsx", content: AUTH_OTP_CARD, overwrite: true },
 
   // Auth modals (Dialog / Sheet)
