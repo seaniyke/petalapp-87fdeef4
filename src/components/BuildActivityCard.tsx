@@ -192,29 +192,38 @@ export function BuildActivityCard({
     );
   }
 
-  // ─── Default: live activity feed ────────────────────────────────────────
+  // ─── Default: single evolving status line (Lovable-style) ───────────────
+  // Calm, one-line update that swaps as the phase advances. Tap to expand
+  // for the full step-by-step timeline.
   return (
     <div className="mr-6 overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur transition-all">
-      <div className="flex items-center justify-between border-b border-border/60 bg-aurora/40 px-3.5 py-2">
-        <div className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-foreground/70">
-          <span className="relative flex h-2 w-2">
-            {isActive && (
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-            )}
-            <span
-              className={`relative inline-flex h-2 w-2 rounded-full ${
-                isActive ? "bg-primary" : "bg-mint"
-              }`}
-            />
-          </span>
-          {isComplete ? "Done" : "Petal is building"}
-          {elapsed > 0 && (
-            <span className="font-mono text-[10px] font-normal text-muted-foreground">
-              · {elapsed}s
+      <div className="flex items-center gap-2.5 px-3.5 py-2.5">
+        <span
+          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center text-[14px] ${
+            isActive ? "animate-pulse" : ""
+          }`}
+          aria-hidden
+        >
+          {currentPhase?.emoji ?? "🌸"}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2 text-sm leading-snug text-foreground">
+            <span className="truncate font-medium">
+              {currentPhase?.label ?? "Working…"}
             </span>
+            {elapsed > 0 && (
+              <span className="shrink-0 font-mono text-[11px] font-normal text-muted-foreground tabular-nums">
+                {elapsed}s
+              </span>
+            )}
+          </div>
+          {subCaption && (
+            <div className="mt-0.5 truncate text-xs text-muted-foreground">
+              {subCaption}
+            </div>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           {isActive && onStop && (
             <button
               type="button"
@@ -224,32 +233,32 @@ export function BuildActivityCard({
               <Square className="h-2.5 w-2.5 fill-current" /> Stop
             </button>
           )}
-          {isComplete && (
-            <button
-              type="button"
-              onClick={() => setCollapsed((c) => !c)}
-              className="grid h-5 w-5 place-items-center rounded text-muted-foreground transition hover:text-foreground"
-              aria-label={collapsed ? "Expand" : "Collapse"}
-            >
-              {collapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setStepsOpen((s) => !s)}
+            className="grid h-6 w-6 place-items-center rounded text-muted-foreground transition hover:text-foreground"
+            aria-label={stepsOpen ? "Hide steps" : "Show steps"}
+          >
+            {stepsOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
         </div>
       </div>
-      <ol className="space-y-1 px-3.5 py-2.5">
-        {phases.map((p) => (
-          <PhaseRow
-            key={p.id}
-            phase={p}
-            designCaption={p.id === "designing" ? designCaption : undefined}
-            filesWritten={p.id === "writing" ? filesWritten : undefined}
-            latestPath={p.id === "writing" ? latestPath : undefined}
-            writtenPaths={p.id === "writing" ? writtenPaths : undefined}
-            finalFileLines={p.id === "writing" ? finalFileLines : undefined}
-            fileChanges={p.id === "writing" ? fileChanges : undefined}
-          />
-        ))}
-      </ol>
+      {stepsOpen && (
+        <ol className="space-y-1 border-t border-border/60 bg-aurora/20 px-3.5 py-2.5">
+          {phases.map((p) => (
+            <PhaseRow
+              key={p.id}
+              phase={p}
+              designCaption={p.id === "designing" ? designCaption : undefined}
+              filesWritten={p.id === "writing" ? filesWritten : undefined}
+              latestPath={p.id === "writing" ? latestPath : undefined}
+              writtenPaths={p.id === "writing" ? writtenPaths : undefined}
+              finalFileLines={p.id === "writing" ? finalFileLines : undefined}
+              fileChanges={p.id === "writing" ? fileChanges : undefined}
+            />
+          ))}
+        </ol>
+      )}
     </div>
   );
 }
