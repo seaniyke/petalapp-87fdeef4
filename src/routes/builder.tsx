@@ -766,6 +766,16 @@ function Builder() {
               <SharePopover project={project} onChange={setProject} />
             </div>
           )}
+          {project && (
+            <div className="hidden md:block">
+              <ProjectSettingsSheet
+                project={project}
+                onChange={setProject}
+                open={settingsOpen}
+                onOpenChange={setSettingsOpen}
+              />
+            </div>
+          )}
           <button
             onClick={downloadProject}
             disabled={!files.length}
