@@ -232,6 +232,7 @@ function PhaseRow({
   latestPath,
   writtenPaths,
   finalFileLines,
+  fileChanges,
 }: {
   phase: Phase;
   designCaption?: string;
@@ -239,6 +240,10 @@ function PhaseRow({
   latestPath?: string;
   writtenPaths?: string[];
   finalFileLines?: Record<string, number>;
+  fileChanges?: Record<
+    string,
+    { kind: "added" | "modified" | "unchanged" | "deleted"; addedLines: number; removedLines: number }
+  >;
 }) {
   const isPending = phase.status === "pending";
   const isActive = phase.status === "active";
@@ -289,22 +294,39 @@ function PhaseRow({
             {writtenPaths!.map((p) => {
               const lines = finalFileLines?.[p];
               const isLatest = isActive && p === latestPath;
+              const change = fileChanges?.[p];
               return (
                 <li
                   key={p}
                   className={`flex items-center justify-between gap-2 truncate font-mono text-[10px] ${
                     isLatest ? "text-foreground" : "text-muted-foreground"
-                  }`}
+                  } ${change?.kind === "deleted" ? "line-through opacity-70" : ""}`}
                 >
                   <span className="inline-flex min-w-0 items-center gap-1 truncate">
                     <span aria-hidden className="opacity-60">
-                      {isLatest ? "›" : isDone ? "✓" : "·"}
+                      {isLatest ? "›" : change?.kind === "deleted" ? "✕" : isDone ? "✓" : "·"}
                     </span>
                     <span className="truncate">{p}</span>
+                    {change && (
+                      <ChangeBadge kind={change.kind} />
+                    )}
                   </span>
-                  {typeof lines === "number" && lines > 0 && (
-                    <span className="shrink-0 tabular-nums opacity-70">{lines} lines</span>
-                  )}
+                  <span className="flex shrink-0 items-center gap-1.5 tabular-nums">
+                    {change && (change.addedLines > 0 || change.removedLines > 0) && (
+                      <span className="text-[10px]">
+                        {change.addedLines > 0 && (
+                          <span className="text-mint-foreground/80">+{change.addedLines}</span>
+                        )}
+                        {change.addedLines > 0 && change.removedLines > 0 && " "}
+                        {change.removedLines > 0 && (
+                          <span className="text-destructive/80">−{change.removedLines}</span>
+                        )}
+                      </span>
+                    )}
+                    {typeof lines === "number" && lines > 0 && change?.kind !== "deleted" && (
+                      <span className="opacity-70">{lines} lines</span>
+                    )}
+                  </span>
                 </li>
               );
             })}
@@ -315,5 +337,28 @@ function PhaseRow({
         )}
       </div>
     </li>
+  );
+}
+
+/**
+ * Tiny pill that labels each file row as new / modified / deleted /
+ * unchanged. Uses semantic tokens so it adapts to dark mode.
+ */
+function ChangeBadge({ kind }: { kind: "added" | "modified" | "unchanged" | "deleted" }) {
+  if (kind === "unchanged") return null;
+  const label =
+    kind === "added" ? "new" : kind === "deleted" ? "deleted" : "modified";
+  const tone =
+    kind === "added"
+      ? "bg-mint/40 text-foreground/80"
+      : kind === "deleted"
+        ? "bg-destructive/15 text-destructive"
+        : "bg-butter/60 text-foreground/80";
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center rounded-sm px-1 py-px text-[9px] font-semibold uppercase tracking-wider ${tone}`}
+    >
+      {label}
+    </span>
   );
 }
