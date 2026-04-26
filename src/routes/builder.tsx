@@ -43,9 +43,10 @@ import {
   loadProjectMessages,
   maybeAutoTitleProject,
   saveProjectFiles,
+  truncateMessagesToCount,
   type ProjectRow,
 } from "@/lib/projects";
-import { createVersion } from "@/lib/versions";
+import { createVersion, listVersions } from "@/lib/versions";
 import { triggerBuild } from "@/lib/builds";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
