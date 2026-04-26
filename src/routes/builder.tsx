@@ -53,6 +53,9 @@ const CommandPalette = lazy(() =>
 const MarkdownMessage = lazy(() =>
   import("@/components/MarkdownMessage").then((m) => ({ default: m.MarkdownMessage }))
 );
+const WebContainerPreview = lazy(() =>
+  import("@/components/WebContainerPreview").then((m) => ({ default: m.WebContainerPreview }))
+);
 type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
 export const Route = createFileRoute("/builder")({
