@@ -506,6 +506,31 @@ function Builder() {
     setPendingQueue((q) => q.filter((m) => m.id !== id));
   }, []);
 
+  const moveInQueue = useCallback((id: string, direction: -1 | 1) => {
+    setPendingQueue((q) => {
+      const i = q.findIndex((m) => m.id === id);
+      if (i === -1) return q;
+      const j = i + direction;
+      if (j < 0 || j >= q.length) return q;
+      const next = q.slice();
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  }, []);
+
+  const reorderQueueByDrag = useCallback((fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    setPendingQueue((q) => {
+      const from = q.findIndex((m) => m.id === fromId);
+      const to = q.findIndex((m) => m.id === toId);
+      if (from === -1 || to === -1) return q;
+      const next = q.slice();
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }, []);
+
   // Per-message revert: restore the project to the snapshot taken right after
   // the AI replied to the Nth user message, then trim chat history accordingly.
   // We rely on the invariant that send() creates one auto-version per turn,
