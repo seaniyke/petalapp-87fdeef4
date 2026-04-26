@@ -2380,6 +2380,7 @@ const KIT: KitFile[] = [
   { path: "src/components/ui/theme-toggle.tsx", content: THEME_TOGGLE, overwrite: true },
   { path: "src/components/ui/container.tsx", content: CONTAINER, overwrite: true },
   { path: "src/components/ui/stack.tsx", content: STACK, overwrite: true },
+  { path: "src/components/ui/inline.tsx", content: INLINE, overwrite: true },
   { path: "src/components/ui/grid.tsx", content: GRID, overwrite: true },
   // Reference patterns — read-only examples for the AI to copy from.
   // NOT imported by App.tsx unless the user asks for that exact pattern.
