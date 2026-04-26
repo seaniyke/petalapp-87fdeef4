@@ -240,15 +240,11 @@ function Builder() {
           setMessages(ms);
           setActiveFile(fs.find((f) => f.path === "index.html")?.path ?? fs[0]?.path ?? null);
         } else {
-          // Fresh project: create row, then update URL
-          const p = await createProject();
+          // No project id in the URL: don't create a row yet. We'll create one
+          // lazily on the first send/discuss so empty "Untitled project" rows
+          // never get persisted (and the slug reflects the real first prompt).
           if (cancelled) return;
-          setProject(p);
-          navigate({
-            to: "/builder",
-            search: { id: p.id, prompt: initialPrompt },
-            replace: true,
-          });
+          setProject(null);
         }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Could not open project");
