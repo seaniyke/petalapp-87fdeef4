@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Sparkles, LogOut, FolderOpen, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { CreditBadge } from "@/components/CreditBadge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,6 +41,7 @@ export function SiteHeader() {
                 <FolderOpen className="h-4 w-4" />
                 Projects
               </Link>
+              <CreditBadge />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-sm font-medium text-background transition hover:brightness-110">
