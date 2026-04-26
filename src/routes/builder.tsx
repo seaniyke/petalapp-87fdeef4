@@ -298,7 +298,12 @@ function Builder() {
 
       try {
         await streamGenerate(
-          { messages: nextMessages, currentFiles: files },
+          {
+            messages: nextMessages,
+            currentFiles: files,
+            model: modelPreset,
+            customInstructions: project.custom_instructions ?? undefined,
+          },
           {
             onPhase: (phase: PhaseId) => {
               setPhases((p) => advanceTo(p, phase));
