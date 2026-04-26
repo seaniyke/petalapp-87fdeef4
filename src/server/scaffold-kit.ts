@@ -2354,6 +2354,11 @@ const KIT: KitFile[] = [
   // Reference patterns — read-only examples for the AI to copy from.
   // NOT imported by App.tsx unless the user asks for that exact pattern.
   {
+    path: "src/components/examples/LAYOUT.md",
+    content: LAYOUT_DOCS,
+    overwrite: true,
+  },
+  {
     path: "src/components/examples/data-table-dialog.tsx",
     content: EXAMPLE_DATA_TABLE_DIALOG,
     overwrite: true,
