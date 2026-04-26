@@ -1029,13 +1029,71 @@ function Builder() {
                   <MessageSquare className="h-3 w-3" /> Discuss
                 </button>
               </div>
-              <span className="text-[10px] text-muted-foreground">
+              {/* Smart model picker (Base44 Automatic / Manual parity). */}
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition hover:text-foreground"
+                  title="Choose how Petal picks its AI model"
+                >
+                  {modelPreset === "fast" ? (
+                    <Zap className="h-3 w-3" />
+                  ) : modelPreset === "best" ? (
+                    <Crown className="h-3 w-3" />
+                  ) : (
+                    <Gauge className="h-3 w-3" />
+                  )}
+                  <span className="capitalize">{modelPreset}</span>
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onSelect={() => setModelPreset("smart")}>
+                    <Gauge className="mr-2 h-3.5 w-3.5" />
+                    <div className="flex flex-col">
+                      <span className="text-sm">Smart {modelPreset === "smart" && "·"}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Auto-pick: Pro for big changes, Flash otherwise
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setModelPreset("fast")}>
+                    <Zap className="mr-2 h-3.5 w-3.5" />
+                    <div className="flex flex-col">
+                      <span className="text-sm">Fast</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Always Flash — quickest + cheapest
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setModelPreset("best")}>
+                    <Crown className="mr-2 h-3.5 w-3.5" />
+                    <div className="flex flex-col">
+                      <span className="text-sm">Best</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Always Pro — strongest reasoning
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div className="mb-2 flex items-center justify-between text-[10px] text-muted-foreground">
+              <span>
                 {busy || discussBusy
                   ? "Petal is working — your next message will queue"
                   : mode === "discuss"
                     ? "Chat only · no file changes"
                     : "Petal will edit files"}
               </span>
+              {project?.custom_instructions && (
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(true)}
+                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary transition hover:brightness-110"
+                  title="Project knowledge is active"
+                >
+                  <BookOpen className="h-2.5 w-2.5" /> knowledge active
+                </button>
+              )}
             </div>
             <div
               className={`flex items-end gap-2 rounded-2xl border bg-background p-2 focus-within:border-primary ${
