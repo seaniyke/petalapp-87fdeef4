@@ -439,10 +439,14 @@ function Builder() {
                   m.role === "user" ? "ml-6 bg-card" : "mr-6 bg-butter/60"
                 }`}
               >
-                <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {m.role === "user" ? "you" : "petal"}
                 </div>
-                <div className="whitespace-pre-wrap">{m.content}</div>
+                {m.role === "assistant" ? (
+                  <MarkdownMessage content={m.content} />
+                ) : (
+                  <div className="whitespace-pre-wrap">{m.content}</div>
+                )}
               </div>
             ))}
             {busy && (
