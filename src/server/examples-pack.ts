@@ -3152,6 +3152,11 @@ matching file below and adapt — do not invent layouts from scratch.
 - \`table-filter-toolbar.tsx\` — search + status filter + primary CTA above
 - \`table-paginated.tsx\` — sortable header + pagination footer
 
+## Variants — forms & tables
+- \`table-inline-edit.tsx\` — click-to-edit row with Save/Cancel controls
+- \`table-destructive-confirm.tsx\` — delete row with type-to-confirm AlertDialog guard
+- \`form-multi-step-error.tsx\` — wizard with submit failure: inline alert, retry, recover-to-step
+
 ## Conventions
 
 - Every example uses semantic tokens only — no raw hex, no Tailwind colour names.
