@@ -128,6 +128,12 @@ function Builder() {
   // so we can render an "Apply this plan" button under it.
   const [lastDiscussIndex, setLastDiscussIndex] = useState<number | null>(null);
   const [discussBusy, setDiscussBusy] = useState(false);
+  // Message queue: prompts the user types while Petal is busy. Each entry
+  // remembers which mode it was queued in so the dispatch is faithful.
+  type QueuedMessage = { id: string; text: string; mode: "build" | "discuss" };
+  const [pendingQueue, setPendingQueue] = useState<QueuedMessage[]>([]);
+  // Per-message revert: which user-message index is being reverted (for spinner).
+  const [revertingIndex, setRevertingIndex] = useState<number | null>(null);
   // Mobile-only: which panel is visible. On desktop both render side-by-side.
   const [mobileTab, setMobileTab] = useState<"chat" | "preview">("chat");
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
