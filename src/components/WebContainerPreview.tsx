@@ -166,6 +166,22 @@ export function WebContainerPreview({
     setIframeKey((k) => k + 1);
   }, [reloadKey]);
 
+  if (phase === "unsupported") {
+    return (
+      <div className="grid h-full w-full place-items-center bg-aurora p-6">
+        <div className="max-w-sm rounded-2xl border border-border bg-card/90 p-5 text-center shadow-sm backdrop-blur">
+          <Smartphone className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+          <h3 className="mb-1 text-sm font-semibold text-foreground">Preview not available here</h3>
+          <p className="text-xs leading-relaxed text-muted-foreground">{error}</p>
+          <p className="mt-3 text-[11px] text-muted-foreground/80">
+            You can keep editing — your changes are saved and will run as soon as you open this project on a supported
+            desktop browser.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex h-full w-full flex-col">
       {/* Status strip */}
