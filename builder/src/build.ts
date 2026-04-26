@@ -7,7 +7,7 @@
  *
  * Conventions:
  * - Pages project name = `petal-${slug}` where slug is derived from projectId.
- *   We create the project on the first deploy if it doesn't exist (--commit-dirty).
+ *   We create the project on the first deploy before asking wrangler to upload.
  * - Each deployment is unique; the project's stable URL `petal-<slug>.pages.dev`
  *   always points to the latest "production" deploy.
  * - We use --branch=main so every deploy is a "production" deployment, giving
@@ -122,10 +122,29 @@ export async function buildAndDeploy(
 
   const distDir = join(projectDir, "dist");
 
-  // 3) Deploy to Cloudflare Pages. --project-name pre-binds the project; if it
-  //    doesn't exist yet, wrangler creates it on first deploy. --branch=main
-  //    makes this a production deploy so the URL `<project>.pages.dev` updates.
-  //    --commit-dirty avoids the "you have uncommitted changes" prompt.
+  // 3) Ensure the Cloudflare Pages project exists. Recent wrangler versions no
+  //    longer reliably auto-create a project from `pages deploy --project-name`,
+  //    so we create it explicitly and ignore the "already exists" case.
+  const createProject = await run(
+    "npx",
+    ["wrangler", "pages", "project", "create", projectName, "--production-branch", "main"],
+    {
+      cwd: projectDir,
+      env,
+      timeoutMs: 90 * 1000,
+    }
+  );
+  const createLogs = createProject.stdout + "\n" + createProject.stderr;
+  if (createProject.code !== 0 && !/already exists|Project name already exists/i.test(createLogs)) {
+    throw new BuildError(
+      `wrangler pages project create failed (exit ${createProject.code})`,
+      createLogs
+    );
+  }
+
+  // 4) Deploy to Cloudflare Pages. --branch=main makes this a production deploy
+  //    so the URL `<project>.pages.dev` updates. --commit-dirty avoids the "you
+  //    have uncommitted changes" prompt.
   const deploy = await run(
     "npx",
     [
