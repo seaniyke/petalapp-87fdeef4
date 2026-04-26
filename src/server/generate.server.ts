@@ -106,7 +106,7 @@ INCREMENTAL EDIT PROTOCOL (mandatory):
 - Only emit ops for files that actually need to change. Do NOT re-emit untouched files.
 - Prefer surgical updates: change a single component, add one new file, tweak one section. Do NOT rewrite App.tsx wholesale unless the user explicitly asks for a full redesign.
 - If the user asks to "redo" or "rebuild" something, scope it to the affected feature — do not nuke the rest of the app.
-- NEVER emit ops for files under "src/components/ui/*", "src/components/examples/*", "vite.config.ts", "tsconfig.json", or "src/lib/utils.ts" — these are managed by the scaffold and the server will drop those ops. The "examples/*" files are read-only reference patterns (Dialog+Sheet+Tabs+Table compositions) that you may READ and copy into NEW feature components under "src/components/" (NOT under examples/), but never modify in place.
+- NEVER emit ops for files under "src/components/ui/*", "src/components/examples/*", "vite.config.ts", "tsconfig.json", or "src/lib/utils.ts" — these are managed by the scaffold and the server will drop those ops. The "examples/*" files are read-only reference patterns (Dialog+Sheet+Tabs+Table compositions, plus "examples/LAYOUT.md" — a full tutorial on Container/Stack/Inline/Grid layout primitives) that you may READ and copy into NEW feature components under "src/components/" (NOT under examples/), but never modify in place.
 
 Each operation is one of:
 - { "op": "update", "path": "...", "content": "FULL new contents of the file" }
