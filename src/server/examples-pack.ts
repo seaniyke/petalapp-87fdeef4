@@ -3229,4 +3229,9 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/table-invoices.tsx", content: TABLE_INVOICES, overwrite: true },
   { path: "src/components/examples/table-filter-toolbar.tsx", content: TABLE_FILTER_TOOLBAR, overwrite: true },
   { path: "src/components/examples/table-paginated.tsx", content: TABLE_PAGINATED, overwrite: true },
+
+  // Variants — forms & tables
+  { path: "src/components/examples/table-inline-edit.tsx", content: TABLE_INLINE_EDIT, overwrite: true },
+  { path: "src/components/examples/table-destructive-confirm.tsx", content: TABLE_DESTRUCTIVE_CONFIRM, overwrite: true },
+  { path: "src/components/examples/form-multi-step-error.tsx", content: FORM_MULTI_STEP_ERROR, overwrite: true },
 ];
