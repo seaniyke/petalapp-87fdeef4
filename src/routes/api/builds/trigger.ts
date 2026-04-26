@@ -27,6 +27,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { postBuildToRailway } from "@/server/builder.server";
 import { applyScaffoldKit } from "@/server/scaffold-kit";
+import { syncViteAliasesWithTsconfig } from "@/server/sync-vite-aliases.server";
 
 const BodySchema = z.object({ projectId: z.string().uuid() });
 
@@ -121,7 +122,14 @@ export const Route = createFileRoute("/api/builds/trigger")({
         const backend = backendRow
           ? { url: backendRow.supabase_url, anonKey: backendRow.anon_key }
           : undefined;
-        const buildFiles = applyScaffoldKit(files, { backend });
+        const scaffolded = applyScaffoldKit(files, { backend });
+        // 2c) Defense-in-depth: keep tsconfig "paths" and Vite aliases in sync.
+        //     If `vite.config.ts` is ever missing an alias for a tsconfig
+        //     `paths` entry (older project, manual edit, AI emitted a slimmer
+        //     config), Rollup would fail to resolve `@/...` imports at build
+        //     time. This step injects any missing aliases. No-op when they're
+        //     already aligned (the canonical scaffold already declares them).
+        const buildFiles = syncViteAliasesWithTsconfig(scaffolded);
 
         // 3) Insert pending build row + bump latest_build_id BEFORE calling
         //    Railway, so a fast callback never races ahead of our own write.
