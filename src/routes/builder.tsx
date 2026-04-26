@@ -659,26 +659,34 @@ function Builder() {
               </div>
               <div className="min-h-0 overflow-hidden bg-card">
                 {activeFile ? (
-                  <CodeEditor
-                    path={activeFile}
-                    value={activeContent}
-                    onChange={(next) => {
-                      setFiles((prev) =>
-                        prev.map((f) =>
-                          f.path === activeFile ? { ...f, content: next } : f
-                        )
-                      );
-                    }}
-                    onBlur={async () => {
-                      if (!project) return;
-                      try {
-                        await saveProjectFiles(project.id, files);
-                      } catch (e) {
-                        toast.error("Couldn't save edits");
-                        console.error(e);
-                      }
-                    }}
-                  />
+                  <Suspense
+                    fallback={
+                      <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    }
+                  >
+                    <CodeEditor
+                      path={activeFile}
+                      value={activeContent}
+                      onChange={(next) => {
+                        setFiles((prev) =>
+                          prev.map((f) =>
+                            f.path === activeFile ? { ...f, content: next } : f
+                          )
+                        );
+                      }}
+                      onBlur={async () => {
+                        if (!project) return;
+                        try {
+                          await saveProjectFiles(project.id, files);
+                        } catch (e) {
+                          toast.error("Couldn't save edits");
+                          console.error(e);
+                        }
+                      }}
+                    />
+                  </Suspense>
                 ) : (
                   <div className="grid h-full place-items-center p-6 text-xs text-muted-foreground">
                     Select a file to edit.
@@ -689,7 +697,11 @@ function Builder() {
           )}
         </main>
       </div>
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} items={paletteItems} />
+      {paletteOpen && (
+        <Suspense fallback={null}>
+          <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} items={paletteItems} />
+        </Suspense>
+      )}
     </div>
   );
 }
