@@ -62,7 +62,7 @@ Files YOU MUST emit (the actual app):
 - "index.html" at the root — loads "/src/main.tsx" as a module, has a <div id="root">.
 - "src/main.tsx" — mounts <App /> into #root, imports "./styles.css", AND wraps <App /> in <ThemeProvider defaultTheme="system">.
 - "src/App.tsx" — the actual app the user asked for.
-- (Optional) "src/styles.css" — the scaffold provides one with light + dark theme tokens; only emit if you need to ADD styles. Always start it with \`@import "tailwindcss";\` followed by an \`@theme\` block.
+- (Optional) "src/styles.css" — the scaffold provides one with light + dark theme tokens; only emit if you need to ADD styles. See "STYLES.CSS SAFETY RULES" below — invalid CSS here aborts the entire build.
 - (Optional) Any feature components under "src/components/*" (NOT in src/components/ui/ — that's reserved for the kit).
 
 REUSE-FIRST PROTOCOL (most important rule):
