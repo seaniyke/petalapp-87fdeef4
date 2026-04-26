@@ -61,6 +61,12 @@ async function relayAndCollect(
   const tool: ParsedTool = { name: null, args: "" };
   let summaryEmitted = ""; // running prefix of `summary` field already streamed
   let toolAnnounced = false;
+  let designingPhaseSent = false;
+  let writingPhaseSent = false;
+  let lastPathCount = 0;
+
+  // Matches a completed `"path": "<value>"` occurrence (handles escaped chars).
+  const PATH_RE = /"path"\s*:\s*"((?:\\.|[^"\\])*)"/g;
 
   while (true) {
     const { value, done } = await reader.read();
@@ -110,10 +116,38 @@ async function relayAndCollect(
               decoded = summaryEmitted; // wait for more chars
             }
             if (decoded.length > summaryEmitted.length) {
+              if (!designingPhaseSent) {
+                controller.enqueue(
+                  encoder.encode(sse({ type: "phase", phase: "designing" }))
+                );
+                designingPhaseSent = true;
+              }
               const tail = decoded.slice(summaryEmitted.length);
               summaryEmitted = decoded;
               controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: tail })));
             }
+          }
+
+          // Count completed `"path": "..."` occurrences and announce file progress.
+          PATH_RE.lastIndex = 0;
+          let match: RegExpExecArray | null;
+          let count = 0;
+          let latest: string | undefined;
+          while ((match = PATH_RE.exec(tool.args)) !== null) {
+            count += 1;
+            latest = match[1];
+          }
+          if (count > lastPathCount) {
+            if (!writingPhaseSent) {
+              controller.enqueue(encoder.encode(sse({ type: "phase", phase: "writing" })));
+              writingPhaseSent = true;
+            }
+            lastPathCount = count;
+            controller.enqueue(
+              encoder.encode(
+                sse({ type: "file_progress", written: count, latestPath: latest })
+              )
+            );
           }
         }
       }
