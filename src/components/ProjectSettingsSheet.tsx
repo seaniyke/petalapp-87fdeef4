@@ -46,6 +46,8 @@ export function ProjectSettingsSheet({ project, onChange, trigger, open: openPro
     if (!isControlled) setInternalOpen(v);
     onOpenChange?.(v);
   };
+  const [value, setValue] = useState(project.custom_instructions ?? "");
+  const [saving, setSaving] = useState(false);
 
   // Re-sync when the sheet opens or the underlying project changes.
   useEffect(() => {
