@@ -65,19 +65,45 @@ type Props = {
 export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
   const [loading, setLoading] = useState(true);
   const [domains, setDomains] = useState<ProjectDomain[]>([]);
+  const [slots, setSlots] = useState<DomainSlot[]>([]);
   const [showAdd, setShowAdd] = useState(false);
+  const [showBuySlot, setShowBuySlot] = useState(false);
   const [recordsFor, setRecordsFor] = useState<ProjectDomain | null>(null);
+
+  const now = Date.now();
+  const availableSlots = useMemo(
+    () =>
+      slots.filter(
+        (s) => !s.consumed_by_domain_id && new Date(s.expires_at).getTime() > now,
+      ),
+    [slots, now],
+  );
+  const hasAvailableSlot = availableSlots.length > 0;
+
+  async function refreshSlots() {
+    try {
+      const rows = await listDomainSlots(projectId);
+      setSlots(rows);
+    } catch {
+      /* ignore */
+    }
+  }
 
   // Initial load
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    listDomains(projectId)
-      .then((rows) => {
-        if (!cancelled) setDomains(rows);
+    Promise.all([listDomains(projectId), listDomainSlots(projectId)])
+      .then(([rows, slotRows]) => {
+        if (cancelled) return;
+        setDomains(rows);
+        setSlots(slotRows);
       })
       .catch(() => {
-        if (!cancelled) setDomains([]);
+        if (!cancelled) {
+          setDomains([]);
+          setSlots([]);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -86,6 +112,14 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
       cancelled = true;
     };
   }, [projectId]);
+
+  function openAddFlow() {
+    if (hasAvailableSlot) {
+      setShowAdd(true);
+    } else {
+      setShowBuySlot(true);
+    }
+  }
 
   // Realtime: flip status pills as the verification job runs
   useEffect(() => {
