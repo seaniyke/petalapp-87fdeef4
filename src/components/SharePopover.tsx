@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Globe, Copy, Check, Loader2, Lock } from "lucide-react";
+import { Globe, Copy, Check, Loader2, Lock, ArrowRight } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { updateProject, type ProjectRow } from "@/lib/projects";
@@ -8,6 +8,8 @@ import { toast } from "sonner";
 type Props = {
   project: ProjectRow;
   onChange: (next: ProjectRow) => void;
+  /** Open the project settings sheet on the Domains section. */
+  onConnectDomain?: () => void;
 };
 
 export function SharePopover({ project, onChange }: Props) {
