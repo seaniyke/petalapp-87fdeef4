@@ -58,6 +58,7 @@ export function WebContainerPreview({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const bootedRef = useRef(false);
   const mountedFilesSig = useRef<string>("");
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Subscribe to logs + server URL once.
   useEffect(() => {
