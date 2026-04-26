@@ -165,25 +165,46 @@ export default function SignUpSplit() {
 }
 `;
 
-const AUTH_FORGOT_PASSWORD = `import { useState } from "react";
-import { ArrowLeft, MailCheck } from "lucide-react";
+const AUTH_FORGOT_PASSWORD = `import { useState, type FormEvent } from "react";
+import { ArrowLeft, MailCheck, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/integrations/backend/auth";
 
 /**
  * Forgot-password flow with success confirmation state.
- * Replace the timeout with the real password-reset call.
+ *
+ * Wired to \`useAuth().resetPasswordForEmail\`, which sends an email linking
+ * back to \`/reset-password\` — make sure that route is mounted (see
+ * \`auth-reset-password.tsx\` in this folder).
  */
 export default function ForgotPassword() {
+  const { resetPasswordForEmail } = useAuth();
+  const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg(null);
+    const { error } = await resetPasswordForEmail(email);
+    setLoading(false);
+    if (error) {
+      setErrorMsg(error.message);
+      return;
+    }
+    setSent(true);
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-12">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <a href="#" className="mb-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <a href="/" className="mb-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-3 w-3" /> Back to sign in
           </a>
           <CardTitle>Reset your password</CardTitle>
@@ -203,18 +224,143 @@ export default function ForgotPassword() {
               </div>
             </div>
           ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setSent(true);
-              }}
-              className="space-y-3"
-            >
+            <form onSubmit={handleSubmit} className="space-y-3">
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="you@company.com" required />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  required
+                />
               </div>
-              <Button type="submit" className="w-full">Send reset link</Button>
+              {errorMsg && <p className="text-xs text-destructive">{errorMsg}</p>}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Send reset link
+              </Button>
+            </form>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+`;
+
+const AUTH_RESET_PASSWORD = `import { useEffect, useState, type FormEvent } from "react";
+import { Lock, Loader2, CheckCircle2 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/integrations/backend/auth";
+
+/**
+ * /reset-password landing page.
+ *
+ * The recovery email from \`resetPasswordForEmail\` links here with an
+ * active recovery session already in the URL hash. AuthProvider picks it
+ * up automatically; this page just collects a new password and calls
+ * \`updatePassword\`.
+ *
+ * Mount this at the public route \`/reset-password\` (it must NOT be
+ * behind your auth gate).
+ */
+export default function ResetPassword() {
+  const { updatePassword, session, loading: authLoading } = useAuth();
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !session) {
+      setErrorMsg("This reset link has expired. Request a new one.");
+    }
+  }, [authLoading, session]);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (password.length < 8) {
+      setErrorMsg("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirm) {
+      setErrorMsg("Passwords don't match.");
+      return;
+    }
+    setSubmitting(true);
+    setErrorMsg(null);
+    const { error } = await updatePassword(password);
+    setSubmitting(false);
+    if (error) {
+      setErrorMsg(error.message);
+      return;
+    }
+    setDone(true);
+    setTimeout(() => {
+      window.location.assign("/");
+    }, 1500);
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center px-4 py-12">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle>Set a new password</CardTitle>
+          <CardDescription>
+            Choose a strong password you haven't used before.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {done ? (
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <CheckCircle2 className="h-8 w-8 text-primary" />
+              <p className="text-sm font-medium">Password updated</p>
+              <p className="text-xs text-muted-foreground">Redirecting…</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="password">New password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="At least 8 characters"
+                    minLength={8}
+                    className="pl-9"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="confirm">Confirm password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="confirm"
+                    type="password"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    minLength={8}
+                    className="pl-9"
+                    required
+                  />
+                </div>
+              </div>
+              {errorMsg && <p className="text-xs text-destructive">{errorMsg}</p>}
+              <Button type="submit" className="w-full" disabled={submitting || authLoading || !session}>
+                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Update password
+              </Button>
             </form>
           )}
         </CardContent>
@@ -1638,11 +1784,13 @@ export default function OnboardingSuccess({ onContinue, appName = "Acme" }: Succ
 `;
 
 const ONBOARDING_FLOW = `import { useState } from "react";
+import { toast } from "sonner";
 import OnboardingWelcome from "./onboarding-welcome";
 import OnboardingSignupStep from "./onboarding-signup-step";
 import OnboardingVerifyStep from "./onboarding-verify-step";
 import OnboardingSuccess from "./onboarding-success";
 import AuthForgotPassword from "./auth-forgot-password";
+import { useAuth } from "@/integrations/backend/auth";
 
 /**
  * Complete onboarding flow orchestrator.
@@ -1650,13 +1798,15 @@ import AuthForgotPassword from "./auth-forgot-password";
  * State machine: welcome → signup → verify → done
  * Side branch:   welcome → forgot-password → welcome
  *
- * This is a presentational reference — replace the placeholder handlers
- * (signup submit, OTP verify, resend) with calls into your real auth
- * provider (e.g. \`@/integrations/backend/auth\`).
+ * Wired to \`useAuth()\` from \`@/integrations/backend/auth\`:
+ *   - signup submit  → signUpWithPassword (sends confirmation OTP)
+ *   - OTP verify     → verifyOtp
+ *   - resend         → resendSignupOtp
  */
 type Step = "welcome" | "signup" | "verify" | "done" | "forgot";
 
 export default function OnboardingFlow({ appName = "Acme" }: { appName?: string }) {
+  const { signUpWithPassword, verifyOtp, resendSignupOtp } = useAuth();
   const [step, setStep] = useState<Step>("welcome");
   const [email, setEmail] = useState("");
 
@@ -1674,8 +1824,12 @@ export default function OnboardingFlow({ appName = "Acme" }: { appName?: string 
       return (
         <OnboardingSignupStep
           onBack={() => setStep("welcome")}
-          onSubmit={async ({ email: e }) => {
-            // TODO: call your real signup API here (sends OTP email)
+          onSubmit={async ({ email: e, password }) => {
+            const { error } = await signUpWithPassword(e, password);
+            if (error) {
+              toast.error(error.message);
+              return;
+            }
             setEmail(e);
             setStep("verify");
           }}
@@ -1687,12 +1841,21 @@ export default function OnboardingFlow({ appName = "Acme" }: { appName?: string 
         <OnboardingVerifyStep
           email={email}
           onBack={() => setStep("signup")}
-          onVerify={async () => {
-            // TODO: call your real verify API here
+          onVerify={async (code) => {
+            const { error } = await verifyOtp(email, code);
+            if (error) {
+              toast.error(error.message);
+              return;
+            }
             setStep("done");
           }}
           onResend={async () => {
-            // TODO: call your real resend API here
+            const { error } = await resendSignupOtp(email);
+            if (error) {
+              toast.error(error.message);
+              return;
+            }
+            toast.success("Code resent — check your inbox.");
           }}
         />
       );
@@ -3097,7 +3260,8 @@ matching file below and adapt — do not invent layouts from scratch.
 ## Auth
 - \`auth-sign-in-card.tsx\` — centered sign-in with email/password + OAuth
 - \`auth-sign-up-split.tsx\` — split-screen onboarding (brand left, form right)
-- \`auth-forgot-password.tsx\` — reset flow with success state
+- \`auth-forgot-password.tsx\` — reset request form (calls \`resetPasswordForEmail\`)
+- \`auth-reset-password.tsx\` — landing page for the reset link (calls \`updatePassword\`); mount at \`/reset-password\`
 - \`auth-otp-card.tsx\` — six-digit code verification
 
 ## Auth modals (Dialog / Sheet)
@@ -3176,6 +3340,7 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/auth-sign-in-card.tsx", content: AUTH_SIGN_IN_CARD, overwrite: true },
   { path: "src/components/examples/auth-sign-up-split.tsx", content: AUTH_SIGN_UP_SPLIT, overwrite: true },
   { path: "src/components/examples/auth-forgot-password.tsx", content: AUTH_FORGOT_PASSWORD, overwrite: true },
+  { path: "src/components/examples/auth-reset-password.tsx", content: AUTH_RESET_PASSWORD, overwrite: true },
   { path: "src/components/examples/auth-otp-card.tsx", content: AUTH_OTP_CARD, overwrite: true },
 
   // Auth modals (Dialog / Sheet)

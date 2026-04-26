@@ -46,6 +46,12 @@ type AuthCtx = {
   signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUpWithPassword: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  // Passwordless / OTP / recovery helpers (additive — existing apps unaffected).
+  signInWithOtp: (email: string) => Promise<{ error: Error | null }>;
+  verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
+  resendSignupOtp: (email: string) => Promise<{ error: Error | null }>;
+  resetPasswordForEmail: (email: string) => Promise<{ error: Error | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -85,6 +91,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     signOut: async () => {
       await supabase.auth.signOut();
+    },
+    signInWithOtp: async (email) => {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
+      });
+      return { error: error ? new Error(error.message) : null };
+    },
+    verifyOtp: async (email, token) => {
+      const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+      return { error: error ? new Error(error.message) : null };
+    },
+    resendSignupOtp: async (email) => {
+      const { error } = await supabase.auth.resend({ type: "signup", email });
+      return { error: error ? new Error(error.message) : null };
+    },
+    resetPasswordForEmail: async (email) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: typeof window !== "undefined" ? \`\${window.location.origin}/reset-password\` : undefined,
+      });
+      return { error: error ? new Error(error.message) : null };
+    },
+    updatePassword: async (newPassword) => {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      return { error: error ? new Error(error.message) : null };
     },
   };
 
@@ -161,6 +192,38 @@ Then in any component:
 \`\`\`tsx
 const { user, loading, signInWithPassword, signOut } = useAuth();
 \`\`\`
+
+### Auth helpers reference
+
+\`useAuth()\` returns these helpers (all return \`{ error: Error | null }\`
+unless noted). Use whichever matches the user's flow — never call
+\`supabase.auth.*\` directly.
+
+| Helper | Use when |
+| --- | --- |
+| \`signUpWithPassword(email, password)\` | Classic email + password sign-up. Sends a confirmation email. |
+| \`signInWithPassword(email, password)\` | Classic email + password sign-in. |
+| \`signInWithOtp(email)\` | Passwordless / magic-link or email-OTP sign-in. Send first, then prompt for the code. |
+| \`verifyOtp(email, token)\` | Verify the 6-digit code (works for both signup confirmations and OTP sign-in). |
+| \`resendSignupOtp(email)\` | Resend the signup confirmation code on user request. |
+| \`resetPasswordForEmail(email)\` | Send a password-reset email. **Requires** a \`/reset-password\` route in the app — see below. |
+| \`updatePassword(newPassword)\` | Set a new password while a recovery session is active. Call this from the \`/reset-password\` page. |
+| \`signOut()\` | Sign the current user out. Returns \`void\`. |
+
+### Password-reset wiring (mandatory if you call \`resetPasswordForEmail\`)
+
+The reset email links the user back to \`<origin>/reset-password\` with an
+active recovery session. You **must** mount a public route at that path
+that:
+
+1. Renders a "set new password" form.
+2. Calls \`updatePassword(newPassword)\` on submit.
+3. Redirects on success.
+
+A copy-from reference is in \`src/components/examples/auth-reset-password.tsx\`.
+Without this route, users will be silently signed in without resetting
+their password.
+
 
 ## Database queries
 

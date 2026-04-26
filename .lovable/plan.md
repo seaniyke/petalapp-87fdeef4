@@ -1,59 +1,58 @@
-# Why option C didn't fix it
+# Goal
 
-You're right — the previous turn (tighter prompts + clearer error copy) was **preventative**, not corrective. If the AI still emits invalid CSS (a stray `1`, a malformed at-rule, a typo), the file is:
+Expand the auth toolbox shipped to **generated apps** so users who want OTP, resend, or forgot-password can build it without writing raw `supabase.auth` calls — **without** removing or changing the existing password-based flow.
 
-1. Persisted to `project_files` as-is by `/api/generate`.
-2. Re-applied by `applyScaffoldKit` during `/api/builds/trigger`, but with `overwrite: false` for `src/styles.css` (line 2474 of `scaffold-kit.ts`) — so the AI's broken version is kept.
-3. Shipped straight to Tailwind v4 on Railway, which aborts the build with `Invalid declaration: '1'`.
+Petal's own auth (`src/lib/auth.tsx`) is **not** touched. This is purely a scaffold-kit upgrade.
 
-There is **no validation gate** anywhere between the AI and the build. That's the real root cause.
+# What changes
 
-# Root cause, in one sentence
+## 1. `src/server/backend-kit.ts` — extend `AuthCtx` (additive only)
 
-`src/styles.css` is the only scaffold file the AI is allowed to overwrite **and** the only file whose contents can break the build with a single stray character — and we never check it.
+Add five new helpers next to the existing `signInWithPassword` / `signUpWithPassword` / `signOut`:
 
-# The fix: validate styles.css and fall back when it's broken
+```ts
+signInWithOtp:        (email: string) => Promise<{ error: Error | null }>;
+verifyOtp:            (email: string, token: string) => Promise<{ error: Error | null }>;
+resendSignupOtp:      (email: string) => Promise<{ error: Error | null }>;
+resetPasswordForEmail:(email: string) => Promise<{ error: Error | null }>;
+updatePassword:       (newPassword: string) => Promise<{ error: Error | null }>;
+```
 
-Add a tiny server-side validator that runs in two places:
+Implementations wrap the corresponding `supabase.auth.*` calls (`signInWithOtp`, `verifyOtp` with `type: "email"`, `resend` with `type: "signup"`, `resetPasswordForEmail` with `redirectTo: <origin>/reset-password`, `updateUser({ password })`). Same `{ error }` return shape as the existing helpers for consistency.
 
-**A. `src/server/validate-styles.server.ts` (new)** — a lightweight CSS sanity check that catches the failure modes Tailwind v4 actually rejects, without re-implementing a full parser:
+Nothing existing is renamed or removed. Apps already using `signInWithPassword` keep working.
 
-- File must start with `@import "tailwindcss";` (case/quotes flexible).
-- Every non-blank, non-comment line at the top level must be one of: an `@`-rule, a selector line ending in `{`, a closing `}`, or a `property: value;` declaration *inside* a block.
-- Reject bare tokens at the top level (e.g. a line that's just `1`, `foo`, `;`, etc.) — this is the exact class of error from the build log.
-- Balance check: `{` count must equal `}` count.
+## 2. `src/server/examples-pack.ts` — wire the TODO stubs + add reset-password screen
 
-If validation fails, the helper returns `{ ok: false, reason }`. Cheap, deterministic, no dependency on Tailwind itself (we don't want to ship Tailwind into our SSR worker).
+- **`onboarding-flow.tsx`** (lines 1640–1709): replace the three `// TODO: call your real …` stubs with `useAuth()` calls — `signUpWithPassword` for signup, `verifyOtp` for the OTP step, `resendSignupOtp` for resend. Keep the state machine identical.
+- **`auth-forgot-password.tsx`** (around line 177): replace the `setTimeout` placeholder with `resetPasswordForEmail`.
+- **New file**: `auth-reset-password.tsx` — the page users land on from the recovery email. Reads the recovery session, shows a "new password" form, calls `updatePassword`, then redirects. This is the missing half of the forgot-password loop and the knowledge guide flags it as mandatory.
+- Add the new file to `EXAMPLES_PACK` and reference it from `EXAMPLES.md`.
 
-**B. Wire it into the build trigger** (`src/routes/api/builds/trigger.ts`), right after `applyScaffoldKit`:
+## 3. `src/server/backend-kit.ts` — update `BACKEND_MD`
 
-- Find the `src/styles.css` entry in `scaffolded`.
-- Run `validateStylesCss(content)`.
-- If invalid: replace that entry's content with the canonical `STYLES_CSS` from the scaffold kit (export it from `scaffold-kit.ts` so we can reuse the exact same string), and `console.warn` with the project + build id and the reason. The build proceeds with safe CSS instead of dying.
+Add an "Auth helpers reference" section listing every helper available on `useAuth()`, when to use OTP vs password, and the requirement to mount `<AuthReset Password />` at `/reset-password` if `resetPasswordForEmail` is used. This is what the generation AI reads — it's the lever that gets these helpers actually used.
 
-**C. Optionally wire it into `/api/generate`** (`src/server/generate.server.ts`), in the `write_project` and `patch_files` paths, *after* the AI returns files but *before* we persist them. Same logic: if the AI's `src/styles.css` doesn't validate, drop it (let the scaffold default win) and stream a small `phase` event so the client can show a soft notice. This stops the bad file from ever entering `project_files`.
+## 4. `src/server/generate.server.ts` — tighten the system prompt
 
-# Why fall back instead of overwrite-always
+One paragraph addition: when the project has a backend and the user asks for auth, the AI must use `useAuth()` helpers from `@/integrations/backend/auth` and must never call `supabase.auth.*` directly. Mirrors the existing "no `createClient`" rule.
 
-Earlier we discussed flipping `overwrite: true` for `styles.css`. That would also fix the build, but it permanently kills the AI's ability to customize tokens (colors, fonts, radii) — which is exactly what shadcn/ui apps need. Validating-and-falling-back is the v0/Lovable industry pattern: editable in the happy path, safe in the failure path.
+# What does NOT change
 
-# What this changes / doesn't change
-
-- ✅ Tailwind v4 can no longer abort the build because of bad CSS the AI emitted.
-- ✅ The user's `styles.css` is still respected when it's valid (so theme customization keeps working).
-- ✅ Same prompt rules from the previous turn stay in place — they reduce how often the validator has to fire.
-- ✅ `friendlyBuildFailure` styling-error branch stays as a last line of defence (in case some *other* CSS bug slips past — e.g. an `@apply` of an unknown utility, which is harder to catch without running Tailwind).
-- ❌ No DB migration. No changes to the builder service. No change to the AI gateway.
+- `signInWithPassword` / `signUpWithPassword` stay as the defaults — no migration for existing generated apps.
+- Petal's own `src/lib/auth.tsx` is untouched.
+- No DB migration. No edge functions. No Supabase config changes.
+- Email templates are not scaffolded here — that's a separate flow the user can opt into later (via Cloud → Emails).
 
 # Files touched
 
-- **New**: `src/server/validate-styles.server.ts` (~40 lines + a small test).
-- **Edit**: `src/server/scaffold-kit.ts` — `export const STYLES_CSS` (currently a module-local `const`) so the build trigger can reuse it as the fallback.
-- **Edit**: `src/routes/api/builds/trigger.ts` — after `applyScaffoldKit`, run the validator and swap in `STYLES_CSS` on failure.
-- **Edit (optional but recommended)**: `src/server/generate.server.ts` — same validation in the `write_project` and `patch_files` finalize steps, so bad CSS never reaches the database in the first place.
+- **Edit**: `src/server/backend-kit.ts` (extend `AuthCtx`, expand `BACKEND_MD`)
+- **Edit**: `src/server/examples-pack.ts` (wire onboarding TODOs, wire forgot-password, add reset-password example, register in `EXAMPLES_PACK`)
+- **Edit**: `src/server/generate.server.ts` (one prompt paragraph)
 
-# Verification plan
+# Verification
 
-1. Unit-test the validator with: the canonical `STYLES_CSS` (must pass), a file containing a stray `1` line (must fail), an unbalanced `{` (must fail), missing `@import "tailwindcss";` (must fail).
-2. Type-check passes (`bunx tsc --noEmit`).
-3. Manually trigger a build for a project whose stored `src/styles.css` has the bad `1` line — the build trigger logs `[styles.css invalid] falling back to scaffold default` and the build succeeds.
+1. `bunx tsc --noEmit` passes.
+2. Spot-check the rendered `BACKEND.md` content includes all five new helpers.
+3. Spot-check that `onboarding-flow.tsx` example string compiles as TSX (no stray template-literal escapes).
+4. Existing generated apps that only use `signInWithPassword` still type-check against the new `AuthCtx` shape (additive properties only).

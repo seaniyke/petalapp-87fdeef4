@@ -104,6 +104,12 @@ STYLES.CSS SAFETY RULES (Tailwind v4 aborts the build on ANY invalid CSS):
 - Inside \`@theme { ... }\`: only token declarations like \`--color-primary: oklch(0.7 0.15 30);\`, \`--radius-lg: 0.75rem;\`, \`--font-sans: "Inter", sans-serif;\`. Each one starts with \`--\` and ends with \`;\`.
 - NEVER use \`@apply\` with a class that doesn't exist (e.g. \`@apply bg-brand-foo\` when \`brand-foo\` is not a defined token) — that also aborts the build.
 - When in doubt, EMIT NOTHING for src/styles.css and let the scaffold's default tokens win. Adding styles is optional.
+
+BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the project):
+- ALWAYS go through \`@/integrations/backend/*\`. NEVER call \`createClient(...)\` yourself, NEVER \`import ... from "@supabase/supabase-js"\`, NEVER hardcode URLs or keys.
+- For ANY auth flow (sign up, sign in, OTP, magic link, password reset), use the helpers on \`useAuth()\` from \`@/integrations/backend/auth\`: \`signUpWithPassword\`, \`signInWithPassword\`, \`signInWithOtp\`, \`verifyOtp\`, \`resendSignupOtp\`, \`resetPasswordForEmail\`, \`updatePassword\`, \`signOut\`. Do NOT call \`supabase.auth.*\` directly.
+- If you call \`resetPasswordForEmail\`, you MUST also mount a public \`/reset-password\` route that calls \`updatePassword\` — see \`src/components/examples/auth-reset-password.tsx\` for a complete reference.
+- Read \`src/components/examples/BACKEND.md\` for the full helper reference before writing data or auth code.
 - Always include a short, friendly "summary" describing what you built.`;
 
 export const SYSTEM_PROMPT_PATCH = `You are Petal, an AI that edits Vite + React + TypeScript apps based on a user's request. Every project uses Tailwind CSS v4 and a pre-installed shadcn-style UI kit at "src/components/ui/*".
@@ -149,6 +155,12 @@ STYLES.CSS SAFETY RULES (Tailwind v4 aborts the build on ANY invalid CSS):
 - Inside \`@theme { ... }\`, every line must be a valid token declaration like \`--color-primary: oklch(0.7 0.15 30);\` ending with \`;\`. NEVER leave bare numbers, words, or fragments — Tailwind will fail with "Invalid declaration".
 - NEVER \`@apply\` a class that isn't a real Tailwind utility or a token you defined. Unknown utilities abort the build.
 - If you don't NEED to change tokens, do NOT emit "src/styles.css" at all — leave the scaffold's defaults.
+
+BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the project):
+- ALWAYS go through \`@/integrations/backend/*\`. NEVER call \`createClient(...)\` yourself, NEVER \`import ... from "@supabase/supabase-js"\`, NEVER hardcode URLs or keys.
+- For ANY auth flow (sign up, sign in, OTP, magic link, password reset), use the helpers on \`useAuth()\` from \`@/integrations/backend/auth\`: \`signUpWithPassword\`, \`signInWithPassword\`, \`signInWithOtp\`, \`verifyOtp\`, \`resendSignupOtp\`, \`resetPasswordForEmail\`, \`updatePassword\`, \`signOut\`. Do NOT call \`supabase.auth.*\` directly.
+- If you call \`resetPasswordForEmail\`, you MUST also mount a public \`/reset-password\` route that calls \`updatePassword\` — copy from \`src/components/examples/auth-reset-password.tsx\`.
+- Treat existing \`src/integrations/backend/*\` files as read-only. Enhance the user's auth UI; do not replace the auth integration.
 - Always include a short, friendly "summary" describing what you changed.`;
 
 export const WRITE_PROJECT_TOOL = {
