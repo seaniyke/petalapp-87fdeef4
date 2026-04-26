@@ -132,14 +132,24 @@ export function ProjectSettingsSheet({
             <BookOpen className="h-4 w-4" /> Project Settings
           </SheetTitle>
           <SheetDescription>
-            Backend connection and project knowledge for this project.
+            Domains, backend connection and project knowledge for this project.
           </SheetDescription>
         </SheetHeader>
 
-        {/* Backend section */}
-        <BackendSection projectId={project.id} />
+        {/* Domains section */}
+        <div id="settings-domains" className="scroll-mt-4">
+          <DomainsSection
+            projectId={project.id}
+            hasPublishedBuild={!!project.latest_build_id}
+          />
+        </div>
 
-        <div className="mt-8 border-t border-border pt-6">
+        {/* Backend section */}
+        <div id="settings-backend" className="scroll-mt-4">
+          <BackendSection projectId={project.id} />
+        </div>
+
+        <div id="settings-knowledge" className="mt-8 scroll-mt-4 border-t border-border pt-6">
           <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
             <BookOpen className="h-4 w-4" /> Project Knowledge
           </h3>
