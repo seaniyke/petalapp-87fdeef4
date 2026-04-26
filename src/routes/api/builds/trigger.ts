@@ -130,7 +130,24 @@ export const Route = createFileRoute("/api/builds/trigger")({
         //     config), Rollup would fail to resolve `@/...` imports at build
         //     time. This step injects any missing aliases. No-op when they're
         //     already aligned (the canonical scaffold already declares them).
-        const buildFiles = syncViteAliasesWithTsconfig(scaffolded);
+        const aliasFixed = syncViteAliasesWithTsconfig(scaffolded);
+
+        // 2d) Validate `src/styles.css` and fall back to the canonical scaffold
+        //     CSS if it's broken. Tailwind v4 aborts the entire build on any
+        //     invalid declaration (a stray `1`, an unbalanced brace, a missing
+        //     `@import "tailwindcss";`). We never want one bad character in a
+        //     stylesheet to take the whole deploy down — the user can keep
+        //     iterating on the rest of the app, and Petal can fix the CSS on
+        //     the next turn.
+        const buildFiles = aliasFixed.map((f) => {
+          if (f.path !== "src/styles.css") return f;
+          const result = validateStylesCss(f.content);
+          if (result.ok) return f;
+          console.warn(
+            `[styles.css invalid] project=${projectId} reason="${result.reason}" — falling back to scaffold default`
+          );
+          return { ...f, content: STYLES_CSS };
+        });
 
         // 3) Insert pending build row + bump latest_build_id BEFORE calling
         //    Railway, so a fast callback never races ahead of our own write.
