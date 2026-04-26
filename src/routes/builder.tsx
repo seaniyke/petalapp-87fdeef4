@@ -443,14 +443,16 @@ function Builder() {
             changes[f.path] = { kind: "unchanged", addedLines: 0, removedLines: 0 };
           } else {
             const beforeLines = before.split("\n").length;
-            // Cheap heuristic — actual added/removed without a real LCS diff.
-            // It's directionally correct for the common case (mostly-additive
-            // edits) and lets us avoid pulling a diff library into the bundle.
+            // We deliberately don't ship a real LCS diff — the bundle cost
+            // isn't worth it for an inline activity badge. Instead we report
+            // the line-count delta. A modified file with the same line count
+            // shows "~ modified" with no number, which is more honest than
+            // a fake +N/-N from a heuristic.
             const delta = afterLines - beforeLines;
             changes[f.path] = {
               kind: "modified",
-              addedLines: Math.max(delta, 0) + Math.min(beforeLines, 1),
-              removedLines: Math.max(-delta, 0) + Math.min(beforeLines, 1),
+              addedLines: Math.max(delta, 0),
+              removedLines: Math.max(-delta, 0),
             };
           }
         }
