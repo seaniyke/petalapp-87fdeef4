@@ -53,7 +53,7 @@ type ParsedTool = {
 async function relayAndCollect(
   upstream: Response,
   controller: ReadableStreamDefaultController<Uint8Array>,
-  encoder: TextEncoder
+  encoder: TextEncoder,
 ): Promise<ParsedTool> {
   const reader = upstream.body!.getReader();
   const decoder = new TextDecoder();
@@ -61,6 +61,12 @@ async function relayAndCollect(
   const tool: ParsedTool = { name: null, args: "" };
   let summaryEmitted = ""; // running prefix of `summary` field already streamed
   let toolAnnounced = false;
+  let designingPhaseSent = false;
+  let writingPhaseSent = false;
+  let lastPathCount = 0;
+
+  // Matches a completed `"path": "<value>"` occurrence (handles escaped chars).
+  const PATH_RE = /"path"\s*:\s*"((?:\\.|[^"\\])*)"/g;
 
   while (true) {
     const { value, done } = await reader.read();
@@ -110,10 +116,34 @@ async function relayAndCollect(
               decoded = summaryEmitted; // wait for more chars
             }
             if (decoded.length > summaryEmitted.length) {
+              if (!designingPhaseSent) {
+                controller.enqueue(encoder.encode(sse({ type: "phase", phase: "designing" })));
+                designingPhaseSent = true;
+              }
               const tail = decoded.slice(summaryEmitted.length);
               summaryEmitted = decoded;
               controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: tail })));
             }
+          }
+
+          // Count completed `"path": "..."` occurrences and announce file progress.
+          PATH_RE.lastIndex = 0;
+          let match: RegExpExecArray | null;
+          let count = 0;
+          let latest: string | undefined;
+          while ((match = PATH_RE.exec(tool.args)) !== null) {
+            count += 1;
+            latest = match[1];
+          }
+          if (count > lastPathCount) {
+            if (!writingPhaseSent) {
+              controller.enqueue(encoder.encode(sse({ type: "phase", phase: "writing" })));
+              writingPhaseSent = true;
+            }
+            lastPathCount = count;
+            controller.enqueue(
+              encoder.encode(sse({ type: "file_progress", written: count, latestPath: latest })),
+            );
           }
         }
       }
@@ -195,12 +225,12 @@ export const Route = createFileRoute("/api/generate")({
         const stream = new ReadableStream<Uint8Array>({
           async start(controller) {
             try {
-              controller.enqueue(
-                encoder.encode(sse({ type: "status", message: "Thinking…" }))
-              );
+              controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
+              controller.enqueue(encoder.encode(sse({ type: "status", message: "Thinking…" })));
               const collected = await relayAndCollect(upstream, controller, encoder);
+              controller.enqueue(encoder.encode(sse({ type: "phase", phase: "polishing" })));
               controller.enqueue(
-                encoder.encode(sse({ type: "status", message: "Applying changes…" }))
+                encoder.encode(sse({ type: "status", message: "Applying changes…" })),
               );
 
               if (!collected.name || !collected.args) {
@@ -229,7 +259,7 @@ export const Route = createFileRoute("/api/generate")({
               }
 
               controller.enqueue(
-                encoder.encode(sse({ type: "result", files: nextFiles, summary }))
+                encoder.encode(sse({ type: "result", files: nextFiles, summary })),
               );
             } catch (e) {
               const message = e instanceof Error ? e.message : "Generation failed.";

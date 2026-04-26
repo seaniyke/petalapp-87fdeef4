@@ -1,14 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
-import type {
-  ChatMessage,
-  ProjectFile,
-  StreamEvent,
-} from "@/server/generate.server";
+import type { ChatMessage, ProjectFile, StreamEvent } from "@/server/generate.server";
 
 type Handlers = {
   onStatus?: (message: string) => void;
   onSummaryDelta?: (delta: string) => void;
   onTool?: (name: "write_project" | "patch_files") => void;
+  onPhase?: (phase: "thinking" | "designing" | "writing" | "polishing") => void;
+  onFileProgress?: (written: number, latestPath?: string) => void;
   onResult?: (files: ProjectFile[], summary: string) => void;
   onError?: (message: string) => void;
 };
@@ -17,7 +15,7 @@ type Handlers = {
 export async function streamGenerate(
   body: { messages: ChatMessage[]; currentFiles: ProjectFile[] },
   handlers: Handlers,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<void> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
@@ -75,6 +73,12 @@ export async function streamGenerate(
             break;
           case "tool":
             handlers.onTool?.(evt.name);
+            break;
+          case "phase":
+            handlers.onPhase?.(evt.phase);
+            break;
+          case "file_progress":
+            handlers.onFileProgress?.(evt.written, evt.latestPath);
             break;
           case "result":
             handlers.onResult?.(evt.files, evt.summary);

@@ -126,6 +126,8 @@ export type StreamEvent =
   | { type: "status"; message: string }
   | { type: "summary_delta"; delta: string }
   | { type: "tool"; name: "write_project" | "patch_files" }
+  | { type: "phase"; phase: "thinking" | "designing" | "writing" | "polishing" }
+  | { type: "file_progress"; written: number; latestPath?: string }
   | { type: "result"; files: ProjectFile[]; summary: string }
   | { type: "error"; message: string };
 
