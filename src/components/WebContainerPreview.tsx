@@ -13,21 +13,18 @@ import {
 
 type Phase = "idle" | "booting" | "installing" | "starting" | "ready" | "error" | "unsupported";
 
-/** WebContainers require SharedArrayBuffer + a Chromium/Firefox-class engine.
- * iOS Safari (and all iOS browsers, which are forced to use WebKit) cannot run
- * them. We detect this up-front so users see a clear message instead of a
- * spinner that will never resolve. */
-function detectUnsupportedBrowser(): string | null {
+export function detectUnsupportedBrowser(): string | null {
   if (typeof navigator === "undefined") return null;
   const ua = navigator.userAgent;
-  // iOS / iPadOS — all browsers there are WebKit, none support WebContainers.
+  // iOS / iPadOS — all browsers there are WebKit. WebContainers technically
+  // boot on iOS 16.4+, but installing 200 packages over a phone network
+  // reliably exceeds our timeout. Treat as unsupported in the UI.
   const isIOS =
     /iPad|iPhone|iPod/.test(ua) ||
     (navigator.platform === "MacIntel" && (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints! > 1);
   if (isIOS) {
     return "Live preview isn't supported on iOS — open this project on desktop Chrome, Edge, or Firefox to run it.";
   }
-  // Android Chrome works, but other mobile WebKit-based browsers don't.
   const isAndroid = /Android/.test(ua);
   const isChromium = /Chrome|Chromium|Edg/.test(ua) && !/OPR\//.test(ua);
   if (isAndroid && !isChromium) {
@@ -39,7 +36,9 @@ function detectUnsupportedBrowser(): string | null {
   return null;
 }
 
-const INSTALL_TIMEOUT_MS = 3 * 60 * 1000;
+const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
+
+
 
 export function WebContainerPreview({
   files,
@@ -113,11 +112,11 @@ export function WebContainerPreview({
           // Auto-show logs so users can see install progress instead of a silent spinner.
           setShowLogs(true);
           await mountProject(files);
-          // Hard cap install + dev start at 3 minutes — surfaces an error instead of spinning forever.
+          // Hard cap install + dev start — surfaces an error instead of spinning forever.
           timeoutRef.current = setTimeout(() => {
             if (cancelled) return;
             setError(
-              "Setup is taking longer than 3 minutes. Check the logs below, or try reloading."
+              "Setup is taking longer than 5 minutes. Check the logs below, or try reloading."
             );
             setPhase("error");
             setShowLogs(true);

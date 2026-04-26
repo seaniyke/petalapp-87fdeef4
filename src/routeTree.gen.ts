@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
+import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
 
 const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
@@ -52,6 +53,11 @@ const ApiGenerateRoute = ApiGenerateRouteImport.update({
   path: '/api/generate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPreviewProjectIdRoute = ApiPreviewProjectIdRouteImport.update({
+  id: '/api/preview/$projectId',
+  path: '/api/preview/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/projects': typeof ProjectsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
+  '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/projects': typeof ProjectsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
+  '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/projects': typeof ProjectsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
+  '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/api/generate'
     | '/p/$slug'
+    | '/api/preview/$projectId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/api/generate'
     | '/p/$slug'
+    | '/api/preview/$projectId'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/api/generate'
     | '/p/$slug'
+    | '/api/preview/$projectId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   ProjectsRoute: typeof ProjectsRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
   PSlugRoute: typeof PSlugRoute
+  ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGenerateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/preview/$projectId': {
+      id: '/api/preview/$projectId'
+      path: '/api/preview/$projectId'
+      fullPath: '/api/preview/$projectId'
+      preLoaderRoute: typeof ApiPreviewProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,7 +203,18 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsRoute: ProjectsRoute,
   ApiGenerateRoute: ApiGenerateRoute,
   PSlugRoute: PSlugRoute,
+  ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

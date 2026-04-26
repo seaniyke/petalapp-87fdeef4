@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -55,6 +56,9 @@ const MarkdownMessage = lazy(() =>
 );
 const WebContainerPreview = lazy(() =>
   import("@/components/WebContainerPreview").then((m) => ({ default: m.WebContainerPreview }))
+);
+const MobilePreviewFallback = lazy(() =>
+  import("@/components/MobilePreviewFallback").then((m) => ({ default: m.MobilePreviewFallback }))
 );
 type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
@@ -100,6 +104,10 @@ function Builder() {
   const [streamingSummary, setStreamingSummary] = useState<string>("");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
+  // Mobile-only: which panel is visible. On desktop both render side-by-side.
+  const [mobileTab, setMobileTab] = useState<"chat" | "preview">("chat");
+  const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
+  const isMobile = useIsMobile();
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -117,6 +125,12 @@ function Builder() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
+
+  // Show a "new" dot on the Preview tab when files change while Chat is active.
+  useEffect(() => {
+    if (files.length === 0) return;
+    if (isMobile && mobileTab === "chat") setPreviewHasUpdate(true);
+  }, [files, isMobile, mobileTab]);
 
   // Bootstrap: load existing project, or create a new one if no id in URL.
   useEffect(() => {
@@ -494,9 +508,46 @@ function Builder() {
         </div>
       </header>
 
+      {/* Mobile-only tab bar (Chat | Preview). Desktop uses the grid below. */}
+      <div className="flex shrink-0 items-center gap-1 border-b border-border bg-card/60 px-3 py-1.5 backdrop-blur md:hidden">
+        <button
+          onClick={() => setMobileTab("chat")}
+          className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+            mobileTab === "chat"
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          Chat
+        </button>
+        <button
+          onClick={() => {
+            setMobileTab("preview");
+            setPreviewHasUpdate(false);
+          }}
+          className={`relative flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+            mobileTab === "preview"
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          Preview
+          {previewHasUpdate && mobileTab !== "preview" && (
+            <span
+              aria-hidden
+              className="absolute right-2 top-1.5 h-1.5 w-1.5 rounded-full bg-primary"
+            />
+          )}
+        </button>
+      </div>
+
       <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[360px_1fr]">
         {/* Chat */}
-        <aside className="flex min-h-0 flex-col border-b border-border bg-sidebar md:border-b-0 md:border-r">
+        <aside
+          className={`flex min-h-0 flex-col border-b border-border bg-sidebar md:flex md:border-b-0 md:border-r ${
+            mobileTab === "chat" ? "flex" : "hidden"
+          }`}
+        >
           <div className="border-b border-border px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Conversation
           </div>
@@ -617,11 +668,30 @@ function Builder() {
         </aside>
 
         {/* Workspace */}
-        <main className="flex min-h-0 flex-col bg-background">
+        <main
+          className={`min-h-0 flex-col bg-background md:flex ${
+            mobileTab === "preview" ? "flex" : "hidden md:flex"
+          }`}
+        >
           {view === "preview" ? (
             <div className="flex min-h-0 flex-1 flex-col p-3">
               <div className="flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-white">
-                {files.length ? (
+                {isMobile ? (
+                  <Suspense
+                    fallback={
+                      <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    }
+                  >
+                    <MobilePreviewFallback
+                      projectId={project?.id ?? null}
+                      files={files}
+                      reloadKey={previewKey}
+                      isGenerating={busy}
+                    />
+                  </Suspense>
+                ) : files.length ? (
                   <Suspense
                     fallback={
                       <div className="grid h-full place-items-center text-xs text-muted-foreground">
