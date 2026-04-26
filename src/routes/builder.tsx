@@ -19,6 +19,11 @@ import {
   Wand2,
   Undo2,
   X,
+  Zap,
+  Gauge,
+  Crown,
+  BookOpen,
+  ChevronDown,
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
 import { requestDiscussion } from "@/lib/discuss";
