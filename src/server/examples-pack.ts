@@ -2712,6 +2712,15 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/dashboard-activity-feed.tsx", content: DASHBOARD_ACTIVITY_FEED, overwrite: true },
   { path: "src/components/examples/dashboard-empty-state.tsx", content: DASHBOARD_EMPTY_STATE, overwrite: true },
 
+  // Dashboard widgets (combinable atoms)
+  { path: "src/components/examples/widget-kpi-card.tsx", content: WIDGET_KPI_CARD, overwrite: true },
+  { path: "src/components/examples/widget-filter-bar.tsx", content: WIDGET_FILTER_BAR, overwrite: true },
+  { path: "src/components/examples/widget-chart-area.tsx", content: WIDGET_CHART_AREA, overwrite: true },
+  { path: "src/components/examples/widget-chart-bar.tsx", content: WIDGET_CHART_BAR, overwrite: true },
+  { path: "src/components/examples/widget-chart-donut.tsx", content: WIDGET_CHART_DONUT, overwrite: true },
+  { path: "src/components/examples/widget-activity-log.tsx", content: WIDGET_ACTIVITY_LOG, overwrite: true },
+  { path: "src/components/examples/widget-table-sortable.tsx", content: WIDGET_TABLE_SORTABLE, overwrite: true },
+
   // Pricing
   { path: "src/components/examples/pricing-three-tier.tsx", content: PRICING_THREE_TIER, overwrite: true },
   { path: "src/components/examples/pricing-toggle-billing.tsx", content: PRICING_TOGGLE_BILLING, overwrite: true },
