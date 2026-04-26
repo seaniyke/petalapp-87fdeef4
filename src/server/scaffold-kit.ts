@@ -1688,7 +1688,8 @@ Every page should follow this skeleton:
 
 \`\`\`tsx
 import { Container } from "@/components/ui/container";
-import { Stack, Inline } from "@/components/ui/stack";
+import { Stack } from "@/components/ui/stack";
+import { Inline } from "@/components/ui/inline";
 import { Grid } from "@/components/ui/grid";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
