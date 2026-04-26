@@ -230,9 +230,15 @@ export const Route = createFileRoute("/api/generate")({
           async start(controller) {
             try {
               controller.enqueue(
+                encoder.encode(sse({ type: "phase", phase: "thinking" }))
+              );
+              controller.enqueue(
                 encoder.encode(sse({ type: "status", message: "Thinking…" }))
               );
               const collected = await relayAndCollect(upstream, controller, encoder);
+              controller.enqueue(
+                encoder.encode(sse({ type: "phase", phase: "polishing" }))
+              );
               controller.enqueue(
                 encoder.encode(sse({ type: "status", message: "Applying changes…" }))
               );
