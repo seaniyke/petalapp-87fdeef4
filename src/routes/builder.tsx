@@ -668,11 +668,30 @@ function Builder() {
         </aside>
 
         {/* Workspace */}
-        <main className="flex min-h-0 flex-col bg-background">
+        <main
+          className={`min-h-0 flex-col bg-background md:flex ${
+            mobileTab === "preview" ? "flex" : "hidden md:flex"
+          }`}
+        >
           {view === "preview" ? (
             <div className="flex min-h-0 flex-1 flex-col p-3">
               <div className="flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-white">
-                {files.length ? (
+                {isMobile ? (
+                  <Suspense
+                    fallback={
+                      <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    }
+                  >
+                    <MobilePreviewFallback
+                      projectId={project?.id ?? null}
+                      files={files}
+                      reloadKey={previewKey}
+                      isGenerating={busy}
+                    />
+                  </Suspense>
+                ) : files.length ? (
                   <Suspense
                     fallback={
                       <div className="grid h-full place-items-center text-xs text-muted-foreground">
