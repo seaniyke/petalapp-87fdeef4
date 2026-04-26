@@ -1841,6 +1841,115 @@ export function DashboardPage() {
   <aside>...</aside>
 </Grid>
 \`\`\`
+
+---
+
+## Theming — automatic light / dark adaptation
+
+\`Container\`, \`Stack\`, \`Inline\`, and \`Grid\` are **intentionally color-free** —
+they apply only \`flex\`, \`grid\`, \`gap-*\`, \`items-*\`, \`justify-*\`, \`max-w-*\`,
+and \`px-*\` utilities. They paint no background, border, or text colour of
+their own. That is why they adapt to theme changes for free: theme switches
+do not touch them at all — only the components placed inside them (Card,
+Button, Input, …) re-render with new \`bg-background\` / \`text-foreground\` /
+\`border-border\` token values from \`src/styles.css\`.
+
+**Rules**
+
+- Do NOT add \`bg-*\`, \`text-*\`, or \`border-*\` directly to a primitive — wrap
+  the colored region in a \`<Card>\` or a semantic surface instead. This keeps
+  primitives reusable (e.g. a \`<Stack>\` inside a Card and inside a Sheet
+  should not both force a background).
+- The page-level \`<div className="min-h-screen bg-background">\` shell IS the
+  one place backgrounds belong — see the page template above.
+- Any custom token you add (e.g. \`--surface-elevated\`) must be defined in
+  both \`:root\` and \`.dark\` selectors of \`src/styles.css\` so it adapts.
+
+---
+
+## Tutorial — assemble a page in 4 steps
+
+Build any page by composing the primitives top-down. Same recipe works for
+landings, dashboards, settings, and detail screens.
+
+### Step 1 — page shell + container
+
+Start with the themed background and a centered container.
+
+\`\`\`tsx
+<div className="min-h-screen bg-background">
+  <section className="py-10">
+    <Container size="xl">
+      {/* everything lives here */}
+    </Container>
+  </section>
+</div>
+\`\`\`
+
+### Step 2 — vertical rhythm with Stack
+
+Wrap the container's children in a \`<Stack>\` to get consistent vertical
+spacing between major sections — never sprinkle \`mb-8\` on individual blocks.
+
+\`\`\`tsx
+<Container size="xl">
+  <Stack gap={8}>
+    {/* header */}
+    {/* stats */}
+    {/* widgets */}
+  </Stack>
+</Container>
+\`\`\`
+
+### Step 3 — header row with Inline
+
+Page headers are almost always "title on the left, actions on the right".
+That is \`<Inline justify="between">\`. If the right side has multiple buttons,
+nest another \`<Inline gap={2}>\`.
+
+\`\`\`tsx
+<Inline justify="between">
+  <Stack gap={1}>
+    <h1 className="text-3xl font-semibold tracking-tight">Orders</h1>
+    <p className="text-muted-foreground">Most recent first.</p>
+  </Stack>
+  <Inline gap={2}>
+    <Button variant="outline">Export</Button>
+    <Button><Plus className="h-4 w-4" />New order</Button>
+  </Inline>
+</Inline>
+\`\`\`
+
+### Step 4 — multi-column areas with Grid
+
+Reach for a preset (\`stats\`, \`dashboard\`, \`cards\`, \`features\`, \`pricing\`,
+\`split\`, \`gallery\`) before writing manual breakpoint props.
+
+\`\`\`tsx
+<Grid preset="stats">
+  <KpiCard label="Revenue"  value="$48,294" delta={12.4} />
+  <KpiCard label="Orders"   value="1,294"   delta={4.1} />
+  <KpiCard label="Users"    value="8,212"   delta={-2.3} />
+  <KpiCard label="Sessions" value="23,402"  delta={9.8} />
+</Grid>
+
+<Grid preset="dashboard">
+  <Card>{/* chart */}</Card>
+  <Card>{/* activity log */}</Card>
+  <Card>{/* recent orders */}</Card>
+</Grid>
+\`\`\`
+
+That is it — Container ⊃ Stack ⊃ (Inline | Grid) covers the entire page.
+
+---
+
+## Mental model — one sentence each
+
+- **Container** = "center this and stop it from going edge-to-edge."
+- **Stack** = "stack these vertically with even spacing."
+- **Inline** = "put these on one row, vertically aligned."
+- **Grid** = "put these into responsive columns."
 `;
 
 
