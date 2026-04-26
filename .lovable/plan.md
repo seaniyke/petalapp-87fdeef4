@@ -1,161 +1,122 @@
+# How the leaders actually build apps — and what Petal is missing
 
-# Human-friendly build progress (Lovable-style activity feed)
+## How Lovable, Bolt and Base44 actually work
 
-## The product goal
+All three follow the **same five-step pattern** under the hood:
 
-Right now, while Petal builds, non-technical users see one of:
-- "Thinking…" → "Writing project…" → "Applying changes…" (vague, technical)
-- A blank chat with a spinner
-- "Building your live preview…" with no sense of progress
+1. **One big system prompt** that pins the tech stack (React + Vite for all three) and forbids placeholders / partial files.
+2. **The first prompt produces the WHOLE project in a single response.** Bolt calls this a "single comprehensive artifact" with every file + shell commands. Lovable does the same via a tool-call. They do NOT build incrementally on the first turn — it's faster and more coherent to emit the entire scaffold at once.
+3. **Every follow-up prompt is a PATCH.** They send the *current file tree* back to the model and only ask for files that change (Bolt: unified diffs OR full files, whichever is shorter; Lovable: tool-call with full file contents per changed file). **Petal already does this with `patch_files` — you got this right.**
+4. **Conversation history IS the memory.** They send the last N user/assistant messages plus the current files. There is no separate "memory store" — the file tree is the state, the chat is the intent log.
+5. **Errors are surfaced as another turn.** When a build fails, Bolt and Lovable inject the error log back into the next prompt as a system message and let the AI patch its own mistake. Base44 calls this "agentic self-healing".
 
-**Lovable's magic** isn't that it tells you *what's happening* — it's that it tells you a **story** in plain English, in real time, that makes the wait feel intentional and intelligent. That's what we'll build.
+On top of that shared core, each one adds polish:
 
-We will **not** show users any of these technical terms: `write_project`, `patch_files`, `tool call`, `Cloudflare`, `Railway`, `esbuild`, `npm install`, `dist_path`, `wrangler`, `HMAC`, `SSE`, `bundling`. They never need to know any of it exists.
+| Capability | Lovable | Bolt | Base44 | **Petal today** |
+|---|---|---|---|---|
+| Single-shot initial build | ✓ | ✓ | ✓ | ✓ |
+| Incremental patch on follow-ups | ✓ | ✓ | ✓ | ✓ |
+| Sends full file contents (no `// ...rest`) | ✓ | ✓ | ✓ | ✓ |
+| Streaming activity feed | ✓ | ✓ | ✓ | ✓ (just shipped) |
+| **Plan / Discuss mode** (chat without editing) | ✓ | ✗ | ✓ | ✗ |
+| **Message queue** (type while AI works) | ✓ | ✗ | ✓ (up to 7) | ✗ |
+| **Per-message revert** | ✓ | ~ | ✓ | ✗ (only version-level restore) |
+| **Visual / element edit** (click in preview) | ✓ | ✗ | ✓ | ✗ |
+| **Auto-fix from build errors** (feed error → AI) | ✓ | ✓ | ✓ | ✗ ("Ask Petal to fix" doesn't include the log) |
+| **Model routing** (Flash for simple, Pro for hard) | ✓ | ✗ | ✓ ("Automatic") | ✗ (always Gemini Flash) |
+| **Project Knowledge / Custom Instructions** | ✓ | ✓ | ✓ | ✗ |
+| **Freeze Files** (lock files from edits) | ~ | ✗ | ✓ | ✗ |
 
----
+## What this means for Petal
 
-## What the user will see (non-technical language)
+**Your core architecture is already correct.** Single-shot scaffold, patch model, full-file emission, streaming, activity feed — you're 60% of the way there.
 
-A **live activity card** appears in the chat the moment they send a prompt. It updates in place — never scrolls past — until the app is live. Each step has a friendly icon, a one-line action, and a soft elapsed-time stamp. Done steps stay visible (collapsed); the active step pulses gently.
-
-### The 5-stage story
-
-| Stage | What user sees | What's actually happening |
-|---|---|---|
-| 1. **Thinking** | "🌸 Reading your request…" then "💭 Sketching out the design…" | LLM cold-start + first tokens |
-| 2. **Designing** | "✨ Designing your app…" with a 1-line live caption from the AI's summary | `summary_delta` events |
-| 3. **Writing** | "📝 Writing your app… (3 of 12 files)" with a live counter | We count `"path":` occurrences in the streaming JSON |
-| 4. **Polishing** | "🎨 Adding finishing touches…" | The `Applying changes…` phase + saving to DB |
-| 5. **Going live** | "🚀 Putting your app online…" → "Almost there" → "Your app is live!" | Cloudflare build pending → ready |
-
-If a step takes >10s, we add a soothing reassurance line ("This usually takes about a minute" / "Hang tight, we're nearly there") so users don't think it's stuck.
-
-### When something goes wrong
-
-Errors stay friendly. Instead of `AI gateway error (502)` we show:
-- "😅 Petal got a bit confused. Want to try that again?" → **Try again** button
-- Build failures: "🔧 Your app needs a small fix" → **Ask Petal to fix it** button (auto-prepends "Please fix the build error" to the next prompt)
-
-Behind the scenes we log the technical detail to the console for ourselves but **never** surface it unless they click a small "Show details" link.
+The gap is the **collaboration & control surface** — what makes users *trust* the AI on attempt #5 instead of giving up after attempt #2.
 
 ---
 
-## What we'll build (technical, internal only)
+# Implementation plan — 5 phases, ship one per session
 
-### 1. Extend the streaming protocol — `src/server/generate.server.ts`
+## Phase 1 — Self-healing builds (highest leverage, smallest change)
 
-Add new event types to `StreamEvent`:
-```ts
-| { type: "phase"; phase: "thinking" | "designing" | "writing" | "polishing" }
-| { type: "file_progress"; written: number; latestPath?: string }
-```
+When the Cloudflare/Railway build fails, the user sees a generic "Ask Petal to fix" button. Lovable, Bolt and Base44 all automatically include the actual build log so the AI can fix the real cause.
 
-Existing `status` and `summary_delta` events stay; we just stop using their raw text in the UI and use them as triggers.
+Changes:
+- Migration: `ALTER TABLE project_builds ADD COLUMN logs text;` (Railway already sends `logs` in the callback — we just throw it away today).
+- `src/routes/api/public/builds/callback.ts` — persist `logs` into the new column.
+- `src/hooks/use-build-activity.ts` — expose `logs` alongside `errorMessage`.
+- `src/routes/builder.tsx` — change `askPetalToFix` to send a structured prompt that includes the last ~50 lines of the actual log:
+  > "The build failed with this error:
+  > ```
+  > <log>
+  > ```
+  > Look at the relevant files and fix it."
 
-### 2. Detect file boundaries during streaming — `src/routes/api/generate.ts`
+**Effort:** ~1 hour. **Impact:** turns dead-ends into one-click recoveries.
 
-While accumulating tool args, lightweight regex-scan the growing JSON to count completed `"path": "..."` occurrences and emit `file_progress` events. We don't try to fully parse mid-stream — just count.
+## Phase 2 — Discuss mode (Base44's killer feature for non-technical users)
 
-Emit explicit `phase` events at known transitions:
-- Stream start → `thinking`
-- First `summary_delta` → `designing`
-- First `"path":` detected → `writing`
-- `relayAndCollect` returns → `polishing`
+Today every prompt costs an AI call AND mutates files. Non-technical users are scared to ask "can you also make it work on mobile?" because they think it'll break things.
 
-### 3. Bridge into the build phase — new hook `src/hooks/use-build-activity.ts`
+Changes:
+- **Discuss / Build** toggle next to the chat input (default: Build).
+- New `/api/discuss` route: same chat history + current files context, but emits **plain markdown advice** (no tool call). Reply renders as a normal assistant message; no patches applied.
+- Mirrors Base44 Discuss + Lovable Plan exactly. Cheap (always `gemini-3-flash-preview`), safe.
 
-Subscribes to `project_builds` for the current `latest_build_id` and translates DB states into friendly phases:
-- `pending` → "Putting your app online…"
-- `ready` → "Your app is live!"
-- `failed` → friendly error
+**Effort:** ~2 hours.
 
-Tracks elapsed time per phase. This unifies AI generation + Cloudflare deploy into **one continuous timeline** the user perceives as a single action.
+## Phase 3 — Message queue + per-message revert
 
-### 4. New component — `src/components/BuildActivityCard.tsx`
+**Message queue:**
+- When `busy` is true and the user submits a new prompt, push it into a `pendingQueue` state instead of disabling the input.
+- Queued items render as faded chips above the input with remove + drag-reorder.
+- When `send()` finishes, automatically dequeue the next.
 
-A self-contained card rendered inside the chat thread (replaces the bare "Thinking…" line). Visual style:
-- Soft pastel card matching Petal's existing aesthetic (`bg-card/90`, `bg-aurora`)
-- Active phase: gentle pulsing dot + rotating sparkle icon
-- Done phases: small green check, collapsed to one line
-- Failed: warm orange icon + reassuring copy + action button
-- Smooth height transitions (CSS-only `transition-all` — no new dependencies)
+**Per-message revert** (we already have all the pieces):
+- We already create a `version` row for every assistant turn.
+- Surface a **"Revert to here"** menu under each user message in the chat.
+- Loads that version's files via the existing `handleRestore` flow and trims chat history back.
 
-Mobile: full-width, sticky at top of chat scroll area so it stays visible while reading.
+**Effort:** ~3 hours combined.
 
-### 5. Wire it up — `src/routes/builder.tsx`
+## Phase 4 — Smart model routing + Project Knowledge
 
-Replace current `streamStatus` / `streamingSummary` UI with `<BuildActivityCard>`. Drives state from both the SSE stream and the realtime `project_builds` subscription. `MobilePreviewFallback` simplifies — it no longer needs to show "Building…" copy because the activity card already covers that story; it just shows the iframe when ready.
+**Smart routing:**
+- In `/api/generate.ts`, simple heuristic: if prompt mentions "refactor / redesign / architecture / all pages" or the patch will likely touch >5 files, switch from `gemini-3-flash-preview` to `gemini-2.5-pro` or `gpt-5-mini`.
+- **"Smart / Fast / Best"** dropdown in the toolbar (matches Base44 Automatic/Manual). Defaults to Smart.
 
-### 6. Friendly error mapping — `src/lib/friendly-errors.ts` (new)
+**Project Knowledge:**
+- Add `projects.custom_instructions` text column.
+- "Project settings → Instructions" sheet ("Always use a pastel palette", "This is for KeshPay — be cautious", etc.).
+- Prepend to the system prompt on every generate call.
 
-Single source of truth that turns technical errors into plain English:
-- `"Rate limit reached..."` → "Petal needs a quick breather. Try again in a moment."
-- `"AI credits exhausted..."` → "We've used up today's free generations. Add credits in Settings → Workspace to keep going."
-- `"AI returned invalid project data"` → "Petal got a bit tangled up. Let's try that again."
-- `"Could not reach build service"` → "Couldn't reach the publishing service. We'll keep trying."
-- build `"failed"` with logs → "Your app has a small error. Ask Petal to fix it." (logs hidden behind "Show details")
+**Effort:** ~2 hours.
 
----
+## Phase 5 — Visual element edit (the magic moment)
 
-## Before vs. After
+Lovable's headline demo: click an element in the preview iframe → describe a change → AI edits only that element's component.
 
-| Today | After |
-|---|---|
-| "Thinking…" / "Writing project…" / "Applying changes…" | A warm activity card with 5 friendly stages |
-| Spinner with no progress signal | Live file counter ("Writing your app… 7 of 12") |
-| Build phase invisible until iframe appears | "Putting your app online… 🚀" with reassurance copy |
-| Errors shown as raw API messages | Friendly copy + clear next-action button |
-| Two disconnected loading states | One continuous story from prompt → live app |
+How: inject a small script into the iframe that listens for clicks, draws a hover outline, `postMessage`s the clicked element's selector back to the parent. Parent opens an "Edit element" prompt that becomes *"In `src/App.tsx`, the `<button>` with text 'Sign up' should be larger and green"*.
 
----
-
-## Out of scope
-
-- Underlying generation, Railway builder, or Cloudflare deploy — all working
-- Database schema (`project_builds` already has everything we need)
-- `MobilePreviewFallback` iframe rendering once the build is ready
-- Auth, project creation, version history
+- **Cheap version (~half a day):** capture `tagName`, `textContent`, CSS classes; send to AI as context.
+- **Real version (~2 days):** add `babel-plugin-transform-react-jsx-source` for exact file+line mapping (what Lovable does). Recommend cheap version first.
 
 ---
 
-## Risk assessment (KeshPay-style caution)
+# What I am NOT recommending
 
-| Risk | Likelihood | Mitigation |
-|---|---|---|
-| Regex-based file counting miscounts | Low | Counter is optional — UI works fine without a number |
-| New SSE event types break older open tabs | Very low | Unknown events ignored by `switch` — no crash |
-| Activity card eats mobile vertical space | Medium | Auto-collapses to single "✓ Built in 47s" line after success |
-| Friendly mapping hides a real bug from us | Low | Full technical error always logged to `console.error` |
+1. **Bolt-style `<diff>` blocks.** Tool-calling already gives the same benefit with no parser complexity. Don't trade a working pattern for a fashionable one.
+2. **WebContainer-only previews.** You already moved to Cloudflare Pages builds — that's the right call for shareable real apps.
+3. **A full Bolt-style autonomous agent loop.** Petal's domain is small apps. The single-tool-call pattern is a *feature*, not a limitation. Base44 reached the same conclusion.
 
 ---
 
-## Files
+# Recommended order
 
-**New (4)**
-- `src/components/BuildActivityCard.tsx`
-- `src/hooks/use-build-activity.ts`
-- `src/lib/friendly-errors.ts`
-- `src/lib/build-phases.ts` — pure helpers for phase definitions
+1. **Phase 1** — ship first. Biggest UX win, smallest change.
+2. **Phase 2** — lowers anxiety for non-technical users.
+3. **Phase 3** — completes the chat-as-command-center.
+4. **Phase 4** — quality polish.
+5. **Phase 5** — the "shared on Twitter" moment.
 
-**Modified (4)**
-- `src/server/generate.server.ts` — extend `StreamEvent` type
-- `src/routes/api/generate.ts` — emit `phase` + `file_progress` events
-- `src/lib/stream.ts` — handle new event types
-- `src/routes/builder.tsx` — render `<BuildActivityCard>` instead of the current status text
-
-**Untouched**
-- `src/components/MobilePreviewFallback.tsx`
-- All Railway / Cloudflare / Supabase backend code
-- DB schema
-
----
-
-## Three small choices for you
-
-1. **Step iconography** — soft emoji (🌸 💭 ✨ 📝 🎨 🚀) matching Petal's pastel/floral identity, OR clean lucide icons (Brain, Sparkles, FileText, Palette, Rocket). *My pick: emoji — warmer for non-technical users.*
-
-2. **Auto-collapse after success** — collapse to "✓ Built in 47s · Open preview" after 3s, or keep expanded? *My pick: auto-collapse with expand affordance.*
-
-3. **Stream AI summary as live caption** — show the AI's summary text streaming live under the Designing phase, or hide until the end? *My pick: stream it — it's the most "magical" moment in Lovable.*
-
-Tell me your picks (or say "use your defaults") and I'll implement.
+**Strong recommendation: approve Phase 1 only**, ship it, use it for a day, then come back for Phase 2. That's how the leaders built these features themselves — one at a time.
