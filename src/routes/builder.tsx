@@ -622,13 +622,15 @@ function Builder() {
             <div className="flex min-h-0 flex-1 flex-col p-3">
               <div className="flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-white">
                 {files.length ? (
-                  <iframe
-                    key={previewKey}
-                    title="preview"
-                    sandbox="allow-scripts allow-forms allow-modals"
-                    srcDoc={previewDoc}
-                    className="h-full w-full"
-                  />
+                  <Suspense
+                    fallback={
+                      <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    }
+                  >
+                    <WebContainerPreview files={files} reloadKey={previewKey} />
+                  </Suspense>
                 ) : (
                   <EmptyPreview />
                 )}
