@@ -47,7 +47,7 @@ import {
   verifyDomain,
   setPrimaryDomain,
   removeDomain,
-  PETAL_DOMAIN_A_RECORD,
+  PETAL_DOMAIN_CNAME_TARGET,
   type ProjectDomain,
 } from "@/lib/domains";
 import { supabase } from "@/integrations/supabase/client";
@@ -504,11 +504,10 @@ function DnsRecordsDialog({
 
   if (!domain) return null;
 
-  // For apex domains (no leading subdomain like "www") we recommend `@`.
-  // For subdomains we show the leftmost label as the host.
+  // For apex domains we recommend `@`. For subdomains, the leftmost label.
   const labels = domain.hostname.split(".");
   const isApex = labels.length === 2; // crude but matches common .com/.net cases
-  const aHost = isApex ? "@" : labels[0];
+  const cnameHost = isApex ? "@" : labels[0];
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -518,22 +517,22 @@ function DnsRecordsDialog({
           <DialogDescription>
             Add these two records at your domain registrar (GoDaddy, Namecheap,
             Cloudflare, etc.). DNS changes can take a few minutes — sometimes up
-            to 72 hours.
+            to 72 hours. SSL is issued automatically once both records are live.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <RecordCard
-            type="A"
-            host={aHost}
-            value={PETAL_DOMAIN_A_RECORD}
+            type="CNAME"
+            host={cnameHost}
+            value={PETAL_DOMAIN_CNAME_TARGET}
             note="Points your domain at Petal."
           />
           <RecordCard
             type="TXT"
             host={domain.verification_txt_name}
             value={domain.verification_txt_value}
-            note="Proves you own this domain."
+            note="Proves you own this domain (used to issue SSL)."
           />
         </div>
 
@@ -566,7 +565,7 @@ function RecordCard({
   value,
   note,
 }: {
-  type: "A" | "TXT";
+  type: "A" | "CNAME" | "TXT";
   host: string;
   value: string;
   note: string;

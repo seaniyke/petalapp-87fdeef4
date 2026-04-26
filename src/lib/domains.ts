@@ -11,9 +11,16 @@ export type ProjectDomain = {
   last_checked_at: string | null;
   error_message: string | null;
   created_at: string;
+  provider_hostname_id: string | null;
 };
 
-/** A record value all custom hostnames should point at. */
+/**
+ * The CNAME target customers point their domain at. Cloudflare for SaaS uses
+ * our fallback hostname as the CNAME target (Free plan model).
+ */
+export const PETAL_DOMAIN_CNAME_TARGET = "fallback.buildwithpetal.com";
+
+/** @deprecated Kept for back-compat — prefer PETAL_DOMAIN_CNAME_TARGET. */
 export const PETAL_DOMAIN_A_RECORD = "185.158.133.1";
 
 type Action = "list" | "add" | "verify" | "set-primary" | "remove";
