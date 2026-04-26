@@ -1,16 +1,16 @@
 /**
  * Custom-domain management — HTTP endpoints.
  *
- * v1 records the user's intent and surfaces the DNS records they need to add
- * at their registrar. The actual DNS-side verification + SSL issuance happens
- * out of band (see plan: Cloudflare for SaaS) and flips status server-side.
+ * Wires user-facing domain actions to Cloudflare for SaaS. Cloudflare handles
+ * ownership verification (TXT) and SSL issuance automatically; we mirror its
+ * status into project_domains so the UI can show progress.
  *
  * Routes:
  *   POST /api/domains?action=list        -> list domains for a project
- *   POST /api/domains?action=add         -> add a hostname (returns DNS records)
- *   POST /api/domains?action=verify      -> bump status to "verifying" + last_checked_at
+ *   POST /api/domains?action=add         -> register hostname with Cloudflare + return DNS records
+ *   POST /api/domains?action=verify      -> poll Cloudflare and sync status/SSL
  *   POST /api/domains?action=set-primary -> mark one domain primary
- *   POST /api/domains?action=remove      -> delete a domain
+ *   POST /api/domains?action=remove      -> delete from Cloudflare + DB
  *
  * All actions require a Bearer token and verify project ownership.
  */
@@ -19,6 +19,13 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import {
+  createCustomHostname,
+  getCustomHostname,
+  deleteCustomHostname,
+  mapCfStatus,
+  extractTxtValidation,
+} from "@/server/cloudflare-saas.server";
 
 // FQDN-ish: 4..253 chars, lowercase letters/digits/dot/hyphen, must include a dot.
 const HOSTNAME_RE =
@@ -41,6 +48,9 @@ const DomainIdInput = z.object({
   projectId: z.string().uuid(),
   domainId: z.string().uuid(),
 });
+
+const DOMAIN_COLS =
+  "id, hostname, status, is_primary, verification_txt_name, verification_txt_value, ssl_status, last_checked_at, error_message, created_at, provider_hostname_id";
 
 async function authorize(request: Request): Promise<string | Response> {
   const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -82,12 +92,12 @@ async function assertOwnsDomain(
   projectId: string,
   domainId: string,
   userId: string,
-): Promise<{ row: { id: string; project_id: string } } | Response> {
+): Promise<{ row: { id: string; project_id: string; provider_hostname_id: string | null } } | Response> {
   const ownerErr = await assertOwnsProject(projectId, userId);
   if (ownerErr) return ownerErr;
   const { data, error } = await supabaseAdmin
     .from("project_domains")
-    .select("id, project_id")
+    .select("id, project_id, provider_hostname_id")
     .eq("id", domainId)
     .maybeSingle();
   if (error) return new Response(error.message, { status: 500 });
@@ -108,9 +118,7 @@ async function handleList(userId: string, body: unknown): Promise<Response> {
 
   const { data, error } = await supabaseAdmin
     .from("project_domains")
-    .select(
-      "id, hostname, status, is_primary, verification_txt_name, verification_txt_value, ssl_status, last_checked_at, error_message, created_at",
-    )
+    .select(DOMAIN_COLS)
     .eq("project_id", parsed.data.projectId)
     .order("created_at", { ascending: true });
   if (error) return new Response(error.message, { status: 500 });
@@ -127,26 +135,52 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
   const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
   if (ownerErr) return ownerErr;
 
-  const txtName = "_petal-verify";
-  // 32-char URL-safe nonce. crypto.randomUUID exists in the Worker runtime.
-  const nonce = crypto.randomUUID().replace(/-/g, "");
-  const txtValue = `petal-verify=${nonce}`;
+  // 1) Register with Cloudflare for SaaS. CF returns the TXT record we need
+  //    the user to add at their registrar to prove ownership + issue SSL.
+  let cf;
+  try {
+    cf = await createCustomHostname(parsed.data.hostname);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Cloudflare error";
+    // Friendly errors for common cases.
+    if (msg.includes("1414") || msg.toLowerCase().includes("already exists")) {
+      return new Response(
+        "That domain is already connected on Petal — remove it first or contact support.",
+        { status: 409 },
+      );
+    }
+    return new Response(`Couldn't register with Cloudflare: ${msg}`, {
+      status: 502,
+    });
+  }
+
+  const txt = extractTxtValidation(cf);
+  // Cloudflare sometimes hasn't issued the TXT record yet on the very first
+  // response. Fall back to a placeholder; the verify action will refresh it.
+  const txtName = txt?.name ?? `_acme-challenge.${parsed.data.hostname}`;
+  const txtValue = txt?.value ?? "(generating — click Check status in a few seconds)";
+
+  const mapped = mapCfStatus(cf);
 
   const { data, error } = await supabaseAdmin
     .from("project_domains")
     .insert({
       project_id: parsed.data.projectId,
       hostname: parsed.data.hostname,
-      status: "pending",
+      status: mapped.status,
+      ssl_status: mapped.ssl_status,
+      error_message: mapped.error_message,
       verification_txt_name: txtName,
       verification_txt_value: txtValue,
+      provider_hostname_id: cf.id,
+      last_checked_at: new Date().toISOString(),
     })
-    .select(
-      "id, hostname, status, is_primary, verification_txt_name, verification_txt_value, ssl_status, last_checked_at, error_message, created_at",
-    )
+    .select(DOMAIN_COLS)
     .single();
   if (error) {
-    // Friendly message for unique-violation on hostname.
+    // Roll back the Cloudflare registration if our DB insert failed, otherwise
+    // we'd leave an orphan custom hostname on the zone.
+    await deleteCustomHostname(cf.id).catch(() => {});
     if (error.code === "23505") {
       return new Response("That domain is already connected to a project.", {
         status: 409,
@@ -168,19 +202,43 @@ async function handleVerify(userId: string, body: unknown): Promise<Response> {
   const own = await assertOwnsDomain(parsed.data.projectId, parsed.data.domainId, userId);
   if (own instanceof Response) return own;
 
-  // For now we just mark as "verifying" + bump last_checked_at. The real
-  // DNS/SSL check runs in the provider integration (see plan).
+  // If we somehow have no Cloudflare ID (legacy row), bail with a hint.
+  const cfId = own.row.provider_hostname_id;
+  if (!cfId) {
+    return new Response(
+      "This domain wasn't registered with our SSL provider. Remove it and add it again.",
+      { status: 409 },
+    );
+  }
+
+  let cf;
+  try {
+    cf = await getCustomHostname(cfId);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Cloudflare error";
+    return new Response(`Couldn't reach Cloudflare: ${msg}`, { status: 502 });
+  }
+
+  const mapped = mapCfStatus(cf);
+  const txt = extractTxtValidation(cf);
+
+  // Build the patch — only overwrite TXT fields if Cloudflare has issued one.
+  const patch: Record<string, unknown> = {
+    status: mapped.status,
+    ssl_status: mapped.ssl_status,
+    error_message: mapped.error_message,
+    last_checked_at: new Date().toISOString(),
+  };
+  if (txt) {
+    patch.verification_txt_name = txt.name;
+    patch.verification_txt_value = txt.value;
+  }
+
   const { data, error } = await supabaseAdmin
     .from("project_domains")
-    .update({
-      status: "verifying",
-      last_checked_at: new Date().toISOString(),
-      error_message: null,
-    })
+    .update(patch)
     .eq("id", parsed.data.domainId)
-    .select(
-      "id, hostname, status, is_primary, verification_txt_name, verification_txt_value, ssl_status, last_checked_at, error_message, created_at",
-    )
+    .select(DOMAIN_COLS)
     .single();
   if (error) return new Response(error.message, { status: 500 });
   return Response.json(data);
@@ -207,9 +265,7 @@ async function handleSetPrimary(
     .from("project_domains")
     .update({ is_primary: true })
     .eq("id", parsed.data.domainId)
-    .select(
-      "id, hostname, status, is_primary, verification_txt_name, verification_txt_value, ssl_status, last_checked_at, error_message, created_at",
-    )
+    .select(DOMAIN_COLS)
     .single();
   if (error) return new Response(error.message, { status: 500 });
   return Response.json(data);
@@ -220,6 +276,12 @@ async function handleRemove(userId: string, body: unknown): Promise<Response> {
   if (!parsed.success) return new Response(parsed.error.message, { status: 400 });
   const own = await assertOwnsDomain(parsed.data.projectId, parsed.data.domainId, userId);
   if (own instanceof Response) return own;
+
+  // Best-effort delete from Cloudflare first; if it fails we still remove the
+  // row so the user isn't stuck with a "ghost" domain in the UI.
+  if (own.row.provider_hostname_id) {
+    await deleteCustomHostname(own.row.provider_hostname_id).catch(() => {});
+  }
 
   const { error } = await supabaseAdmin
     .from("project_domains")
