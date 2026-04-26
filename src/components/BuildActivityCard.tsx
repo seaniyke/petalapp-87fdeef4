@@ -198,9 +198,12 @@ export function BuildActivityCard({
   return (
     <div className="mr-6 overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur transition-all">
       <div className="flex items-center gap-2.5 px-3.5 py-2.5">
+        {/* Emoji crossfades when the phase changes. The `key` triggers a
+            remount so the `animate-fade-in` keyframe replays each time. */}
         <span
-          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center text-[14px] ${
-            isActive ? "animate-pulse" : ""
+          key={`emoji-${currentPhase?.id ?? "init"}`}
+          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center text-[14px] animate-fade-in ${
+            isActive ? "animate-pulse motion-reduce:animate-none" : ""
           }`}
           aria-hidden
         >
