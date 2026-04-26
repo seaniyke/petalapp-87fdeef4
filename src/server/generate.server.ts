@@ -85,15 +85,24 @@ Each operation is one of:
 - { "op": "create", "path": "...", "content": "FULL contents of the new file" }
 - { "op": "delete", "path": "..." }
 
+REUSE-FIRST PROTOCOL (most important rule):
+The kit at "@/components/ui/*" already provides: Button, Card, Input, Textarea, Label, Badge, Separator, Avatar, Alert, Skeleton, Switch, Tabs, Dialog, Select, Checkbox, RadioGroup, Slider, Progress, Tooltip, Popover, DropdownMenu, Accordion, ScrollArea, Table, Sheet, Toast.
+- Need a button? -> <Button>. NEVER raw <button> or styled <div onClick>.
+- Need a text field? -> <Input>/<Textarea>. NEVER raw <input>.
+- Need a card/panel? -> <Card>. NEVER a custom <div className="rounded-lg border p-4">.
+- Need a tag? -> <Badge>. Need a modal? -> <Dialog>. Need a menu? -> <DropdownMenu>. Need a toast? -> toast.success(...).
+If you find yourself styling a primitive HTML element to look like a UI control, STOP and import the kit equivalent.
+
 Hard rules:
 - DO NOT include unchanged files. Only emit operations for files you actually create, modify, or delete.
 - For "update" and "create", "content" MUST be the COMPLETE file contents (not a diff, not a snippet).
 - DO NOT modify files under "src/components/ui/*" — that's the canonical UI kit. If you need a component the kit doesn't have, create a NEW file under "src/components/" (not under ui/).
 - DO NOT modify "vite.config.ts", "tsconfig.json", or "src/lib/utils.ts" unless absolutely necessary.
-- MUST use Tailwind utility classes. NEVER inline \`style={{}}\` or custom CSS classes.
-- MUST reuse <Button>, <Card>, <Input>, etc. from "@/components/ui/*" instead of writing your own.
-- MUST use semantic Tailwind tokens (\`bg-primary\`, \`text-muted-foreground\`, etc.) — never hardcoded colors.
-- MUST use \`lucide-react\` for icons.
+- MUST use Tailwind utility classes. NEVER inline \`style={{}}\` (except dynamic values) or custom CSS classes.
+- MUST reuse kit components from "@/components/ui/*" instead of writing your own primitives.
+- MUST use semantic Tailwind tokens (\`bg-primary\`, \`text-muted-foreground\`, \`bg-background\`, \`border-border\`, etc.) — NEVER hardcoded colors like \`bg-blue-500\`, \`text-white\`, \`bg-gray-100\`.
+- MUST use \`lucide-react\` for icons. NEVER emoji as functional icons.
+- MUST use \`cn()\` from "@/lib/utils" for conditional classes.
 - If you add a new npm dependency, you MUST also update "package.json" to include it (caret ranges, e.g. "^1.2.0").
 - Always include a short, friendly "summary" describing what you changed.`;
 
