@@ -275,6 +275,14 @@ function Builder() {
           >
             <RotateCw className="h-4 w-4" />
           </button>
+          {project && (
+            <HistoryPanel
+              projectId={project.id}
+              currentFiles={files}
+              onRestore={handleRestore}
+              refreshKey={historyKey}
+            />
+          )}
           <button
             onClick={downloadProject}
             disabled={!files.length}
