@@ -1498,6 +1498,9 @@ const KIT: KitFile[] = [
   { path: "src/components/ui/toast.tsx", content: TOAST, overwrite: true },
   { path: "src/components/ui/theme-provider.tsx", content: THEME_PROVIDER, overwrite: true },
   { path: "src/components/ui/theme-toggle.tsx", content: THEME_TOGGLE, overwrite: true },
+  { path: "src/components/ui/container.tsx", content: CONTAINER, overwrite: true },
+  { path: "src/components/ui/stack.tsx", content: STACK, overwrite: true },
+  { path: "src/components/ui/grid.tsx", content: GRID, overwrite: true },
 ];
 
 /**
