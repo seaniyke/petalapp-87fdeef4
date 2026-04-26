@@ -94,6 +94,12 @@ export function WebContainerPreview({
       try {
         if (isFirstBoot) {
           bootedRef.current = true;
+          const unsupported = detectUnsupportedBrowser();
+          if (unsupported) {
+            setError(unsupported);
+            setPhase("unsupported");
+            return;
+          }
           if (!isCrossOriginIsolated()) {
             setError(
               "This page isn't cross-origin isolated. WebContainer needs SharedArrayBuffer — refresh the page."
@@ -104,10 +110,22 @@ export function WebContainerPreview({
           setPhase("booting");
           await getContainer();
           setPhase("installing");
+          // Auto-show logs so users can see install progress instead of a silent spinner.
+          setShowLogs(true);
           await mountProject(files);
+          // Hard cap install + dev start at 3 minutes — surfaces an error instead of spinning forever.
+          timeoutRef.current = setTimeout(() => {
+            if (cancelled) return;
+            setError(
+              "Setup is taking longer than 3 minutes. Check the logs below, or try reloading."
+            );
+            setPhase("error");
+            setShowLogs(true);
+          }, INSTALL_TIMEOUT_MS);
           const code = await installDeps();
           if (cancelled) return;
           if (code !== 0) {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
             setError(`npm install failed (exit ${code}). See logs.`);
             setPhase("error");
             setShowLogs(true);
@@ -115,6 +133,7 @@ export function WebContainerPreview({
           }
           setPhase("starting");
           await startDevServer();
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
           setPhase("ready");
         } else {
           // Subsequent changes: just patch the filesystem, dev server hot-reloads.
@@ -122,6 +141,7 @@ export function WebContainerPreview({
         }
       } catch (e) {
         if (cancelled) return;
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
         setError(e instanceof Error ? e.message : "WebContainer failed to start.");
         setPhase("error");
         setShowLogs(true);
@@ -130,6 +150,7 @@ export function WebContainerPreview({
 
     return () => {
       cancelled = true;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [files]);
 
