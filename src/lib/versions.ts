@@ -65,7 +65,7 @@ export async function createVersion(
     .insert([
       {
         project_id: projectId,
-        files: files as unknown as DbRow["files"],
+        files: files as unknown as never,
         label: opts.label ?? null,
         summary: opts.summary ?? null,
         origin: opts.origin ?? "auto",
