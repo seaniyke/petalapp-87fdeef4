@@ -31,20 +31,26 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Petal — Build real apps by chatting" },
+      { title: "Petal — Build real apps with AI" },
       {
         name: "description",
         content:
           "Petal turns conversations into working web apps. Chat, preview, and ship — no setup required.",
       },
       { name: "author", content: "Petal" },
-      { property: "og:title", content: "Petal — Build real apps by chatting" },
+      { property: "og:title", content: "Petal — Build real apps with AI" },
       {
         property: "og:description",
         content: "Turn conversations into working web apps in minutes.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Petal — Build real apps with AI" },
+      { name: "description", content: "Chat Build Studio is a platform for building real apps through conversational AI." },
+      { property: "og:description", content: "Chat Build Studio is a platform for building real apps through conversational AI." },
+      { name: "twitter:description", content: "Chat Build Studio is a platform for building real apps through conversational AI." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d30d33f6-0e09-4310-a0fe-f6df9d9ede7b/id-preview-b2217a46--fe869ce3-50d8-49d0-b2fe-829b0f7b4b1c.lovable.app-1777186544019.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d30d33f6-0e09-4310-a0fe-f6df9d9ede7b/id-preview-b2217a46--fe869ce3-50d8-49d0-b2fe-829b0f7b4b1c.lovable.app-1777186544019.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
