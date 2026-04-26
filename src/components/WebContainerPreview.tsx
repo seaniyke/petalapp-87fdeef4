@@ -186,6 +186,30 @@ export function WebContainerPreview({
     setIframeKey((k) => k + 1);
   }, [reloadKey]);
 
+  // Listen for picker messages from the iframe (cross-origin postMessage).
+  useEffect(() => {
+    if (!onPick) return;
+    const handler = (e: MessageEvent) => {
+      const data = e.data as { type?: string; payload?: PickedElement } | null;
+      if (!data || typeof data !== "object") return;
+      if (data.type === "petal:pick:selected" && data.payload) {
+        onPick(data.payload);
+        setPickActive(false);
+      } else if (data.type === "petal:pick:cancelled") {
+        setPickActive(false);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [onPick]);
+
+  // Push enable/disable into the iframe whenever pickActive flips.
+  useEffect(() => {
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    win.postMessage({ type: pickActive ? "petal:pick:enable" : "petal:pick:disable" }, "*");
+  }, [pickActive, iframeKey]);
+
   if (phase === "unsupported") {
     return (
       <div className="grid h-full w-full place-items-center bg-aurora p-6">
