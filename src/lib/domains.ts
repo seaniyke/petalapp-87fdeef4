@@ -14,6 +14,35 @@ export type ProjectDomain = {
   provider_hostname_id: string | null;
 };
 
+export type DomainSlot = {
+  id: string;
+  project_id: string;
+  addon_code: string;
+  purchased_at: string;
+  expires_at: string;
+  consumed_by_domain_id: string | null;
+};
+
+export type DomainAddon = {
+  code: string;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  duration_days: number;
+};
+
+/**
+ * Thrown when an action requires a paid domain slot the user doesn't have.
+ * The UI should open the BuyDomainSlotDialog in response.
+ */
+export class DomainSlotRequiredError extends Error {
+  code = "no_domain_slot" as const;
+  constructor(message?: string) {
+    super(message ?? "A domain slot is required to add a custom domain.");
+    this.name = "DomainSlotRequiredError";
+  }
+}
+
 /**
  * The CNAME target customers point their domain at. Cloudflare for SaaS uses
  * our fallback hostname as the CNAME target (Free plan model).
@@ -38,6 +67,17 @@ async function call<T>(action: Action, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!resp.ok) {
+    // 402 = needs to buy a domain slot.
+    if (resp.status === 402) {
+      let message = "A domain slot is required.";
+      try {
+        const j = (await resp.json()) as { message?: string };
+        if (j?.message) message = j.message;
+      } catch {
+        /* ignore */
+      }
+      throw new DomainSlotRequiredError(message);
+    }
     const text = await resp.text().catch(() => "");
     throw new Error(text || `Request failed (${resp.status})`);
   }
@@ -58,3 +98,61 @@ export const setPrimaryDomain = (projectId: string, domainId: string) =>
 
 export const removeDomain = (projectId: string, domainId: string) =>
   call<{ ok: true }>("remove", { projectId, domainId });
+
+/* -------------------- Domain slots (paywall helpers) -------------------- */
+
+/** List slots for a project (unexpired or recently expired, newest first). */
+export async function listDomainSlots(projectId: string): Promise<DomainSlot[]> {
+  const { data, error } = await supabase
+    .from("domain_slots")
+    .select("id, project_id, addon_code, purchased_at, expires_at, consumed_by_domain_id")
+    .eq("project_id", projectId)
+    .order("expires_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as DomainSlot[];
+}
+
+/** Fetch the public catalog row for the domain-slot add-on. */
+export async function fetchDomainSlotAddon(): Promise<DomainAddon | null> {
+  const { data, error } = await supabase
+    .from("billing_addons")
+    .select("code, name, description, price_cents, duration_days")
+    .eq("code", "domain_slot")
+    .eq("is_active", true)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as DomainAddon | null) ?? null;
+}
+
+/**
+ * Start a Paystack checkout to buy one domain slot for the given project.
+ * Returns the authorization URL the caller should redirect to.
+ */
+export async function purchaseDomainSlot(args: {
+  projectId: string;
+  currency: string;
+  returnUrl: string;
+}): Promise<{ authorizationUrl: string; reference: string }> {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token;
+  if (!token) throw new Error("Not signed in");
+  const resp = await fetch("/api/billing/initialize", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      purpose: "addon",
+      itemCode: "domain_slot",
+      currency: args.currency,
+      returnUrl: args.returnUrl,
+      projectId: args.projectId,
+    }),
+  });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    throw new Error(text || `Couldn't start checkout (${resp.status})`);
+  }
+  return (await resp.json()) as { authorizationUrl: string; reference: string };
+}
