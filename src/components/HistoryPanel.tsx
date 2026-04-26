@@ -242,7 +242,7 @@ export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey }:
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
-                          onClick={() => void handleRestore(v)}
+                          onClick={() => requestRestore(v)}
                           disabled={busyId === v.id}
                           className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted"
                           title="Restore this version"
