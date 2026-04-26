@@ -1783,6 +1783,13 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/auth-forgot-password.tsx", content: AUTH_FORGOT_PASSWORD, overwrite: true },
   { path: "src/components/examples/auth-otp-card.tsx", content: AUTH_OTP_CARD, overwrite: true },
 
+  // Onboarding flow
+  { path: "src/components/examples/onboarding-welcome.tsx", content: ONBOARDING_WELCOME, overwrite: true },
+  { path: "src/components/examples/onboarding-signup-step.tsx", content: ONBOARDING_SIGNUP_STEP, overwrite: true },
+  { path: "src/components/examples/onboarding-verify-step.tsx", content: ONBOARDING_VERIFY_STEP, overwrite: true },
+  { path: "src/components/examples/onboarding-success.tsx", content: ONBOARDING_SUCCESS, overwrite: true },
+  { path: "src/components/examples/onboarding-flow.tsx", content: ONBOARDING_FLOW, overwrite: true },
+
   // Dashboard
   { path: "src/components/examples/dashboard-stats-grid.tsx", content: DASHBOARD_STATS_GRID, overwrite: true },
   { path: "src/components/examples/dashboard-sidebar-layout.tsx", content: DASHBOARD_SIDEBAR_LAYOUT, overwrite: true },
