@@ -48,7 +48,18 @@ type AuthCtx = {
   signOut: () => Promise<void>;
   // Passwordless / OTP / recovery helpers (additive — existing apps unaffected).
   signInWithOtp: (email: string) => Promise<{ error: Error | null }>;
-  verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
+  /**
+   * Verify a one-time code. Defaults to "email" (the type produced by
+   * \`signInWithOtp\`). For codes produced by \`signUpWithPassword\`, pass
+   * "signup" — or call \`verifySignupOtp\` for the common case.
+   */
+  verifyOtp: (
+    email: string,
+    token: string,
+    type?: "email" | "signup" | "magiclink" | "recovery"
+  ) => Promise<{ error: Error | null }>;
+  /** Sugar for \`verifyOtp(email, token, "signup")\`. */
+  verifySignupOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
   resendSignupOtp: (email: string) => Promise<{ error: Error | null }>;
   resetPasswordForEmail: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
@@ -99,8 +110,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       return { error: error ? new Error(error.message) : null };
     },
-    verifyOtp: async (email, token) => {
-      const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+    verifyOtp: async (email, token, type = "email") => {
+      const { error } = await supabase.auth.verifyOtp({ email, token, type });
+      return { error: error ? new Error(error.message) : null };
+    },
+    verifySignupOtp: async (email, token) => {
+      const { error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
       return { error: error ? new Error(error.message) : null };
     },
     resendSignupOtp: async (email) => {

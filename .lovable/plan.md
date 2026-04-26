@@ -1,58 +1,49 @@
-# Goal
+## Scope
 
-Expand the auth toolbox shipped to **generated apps** so users who want OTP, resend, or forgot-password can build it without writing raw `supabase.auth` calls — **without** removing or changing the existing password-based flow.
+Fix only the issues I confirmed by reading the code — no speculative refactors. Petal's own auth (`src/lib/auth.tsx`) stays untouched. `tsc --noEmit` already passes; this hardens runtime behavior of the **generated-app scaffolding**.
 
-Petal's own auth (`src/lib/auth.tsx`) is **not** touched. This is purely a scaffold-kit upgrade.
+## Issues being fixed
 
-# What changes
+### 1. `verifyOtp` token type mismatch (highest impact)
+`backend-kit.ts` hard-codes `type: "email"`, but the onboarding flow calls `signUpWithPassword` first — that produces a `"signup"` token. Two flows use OTP verification (signup vs. passwordless sign-in) and they need different `type` values.
 
-## 1. `src/server/backend-kit.ts` — extend `AuthCtx` (additive only)
-
-Add five new helpers next to the existing `signInWithPassword` / `signUpWithPassword` / `signOut`:
+**Change:** Make the helper accept the type explicitly, default to `"email"` (back-compat), and split into two clearly-named helpers in the docs:
 
 ```ts
-signInWithOtp:        (email: string) => Promise<{ error: Error | null }>;
-verifyOtp:            (email: string, token: string) => Promise<{ error: Error | null }>;
-resendSignupOtp:      (email: string) => Promise<{ error: Error | null }>;
-resetPasswordForEmail:(email: string) => Promise<{ error: Error | null }>;
-updatePassword:       (newPassword: string) => Promise<{ error: Error | null }>;
+// backend-kit.ts AUTH_TSX
+verifyOtp: (email: string, token: string, type?: "email" | "signup" | "magiclink" | "recovery")
+  => Promise<{ error: Error | null }>;
+verifySignupOtp: (email: string, token: string) => Promise<{ error: Error | null }>; // sugar = verifyOtp(..., "signup")
 ```
 
-Implementations wrap the corresponding `supabase.auth.*` calls (`signInWithOtp`, `verifyOtp` with `type: "email"`, `resend` with `type: "signup"`, `resetPasswordForEmail` with `redirectTo: <origin>/reset-password`, `updateUser({ password })`). Same `{ error }` return shape as the existing helpers for consistency.
+Update `ONBOARDING_FLOW` to call `verifySignupOtp(email, code)`.
 
-Nothing existing is renamed or removed. Apps already using `signInWithPassword` keep working.
+### 2. `/reset-password` redirect has no router in the scaffold
+The recovery email redirects to `${origin}/reset-password`, but the scaffold ships a single-page `App.tsx` with no router. Without guidance, the AI may build a broken landing flow.
 
-## 2. `src/server/examples-pack.ts` — wire the TODO stubs + add reset-password screen
+**Change:** Add a "Minimum router for reset-password" snippet to `BACKEND.md` showing both the `pathname`-check pattern and the hash-based alternative. Update `SYSTEM_PROMPT_INITIAL` and `SYSTEM_PROMPT_PATCH` so the rule reads: *"If you call `resetPasswordForEmail`, mount a `/reset-password` view in App.tsx — gate it on `window.location.pathname === '/reset-password'` (no router needed). Copy from `auth-reset-password.tsx`."*
 
-- **`onboarding-flow.tsx`** (lines 1640–1709): replace the three `// TODO: call your real …` stubs with `useAuth()` calls — `signUpWithPassword` for signup, `verifyOtp` for the OTP step, `resendSignupOtp` for resend. Keep the state machine identical.
-- **`auth-forgot-password.tsx`** (around line 177): replace the `setTimeout` placeholder with `resetPasswordForEmail`.
-- **New file**: `auth-reset-password.tsx` — the page users land on from the recovery email. Reads the recovery session, shows a "new password" form, calls `updatePassword`, then redirects. This is the missing half of the forgot-password loop and the knowledge guide flags it as mandatory.
-- Add the new file to `EXAMPLES_PACK` and reference it from `EXAMPLES.md`.
+### 3. `ONBOARDING_FLOW` imports `toast` from `"sonner"` directly
+Contradicts our own kit rule (system prompt line 79) which says use `@/components/ui/toast`.
 
-## 3. `src/server/backend-kit.ts` — update `BACKEND_MD`
+**Change:** swap `import { toast } from "sonner"` → `import { toast } from "@/components/ui/toast"`.
 
-Add an "Auth helpers reference" section listing every helper available on `useAuth()`, when to use OTP vs password, and the requirement to mount `<AuthReset Password />` at `/reset-password` if `resetPasswordForEmail` is used. This is what the generation AI reads — it's the lever that gets these helpers actually used.
+## Bonus (minor doc nit)
+Update the inline comment in `ONBOARDING_FLOW`'s `case "forgot"` to clarify that the example forgot-password screen does a full-page nav, so in a non-routed app this naturally returns to `welcome` on reload.
 
-## 4. `src/server/generate.server.ts` — tighten the system prompt
+## Files touched
+- `src/server/backend-kit.ts` — `AuthCtx` type + `verifyOtp` impl + new `verifySignupOtp` helper + `BACKEND_MD` (router snippet + helper table row).
+- `src/server/examples-pack.ts` — `ONBOARDING_FLOW` (toast import + `verifySignupOtp` call + comment).
+- `src/server/generate.server.ts` — both system prompts (mention `verifySignupOtp` and the no-router `/reset-password` pattern).
 
-One paragraph addition: when the project has a backend and the user asks for auth, the AI must use `useAuth()` helpers from `@/integrations/backend/auth` and must never call `supabase.auth.*` directly. Mirrors the existing "no `createClient`" rule.
+## Out of scope (deliberate)
+- Petal's internal `src/lib/auth.tsx` — untouched.
+- Adding a real router to the scaffold — that's a separate, larger decision.
+- Renaming/removing the existing `verifyOtp` — kept for backward compat.
 
-# What does NOT change
+## Verification
+- `npx tsc --noEmit` (must still pass).
+- Spot-read the rendered `AUTH_TSX` and `ONBOARDING_FLOW` strings to confirm no template-literal escaping regressed.
+- Re-confirm `EXAMPLES_PACK` still registers every example file by name.
 
-- `signInWithPassword` / `signUpWithPassword` stay as the defaults — no migration for existing generated apps.
-- Petal's own `src/lib/auth.tsx` is untouched.
-- No DB migration. No edge functions. No Supabase config changes.
-- Email templates are not scaffolded here — that's a separate flow the user can opt into later (via Cloud → Emails).
-
-# Files touched
-
-- **Edit**: `src/server/backend-kit.ts` (extend `AuthCtx`, expand `BACKEND_MD`)
-- **Edit**: `src/server/examples-pack.ts` (wire onboarding TODOs, wire forgot-password, add reset-password example, register in `EXAMPLES_PACK`)
-- **Edit**: `src/server/generate.server.ts` (one prompt paragraph)
-
-# Verification
-
-1. `bunx tsc --noEmit` passes.
-2. Spot-check the rendered `BACKEND.md` content includes all five new helpers.
-3. Spot-check that `onboarding-flow.tsx` example string compiles as TSX (no stray template-literal escapes).
-4. Existing generated apps that only use `signInWithPassword` still type-check against the new `AuthCtx` shape (additive properties only).
+No DB migration, no new dependency, no edge function.
