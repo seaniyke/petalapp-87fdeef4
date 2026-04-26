@@ -56,6 +56,9 @@ const MarkdownMessage = lazy(() =>
 const WebContainerPreview = lazy(() =>
   import("@/components/WebContainerPreview").then((m) => ({ default: m.WebContainerPreview }))
 );
+const MobilePreviewFallback = lazy(() =>
+  import("@/components/MobilePreviewFallback").then((m) => ({ default: m.MobilePreviewFallback }))
+);
 type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
 export const Route = createFileRoute("/builder")({
