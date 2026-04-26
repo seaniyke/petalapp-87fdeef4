@@ -23,6 +23,9 @@ import {
   ChevronDown,
   ChevronUp,
   GripVertical,
+  Smartphone,
+  Tablet,
+  Monitor,
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
 import { requestDiscussion } from "@/lib/discuss";
@@ -127,6 +130,19 @@ function Builder() {
   const [designCaption, setDesignCaption] = useState<string>("");
   const [filesWritten, setFilesWritten] = useState<number>(0);
   const [latestPath, setLatestPath] = useState<string | undefined>(undefined);
+  // Ordered, deduped list of every path Petal streams during the writing phase.
+  // Drives the per-file progress list in BuildActivityCard.
+  const [writtenPaths, setWrittenPaths] = useState<string[]>([]);
+  // Final per-file line counts, populated after a successful run.
+  const [finalFileLines, setFinalFileLines] = useState<Record<string, number>>({});
+  // Live, token-by-token assistant reply rendered in the chat thread while busy.
+  // This mirrors what Lovable/Bolt/v0 do — the user sees Petal "talking" in real
+  // time, not just a structured timeline. Cleared when the run completes.
+  const [streamingAssistant, setStreamingAssistant] = useState<string>("");
+  // Preview device frame: phone | tablet | desktop. Affects only the wrapper
+  // around WebContainerPreview / MobilePreviewFallback — they get the iframe
+  // sized to a realistic device width so users can spot responsive issues.
+  const [previewDevice, setPreviewDevice] = useState<"phone" | "tablet" | "desktop">("desktop");
   const [activityVisible, setActivityVisible] = useState(false);
   const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -314,6 +330,9 @@ function Builder() {
       setDesignCaption("");
       setFilesWritten(0);
       setLatestPath(undefined);
+      setWrittenPaths([]);
+      setFinalFileLines({});
+      setStreamingAssistant("");
       setActivityVisible(true);
 
       let resultFiles: ProjectFile[] | null = null;
@@ -338,10 +357,21 @@ function Builder() {
             onPhase: (phase: PhaseId) => {
               setPhases((p) => advanceTo(p, phase));
             },
-            onSummaryDelta: (d) => setDesignCaption((s) => s + d),
+            onSummaryDelta: (d) => {
+              // Two consumers of the same stream:
+              //   - structured timeline (designCaption under "Designing")
+              //   - live assistant bubble in the chat thread
+              setDesignCaption((s) => s + d);
+              setStreamingAssistant((s) => s + d);
+            },
             onFileProgress: (n, path) => {
               setFilesWritten(n);
-              if (path) setLatestPath(path);
+              if (path) {
+                setLatestPath(path);
+                // Append to ordered, deduped list so the user sees each file
+                // appear in the activity card as Petal writes it.
+                setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
+              }
             },
             onResult: (f, s) => {
               resultFiles = f;
@@ -366,6 +396,19 @@ function Builder() {
         setMessages((prev) => [...prev, assistantMsg]);
         setPreviewKey((k) => k + 1);
         setLastUserPrompt(null);
+        // The streaming bubble has been promoted into a real message — clear it.
+        setStreamingAssistant("");
+
+        // Compute final per-file line counts for the activity card. We only
+        // surface counts for files Petal actually wrote in this run, so the
+        // list matches what the user just saw stream in.
+        setFinalFileLines(() => {
+          const map: Record<string, number> = {};
+          for (const f of files2) {
+            map[f.path] = f.content.split("\n").length;
+          }
+          return map;
+        });
 
         // AI work is fully done — mark polishing complete and move to deploying.
         setPhases((p) => completeThrough(p, "polishing"));
@@ -413,6 +456,9 @@ function Builder() {
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
         setBusy(false);
+        // Drop any partial streaming text — either it became a real message
+        // above, or the run failed/aborted and we don't want a stale bubble.
+        setStreamingAssistant("");
       }
     },
     [busy, messages, files, ensureProject],
@@ -1005,6 +1051,23 @@ function Builder() {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
               </div>
             )}
+            {/* Live, token-by-token reply while Petal works. Promoted to a real
+                message in `messages` once the run completes. */}
+            {busy && streamingAssistant && (
+              <div className="mr-6 rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm leading-relaxed">
+                <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span>petal</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-primary">
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" /> writing
+                  </span>
+                </div>
+                <Suspense
+                  fallback={<div className="whitespace-pre-wrap">{streamingAssistant}</div>}
+                >
+                  <MarkdownMessage content={streamingAssistant} />
+                </Suspense>
+              </div>
+            )}
             {activityVisible && (
               <BuildActivityCard
                 phases={phases}
@@ -1014,6 +1077,8 @@ function Builder() {
                 designCaption={designCaption}
                 latestPath={latestPath}
                 filesWritten={filesWritten}
+                writtenPaths={writtenPaths}
+                finalFileLines={finalFileLines}
                 onStop={busy ? stopGeneration : undefined}
                 onRetry={lastUserPrompt ? retry : undefined}
                 onAskFix={askPetalToFix}
@@ -1217,42 +1282,88 @@ function Builder() {
         >
           {view === "preview" ? (
             <div className="flex min-h-0 flex-1 flex-col p-3">
-              <div className="flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-white">
-                {isMobile ? (
-                  <Suspense
-                    fallback={
-                      <div className="grid h-full place-items-center text-xs text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      </div>
-                    }
-                  >
-                    <MobilePreviewFallback
-                      projectId={project?.id ?? null}
-                      latestBuildId={project?.latest_build_id ?? null}
-                      isGenerating={busy}
-                    />
-                  </Suspense>
-                ) : files.length ? (
-                  <Suspense
-                    fallback={
-                      <div className="grid h-full place-items-center text-xs text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      </div>
-                    }
-                  >
-                    <WebContainerPreview
-                      files={files}
-                      reloadKey={previewKey}
-                      onPick={(el) => {
-                        setPickedElement(el);
-                        setPickInstruction("");
-                      }}
-                    />
-
-                  </Suspense>
-                ) : (
-                  <EmptyPreview />
-                )}
+              {/* Device-frame toggle. Desktop only — on mobile the viewport
+                  is already the device. Doesn't reload the iframe; just
+                  resizes its wrapper, so state is preserved when switching. */}
+              {!isMobile && files.length > 0 && (
+                <div className="mb-2 flex items-center justify-center gap-1">
+                  <div className="inline-flex items-center rounded-full border border-border bg-background p-0.5 text-[11px]">
+                    {(
+                      [
+                        { id: "phone", label: "Phone", icon: Smartphone },
+                        { id: "tablet", label: "Tablet", icon: Tablet },
+                        { id: "desktop", label: "Desktop", icon: Monitor },
+                      ] as const
+                    ).map((opt) => {
+                      const Icon = opt.icon;
+                      const active = previewDevice === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setPreviewDevice(opt.id)}
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
+                            active
+                              ? "bg-foreground text-background"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                          title={`Preview at ${opt.label.toLowerCase()} width`}
+                          aria-pressed={active}
+                        >
+                          <Icon className="h-3 w-3" /> {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              <div className="flex min-h-0 flex-1 items-stretch justify-center overflow-auto">
+                <div
+                  className={`flex min-h-0 w-full overflow-hidden rounded-2xl border border-border bg-white transition-[max-width] duration-200 ${
+                    isMobile
+                      ? ""
+                      : previewDevice === "phone"
+                        ? "max-w-[390px]"
+                        : previewDevice === "tablet"
+                          ? "max-w-[820px]"
+                          : "max-w-none"
+                  }`}
+                >
+                  {isMobile ? (
+                    <Suspense
+                      fallback={
+                        <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      }
+                    >
+                      <MobilePreviewFallback
+                        projectId={project?.id ?? null}
+                        latestBuildId={project?.latest_build_id ?? null}
+                        isGenerating={busy}
+                      />
+                    </Suspense>
+                  ) : files.length ? (
+                    <Suspense
+                      fallback={
+                        <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      }
+                    >
+                      <WebContainerPreview
+                        files={files}
+                        reloadKey={previewKey}
+                        onPick={(el) => {
+                          setPickedElement(el);
+                          setPickInstruction("");
+                        }}
+                      />
+                    </Suspense>
+                  ) : (
+                    <EmptyPreview />
+                  )}
+                </div>
               </div>
             </div>
           ) : (
