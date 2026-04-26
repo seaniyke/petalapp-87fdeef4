@@ -40,6 +40,7 @@ The scaffold ALREADY EXISTS — these files will be auto-injected, do NOT emit t
 
 REFERENCE PATTERNS (copy-from, do NOT import directly):
 The scaffold also injects working examples under "src/components/examples/*". They exist purely as a reference you can read and adapt — DO NOT import them into App.tsx, and DO NOT emit them yourself (they are auto-injected). When the user asks for the matching interaction, copy the pattern into your own feature component.
+- "src/components/examples/LAYOUT.md" — Tutorial for Container, Stack, Inline, and Grid: when to use each, full prop reference, page templates, recipes (auth, settings list, empty state), and anti-patterns. READ THIS before laying out any new page.
 - "src/components/examples/data-table-dialog.tsx" — Table rows + per-row Edit Dialog (controlled open/onOpenChange, immutable row update).
 - "src/components/examples/tabs-table-dashboard.tsx" — Tabs switching an Overview (stat Grid) and an Orders Table over the same dataset.
 - "src/components/examples/sheet-detail-panel.tsx" — Master Table + side Sheet detail view (use Sheet over Dialog for long-form / scrollable detail).
