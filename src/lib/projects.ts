@@ -25,6 +25,31 @@ export async function createProject(title = "Untitled project"): Promise<Project
   return data;
 }
 
+/** Clone a public project's files into a brand-new project owned by the current user. */
+export async function remixProjectBySlug(slug: string): Promise<ProjectRow> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) throw new Error("Not signed in");
+  const source = await getProjectBySlug(slug);
+  if (!source) throw new Error("Project not found");
+  if (!source.is_public) throw new Error("This project is not public");
+
+  const files = await loadProjectFiles(source.id);
+  const newTitle = `${source.title} (remix)`;
+  const fresh = await createProject(newTitle);
+  if (files.length > 0) {
+    const { error } = await supabase
+      .from("project_files")
+      .insert(
+        files.map((f) => ({ project_id: fresh.id, path: f.path, content: f.content }))
+      );
+    if (error) throw error;
+  }
+  if (source.summary) {
+    await updateProject(fresh.id, { summary: source.summary });
+  }
+  return fresh;
+}
+
 export async function deleteProject(id: string) {
   const { error } = await supabase.from("projects").delete().eq("id", id);
   if (error) throw error;

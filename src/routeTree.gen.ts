@@ -13,6 +13,7 @@ import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 
 const ProjectsRoute = ProjectsRouteImport.update({
@@ -35,6 +36,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PSlugRoute = PSlugRouteImport.update({
+  id: '/p/$slug',
+  path: '/p/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGenerateRoute = ApiGenerateRouteImport.update({
   id: '/api/generate',
   path: '/api/generate',
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/builder': typeof BuilderRoute
   '/projects': typeof ProjectsRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/p/$slug': typeof PSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/builder': typeof BuilderRoute
   '/projects': typeof ProjectsRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/p/$slug': typeof PSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +70,27 @@ export interface FileRoutesById {
   '/builder': typeof BuilderRoute
   '/projects': typeof ProjectsRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/p/$slug': typeof PSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/builder' | '/projects' | '/api/generate'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/builder'
+    | '/projects'
+    | '/api/generate'
+    | '/p/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/builder' | '/projects' | '/api/generate'
-  id: '__root__' | '/' | '/auth' | '/builder' | '/projects' | '/api/generate'
+  to: '/' | '/auth' | '/builder' | '/projects' | '/api/generate' | '/p/$slug'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/builder'
+    | '/projects'
+    | '/api/generate'
+    | '/p/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +99,7 @@ export interface RootRouteChildren {
   BuilderRoute: typeof BuilderRoute
   ProjectsRoute: typeof ProjectsRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
+  PSlugRoute: typeof PSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -109,6 +132,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/p/$slug': {
+      id: '/p/$slug'
+      path: '/p/$slug'
+      fullPath: '/p/$slug'
+      preLoaderRoute: typeof PSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/generate': {
       id: '/api/generate'
       path: '/api/generate'
@@ -125,6 +155,7 @@ const rootRouteChildren: RootRouteChildren = {
   BuilderRoute: BuilderRoute,
   ProjectsRoute: ProjectsRoute,
   ApiGenerateRoute: ApiGenerateRoute,
+  PSlugRoute: PSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
