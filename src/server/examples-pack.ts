@@ -2099,6 +2099,12 @@ matching file below and adapt — do not invent layouts from scratch.
 - \`auth-forgot-password.tsx\` — reset flow with success state
 - \`auth-otp-card.tsx\` — six-digit code verification
 
+## Auth modals (Dialog / Sheet)
+- \`auth-sign-up-dialog.tsx\` — modal sign-up (controlled, OAuth + switch to sign-in)
+- \`auth-sign-in-dialog.tsx\` — modal sign-in (controlled, hooks for forgot/sign-up)
+- \`auth-password-reset-sheet.tsx\` — side-sheet password reset with success state
+- \`auth-magic-link-dialog.tsx\` — passwordless modal with magic-link success state
+
 ## Onboarding flow (composed from auth blocks)
 - \`onboarding-welcome.tsx\` — hero/welcome screen with primary + secondary CTAs
 - \`onboarding-signup-step.tsx\` — name + email + password step (calls \`onSubmit\`)
