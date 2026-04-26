@@ -314,6 +314,7 @@ function Builder() {
             currentFiles: files,
             model: "smart",
             customInstructions: project.custom_instructions ?? undefined,
+            projectId: project.id,
           },
           {
             onPhase: (phase: PhaseId) => {
