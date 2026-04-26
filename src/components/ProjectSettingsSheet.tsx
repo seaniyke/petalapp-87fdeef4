@@ -32,6 +32,7 @@ import {
   type ProjectRow,
   type ProjectBackend,
 } from "@/lib/projects";
+import { DomainsSection } from "@/components/DomainsSection";
 import { toast } from "sonner";
 
 const MAX_LEN = 4000;
@@ -49,6 +50,9 @@ type Props = {
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** When set, scroll this section into view after the sheet opens. */
+  scrollTo?: "domains" | "backend" | "knowledge" | null;
+  onScrollHandled?: () => void;
 };
 
 export function ProjectSettingsSheet({
@@ -57,6 +61,8 @@ export function ProjectSettingsSheet({
   trigger,
   open: openProp,
   onOpenChange,
+  scrollTo,
+  onScrollHandled,
 }: Props) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = openProp !== undefined;
@@ -71,6 +77,17 @@ export function ProjectSettingsSheet({
   useEffect(() => {
     if (open) setValue(project.custom_instructions ?? "");
   }, [open, project.custom_instructions]);
+
+  // Scroll to a requested section once the sheet is open.
+  useEffect(() => {
+    if (!open || !scrollTo) return;
+    const t = setTimeout(() => {
+      const el = document.getElementById(`settings-${scrollTo}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+      onScrollHandled?.();
+    }, 80);
+    return () => clearTimeout(t);
+  }, [open, scrollTo, onScrollHandled]);
 
   async function save() {
     setSaving(true);
