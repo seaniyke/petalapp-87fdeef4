@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SampleAppShowcase } from "@/components/SampleAppShowcase";
 import { useAuth } from "@/lib/auth";
 import {
   ArrowRight,
@@ -151,65 +152,9 @@ function Landing() {
         </div>
       </section>
 
-      {/* Showcase / fake editor */}
+      {/* Showcase — rotating sample apps */}
       <section id="showcase" className="relative -mt-16 px-6 pb-24">
-        <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl border border-border bg-card shadow-[var(--shadow-soft)]">
-          <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-3">
-            <span className="h-3 w-3 rounded-full bg-coral" />
-            <span className="h-3 w-3 rounded-full bg-butter" />
-            <span className="h-3 w-3 rounded-full bg-mint" />
-            <span className="ml-3 font-mono text-xs text-muted-foreground">petal — habit-tracker</span>
-          </div>
-          <div className="grid gap-0 md:grid-cols-[260px_1fr_1.1fr]">
-            <div className="border-b border-border bg-sidebar p-4 text-sm md:border-b-0 md:border-r">
-              <div className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Chat</div>
-              <div className="space-y-3">
-                <div className="rounded-xl bg-card p-3 text-xs text-foreground/80">Make a minimalist habit tracker with confetti when I complete one.</div>
-                <div className="rounded-xl bg-butter/60 p-3 text-xs text-foreground/80">Done — added <code className="font-mono">app.js</code>, hooked up confetti, and styled with pastel cards.</div>
-                <div className="rounded-xl bg-card p-3 text-xs text-foreground/80">Add a streak counter please.</div>
-              </div>
-            </div>
-            <div className="border-b border-border bg-background/50 p-4 font-mono text-[11px] leading-relaxed text-foreground/80 md:border-b-0 md:border-r">
-              <div className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">index.html</div>
-              <pre className="whitespace-pre-wrap">{`<!doctype html>
-<html>
-  <body class="bg-cream">
-    <h1>Today's habits</h1>
-    <ul id="habits"></ul>
-    <script src="app.js"></script>
-  </body>
-</html>`}</pre>
-            </div>
-            <div className="bg-aurora p-6">
-              <div className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Preview</div>
-              <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                <div className="mb-3 font-display text-2xl">Today's habits</div>
-                <ul className="space-y-2 text-sm">
-                  {[
-                    { l: "Drink water", on: true },
-                    { l: "10 min walk", on: true },
-                    { l: "Read 20 pages", on: false },
-                  ].map((h) => (
-                    <li
-                      key={h.l}
-                      className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2"
-                    >
-                      <span>{h.l}</span>
-                      <span
-                        className={`h-5 w-5 rounded-full ${
-                          h.on ? "bg-mint" : "border border-border"
-                        }`}
-                      />
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-coral/20 px-3 py-1 text-xs">
-                  🔥 7 day streak
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <SampleAppShowcase />
       </section>
 
       {/* Features */}
