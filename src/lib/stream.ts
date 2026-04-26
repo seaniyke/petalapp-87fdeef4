@@ -9,6 +9,8 @@ type Handlers = {
   onStatus?: (message: string) => void;
   onSummaryDelta?: (delta: string) => void;
   onTool?: (name: "write_project" | "patch_files") => void;
+  onPhase?: (phase: "thinking" | "designing" | "writing" | "polishing") => void;
+  onFileProgress?: (written: number, latestPath?: string) => void;
   onResult?: (files: ProjectFile[], summary: string) => void;
   onError?: (message: string) => void;
 };
