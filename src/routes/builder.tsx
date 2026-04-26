@@ -767,14 +767,12 @@ function Builder() {
             </div>
           )}
           {project && (
-            <div className="hidden md:block">
-              <ProjectSettingsSheet
-                project={project}
-                onChange={setProject}
-                open={settingsOpen}
-                onOpenChange={setSettingsOpen}
-              />
-            </div>
+            <ProjectSettingsSheet
+              project={project}
+              onChange={setProject}
+              open={settingsOpen}
+              onOpenChange={setSettingsOpen}
+            />
           )}
           <button
             onClick={downloadProject}
