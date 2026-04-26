@@ -133,6 +133,19 @@ function Builder() {
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   // Build vs Discuss mode. Discuss = chat-only, no file changes (Base44/Lovable parity).
   const [mode, setMode] = useState<"build" | "discuss">("build");
+  // Smart model routing (Base44's Automatic / Manual). Default = "smart".
+  // Persisted per-browser so the choice sticks across sessions.
+  type ModelPreset = "fast" | "smart" | "best";
+  const [modelPreset, setModelPreset] = useState<ModelPreset>(() => {
+    if (typeof window === "undefined") return "smart";
+    const v = window.localStorage.getItem("petal:modelPreset");
+    return v === "fast" || v === "best" ? v : "smart";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("petal:modelPreset", modelPreset);
+    }
+  }, [modelPreset]);
   // Index of the most recent assistant message that came from Discuss mode,
   // so we can render an "Apply this plan" button under it.
   const [lastDiscussIndex, setLastDiscussIndex] = useState<number | null>(null);
