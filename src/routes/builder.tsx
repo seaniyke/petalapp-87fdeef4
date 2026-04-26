@@ -344,6 +344,12 @@ function Builder() {
       { role: "assistant", content: "↩️ Restored a previous version." },
     ]);
     setHistoryKey((k) => k + 1);
+    void triggerProjectBuild({ data: { projectId: project.id } })
+      .then(async () => {
+        const r = await getProject(project.id);
+        if (r) setProject(r);
+      })
+      .catch((err) => console.error("triggerProjectBuild failed", err));
   }
 
   const activeContent = files.find((f) => f.path === activeFile)?.content ?? "";
