@@ -223,6 +223,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      replace_project_files: {
+        Args: { _files: Json; _project_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"

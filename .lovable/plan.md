@@ -1,127 +1,146 @@
-# Petal — Roadmap to Lovable / Bolt / Base44 parity
+# Petal — Audit & Hardening Plan
 
-## What the three reference platforms have in common
+A focused pass to fix real bugs and rough edges we shipped during Phases 1–6, before moving on to Phase 7 (WebContainers / AI backends).
 
-After studying Lovable, Bolt.new and Base44, every one of them is built on the same 10 pillars:
-
-1. **Conversational build loop** — describe → generate → iterate via chat
-2. **Live sandboxed preview** — iframe or WebContainer
-3. **Editable file tree + code view** — drop into source when needed
-4. **Auth + persistent projects** — your work follows you across sessions/devices
-5. **Version history / checkpoints** — every chat turn is restorable
-6. **Sharing & publishing** — public preview URL, one-click deploy
-7. **Built-in backend** — auth, DB, storage the model can wire up for you
-8. **Community gallery / remix** — discover and fork others' projects
-9. **Streaming UX** — tokens, file writes, summary stream in real-time
-10. **Diff-aware edits** — partial file patches instead of full rewrites
-
-**Petal today** ✅ has 1, 2, 3, and a working AI integration on Lovable Cloud.
-**Petal is missing** 4, 5, 6, 7, 8, 9, 10 — plus polish like Markdown rendering, real ZIP export, and richer project capabilities (React, backends).
-
-This plan sequences those gaps into shippable phases, biggest-leverage first.
+Grouped by **severity**. Each item lists what's wrong, how I'll fix it, and the files involved.
 
 ---
 
-## Phase 1 — Persistence, Auth & Project Library *(highest value)*
+## P0 — Correctness & Data Integrity
 
-This is the single change that turns a demo into a product. Right now a refresh wipes everything.
+### 1. `saveProjectFiles` is destructive and non-atomic
+**Problem:** `src/lib/projects.ts` deletes all rows for a project, then re-inserts. If the insert fails (network drop, RLS, payload size), the project is left **empty** with no recovery.
 
-**Backend (Lovable Cloud migration):**
-- `profiles` table (id, display_name, avatar_url, created_at) — RLS: users see/edit their own
-- `app_role` enum + `user_roles` table + `has_role()` security-definer function (per the project's role rules — never store roles on profiles)
-- `projects` table: id, owner_id, title, summary, slug (unique), is_public, created_at, updated_at — RLS: owner can CRUD; anyone can SELECT where `is_public = true`
-- `project_files` table: id, project_id, path, content, updated_at — RLS via `projects.owner_id`
-- `messages` table: id, project_id, role, content, created_at — RLS via `projects.owner_id`
-- Trigger: `handle_new_user` inserts a profile row on `auth.users` insert
+**Fix:**
+- Replace delete-then-insert with an **upsert-by-(project_id, path)** strategy:
+  - Add a unique constraint on `(project_id, path)` via migration.
+  - Compute the diff client-side: upsert changed/new files, delete only paths that no longer exist.
+- Wrap the delete-of-removed-paths and the upsert in a single Postgres function (`replace_project_files(project_id, files jsonb)`) called via RPC, so it's atomic.
 
-**Auth:**
-- Email + password sign in / sign up using `supabase.auth`, plus Google OAuth (per project rules; default Google on, no auto-confirm by default — user verifies email)
-- `/auth` route with sign-in / sign-up tabs, branded with the pastel theme
-- `useSession()` hook that reads `auth.onAuthStateChange` and exposes user
-- Protect `/builder` — redirect unauthenticated users to `/auth`
-
-**Project library:**
-- New `/projects` route — grid of the user's projects (title, last edited, tiny preview thumbnail placeholder, "open" + "delete" + "duplicate")
-- Builder loads a project by `?id=…`. Switching project pulls files + message history from DB
-- Auto-save on every successful generation (upsert files, append message turn)
-- "New project" button → creates an empty project row, then routes to `/builder?id=…`
-
-**UI changes:**
-- SiteHeader gets an avatar dropdown when signed in (Projects · Account · Sign out)
-- Landing page: when signed in, primary CTA becomes "Open my projects"
+**Files:** `src/lib/projects.ts`, new migration.
 
 ---
 
-## Phase 2 — Version history & restore *(safety net users expect)*
+### 2. No abort handling on in-flight generations
+**Problem:** `streamGenerate` accepts a `signal`, but `builder.tsx` never passes one. If a user sends a second prompt while the first stream is running, both write to state and to the DB — last-write-wins races corrupt files and message history.
 
-- New `project_versions` table: id, project_id, message_id, snapshot (jsonb of files), summary, created_at
-- After every successful generation, snapshot the new file set
-- Builder side panel: a vertical timeline of versions with the assistant's summary on each
-- "Restore" button replays a snapshot into the working files (and writes a new "restored from vN" entry so it's non-destructive)
+**Fix:**
+- Hold an `AbortController` ref in `Builder`. On new send / unmount / project switch, abort the previous controller before starting a new request.
+- Disable the send button while `busy` (already partially done) and surface a "Stop" button that calls `controller.abort()`.
+- In the SSE reader, swallow `AbortError` cleanly without setting an error state.
 
----
-
-## Phase 3 — Streaming generation + diff-based edits *(faster, cheaper, less regression)*
-
-**Streaming:**
-- Switch the AI gateway call to SSE (`stream: true`) and forward chunks via TanStack Start's response streaming
-- Chat shows assistant tokens appearing live; "Petal is building…" replaced with a real progress feed
-- As file blocks resolve, the file tree shows a "writing…" badge per file
-
-**Diff edits:**
-- Add a second tool to the AI: `patch_files` with `{ path, content }[]` for changed files plus `{ path }[]` for deletions
-- System prompt routes "first turn" → `write_project`, "subsequent turn" → `patch_files` unless a wholesale rewrite is needed
-- Apply patches client-side, then snapshot
-- Token + latency win on every iteration after the first
+**Files:** `src/routes/builder.tsx`, `src/lib/stream.ts`.
 
 ---
 
-## Phase 4 — Sharing, publishing & remix
+### 3. Public iframe sandbox is too permissive (and inconsistent)
+**Problem:** `src/routes/p.$slug.tsx` uses `sandbox="allow-scripts allow-forms allow-modals"` — fine, but the **builder preview** iframe has no sandbox at all (will verify), so untrusted model output can hit `localStorage`, IndexedDB, and the parent origin in dev.
 
-- Public preview route: `/p/$slug` — read-only iframe of the project (uses the same `buildPreviewDoc`), no chat, no editor, with an "Open in Petal / Remix" button
-- Toggle in builder: "Make public" flips `is_public` and reveals the share URL + copy button
-- "Remix" duplicates the project under the current user's account and opens it in builder
-- Real export: replace the `.txt` dump with a proper `.zip` (use `jszip` — pure JS, Worker-safe) containing all files at their real paths
+**Fix:**
+- Apply the same `sandbox="allow-scripts allow-forms allow-modals"` (no `allow-same-origin`) to the builder iframe as well.
+- Verify by inspecting `builder.tsx` lines around the iframe render and aligning attributes.
 
----
-
-## Phase 5 — Community gallery
-
-- `/gallery` route — grid of all `is_public = true` projects, sorted by recency / remix count
-- Add `remix_count` (incremented when someone remixes) and optional `cover_image_url`
-- Each card → `/p/$slug` with a Remix CTA
-- Featured tag on a small curated set (admin role via `has_role`)
+**Files:** `src/routes/builder.tsx`.
 
 ---
 
-## Phase 6 — Chat & editor polish
+## P1 — Performance
 
-- Render assistant messages with `react-markdown` + GFM (code blocks, lists, links) — currently rendered as plain text
-- Add a lightweight code editor (`@uiw/react-codemirror` with HTML/CSS/JS modes) instead of a `<textarea>` — syntax highlighting, line numbers, tab-to-indent
-- Keyboard shortcut palette (⌘K): jump to file, run "regenerate last", toggle preview/code
-- Better error states: when the model fails to return valid project JSON, surface the actual model message with a "retry" affordance instead of a generic toast
+### 4. Builder bundle is ~2.2MB
+**Problem:** `CodeMirror`, `cmdk`, `react-markdown`, and `rehype-highlight` are all in the initial chunk for `/builder`, even though most users hit Preview first.
 
----
+**Fix:**
+- `React.lazy` + `<Suspense>` for:
+  - `CodeEditor` (only mounts when `view === "code"`)
+  - `CommandPalette` (only mounts when `paletteOpen` is true the first time)
+  - `MarkdownMessage` (lazy with a plain-text fallback so first paint is instant)
+- Lazy-import `jszip` inside `downloadProject` instead of top-level.
+- Confirm the Vite manual chunk split puts `highlight.js` languages in its own chunk (drop unused languages via `rehype-highlight`'s `languages` option — keep only html, css, js, ts, json, bash, md).
 
-## Phase 7 — Capability expansion (the bigger leap)
-
-This is where Petal stops being a vanilla-HTML toy and starts approaching Bolt/Lovable parity in what users can build. Larger scope; ships last.
-
-- **React / multi-framework projects via WebContainers (StackBlitz SDK)** — runs a real Node + Vite environment in-browser. Replaces the inline `srcDoc` strategy. Significant infra work.
-- **Backend wiring** — let the model scaffold its own Lovable Cloud tables/edge functions for the user's app (e.g. "build me a tweet clone with login" actually creates `posts` + RLS). Requires a server-side migration tool exposed to the AI.
-- **AI image generation** — when the model wants imagery (logos, hero backgrounds, recipe photos), call `google/gemini-3-flash-image-preview` via the gateway and inline as data URIs or upload to Cloud Storage.
+**Files:** `src/routes/builder.tsx`, `src/components/MarkdownMessage.tsx`.
 
 ---
 
-## Recommended sequence
+### 5. Gallery thumbnails mount N live iframes
+**Problem:** `/gallery` renders a real `srcDoc` iframe per card. With 60 cards that's 60 parallel JS contexts running model-generated code — heavy on CPU, fans spin on mobile.
 
-I'd ship **Phase 1 first** in a single focused pass — it's the biggest perceived-quality jump and unlocks everything else (history needs a project to attach to; sharing needs a slug; gallery needs `is_public`). Then 2 → 3 → 4 → 5 → 6, then evaluate whether Phase 7 is worth the infra investment based on how users are actually using it.
+**Fix:**
+- Use `IntersectionObserver` to lazy-mount each thumbnail iframe only when scrolled into view, and unmount when scrolled out (keep a static placeholder div with the project title gradient).
+- Add `loading="lazy"` and `sandbox="allow-scripts"` (no forms/modals needed for thumbnails).
+- Cap concurrent live thumbnails to ~6 via a small queue.
 
-## What I need from you to start
+**Files:** `src/routes/gallery.tsx`.
 
-Confirm the order, and let me know if you want any phase **split, reordered, or cut**. Two specific decisions worth making up front:
+---
 
-- **Auth providers** — default is Email+password + Google. Want to add others (GitHub is popular for a dev-tool audience) or keep it lean?
-- **Public projects default** — should new projects start `is_public = false` (private, opt-in to share) or `true` (public, opt-out)? Lovable defaults to public; Base44 defaults to private. I'd recommend **private by default** for trust.
+## P2 — Security & Admin
 
-Once you approve, I'll start on **Phase 1: Persistence, Auth & Project Library**.
+### 6. No way to bootstrap the first admin
+**Problem:** `user_roles` defaults every new signup to `'user'`. The "Featured" toggle and admin RLS policies exist but are unreachable — there's no admin in the table.
+
+**Fix:**
+- Add a one-time SQL migration that promotes a specific email (I'll ask which one) to `admin` by inserting into `user_roles` after looking up the `auth.users.id` via `auth.email`.
+- Document the manual SQL pattern for future admins in a comment in the migration.
+
+**Files:** new migration, requires user input (which email).
+
+---
+
+### 7. RLS audit on `project_files` for public projects
+**Status:** Looks correct — `Anyone can view files of public projects` is gated on `projects.is_public = true`. Same pattern on `project_versions`. **No change needed**, but I'll re-run `supabase--linter` after other migrations to confirm no regressions.
+
+---
+
+## P3 — UX Polish
+
+### 8. Header overflows on mobile (current viewport is 430px)
+**Problem:** Builder top bar has 6+ controls (Back, title, view toggle, History, Share, Export, ⌘K, Sign-out). At 430px CSS pixels it wraps or clips.
+
+**Fix:**
+- Collapse Export / History / Share / ⌘K into a single "More" `DropdownMenu` below `md` breakpoint.
+- Truncate the project title with `truncate min-w-0` and a tooltip on hover.
+
+**Files:** `src/routes/builder.tsx`.
+
+---
+
+### 9. `maybeAutoTitleProject` has no length cap on summary
+**Problem:** `summary` from the model can be arbitrarily long. We persist it raw and render it in cards, footers, and `<meta name="description">` — bad for SEO (Google truncates ~160 chars) and visual layout.
+
+**Fix:**
+- Trim summary to ~200 chars before persisting (truncate on word boundary, append `…`).
+- Same cap on title (already 60, leave it).
+
+**Files:** `src/lib/projects.ts`.
+
+---
+
+### 10. Generation errors don't include the failed prompt context
+**Problem:** Inline error bubble + Retry exists, but if the user navigates away and back, `lastUserPrompt` is lost (it's component state, not persisted). The Retry button silently does nothing.
+
+**Fix:**
+- Persist failed-prompt as a `messages` row with `role="user"` immediately before calling `streamGenerate` (we already do this — verify), and read the last user message as the retry source instead of relying on ref state.
+- Disable Retry if no user message exists.
+
+**Files:** `src/routes/builder.tsx`.
+
+---
+
+## Out of Scope (deferred)
+
+- **Phase 7** (WebContainers, AI-scaffolded backends, image generation) — separate plan once this audit lands.
+- Real screenshot service for gallery thumbnails (currently live iframes work; replace later with a worker-rendered PNG cache).
+- E2E test suite — we have no test harness today; adding one is its own project.
+
+---
+
+## Suggested Order
+
+1. **P0 batch** (atomic file save + abort controller + iframe sandbox) — one PR, biggest correctness wins.
+2. **Admin bootstrap** (P2 #6) — small, unblocks Featured.
+3. **P1 perf batch** (lazy chunks + gallery virtualization) — measurable bundle drop.
+4. **P3 polish** — mobile header, summary cap, retry hardening.
+
+Before I start, I'll need:
+- The **email address** to promote to admin (item #6).
+- Confirmation that the **delete-then-upsert atomicity fix** (item #1) is OK to ship as a Postgres RPC (vs. keeping it client-side with a transaction-like pattern). RPC is more correct; I recommend it.
