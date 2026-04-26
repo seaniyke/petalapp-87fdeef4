@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Globe, Copy, Check, Loader2, Lock } from "lucide-react";
+import { Globe, Copy, Check, Loader2, Lock, ArrowRight } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { updateProject, type ProjectRow } from "@/lib/projects";
@@ -8,9 +8,11 @@ import { toast } from "sonner";
 type Props = {
   project: ProjectRow;
   onChange: (next: ProjectRow) => void;
+  /** Open the project settings sheet on the Domains section. */
+  onConnectDomain?: () => void;
 };
 
-export function SharePopover({ project, onChange }: Props) {
+export function SharePopover({ project, onChange, onConnectDomain }: Props) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -106,6 +108,19 @@ export function SharePopover({ project, onChange }: Props) {
             </p>
           )}
         </div>
+        {onConnectDomain && (
+          <button
+            type="button"
+            onClick={onConnectDomain}
+            className="flex w-full items-center justify-between gap-2 border-t border-border px-4 py-3 text-left text-xs text-muted-foreground transition hover:bg-muted/40 hover:text-foreground"
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Globe className="h-3.5 w-3.5" />
+              Use a custom domain
+            </span>
+            <ArrowRight className="h-3 w-3" />
+          </button>
+        )}
       </PopoverContent>
     </Popover>
   );

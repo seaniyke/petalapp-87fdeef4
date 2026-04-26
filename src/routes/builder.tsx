@@ -181,6 +181,9 @@ function Builder() {
   const [mobileTab, setMobileTab] = useState<"chat" | "preview">("chat");
   // Project Knowledge sheet — also opens from the mobile overflow menu.
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsScrollTo, setSettingsScrollTo] = useState<
+    "domains" | "backend" | "knowledge" | null
+  >(null);
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
   // Visual element edit (Phase 5): selected element from the preview iframe.
   type PickedElement = {
@@ -963,7 +966,14 @@ function Builder() {
           )}
           {project && (
             <div className="hidden md:block">
-              <SharePopover project={project} onChange={setProject} />
+              <SharePopover
+                project={project}
+                onChange={setProject}
+                onConnectDomain={() => {
+                  setSettingsScrollTo("domains");
+                  setSettingsOpen(true);
+                }}
+              />
             </div>
           )}
           {project && (
@@ -971,7 +981,12 @@ function Builder() {
               project={project}
               onChange={setProject}
               open={settingsOpen}
-              onOpenChange={setSettingsOpen}
+              onOpenChange={(o) => {
+                setSettingsOpen(o);
+                if (!o) setSettingsScrollTo(null);
+              }}
+              scrollTo={settingsScrollTo}
+              onScrollHandled={() => setSettingsScrollTo(null)}
             />
           )}
           <button

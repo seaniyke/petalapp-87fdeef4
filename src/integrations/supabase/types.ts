@@ -155,6 +155,62 @@ export type Database = {
           },
         ]
       }
+      project_domains: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          hostname: string
+          id: string
+          is_primary: boolean
+          last_checked_at: string | null
+          project_id: string
+          provider_hostname_id: string | null
+          ssl_status: string | null
+          status: string
+          updated_at: string
+          verification_txt_name: string
+          verification_txt_value: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          hostname: string
+          id?: string
+          is_primary?: boolean
+          last_checked_at?: string | null
+          project_id: string
+          provider_hostname_id?: string | null
+          ssl_status?: string | null
+          status?: string
+          updated_at?: string
+          verification_txt_name: string
+          verification_txt_value: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          hostname?: string
+          id?: string
+          is_primary?: boolean
+          last_checked_at?: string | null
+          project_id?: string
+          provider_hostname_id?: string | null
+          ssl_status?: string | null
+          status?: string
+          updated_at?: string
+          verification_txt_name?: string
+          verification_txt_value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_domains_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_files: {
         Row: {
           content: string
@@ -234,6 +290,7 @@ export type Database = {
           is_public: boolean
           latest_build_id: string | null
           owner_id: string
+          primary_domain_id: string | null
           remix_count: number
           remixed_from_id: string | null
           slug: string
@@ -249,6 +306,7 @@ export type Database = {
           is_public?: boolean
           latest_build_id?: string | null
           owner_id: string
+          primary_domain_id?: string | null
           remix_count?: number
           remixed_from_id?: string | null
           slug: string
@@ -264,6 +322,7 @@ export type Database = {
           is_public?: boolean
           latest_build_id?: string | null
           owner_id?: string
+          primary_domain_id?: string | null
           remix_count?: number
           remixed_from_id?: string | null
           slug?: string
@@ -277,6 +336,13 @@ export type Database = {
             columns: ["latest_build_id"]
             isOneToOne: false
             referencedRelation: "project_builds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_primary_domain_id_fkey"
+            columns: ["primary_domain_id"]
+            isOneToOne: false
+            referencedRelation: "project_domains"
             referencedColumns: ["id"]
           },
           {
