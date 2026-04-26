@@ -144,8 +144,11 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_featured: boolean
           is_public: boolean
           owner_id: string
+          remix_count: number
+          remixed_from_id: string | null
           slug: string
           summary: string | null
           title: string
@@ -154,8 +157,11 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_featured?: boolean
           is_public?: boolean
           owner_id: string
+          remix_count?: number
+          remixed_from_id?: string | null
           slug: string
           summary?: string | null
           title?: string
@@ -164,14 +170,25 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_featured?: boolean
           is_public?: boolean
           owner_id?: string
+          remix_count?: number
+          remixed_from_id?: string | null
           slug?: string
           summary?: string | null
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "projects_remixed_from_id_fkey"
+            columns: ["remixed_from_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
