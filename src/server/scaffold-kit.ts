@@ -16,6 +16,7 @@
  */
 import type { ProjectFile } from "./generate.server";
 import { backendKit, BACKEND_DEPS } from "./backend-kit";
+import { EXAMPLES_PACK } from "./examples-pack";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
@@ -2379,6 +2380,10 @@ const KIT: KitFile[] = [
     content: EXAMPLE_TABS_SHEET_SETTINGS,
     overwrite: true,
   },
+  // Curated copy-from pack: ~24 reference blocks covering auth, dashboard,
+  // pricing, hero, forms, and tables. Lives in examples-pack.ts to keep this
+  // file from getting unwieldy.
+  ...EXAMPLES_PACK,
 ];
 
 /**

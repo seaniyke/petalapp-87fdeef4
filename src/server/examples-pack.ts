@@ -1,0 +1,1467 @@
+/**
+ * Curated "copy-from" reference patterns for the AI.
+ *
+ * These files live under `src/components/examples/` and are NEVER imported
+ * by App.tsx. They exist purely as a high-quality source of patterns the
+ * AI can read and adapt for the user's actual feature work.
+ *
+ * Licensing: every block here is original code authored for Petal. They
+ * compose only the canonical shadcn-style primitives already shipped in
+ * `src/components/ui/*` (MIT) plus lucide-react icons (ISC). No verbatim
+ * copies from third-party landing pages, paid template kits, or other
+ * proprietary sources. Safe to ship under our own terms.
+ *
+ * Naming convention: `<surface>-<intent>.tsx`, e.g. `auth-sign-in-card.tsx`.
+ * Keep each file:
+ *   - Self-contained (one default export, one screen / one block)
+ *   - <200 lines
+ *   - Semantic-token only — never raw hex / Tailwind colour names
+ *   - Light + dark friendly via design tokens
+ *   - No data fetching, no router — these are pure presentational refs
+ */
+import type { ProjectFile } from "./generate.server";
+
+/* =================================================================
+ * AUTH (4)
+ * ================================================================= */
+
+const AUTH_SIGN_IN_CARD = `import { useState } from "react";
+import { Mail, Lock, Loader2 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+
+/**
+ * Centered sign-in card. Pair with /signup and /forgot-password routes.
+ * Replace the submit handler with your real auth call.
+ */
+export default function SignInCard() {
+  const [loading, setLoading] = useState(false);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted/40 px-4 py-12">
+      <Card className="w-full max-w-sm border-border/60 shadow-xl">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl">Welcome back</CardTitle>
+          <CardDescription>Sign in to continue to your workspace</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setLoading(true);
+              setTimeout(() => setLoading(false), 800);
+            }}
+            className="space-y-3"
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input id="email" type="email" placeholder="you@company.com" className="pl-9" required />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <a className="text-xs text-muted-foreground hover:text-foreground" href="#">
+                  Forgot?
+                </a>
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input id="password" type="password" placeholder="••••••••" className="pl-9" required />
+              </div>
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Sign in
+            </Button>
+          </form>
+          <div className="flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground">or</span>
+            <Separator className="flex-1" />
+          </div>
+          <Button variant="outline" className="w-full">
+            Continue with Google
+          </Button>
+        </CardContent>
+        <CardFooter className="justify-center text-sm text-muted-foreground">
+          New here?&nbsp;<a className="font-medium text-foreground hover:underline" href="#">Create an account</a>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+}
+`;
+
+const AUTH_SIGN_UP_SPLIT = `import { Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+
+/**
+ * Split-screen sign-up: brand panel left, form right.
+ * Mirror of common SaaS onboarding pattern.
+ */
+export default function SignUpSplit() {
+  return (
+    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
+      <aside className="relative hidden bg-gradient-to-br from-primary/15 via-background to-background lg:flex lg:flex-col lg:justify-between lg:p-10">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Sparkles className="h-5 w-5 text-primary" /> Petal
+        </div>
+        <div className="space-y-4">
+          <h2 className="text-3xl font-semibold leading-tight">
+            Build something the world hasn't seen yet.
+          </h2>
+          <p className="max-w-md text-sm text-muted-foreground">
+            Start free. No credit card. Invite your team when you're ready.
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground">© Petal Labs</p>
+      </aside>
+      <main className="flex items-center justify-center px-6 py-12">
+        <form className="w-full max-w-sm space-y-4">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold">Create your account</h1>
+            <p className="text-sm text-muted-foreground">It takes less than a minute.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="first">First name</Label>
+              <Input id="first" required />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="last">Last name</Label>
+              <Input id="last" required />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Work email</Label>
+            <Input id="email" type="email" required />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Password</Label>
+            <Input id="password" type="password" required />
+            <p className="text-[11px] text-muted-foreground">At least 8 characters with one number.</p>
+          </div>
+          <label className="flex items-start gap-2 text-xs text-muted-foreground">
+            <Checkbox id="tos" defaultChecked className="mt-0.5" />
+            I agree to the Terms of Service and Privacy Policy.
+          </label>
+          <Button type="submit" className="w-full">Create account</Button>
+          <p className="text-center text-sm text-muted-foreground">
+            Already have one?&nbsp;<a className="font-medium text-foreground hover:underline" href="#">Sign in</a>
+          </p>
+        </form>
+      </main>
+    </div>
+  );
+}
+`;
+
+const AUTH_FORGOT_PASSWORD = `import { useState } from "react";
+import { ArrowLeft, MailCheck } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+/**
+ * Forgot-password flow with success confirmation state.
+ * Replace the timeout with the real password-reset call.
+ */
+export default function ForgotPassword() {
+  const [sent, setSent] = useState(false);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center px-4 py-12">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <a href="#" className="mb-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-3 w-3" /> Back to sign in
+          </a>
+          <CardTitle>Reset your password</CardTitle>
+          <CardDescription>
+            We'll email you a link to set a new password.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {sent ? (
+            <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+              <MailCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <div>
+                <p className="font-medium">Check your inbox</p>
+                <p className="text-xs text-muted-foreground">
+                  If an account exists for that email, a reset link is on the way.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setSent(true);
+              }}
+              className="space-y-3"
+            >
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" placeholder="you@company.com" required />
+              </div>
+              <Button type="submit" className="w-full">Send reset link</Button>
+            </form>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+`;
+
+const AUTH_OTP_CARD = `import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp";
+
+/**
+ * One-time-code verification screen. Use after passwordless sign-in or
+ * 2FA challenge. Slot count is six by convention.
+ */
+export default function OtpCard() {
+  return (
+    <div className="flex min-h-screen items-center justify-center px-4 py-12">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center">
+          <CardTitle>Enter your code</CardTitle>
+          <CardDescription>We sent a six-digit code to your email.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center gap-4">
+          <InputOTP maxLength={6}>
+            <InputOTPGroup>
+              <InputOTPSlot index={0} />
+              <InputOTPSlot index={1} />
+              <InputOTPSlot index={2} />
+            </InputOTPGroup>
+            <InputOTPSeparator />
+            <InputOTPGroup>
+              <InputOTPSlot index={3} />
+              <InputOTPSlot index={4} />
+              <InputOTPSlot index={5} />
+            </InputOTPGroup>
+          </InputOTP>
+          <Button className="w-full">Verify and continue</Button>
+          <button className="text-xs text-muted-foreground hover:text-foreground">
+            Didn't receive it? Resend
+          </button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+`;
+
+/* =================================================================
+ * DASHBOARD (5)
+ * ================================================================= */
+
+const DASHBOARD_STATS_GRID = `import { ArrowDownRight, ArrowUpRight, DollarSign, ShoppingCart, Users, Activity } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+type Stat = { label: string; value: string; delta: number; icon: React.ComponentType<{ className?: string }> };
+
+const STATS: Stat[] = [
+  { label: "Revenue", value: "$48,294", delta: 12.4, icon: DollarSign },
+  { label: "Orders", value: "1,294", delta: 4.1, icon: ShoppingCart },
+  { label: "Active users", value: "8,212", delta: -2.3, icon: Users },
+  { label: "Sessions", value: "23,402", delta: 9.8, icon: Activity },
+];
+
+/**
+ * Four-up KPI grid. Drop at the top of any dashboard route.
+ */
+export default function StatsGrid() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {STATS.map((s) => {
+        const positive = s.delta >= 0;
+        const Icon = s.icon;
+        return (
+          <Card key={s.label}>
+            <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{s.label}</CardTitle>
+              <Icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-semibold tracking-tight">{s.value}</div>
+              <p className={\`mt-1 inline-flex items-center gap-1 text-xs \${positive ? "text-green-600 dark:text-green-400" : "text-destructive"}\`}>
+                {positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                {Math.abs(s.delta)}% from last week
+              </p>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+`;
+
+const DASHBOARD_SIDEBAR_LAYOUT = `import { Home, BarChart3, Users, Settings, Bell, Search } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+const NAV = [
+  { label: "Overview", icon: Home, active: true },
+  { label: "Analytics", icon: BarChart3 },
+  { label: "Customers", icon: Users },
+  { label: "Settings", icon: Settings },
+];
+
+/**
+ * Persistent left-rail dashboard layout. Slot route content into <main>.
+ */
+export default function SidebarLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-screen bg-muted/30">
+      <aside className="hidden w-60 shrink-0 border-r border-border bg-background lg:flex lg:flex-col">
+        <div className="flex h-14 items-center px-4 font-semibold">Acme Co</div>
+        <nav className="flex-1 space-y-0.5 px-2">
+          {NAV.map((n) => {
+            const Icon = n.icon;
+            return (
+              <a
+                key={n.label}
+                href="#"
+                className={\`flex items-center gap-2 rounded-md px-3 py-2 text-sm \${
+                  n.active ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                }\`}
+              >
+                <Icon className="h-4 w-4" />
+                {n.label}
+              </a>
+            );
+          })}
+        </nav>
+        <div className="flex items-center gap-2 border-t border-border p-3 text-sm">
+          <Avatar className="h-7 w-7">
+            <AvatarFallback>AB</AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <p className="text-xs font-medium">Anna Bell</p>
+            <p className="text-[11px] text-muted-foreground">Admin</p>
+          </div>
+        </div>
+      </aside>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-14 items-center gap-3 border-b border-border bg-background px-4">
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Search…" className="pl-9" />
+          </div>
+          <Button variant="ghost" size="icon">
+            <Bell className="h-4 w-4" />
+          </Button>
+        </header>
+        <main className="flex-1 p-6">{children}</main>
+      </div>
+    </div>
+  );
+}
+`;
+
+const DASHBOARD_CHART_CARD = `import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+/**
+ * Analytics card with range tabs and a simple SVG sparkline placeholder.
+ * Swap the polyline for a chart library when wiring real data.
+ */
+export default function ChartCard() {
+  const points = "0,40 20,32 40,36 60,18 80,22 100,12 120,18 140,8 160,14 180,4";
+  return (
+    <Card>
+      <CardHeader className="flex-row items-end justify-between space-y-0">
+        <div>
+          <CardTitle>Weekly traffic</CardTitle>
+          <CardDescription>Sessions across all properties</CardDescription>
+        </div>
+        <Tabs defaultValue="7d">
+          <TabsList>
+            <TabsTrigger value="7d">7d</TabsTrigger>
+            <TabsTrigger value="30d">30d</TabsTrigger>
+            <TabsTrigger value="90d">90d</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </CardHeader>
+      <CardContent>
+        <div className="text-3xl font-semibold tracking-tight">23,402</div>
+        <p className="text-xs text-muted-foreground">+9.8% vs previous period</p>
+        <svg viewBox="0 0 180 48" className="mt-4 h-20 w-full">
+          <polyline
+            points={points}
+            fill="none"
+            stroke="hsl(var(--primary))"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+`;
+
+const DASHBOARD_ACTIVITY_FEED = `import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+type Event = { who: string; what: string; when: string; tag?: "info" | "success" | "warn" };
+
+const EVENTS: Event[] = [
+  { who: "Maria Lopez", what: "deployed v2.4 to production", when: "2m", tag: "success" },
+  { who: "Devon Park", what: "opened a new support ticket", when: "14m", tag: "warn" },
+  { who: "Yuki Tanaka", what: "invited 3 new teammates", when: "1h", tag: "info" },
+  { who: "Sam Reed", what: "renamed the workspace", when: "3h" },
+];
+
+const variant: Record<NonNullable<Event["tag"]>, "default" | "secondary" | "destructive"> = {
+  info: "secondary",
+  success: "default",
+  warn: "destructive",
+};
+
+/**
+ * Vertical activity feed for dashboards and project sidebars.
+ */
+export default function ActivityFeed() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Recent activity</CardTitle>
+        <CardDescription>Latest changes across your team</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ol className="space-y-4">
+          {EVENTS.map((e, i) => (
+            <li key={i} className="flex items-start gap-3">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="text-xs">
+                  {e.who.split(" ").map((p) => p[0]).join("").slice(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 text-sm">
+                <p>
+                  <span className="font-medium">{e.who}</span>{" "}
+                  <span className="text-muted-foreground">{e.what}</span>
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{e.when} ago</p>
+              </div>
+              {e.tag && <Badge variant={variant[e.tag]}>{e.tag}</Badge>}
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
+  );
+}
+`;
+
+const DASHBOARD_EMPTY_STATE = `import { Inbox, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+/**
+ * Friendly empty-state block for any list/table that hasn't been populated yet.
+ */
+export default function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 px-6 py-16 text-center">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-background ring-1 ring-border">
+        <Inbox className="h-5 w-5 text-muted-foreground" />
+      </div>
+      <h3 className="text-base font-semibold">No items yet</h3>
+      <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+        Create your first item to get started. You can always change or delete it later.
+      </p>
+      <Button className="mt-4 inline-flex items-center gap-1.5">
+        <Plus className="h-4 w-4" /> Create item
+      </Button>
+    </div>
+  );
+}
+`;
+
+/* =================================================================
+ * PRICING (3)
+ * ================================================================= */
+
+const PRICING_THREE_TIER = `import { Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+type Tier = { name: string; price: string; cadence: string; tagline: string; features: string[]; cta: string; featured?: boolean };
+
+const TIERS: Tier[] = [
+  {
+    name: "Starter",
+    price: "$0",
+    cadence: "/forever",
+    tagline: "For tinkerers and side-projects.",
+    features: ["1 project", "Community support", "Public projects only"],
+    cta: "Get started",
+  },
+  {
+    name: "Pro",
+    price: "$19",
+    cadence: "/month",
+    tagline: "For makers shipping real products.",
+    features: ["Unlimited projects", "Email support", "Custom domains", "Private projects"],
+    cta: "Start free trial",
+    featured: true,
+  },
+  {
+    name: "Team",
+    price: "$49",
+    cadence: "/seat / month",
+    tagline: "For teams that build together.",
+    features: ["Everything in Pro", "Role-based access", "SSO + SAML", "Audit log"],
+    cta: "Talk to sales",
+  },
+];
+
+/**
+ * Three-tier pricing block. Highlight the middle plan with \`featured\`.
+ */
+export default function PricingThreeTier() {
+  return (
+    <section className="mx-auto max-w-6xl px-4 py-20">
+      <div className="mx-auto mb-12 max-w-2xl text-center">
+        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Simple, honest pricing</h2>
+        <p className="mt-3 text-muted-foreground">Start free. Upgrade when it pays for itself.</p>
+      </div>
+      <div className="grid gap-6 md:grid-cols-3">
+        {TIERS.map((t) => (
+          <Card key={t.name} className={t.featured ? "border-primary shadow-lg" : ""}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>{t.name}</CardTitle>
+                {t.featured && <Badge>Most popular</Badge>}
+              </div>
+              <CardDescription>{t.tagline}</CardDescription>
+              <div className="mt-3 flex items-baseline gap-1">
+                <span className="text-4xl font-semibold tracking-tight">{t.price}</span>
+                <span className="text-sm text-muted-foreground">{t.cadence}</span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm">
+                {t.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <Button variant={t.featured ? "default" : "outline"} className="w-full">{t.cta}</Button>
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+    </section>
+  );
+}
+`;
+
+const PRICING_TOGGLE_BILLING = `import { useState } from "react";
+import { Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+
+const PLANS = [
+  { name: "Hobby", monthly: 0, annual: 0, perks: ["1 site", "100k requests / mo"] },
+  { name: "Pro", monthly: 24, annual: 19, perks: ["Unlimited sites", "10M requests / mo", "Priority support"] },
+];
+
+/**
+ * Pricing block with monthly/annual toggle and 20% savings call-out.
+ */
+export default function PricingToggleBilling() {
+  const [annual, setAnnual] = useState(true);
+  return (
+    <section className="mx-auto max-w-4xl px-4 py-20">
+      <div className="mb-10 flex flex-col items-center gap-4">
+        <h2 className="text-3xl font-semibold tracking-tight">Pick a plan</h2>
+        <div className="flex items-center gap-3 rounded-full border border-border bg-muted/30 px-4 py-1.5 text-sm">
+          <Label htmlFor="billing-toggle" className={annual ? "text-muted-foreground" : "font-medium"}>Monthly</Label>
+          <Switch id="billing-toggle" checked={annual} onCheckedChange={setAnnual} />
+          <Label htmlFor="billing-toggle" className={annual ? "font-medium" : "text-muted-foreground"}>
+            Annual <span className="ml-1 text-xs text-primary">−20%</span>
+          </Label>
+        </div>
+      </div>
+      <div className="grid gap-6 sm:grid-cols-2">
+        {PLANS.map((p) => {
+          const price = annual ? p.annual : p.monthly;
+          return (
+            <Card key={p.name}>
+              <CardHeader>
+                <CardTitle>{p.name}</CardTitle>
+                <div className="mt-2 flex items-baseline gap-1">
+                  <span className="text-4xl font-semibold">\${price}</span>
+                  <span className="text-sm text-muted-foreground">/{annual ? "mo, billed annually" : "month"}</span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2 text-sm">
+                  {p.perks.map((perk) => (
+                    <li key={perk} className="flex items-start gap-2">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      {perk}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button className="w-full">Choose {p.name}</Button>
+              </CardFooter>
+            </Card>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+`;
+
+const PRICING_COMPARISON_TABLE = `import { Check, Minus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+const ROWS = [
+  { feature: "Projects", starter: "1", pro: "Unlimited", team: "Unlimited" },
+  { feature: "Custom domain", starter: false, pro: true, team: true },
+  { feature: "Role-based access", starter: false, pro: false, team: true },
+  { feature: "SSO + SAML", starter: false, pro: false, team: true },
+  { feature: "Audit log", starter: false, pro: false, team: true },
+  { feature: "Email support", starter: false, pro: true, team: true },
+];
+
+function Cell({ v }: { v: string | boolean }) {
+  if (typeof v === "string") return <span className="text-sm">{v}</span>;
+  return v ? <Check className="h-4 w-4 text-primary" /> : <Minus className="h-4 w-4 text-muted-foreground" />;
+}
+
+/**
+ * Side-by-side feature comparison table to pair with a pricing grid.
+ */
+export default function PricingComparisonTable() {
+  return (
+    <section className="mx-auto max-w-5xl px-4 py-16">
+      <h2 className="mb-6 text-center text-2xl font-semibold tracking-tight">Compare plans</h2>
+      <div className="overflow-hidden rounded-xl border border-border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-1/3">Feature</TableHead>
+              <TableHead>Starter</TableHead>
+              <TableHead>Pro</TableHead>
+              <TableHead>Team</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {ROWS.map((r) => (
+              <TableRow key={r.feature}>
+                <TableCell className="font-medium">{r.feature}</TableCell>
+                <TableCell><Cell v={r.starter} /></TableCell>
+                <TableCell><Cell v={r.pro} /></TableCell>
+                <TableCell><Cell v={r.team} /></TableCell>
+              </TableRow>
+            ))}
+            <TableRow>
+              <TableCell></TableCell>
+              <TableCell><Button size="sm" variant="outline">Choose</Button></TableCell>
+              <TableCell><Button size="sm">Choose</Button></TableCell>
+              <TableCell><Button size="sm" variant="outline">Choose</Button></TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </section>
+  );
+}
+`;
+
+/* =================================================================
+ * HERO (4)
+ * ================================================================= */
+
+const HERO_CENTERED_GRADIENT = `import { ArrowRight, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+/**
+ * Centered marketing hero with gradient backdrop, eyebrow badge, and dual CTAs.
+ */
+export default function CenteredGradientHero() {
+  return (
+    <section className="relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_hsl(var(--primary)/0.12),_transparent_60%)]" />
+      <div className="mx-auto flex max-w-4xl flex-col items-center px-4 py-24 text-center sm:py-32">
+        <Badge variant="secondary" className="mb-6 inline-flex items-center gap-1.5">
+          <Sparkles className="h-3 w-3" /> Now in public beta
+        </Badge>
+        <h1 className="text-4xl font-semibold tracking-tight sm:text-6xl">
+          Ship products at the speed of thought.
+        </h1>
+        <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
+          A workspace built for makers, designers, and tiny teams who want to move quickly without the bloat.
+        </p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Button size="lg" className="inline-flex items-center gap-1.5">
+            Get started <ArrowRight className="h-4 w-4" />
+          </Button>
+          <Button size="lg" variant="outline">Watch demo</Button>
+        </div>
+        <p className="mt-6 text-xs text-muted-foreground">No credit card required</p>
+      </div>
+    </section>
+  );
+}
+`;
+
+const HERO_SPLIT_SCREENSHOT = `import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+/**
+ * Split hero: copy left, product mock right. The mock is a styled placeholder
+ * card — replace with a real screenshot when ready.
+ */
+export default function SplitScreenshotHero() {
+  return (
+    <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-20 lg:grid-cols-2 lg:py-28">
+      <div>
+        <p className="mb-3 text-sm font-medium text-primary">Built for product teams</p>
+        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+          Plan, build, and launch — all in one place.
+        </h1>
+        <p className="mt-5 max-w-lg text-muted-foreground">
+          Replace your patchwork of tools with one clean surface. Your team will thank you.
+        </p>
+        <div className="mt-7 flex gap-3">
+          <Button className="inline-flex items-center gap-1.5">
+            Start free <ArrowRight className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost">See pricing →</Button>
+        </div>
+      </div>
+      <div className="relative">
+        <div className="absolute inset-0 -z-10 rounded-2xl bg-gradient-to-br from-primary/20 via-transparent to-transparent blur-2xl" />
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+          <div className="flex items-center gap-1.5 border-b border-border bg-muted/40 px-3 py-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
+            <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
+            <span className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
+          </div>
+          <div className="aspect-[16/10] bg-gradient-to-br from-muted/40 to-muted/10" />
+        </div>
+      </div>
+    </section>
+  );
+}
+`;
+
+const HERO_LOGO_CLOUD = `/**
+ * Social-proof logo cloud. Replace text-only "logos" with real SVG logos
+ * once you have them. Keep this neutral — too colorful and it competes
+ * with the page CTA.
+ */
+const LOGOS = ["Acme", "Globex", "Initech", "Hooli", "Umbrella", "Soylent"];
+
+export default function LogoCloud() {
+  return (
+    <section className="mx-auto max-w-5xl px-4 py-12">
+      <p className="mb-6 text-center text-xs uppercase tracking-widest text-muted-foreground">
+        Trusted by teams at
+      </p>
+      <div className="grid grid-cols-3 gap-8 opacity-70 sm:grid-cols-6">
+        {LOGOS.map((l) => (
+          <div key={l} className="flex items-center justify-center text-sm font-semibold tracking-tight text-muted-foreground">
+            {l}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+`;
+
+const HERO_FEATURE_BAND = `import { Bolt, ShieldCheck, GitBranch, Globe } from "lucide-react";
+
+const FEATURES = [
+  { icon: Bolt, title: "Fast by default", body: "Tuned for sub-second interactions, even on slow networks." },
+  { icon: ShieldCheck, title: "Secure", body: "SOC2-aligned defaults so you don't have to think about it." },
+  { icon: GitBranch, title: "Versioned", body: "Every change is auditable. Roll back in one click." },
+  { icon: Globe, title: "Global", body: "Edge-first delivery to every continent except Antarctica." },
+];
+
+/**
+ * Four-up feature band to sit below the hero.
+ */
+export default function FeatureBand() {
+  return (
+    <section className="mx-auto max-w-6xl px-4 py-20">
+      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        {FEATURES.map((f) => {
+          const Icon = f.icon;
+          return (
+            <div key={f.title} className="space-y-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Icon className="h-4 w-4" />
+              </div>
+              <h3 className="font-semibold">{f.title}</h3>
+              <p className="text-sm text-muted-foreground">{f.body}</p>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+`;
+
+/* =================================================================
+ * FORMS (4)
+ * ================================================================= */
+
+const FORM_PROFILE_SETTINGS = `import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+
+/**
+ * Two-column profile settings form. Use inside a Tabs > "Profile" panel.
+ */
+export default function ProfileSettings() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Profile</CardTitle>
+        <CardDescription>How others see you across the workspace.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Avatar className="h-16 w-16"><AvatarFallback>AB</AvatarFallback></Avatar>
+          <div className="space-x-2">
+            <Button variant="outline" size="sm">Upload</Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground">Remove</Button>
+          </div>
+        </div>
+        <Separator />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="name">Display name</Label>
+            <Input id="name" defaultValue="Anna Bell" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="username">Username</Label>
+            <Input id="username" defaultValue="anna" />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="bio">Bio</Label>
+          <Textarea id="bio" rows={3} placeholder="Tell people what you're working on" />
+          <p className="text-xs text-muted-foreground">Markdown supported.</p>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost">Cancel</Button>
+          <Button>Save changes</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+`;
+
+const FORM_MULTI_STEP = `import { useState } from "react";
+import { Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+
+const STEPS = ["Account", "Workspace", "Invite team"];
+
+/**
+ * Three-step onboarding wizard with progress bar. Replace each panel with
+ * the real fields for that step.
+ */
+export default function MultiStepForm() {
+  const [step, setStep] = useState(0);
+  const pct = ((step + 1) / STEPS.length) * 100;
+  return (
+    <Card className="mx-auto max-w-lg">
+      <CardHeader className="space-y-3">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Step {step + 1} of {STEPS.length}</span>
+          <span>{STEPS[step]}</span>
+        </div>
+        <Progress value={pct} />
+        <CardTitle className="text-xl">{STEPS[step]}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {step === 0 && (
+          <div className="space-y-3">
+            <div className="space-y-1.5"><Label>Email</Label><Input type="email" /></div>
+            <div className="space-y-1.5"><Label>Password</Label><Input type="password" /></div>
+          </div>
+        )}
+        {step === 1 && (
+          <div className="space-y-3">
+            <div className="space-y-1.5"><Label>Workspace name</Label><Input placeholder="Acme Co" /></div>
+            <div className="space-y-1.5"><Label>Subdomain</Label><Input placeholder="acme" /></div>
+          </div>
+        )}
+        {step === 2 && (
+          <div className="space-y-3">
+            <div className="space-y-1.5"><Label>Teammate emails</Label><Input placeholder="comma-separated" /></div>
+            <p className="text-xs text-muted-foreground">You can always invite more later.</p>
+          </div>
+        )}
+        <div className="flex justify-between pt-2">
+          <Button variant="ghost" disabled={step === 0} onClick={() => setStep((s) => s - 1)}>Back</Button>
+          {step < STEPS.length - 1 ? (
+            <Button onClick={() => setStep((s) => s + 1)}>Continue</Button>
+          ) : (
+            <Button className="inline-flex items-center gap-1.5">
+              <Check className="h-4 w-4" /> Finish
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+`;
+
+const FORM_CONTACT = `import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+/**
+ * Public-facing contact form with reason dropdown. Pair with /contact route.
+ */
+export default function ContactForm() {
+  return (
+    <Card className="mx-auto max-w-xl">
+      <CardHeader>
+        <CardTitle>Get in touch</CardTitle>
+        <CardDescription>We typically reply within one business day.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5"><Label htmlFor="name">Name</Label><Input id="name" required /></div>
+            <div className="space-y-1.5"><Label htmlFor="email">Email</Label><Input id="email" type="email" required /></div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="reason">Reason</Label>
+            <Select>
+              <SelectTrigger id="reason"><SelectValue placeholder="Choose one" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sales">Sales</SelectItem>
+                <SelectItem value="support">Support</SelectItem>
+                <SelectItem value="billing">Billing</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="msg">Message</Label>
+            <Textarea id="msg" rows={5} placeholder="How can we help?" required />
+          </div>
+          <div className="flex justify-end">
+            <Button type="submit">Send message</Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+`;
+
+const FORM_INLINE_VALIDATION = `import { useState } from "react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+function strength(pwd: string): { score: number; label: string } {
+  let score = 0;
+  if (pwd.length >= 8) score++;
+  if (/[A-Z]/.test(pwd)) score++;
+  if (/[0-9]/.test(pwd)) score++;
+  if (/[^A-Za-z0-9]/.test(pwd)) score++;
+  return { score, label: ["Too short", "Weak", "Okay", "Strong", "Excellent"][score] };
+}
+
+/**
+ * Inline-validated password field with strength meter. The pattern scales
+ * to any field that needs live feedback before submit.
+ */
+export default function InlineValidation() {
+  const [pwd, setPwd] = useState("");
+  const s = strength(pwd);
+  const colors = ["bg-muted", "bg-destructive", "bg-yellow-500", "bg-primary", "bg-green-500"];
+  const valid = s.score >= 3;
+
+  return (
+    <form className="mx-auto max-w-sm space-y-3">
+      <div className="space-y-1.5">
+        <Label htmlFor="pwd">Choose a password</Label>
+        <Input
+          id="pwd"
+          type="password"
+          value={pwd}
+          onChange={(e) => setPwd(e.target.value)}
+          aria-invalid={pwd.length > 0 && !valid}
+        />
+      </div>
+      <div className="flex gap-1">
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className={\`h-1 flex-1 rounded-full \${i < s.score ? colors[s.score] : "bg-muted"}\`} />
+        ))}
+      </div>
+      <p className={\`flex items-center gap-1 text-xs \${valid ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}\`}>
+        {valid ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+        {pwd ? s.label : "8+ chars, mix of cases, numbers, and symbols"}
+      </p>
+      <Button type="submit" disabled={!valid} className="w-full">Create account</Button>
+    </form>
+  );
+}
+`;
+
+/* =================================================================
+ * TABLES (4)
+ * ================================================================= */
+
+const TABLE_USERS_LIST = `import { MoreHorizontal } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+type User = { name: string; email: string; role: "Owner" | "Admin" | "Member"; status: "Active" | "Invited" };
+
+const USERS: User[] = [
+  { name: "Anna Bell", email: "anna@acme.co", role: "Owner", status: "Active" },
+  { name: "Devon Park", email: "devon@acme.co", role: "Admin", status: "Active" },
+  { name: "Yuki Tanaka", email: "yuki@acme.co", role: "Member", status: "Active" },
+  { name: "Sam Reed", email: "sam@acme.co", role: "Member", status: "Invited" },
+];
+
+/**
+ * Team members table with avatar cell, role badge, and per-row actions menu.
+ */
+export default function UsersList() {
+  return (
+    <div className="rounded-xl border border-border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-10"><Checkbox /></TableHead>
+            <TableHead>User</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="w-12" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {USERS.map((u) => (
+            <TableRow key={u.email}>
+              <TableCell><Checkbox /></TableCell>
+              <TableCell>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs">
+                      {u.name.split(" ").map((p) => p[0]).join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="text-sm font-medium">{u.name}</div>
+                    <div className="text-xs text-muted-foreground">{u.email}</div>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell><Badge variant="secondary">{u.role}</Badge></TableCell>
+              <TableCell>
+                <span className={\`inline-flex h-2 w-2 rounded-full \${u.status === "Active" ? "bg-green-500" : "bg-yellow-500"}\`} />
+                <span className="ml-2 text-sm text-muted-foreground">{u.status}</span>
+              </TableCell>
+              <TableCell>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>Change role</DropdownMenuItem>
+                    <DropdownMenuItem>Resend invite</DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive">Remove</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+`;
+
+const TABLE_INVOICES = `import { Download } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+type Status = "Paid" | "Open" | "Overdue";
+
+const INVOICES: Array<{ id: string; date: string; total: string; status: Status }> = [
+  { id: "INV-1042", date: "Apr 18, 2026", total: "$129.00", status: "Paid" },
+  { id: "INV-1041", date: "Mar 18, 2026", total: "$129.00", status: "Paid" },
+  { id: "INV-1040", date: "Feb 18, 2026", total: "$229.00", status: "Open" },
+  { id: "INV-1039", date: "Jan 18, 2026", total: "$129.00", status: "Overdue" },
+];
+
+const variant: Record<Status, "default" | "secondary" | "destructive"> = {
+  Paid: "secondary",
+  Open: "default",
+  Overdue: "destructive",
+};
+
+/**
+ * Invoices / billing-history table with download per row and a totals footer.
+ */
+export default function InvoicesTable() {
+  return (
+    <div className="rounded-xl border border-border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Invoice</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Total</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Download</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {INVOICES.map((i) => (
+            <TableRow key={i.id}>
+              <TableCell className="font-medium">{i.id}</TableCell>
+              <TableCell className="text-muted-foreground">{i.date}</TableCell>
+              <TableCell>{i.total}</TableCell>
+              <TableCell><Badge variant={variant[i.status]}>{i.status}</Badge></TableCell>
+              <TableCell className="text-right">
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+`;
+
+const TABLE_FILTER_TOOLBAR = `import { useState } from "react";
+import { Filter, Plus, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type Order = { id: string; customer: string; total: string; status: "Fulfilled" | "Pending" | "Refunded" };
+
+const ORDERS: Order[] = [
+  { id: "#3201", customer: "Lina Cho", total: "$240.00", status: "Fulfilled" },
+  { id: "#3200", customer: "Marc Aubin", total: "$92.50", status: "Pending" },
+  { id: "#3199", customer: "Priya Nair", total: "$540.00", status: "Fulfilled" },
+  { id: "#3198", customer: "Tom Reilly", total: "$60.00", status: "Refunded" },
+];
+
+const tone: Record<Order["status"], "default" | "secondary" | "destructive"> = {
+  Fulfilled: "secondary",
+  Pending: "default",
+  Refunded: "destructive",
+};
+
+/**
+ * Table with a sticky filter toolbar above: free-text search, status select,
+ * and a primary action.
+ */
+export default function FilterToolbarTable() {
+  const [q, setQ] = useState("");
+  const [status, setStatus] = useState<string>("all");
+  const rows = ORDERS.filter((o) =>
+    (status === "all" || o.status.toLowerCase() === status) &&
+    (q === "" || o.customer.toLowerCase().includes(q.toLowerCase()) || o.id.includes(q)),
+  );
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search orders…" className="pl-9" />
+        </div>
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="fulfilled">Fulfilled</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="refunded">Refunded</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" className="inline-flex items-center gap-1.5">
+          <Filter className="h-4 w-4" /> More filters
+        </Button>
+        <div className="ml-auto" />
+        <Button className="inline-flex items-center gap-1.5"><Plus className="h-4 w-4" /> New order</Button>
+      </div>
+      <div className="rounded-xl border border-border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Order</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead>Total</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? (
+              <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">No matching orders</TableCell></TableRow>
+            ) : rows.map((o) => (
+              <TableRow key={o.id}>
+                <TableCell className="font-medium">{o.id}</TableCell>
+                <TableCell>{o.customer}</TableCell>
+                <TableCell>{o.total}</TableCell>
+                <TableCell><Badge variant={tone[o.status]}>{o.status}</Badge></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+`;
+
+const TABLE_PAGINATED = `import { useMemo, useState } from "react";
+import { ArrowUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+
+type Row = { id: number; product: string; sku: string; qty: number };
+
+const DATA: Row[] = Array.from({ length: 23 }, (_, i) => ({
+  id: i + 1,
+  product: ["Sky Tee", "Cotton Hoodie", "Linen Cap", "Canvas Tote"][i % 4],
+  sku: \`SKU-\${1000 + i}\`,
+  qty: ((i * 7) % 90) + 5,
+}));
+
+const PAGE_SIZE = 8;
+
+/**
+ * Paginated, sortable table. Sorting is local for the example — wire to the
+ * server when you have one.
+ */
+export default function PaginatedTable() {
+  const [page, setPage] = useState(1);
+  const [sortDesc, setSortDesc] = useState(true);
+
+  const sorted = useMemo(() => [...DATA].sort((a, b) => sortDesc ? b.qty - a.qty : a.qty - b.qty), [sortDesc]);
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+  const visible = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Product</TableHead>
+              <TableHead>SKU</TableHead>
+              <TableHead>
+                <Button variant="ghost" size="sm" className="-ml-3 h-7" onClick={() => setSortDesc((s) => !s)}>
+                  Qty <ArrowUpDown className="ml-1 h-3 w-3" />
+                </Button>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visible.map((r) => (
+              <TableRow key={r.id}>
+                <TableCell className="font-medium">{r.product}</TableCell>
+                <TableCell className="text-muted-foreground">{r.sku}</TableCell>
+                <TableCell>{r.qty}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setPage((p) => Math.max(1, p - 1)); }} />
+          </PaginationItem>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+            <PaginationItem key={n}>
+              <PaginationLink href="#" isActive={n === page} onClick={(e) => { e.preventDefault(); setPage(n); }}>
+                {n}
+              </PaginationLink>
+            </PaginationItem>
+          ))}
+          <PaginationItem>
+            <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setPage((p) => Math.min(totalPages, p + 1)); }} />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    </div>
+  );
+}
+`;
+
+/* =================================================================
+ * INDEX MARKDOWN
+ * ================================================================= */
+
+const EXAMPLES_INDEX = `# Examples pack — copy-from reference patterns
+
+These files are NOT imported by App.tsx. They exist purely as a high-quality
+source of patterns the AI can read and adapt. When the user asks for a
+"sign-in screen", "pricing page", "team members table", etc., open the
+matching file below and adapt — do not invent layouts from scratch.
+
+## Auth
+- \`auth-sign-in-card.tsx\` — centered sign-in with email/password + OAuth
+- \`auth-sign-up-split.tsx\` — split-screen onboarding (brand left, form right)
+- \`auth-forgot-password.tsx\` — reset flow with success state
+- \`auth-otp-card.tsx\` — six-digit code verification
+
+## Dashboard
+- \`dashboard-stats-grid.tsx\` — four-up KPI cards with delta indicators
+- \`dashboard-sidebar-layout.tsx\` — persistent left rail + top bar shell
+- \`dashboard-chart-card.tsx\` — analytics card with range tabs + sparkline
+- \`dashboard-activity-feed.tsx\` — vertical timeline of team events
+- \`dashboard-empty-state.tsx\` — friendly empty list/table block
+
+## Pricing
+- \`pricing-three-tier.tsx\` — three-plan grid with featured tier
+- \`pricing-toggle-billing.tsx\` — monthly / annual toggle
+- \`pricing-comparison-table.tsx\` — side-by-side feature matrix
+
+## Hero
+- \`hero-centered-gradient.tsx\` — centered marketing hero with gradient
+- \`hero-split-screenshot.tsx\` — copy left, product mock right
+- \`hero-logo-cloud.tsx\` — social-proof logo strip
+- \`hero-feature-band.tsx\` — four-up feature row below the hero
+
+## Forms
+- \`form-profile-settings.tsx\` — avatar + name + bio settings card
+- \`form-multi-step.tsx\` — three-step onboarding wizard with progress
+- \`form-contact.tsx\` — public contact form with reason select
+- \`form-inline-validation.tsx\` — live password-strength meter
+
+## Tables
+- \`table-users-list.tsx\` — team table with avatar, role badge, actions menu
+- \`table-invoices.tsx\` — billing history with status badges + download
+- \`table-filter-toolbar.tsx\` — search + status filter + primary CTA above
+- \`table-paginated.tsx\` — sortable header + pagination footer
+
+## Conventions
+
+- Every example uses semantic tokens only — no raw hex, no Tailwind colour names.
+- Every example is self-contained: one default export, no router, no fetching.
+- When adapting, keep the structure but rename, restyle copy, and wire data.
+- Never import these files from App.tsx or routes — they are reference-only.
+`;
+
+/* =================================================================
+ * EXPORTED LIST
+ * ================================================================= */
+
+export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
+  { path: "src/components/examples/EXAMPLES.md", content: EXAMPLES_INDEX, overwrite: true },
+
+  // Auth
+  { path: "src/components/examples/auth-sign-in-card.tsx", content: AUTH_SIGN_IN_CARD, overwrite: true },
+  { path: "src/components/examples/auth-sign-up-split.tsx", content: AUTH_SIGN_UP_SPLIT, overwrite: true },
+  { path: "src/components/examples/auth-forgot-password.tsx", content: AUTH_FORGOT_PASSWORD, overwrite: true },
+  { path: "src/components/examples/auth-otp-card.tsx", content: AUTH_OTP_CARD, overwrite: true },
+
+  // Dashboard
+  { path: "src/components/examples/dashboard-stats-grid.tsx", content: DASHBOARD_STATS_GRID, overwrite: true },
+  { path: "src/components/examples/dashboard-sidebar-layout.tsx", content: DASHBOARD_SIDEBAR_LAYOUT, overwrite: true },
+  { path: "src/components/examples/dashboard-chart-card.tsx", content: DASHBOARD_CHART_CARD, overwrite: true },
+  { path: "src/components/examples/dashboard-activity-feed.tsx", content: DASHBOARD_ACTIVITY_FEED, overwrite: true },
+  { path: "src/components/examples/dashboard-empty-state.tsx", content: DASHBOARD_EMPTY_STATE, overwrite: true },
+
+  // Pricing
+  { path: "src/components/examples/pricing-three-tier.tsx", content: PRICING_THREE_TIER, overwrite: true },
+  { path: "src/components/examples/pricing-toggle-billing.tsx", content: PRICING_TOGGLE_BILLING, overwrite: true },
+  { path: "src/components/examples/pricing-comparison-table.tsx", content: PRICING_COMPARISON_TABLE, overwrite: true },
+
+  // Hero
+  { path: "src/components/examples/hero-centered-gradient.tsx", content: HERO_CENTERED_GRADIENT, overwrite: true },
+  { path: "src/components/examples/hero-split-screenshot.tsx", content: HERO_SPLIT_SCREENSHOT, overwrite: true },
+  { path: "src/components/examples/hero-logo-cloud.tsx", content: HERO_LOGO_CLOUD, overwrite: true },
+  { path: "src/components/examples/hero-feature-band.tsx", content: HERO_FEATURE_BAND, overwrite: true },
+
+  // Forms
+  { path: "src/components/examples/form-profile-settings.tsx", content: FORM_PROFILE_SETTINGS, overwrite: true },
+  { path: "src/components/examples/form-multi-step.tsx", content: FORM_MULTI_STEP, overwrite: true },
+  { path: "src/components/examples/form-contact.tsx", content: FORM_CONTACT, overwrite: true },
+  { path: "src/components/examples/form-inline-validation.tsx", content: FORM_INLINE_VALIDATION, overwrite: true },
+
+  // Tables
+  { path: "src/components/examples/table-users-list.tsx", content: TABLE_USERS_LIST, overwrite: true },
+  { path: "src/components/examples/table-invoices.tsx", content: TABLE_INVOICES, overwrite: true },
+  { path: "src/components/examples/table-filter-toolbar.tsx", content: TABLE_FILTER_TOOLBAR, overwrite: true },
+  { path: "src/components/examples/table-paginated.tsx", content: TABLE_PAGINATED, overwrite: true },
+];
