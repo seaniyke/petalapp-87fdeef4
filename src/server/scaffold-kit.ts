@@ -67,7 +67,7 @@ const TSCONFIG = `{
 }
 `;
 
-const STYLES_CSS = `@import "tailwindcss";
+export const STYLES_CSS = `@import "tailwindcss";
 
 /* Enable class-based dark mode (\`<html class="dark">\`).
    Tailwind v4 also auto-respects the system preference via the dark variant. */

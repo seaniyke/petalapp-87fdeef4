@@ -1,57 +1,59 @@
-# Why the build failed
+# Why option C didn't fix it
 
-The build for project `4979dd90…` failed with:
+You're right — the previous turn (tighter prompts + clearer error copy) was **preventative**, not corrective. If the AI still emits invalid CSS (a stray `1`, a malformed at-rule, a typo), the file is:
 
-```
-Rollup failed to resolve import "@/components/ui/button" from "src/App.tsx"
-```
+1. Persisted to `project_files` as-is by `/api/generate`.
+2. Re-applied by `applyScaffoldKit` during `/api/builds/trigger`, but with `overwrite: false` for `src/styles.css` (line 2474 of `scaffold-kit.ts`) — so the AI's broken version is kept.
+3. Shipped straight to Tailwind v4 on Railway, which aborts the build with `Invalid declaration: '1'`.
 
-I traced it end-to-end against the database and the generation pipeline:
+There is **no validation gate** anywhere between the AI and the build. That's the real root cause.
 
-1. **`src/routes/api/builds/trigger.ts`** loads the project's files straight from the `project_files` table and POSTs them to the Railway builder unchanged.
-2. The failing project has **only 7 rows** in `project_files`: `index.html`, `package.json`, `src/App.tsx`, `src/main.tsx`, `src/styles.css`, `tsconfig.json`, `vite.config.ts`.
-3. None of the canonical scaffold files are present (`src/components/ui/button.tsx`, `src/lib/utils.ts`, the 30+ shadcn-style components, the `examples/*` references, `theme-provider`, etc.).
-4. Worse, the stored `tsconfig.json` is **not** the scaffold's TSCONFIG — it's missing the `"paths": { "@/*": ["src/*"] }` alias entirely. Without that alias, every `@/...` import is an unresolved module to Rollup.
+# Root cause, in one sentence
 
-So even if the AI knew to use `@/components/ui/button`, Vite/Rollup had no way to resolve it because:
-- the file isn't on disk in the build sandbox, and
-- `tsconfig.json` doesn't define the `@/*` alias.
+`src/styles.css` is the only scaffold file the AI is allowed to overwrite **and** the only file whose contents can break the build with a single stray character — and we never check it.
 
-`applyScaffoldKit` in `src/server/scaffold-kit.ts` is the function that injects all of these (with `overwrite: true` for protected files), but today it's only called inside the `write_project` branch of `src/routes/api/generate.ts`. For this project either the initial generation took a path that bypassed it, or it ran very early before the kit included these protections. Either way, the database is the source of truth for builds, so once the scaffold is missing from a project, **every future build will fail** for that project — there's no recovery.
+# The fix: validate styles.css and fall back when it's broken
 
-# The fix: re-apply the scaffold at build time
+Add a tiny server-side validator that runs in two places:
 
-The cleanest, lowest-risk fix is to re-merge the scaffold kit into the file list **inside the build trigger**, just before we POST to Railway. This makes the build pipeline self-healing for any project — old or new — that's missing scaffold files for any reason (race condition, older code path, partial save, manual edit). It does not change what's stored in `project_files` (so the user's chat/preview history is untouched), it only ensures the build sandbox always sees the canonical scaffold.
+**A. `src/server/validate-styles.server.ts` (new)** — a lightweight CSS sanity check that catches the failure modes Tailwind v4 actually rejects, without re-implementing a full parser:
 
-Specifically, in **`src/routes/api/builds/trigger.ts`**, after loading `files` from the database and before calling `postBuildToRailway`, I will:
+- File must start with `@import "tailwindcss";` (case/quotes flexible).
+- Every non-blank, non-comment line at the top level must be one of: an `@`-rule, a selector line ending in `{`, a closing `}`, or a `property: value;` declaration *inside* a block.
+- Reject bare tokens at the top level (e.g. a line that's just `1`, `foo`, `;`, etc.) — this is the exact class of error from the build log.
+- Balance check: `{` count must equal `}` count.
 
-1. Look up whether the project has an attached backend (so we know whether to also inject the backend kit, matching what `/api/generate` does).
-2. Run `applyScaffoldKit(files, { backend })` to merge the canonical scaffold on top — `overwrite: true` files (button.tsx, the rest of `src/components/ui/*`, `src/lib/utils.ts`, `vite.config.ts`, `tsconfig.json` with the `@/*` alias, `package.json` with the right deps) replace anything stale, and missing files get added.
-3. Send the merged list to the builder.
+If validation fails, the helper returns `{ ok: false, reason }`. Cheap, deterministic, no dependency on Tailwind itself (we don't want to ship Tailwind into our SSR worker).
 
-# Defense-in-depth secondary checks
+**B. Wire it into the build trigger** (`src/routes/api/builds/trigger.ts`), right after `applyScaffoldKit`:
 
-While I'm in there, two small hardening tweaks:
+- Find the `src/styles.css` entry in `scaffolded`.
+- Run `validateStylesCss(content)`.
+- If invalid: replace that entry's content with the canonical `STYLES_CSS` from the scaffold kit (export it from `scaffold-kit.ts` so we can reuse the exact same string), and `console.warn` with the project + build id and the reason. The build proceeds with safe CSS instead of dying.
 
-- **Backend metadata lookup**: I'll mirror how `/api/generate` decides whether the project has a backend (reading `projects.backend_url` / `backend_anon_key` or whatever fields the existing flow uses — I'll confirm in the code before writing). If the project has a backend, the backend kit gets injected too so the build doesn't break on missing `@/integrations/backend/*`.
-- **No behavior change for healthy projects**: For projects whose stored files already match the scaffold, `applyScaffoldKit` is a no-op (the same content gets re-set in the map). This is purely additive.
+**C. Optionally wire it into `/api/generate`** (`src/server/generate.server.ts`), in the `write_project` and `patch_files` paths, *after* the AI returns files but *before* we persist them. Same logic: if the AI's `src/styles.css` doesn't validate, drop it (let the scaffold default win) and stream a small `phase` event so the client can show a soft notice. This stops the bad file from ever entering `project_files`.
 
-# What I will NOT change
+# Why fall back instead of overwrite-always
 
-- I won't backfill `project_files` rows in the database. Builds will work without it; rewriting user data carries more risk than it solves.
-- I won't change `/api/generate` — the scaffold is already supposed to be applied there. If we later want to be fully consistent we can add a small migration to re-apply scaffold to existing projects, but it's not needed to fix this build.
-- I won't touch the builder service (`builder/src/*`) — the contract stays "we receive a complete file list, we materialize and build it".
+Earlier we discussed flipping `overwrite: true` for `styles.css`. That would also fix the build, but it permanently kills the AI's ability to customize tokens (colors, fonts, radii) — which is exactly what shadcn/ui apps need. Validating-and-falling-back is the v0/Lovable industry pattern: editable in the happy path, safe in the failure path.
 
-# Files I plan to edit
+# What this changes / doesn't change
 
-- `src/routes/api/builds/trigger.ts` — add the scaffold re-application step (1 import + ~5 lines of logic), with a small helper to read the project's backend config if applicable.
+- ✅ Tailwind v4 can no longer abort the build because of bad CSS the AI emitted.
+- ✅ The user's `styles.css` is still respected when it's valid (so theme customization keeps working).
+- ✅ Same prompt rules from the previous turn stay in place — they reduce how often the validator has to fire.
+- ✅ `friendlyBuildFailure` styling-error branch stays as a last line of defence (in case some *other* CSS bug slips past — e.g. an `@apply` of an unknown utility, which is harder to catch without running Tailwind).
+- ❌ No DB migration. No changes to the builder service. No change to the AI gateway.
 
-# How I'll verify
+# Files touched
 
-- Re-read the trigger to confirm the merged file list still has `index.html`, that `tsconfig.json` now contains the `@/*` paths alias, and that `src/components/ui/button.tsx` is present.
-- Check the build activity card in the preview after the user clicks "Try again" — the same project that just failed should now build successfully.
-- Confirm no regression for healthy projects: since the merge prefers scaffold content for `overwrite: true` paths and AI content for everything else, projects already containing the scaffold get the same files back.
+- **New**: `src/server/validate-styles.server.ts` (~40 lines + a small test).
+- **Edit**: `src/server/scaffold-kit.ts` — `export const STYLES_CSS` (currently a module-local `const`) so the build trigger can reuse it as the fallback.
+- **Edit**: `src/routes/api/builds/trigger.ts` — after `applyScaffoldKit`, run the validator and swap in `STYLES_CSS` on failure.
+- **Edit (optional but recommended)**: `src/server/generate.server.ts` — same validation in the `write_project` and `patch_files` finalize steps, so bad CSS never reaches the database in the first place.
 
-# KeshPay caution
+# Verification plan
 
-Per saved preferences, KeshPay is treated as live production — but this is the Petal codebase, not KeshPay, so the standard caution applies: small focused change, no schema migration, easily reverted.
+1. Unit-test the validator with: the canonical `STYLES_CSS` (must pass), a file containing a stray `1` line (must fail), an unbalanced `{` (must fail), missing `@import "tailwindcss";` (must fail).
+2. Type-check passes (`bunx tsc --noEmit`).
+3. Manually trigger a build for a project whose stored `src/styles.css` has the bad `1` line — the build trigger logs `[styles.css invalid] falling back to scaffold default` and the build succeeds.

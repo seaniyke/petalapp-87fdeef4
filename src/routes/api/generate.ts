@@ -12,8 +12,9 @@ import {
   type FileOp,
   type StreamEvent,
 } from "@/server/generate.server";
-import { applyScaffoldKit } from "@/server/scaffold-kit";
+import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { lookupBackendForGenerate } from "@/server/backend-connector.server";
+import { validateStylesCss } from "@/server/validate-styles.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -363,6 +364,20 @@ export const Route = createFileRoute("/api/generate")({
               if (!nextFiles.some((f) => f.path === "index.html")) {
                 throw new Error("Project is missing index.html.");
               }
+
+              // Last-mile guard: if the AI emitted (or patched in) a broken
+              // src/styles.css, swap it for the canonical scaffold CSS so the
+              // build can never be killed by a single bad character. Same
+              // logic runs again in the build trigger as a safety net.
+              nextFiles = nextFiles.map((f) => {
+                if (f.path !== "src/styles.css") return f;
+                const result = validateStylesCss(f.content);
+                if (result.ok) return f;
+                console.warn(
+                  `[styles.css invalid] generate reason="${result.reason}" — falling back to scaffold default`
+                );
+                return { ...f, content: STYLES_CSS };
+              });
 
 
               controller.enqueue(
