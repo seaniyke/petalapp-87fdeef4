@@ -28,6 +28,15 @@ type Props = {
   writtenPaths?: string[];
   /** After completion, final line counts keyed by path — drives the "X lines" badge. */
   finalFileLines?: Record<string, number>;
+  /**
+   * Per-file change kind + line delta vs. the pre-run snapshot. Drives the
+   * "new / modified / deleted" badge and the +A −B counter on each file row.
+   * Empty until the run completes.
+   */
+  fileChanges?: Record<
+    string,
+    { kind: "added" | "modified" | "unchanged" | "deleted"; addedLines: number; removedLines: number }
+  >;
   onStop?: () => void;
   onRetry?: () => void;
   onAskFix?: () => void;
@@ -44,6 +53,7 @@ export function BuildActivityCard({
   filesWritten,
   writtenPaths,
   finalFileLines,
+  fileChanges,
   onStop,
   onRetry,
   onAskFix,
