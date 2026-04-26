@@ -1273,6 +1273,192 @@ export function ThemeToggle() {
 }
 `;
 
+const CONTAINER = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+const sizeMap = {
+  sm: "max-w-2xl",
+  md: "max-w-4xl",
+  lg: "max-w-6xl",
+  xl: "max-w-7xl",
+  full: "max-w-none",
+} as const;
+
+export interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {
+  size?: keyof typeof sizeMap;
+}
+
+/** Centered max-width wrapper with sensible horizontal padding. */
+export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
+  ({ className, size = "lg", ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("mx-auto w-full px-4 sm:px-6 lg:px-8", sizeMap[size], className)}
+      {...props}
+    />
+  ),
+);
+Container.displayName = "Container";
+`;
+
+const STACK = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+const gapMap = {
+  0: "gap-0",
+  1: "gap-1",
+  2: "gap-2",
+  3: "gap-3",
+  4: "gap-4",
+  5: "gap-5",
+  6: "gap-6",
+  8: "gap-8",
+  10: "gap-10",
+  12: "gap-12",
+} as const;
+
+const alignMap = {
+  start: "items-start",
+  center: "items-center",
+  end: "items-end",
+  stretch: "items-stretch",
+} as const;
+
+const justifyMap = {
+  start: "justify-start",
+  center: "justify-center",
+  end: "justify-end",
+  between: "justify-between",
+  around: "justify-around",
+} as const;
+
+export interface StackProps extends React.HTMLAttributes<HTMLDivElement> {
+  gap?: keyof typeof gapMap;
+  align?: keyof typeof alignMap;
+  justify?: keyof typeof justifyMap;
+}
+
+/** Vertical flex stack. Use for any column of elements. */
+export const Stack = React.forwardRef<HTMLDivElement, StackProps>(
+  ({ className, gap = 4, align, justify, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "flex flex-col",
+        gapMap[gap],
+        align && alignMap[align],
+        justify && justifyMap[justify],
+        className,
+      )}
+      {...props}
+    />
+  ),
+);
+Stack.displayName = "Stack";
+
+/** Horizontal flex row. Use for inline groups (toolbars, button rows, badges). */
+export const Inline = React.forwardRef<HTMLDivElement, StackProps & { wrap?: boolean }>(
+  ({ className, gap = 2, align = "center", justify, wrap, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "flex flex-row",
+        gapMap[gap],
+        alignMap[align],
+        justify && justifyMap[justify],
+        wrap && "flex-wrap",
+        className,
+      )}
+      {...props}
+    />
+  ),
+);
+Inline.displayName = "Inline";
+`;
+
+const GRID = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+const gapMap = {
+  0: "gap-0",
+  2: "gap-2",
+  3: "gap-3",
+  4: "gap-4",
+  6: "gap-6",
+  8: "gap-8",
+  10: "gap-10",
+  12: "gap-12",
+} as const;
+
+// Static class strings so Tailwind's JIT can detect every variant.
+const colsBase = {
+  1: "grid-cols-1",
+  2: "grid-cols-2",
+  3: "grid-cols-3",
+  4: "grid-cols-4",
+  6: "grid-cols-6",
+  12: "grid-cols-12",
+} as const;
+const colsSm = {
+  1: "sm:grid-cols-1",
+  2: "sm:grid-cols-2",
+  3: "sm:grid-cols-3",
+  4: "sm:grid-cols-4",
+  6: "sm:grid-cols-6",
+  12: "sm:grid-cols-12",
+} as const;
+const colsMd = {
+  1: "md:grid-cols-1",
+  2: "md:grid-cols-2",
+  3: "md:grid-cols-3",
+  4: "md:grid-cols-4",
+  6: "md:grid-cols-6",
+  12: "md:grid-cols-12",
+} as const;
+const colsLg = {
+  1: "lg:grid-cols-1",
+  2: "lg:grid-cols-2",
+  3: "lg:grid-cols-3",
+  4: "lg:grid-cols-4",
+  6: "lg:grid-cols-6",
+  12: "lg:grid-cols-12",
+} as const;
+
+type Cols = keyof typeof colsBase;
+
+export interface GridProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Default column count (mobile-first). */
+  cols?: Cols;
+  /** Column count at >=640px. */
+  sm?: Cols;
+  /** Column count at >=768px. */
+  md?: Cols;
+  /** Column count at >=1024px. */
+  lg?: Cols;
+  gap?: keyof typeof gapMap;
+}
+
+/** Responsive CSS grid. Mobile-first: \`<Grid cols={1} md={2} lg={3} gap={6} />\`. */
+export const Grid = React.forwardRef<HTMLDivElement, GridProps>(
+  ({ className, cols = 1, sm, md, lg, gap = 4, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "grid",
+        colsBase[cols],
+        sm && colsSm[sm],
+        md && colsMd[md],
+        lg && colsLg[lg],
+        gapMap[gap],
+        className,
+      )}
+      {...props}
+    />
+  ),
+);
+Grid.displayName = "Grid";
+`;
+
 
 /**
  * Files that are ALWAYS injected/overwritten on initial scaffold. The AI is
