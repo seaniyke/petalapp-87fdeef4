@@ -102,6 +102,44 @@ export type Database = {
           },
         ]
       }
+      project_versions: {
+        Row: {
+          created_at: string
+          files: Json
+          id: string
+          label: string | null
+          origin: string
+          project_id: string
+          summary: string | null
+        }
+        Insert: {
+          created_at?: string
+          files: Json
+          id?: string
+          label?: string | null
+          origin?: string
+          project_id: string
+          summary?: string | null
+        }
+        Update: {
+          created_at?: string
+          files?: Json
+          id?: string
+          label?: string | null
+          origin?: string
+          project_id?: string
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_versions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           created_at: string

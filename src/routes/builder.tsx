@@ -27,6 +27,8 @@ import {
   saveProjectFiles,
   type ProjectRow,
 } from "@/lib/projects";
+import { createVersion } from "@/lib/versions";
+import { HistoryPanel } from "@/components/HistoryPanel";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/builder")({
@@ -66,6 +68,7 @@ function Builder() {
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("preview");
   const [previewKey, setPreviewKey] = useState(0);
+  const [historyKey, setHistoryKey] = useState(0);
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -159,7 +162,13 @@ function Builder() {
           saveProjectFiles(project.id, result.files),
           appendMessages(project.id, [userMsg, assistantMsg]),
           maybeAutoTitleProject(project, result.summary, text),
+          createVersion(project.id, result.files, {
+            origin: "auto",
+            label: text.slice(0, 60),
+            summary: result.summary,
+          }),
         ]);
+        setHistoryKey((k) => k + 1);
         // Refresh project meta so title/summary in the UI stay current
         const refreshed = await getProject(project.id);
         if (refreshed) setProject(refreshed);
@@ -187,6 +196,27 @@ function Builder() {
     a.download = `${project?.slug ?? "petal-project"}.zip`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function handleRestore(restored: ProjectFile[]) {
+    if (!project) return;
+    await saveProjectFiles(project.id, restored);
+    setFiles(restored);
+    setActiveFile((prev) =>
+      restored.find((f) => f.path === prev)?.path ??
+      restored.find((f) => f.path === "index.html")?.path ??
+      restored[0]?.path ??
+      null
+    );
+    setPreviewKey((k) => k + 1);
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", content: "↩️ Restored a previous version." },
+    ]);
+    await appendMessages(project.id, [
+      { role: "assistant", content: "↩️ Restored a previous version." },
+    ]);
+    setHistoryKey((k) => k + 1);
   }
 
   const activeContent = files.find((f) => f.path === activeFile)?.content ?? "";
@@ -245,6 +275,14 @@ function Builder() {
           >
             <RotateCw className="h-4 w-4" />
           </button>
+          {project && (
+            <HistoryPanel
+              projectId={project.id}
+              currentFiles={files}
+              onRestore={handleRestore}
+              refreshKey={historyKey}
+            />
+          )}
           <button
             onClick={downloadProject}
             disabled={!files.length}
