@@ -86,8 +86,13 @@ export const Route = createFileRoute("/api/discuss")({
               .slice(0, 12000)}`
           : "\n\nThe project has no files yet — the user is still describing the idea.";
 
+        const knowledge = (body.customInstructions ?? "").trim().slice(0, 4000);
+        const knowledgeBlock = knowledge
+          ? `\n\nProject Knowledge — the owner has asked you to always honor these instructions:\n"""\n${knowledge}\n"""\n`
+          : "";
+
         const chatMessages = [
-          { role: "system", content: DISCUSS_SYSTEM_PROMPT + filesContext },
+          { role: "system", content: DISCUSS_SYSTEM_PROMPT + knowledgeBlock + filesContext },
           ...messages.map((m) => ({ role: m.role, content: m.content })),
         ];
 
