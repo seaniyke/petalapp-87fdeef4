@@ -13,12 +13,46 @@ export async function listProjects(): Promise<ProjectRow[]> {
   return data ?? [];
 }
 
-export async function createProject(title = "Untitled project"): Promise<ProjectRow> {
+export async function createProject(
+  title = "Untitled project",
+  opts: { remixed_from_id?: string } = {}
+): Promise<ProjectRow> {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error("Not signed in");
   const { data, error } = await supabase
     .from("projects")
-    .insert({ owner_id: userData.user.id, title, slug: "" })
+    .insert({
+      owner_id: userData.user.id,
+      title,
+      slug: "",
+      remixed_from_id: opts.remixed_from_id ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/** Public list for /gallery — featured first, then by remix_count, then recency. */
+export async function listPublicProjects(limit = 60): Promise<ProjectRow[]> {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("is_public", true)
+    .order("is_featured", { ascending: false })
+    .order("remix_count", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Admin-only: flip is_featured. RLS + trigger guard enforce server-side. */
+export async function setProjectFeatured(id: string, is_featured: boolean): Promise<ProjectRow> {
+  const { data, error } = await supabase
+    .from("projects")
+    .update({ is_featured })
+    .eq("id", id)
     .select()
     .single();
   if (error) throw error;
@@ -35,7 +69,7 @@ export async function remixProjectBySlug(slug: string): Promise<ProjectRow> {
 
   const files = await loadProjectFiles(source.id);
   const newTitle = `${source.title} (remix)`;
-  const fresh = await createProject(newTitle);
+  const fresh = await createProject(newTitle, { remixed_from_id: source.id });
   if (files.length > 0) {
     const { error } = await supabase
       .from("project_files")
