@@ -13,7 +13,7 @@ import {
   FolderOpen,
 } from "lucide-react";
 import JSZip from "jszip";
-import { generateProject } from "@/server/generate.functions";
+import { streamGenerate } from "@/lib/stream";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { buildPreviewDoc } from "@/lib/preview";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,6 +69,8 @@ function Builder() {
   const [view, setView] = useState<ViewMode>("preview");
   const [previewKey, setPreviewKey] = useState(0);
   const [historyKey, setHistoryKey] = useState(0);
+  const [streamStatus, setStreamStatus] = useState<string>("");
+  const [streamingSummary, setStreamingSummary] = useState<string>("");
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -146,30 +148,54 @@ function Builder() {
     setMessages(nextMessages);
     setInput("");
     setBusy(true);
+    setStreamStatus("Thinking…");
+    setStreamingSummary("");
+
+    let resultFiles: ProjectFile[] | null = null;
+    let resultSummary = "";
+    let streamError: string | null = null;
+
     try {
-      const result = await generateProject({
-        data: { messages: nextMessages, currentFiles: files },
-      });
-      const assistantMsg: ChatMessage = { role: "assistant", content: result.summary };
-      setFiles(result.files);
+      await streamGenerate(
+        { messages: nextMessages, currentFiles: files },
+        {
+          onStatus: (m) => setStreamStatus(m),
+          onSummaryDelta: (d) => setStreamingSummary((s) => s + d),
+          onTool: (name) =>
+            setStreamStatus(name === "patch_files" ? "Editing files…" : "Writing project…"),
+          onResult: (f, s) => {
+            resultFiles = f;
+            resultSummary = s;
+          },
+          onError: (m) => {
+            streamError = m;
+          },
+        }
+      );
+
+      if (streamError) throw new Error(streamError);
+      if (!resultFiles) throw new Error("No result returned.");
+
+      const files2: ProjectFile[] = resultFiles;
+      const summary2: string = resultSummary || "Updated the project.";
+      const assistantMsg: ChatMessage = { role: "assistant", content: summary2 };
+      setFiles(files2);
       setActiveFile((prev) => prev ?? "index.html");
       setMessages((prev) => [...prev, assistantMsg]);
       setPreviewKey((k) => k + 1);
 
-      // Persist
       try {
         await Promise.all([
-          saveProjectFiles(project.id, result.files),
+          saveProjectFiles(project.id, files2),
           appendMessages(project.id, [userMsg, assistantMsg]),
-          maybeAutoTitleProject(project, result.summary, text),
-          createVersion(project.id, result.files, {
+          maybeAutoTitleProject(project, summary2, text),
+          createVersion(project.id, files2, {
             origin: "auto",
             label: text.slice(0, 60),
-            summary: result.summary,
+            summary: summary2,
           }),
         ]);
         setHistoryKey((k) => k + 1);
-        // Refresh project meta so title/summary in the UI stay current
         const refreshed = await getProject(project.id);
         if (refreshed) setProject(refreshed);
       } catch (persistErr) {
@@ -182,6 +208,8 @@ function Builder() {
       setMessages((prev) => [...prev, { role: "assistant", content: `⚠️ ${msg}` }]);
     } finally {
       setBusy(false);
+      setStreamStatus("");
+      setStreamingSummary("");
     }
   }
 
@@ -325,9 +353,17 @@ function Builder() {
               </div>
             ))}
             {busy && (
-              <div className="mr-6 inline-flex items-center gap-2 rounded-2xl bg-mint/50 px-3.5 py-2.5 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Petal is building…
+              <div className="mr-6 rounded-2xl bg-mint/50 px-3.5 py-2.5 text-sm">
+                <div className="mb-1 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-foreground/70">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {streamStatus || "Petal is building…"}
+                </div>
+                {streamingSummary && (
+                  <div className="whitespace-pre-wrap leading-relaxed">
+                    {streamingSummary}
+                    <span className="ml-0.5 inline-block h-3.5 w-1.5 -mb-0.5 animate-pulse bg-foreground/40" />
+                  </div>
+                )}
               </div>
             )}
             <div ref={chatEndRef} />
