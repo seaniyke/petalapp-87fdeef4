@@ -329,18 +329,18 @@ export const Route = createFileRoute("/api/generate")({
                   "tsconfig.json",
                   "src/lib/utils.ts",
                 ];
-                const violations = parsed.ops.filter(
-                  (op) => op.path.startsWith("src/components/ui/") || PROTECTED.includes(op.path),
-                );
+                const isProtectedPath = (p: string) =>
+                  p.startsWith("src/components/ui/") ||
+                  p.startsWith("src/components/examples/") ||
+                  PROTECTED.includes(p);
+                const violations = parsed.ops.filter((op) => isProtectedPath(op.path));
                 if (violations.length) {
                   console.warn(
                     "Dropping protected-path ops:",
                     violations.map((v) => `${v.op} ${v.path}`).join(", "),
                   );
                 }
-                const safeOps = parsed.ops.filter(
-                  (op) => !op.path.startsWith("src/components/ui/") && !PROTECTED.includes(op.path),
-                );
+                const safeOps = parsed.ops.filter((op) => !isProtectedPath(op.path));
                 nextFiles = applyOps(currentFiles, safeOps);
               }
               if (!nextFiles.some((f) => f.path === "index.html")) {
