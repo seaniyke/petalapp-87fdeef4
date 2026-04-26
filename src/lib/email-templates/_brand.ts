@@ -4,22 +4,20 @@
 
 export const brand = {
   siteName: 'Petal',
-  // Body / chrome
   bodyBg: '#ffffff',
-  cardBg: '#fffaf6', // warm off-white, mirrors app canvas
+  cardBg: '#fffaf6',
   border: '#f1e6db',
-  // Type
   text: '#3a2a20',
   textMuted: '#8a7568',
   textFooter: '#a8978a',
   heading: '#2a1c14',
-  // Accent (coral primary)
   primary: '#e2674d',
   primaryHover: '#d05a42',
   link: '#c95437',
-  // Fonts (system fallbacks for email clients that strip @font-face)
-  fontDisplay: '"Fraunces", "DM Serif Display", Georgia, "Times New Roman", serif',
-  fontBody: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
+  fontDisplay:
+    '"Fraunces", "DM Serif Display", Georgia, "Times New Roman", serif',
+  fontBody:
+    '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
 } as const;
 
 export const styles = {
