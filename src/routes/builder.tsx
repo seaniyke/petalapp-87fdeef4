@@ -198,6 +198,27 @@ function Builder() {
     URL.revokeObjectURL(url);
   }
 
+  async function handleRestore(restored: ProjectFile[]) {
+    if (!project) return;
+    await saveProjectFiles(project.id, restored);
+    setFiles(restored);
+    setActiveFile((prev) =>
+      restored.find((f) => f.path === prev)?.path ??
+      restored.find((f) => f.path === "index.html")?.path ??
+      restored[0]?.path ??
+      null
+    );
+    setPreviewKey((k) => k + 1);
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", content: "↩️ Restored a previous version." },
+    ]);
+    await appendMessages(project.id, [
+      { role: "assistant", content: "↩️ Restored a previous version." },
+    ]);
+    setHistoryKey((k) => k + 1);
+  }
+
   const activeContent = files.find((f) => f.path === activeFile)?.content ?? "";
 
   return (
