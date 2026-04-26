@@ -36,7 +36,7 @@ The scaffold ALREADY EXISTS — these files will be auto-injected, do NOT emit t
 - "src/components/ui/theme-toggle.tsx" — <ThemeToggle />. Drop-in dropdown (Light / Dark / System) using lucide icons. Place it in your header.
 - "src/components/ui/container.tsx" — <Container size="sm|md|lg|xl|full"> (default "lg"). Centered max-width wrapper with responsive horizontal padding. Use as the outermost wrapper inside every page section.
 - "src/components/ui/stack.tsx" — <Stack gap={4} align="start|center|end|stretch" justify="..."> for vertical columns; <Inline gap={2} align="center" wrap> for horizontal rows. Use these instead of writing flex/gap utility chains by hand.
-- "src/components/ui/grid.tsx" — <Grid cols={1} sm={2} md={3} lg={4} gap={6}>. Mobile-first responsive CSS grid. Use for card grids, feature lists, dashboards. Allowed cols values: 1, 2, 3, 4, 6, 12.
+- "src/components/ui/grid.tsx" — <Grid preset="..."> for instant dashboard layouts. Presets: "stats" (1->2->4 stat cards), "kpis" (2->4->6 dense tiles), "dashboard" (1->2->3 widgets), "cards" (1->2->3->4 product/feature cards), "features" (1->2->3 marketing), "pricing" (1->3 tiers), "split" (1->2 two-column), "gallery" (2->3->4 media). Or compose manually: <Grid cols={1} sm={2} md={3} lg={4} gap={6}>. Allowed cols values: 1, 2, 3, 4, 6, 12. Explicit props override the preset.
 
 DARK MODE (built-in, automatic):
 The scaffold ships dark-mode tokens out of the box. The \`.dark\` class on <html> swaps every semantic color automatically, and the system preference is respected when no class is set.
