@@ -135,14 +135,35 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
   const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
   if (ownerErr) return ownerErr;
 
-  // 1) Register with Cloudflare for SaaS. CF returns the TXT record we need
-  //    the user to add at their registrar to prove ownership + issue SSL.
+  // 1) Require an unused, unexpired domain slot for this project.
+  const { data: slot, error: slotErr } = await supabaseAdmin
+    .from("domain_slots")
+    .select("id")
+    .eq("project_id", parsed.data.projectId)
+    .is("consumed_by_domain_id", null)
+    .gt("expires_at", new Date().toISOString())
+    .order("expires_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (slotErr) return new Response(slotErr.message, { status: 500 });
+  if (!slot) {
+    return new Response(
+      JSON.stringify({
+        error: "payment_required",
+        code: "no_domain_slot",
+        message:
+          "Connecting a custom domain requires a domain slot. Slots are $12 and last 12 months.",
+      }),
+      { status: 402, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  // 2) Register with Cloudflare for SaaS.
   let cf;
   try {
     cf = await createCustomHostname(parsed.data.hostname);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Cloudflare error";
-    // Friendly errors for common cases.
     if (msg.includes("1414") || msg.toLowerCase().includes("already exists")) {
       return new Response(
         "That domain is already connected on Petal — remove it first or contact support.",
@@ -155,11 +176,8 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
   }
 
   const txt = extractTxtValidation(cf);
-  // Cloudflare sometimes hasn't issued the TXT record yet on the very first
-  // response. Fall back to a placeholder; the verify action will refresh it.
   const txtName = txt?.name ?? `_acme-challenge.${parsed.data.hostname}`;
   const txtValue = txt?.value ?? "(generating — click Check status in a few seconds)";
-
   const mapped = mapCfStatus(cf);
 
   const { data, error } = await supabaseAdmin
@@ -178,8 +196,6 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
     .select(DOMAIN_COLS)
     .single();
   if (error) {
-    // Roll back the Cloudflare registration if our DB insert failed, otherwise
-    // we'd leave an orphan custom hostname on the zone.
     await deleteCustomHostname(cf.id).catch(() => {});
     if (error.code === "23505") {
       return new Response("That domain is already connected to a project.", {
@@ -193,6 +209,13 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
     }
     return new Response(error.message, { status: 400 });
   }
+
+  // 3) Consume the slot.
+  await supabaseAdmin
+    .from("domain_slots")
+    .update({ consumed_by_domain_id: data.id })
+    .eq("id", slot.id);
+
   return Response.json(data);
 }
 
