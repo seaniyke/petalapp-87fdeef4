@@ -17,6 +17,8 @@ import {
   MessageSquare,
   Hammer,
   Wand2,
+  Undo2,
+  X,
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
 import { requestDiscussion } from "@/lib/discuss";
