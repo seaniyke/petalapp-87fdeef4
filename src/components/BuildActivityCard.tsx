@@ -42,6 +42,8 @@ export function BuildActivityCard({
   designCaption,
   latestPath,
   filesWritten,
+  writtenPaths,
+  finalFileLines,
   onStop,
   onRetry,
   onAskFix,
