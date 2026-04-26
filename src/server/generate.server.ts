@@ -66,6 +66,7 @@ Before writing ANY JSX element, ask: "Is there a kit component for this?" If yes
 - Need a toggle? -> <Switch> or <Checkbox>. NEVER raw checkboxes.
 - Need a notification? -> toast.success(...) from "@/components/ui/toast". NEVER a custom alert div.
 - Need tabs, accordions, sliders, tooltips, sheets, tables, scroll areas, progress bars, popovers, selects, radio groups? -> use the kit equivalent. ALL of them exist.
+- Need page layout? -> <Container> wraps every section, <Stack>/<Inline> replace ad-hoc \`flex flex-col gap-N\` divs, <Grid cols=... md=... lg=...> replaces hand-written \`grid-cols-N\` chains. Reach for these BEFORE writing layout utilities directly.
 
 Hard rules:
 - MUST use Tailwind utility classes for ALL styling. NEVER write inline \`style={{}}\` (except for truly dynamic values like \`style={{ width: progress + '%' }}\`) or custom CSS classes outside src/styles.css.
