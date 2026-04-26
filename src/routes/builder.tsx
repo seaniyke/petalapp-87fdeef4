@@ -422,6 +422,103 @@ function Builder() {
     );
   }, [lastDiscussIndex, messages, send]);
 
+  // Either dispatch the prompt now (if Petal is free) or queue it. The queue
+  // remembers the mode the user picked when they typed it, so a discuss-mode
+  // queued message stays a discussion even if mode changes later.
+  const submitPrompt = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || !project || bootstrapping) return;
+      if (busy || discussBusy) {
+        setPendingQueue((q) => [
+          ...q,
+          { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text: trimmed, mode },
+        ]);
+        setInput("");
+        return;
+      }
+      if (mode === "discuss") void discuss(trimmed);
+      else void send(trimmed);
+    },
+    [project, bootstrapping, busy, discussBusy, mode, discuss, send],
+  );
+
+  // Auto-dequeue the next prompt as soon as Petal frees up.
+  useEffect(() => {
+    if (busy || discussBusy) return;
+    if (pendingQueue.length === 0) return;
+    const [next, ...rest] = pendingQueue;
+    setPendingQueue(rest);
+    if (next.mode === "discuss") void discuss(next.text);
+    else void send(next.text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, discussBusy, pendingQueue]);
+
+  const removeFromQueue = useCallback((id: string) => {
+    setPendingQueue((q) => q.filter((m) => m.id !== id));
+  }, []);
+
+  // Per-message revert: restore the project to the snapshot taken right after
+  // the AI replied to the Nth user message, then trim chat history accordingly.
+  // We rely on the invariant that send() creates one auto-version per turn,
+  // labelled with the user's prompt. We match by ordinal.
+  const revertToMessage = useCallback(
+    async (userMsgIndex: number) => {
+      if (!project) return;
+      const userMsg = messages[userMsgIndex];
+      if (!userMsg || userMsg.role !== "user") return;
+      const userOrdinal = messages
+        .slice(0, userMsgIndex + 1)
+        .filter((m) => m.role === "user").length;
+      if (
+        !confirm(
+          "Revert your project to right after this message? Files will be restored and any later chat will be removed. (Your current state is saved as a snapshot first.)",
+        )
+      ) {
+        return;
+      }
+      setRevertingIndex(userMsgIndex);
+      try {
+        const versions = await listVersions(project.id);
+        const autoVersionsOldestFirst = versions
+          .filter((v) => v.origin === "auto" && v.label !== "Before restore" && v.label !== "Before revert")
+          .reverse();
+        const target = autoVersionsOldestFirst[userOrdinal - 1];
+        if (!target) {
+          toast.error("Couldn't find a snapshot for that message.");
+          return;
+        }
+        if (files.length) {
+          await createVersion(project.id, files, {
+            origin: "auto",
+            label: "Before revert",
+          });
+        }
+        await saveProjectFiles(project.id, target.files);
+        const keep = userOrdinal * 2;
+        await truncateMessagesToCount(project.id, keep);
+        setFiles(target.files);
+        setMessages((prev) => prev.slice(0, keep));
+        setLastDiscussIndex(null);
+        setPreviewKey((k) => k + 1);
+        setHistoryKey((k) => k + 1);
+        toast.success("Reverted");
+        void triggerBuild(project.id)
+          .then(async () => {
+            const r = await getProject(project.id);
+            if (r) setProject(r);
+          })
+          .catch((err: unknown) => console.error("triggerBuild failed", err));
+      } catch (e) {
+        console.error(e);
+        toast.error(e instanceof Error ? e.message : "Couldn't revert");
+      } finally {
+        setRevertingIndex(null);
+      }
+    },
+    [project, messages, files],
+  );
+
   const stopGeneration = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
