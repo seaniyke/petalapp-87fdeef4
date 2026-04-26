@@ -330,8 +330,8 @@ function Builder() {
             messages: nextMessages,
             currentFiles: files,
             model: "smart",
-            customInstructions: project.custom_instructions ?? undefined,
-            projectId: project.id,
+            customInstructions: proj.custom_instructions ?? undefined,
+            projectId: proj.id,
           },
           {
             onPhase: (phase: PhaseId) => {
@@ -375,24 +375,24 @@ function Builder() {
             ? [assistantMsg]
             : [userMsg, assistantMsg];
           await Promise.all([
-            saveProjectFiles(project.id, files2),
-            appendMessages(project.id, persistMsgs),
-            maybeAutoTitleProject(project, summary2, text),
-            createVersion(project.id, files2, {
+            saveProjectFiles(proj.id, files2),
+            appendMessages(proj.id, persistMsgs),
+            maybeAutoTitleProject(proj, summary2, text),
+            createVersion(proj.id, files2, {
               origin: "auto",
               label: text.slice(0, 60),
               summary: summary2,
             }),
           ]);
           setHistoryKey((k) => k + 1);
-          const refreshed = await getProject(project.id);
+          const refreshed = await getProject(proj.id);
           if (refreshed) setProject(refreshed);
 
           // Kick off a Cloudflare Pages build. Fire-and-forget — the activity
           // card subscribes to project_builds via useBuildActivity().
-          void triggerBuild(project.id)
+          void triggerBuild(proj.id)
             .then(async () => {
-              const r = await getProject(project.id);
+              const r = await getProject(proj.id);
               if (r) setProject(r);
             })
             .catch((err: unknown) => {
