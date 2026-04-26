@@ -565,7 +565,7 @@ function RecordCard({
   value,
   note,
 }: {
-  type: "A" | "TXT";
+  type: "A" | "CNAME" | "TXT";
   host: string;
   value: string;
   note: string;
