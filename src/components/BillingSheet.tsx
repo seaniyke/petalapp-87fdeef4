@@ -45,7 +45,7 @@ export function BillingSheet({ open, onOpenChange }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    fetchCreditPacks().then(setPacks).catch((e) => {
+    fetchCreditPacks().then(setPacks).catch((e: unknown) => {
       console.warn("[BillingSheet] fetchCreditPacks failed", e);
     });
   }, [open]);
