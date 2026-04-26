@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Send,
@@ -14,8 +14,9 @@ import {
   Command as CommandIcon,
   RefreshCcw,
   AlertCircle,
+  MoreHorizontal,
+  Square,
 } from "lucide-react";
-import JSZip from "jszip";
 import { streamGenerate } from "@/lib/stream";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { buildPreviewDoc } from "@/lib/preview";
@@ -33,10 +34,26 @@ import {
 import { createVersion } from "@/lib/versions";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
-import { MarkdownMessage } from "@/components/MarkdownMessage";
-import { CodeEditor } from "@/components/CodeEditor";
-import { CommandPalette, type PaletteItem } from "@/components/CommandPalette";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+
+// Lazy: keep CodeMirror, cmdk, react-markdown, rehype-highlight out of the
+// initial /builder bundle. Most users see Preview first.
+const CodeEditor = lazy(() =>
+  import("@/components/CodeEditor").then((m) => ({ default: m.CodeEditor }))
+);
+const CommandPalette = lazy(() =>
+  import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette }))
+);
+const MarkdownMessage = lazy(() =>
+  import("@/components/MarkdownMessage").then((m) => ({ default: m.MarkdownMessage }))
+);
+type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
 export const Route = createFileRoute("/builder")({
   validateSearch: (search: Record<string, unknown>) => ({
