@@ -327,6 +327,9 @@ function Builder() {
       setDesignCaption("");
       setFilesWritten(0);
       setLatestPath(undefined);
+      setWrittenPaths([]);
+      setFinalFileLines({});
+      setStreamingAssistant("");
       setActivityVisible(true);
 
       let resultFiles: ProjectFile[] | null = null;
@@ -351,10 +354,21 @@ function Builder() {
             onPhase: (phase: PhaseId) => {
               setPhases((p) => advanceTo(p, phase));
             },
-            onSummaryDelta: (d) => setDesignCaption((s) => s + d),
+            onSummaryDelta: (d) => {
+              // Two consumers of the same stream:
+              //   - structured timeline (designCaption under "Designing")
+              //   - live assistant bubble in the chat thread
+              setDesignCaption((s) => s + d);
+              setStreamingAssistant((s) => s + d);
+            },
             onFileProgress: (n, path) => {
               setFilesWritten(n);
-              if (path) setLatestPath(path);
+              if (path) {
+                setLatestPath(path);
+                // Append to ordered, deduped list so the user sees each file
+                // appear in the activity card as Petal writes it.
+                setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
+              }
             },
             onResult: (f, s) => {
               resultFiles = f;
