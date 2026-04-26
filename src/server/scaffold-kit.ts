@@ -1499,6 +1499,318 @@ export const Grid = React.forwardRef<HTMLDivElement, GridProps>(
 Grid.displayName = "Grid";
 `;
 
+/**
+ * Layout primitives tutorial. Lives under src/components/examples/ as a
+ * read-only markdown reference the AI can consult when laying out pages.
+ * NOT imported by app code — pure documentation.
+ */
+const LAYOUT_DOCS = `# Layout Primitives — Container, Stack, Inline, Grid
+
+These four components handle ~90% of page layout in this scaffold. Reach for
+them BEFORE writing raw \`flex\`, \`grid\`, or \`gap-N\` utility chains by hand.
+
+---
+
+## When to use what (decision tree)
+
+- Centering a page or section horizontally with comfortable side padding -> **Container**
+- A vertical column of elements (form fields, list items, page sections) -> **Stack**
+- A horizontal row of small items (toolbar, button row, badges, breadcrumb) -> **Inline**
+- A responsive multi-column layout (cards, stats, dashboard widgets) -> **Grid**
+
+If you find yourself typing \`className="flex flex-col gap-..."\` -> use \`<Stack>\`.
+If you find yourself typing \`className="flex items-center gap-..."\` -> use \`<Inline>\`.
+If you find yourself typing \`className="grid grid-cols-1 md:grid-cols-..."\` -> use \`<Grid>\`.
+
+---
+
+## Container
+
+Centered max-width wrapper with sensible horizontal padding. Use as the
+outermost wrapper inside every page section.
+
+\`\`\`tsx
+import { Container } from "@/components/ui/container";
+
+<Container size="lg">
+  {/* page content */}
+</Container>
+\`\`\`
+
+**Props**
+
+| prop  | values                              | default | when to use                                  |
+|-------|-------------------------------------|---------|----------------------------------------------|
+| size  | "sm" \\| "md" \\| "lg" \\| "xl" \\| "full" | "lg"    | "sm" for forms/auth, "lg" for most pages, "xl" for dashboards, "full" for edge-to-edge |
+
+\`Container\` already applies \`mx-auto w-full px-4 sm:px-6 lg:px-8\`. Do NOT
+add your own horizontal padding to it — just nest content inside.
+
+---
+
+## Stack — vertical column
+
+\`\`\`tsx
+import { Stack } from "@/components/ui/stack";
+
+<Stack gap={6}>
+  <h1 className="text-3xl font-semibold">Settings</h1>
+  <p className="text-muted-foreground">Manage your preferences below.</p>
+  <Card>...</Card>
+  <Card>...</Card>
+</Stack>
+\`\`\`
+
+**Props**
+
+| prop    | values                              | default | notes                                  |
+|---------|-------------------------------------|---------|----------------------------------------|
+| gap     | 0,1,2,3,4,5,6,8,10,12               | 4       | use 4 for tight, 6 for comfortable, 8/10/12 for major page sections |
+| align   | "start" \\| "center" \\| "end" \\| "stretch" | (none) | rarely needed — default stretch is usually right |
+| justify | "start" \\| "center" \\| "end" \\| "between" \\| "around" | (none) | only matters when Stack has a fixed height |
+
+---
+
+## Inline — horizontal row
+
+\`\`\`tsx
+import { Inline } from "@/components/ui/stack";
+
+<Inline gap={2}>
+  <Button>Save</Button>
+  <Button variant="outline">Cancel</Button>
+</Inline>
+
+{/* Toolbar with item on each end */}
+<Inline justify="between">
+  <h2 className="text-xl font-semibold">Orders</h2>
+  <Inline gap={2}>
+    <Button variant="outline" size="sm"><Filter className="h-4 w-4 mr-2" />Filter</Button>
+    <Button size="sm"><Plus className="h-4 w-4 mr-2" />New</Button>
+  </Inline>
+</Inline>
+\`\`\`
+
+**Props** — same as Stack, plus:
+
+| prop  | values | default | notes |
+|-------|--------|---------|-------|
+| wrap  | boolean | false  | enable when the row holds many tags/badges that should wrap on small screens |
+| align | (same as Stack) | "center" | Inline defaults to vertical centering — usually what you want |
+| gap   | (same as Stack) | 2 | Inline defaults to a tighter gap than Stack |
+
+---
+
+## Grid — responsive multi-column
+
+Use a **preset** for common layouts. Only fall back to manual cols/sm/md/lg
+when no preset fits.
+
+\`\`\`tsx
+import { Grid } from "@/components/ui/grid";
+
+{/* Stat cards across the top of a dashboard */}
+<Grid preset="stats">
+  <StatCard label="Revenue"  value="$12,480" />
+  <StatCard label="Orders"   value="328"     />
+  <StatCard label="Users"    value="1,204"   />
+  <StatCard label="Refunds"  value="4"       />
+</Grid>
+
+{/* Marketing feature section */}
+<Grid preset="features">
+  <FeatureCard icon={Zap}    title="Fast"    desc="..." />
+  <FeatureCard icon={Shield} title="Secure"  desc="..." />
+  <FeatureCard icon={Heart}  title="Loved"   desc="..." />
+</Grid>
+
+{/* Manual composition when no preset fits */}
+<Grid cols={1} sm={2} md={3} lg={4} gap={6}>
+  {products.map(p => <ProductCard key={p.id} {...p} />)}
+</Grid>
+\`\`\`
+
+**Presets**
+
+| preset      | breakpoints (mobile -> desktop) | gap | use case                              |
+|-------------|---------------------------------|-----|---------------------------------------|
+| stats       | 1 -> 2 -> 4                     | 4   | row of KPI/stat cards                 |
+| kpis        | 2 -> 4 -> 6                     | 3   | dense KPI tiles                       |
+| dashboard   | 1 -> 2 -> 3                     | 6   | dashboard widgets                     |
+| cards       | 1 -> 2 -> 3 -> 4                | 6   | product / feature card grid           |
+| features    | 1 -> 2 -> 3                     | 8   | marketing feature section             |
+| pricing     | 1 -> 3                          | 6   | pricing tiers                         |
+| split       | 1 -> 2                          | 6   | two-column layout (main + sidebar)    |
+| gallery     | 2 -> 3 -> 4                     | 3   | photo / media gallery                 |
+
+**Manual props** (override or replace a preset):
+
+- \`cols\`, \`sm\`, \`md\`, \`lg\` — only these column counts work: **1, 2, 3, 4, 6, 12**.
+- \`gap\` — 0, 2, 3, 4, 6, 8, 10, 12.
+- Any explicit prop overrides the preset (e.g. \`<Grid preset="cards" lg={3}>\`).
+
+---
+
+## Putting it together — full page template
+
+Every page should follow this skeleton:
+
+\`\`\`tsx
+import { Container } from "@/components/ui/container";
+import { Stack, Inline } from "@/components/ui/stack";
+import { Grid } from "@/components/ui/grid";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus } from "lucide-react";
+
+export function DashboardPage() {
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Page-wide section padding */}
+      <section className="py-10">
+        <Container size="xl">
+          <Stack gap={8}>
+            {/* Page header */}
+            <Inline justify="between">
+              <Stack gap={1}>
+                <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+                <p className="text-muted-foreground">Overview of your store today.</p>
+              </Stack>
+              <Button><Plus className="h-4 w-4 mr-2" />New order</Button>
+            </Inline>
+
+            {/* Stat row */}
+            <Grid preset="stats">
+              <StatCard label="Revenue" value="$12,480" />
+              <StatCard label="Orders"  value="328" />
+              <StatCard label="Users"   value="1,204" />
+              <StatCard label="Refunds" value="4" />
+            </Grid>
+
+            {/* Widgets */}
+            <Grid preset="dashboard">
+              <Card><CardHeader><CardTitle>Sales</CardTitle></CardHeader><CardContent>...</CardContent></Card>
+              <Card><CardHeader><CardTitle>Top products</CardTitle></CardHeader><CardContent>...</CardContent></Card>
+              <Card><CardHeader><CardTitle>Recent orders</CardTitle></CardHeader><CardContent>...</CardContent></Card>
+            </Grid>
+          </Stack>
+        </Container>
+      </section>
+    </div>
+  );
+}
+\`\`\`
+
+---
+
+## Recipes
+
+### Auth screen (centered card)
+
+\`\`\`tsx
+<div className="min-h-screen bg-background grid place-items-center p-4">
+  <Container size="sm">
+    <Card>
+      <CardHeader><CardTitle>Sign in</CardTitle></CardHeader>
+      <CardContent>
+        <Stack gap={4}>
+          <Stack gap={2}><Label htmlFor="email">Email</Label><Input id="email" /></Stack>
+          <Stack gap={2}><Label htmlFor="pw">Password</Label><Input id="pw" type="password" /></Stack>
+          <Button className="w-full">Continue</Button>
+        </Stack>
+      </CardContent>
+    </Card>
+  </Container>
+</div>
+\`\`\`
+
+### Settings list (label/description left, control right)
+
+\`\`\`tsx
+<Stack gap={0} className="divide-y divide-border">
+  <Inline justify="between" className="py-4">
+    <Stack gap={1}>
+      <Label>Email notifications</Label>
+      <p className="text-sm text-muted-foreground">Get notified about new comments.</p>
+    </Stack>
+    <Switch />
+  </Inline>
+  <Inline justify="between" className="py-4">
+    <Stack gap={1}>
+      <Label>Weekly digest</Label>
+      <p className="text-sm text-muted-foreground">A summary every Monday.</p>
+    </Stack>
+    <Switch />
+  </Inline>
+</Stack>
+\`\`\`
+
+### Empty state
+
+\`\`\`tsx
+<Container size="md">
+  <Stack gap={4} align="center" className="py-16 text-center">
+    <div className="rounded-full bg-primary/10 p-4">
+      <Inbox className="h-8 w-8 text-primary" />
+    </div>
+    <Stack gap={1} align="center">
+      <h2 className="text-xl font-semibold">No orders yet</h2>
+      <p className="text-muted-foreground max-w-sm">When customers place orders, they'll show up here.</p>
+    </Stack>
+    <Button>Create your first product</Button>
+  </Stack>
+</Container>
+\`\`\`
+
+---
+
+## Anti-patterns — do NOT do these
+
+| Bad                                                            | Good                                          |
+|----------------------------------------------------------------|-----------------------------------------------|
+| \`<div className="max-w-6xl mx-auto px-4">\`                     | \`<Container size="lg">\`                       |
+| \`<div className="flex flex-col gap-6">\`                        | \`<Stack gap={6}>\`                             |
+| \`<div className="flex items-center gap-2">\`                    | \`<Inline gap={2}>\`                            |
+| \`<div className="flex justify-between items-center">\`          | \`<Inline justify="between">\`                  |
+| \`<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">\` | \`<Grid preset="dashboard">\`         |
+| \`<Container><Container>...</Container></Container>\` (nested)   | One Container per section, never nested        |
+| \`<Grid cols={5}>\`                                              | Allowed cols are 1, 2, 3, 4, 6, 12 only        |
+| Mixing raw Tailwind grid classes inside a \`<Grid>\` child       | Let Grid own column counts; child controls its own padding only |
+
+---
+
+## Quick reference (copy these snippets)
+
+\`\`\`tsx
+// Page shell
+<div className="min-h-screen bg-background">
+  <section className="py-10">
+    <Container size="xl">
+      <Stack gap={8}>{/* ... */}</Stack>
+    </Container>
+  </section>
+</div>
+
+// Header + actions
+<Inline justify="between">
+  <h1 className="text-2xl font-semibold tracking-tight">Title</h1>
+  <Inline gap={2}><Button variant="outline">Cancel</Button><Button>Save</Button></Inline>
+</Inline>
+
+// Stats row
+<Grid preset="stats">{/* 4 stat cards */}</Grid>
+
+// Card grid
+<Grid preset="cards">{/* product cards */}</Grid>
+
+// Two-column with sidebar
+<Grid preset="split">
+  <main>...</main>
+  <aside>...</aside>
+</Grid>
+\`\`\`
+`;
+
 
 /**
  * Reference patterns. NOT user-visible routes. The AI is told these files
