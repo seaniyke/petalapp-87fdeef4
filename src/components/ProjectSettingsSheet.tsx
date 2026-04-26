@@ -33,12 +33,19 @@ type Props = {
   onChange: (next: ProjectRow) => void;
   /** Optional render-prop trigger override. Default is a small toolbar button. */
   trigger?: React.ReactNode;
+  /** Optional controlled open state (so it can be opened from a parent menu). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
-export function ProjectSettingsSheet({ project, onChange, trigger }: Props) {
-  const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(project.custom_instructions ?? "");
-  const [saving, setSaving] = useState(false);
+export function ProjectSettingsSheet({ project, onChange, trigger, open: openProp, onOpenChange }: Props) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? !!openProp : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (!isControlled) setInternalOpen(v);
+    onOpenChange?.(v);
+  };
 
   // Re-sync when the sheet opens or the underlying project changes.
   useEffect(() => {
