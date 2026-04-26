@@ -2083,6 +2083,526 @@ export default function MagicLinkDialog({ open, onOpenChange, onSubmit, onUsePas
 `;
 
 /* =================================================================
+ * DASHBOARD WIDGETS (7) — combinable building blocks
+ *
+ * Smaller, prop-driven atoms designed to be composed into full pages.
+ * Unlike the \`dashboard-*.tsx\` blocks (which are opinionated full
+ * sections), these accept data via props and render in any layout.
+ *
+ * Charts are pure SVG placeholders so they work in every generated app
+ * without needing a chart library. When the user wires real data, swap
+ * the SVG body for recharts/visx — the surrounding Card stays the same.
+ * ================================================================= */
+
+const WIDGET_KPI_CARD = `import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { ComponentType } from "react";
+
+/**
+ * Single KPI tile — the atom of \`dashboard-stats-grid\`. Compose 2/3/4-up
+ * with a parent grid: \`<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">\`.
+ */
+export interface KpiCardProps {
+  label: string;
+  value: string;
+  /** Percent change vs previous period. Positive = good. Pass null to hide. */
+  delta?: number | null;
+  /** Helper line under the delta, e.g. "vs last week". */
+  hint?: string;
+  icon?: ComponentType<{ className?: string }>;
+}
+
+export default function KpiCard({ label, value, delta = null, hint = "vs last period", icon: Icon }: KpiCardProps) {
+  const positive = (delta ?? 0) >= 0;
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+        {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-semibold tracking-tight">{value}</div>
+        {delta !== null && (
+          <p className={\`mt-1 inline-flex items-center gap-1 text-xs \${positive ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}\`}>
+            {positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+            {Math.abs(delta)}% {hint}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+`;
+
+const WIDGET_FILTER_BAR = `import { CalendarRange, Search, SlidersHorizontal } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+/**
+ * Reusable filter toolbar for any list/table/dashboard page.
+ * Search + segment + date range + secondary actions, fully responsive.
+ */
+export interface FilterBarProps {
+  ranges?: string[];
+  segments?: string[];
+  defaultRange?: string;
+  defaultSegment?: string;
+  onSearch?: (q: string) => void;
+  onRangeChange?: (range: string) => void;
+  onSegmentChange?: (segment: string) => void;
+}
+
+export default function FilterBar({
+  ranges = ["Today", "7 days", "30 days", "90 days", "Custom"],
+  segments = ["All", "Active", "Trialing", "Cancelled"],
+  defaultRange = "7 days",
+  defaultSegment = "All",
+  onSearch,
+  onRangeChange,
+  onSegmentChange,
+}: FilterBarProps) {
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-1 items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search…" className="pl-9" onChange={(e) => onSearch?.(e.target.value)} />
+        </div>
+        <Tabs defaultValue={defaultSegment} onValueChange={onSegmentChange} className="hidden md:block">
+          <TabsList>
+            {segments.map((s) => (
+              <TabsTrigger key={s} value={s}>{s}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </div>
+      <div className="flex items-center gap-2">
+        <Select defaultValue={defaultRange} onValueChange={onRangeChange}>
+          <SelectTrigger className="w-[150px]">
+            <CalendarRange className="mr-2 h-4 w-4 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ranges.map((r) => (
+              <SelectItem key={r} value={r}>{r}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="icon" aria-label="More filters">
+          <SlidersHorizontal className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+`;
+
+const WIDGET_CHART_AREA = `import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+/**
+ * Area-chart placeholder. Pure SVG so it runs without a chart library.
+ * Swap the path for a real chart (recharts \`<AreaChart>\`) when wiring data.
+ */
+export interface AreaChartCardProps {
+  title?: string;
+  description?: string;
+  total?: string;
+  delta?: string;
+  /** Series of normalized values 0..1; defaults to a sample series. */
+  series?: number[];
+}
+
+const SAMPLE = [0.2, 0.45, 0.3, 0.6, 0.5, 0.75, 0.6, 0.85, 0.7, 0.95];
+
+export default function AreaChartCard({
+  title = "Revenue",
+  description = "Last 30 days",
+  total = "$48,294",
+  delta = "+12.4%",
+  series = SAMPLE,
+}: AreaChartCardProps) {
+  const w = 320, h = 96;
+  const step = w / (series.length - 1);
+  const pts = series.map((v, i) => \`\${i * step},\${h - v * (h - 6) - 3}\`);
+  const linePath = "M " + pts.join(" L ");
+  const areaPath = \`\${linePath} L \${w},\${h} L 0,\${h} Z\`;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-baseline gap-3">
+          <div className="text-3xl font-semibold tracking-tight">{total}</div>
+          <span className="text-xs text-emerald-600 dark:text-emerald-400">{delta}</span>
+        </div>
+        <svg viewBox={\`0 0 \${w} \${h}\`} className="mt-4 h-24 w-full">
+          <defs>
+            <linearGradient id="area-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d={areaPath} fill="url(#area-fill)" />
+          <path d={linePath} fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+`;
+
+const WIDGET_CHART_BAR = `import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+/**
+ * Bar-chart placeholder. Pure SVG; pass any series of \`{ label, value }\`.
+ */
+export interface BarChartCardProps {
+  title?: string;
+  description?: string;
+  data?: Array<{ label: string; value: number }>;
+}
+
+const SAMPLE = [
+  { label: "Mon", value: 32 },
+  { label: "Tue", value: 48 },
+  { label: "Wed", value: 24 },
+  { label: "Thu", value: 64 },
+  { label: "Fri", value: 56 },
+  { label: "Sat", value: 80 },
+  { label: "Sun", value: 44 },
+];
+
+export default function BarChartCard({
+  title = "Sessions by day",
+  description = "This week",
+  data = SAMPLE,
+}: BarChartCardProps) {
+  const max = Math.max(...data.map((d) => d.value), 1);
+  const w = 320, h = 120, gap = 6;
+  const barW = (w - gap * (data.length - 1)) / data.length;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <svg viewBox={\`0 0 \${w} \${h + 20}\`} className="h-36 w-full">
+          {data.map((d, i) => {
+            const bh = (d.value / max) * h;
+            const x = i * (barW + gap);
+            return (
+              <g key={d.label}>
+                <rect x={x} y={h - bh} width={barW} height={bh} rx="3" fill="hsl(var(--primary))" opacity={0.85} />
+                <text x={x + barW / 2} y={h + 14} textAnchor="middle" className="fill-muted-foreground" fontSize="10">
+                  {d.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+`;
+
+const WIDGET_CHART_DONUT = `import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+/**
+ * Donut-chart placeholder. Pure SVG; renders proportional arcs and a legend.
+ * Slice colours cycle through chart tokens (chart-1..chart-5) — define them
+ * in your design tokens or fall back to primary/muted shades.
+ */
+export interface DonutChartCardProps {
+  title?: string;
+  description?: string;
+  data?: Array<{ label: string; value: number }>;
+}
+
+const SAMPLE = [
+  { label: "Direct", value: 42 },
+  { label: "Search", value: 28 },
+  { label: "Social", value: 18 },
+  { label: "Referral", value: 12 },
+];
+
+const COLORS = ["hsl(var(--primary))", "hsl(var(--primary)/0.7)", "hsl(var(--primary)/0.45)", "hsl(var(--primary)/0.25)"];
+
+export default function DonutChartCard({
+  title = "Traffic sources",
+  description = "Last 7 days",
+  data = SAMPLE,
+}: DonutChartCardProps) {
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  const cx = 60, cy = 60, r = 48, stroke = 18;
+  const C = 2 * Math.PI * r;
+  let offset = 0;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex items-center gap-6">
+        <svg viewBox="0 0 120 120" className="h-32 w-32 -rotate-90">
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth={stroke} />
+          {data.map((d, i) => {
+            const len = (d.value / total) * C;
+            const dash = \`\${len} \${C - len}\`;
+            const el = (
+              <circle
+                key={d.label}
+                cx={cx}
+                cy={cy}
+                r={r}
+                fill="none"
+                stroke={COLORS[i % COLORS.length]}
+                strokeWidth={stroke}
+                strokeDasharray={dash}
+                strokeDashoffset={-offset}
+                strokeLinecap="butt"
+              />
+            );
+            offset += len;
+            return el;
+          })}
+        </svg>
+        <ul className="flex-1 space-y-2 text-sm">
+          {data.map((d, i) => (
+            <li key={d.label} className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-sm" style={{ background: COLORS[i % COLORS.length] }} />
+                <span className="text-foreground">{d.label}</span>
+              </span>
+              <span className="text-muted-foreground">{Math.round((d.value / total) * 100)}%</span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+`;
+
+const WIDGET_ACTIVITY_LOG = `import { GitCommit, AlertTriangle, CheckCircle2, Info } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { ComponentType } from "react";
+
+/**
+ * Compact, log-style activity widget — denser than \`dashboard-activity-feed\`.
+ * Use in narrow sidebars or alongside charts. Pass your own events via props.
+ */
+export type LogLevel = "info" | "success" | "warn" | "commit";
+
+export interface LogEntry {
+  level: LogLevel;
+  message: string;
+  /** Pre-formatted relative time, e.g. "2m", "1h". */
+  when: string;
+  source?: string;
+}
+
+const ICONS: Record<LogLevel, ComponentType<{ className?: string }>> = {
+  info: Info,
+  success: CheckCircle2,
+  warn: AlertTriangle,
+  commit: GitCommit,
+};
+
+const TONES: Record<LogLevel, string> = {
+  info: "text-muted-foreground",
+  success: "text-emerald-600 dark:text-emerald-400",
+  warn: "text-amber-600 dark:text-amber-400",
+  commit: "text-primary",
+};
+
+const SAMPLE: LogEntry[] = [
+  { level: "success", message: "Deploy succeeded on main", when: "2m", source: "ci" },
+  { level: "commit", message: "feat: add filter toolbar", when: "12m", source: "github" },
+  { level: "warn", message: "API latency above 800ms", when: "1h", source: "monitor" },
+  { level: "info", message: "3 new sign-ups today", when: "3h", source: "billing" },
+];
+
+export interface ActivityLogProps {
+  title?: string;
+  entries?: LogEntry[];
+}
+
+export default function ActivityLog({ title = "Activity", entries = SAMPLE }: ActivityLogProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="divide-y divide-border text-sm">
+          {entries.map((e, i) => {
+            const Icon = ICONS[e.level];
+            return (
+              <li key={i} className="flex items-start gap-3 py-2.5">
+                <Icon className={\`mt-0.5 h-4 w-4 shrink-0 \${TONES[e.level]}\`} />
+                <div className="flex-1">
+                  <p className="text-foreground">{e.message}</p>
+                  {e.source && <p className="text-xs text-muted-foreground">{e.source}</p>}
+                </div>
+                <span className="text-xs tabular-nums text-muted-foreground">{e.when}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+`;
+
+const WIDGET_TABLE_SORTABLE = `import { useMemo, useState } from "react";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+
+/**
+ * Sortable + selectable data-table widget. Generic over the row type;
+ * pass a column config that maps each column to a key + header label,
+ * and the table handles sort state and row selection internally.
+ *
+ * For really large datasets, swap the in-memory \`useMemo\` sort for a
+ * server-side query and lift selection state to the parent.
+ */
+export interface ColumnDef<T> {
+  key: keyof T & string;
+  header: string;
+  /** Optional cell renderer (defaults to String(row[key])). */
+  cell?: (row: T) => React.ReactNode;
+  /** If false, this column won't be sortable. Defaults to true. */
+  sortable?: boolean;
+  align?: "left" | "right";
+}
+
+export interface SortableTableProps<T extends { id: string | number }> {
+  rows: T[];
+  columns: ColumnDef<T>[];
+  selectable?: boolean;
+}
+
+type SortState<T> = { key: keyof T & string; dir: "asc" | "desc" } | null;
+
+export default function SortableTable<T extends { id: string | number }>({
+  rows,
+  columns,
+  selectable = true,
+}: SortableTableProps<T>) {
+  const [sort, setSort] = useState<SortState<T>>(null);
+  const [selected, setSelected] = useState<Set<T["id"]>>(new Set());
+
+  const sorted = useMemo(() => {
+    if (!sort) return rows;
+    const { key, dir } = sort;
+    return [...rows].sort((a, b) => {
+      const av = a[key], bv = b[key];
+      if (av === bv) return 0;
+      const r = av > bv ? 1 : -1;
+      return dir === "asc" ? r : -r;
+    });
+  }, [rows, sort]);
+
+  function toggleSort(col: ColumnDef<T>) {
+    if (col.sortable === false) return;
+    setSort((s) =>
+      !s || s.key !== col.key ? { key: col.key, dir: "asc" } :
+      s.dir === "asc" ? { key: col.key, dir: "desc" } : null
+    );
+  }
+
+  const allChecked = selectable && selected.size > 0 && selected.size === rows.length;
+
+  return (
+    <Card>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {selectable && (
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allChecked}
+                  onCheckedChange={(v) => setSelected(v ? new Set(rows.map((r) => r.id)) : new Set())}
+                  aria-label="Select all"
+                />
+              </TableHead>
+            )}
+            {columns.map((c) => {
+              const active = sort?.key === c.key;
+              const Icon = !active ? ArrowUpDown : sort.dir === "asc" ? ArrowUp : ArrowDown;
+              return (
+                <TableHead key={c.key} className={c.align === "right" ? "text-right" : undefined}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort(c)}
+                    disabled={c.sortable === false}
+                    className="inline-flex items-center gap-1 font-medium hover:text-foreground disabled:cursor-default disabled:opacity-100"
+                  >
+                    {c.header}
+                    {c.sortable !== false && <Icon className="h-3 w-3 opacity-60" />}
+                  </button>
+                </TableHead>
+              );
+            })}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sorted.map((row) => {
+            const isSelected = selected.has(row.id);
+            return (
+              <TableRow key={String(row.id)} data-state={isSelected ? "selected" : undefined}>
+                {selectable && (
+                  <TableCell>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(v) => {
+                        const next = new Set(selected);
+                        if (v) next.add(row.id); else next.delete(row.id);
+                        setSelected(next);
+                      }}
+                      aria-label={\`Select row \${row.id}\`}
+                    />
+                  </TableCell>
+                )}
+                {columns.map((c) => (
+                  <TableCell key={c.key} className={c.align === "right" ? "text-right" : undefined}>
+                    {c.cell ? c.cell(row) : String(row[c.key])}
+                  </TableCell>
+                ))}
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+      {selectable && selected.size > 0 && (
+        <div className="flex items-center justify-between border-t border-border px-4 py-2 text-sm">
+          <span className="text-muted-foreground">{selected.size} selected</span>
+          <Badge variant="secondary">Bulk actions →</Badge>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// Example usage (delete in production):
+// const cols: ColumnDef<{id: number; name: string; mrr: number}>[] = [
+//   { key: "name", header: "Customer" },
+//   { key: "mrr", header: "MRR", align: "right", cell: (r) => \`$\${r.mrr}\` },
+// ];
+// <SortableTable rows={data} columns={cols} />
+`;
+
+/* =================================================================
  * INDEX MARKDOWN
  * ================================================================= */
 
@@ -2118,6 +2638,15 @@ matching file below and adapt — do not invent layouts from scratch.
 - \`dashboard-chart-card.tsx\` — analytics card with range tabs + sparkline
 - \`dashboard-activity-feed.tsx\` — vertical timeline of team events
 - \`dashboard-empty-state.tsx\` — friendly empty list/table block
+
+## Dashboard widgets (combinable atoms)
+- \`widget-kpi-card.tsx\` — single KPI tile, prop-driven (label/value/delta/icon)
+- \`widget-filter-bar.tsx\` — search + segment tabs + date range + actions toolbar
+- \`widget-chart-area.tsx\` — area-chart card placeholder (pure SVG, swap for recharts)
+- \`widget-chart-bar.tsx\` — bar-chart card placeholder (pure SVG)
+- \`widget-chart-donut.tsx\` — donut chart with inline legend (pure SVG)
+- \`widget-activity-log.tsx\` — compact log-style feed (info/success/warn/commit)
+- \`widget-table-sortable.tsx\` — generic sortable + selectable data table
 
 ## Pricing
 - \`pricing-three-tier.tsx\` — three-plan grid with featured tier
@@ -2182,6 +2711,15 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/dashboard-chart-card.tsx", content: DASHBOARD_CHART_CARD, overwrite: true },
   { path: "src/components/examples/dashboard-activity-feed.tsx", content: DASHBOARD_ACTIVITY_FEED, overwrite: true },
   { path: "src/components/examples/dashboard-empty-state.tsx", content: DASHBOARD_EMPTY_STATE, overwrite: true },
+
+  // Dashboard widgets (combinable atoms)
+  { path: "src/components/examples/widget-kpi-card.tsx", content: WIDGET_KPI_CARD, overwrite: true },
+  { path: "src/components/examples/widget-filter-bar.tsx", content: WIDGET_FILTER_BAR, overwrite: true },
+  { path: "src/components/examples/widget-chart-area.tsx", content: WIDGET_CHART_AREA, overwrite: true },
+  { path: "src/components/examples/widget-chart-bar.tsx", content: WIDGET_CHART_BAR, overwrite: true },
+  { path: "src/components/examples/widget-chart-donut.tsx", content: WIDGET_CHART_DONUT, overwrite: true },
+  { path: "src/components/examples/widget-activity-log.tsx", content: WIDGET_ACTIVITY_LOG, overwrite: true },
+  { path: "src/components/examples/widget-table-sortable.tsx", content: WIDGET_TABLE_SORTABLE, overwrite: true },
 
   // Pricing
   { path: "src/components/examples/pricing-three-tier.tsx", content: PRICING_THREE_TIER, overwrite: true },
