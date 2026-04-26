@@ -55,11 +55,13 @@ export const Route = createFileRoute("/api/public/paystack/webhook")({
           .maybeSingle();
         if (prior) return new Response("ok", { status: 200 });
 
-        await supabaseAdmin.from("paystack_events").insert({
-          id: eventId,
-          type: payload.event,
-          payload: payload as unknown as Record<string, unknown>,
-        });
+        await supabaseAdmin.from("paystack_events").insert([
+          {
+            id: eventId,
+            type: payload.event,
+            payload: payload as unknown as Record<string, unknown>,
+          },
+        ]);
 
         if (payload.event !== "charge.success" || payload.data?.status !== "success") {
           // Record failure states on the transaction, but don't grant.

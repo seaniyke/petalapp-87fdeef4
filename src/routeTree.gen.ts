@@ -15,6 +15,7 @@ import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
+import { Route as BillingReturnRouteImport } from './routes/billing.return'
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 import { Route as ApiDomainsRouteImport } from './routes/api/domains'
 import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
@@ -54,6 +55,11 @@ const IndexRoute = IndexRouteImport.update({
 const PSlugRoute = PSlugRouteImport.update({
   id: '/p/$slug',
   path: '/p/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BillingReturnRoute = BillingReturnRouteImport.update({
+  id: '/billing/return',
+  path: '/billing/return',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGenerateRoute = ApiGenerateRouteImport.update({
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/billing/return': typeof BillingReturnRoute
   '/p/$slug': typeof PSlugRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/billing/return': typeof BillingReturnRoute
   '/p/$slug': typeof PSlugRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/billing/return': typeof BillingReturnRoute
   '/p/$slug': typeof PSlugRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
+    | '/billing/return'
     | '/p/$slug'
     | '/api/billing/initialize'
     | '/api/billing/verify'
@@ -193,6 +203,7 @@ export interface FileRouteTypes {
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
+    | '/billing/return'
     | '/p/$slug'
     | '/api/billing/initialize'
     | '/api/billing/verify'
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
+    | '/billing/return'
     | '/p/$slug'
     | '/api/billing/initialize'
     | '/api/billing/verify'
@@ -230,6 +242,7 @@ export interface RootRouteChildren {
   ApiDiscussRoute: typeof ApiDiscussRoute
   ApiDomainsRoute: typeof ApiDomainsRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
+  BillingReturnRoute: typeof BillingReturnRoute
   PSlugRoute: typeof PSlugRoute
   ApiBillingInitializeRoute: typeof ApiBillingInitializeRoute
   ApiBillingVerifyRoute: typeof ApiBillingVerifyRoute
@@ -281,6 +294,13 @@ declare module '@tanstack/react-router' {
       path: '/p/$slug'
       fullPath: '/p/$slug'
       preLoaderRoute: typeof PSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/billing/return': {
+      id: '/billing/return'
+      path: '/billing/return'
+      fullPath: '/billing/return'
+      preLoaderRoute: typeof BillingReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/generate': {
@@ -366,6 +386,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDiscussRoute: ApiDiscussRoute,
   ApiDomainsRoute: ApiDomainsRoute,
   ApiGenerateRoute: ApiGenerateRoute,
+  BillingReturnRoute: BillingReturnRoute,
   PSlugRoute: PSlugRoute,
   ApiBillingInitializeRoute: ApiBillingInitializeRoute,
   ApiBillingVerifyRoute: ApiBillingVerifyRoute,
