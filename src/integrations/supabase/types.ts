@@ -70,6 +70,44 @@ export type Database = {
         }
         Relationships: []
       }
+      project_builds: {
+        Row: {
+          created_at: string
+          dist_path: string | null
+          error_message: string | null
+          id: string
+          project_id: string
+          ready_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          dist_path?: string | null
+          error_message?: string | null
+          id?: string
+          project_id: string
+          ready_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          dist_path?: string | null
+          error_message?: string | null
+          id?: string
+          project_id?: string
+          ready_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_builds_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_files: {
         Row: {
           content: string
@@ -146,6 +184,7 @@ export type Database = {
           id: string
           is_featured: boolean
           is_public: boolean
+          latest_build_id: string | null
           owner_id: string
           remix_count: number
           remixed_from_id: string | null
@@ -159,6 +198,7 @@ export type Database = {
           id?: string
           is_featured?: boolean
           is_public?: boolean
+          latest_build_id?: string | null
           owner_id: string
           remix_count?: number
           remixed_from_id?: string | null
@@ -172,6 +212,7 @@ export type Database = {
           id?: string
           is_featured?: boolean
           is_public?: boolean
+          latest_build_id?: string | null
           owner_id?: string
           remix_count?: number
           remixed_from_id?: string | null
@@ -181,6 +222,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_latest_build_id_fkey"
+            columns: ["latest_build_id"]
+            isOneToOne: false
+            referencedRelation: "project_builds"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_remixed_from_id_fkey"
             columns: ["remixed_from_id"]
