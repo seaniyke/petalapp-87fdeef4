@@ -195,6 +195,11 @@ function Builder() {
       let resultSummary = "";
       let streamError: string | null = null;
 
+      // Cancel any prior in-flight request before starting a new one.
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       try {
         await streamGenerate(
           { messages: nextMessages, currentFiles: files },
@@ -210,9 +215,11 @@ function Builder() {
             onError: (m) => {
               streamError = m;
             },
-          }
+          },
+          controller.signal
         );
 
+        if (controller.signal.aborted) return;
         if (streamError) throw new Error(streamError);
         if (!resultFiles) throw new Error("No result returned.");
 
@@ -247,9 +254,11 @@ function Builder() {
           toast.error("Generated, but couldn't save changes.");
         }
       } catch (e) {
+        if (controller.signal.aborted) return;
         const msg = e instanceof Error ? e.message : "Something went wrong.";
         setError(msg);
       } finally {
+        if (abortRef.current === controller) abortRef.current = null;
         setBusy(false);
         setStreamStatus("");
         setStreamingSummary("");
@@ -257,6 +266,14 @@ function Builder() {
     },
     [busy, project, messages, files]
   );
+
+  const stopGeneration = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setBusy(false);
+    setStreamStatus("");
+    setStreamingSummary("");
+  }, []);
 
   const retry = useCallback(() => {
     if (lastUserPrompt) void send(lastUserPrompt, { isRetry: true });
