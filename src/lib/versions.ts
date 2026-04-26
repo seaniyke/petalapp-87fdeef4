@@ -62,13 +62,15 @@ export async function createVersion(
   if (files.length === 0) throw new Error("Nothing to snapshot yet.");
   const { data, error } = await supabase
     .from("project_versions")
-    .insert({
-      project_id: projectId,
-      files: files as unknown as DbRow["files"],
-      label: opts.label ?? null,
-      summary: opts.summary ?? null,
-      origin: opts.origin ?? "auto",
-    })
+    .insert([
+      {
+        project_id: projectId,
+        files: files as unknown as DbRow["files"],
+        label: opts.label ?? null,
+        summary: opts.summary ?? null,
+        origin: opts.origin ?? "auto",
+      },
+    ])
     .select("*")
     .single();
   if (error) throw error;
