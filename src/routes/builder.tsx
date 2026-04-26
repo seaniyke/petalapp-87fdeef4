@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 import { supabase } from "@/integrations/supabase/client";
 import {
