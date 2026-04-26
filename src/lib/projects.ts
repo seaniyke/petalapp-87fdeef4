@@ -1,33 +1,54 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ProjectFile, ChatMessage } from "@/server/generate.server";
 import type { Database } from "@/integrations/supabase/types";
-import {
-  connectByoBackend,
-  getBackendStatus,
-  disconnectBackend,
-  type BackendStatus,
-} from "@/server/backend-connector.server";
 
 export type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 
+export type ProjectBackend = {
+  status: "connecting" | "ready" | "failed" | "paused";
+  provider: "byo_supabase" | "managed_supabase";
+  supabaseUrl: string;
+  anonKey: string;
+  errorMessage: string | null;
+} | null;
+
+async function backendApi<T>(action: "status" | "connect" | "disconnect", body: unknown): Promise<T> {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token;
+  if (!token) throw new Error("Not signed in");
+  const resp = await fetch(`/api/backend?action=${action}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    throw new Error(text || `Request failed (${resp.status})`);
+  }
+  return (await resp.json()) as T;
+}
+
 /** Look up the backend attached to a project, if any. */
-export async function getProjectBackend(projectId: string): Promise<BackendStatus> {
-  return getBackendStatus({ data: { projectId } });
+export function getProjectBackend(projectId: string): Promise<ProjectBackend> {
+  return backendApi<ProjectBackend>("status", { projectId });
 }
 
 /** Connect a BYO Supabase backend to a project. */
-export async function connectProjectBackend(input: {
+export function connectProjectBackend(input: {
   projectId: string;
   supabaseUrl: string;
   anonKey: string;
   serviceRoleKey?: string;
-}) {
-  return connectByoBackend({ data: input });
+}): Promise<NonNullable<ProjectBackend>> {
+  return backendApi<NonNullable<ProjectBackend>>("connect", input);
 }
 
 /** Disconnect the backend from a project. */
-export async function disconnectProjectBackend(projectId: string) {
-  return disconnectBackend({ data: { projectId } });
+export function disconnectProjectBackend(projectId: string): Promise<{ ok: true }> {
+  return backendApi<{ ok: true }>("disconnect", { projectId });
 }
 
 export async function listProjects(): Promise<ProjectRow[]> {
