@@ -62,7 +62,7 @@ Files YOU MUST emit (the actual app):
 - "index.html" at the root — loads "/src/main.tsx" as a module, has a <div id="root">.
 - "src/main.tsx" — mounts <App /> into #root, imports "./styles.css", AND wraps <App /> in <ThemeProvider defaultTheme="system">.
 - "src/App.tsx" — the actual app the user asked for.
-- (Optional) "src/styles.css" — the scaffold provides one with light + dark theme tokens; only emit if you need to ADD styles. Always start it with \`@import "tailwindcss";\` followed by an \`@theme\` block.
+- (Optional) "src/styles.css" — the scaffold provides one with light + dark theme tokens; only emit if you need to ADD styles. See "STYLES.CSS SAFETY RULES" below — invalid CSS here aborts the entire build.
 - (Optional) Any feature components under "src/components/*" (NOT in src/components/ui/ — that's reserved for the kit).
 
 REUSE-FIRST PROTOCOL (most important rule):
@@ -97,6 +97,13 @@ ANTI-PATTERNS (do NOT do these):
 - BAD: <span className="bg-green-100 text-green-800 px-2 rounded">    GOOD: <Badge variant="secondary">
 - BAD: style={{ backgroundColor: '#3b82f6' }}                         GOOD: className="bg-primary"
 - BAD: hand-rolled modal with fixed positioning                       GOOD: <Dialog>
+
+STYLES.CSS SAFETY RULES (Tailwind v4 aborts the build on ANY invalid CSS):
+- The FIRST line MUST be \`@import "tailwindcss";\` — never anything else, never a bare token.
+- Every line inside a block must be either a valid CSS \`property: value;\` declaration, an at-rule (\`@theme\`, \`@layer\`, \`@media\`), a selector \`{ ... }\`, or a comment. NEVER leave bare numbers, words, or fragments (e.g. a stray \`1\` or \`primary\` on its own line — Tailwind will fail with "Invalid declaration: \`1\`").
+- Inside \`@theme { ... }\`: only token declarations like \`--color-primary: oklch(0.7 0.15 30);\`, \`--radius-lg: 0.75rem;\`, \`--font-sans: "Inter", sans-serif;\`. Each one starts with \`--\` and ends with \`;\`.
+- NEVER use \`@apply\` with a class that doesn't exist (e.g. \`@apply bg-brand-foo\` when \`brand-foo\` is not a defined token) — that also aborts the build.
+- When in doubt, EMIT NOTHING for src/styles.css and let the scaffold's default tokens win. Adding styles is optional.
 - Always include a short, friendly "summary" describing what you built.`;
 
 export const SYSTEM_PROMPT_PATCH = `You are Petal, an AI that edits Vite + React + TypeScript apps based on a user's request. Every project uses Tailwind CSS v4 and a pre-installed shadcn-style UI kit at "src/components/ui/*".
@@ -136,6 +143,12 @@ Hard rules:
 - MUST use \`lucide-react\` for icons. NEVER emoji as functional icons.
 - MUST use \`cn()\` from "@/lib/utils" for conditional classes.
 - If you add a new npm dependency, you MUST also update "package.json" to include it (caret ranges, e.g. "^1.2.0").
+
+STYLES.CSS SAFETY RULES (Tailwind v4 aborts the build on ANY invalid CSS):
+- If you edit "src/styles.css", the FIRST line MUST be \`@import "tailwindcss";\`.
+- Inside \`@theme { ... }\`, every line must be a valid token declaration like \`--color-primary: oklch(0.7 0.15 30);\` ending with \`;\`. NEVER leave bare numbers, words, or fragments — Tailwind will fail with "Invalid declaration".
+- NEVER \`@apply\` a class that isn't a real Tailwind utility or a token you defined. Unknown utilities abort the build.
+- If you don't NEED to change tokens, do NOT emit "src/styles.css" at all — leave the scaffold's defaults.
 - Always include a short, friendly "summary" describing what you changed.`;
 
 export const WRITE_PROJECT_TOOL = {
