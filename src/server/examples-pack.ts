@@ -1368,6 +1368,347 @@ export default function PaginatedTable() {
 `;
 
 /* =================================================================
+ * ONBOARDING FLOW (4 + 1 orchestrator)
+ *
+ * A complete, opinionated onboarding journey assembled from the auth
+ * primitives above. Each screen is a self-contained presentational
+ * component; `onboarding-flow.tsx` is the state-machine that strings
+ * them together (welcome → signup → verify OTP → done), with a
+ * forgot-password side-route reachable from the welcome screen.
+ * ================================================================= */
+
+const ONBOARDING_WELCOME = `import { Sparkles, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+/**
+ * Welcome / hero screen — first thing a new user sees.
+ * Two CTAs: primary (get started → signup) and secondary (sign in).
+ * Pure presentational — wire \`onPrimary\` / \`onSecondary\` to your router or flow state.
+ */
+export interface WelcomeProps {
+  appName?: string;
+  tagline?: string;
+  onPrimary?: () => void;
+  onSecondary?: () => void;
+}
+
+export default function OnboardingWelcome({
+  appName = "Acme",
+  tagline = "The fastest way to ship beautiful product.",
+  onPrimary,
+  onSecondary,
+}: WelcomeProps) {
+  return (
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-12">
+      {/* ambient gradient */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.18),transparent_60%)]"
+      />
+      <div className="relative z-10 mx-auto max-w-xl text-center">
+        <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          New here? You're in the right place.
+        </div>
+        <h1 className="text-balance text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+          Welcome to {appName}
+        </h1>
+        <p className="mx-auto mt-4 max-w-md text-balance text-muted-foreground">
+          {tagline}
+        </p>
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Button size="lg" className="w-full sm:w-auto" onClick={onPrimary}>
+            Get started
+            <ArrowRight className="ml-1 h-4 w-4" />
+          </Button>
+          <Button size="lg" variant="outline" className="w-full sm:w-auto" onClick={onSecondary}>
+            I already have an account
+          </Button>
+        </div>
+        <p className="mt-6 text-xs text-muted-foreground">
+          Free to try. No credit card required.
+        </p>
+      </div>
+    </div>
+  );
+}
+`;
+
+const ONBOARDING_SIGNUP_STEP = `import { useState, type FormEvent } from "react";
+import { Mail, Lock, User, Loader2, ArrowLeft } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+/**
+ * Signup step inside the onboarding flow.
+ * Collects name + email + password, then calls \`onSubmit({ email })\` so
+ * the orchestrator can advance to the OTP step with the email pre-filled.
+ */
+export interface SignupStepProps {
+  onBack?: () => void;
+  onSubmit?: (data: { name: string; email: string; password: string }) => void | Promise<void>;
+}
+
+export default function OnboardingSignupStep({ onBack, onSubmit }: SignupStepProps) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await onSubmit?.({ name, email, password });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted/40 px-4 py-12">
+      <Card className="w-full max-w-sm border-border/60 shadow-xl">
+        <CardHeader className="space-y-1">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="mb-2 inline-flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-3 w-3" /> Back
+            </button>
+          )}
+          <CardTitle className="text-2xl">Create your account</CardTitle>
+          <CardDescription>It only takes a minute. We'll send a verification code next.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Full name</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ada Lovelace" className="pl-9" required />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" className="pl-9" required />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" minLength={8} className="pl-9" required />
+              </div>
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Continue
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              By continuing you agree to our Terms and Privacy Policy.
+            </p>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+`;
+
+const ONBOARDING_VERIFY_STEP = `import { useState, type FormEvent } from "react";
+import { ShieldCheck, Loader2, ArrowLeft } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+
+/**
+ * OTP verification step. Receives the email from the signup step and
+ * calls \`onVerify(code)\` once a 6-digit code is entered.
+ */
+export interface VerifyStepProps {
+  email: string;
+  onBack?: () => void;
+  onVerify?: (code: string) => void | Promise<void>;
+  onResend?: () => void | Promise<void>;
+}
+
+export default function OnboardingVerifyStep({ email, onBack, onVerify, onResend }: VerifyStepProps) {
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (code.length !== 6) return;
+    setLoading(true);
+    try {
+      await onVerify?.(code);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted/40 px-4 py-12">
+      <Card className="w-full max-w-sm border-border/60 shadow-xl">
+        <CardHeader className="space-y-1 text-center">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="mx-auto mb-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-3 w-3" /> Back
+            </button>
+          )}
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <ShieldCheck className="h-6 w-6" />
+          </div>
+          <CardTitle className="text-2xl">Verify your email</CardTitle>
+          <CardDescription>
+            Enter the 6-digit code we sent to <span className="font-medium text-foreground">{email}</span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex justify-center">
+              <InputOTP maxLength={6} value={code} onChange={setCode}>
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+            <Button type="submit" className="w-full" disabled={loading || code.length !== 6}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Verify and continue
+            </Button>
+            <div className="text-center text-xs text-muted-foreground">
+              Didn't get a code?{" "}
+              <button type="button" onClick={() => onResend?.()} className="text-foreground hover:underline">
+                Resend
+              </button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+`;
+
+const ONBOARDING_SUCCESS = `import { CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+/**
+ * Final success screen. Show after OTP verification succeeds.
+ */
+export interface SuccessProps {
+  onContinue?: () => void;
+  appName?: string;
+}
+
+export default function OnboardingSuccess({ onContinue, appName = "Acme" }: SuccessProps) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
+      <div className="mx-auto max-w-md text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <CheckCircle2 className="h-8 w-8" />
+        </div>
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">You're all set</h1>
+        <p className="mx-auto mt-3 max-w-sm text-muted-foreground">
+          Welcome aboard. Your {appName} workspace is ready — let's get you to the good stuff.
+        </p>
+        <Button size="lg" className="mt-8" onClick={onContinue}>
+          Go to dashboard
+        </Button>
+      </div>
+    </div>
+  );
+}
+`;
+
+const ONBOARDING_FLOW = `import { useState } from "react";
+import OnboardingWelcome from "./onboarding-welcome";
+import OnboardingSignupStep from "./onboarding-signup-step";
+import OnboardingVerifyStep from "./onboarding-verify-step";
+import OnboardingSuccess from "./onboarding-success";
+import AuthForgotPassword from "./auth-forgot-password";
+
+/**
+ * Complete onboarding flow orchestrator.
+ *
+ * State machine: welcome → signup → verify → done
+ * Side branch:   welcome → forgot-password → welcome
+ *
+ * This is a presentational reference — replace the placeholder handlers
+ * (signup submit, OTP verify, resend) with calls into your real auth
+ * provider (e.g. \`@/integrations/backend/auth\`).
+ */
+type Step = "welcome" | "signup" | "verify" | "done" | "forgot";
+
+export default function OnboardingFlow({ appName = "Acme" }: { appName?: string }) {
+  const [step, setStep] = useState<Step>("welcome");
+  const [email, setEmail] = useState("");
+
+  switch (step) {
+    case "welcome":
+      return (
+        <OnboardingWelcome
+          appName={appName}
+          onPrimary={() => setStep("signup")}
+          onSecondary={() => setStep("forgot")}
+        />
+      );
+
+    case "signup":
+      return (
+        <OnboardingSignupStep
+          onBack={() => setStep("welcome")}
+          onSubmit={async ({ email: e }) => {
+            // TODO: call your real signup API here (sends OTP email)
+            setEmail(e);
+            setStep("verify");
+          }}
+        />
+      );
+
+    case "verify":
+      return (
+        <OnboardingVerifyStep
+          email={email}
+          onBack={() => setStep("signup")}
+          onVerify={async () => {
+            // TODO: call your real verify API here
+            setStep("done");
+          }}
+          onResend={async () => {
+            // TODO: call your real resend API here
+          }}
+        />
+      );
+
+    case "forgot":
+      // \`AuthForgotPassword\` is a self-contained screen; users return via its own
+      // "Back to sign in" link — wire that to setStep("welcome") in your app.
+      return <AuthForgotPassword />;
+
+    case "done":
+      return <OnboardingSuccess appName={appName} onContinue={() => { /* navigate to /app */ }} />;
+  }
+}
+`;
+
+/* =================================================================
  * INDEX MARKDOWN
  * ================================================================= */
 
@@ -1383,6 +1724,13 @@ matching file below and adapt — do not invent layouts from scratch.
 - \`auth-sign-up-split.tsx\` — split-screen onboarding (brand left, form right)
 - \`auth-forgot-password.tsx\` — reset flow with success state
 - \`auth-otp-card.tsx\` — six-digit code verification
+
+## Onboarding flow (composed from auth blocks)
+- \`onboarding-welcome.tsx\` — hero/welcome screen with primary + secondary CTAs
+- \`onboarding-signup-step.tsx\` — name + email + password step (calls \`onSubmit\`)
+- \`onboarding-verify-step.tsx\` — six-digit OTP step bound to the signup email
+- \`onboarding-success.tsx\` — final "you're all set" screen
+- \`onboarding-flow.tsx\` — orchestrator wiring welcome → signup → verify → done, with forgot-password side route
 
 ## Dashboard
 - \`dashboard-stats-grid.tsx\` — four-up KPI cards with delta indicators
@@ -1434,6 +1782,13 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/auth-sign-up-split.tsx", content: AUTH_SIGN_UP_SPLIT, overwrite: true },
   { path: "src/components/examples/auth-forgot-password.tsx", content: AUTH_FORGOT_PASSWORD, overwrite: true },
   { path: "src/components/examples/auth-otp-card.tsx", content: AUTH_OTP_CARD, overwrite: true },
+
+  // Onboarding flow
+  { path: "src/components/examples/onboarding-welcome.tsx", content: ONBOARDING_WELCOME, overwrite: true },
+  { path: "src/components/examples/onboarding-signup-step.tsx", content: ONBOARDING_SIGNUP_STEP, overwrite: true },
+  { path: "src/components/examples/onboarding-verify-step.tsx", content: ONBOARDING_VERIFY_STEP, overwrite: true },
+  { path: "src/components/examples/onboarding-success.tsx", content: ONBOARDING_SUCCESS, overwrite: true },
+  { path: "src/components/examples/onboarding-flow.tsx", content: ONBOARDING_FLOW, overwrite: true },
 
   // Dashboard
   { path: "src/components/examples/dashboard-stats-grid.tsx", content: DASHBOARD_STATS_GRID, overwrite: true },
