@@ -40,11 +40,15 @@ The scaffold ALREADY EXISTS — these files will be auto-injected, do NOT emit t
 
 REFERENCE PATTERNS (copy-from, do NOT import directly):
 The scaffold also injects working examples under "src/components/examples/*". They exist purely as a reference you can read and adapt — DO NOT import them into App.tsx, and DO NOT emit them yourself (they are auto-injected). When the user asks for the matching interaction, copy the pattern into your own feature component.
-- "src/components/examples/LAYOUT.md" — Tutorial for Container, Stack, Inline, and Grid: when to use each, full prop reference, page templates, recipes (auth, settings list, empty state), and anti-patterns. READ THIS before laying out any new page.
-- "src/components/examples/data-table-dialog.tsx" — Table rows + per-row Edit Dialog (controlled open/onOpenChange, immutable row update).
-- "src/components/examples/tabs-table-dashboard.tsx" — Tabs switching an Overview (stat Grid) and an Orders Table over the same dataset.
-- "src/components/examples/sheet-detail-panel.tsx" — Master Table + side Sheet detail view (use Sheet over Dialog for long-form / scrollable detail).
-- "src/components/examples/tabs-sheet-settings.tsx" — Settings Tabs (Profile / Notifications / Danger zone) with a Sheet hosting a destructive confirm flow.
+- "src/components/examples/LAYOUT.md" — Tutorial for Container, Stack, Inline, and Grid. READ THIS before laying out any new page.
+- "src/components/examples/EXAMPLES.md" — Index of all available copy-from blocks (auth, dashboard, pricing, hero, forms, tables). READ THIS before designing any common surface — chances are a block already exists.
+- Composition refs: "data-table-dialog.tsx", "tabs-table-dashboard.tsx", "sheet-detail-panel.tsx", "tabs-sheet-settings.tsx" — Dialog/Sheet/Tabs/Table compositions.
+- Auth blocks: "auth-sign-in-card.tsx", "auth-sign-up-split.tsx", "auth-forgot-password.tsx", "auth-otp-card.tsx".
+- Dashboard blocks: "dashboard-stats-grid.tsx", "dashboard-sidebar-layout.tsx", "dashboard-chart-card.tsx", "dashboard-activity-feed.tsx", "dashboard-empty-state.tsx".
+- Pricing blocks: "pricing-three-tier.tsx", "pricing-toggle-billing.tsx", "pricing-comparison-table.tsx".
+- Hero blocks: "hero-centered-gradient.tsx", "hero-split-screenshot.tsx", "hero-logo-cloud.tsx", "hero-feature-band.tsx".
+- Form blocks: "form-profile-settings.tsx", "form-multi-step.tsx", "form-contact.tsx", "form-inline-validation.tsx".
+- Table blocks: "table-users-list.tsx", "table-invoices.tsx", "table-filter-toolbar.tsx", "table-paginated.tsx".
 
 DARK MODE (built-in, automatic):
 The scaffold ships dark-mode tokens out of the box. The \`.dark\` class on <html> swaps every semantic color automatically, and the system preference is respected when no class is set.
