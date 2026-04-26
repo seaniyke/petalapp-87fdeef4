@@ -636,28 +636,20 @@ function Builder() {
                 )}
               </div>
             ))}
-            {busy && (
-              <div className="mr-6 rounded-2xl bg-mint/50 px-3.5 py-2.5 text-sm">
-                <div className="mb-1 flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-foreground/70">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    {streamStatus || "Petal is building…"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={stopGeneration}
-                    className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:bg-background hover:text-foreground"
-                  >
-                    <Square className="h-2.5 w-2.5 fill-current" /> Stop
-                  </button>
-                </div>
-                {streamingSummary && (
-                  <div className="whitespace-pre-wrap leading-relaxed">
-                    {streamingSummary}
-                    <span className="ml-0.5 inline-block h-3.5 w-1.5 -mb-0.5 animate-pulse bg-foreground/40" />
-                  </div>
-                )}
-              </div>
+            {activityVisible && (
+              <BuildActivityCard
+                phases={phases}
+                isActive={busy || isDeploying}
+                isComplete={isLive}
+                error={friendlyError}
+                designCaption={designCaption}
+                latestPath={latestPath}
+                filesWritten={filesWritten}
+                onStop={busy ? stopGeneration : undefined}
+                onRetry={lastUserPrompt ? retry : undefined}
+                onAskFix={askPetalToFix}
+                onDismissError={() => setFriendlyError(null)}
+              />
             )}
             <div ref={chatEndRef} />
           </div>
