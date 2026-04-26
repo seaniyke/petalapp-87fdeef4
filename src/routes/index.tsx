@@ -66,7 +66,7 @@ function Landing() {
         <div className="relative mx-auto max-w-5xl px-6 pt-20 pb-28 text-center md:pt-28 md:pb-36">
           <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
             <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-            Now in early access — powered by Lovable AI
+            Now in early access
           </div>
 
           <h1 className="mt-6 font-display text-5xl font-semibold leading-[1.05] tracking-tight text-balance md:text-7xl">
@@ -205,8 +205,8 @@ function Landing() {
               {
                 icon: Wand2,
                 tint: "bg-butter",
-                title: "Powered by Lovable AI",
-                body: "Top frontier models, no API key wrangling required.",
+                title: "Frontier AI models",
+                body: "Top-tier models built in — no API keys or setup required.",
               },
             ].map((f) => (
               <div
@@ -305,7 +305,7 @@ function Landing() {
 
       <footer className="border-t border-border bg-card/40">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 py-8 text-sm text-muted-foreground md:flex-row">
-          <div>© {new Date().getFullYear()} Petal. Built with Lovable.</div>
+          <div>© {new Date().getFullYear()} Petal. All rights reserved.</div>
           <div className="flex items-center gap-4">
             <a href="#" className="inline-flex items-center gap-1.5 hover:text-foreground">
               <Github className="h-4 w-4" /> GitHub
