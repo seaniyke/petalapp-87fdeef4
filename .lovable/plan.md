@@ -1,146 +1,89 @@
-# Petal — Audit & Hardening Plan
+# Mobile build & preview — Phase 7.1
 
-A focused pass to fix real bugs and rough edges we shipped during Phases 1–6, before moving on to Phase 7 (WebContainers / AI backends).
+## Context: how the others do it
 
-Grouped by **severity**. Each item lists what's wrong, how I'll fix it, and the files involved.
+I researched Bolt, Lovable, and Base44:
 
----
+- **Bolt.new** — explicitly tells mobile users it isn't supported. Same dead-end you're hitting now. They picked correctness over UX.
+- **Lovable (real one)** — ships every project as a published PWA. On mobile, the "preview" you see is the *published deployment* served from their CDN, not a WebContainer. Editing happens via chat, deploys auto-update.
+- **Base44** — renders previews server-side (their apps run as normal SSR web pages, not in-browser Node), so mobile previews "just work." They also added a desktop-only "Mobile preview mode" that simulates a phone frame.
+- **WebContainers themselves** — *do* technically run on iOS 16.4+ Safari (since April 2023, still beta), but installing 200 packages of a fresh Vite + React project over a phone network reliably exceeds our 3-minute timeout. The current "iOS = unsupported" message is too aggressive but the underlying constraint is real.
 
-## P0 — Correctness & Data Integrity
+## What we'll do
 
-### 1. `saveProjectFiles` is destructive and non-atomic
-**Problem:** `src/lib/projects.ts` deletes all rows for a project, then re-inserts. If the insert fails (network drop, RLS, payload size), the project is left **empty** with no recovery.
+Adopt the **Lovable model**: on mobile, swap the WebContainer for a snapshot of the *last successfully built* version, served as a normal iframe. The user can keep chatting and re-generating; the preview updates whenever a new version saves.
 
-**Fix:**
-- Replace delete-then-insert with an **upsert-by-(project_id, path)** strategy:
-  - Add a unique constraint on `(project_id, path)` via migration.
-  - Compute the diff client-side: upsert changed/new files, delete only paths that no longer exist.
-- Wrap the delete-of-removed-paths and the upsert in a single Postgres function (`replace_project_files(project_id, files jsonb)`) called via RPC, so it's atomic.
+For projects that have never been built (brand-new), we show the static `buildPreviewDoc` placeholder you already have, but with a clearer message.
 
-**Files:** `src/lib/projects.ts`, new migration.
+We also fix the layout so chat + preview no longer fight for space on a 430px viewport.
 
----
+### 1. Tabbed Chat / Preview layout on mobile
 
-### 2. No abort handling on in-flight generations
-**Problem:** `streamGenerate` accepts a `signal`, but `builder.tsx` never passes one. If a user sends a second prompt while the first stream is running, both write to state and to the DB — last-write-wins races corrupt files and message history.
+Today the builder uses a 2-column grid (`md:grid-cols-[360px_1fr]`) that stacks vertically below `md`. On a phone you scroll past the chat to find the preview. Replace the mobile stack with a **tab bar** at the top: `Chat | Preview`. Desktop layout stays unchanged.
 
-**Fix:**
-- Hold an `AbortController` ref in `Builder`. On new send / unmount / project switch, abort the previous controller before starting a new request.
-- Disable the send button while `busy` (already partially done) and surface a "Stop" button that calls `controller.abort()`.
-- In the SSE reader, swallow `AbortError` cleanly without setting an error state.
+- Add `mobileTab` state (`"chat" | "preview"`, default `"chat"`).
+- Below `md`, render only the active panel; above `md`, show both side-by-side as today.
+- The tab bar lives directly under the header, with a small dot indicator on `Preview` when files have changed since last view.
 
-**Files:** `src/routes/builder.tsx`, `src/lib/stream.ts`.
+### 2. Mobile-aware preview component
 
----
+Create a `<MobilePreviewFallback />` that replaces `<WebContainerPreview />` when:
+- `useIsMobile()` is true, **or**
+- `detectUnsupportedBrowser()` returns a message.
 
-### 3. Public iframe sandbox is too permissive (and inconsistent)
-**Problem:** `src/routes/p.$slug.tsx` uses `sandbox="allow-scripts allow-forms allow-modals"` — fine, but the **builder preview** iframe has no sandbox at all (will verify), so untrusted model output can hit `localStorage`, IndexedDB, and the parent origin in dev.
+Behavior of the fallback:
+- If the project has at least one saved version → render an iframe pointing to a server route that returns `buildPreviewDoc(files)` (a self-contained HTML doc — already exists in `src/lib/preview.ts`). Reason for a route vs. `srcDoc`: srcDoc breaks COEP isolation in some mobile browsers; a same-origin route inherits our CORP headers cleanly.
+- If no version yet → friendly empty state: "Your preview will appear here as soon as Petal generates it." with a spinner that pulses while a generation is in flight.
+- A small banner at the bottom: "Static preview — interactive features need a desktop browser to run live. [Learn why]" with a popover explaining WebContainers + linking back to chat.
 
-**Fix:**
-- Apply the same `sandbox="allow-scripts allow-forms allow-modals"` (no `allow-same-origin`) to the builder iframe as well.
-- Verify by inspecting `builder.tsx` lines around the iframe render and aligning attributes.
+### 3. New server route for the static preview
 
-**Files:** `src/routes/builder.tsx`.
+Add `src/routes/api/preview.$projectId.tsx` (TanStack server route, `GET` handler):
+- Loads the project's latest files via the existing `getProjectFiles` server function.
+- Auth-checks the caller (must own the project or it must be public via `is_featured` / `share_slug`).
+- Returns `new Response(buildPreviewDoc(files), { headers: { "Content-Type": "text/html", "Cross-Origin-Resource-Policy": "same-origin" } })`.
+- Wrapped in CORS headers per the troubleshooting guide so the iframe loads cleanly under our COEP.
 
----
+The mobile fallback iframe `src` becomes `/api/preview/${projectId}?v=${versionCount}` so it busts cache when a new version saves.
 
-## P1 — Performance
+### 4. Smarter desktop detection
 
-### 4. Builder bundle is ~2.2MB
-**Problem:** `CodeMirror`, `cmdk`, `react-markdown`, and `rehype-highlight` are all in the initial chunk for `/builder`, even though most users hit Preview first.
+Soften `detectUnsupportedBrowser()` in `src/components/WebContainerPreview.tsx`:
+- Keep returning a message for iOS / non-Chromium Android (the real-world install rarely succeeds), but pass that message *up* to the parent instead of rendering the dead-end card.
+- The parent (builder) decides what to render — on mobile it picks the fallback; on a desktop browser that *happens* to be unsupported (rare: old Firefox, Safari < 16.4) it still shows the existing card.
 
-**Fix:**
-- `React.lazy` + `<Suspense>` for:
-  - `CodeEditor` (only mounts when `view === "code"`)
-  - `CommandPalette` (only mounts when `paletteOpen` is true the first time)
-  - `MarkdownMessage` (lazy with a plain-text fallback so first paint is instant)
-- Lazy-import `jszip` inside `downloadProject` instead of top-level.
-- Confirm the Vite manual chunk split puts `highlight.js` languages in its own chunk (drop unused languages via `rehype-highlight`'s `languages` option — keep only html, css, js, ts, json, bash, md).
+### 5. Tighten install UX on slow desktops
 
-**Files:** `src/routes/builder.tsx`, `src/components/MarkdownMessage.tsx`.
+While we're in here:
+- Show install progress as `npm install (47s elapsed)` instead of just "Installing dependencies…" so 60-90s installs feel less stuck.
+- Bump the timeout from 3 → 5 minutes (cold installs on shared CI-style runners can cross 3min).
+- Add a "Cancel and retry" button next to the timer.
 
----
+### 6. Out of scope for this pass
 
-### 5. Gallery thumbnails mount N live iframes
-**Problem:** `/gallery` renders a real `srcDoc` iframe per card. With 60 cards that's 60 parallel JS contexts running model-generated code — heavy on CPU, fans spin on mobile.
+- **Real WebContainer-on-iOS attempt**: not worth it given network reality; revisit if StackBlitz publishes perf benchmarks.
+- **PWA manifest for generated apps** (Base44/Lovable feature): bigger lift, separate phase.
+- **Mobile frame simulator in desktop editor** (Base44 "Mobile preview mode"): nice-to-have, defer.
 
-**Fix:**
-- Use `IntersectionObserver` to lazy-mount each thumbnail iframe only when scrolled into view, and unmount when scrolled out (keep a static placeholder div with the project title gradient).
-- Add `loading="lazy"` and `sandbox="allow-scripts"` (no forms/modals needed for thumbnails).
-- Cap concurrent live thumbnails to ~6 via a small queue.
+## Files touched
 
-**Files:** `src/routes/gallery.tsx`.
+- `src/routes/builder.tsx` — add `mobileTab` state + tab bar, swap component on mobile.
+- `src/components/WebContainerPreview.tsx` — surface unsupported message via callback, add elapsed timer, raise timeout.
+- `src/components/MobilePreviewFallback.tsx` — **new**, renders the static iframe + empty state + info banner.
+- `src/routes/api/preview.$projectId.tsx` — **new**, TanStack server route returning static preview HTML with CORS + CORP headers.
+- `src/lib/preview.ts` — minor: tweak the placeholder copy to mention "open on desktop for live preview."
+- No new dependencies; no DB changes.
 
----
+## Risks
 
-## P2 — Security & Admin
+- **Auth on the new route**: must reuse the same Supabase server client / RLS path used by `getProjectFiles`. If we get this wrong, we leak private project source. I'll mirror the exact pattern from `src/server/generate.server.ts`.
+- **COEP/iframe interaction**: our global `Cross-Origin-Embedder-Policy: require-corp` middleware (in `src/start.ts`) means the iframe's response *must* send `Cross-Origin-Resource-Policy: same-origin` — already planned, but worth flagging.
+- **Cache invalidation**: the `?v=` query bust relies on the version counter being available client-side. It is (we already pass it to `WebContainerPreview` as `reloadKey`).
 
-### 6. No way to bootstrap the first admin
-**Problem:** `user_roles` defaults every new signup to `'user'`. The "Featured" toggle and admin RLS policies exist but are unreachable — there's no admin in the table.
+## Verification plan after build
 
-**Fix:**
-- Add a one-time SQL migration that promotes a specific email (I'll ask which one) to `admin` by inserting into `user_roles` after looking up the `auth.users.id` via `auth.email`.
-- Document the manual SQL pattern for future admins in a comment in the migration.
-
-**Files:** new migration, requires user input (which email).
-
----
-
-### 7. RLS audit on `project_files` for public projects
-**Status:** Looks correct — `Anyone can view files of public projects` is gated on `projects.is_public = true`. Same pattern on `project_versions`. **No change needed**, but I'll re-run `supabase--linter` after other migrations to confirm no regressions.
-
----
-
-## P3 — UX Polish
-
-### 8. Header overflows on mobile (current viewport is 430px)
-**Problem:** Builder top bar has 6+ controls (Back, title, view toggle, History, Share, Export, ⌘K, Sign-out). At 430px CSS pixels it wraps or clips.
-
-**Fix:**
-- Collapse Export / History / Share / ⌘K into a single "More" `DropdownMenu` below `md` breakpoint.
-- Truncate the project title with `truncate min-w-0` and a tooltip on hover.
-
-**Files:** `src/routes/builder.tsx`.
-
----
-
-### 9. `maybeAutoTitleProject` has no length cap on summary
-**Problem:** `summary` from the model can be arbitrarily long. We persist it raw and render it in cards, footers, and `<meta name="description">` — bad for SEO (Google truncates ~160 chars) and visual layout.
-
-**Fix:**
-- Trim summary to ~200 chars before persisting (truncate on word boundary, append `…`).
-- Same cap on title (already 60, leave it).
-
-**Files:** `src/lib/projects.ts`.
-
----
-
-### 10. Generation errors don't include the failed prompt context
-**Problem:** Inline error bubble + Retry exists, but if the user navigates away and back, `lastUserPrompt` is lost (it's component state, not persisted). The Retry button silently does nothing.
-
-**Fix:**
-- Persist failed-prompt as a `messages` row with `role="user"` immediately before calling `streamGenerate` (we already do this — verify), and read the last user message as the retry source instead of relying on ref state.
-- Disable Retry if no user message exists.
-
-**Files:** `src/routes/builder.tsx`.
-
----
-
-## Out of Scope (deferred)
-
-- **Phase 7** (WebContainers, AI-scaffolded backends, image generation) — separate plan once this audit lands.
-- Real screenshot service for gallery thumbnails (currently live iframes work; replace later with a worker-rendered PNG cache).
-- E2E test suite — we have no test harness today; adding one is its own project.
-
----
-
-## Suggested Order
-
-1. **P0 batch** (atomic file save + abort controller + iframe sandbox) — one PR, biggest correctness wins.
-2. **Admin bootstrap** (P2 #6) — small, unblocks Featured.
-3. **P1 perf batch** (lazy chunks + gallery virtualization) — measurable bundle drop.
-4. **P3 polish** — mobile header, summary cap, retry hardening.
-
-Before I start, I'll need:
-- The **email address** to promote to admin (item #6).
-- Confirmation that the **delete-then-upsert atomicity fix** (item #1) is OK to ship as a Postgres RPC (vs. keeping it client-side with a transaction-like pattern). RPC is more correct; I recommend it.
+1. Desktop Chrome: existing WebContainer flow unchanged, builds + previews React app.
+2. Desktop Firefox: same.
+3. iOS Safari (your phone): tabs visible; "Chat" works; "Preview" tab shows static render of the kanban app within ~1s of generation completing.
+4. Brand-new empty project on iOS: friendly empty state, not the broken-spinner card.
+5. Confirm the published `/p/$slug` and `/gallery` routes still work (they share `buildPreviewDoc`).
