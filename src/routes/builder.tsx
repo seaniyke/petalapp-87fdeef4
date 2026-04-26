@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -10,15 +10,37 @@ import {
   Sparkles,
   RotateCw,
   Download,
+  FolderOpen,
 } from "lucide-react";
+import JSZip from "jszip";
 import { generateProject } from "@/server/generate.functions";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { buildPreviewDoc } from "@/lib/preview";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  appendMessages,
+  createProject,
+  getProject,
+  loadProjectFiles,
+  loadProjectMessages,
+  maybeAutoTitleProject,
+  saveProjectFiles,
+  type ProjectRow,
+} from "@/lib/projects";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/builder")({
   validateSearch: (search: Record<string, unknown>) => ({
     prompt: typeof search.prompt === "string" ? search.prompt : undefined,
+    id: typeof search.id === "string" ? search.id : undefined,
   }),
+  beforeLoad: async ({ search }) => {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      const dest = `/builder${search.id ? `?id=${search.id}` : ""}`;
+      throw redirect({ to: "/auth", search: { mode: "signin", redirect: dest } });
+    }
+  },
   head: () => ({
     meta: [
       { title: "Builder · Petal" },
@@ -31,12 +53,15 @@ export const Route = createFileRoute("/builder")({
 type ViewMode = "preview" | "code";
 
 function Builder() {
-  const { prompt: initialPrompt } = Route.useSearch();
+  const { prompt: initialPrompt, id: searchId } = Route.useSearch();
+  const navigate = useNavigate();
 
+  const [project, setProject] = useState<ProjectRow | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [input, setInput] = useState(initialPrompt ?? "");
   const [busy, setBusy] = useState(false);
+  const [bootstrapping, setBootstrapping] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("preview");
@@ -50,20 +75,71 @@ function Builder() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
 
-  // Auto-send the prompt from the landing page once.
+  // Bootstrap: load existing project, or create a new one if no id in URL.
   useEffect(() => {
-    if (initialPrompt && !initialSent.current) {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (searchId) {
+          const p = await getProject(searchId);
+          if (!p) {
+            toast.error("Project not found");
+            navigate({ to: "/projects" });
+            return;
+          }
+          const [fs, ms] = await Promise.all([
+            loadProjectFiles(p.id),
+            loadProjectMessages(p.id),
+          ]);
+          if (cancelled) return;
+          setProject(p);
+          setFiles(fs);
+          setMessages(ms);
+          setActiveFile(fs.find((f) => f.path === "index.html")?.path ?? fs[0]?.path ?? null);
+        } else {
+          // Fresh project: create row, then update URL
+          const p = await createProject();
+          if (cancelled) return;
+          setProject(p);
+          navigate({
+            to: "/builder",
+            search: { id: p.id, prompt: initialPrompt },
+            replace: true,
+          });
+        }
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Could not open project");
+      } finally {
+        if (!cancelled) setBootstrapping(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchId]);
+
+  // Auto-send the prompt from the landing page once, after bootstrap.
+  useEffect(() => {
+    if (
+      !bootstrapping &&
+      project &&
+      initialPrompt &&
+      !initialSent.current &&
+      messages.length === 0
+    ) {
       initialSent.current = true;
       void send(initialPrompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialPrompt]);
+  }, [bootstrapping, project, initialPrompt]);
 
   async function send(content: string) {
     const text = content.trim();
-    if (!text || busy) return;
+    if (!text || busy || !project) return;
     setError(null);
-    const nextMessages: ChatMessage[] = [...messages, { role: "user", content: text }];
+    const userMsg: ChatMessage = { role: "user", content: text };
+    const nextMessages: ChatMessage[] = [...messages, userMsg];
     setMessages(nextMessages);
     setInput("");
     setBusy(true);
@@ -71,40 +147,44 @@ function Builder() {
       const result = await generateProject({
         data: { messages: nextMessages, currentFiles: files },
       });
+      const assistantMsg: ChatMessage = { role: "assistant", content: result.summary };
       setFiles(result.files);
       setActiveFile((prev) => prev ?? "index.html");
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: result.summary },
-      ]);
+      setMessages((prev) => [...prev, assistantMsg]);
       setPreviewKey((k) => k + 1);
+
+      // Persist
+      try {
+        await Promise.all([
+          saveProjectFiles(project.id, result.files),
+          appendMessages(project.id, [userMsg, assistantMsg]),
+          maybeAutoTitleProject(project, result.summary, text),
+        ]);
+        // Refresh project meta so title/summary in the UI stay current
+        const refreshed = await getProject(project.id);
+        if (refreshed) setProject(refreshed);
+      } catch (persistErr) {
+        console.error(persistErr);
+        toast.error("Generated, but couldn't save changes.");
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Something went wrong.";
       setError(msg);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: `⚠️ ${msg}` },
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", content: `⚠️ ${msg}` }]);
     } finally {
       setBusy(false);
     }
   }
 
-  function downloadProject() {
+  async function downloadProject() {
     if (!files.length) return;
-    // Combine into a single text dump for now.
-    const blob = new Blob(
-      [
-        files
-          .map((f) => `// ===== ${f.path} =====\n${f.content}`)
-          .join("\n\n"),
-      ],
-      { type: "text/plain" }
-    );
+    const zip = new JSZip();
+    for (const f of files) zip.file(f.path, f.content);
+    const blob = await zip.generateAsync({ type: "blob" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "petal-project.txt";
+    a.download = `${project?.slug ?? "petal-project"}.zip`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -117,18 +197,25 @@ function Builder() {
       <header className="flex h-14 items-center justify-between border-b border-border bg-card/70 px-4 backdrop-blur">
         <div className="flex items-center gap-3">
           <Link
-            to="/"
+            to="/projects"
             className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
           >
             <ArrowLeft className="h-4 w-4" />
-            Home
+            Projects
           </Link>
           <div className="h-5 w-px bg-border" />
           <div className="flex items-center gap-2">
             <span className="grid h-7 w-7 place-items-center rounded-md bg-primary text-primary-foreground">
               <Sparkles className="h-3.5 w-3.5" />
             </span>
-            <span className="font-display text-lg">Petal Builder</span>
+            <div className="flex flex-col leading-tight">
+              <span className="font-display text-base">{project?.title ?? "Loading…"}</span>
+              {project?.summary && (
+                <span className="line-clamp-1 max-w-[280px] text-[11px] text-muted-foreground">
+                  {project.summary}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -163,7 +250,7 @@ function Builder() {
             disabled={!files.length}
             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted disabled:opacity-40"
           >
-            <Download className="h-3.5 w-3.5" /> Export
+            <Download className="h-3.5 w-3.5" /> Export .zip
           </button>
         </div>
       </header>
@@ -175,19 +262,22 @@ function Builder() {
             Conversation
           </div>
           <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-            {messages.length === 0 && !busy && (
+            {bootstrapping && (
+              <div className="inline-flex items-center gap-2 rounded-2xl bg-card px-3.5 py-2.5 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading project…
+              </div>
+            )}
+            {!bootstrapping && messages.length === 0 && !busy && (
               <div className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
-                Describe an app to start. Try “a calm pomodoro timer with stats”
-                or “a recipe card generator”.
+                Describe an app to start. Try "a calm pomodoro timer with stats"
+                or "a recipe card generator".
               </div>
             )}
             {messages.map((m, i) => (
               <div
                 key={i}
                 className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                  m.role === "user"
-                    ? "ml-6 bg-card"
-                    : "mr-6 bg-butter/60"
+                  m.role === "user" ? "ml-6 bg-card" : "mr-6 bg-butter/60"
                 }`}
               >
                 <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -228,11 +318,11 @@ function Builder() {
                 }
                 rows={2}
                 className="max-h-40 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
-                disabled={busy}
+                disabled={busy || bootstrapping}
               />
               <button
                 type="submit"
-                disabled={busy || !input.trim()}
+                disabled={busy || bootstrapping || !input.trim()}
                 className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground transition hover:brightness-105 disabled:opacity-40"
               >
                 {busy ? (
@@ -305,6 +395,15 @@ function Builder() {
                       )
                     );
                   }}
+                  onBlur={async () => {
+                    if (!project) return;
+                    try {
+                      await saveProjectFiles(project.id, files);
+                    } catch (e) {
+                      toast.error("Couldn't save edits");
+                      console.error(e);
+                    }
+                  }}
                   spellCheck={false}
                   className="h-full min-h-[400px] w-full resize-none bg-transparent p-4 font-mono text-xs leading-relaxed outline-none"
                   placeholder="Select a file to edit."
@@ -329,6 +428,12 @@ function EmptyPreview() {
         Send a message in the chat to generate your first project. Petal will
         write the files and reload this preview automatically.
       </p>
+      <Link
+        to="/projects"
+        className="mt-5 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+      >
+        <FolderOpen className="h-3.5 w-3.5" /> Back to projects
+      </Link>
     </div>
   );
 }
