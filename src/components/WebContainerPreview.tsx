@@ -55,10 +55,13 @@ const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
 export function WebContainerPreview({
   files,
   reloadKey,
+  onPick,
 }: {
   files: ProjectFile[];
   /** Bump this number to force the iframe to reload (e.g. after restoring a version). */
   reloadKey: number;
+  /** Called when a user picks an element via the in-iframe overlay. */
+  onPick?: (el: PickedElement) => void;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [serverUrl, setServerUrl] = useState<string | null>(null);
@@ -66,6 +69,7 @@ export function WebContainerPreview({
   const [error, setError] = useState<string | null>(null);
   const [showLogs, setShowLogs] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
+  const [pickActive, setPickActive] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const bootedRef = useRef(false);
   const mountedFilesSig = useRef<string>("");
