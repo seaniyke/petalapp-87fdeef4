@@ -1,0 +1,10 @@
+import { createClient } from '@supabase/supabase-js';
+const url = process.env.SUPABASE_URL;
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!url || !key) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+const supabase = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+const email = `petal-auth-test-${Date.now()}@example.com`;
+const password = `PetalTest${Date.now()}!`;
+const { data, error } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
+if (error) throw error;
+console.log(JSON.stringify({ email, password, id: data.user.id }));
