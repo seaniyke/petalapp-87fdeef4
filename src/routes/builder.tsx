@@ -407,6 +407,7 @@ function Builder() {
         const reply = await requestDiscussion({
           messages: nextMessages,
           currentFiles: files,
+          customInstructions: project.custom_instructions ?? undefined,
         });
         const assistantMsg: ChatMessage = { role: "assistant", content: reply };
         setMessages((prev) => {
