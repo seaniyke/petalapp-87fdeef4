@@ -20,6 +20,7 @@ import {
   Undo2,
   X,
   BookOpen,
+  ChevronDown,
   ChevronUp,
   GripVertical,
 } from "lucide-react";
