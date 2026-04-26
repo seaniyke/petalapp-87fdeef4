@@ -131,7 +131,7 @@ function Builder() {
   const buildSnap = useBuildActivity(project?.latest_build_id ?? null);
   const isDeploying = buildSnap?.status === "pending";
   const isLive = buildSnap?.status === "ready";
-  const isBuildFailed = buildSnap?.status === "failed";
+  
 
   // Reflect Cloudflare build state into the phase timeline + friendly errors.
   useEffect(() => {
