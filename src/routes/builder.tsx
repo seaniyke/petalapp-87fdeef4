@@ -453,6 +453,9 @@ function Builder() {
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
         setBusy(false);
+        // Drop any partial streaming text — either it became a real message
+        // above, or the run failed/aborted and we don't want a stale bubble.
+        setStreamingAssistant("");
       }
     },
     [busy, messages, files, ensureProject],
