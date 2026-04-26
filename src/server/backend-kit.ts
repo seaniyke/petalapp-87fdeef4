@@ -219,24 +219,38 @@ unless noted). Use whichever matches the user's flow — never call
 | \`signUpWithPassword(email, password)\` | Classic email + password sign-up. Sends a confirmation email. |
 | \`signInWithPassword(email, password)\` | Classic email + password sign-in. |
 | \`signInWithOtp(email)\` | Passwordless / magic-link or email-OTP sign-in. Send first, then prompt for the code. |
-| \`verifyOtp(email, token)\` | Verify the 6-digit code (works for both signup confirmations and OTP sign-in). |
+| \`verifyOtp(email, token, type?)\` | Verify a 6-digit code. Defaults to \`"email"\` (the OTP from \`signInWithOtp\`). Pass \`"signup"\` for the code from \`signUpWithPassword\`. |
+| \`verifySignupOtp(email, token)\` | Sugar for the signup-confirmation case — equivalent to \`verifyOtp(email, token, "signup")\`. Use this after \`signUpWithPassword\`. |
 | \`resendSignupOtp(email)\` | Resend the signup confirmation code on user request. |
-| \`resetPasswordForEmail(email)\` | Send a password-reset email. **Requires** a \`/reset-password\` route in the app — see below. |
-| \`updatePassword(newPassword)\` | Set a new password while a recovery session is active. Call this from the \`/reset-password\` page. |
+| \`resetPasswordForEmail(email)\` | Send a password-reset email. **Requires** a \`/reset-password\` view in the app — see below. |
+| \`updatePassword(newPassword)\` | Set a new password while a recovery session is active. Call this from the \`/reset-password\` view. |
 | \`signOut()\` | Sign the current user out. Returns \`void\`. |
 
 ### Password-reset wiring (mandatory if you call \`resetPasswordForEmail\`)
 
 The reset email links the user back to \`<origin>/reset-password\` with an
-active recovery session. You **must** mount a public route at that path
-that:
+active recovery session. The scaffold ships **no router**, so you must
+gate the reset view yourself in \`App.tsx\` (no new dependency needed):
 
-1. Renders a "set new password" form.
-2. Calls \`updatePassword(newPassword)\` on submit.
-3. Redirects on success.
+\`\`\`tsx
+import ResetPassword from "@/components/ResetPassword"; // copied from auth-reset-password.tsx
+
+export default function App() {
+  if (typeof window !== "undefined" && window.location.pathname === "/reset-password") {
+    return <ResetPassword />;
+  }
+  // ... rest of your app
+}
+\`\`\`
+
+The reset view must:
+
+1. Render a "set new password" form.
+2. Call \`updatePassword(newPassword)\` on submit.
+3. Redirect on success (e.g. \`window.location.assign("/")\`).
 
 A copy-from reference is in \`src/components/examples/auth-reset-password.tsx\`.
-Without this route, users will be silently signed in without resetting
+Without this gate, users will be silently signed in without resetting
 their password.
 
 
