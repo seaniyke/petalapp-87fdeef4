@@ -67,13 +67,14 @@ export function SiteHeader() {
             <>
               <Link
                 to="/auth"
+                search={{ mode: "signin", redirect: undefined }}
                 className="hidden h-9 items-center rounded-full px-4 text-sm text-muted-foreground hover:text-foreground sm:inline-flex"
               >
                 Sign in
               </Link>
               <Link
                 to="/auth"
-                search={{ mode: "signup" }}
+                search={{ mode: "signup", redirect: undefined }}
                 className="inline-flex h-9 items-center gap-1.5 rounded-full bg-foreground px-4 text-sm font-medium text-background transition-transform hover:-translate-y-0.5"
               >
                 <UserIcon className="h-3.5 w-3.5" />
