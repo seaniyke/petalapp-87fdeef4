@@ -26,20 +26,47 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       return;
     }
     let cancelled = false;
-    void supabase
-      .from("project_builds")
-      .select("status, dist_path, error_message")
-      .eq("id", latestBuildId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled || !data) return;
-        setSnap({
+
+    const apply = (data: {
+      status: string | null;
+      dist_path: string | null;
+      error_message: string | null;
+    }) => {
+      if (cancelled) return;
+      setSnap((prev) => {
+        const next: BuildSnapshot = {
           status: (data.status as BuildSnapshot["status"]) ?? "pending",
           distPath: data.dist_path ?? null,
           errorMessage: data.error_message ?? null,
-        });
+        };
+        // Avoid pointless re-renders when polling returns identical rows.
+        if (
+          prev &&
+          prev.status === next.status &&
+          prev.distPath === next.distPath &&
+          prev.errorMessage === next.errorMessage
+        ) {
+          return prev;
+        }
+        return next;
       });
+    };
 
+    const fetchOnce = async () => {
+      const { data } = await supabase
+        .from("project_builds")
+        .select("status, dist_path, error_message")
+        .eq("id", latestBuildId)
+        .maybeSingle();
+      if (data) apply(data);
+    };
+
+    void fetchOnce();
+
+    // Realtime is the primary signal; polling is a fallback for environments
+    // where the websocket gets dropped (locked-down corporate networks, some
+    // mobile browsers, sleeping tabs that just resumed). Stop polling once the
+    // build reaches a terminal state to avoid hammering the DB.
     const channel = supabase
       .channel(`build-activity:${latestBuildId}`)
       .on(
@@ -50,23 +77,23 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
           table: "project_builds",
           filter: `id=eq.${latestBuildId}`,
         },
-        (payload) => {
-          const next = payload.new as {
-            status: string;
-            dist_path: string | null;
-            error_message: string | null;
-          };
-          setSnap({
-            status: (next.status as BuildSnapshot["status"]) ?? "pending",
-            distPath: next.dist_path ?? null,
-            errorMessage: next.error_message ?? null,
-          });
-        },
+        (payload) => apply(payload.new as Parameters<typeof apply>[0]),
       )
       .subscribe();
 
+    const poll = window.setInterval(() => {
+      // setSnap is a state setter; we read the latest via a functional check.
+      // Skip the network call once we're terminal.
+      setSnap((prev) => {
+        if (prev?.status === "ready" || prev?.status === "failed") return prev;
+        void fetchOnce();
+        return prev;
+      });
+    }, 5_000);
+
     return () => {
       cancelled = true;
+      window.clearInterval(poll);
       void supabase.removeChannel(channel);
     };
   }, [latestBuildId]);
