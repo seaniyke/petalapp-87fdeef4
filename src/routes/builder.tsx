@@ -341,6 +341,7 @@ function Builder() {
       setLatestPath(undefined);
       setWrittenPaths([]);
       setFinalFileLines({});
+      setFileChanges({});
       setStreamingAssistant("");
       setActivityVisible(true);
 
