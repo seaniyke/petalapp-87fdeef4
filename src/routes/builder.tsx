@@ -601,6 +601,7 @@ function Builder() {
           )}
         </main>
       </div>
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} items={paletteItems} />
     </div>
   );
 }
