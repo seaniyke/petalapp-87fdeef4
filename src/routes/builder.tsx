@@ -804,6 +804,17 @@ function Builder() {
               <DropdownMenuItem onSelect={() => void downloadProject()} disabled={!files.length}>
                 <Download className="mr-2 h-3.5 w-3.5" /> Export .zip
               </DropdownMenuItem>
+              {project && (
+                <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
+                  <BookOpen className="mr-2 h-3.5 w-3.5" /> Project knowledge
+                  {project.custom_instructions && (
+                    <span
+                      aria-hidden
+                      className="ml-auto h-1.5 w-1.5 rounded-full bg-primary"
+                    />
+                  )}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
