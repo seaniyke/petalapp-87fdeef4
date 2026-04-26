@@ -160,6 +160,27 @@ export async function appendMessages(projectId: string, msgs: ChatMessage[]) {
   if (error) throw error;
 }
 
+/**
+ * Trim chat history to the first `keepCount` messages (chronological).
+ * Used by per-message revert so the conversation reflects the restored state.
+ */
+export async function truncateMessagesToCount(projectId: string, keepCount: number) {
+  const { data, error } = await supabase
+    .from("messages")
+    .select("id")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  const ids = (data ?? []).map((r) => r.id);
+  const toDelete = ids.slice(keepCount);
+  if (toDelete.length === 0) return;
+  const { error: delErr } = await supabase
+    .from("messages")
+    .delete()
+    .in("id", toDelete);
+  if (delErr) throw delErr;
+}
+
 /** Truncate to ~200 chars on a word boundary. Used to keep summaries SEO-friendly. */
 export function truncateSummary(s: string, max = 200): string {
   const clean = s.replace(/\s+/g, " ").trim();
