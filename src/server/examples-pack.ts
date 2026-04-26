@@ -1725,6 +1725,13 @@ matching file below and adapt — do not invent layouts from scratch.
 - \`auth-forgot-password.tsx\` — reset flow with success state
 - \`auth-otp-card.tsx\` — six-digit code verification
 
+## Onboarding flow (composed from auth blocks)
+- \`onboarding-welcome.tsx\` — hero/welcome screen with primary + secondary CTAs
+- \`onboarding-signup-step.tsx\` — name + email + password step (calls \`onSubmit\`)
+- \`onboarding-verify-step.tsx\` — six-digit OTP step bound to the signup email
+- \`onboarding-success.tsx\` — final "you're all set" screen
+- \`onboarding-flow.tsx\` — orchestrator wiring welcome → signup → verify → done, with forgot-password side route
+
 ## Dashboard
 - \`dashboard-stats-grid.tsx\` — four-up KPI cards with delta indicators
 - \`dashboard-sidebar-layout.tsx\` — persistent left rail + top bar shell
