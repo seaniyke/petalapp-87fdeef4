@@ -14,6 +14,120 @@ export type Database = {
   }
   public: {
     Tables: {
+      billing_plans: {
+        Row: {
+          code: string
+          created_at: string
+          daily_free_credits: number
+          features: Json
+          is_active: boolean
+          monthly_credits: number
+          monthly_free_cap: number | null
+          name: string
+          price_cents: number
+          sort_order: number
+          stripe_price_id: string | null
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          daily_free_credits?: number
+          features?: Json
+          is_active?: boolean
+          monthly_credits?: number
+          monthly_free_cap?: number | null
+          name: string
+          price_cents?: number
+          sort_order?: number
+          stripe_price_id?: string | null
+          tier: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          daily_free_credits?: number
+          features?: Json
+          is_active?: boolean
+          monthly_credits?: number
+          monthly_free_cap?: number | null
+          name?: string
+          price_cents?: number
+          sort_order?: number
+          stripe_price_id?: string | null
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      credit_ledger: {
+        Row: {
+          balance_after: number
+          created_at: string
+          delta: number
+          id: string
+          metadata: Json
+          project_id: string | null
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          balance_after: number
+          created_at?: string
+          delta: number
+          id?: string
+          metadata?: Json
+          project_id?: string | null
+          reason: string
+          user_id: string
+        }
+        Update: {
+          balance_after?: number
+          created_at?: string
+          delta?: number
+          id?: string
+          metadata?: Json
+          project_id?: string | null
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credit_packs: {
+        Row: {
+          code: string
+          created_at: string
+          credits: number
+          is_active: boolean
+          name: string
+          price_cents: number
+          sort_order: number
+          stripe_price_id: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          credits: number
+          is_active?: boolean
+          name: string
+          price_cents: number
+          sort_order?: number
+          stripe_price_id?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          credits?: number
+          is_active?: boolean
+          name?: string
+          price_cents?: number
+          sort_order?: number
+          stripe_price_id?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -354,6 +468,27 @@ export type Database = {
           },
         ]
       }
+      stripe_events: {
+        Row: {
+          id: string
+          payload: Json | null
+          processed_at: string
+          type: string
+        }
+        Insert: {
+          id: string
+          payload?: Json | null
+          processed_at?: string
+          type: string
+        }
+        Update: {
+          id?: string
+          payload?: Json | null
+          processed_at?: string
+          type?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -375,11 +510,80 @@ export type Database = {
         }
         Relationships: []
       }
+      user_wallets: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          daily_free_reset_at: string
+          daily_free_used: number
+          monthly_credits_remaining: number
+          monthly_free_reset_at: string
+          monthly_free_used: number
+          plan_code: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_status: string | null
+          topup_credits_remaining: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          daily_free_reset_at?: string
+          daily_free_used?: number
+          monthly_credits_remaining?: number
+          monthly_free_reset_at?: string
+          monthly_free_used?: number
+          plan_code?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          topup_credits_remaining?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          daily_free_reset_at?: string
+          daily_free_used?: number
+          monthly_credits_remaining?: number
+          monthly_free_reset_at?: string
+          monthly_free_used?: number
+          plan_code?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          topup_credits_remaining?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_wallets_plan_code_fkey"
+            columns: ["plan_code"]
+            isOneToOne: false
+            referencedRelation: "billing_plans"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      grant_credits: {
+        Args: {
+          _amount: number
+          _bucket: string
+          _metadata?: Json
+          _reason: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -390,6 +594,26 @@ export type Database = {
       replace_project_files: {
         Args: { _files: Json; _project_id: string }
         Returns: undefined
+      }
+      set_user_plan: {
+        Args: {
+          _current_period_end?: string
+          _plan_code: string
+          _stripe_customer_id?: string
+          _stripe_subscription_id?: string
+          _subscription_status?: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      spend_credit: {
+        Args: {
+          _metadata?: Json
+          _project_id?: string
+          _reason?: string
+          _user_id: string
+        }
+        Returns: boolean
       }
     }
     Enums: {
