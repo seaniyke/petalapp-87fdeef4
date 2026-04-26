@@ -57,6 +57,7 @@ import { createVersion, listVersions } from "@/lib/versions";
 import { triggerBuild } from "@/lib/builds";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
+import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
