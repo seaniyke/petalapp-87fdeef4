@@ -1,118 +1,52 @@
-# How the leaders actually build apps — and what Petal is missing
+## Why the build failed
 
-## How Lovable, Bolt and Base44 actually work
+The bundler said `Cannot find package 'vite'` and `Could not resolve '@vitejs/plugin-react'`. Both are listed in the generated project's `package.json` under `devDependencies` (see `src/server/generate.server.ts` line 10). They didn't end up in `node_modules`.
 
-All three follow the **same five-step pattern** under the hood:
+Root cause: the Railway builder container runs with `NODE_ENV=production` (Railway's default for Node services). When `NODE_ENV=production`, **`npm install` silently skips `devDependencies`** — so `vite`, `@vitejs/plugin-react`, `typescript`, and the React types never get installed. Then `npx vite build` fails to resolve them.
 
-1. **One big system prompt** that pins the tech stack (React + Vite for all three) and forbids placeholders / partial files.
-2. **The first prompt produces the WHOLE project in a single response.** Bolt calls this a "single comprehensive artifact" with every file + shell commands. Lovable does the same via a tool-call. They do NOT build incrementally on the first turn — it's faster and more coherent to emit the entire scaffold at once.
-3. **Every follow-up prompt is a PATCH.** They send the *current file tree* back to the model and only ask for files that change (Bolt: unified diffs OR full files, whichever is shorter; Lovable: tool-call with full file contents per changed file). **Petal already does this with `patch_files` — you got this right.**
-4. **Conversation history IS the memory.** They send the last N user/assistant messages plus the current files. There is no separate "memory store" — the file tree is the state, the chat is the intent log.
-5. **Errors are surfaced as another turn.** When a build fails, Bolt and Lovable inject the error log back into the next prompt as a system message and let the AI patch its own mistake. Base44 calls this "agentic self-healing".
+The "Project not found" error from `wrangler pages deploy` lower in the log is a downstream symptom: no `dist/` was produced because the build crashed, so Cloudflare never got a successful first deploy to auto-create the project. Fixing the install fixes the deploy automatically.
 
-On top of that shared core, each one adds polish:
+This is a **builder-service bug**, not a problem with the user's app. Every Petal-generated project hits it.
 
-| Capability | Lovable | Bolt | Base44 | **Petal today** |
-|---|---|---|---|---|
-| Single-shot initial build | ✓ | ✓ | ✓ | ✓ |
-| Incremental patch on follow-ups | ✓ | ✓ | ✓ | ✓ |
-| Sends full file contents (no `// ...rest`) | ✓ | ✓ | ✓ | ✓ |
-| Streaming activity feed | ✓ | ✓ | ✓ | ✓ (just shipped) |
-| **Plan / Discuss mode** (chat without editing) | ✓ | ✗ | ✓ | ✗ |
-| **Message queue** (type while AI works) | ✓ | ✗ | ✓ (up to 7) | ✗ |
-| **Per-message revert** | ✓ | ~ | ✓ | ✗ (only version-level restore) |
-| **Visual / element edit** (click in preview) | ✓ | ✗ | ✓ | ✗ |
-| **Auto-fix from build errors** (feed error → AI) | ✓ | ✓ | ✓ | ✗ ("Ask Petal to fix" doesn't include the log) |
-| **Model routing** (Flash for simple, Pro for hard) | ✓ | ✗ | ✓ ("Automatic") | ✗ (always Gemini Flash) |
-| **Project Knowledge / Custom Instructions** | ✓ | ✓ | ✓ | ✗ |
-| **Freeze Files** (lock files from edits) | ~ | ✗ | ✓ | ✗ |
+## The fix (one line)
 
-## What this means for Petal
+In `builder/src/build.ts`, change the `npm install` arguments to force devDependencies regardless of `NODE_ENV`:
 
-**Your core architecture is already correct.** Single-shot scaffold, patch model, full-file emission, streaming, activity feed — you're 60% of the way there.
+```ts
+// Before
+const install = await run("npm", ["install", "--no-audit", "--no-fund", "--prefer-offline"], { ... });
 
-The gap is the **collaboration & control surface** — what makes users *trust* the AI on attempt #5 instead of giving up after attempt #2.
+// After
+const install = await run(
+  "npm",
+  ["install", "--include=dev", "--no-audit", "--no-fund", "--prefer-offline"],
+  { ... }
+);
+```
 
----
+`--include=dev` is npm's explicit, supported flag that overrides the `NODE_ENV=production` skip. It's the smallest possible change.
 
-# Implementation plan — 5 phases, ship one per session
+## Why not other approaches
 
-## Phase 1 — Self-healing builds (highest leverage, smallest change)
+- **Move vite to `dependencies`** in the system prompt — works but bloats every user's `package.json` with build-only packages, which is wrong semantically and hurts published bundle introspection.
+- **Unset `NODE_ENV` in the spawned env** — works, but more invasive (changes behaviour of any other npm script that reads `NODE_ENV`) and easier to regress.
+- **`npm ci` instead of `npm install`** — would also respect `--include=dev`, but requires a `package-lock.json` we don't generate.
 
-When the Cloudflare/Railway build fails, the user sees a generic "Ask Petal to fix" button. Lovable, Bolt and Base44 all automatically include the actual build log so the AI can fix the real cause.
+`--include=dev` is the minimum-risk, intent-revealing fix.
 
-Changes:
-- Migration: `ALTER TABLE project_builds ADD COLUMN logs text;` (Railway already sends `logs` in the callback — we just throw it away today).
-- `src/routes/api/public/builds/callback.ts` — persist `logs` into the new column.
-- `src/hooks/use-build-activity.ts` — expose `logs` alongside `errorMessage`.
-- `src/routes/builder.tsx` — change `askPetalToFix` to send a structured prompt that includes the last ~50 lines of the actual log:
-  > "The build failed with this error:
-  > ```
-  > <log>
-  > ```
-  > Look at the relevant files and fix it."
+## Files to change
 
-**Effort:** ~1 hour. **Impact:** turns dead-ends into one-click recoveries. ✅ Shipped.
+- `builder/src/build.ts` — add `--include=dev` to the npm install args (one line).
 
-## Phase 2 — Discuss mode (Base44's killer feature for non-technical users) ✅ Shipped
+## Deployment note
 
-Shipped:
-- **Discuss / Build** toggle in the chat input (default: Build).
-- New `/api/discuss` route: same chat history + compact files context, emits **plain markdown advice** (no tool call). Reply renders as a normal assistant message tagged "discuss"; no patches applied.
-- **"Apply this plan"** button under the latest discuss reply auto-switches to Build and feeds the plan into `send()` so the user can chat → preview → commit in one flow.
+The builder runs on Railway as a separate service (see `builder/README.md`). After this code change is merged, **the builder must be redeployed to Railway** for the fix to take effect. The Lovable Cloud Worker (which runs `/api/builds/trigger`) does not need redeploying — it just forwards build requests.
 
-## Phase 3 — Message queue + per-message revert ✅ Shipped
+## Verification
 
-**Message queue:**
-- Typing while Petal is busy now pushes the prompt into a `pendingQueue` (each entry remembers its mode — Build or Discuss — at queue time).
-- Queued items render as chips above the input with a per-chip remove (×). The textarea stays enabled with a "Type to queue your next message…" hint.
-- An effect auto-dequeues the next prompt as soon as `busy` and `discussBusy` both clear.
+After redeploy:
+1. Trigger a new build from any Petal project.
+2. The "deploying" phase should complete and the `petal-<id>.pages.dev` URL should go live.
+3. The first build for any project also creates the Cloudflare Pages project automatically (per `--commit-dirty=true` in the wrangler call), so the "Project not found" error disappears on its own.
 
-**Per-message revert:**
-- A "Revert to here" pill appears on hover under any user message that already has a Petal reply.
-- Looks up the matching auto-version (by ordinal — the Nth user message ↔ the Nth auto snapshot, oldest-first), restores its files via `saveProjectFiles`, trims chat via the new `truncateMessagesToCount` helper, and re-triggers a Cloudflare build.
-- Saves a "Before revert" snapshot first so the revert itself can be undone.
-
-## Phase 4 — Smart model routing + Project Knowledge ✅ Shipped
-
-**Smart routing:**
-- `/api/generate` now accepts a `model` preset (`"fast" | "smart" | "best"`, default `"smart"`).
-- Heuristic in `pickSmartModel()`: prompts mentioning *refactor / redesign / architecture / from scratch / overhaul* (or long prompts on big projects) get `google/gemini-2.5-pro`; everything else stays on `google/gemini-3-flash-preview`.
-- New compact dropdown in the chat toolbar with **Smart / Fast / Best** options. Choice is persisted to `localStorage` so it sticks across sessions.
-
-**Project Knowledge:**
-- Added `projects.custom_instructions` text column (migration applied).
-- New `ProjectSettingsSheet` ("Knowledge" button in the toolbar; "Project knowledge" item in the mobile overflow menu). Sheet shows a textarea capped at 4000 chars with examples + dirty-state save button.
-- The owner's instructions are sent to **both** `/api/generate` and `/api/discuss` and prepended to the system prompt as a "Project Knowledge" block on every turn.
-- A small "knowledge active" pill appears under the chat input whenever the field is non-empty so users remember it's in effect.
-
-## Phase 5 — Visual element edit ✅ Shipped (cheap version)
-
-The "click an element → tell Petal what to change" flow is wired end-to-end:
-
-- **Picker script injected into the running app** (`src/lib/webcontainer.ts → ensurePickerInstalled`). After dev server boot we drop `public/__petal_picker.js` and append a `<script>` tag to `index.html`. The script is dormant until the parent window posts `petal:pick:enable`. Cross-origin safe — runs *inside* the WebContainer iframe.
-- **Hover outline + click capture** in the picker: pink overlay box with a tag/text label that follows the cursor. Click captures the element; Esc cancels. The capture posts `{ type: "petal:pick:selected", payload: { tag, id, classes, text, role, ariaLabel, sourceFile, sourceLine } }` back to the parent.
-- **Pick toggle button** (crosshair icon) on the preview toolbar in `WebContainerPreview`. Toggles a banner "Click an element in the preview · Esc to cancel" and pushes enable/disable into the iframe via `postMessage`.
-- **Edit dialog** in `builder.tsx`: when an element is picked, shows a small modal with the element's tag/text/id and a textarea. ⌘/Ctrl+Enter or "Send to Petal" composes a structured prompt (tag, text, classes, role, aria-label, optional file:line) and pipes it through the existing `submitPrompt()` so it respects queue, mode, and model routing.
-
-**Real version (deferred):** add `babel-plugin-transform-react-jsx-source` to the generated Vite config so each rendered element carries `data-source-file`/`data-source-line` attributes — the picker already reads them and forwards them to the AI. Wire that into the system prompt for a future polish pass.
-
----
-
-# What I am NOT recommending
-
-1. **Bolt-style `<diff>` blocks.** Tool-calling already gives the same benefit with no parser complexity. Don't trade a working pattern for a fashionable one.
-2. **WebContainer-only previews.** You already moved to Cloudflare Pages builds — that's the right call for shareable real apps.
-3. **A full Bolt-style autonomous agent loop.** Petal's domain is small apps. The single-tool-call pattern is a *feature*, not a limitation. Base44 reached the same conclusion.
-
----
-
-# Recommended order
-
-1. **Phase 1** — ship first. Biggest UX win, smallest change.
-2. **Phase 2** — lowers anxiety for non-technical users.
-3. **Phase 3** — completes the chat-as-command-center.
-4. **Phase 4** — quality polish.
-5. **Phase 5** — the "shared on Twitter" moment.
-
-**Strong recommendation: approve Phase 1 only**, ship it, use it for a day, then come back for Phase 2. That's how the leaders built these features themselves — one at a time.
+If the very next build still says "Project not found" for a project whose previous build failed, that's expected for one more attempt — the project gets auto-created on the first *successful* deploy. The build after that will work.

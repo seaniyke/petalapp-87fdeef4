@@ -85,11 +85,21 @@ export async function buildAndDeploy(
 
   // 1) Install deps. Use a shared cache (set on the Dockerfile) so repeat builds
   //    of similar projects skip the slow part.
-  const install = await run("npm", ["install", "--no-audit", "--no-fund", "--prefer-offline"], {
-    cwd: projectDir,
-    env,
-    timeoutMs: 4 * 60 * 1000, // 4 min
-  });
+  //
+  //    --include=dev is REQUIRED: Railway sets NODE_ENV=production by default for
+  //    Node services, and `npm install` silently skips devDependencies in that mode.
+  //    Petal-generated package.json files put vite, @vitejs/plugin-react, typescript,
+  //    and @types/* under devDependencies (see src/server/generate.server.ts), so
+  //    without this flag `npx vite build` fails with "Cannot find package 'vite'".
+  const install = await run(
+    "npm",
+    ["install", "--include=dev", "--no-audit", "--no-fund", "--prefer-offline"],
+    {
+      cwd: projectDir,
+      env,
+      timeoutMs: 4 * 60 * 1000, // 4 min
+    }
+  );
   if (install.code !== 0) {
     throw new BuildError(
       `npm install failed (exit ${install.code})`,
