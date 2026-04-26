@@ -26,6 +26,7 @@ import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { postBuildToRailway } from "@/server/builder.server";
+import { applyScaffoldKit } from "@/server/scaffold-kit";
 
 const BodySchema = z.object({ projectId: z.string().uuid() });
 
