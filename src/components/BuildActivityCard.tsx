@@ -219,11 +219,15 @@ function PhaseRow({
   designCaption,
   filesWritten,
   latestPath,
+  writtenPaths,
+  finalFileLines,
 }: {
   phase: Phase;
   designCaption?: string;
   filesWritten?: number;
   latestPath?: string;
+  writtenPaths?: string[];
+  finalFileLines?: Record<string, number>;
 }) {
   const isPending = phase.status === "pending";
   const isActive = phase.status === "active";
@@ -240,6 +244,11 @@ function PhaseRow({
       ? `Wrote ${filesWritten} file${filesWritten === 1 ? "" : "s"}`
       : `Writing your app… (${filesWritten} file${filesWritten === 1 ? "" : "s"} so far)`;
   }
+
+  // Decide which file rows to render under the writing phase. We show:
+  //   - while active: every path streamed so far, latest highlighted
+  //   - when done:    every path that ended up in the result, with line counts
+  const showFileList = phase.id === "writing" && (isActive || isDone) && writtenPaths && writtenPaths.length > 0;
 
   return (
     <li className="flex items-start gap-2.5 text-sm leading-snug">
@@ -264,10 +273,31 @@ function PhaseRow({
             {designCaption}
           </div>
         )}
-        {isActive && phase.id === "writing" && latestPath && (
-          <div className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
-            {latestPath}
-          </div>
+        {showFileList && (
+          <ul className="mt-1 space-y-0.5">
+            {writtenPaths!.map((p) => {
+              const lines = finalFileLines?.[p];
+              const isLatest = isActive && p === latestPath;
+              return (
+                <li
+                  key={p}
+                  className={`flex items-center justify-between gap-2 truncate font-mono text-[10px] ${
+                    isLatest ? "text-foreground" : "text-muted-foreground"
+                  }`}
+                >
+                  <span className="inline-flex min-w-0 items-center gap-1 truncate">
+                    <span aria-hidden className="opacity-60">
+                      {isLatest ? "›" : isDone ? "✓" : "·"}
+                    </span>
+                    <span className="truncate">{p}</span>
+                  </span>
+                  {typeof lines === "number" && lines > 0 && (
+                    <span className="shrink-0 tabular-nums opacity-70">{lines} lines</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         )}
         {showReassurance && phase.reassurance && (
           <div className="mt-0.5 text-[11px] text-muted-foreground">{phase.reassurance}</div>
