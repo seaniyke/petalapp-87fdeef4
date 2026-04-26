@@ -1111,6 +1111,18 @@ const KIT: KitFile[] = [
   { path: "src/components/ui/tabs.tsx", content: TABS, overwrite: true },
   { path: "src/components/ui/dialog.tsx", content: DIALOG, overwrite: true },
   { path: "src/components/ui/select.tsx", content: SELECT, overwrite: true },
+  { path: "src/components/ui/checkbox.tsx", content: CHECKBOX, overwrite: true },
+  { path: "src/components/ui/radio-group.tsx", content: RADIO_GROUP, overwrite: true },
+  { path: "src/components/ui/slider.tsx", content: SLIDER, overwrite: true },
+  { path: "src/components/ui/progress.tsx", content: PROGRESS, overwrite: true },
+  { path: "src/components/ui/tooltip.tsx", content: TOOLTIP, overwrite: true },
+  { path: "src/components/ui/popover.tsx", content: POPOVER, overwrite: true },
+  { path: "src/components/ui/dropdown-menu.tsx", content: DROPDOWN_MENU, overwrite: true },
+  { path: "src/components/ui/accordion.tsx", content: ACCORDION, overwrite: true },
+  { path: "src/components/ui/scroll-area.tsx", content: SCROLL_AREA, overwrite: true },
+  { path: "src/components/ui/table.tsx", content: TABLE, overwrite: true },
+  { path: "src/components/ui/sheet.tsx", content: SHEET, overwrite: true },
+  { path: "src/components/ui/toast.tsx", content: TOAST, overwrite: true },
 ];
 
 /**
@@ -1125,6 +1137,7 @@ const REQUIRED_DEPS: Record<string, string> = {
   "class-variance-authority": "^0.7.1",
   "lucide-react": "^0.460.0",
   "@radix-ui/react-slot": "^1.1.0",
+  sonner: "^1.7.0",
 };
 
 const REQUIRED_DEV_DEPS: Record<string, string> = {
