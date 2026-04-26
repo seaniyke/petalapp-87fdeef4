@@ -19,6 +19,11 @@ import {
   Wand2,
   Undo2,
   X,
+  Zap,
+  Gauge,
+  Crown,
+  BookOpen,
+  ChevronDown,
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
 import { requestDiscussion } from "@/lib/discuss";
@@ -52,6 +57,7 @@ import { createVersion, listVersions } from "@/lib/versions";
 import { triggerBuild } from "@/lib/builds";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
+import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -127,6 +133,19 @@ function Builder() {
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   // Build vs Discuss mode. Discuss = chat-only, no file changes (Base44/Lovable parity).
   const [mode, setMode] = useState<"build" | "discuss">("build");
+  // Smart model routing (Base44's Automatic / Manual). Default = "smart".
+  // Persisted per-browser so the choice sticks across sessions.
+  type ModelPreset = "fast" | "smart" | "best";
+  const [modelPreset, setModelPreset] = useState<ModelPreset>(() => {
+    if (typeof window === "undefined") return "smart";
+    const v = window.localStorage.getItem("petal:modelPreset");
+    return v === "fast" || v === "best" ? v : "smart";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("petal:modelPreset", modelPreset);
+    }
+  }, [modelPreset]);
   // Index of the most recent assistant message that came from Discuss mode,
   // so we can render an "Apply this plan" button under it.
   const [lastDiscussIndex, setLastDiscussIndex] = useState<number | null>(null);
@@ -139,6 +158,8 @@ function Builder() {
   const [revertingIndex, setRevertingIndex] = useState<number | null>(null);
   // Mobile-only: which panel is visible. On desktop both render side-by-side.
   const [mobileTab, setMobileTab] = useState<"chat" | "preview">("chat");
+  // Project Knowledge sheet — also opens from the mobile overflow menu.
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
   const isMobile = useIsMobile();
   const initialSent = useRef(false);
@@ -279,7 +300,12 @@ function Builder() {
 
       try {
         await streamGenerate(
-          { messages: nextMessages, currentFiles: files },
+          {
+            messages: nextMessages,
+            currentFiles: files,
+            model: modelPreset,
+            customInstructions: project.custom_instructions ?? undefined,
+          },
           {
             onPhase: (phase: PhaseId) => {
               setPhases((p) => advanceTo(p, phase));
@@ -361,7 +387,7 @@ function Builder() {
         setBusy(false);
       }
     },
-    [busy, project, messages, files],
+    [busy, project, messages, files, modelPreset],
   );
 
   // Discuss mode: ask Petal a question without touching files. The reply is
@@ -383,6 +409,7 @@ function Builder() {
         const reply = await requestDiscussion({
           messages: nextMessages,
           currentFiles: files,
+          customInstructions: project.custom_instructions ?? undefined,
         });
         const assistantMsg: ChatMessage = { role: "assistant", content: reply };
         setMessages((prev) => {
@@ -739,6 +766,14 @@ function Builder() {
               <SharePopover project={project} onChange={setProject} />
             </div>
           )}
+          {project && (
+            <ProjectSettingsSheet
+              project={project}
+              onChange={setProject}
+              open={settingsOpen}
+              onOpenChange={setSettingsOpen}
+            />
+          )}
           <button
             onClick={downloadProject}
             disabled={!files.length}
@@ -767,6 +802,17 @@ function Builder() {
               <DropdownMenuItem onSelect={() => void downloadProject()} disabled={!files.length}>
                 <Download className="mr-2 h-3.5 w-3.5" /> Export .zip
               </DropdownMenuItem>
+              {project && (
+                <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
+                  <BookOpen className="mr-2 h-3.5 w-3.5" /> Project knowledge
+                  {project.custom_instructions && (
+                    <span
+                      aria-hidden
+                      className="ml-auto h-1.5 w-1.5 rounded-full bg-primary"
+                    />
+                  )}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -983,13 +1029,71 @@ function Builder() {
                   <MessageSquare className="h-3 w-3" /> Discuss
                 </button>
               </div>
-              <span className="text-[10px] text-muted-foreground">
+              {/* Smart model picker (Base44 Automatic / Manual parity). */}
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition hover:text-foreground"
+                  title="Choose how Petal picks its AI model"
+                >
+                  {modelPreset === "fast" ? (
+                    <Zap className="h-3 w-3" />
+                  ) : modelPreset === "best" ? (
+                    <Crown className="h-3 w-3" />
+                  ) : (
+                    <Gauge className="h-3 w-3" />
+                  )}
+                  <span className="capitalize">{modelPreset}</span>
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onSelect={() => setModelPreset("smart")}>
+                    <Gauge className="mr-2 h-3.5 w-3.5" />
+                    <div className="flex flex-col">
+                      <span className="text-sm">Smart {modelPreset === "smart" && "·"}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Auto-pick: Pro for big changes, Flash otherwise
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setModelPreset("fast")}>
+                    <Zap className="mr-2 h-3.5 w-3.5" />
+                    <div className="flex flex-col">
+                      <span className="text-sm">Fast</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Always Flash — quickest + cheapest
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setModelPreset("best")}>
+                    <Crown className="mr-2 h-3.5 w-3.5" />
+                    <div className="flex flex-col">
+                      <span className="text-sm">Best</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Always Pro — strongest reasoning
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div className="mb-2 flex items-center justify-between text-[10px] text-muted-foreground">
+              <span>
                 {busy || discussBusy
                   ? "Petal is working — your next message will queue"
                   : mode === "discuss"
                     ? "Chat only · no file changes"
                     : "Petal will edit files"}
               </span>
+              {project?.custom_instructions && (
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(true)}
+                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary transition hover:brightness-110"
+                  title="Project knowledge is active"
+                >
+                  <BookOpen className="h-2.5 w-2.5" /> knowledge active
+                </button>
+              )}
             </div>
             <div
               className={`flex items-end gap-2 rounded-2xl border bg-background p-2 focus-within:border-primary ${

@@ -13,7 +13,12 @@ type Handlers = {
 
 /** Stream a generation request to /api/generate. Resolves once the stream ends. */
 export async function streamGenerate(
-  body: { messages: ChatMessage[]; currentFiles: ProjectFile[] },
+  body: {
+    messages: ChatMessage[];
+    currentFiles: ProjectFile[];
+    model?: "fast" | "smart" | "best";
+    customInstructions?: string;
+  },
   handlers: Handlers,
   signal?: AbortSignal,
 ): Promise<void> {

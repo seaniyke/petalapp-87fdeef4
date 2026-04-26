@@ -181,6 +181,7 @@ export type Database = {
       projects: {
         Row: {
           created_at: string
+          custom_instructions: string | null
           id: string
           is_featured: boolean
           is_public: boolean
@@ -195,6 +196,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_instructions?: string | null
           id?: string
           is_featured?: boolean
           is_public?: boolean
@@ -209,6 +211,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_instructions?: string | null
           id?: string
           is_featured?: boolean
           is_public?: boolean

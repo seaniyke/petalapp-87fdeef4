@@ -13,10 +13,50 @@ import {
   type StreamEvent,
 } from "@/server/generate.server";
 
+/** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
+ *  - "fast"  : cheapest + quickest, good for trivial edits
+ *  - "smart" : default — flash for small turns, pro for big refactors
+ *  - "best"  : always use the strongest model
+ */
+type ModelPreset = "fast" | "smart" | "best";
+
 type Body = {
   messages: ChatMessage[];
   currentFiles: ProjectFile[];
+  model?: ModelPreset;
+  customInstructions?: string;
 };
+
+const MODEL_FAST = "google/gemini-3-flash-preview";
+const MODEL_BEST = "google/gemini-2.5-pro";
+
+/** Heuristic: when in "smart" mode, decide whether the turn deserves the Pro model. */
+function pickSmartModel(latestPrompt: string, fileCount: number): string {
+  const p = latestPrompt.toLowerCase();
+  const heavyKeywords = [
+    "refactor",
+    "redesign",
+    "rewrite",
+    "architecture",
+    "all pages",
+    "every page",
+    "entire app",
+    "from scratch",
+    "overhaul",
+    "restructure",
+    "migrate",
+  ];
+  if (heavyKeywords.some((k) => p.includes(k))) return MODEL_BEST;
+  // Big projects + long prompts also benefit from the stronger model.
+  if (fileCount > 12 && latestPrompt.length > 240) return MODEL_BEST;
+  return MODEL_FAST;
+}
+
+function resolveModel(preset: ModelPreset, latestPrompt: string, fileCount: number): string {
+  if (preset === "fast") return MODEL_FAST;
+  if (preset === "best") return MODEL_BEST;
+  return pickSmartModel(latestPrompt, fileCount);
+}
 
 function sse(event: StreamEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;
@@ -177,7 +217,15 @@ export const Route = createFileRoute("/api/generate")({
         }
 
         const isInitial = currentFiles.length === 0;
-        const systemPrompt = isInitial ? SYSTEM_PROMPT_INITIAL : SYSTEM_PROMPT_PATCH;
+        const baseSystem = isInitial ? SYSTEM_PROMPT_INITIAL : SYSTEM_PROMPT_PATCH;
+
+        // Project Knowledge: small piece of context the owner attached to the
+        // project ("always use a pastel palette", etc.). Prepended on every turn.
+        const knowledge = (body.customInstructions ?? "").trim().slice(0, 4000);
+        const knowledgeBlock = knowledge
+          ? `\n\nProject Knowledge — the owner has asked you to always honor these instructions:\n"""\n${knowledge}\n"""\n`
+          : "";
+
         const filesContext = isInitial
           ? ""
           : `\n\nCurrent project files:\n\n${currentFiles
@@ -186,9 +234,14 @@ export const Route = createFileRoute("/api/generate")({
         const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
 
         const chatMessages = [
-          { role: "system", content: systemPrompt + filesContext },
+          { role: "system", content: baseSystem + knowledgeBlock + filesContext },
           ...messages.map((m) => ({ role: m.role, content: m.content })),
         ];
+
+        // Smart model routing (Phase 4). Default to "smart".
+        const preset: ModelPreset = body.model ?? "smart";
+        const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+        const model = resolveModel(preset, lastUser, currentFiles.length);
 
         const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
@@ -197,7 +250,7 @@ export const Route = createFileRoute("/api/generate")({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
+            model,
             messages: chatMessages,
             tools: [tool],
             tool_choice: { type: "function", function: { name: tool.function.name } },
