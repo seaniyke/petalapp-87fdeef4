@@ -412,6 +412,8 @@ function Builder() {
       `Please implement the plan you just proposed:\n\n${plan}\n\nMake the changes now.`,
     );
   }, [lastDiscussIndex, messages, send]);
+
+  const stopGeneration = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
     setBusy(false);
