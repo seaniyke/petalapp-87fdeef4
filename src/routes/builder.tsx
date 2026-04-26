@@ -1029,11 +1029,31 @@ function Builder() {
                   Up next ({pendingQueue.length})
                 </div>
                 <div className="space-y-1">
-                  {pendingQueue.map((q) => (
+                  {pendingQueue.map((q, qi) => (
                     <div
                       key={q.id}
-                      className="flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-background/60 px-2 py-1 text-xs"
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("text/plain", q.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const fromId = e.dataTransfer.getData("text/plain");
+                        if (fromId) reorderQueueByDrag(fromId, q.id);
+                      }}
+                      className="group flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-background/60 px-2 py-1 text-xs transition hover:border-border/80"
                     >
+                      <span
+                        className="grid h-5 w-3 shrink-0 cursor-grab place-items-center text-muted-foreground/60 transition hover:text-foreground active:cursor-grabbing"
+                        title="Drag to reorder"
+                      >
+                        <GripVertical className="h-3 w-3" />
+                      </span>
                       <span
                         className={`grid h-4 w-4 shrink-0 place-items-center rounded ${
                           q.mode === "discuss"
@@ -1051,14 +1071,34 @@ function Builder() {
                       <span className="flex-1 truncate text-foreground/80" title={q.text}>
                         {q.text}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => removeFromQueue(q.id)}
-                        className="grid h-5 w-5 place-items-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        title="Remove from queue"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+                      <div className="flex items-center gap-0.5 opacity-60 transition group-hover:opacity-100">
+                        <button
+                          type="button"
+                          onClick={() => moveInQueue(q.id, -1)}
+                          disabled={qi === 0}
+                          className="grid h-5 w-5 place-items-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+                          title="Move up"
+                        >
+                          <ChevronUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveInQueue(q.id, 1)}
+                          disabled={qi === pendingQueue.length - 1}
+                          className="grid h-5 w-5 place-items-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+                          title="Move down"
+                        >
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeFromQueue(q.id)}
+                          className="grid h-5 w-5 place-items-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                          title="Remove from queue"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
