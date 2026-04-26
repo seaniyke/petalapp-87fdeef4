@@ -1,0 +1,143 @@
+/**
+ * Translate raw technical errors into warm, plain-English copy that
+ * non-technical users can act on. Always log the original to the console
+ * so we can still debug.
+ *
+ * Design rules:
+ *  - No jargon: never expose "AI gateway", "502", "Cloudflare", "esbuild", etc.
+ *  - Always end with a clear next step the user can take.
+ *  - When unsure, fall back to a gentle generic message.
+ */
+
+export type FriendlyError = {
+  /** Short headline shown next to the warning icon. */
+  title: string;
+  /** One-line explanation in plain English. */
+  message: string;
+  /** What the user should do next, e.g. "Try again". */
+  actionLabel: string;
+  /** Which kind of action button to render. */
+  actionKind: "retry" | "ask-fix" | "dismiss";
+  /** Original technical detail — hidden behind a "Show details" disclosure. */
+  technicalDetail?: string;
+};
+
+const PATTERNS: Array<{
+  test: RegExp;
+  build: (raw: string) => FriendlyError;
+}> = [
+  {
+    test: /rate.?limit/i,
+    build: (raw) => ({
+      title: "Petal needs a quick breather",
+      message: "We're getting a lot of requests right now. Try again in a moment.",
+      actionLabel: "Try again",
+      actionKind: "retry",
+      technicalDetail: raw,
+    }),
+  },
+  {
+    test: /credits?.*(exhaust|out|empty|low)|402/i,
+    build: (raw) => ({
+      title: "Out of free generations",
+      message:
+        "We've used up today's free generations. Add credits in Settings → Workspace to keep going.",
+      actionLabel: "Try again",
+      actionKind: "retry",
+      technicalDetail: raw,
+    }),
+  },
+  {
+    test: /invalid project data|did not return a project|returned no (files|ops)/i,
+    build: (raw) => ({
+      title: "Petal got a bit tangled up",
+      message: "Petal didn't quite finish that one. Let's try again.",
+      actionLabel: "Try again",
+      actionKind: "retry",
+      technicalDetail: raw,
+    }),
+  },
+  {
+    test: /missing index\.html/i,
+    build: (raw) => ({
+      title: "Something's missing",
+      message: "Petal forgot to add the main page. Let's try once more.",
+      actionLabel: "Try again",
+      actionKind: "retry",
+      technicalDetail: raw,
+    }),
+  },
+  {
+    test: /not signed in|unauthori[sz]ed|401/i,
+    build: (raw) => ({
+      title: "You've been signed out",
+      message: "Please sign in again to continue.",
+      actionLabel: "Sign in",
+      actionKind: "dismiss",
+      technicalDetail: raw,
+    }),
+  },
+  {
+    test: /could not reach build|reach builder|build service|fetch failed|network/i,
+    build: (raw) => ({
+      title: "Couldn't reach the publishing service",
+      message: "Petal can build it, but it can't go online right now. We'll keep trying.",
+      actionLabel: "Try again",
+      actionKind: "retry",
+      technicalDetail: raw,
+    }),
+  },
+  {
+    test: /aborted|cancell?ed/i,
+    build: (raw) => ({
+      title: "Stopped",
+      message: "You stopped Petal. Send another message when you're ready.",
+      actionLabel: "Dismiss",
+      actionKind: "dismiss",
+      technicalDetail: raw,
+    }),
+  },
+];
+
+const GENERIC: FriendlyError = {
+  title: "Petal got a bit confused",
+  message: "Something didn't go right. Want to try that again?",
+  actionLabel: "Try again",
+  actionKind: "retry",
+};
+
+export function toFriendlyError(raw: unknown): FriendlyError {
+  const text =
+    raw instanceof Error
+      ? raw.message
+      : typeof raw === "string"
+        ? raw
+        : JSON.stringify(raw);
+
+  // Always log the original for our own debugging.
+  // eslint-disable-next-line no-console
+  console.error("[petal] generation/build error:", raw);
+
+  for (const p of PATTERNS) {
+    if (p.test.test(text)) {
+      return p.build(text);
+    }
+  }
+  return { ...GENERIC, technicalDetail: text };
+}
+
+/** Friendly copy specifically for a failed Cloudflare Pages build. */
+export function friendlyBuildFailure(rawLog: string | null | undefined): FriendlyError {
+  if (rawLog) {
+    // eslint-disable-next-line no-console
+    console.error("[petal] build failed:", rawLog);
+  }
+  return {
+    title: "Your app needs a small fix",
+    message:
+      "There's an error in the code Petal wrote. Ask Petal to fix it and we'll try again.",
+    actionLabel: "Ask Petal to fix it",
+    actionKind: "ask-fix",
+    technicalDetail: rawLog?.slice(-2000) ?? undefined,
+  };
+}
