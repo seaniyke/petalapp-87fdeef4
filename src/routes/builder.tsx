@@ -1163,6 +1163,7 @@ function Builder() {
                 filesWritten={filesWritten}
                 writtenPaths={writtenPaths}
                 finalFileLines={finalFileLines}
+                fileChanges={fileChanges}
                 onStop={busy ? stopGeneration : undefined}
                 onRetry={lastUserPrompt ? retry : undefined}
                 onAskFix={askPetalToFix}
