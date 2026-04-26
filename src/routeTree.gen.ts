@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -19,6 +20,11 @@ import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GalleryRoute = GalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuilderRoute = BuilderRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/gallery': typeof GalleryRoute
   '/projects': typeof ProjectsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/gallery': typeof GalleryRoute
   '/projects': typeof ProjectsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/gallery': typeof GalleryRoute
   '/projects': typeof ProjectsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/p/$slug': typeof PSlugRoute
@@ -78,16 +87,25 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/builder'
+    | '/gallery'
     | '/projects'
     | '/api/generate'
     | '/p/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/builder' | '/projects' | '/api/generate' | '/p/$slug'
+  to:
+    | '/'
+    | '/auth'
+    | '/builder'
+    | '/gallery'
+    | '/projects'
+    | '/api/generate'
+    | '/p/$slug'
   id:
     | '__root__'
     | '/'
     | '/auth'
     | '/builder'
+    | '/gallery'
     | '/projects'
     | '/api/generate'
     | '/p/$slug'
@@ -97,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   BuilderRoute: typeof BuilderRoute
+  GalleryRoute: typeof GalleryRoute
   ProjectsRoute: typeof ProjectsRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
   PSlugRoute: typeof PSlugRoute
@@ -109,6 +128,13 @@ declare module '@tanstack/react-router' {
       path: '/projects'
       fullPath: '/projects'
       preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gallery': {
+      id: '/gallery'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof GalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/builder': {
@@ -153,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   BuilderRoute: BuilderRoute,
+  GalleryRoute: GalleryRoute,
   ProjectsRoute: ProjectsRoute,
   ApiGenerateRoute: ApiGenerateRoute,
   PSlugRoute: PSlugRoute,
@@ -160,3 +187,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
