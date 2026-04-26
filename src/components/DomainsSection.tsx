@@ -47,9 +47,13 @@ import {
   verifyDomain,
   setPrimaryDomain,
   removeDomain,
+  listDomainSlots,
   PETAL_DOMAIN_CNAME_TARGET,
+  DomainSlotRequiredError,
   type ProjectDomain,
+  type DomainSlot,
 } from "@/lib/domains";
+import { BuyDomainSlotDialog } from "@/components/BuyDomainSlotDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 type Props = {
