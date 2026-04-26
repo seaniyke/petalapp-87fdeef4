@@ -246,6 +246,19 @@ export function WebContainerPreview({
       )}
       {phase === "ready" && (
         <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
+          {onPick && (
+            <button
+              onClick={() => setPickActive((p) => !p)}
+              className={`grid h-7 w-7 place-items-center rounded-md border backdrop-blur transition ${
+                pickActive
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card/90 text-muted-foreground hover:text-foreground"
+              }`}
+              title={pickActive ? "Cancel element pick (Esc)" : "Pick an element to edit"}
+            >
+              <MousePointerClick className="h-3.5 w-3.5" />
+            </button>
+          )}
           <button
             onClick={() => setIframeKey((k) => k + 1)}
             className="grid h-7 w-7 place-items-center rounded-md border border-border bg-card/90 text-muted-foreground backdrop-blur transition hover:text-foreground"
@@ -260,6 +273,11 @@ export function WebContainerPreview({
           >
             <Terminal className="h-3.5 w-3.5" />
           </button>
+        </div>
+      )}
+      {pickActive && (
+        <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary backdrop-blur">
+          Click an element in the preview · Esc to cancel
         </div>
       )}
 
