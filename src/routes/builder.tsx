@@ -520,7 +520,9 @@ function Builder() {
                   {m.role === "user" ? "you" : "petal"}
                 </div>
                 {m.role === "assistant" ? (
-                  <MarkdownMessage content={m.content} />
+                  <Suspense fallback={<div className="whitespace-pre-wrap">{m.content}</div>}>
+                    <MarkdownMessage content={m.content} />
+                  </Suspense>
                 ) : (
                   <div className="whitespace-pre-wrap">{m.content}</div>
                 )}
