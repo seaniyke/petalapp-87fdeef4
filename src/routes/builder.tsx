@@ -338,6 +338,10 @@ function Builder() {
       let resultFiles: ProjectFile[] | null = null;
       let resultSummary = "";
       let streamError: string | null = null;
+      // Mirror of the streamingAssistant state we accumulate as deltas come in.
+      // Kept locally so the catch/finally branches can read the latest value
+      // synchronously without going through React state.
+      let partialAssistant = "";
 
       // Cancel any prior in-flight request before starting a new one.
       abortRef.current?.abort();
@@ -361,6 +365,7 @@ function Builder() {
               // Two consumers of the same stream:
               //   - structured timeline (designCaption under "Designing")
               //   - live assistant bubble in the chat thread
+              partialAssistant += d;
               setDesignCaption((s) => s + d);
               setStreamingAssistant((s) => s + d);
             },
@@ -453,6 +458,20 @@ function Builder() {
         setError(msg);
         setFriendlyError(toFriendlyError(e));
         setPhases((p) => markFailed(p));
+
+        // Preserve whatever Petal had said before failing. Without this, the
+        // streaming bubble disappears in the `finally` below and the user is
+        // left staring at their own prompt with no context — they don't know
+        // whether Petal even started thinking. We persist it locally only;
+        // it's not written to the DB because the run failed and `lastUserPrompt`
+        // remains set so the retry replays the same user message cleanly.
+        const trimmed = partialAssistant.trim();
+        if (trimmed.length > 0) {
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: trimmed },
+          ]);
+        }
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
         setBusy(false);
