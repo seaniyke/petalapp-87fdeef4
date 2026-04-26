@@ -162,7 +162,13 @@ function Builder() {
           saveProjectFiles(project.id, result.files),
           appendMessages(project.id, [userMsg, assistantMsg]),
           maybeAutoTitleProject(project, result.summary, text),
+          createVersion(project.id, result.files, {
+            origin: "auto",
+            label: text.slice(0, 60),
+            summary: result.summary,
+          }),
         ]);
+        setHistoryKey((k) => k + 1);
         // Refresh project meta so title/summary in the UI stay current
         const refreshed = await getProject(project.id);
         if (refreshed) setProject(refreshed);
