@@ -1282,42 +1282,88 @@ function Builder() {
         >
           {view === "preview" ? (
             <div className="flex min-h-0 flex-1 flex-col p-3">
-              <div className="flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-white">
-                {isMobile ? (
-                  <Suspense
-                    fallback={
-                      <div className="grid h-full place-items-center text-xs text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      </div>
-                    }
-                  >
-                    <MobilePreviewFallback
-                      projectId={project?.id ?? null}
-                      latestBuildId={project?.latest_build_id ?? null}
-                      isGenerating={busy}
-                    />
-                  </Suspense>
-                ) : files.length ? (
-                  <Suspense
-                    fallback={
-                      <div className="grid h-full place-items-center text-xs text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      </div>
-                    }
-                  >
-                    <WebContainerPreview
-                      files={files}
-                      reloadKey={previewKey}
-                      onPick={(el) => {
-                        setPickedElement(el);
-                        setPickInstruction("");
-                      }}
-                    />
-
-                  </Suspense>
-                ) : (
-                  <EmptyPreview />
-                )}
+              {/* Device-frame toggle. Desktop only — on mobile the viewport
+                  is already the device. Doesn't reload the iframe; just
+                  resizes its wrapper, so state is preserved when switching. */}
+              {!isMobile && files.length > 0 && (
+                <div className="mb-2 flex items-center justify-center gap-1">
+                  <div className="inline-flex items-center rounded-full border border-border bg-background p-0.5 text-[11px]">
+                    {(
+                      [
+                        { id: "phone", label: "Phone", icon: Smartphone },
+                        { id: "tablet", label: "Tablet", icon: Tablet },
+                        { id: "desktop", label: "Desktop", icon: Monitor },
+                      ] as const
+                    ).map((opt) => {
+                      const Icon = opt.icon;
+                      const active = previewDevice === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setPreviewDevice(opt.id)}
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
+                            active
+                              ? "bg-foreground text-background"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                          title={`Preview at ${opt.label.toLowerCase()} width`}
+                          aria-pressed={active}
+                        >
+                          <Icon className="h-3 w-3" /> {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              <div className="flex min-h-0 flex-1 items-stretch justify-center overflow-auto">
+                <div
+                  className={`flex min-h-0 w-full overflow-hidden rounded-2xl border border-border bg-white transition-[max-width] duration-200 ${
+                    isMobile
+                      ? ""
+                      : previewDevice === "phone"
+                        ? "max-w-[390px]"
+                        : previewDevice === "tablet"
+                          ? "max-w-[820px]"
+                          : "max-w-none"
+                  }`}
+                >
+                  {isMobile ? (
+                    <Suspense
+                      fallback={
+                        <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      }
+                    >
+                      <MobilePreviewFallback
+                        projectId={project?.id ?? null}
+                        latestBuildId={project?.latest_build_id ?? null}
+                        isGenerating={busy}
+                      />
+                    </Suspense>
+                  ) : files.length ? (
+                    <Suspense
+                      fallback={
+                        <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      }
+                    >
+                      <WebContainerPreview
+                        files={files}
+                        reloadKey={previewKey}
+                        onPick={(el) => {
+                          setPickedElement(el);
+                          setPickInstruction("");
+                        }}
+                      />
+                    </Suspense>
+                  ) : (
+                    <EmptyPreview />
+                  )}
+                </div>
               </div>
             </div>
           ) : (
