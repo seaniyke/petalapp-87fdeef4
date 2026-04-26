@@ -23,6 +23,9 @@ import {
   ChevronDown,
   ChevronUp,
   GripVertical,
+  Smartphone,
+  Tablet,
+  Monitor,
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
 import { requestDiscussion } from "@/lib/discuss";
