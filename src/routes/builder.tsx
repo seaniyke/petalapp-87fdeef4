@@ -259,10 +259,11 @@ function Builder() {
   }, [searchId]);
 
   // Auto-send the prompt from the landing page once, after bootstrap.
+  // Note: project may be null here when arriving with ?prompt but no ?id —
+  // send() will lazily create the project on first use.
   useEffect(() => {
     if (
       !bootstrapping &&
-      project &&
       initialPrompt &&
       !initialSent.current &&
       messages.length === 0
@@ -271,7 +272,7 @@ function Builder() {
       void send(initialPrompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bootstrapping, project, initialPrompt]);
+  }, [bootstrapping, initialPrompt]);
 
   // Lazily create the underlying project row on first use, so /builder visits
   // that never send a message don't leave behind empty "Untitled project" rows.
