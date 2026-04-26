@@ -29,6 +29,7 @@ import {
 } from "@/lib/projects";
 import { createVersion } from "@/lib/versions";
 import { HistoryPanel } from "@/components/HistoryPanel";
+import { SharePopover } from "@/components/SharePopover";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/builder")({
@@ -311,6 +312,7 @@ function Builder() {
               refreshKey={historyKey}
             />
           )}
+          {project && <SharePopover project={project} onChange={setProject} />}
           <button
             onClick={downloadProject}
             disabled={!files.length}
