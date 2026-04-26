@@ -9,17 +9,23 @@ type BuildRow = {
   status: string;
   dist_path: string | null;
   error_message: string | null;
+  created_at?: string | null;
+  ready_at?: string | null;
 };
 
 /**
- * Live, deployed preview backed by Cloudflare Pages. Subscribes to the
+ * Live, deployed preview backed by the preview CDN. Subscribes to the
  * `project_builds` row referenced by `projects.latest_build_id` and renders:
- *  - a "Building…" card while status = pending
- *  - an <iframe> pointing at `dist_path` when status = ready
- *  - an error card with the build log tail when status = failed
+ *  - the newest ready CDN preview while a newer build is still pending
+ *  - the newest build URL when status = ready
+ *  - an error card with the build log tail when status = failed and no prior
+ *    ready preview exists
  *
- * `latestBuildId` is supplied by the parent (the builder route subscribes to
- * project rows, so it always knows the newest build).
+ * This intentionally does not blank the preview for every pending build: a new
+ * pending build can be orphaned if the external builder restarts after accepting
+ * work but before posting its callback. Keeping the latest ready CDN URL visible
+ * prevents users from getting stuck on a spinner when a valid deployed preview
+ * already exists.
  */
 export function MobilePreviewFallback({
   projectId,
@@ -31,23 +37,67 @@ export function MobilePreviewFallback({
   isGenerating: boolean;
 }) {
   const [build, setBuild] = useState<BuildRow | null>(null);
+  const [latestReadyBuild, setLatestReadyBuild] = useState<BuildRow | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
 
-  // Load the row once whenever latestBuildId changes, then subscribe to updates.
+  // Load the current latest build and a fallback ready build. We also poll the
+  // latest row because realtime delivery can be delayed or unavailable on some
+  // mobile browsers/network conditions.
   useEffect(() => {
     if (!latestBuildId) {
       setBuild(null);
+      setLatestReadyBuild(null);
       return;
     }
+
     let cancelled = false;
-    void supabase
-      .from("project_builds")
-      .select("id, status, dist_path, error_message")
-      .eq("id", latestBuildId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled && data) setBuild(data as BuildRow);
+
+    const applyBuild = (next: BuildRow) => {
+      setBuild((prev) => {
+        if (
+          next.status === "ready" &&
+          (prev?.status !== "ready" || prev?.dist_path !== next.dist_path)
+        ) {
+          setIframeKey((k) => k + 1);
+        }
+        return next;
       });
+    };
+
+    const loadLatestReadyBuild = async () => {
+      if (!projectId) return;
+      const { data } = await supabase
+        .from("project_builds")
+        .select("id, status, dist_path, error_message, created_at, ready_at")
+        .eq("project_id", projectId)
+        .eq("status", "ready")
+        .not("dist_path", "is", null)
+        .order("ready_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!cancelled && data) setLatestReadyBuild(data as BuildRow);
+    };
+
+    const loadLatestBuild = async () => {
+      const { data } = await supabase
+        .from("project_builds")
+        .select("id, status, dist_path, error_message, created_at, ready_at")
+        .eq("id", latestBuildId)
+        .maybeSingle();
+
+      if (cancelled || !data) return;
+      const next = data as BuildRow;
+      applyBuild(next);
+      if (next.status !== "ready") void loadLatestReadyBuild();
+    };
+
+    void loadLatestBuild();
+    void loadLatestReadyBuild();
+
+    const poll = window.setInterval(() => {
+      void loadLatestBuild();
+    }, 5_000);
 
     const channel = supabase
       .channel(`build:${latestBuildId}`)
@@ -61,17 +111,22 @@ export function MobilePreviewFallback({
         },
         (payload) => {
           const next = payload.new as BuildRow;
-          setBuild(next);
-          if (next.status === "ready") setIframeKey((k) => k + 1);
+          applyBuild(next);
+          if (next.status === "ready") {
+            setLatestReadyBuild(next);
+          } else {
+            void loadLatestReadyBuild();
+          }
         }
       )
       .subscribe();
 
     return () => {
       cancelled = true;
+      window.clearInterval(poll);
       void supabase.removeChannel(channel);
     };
-  }, [latestBuildId]);
+  }, [latestBuildId, projectId]);
 
   // No project / no build yet → empty state.
   if (!projectId || !latestBuildId) {
@@ -89,18 +144,41 @@ export function MobilePreviewFallback({
   }
 
   const status = (build?.status ?? "pending") as BuildStatus;
+  const previewBuild = status === "ready" ? build : latestReadyBuild;
+
+  if (status === "pending" && previewBuild?.dist_path) {
+    return (
+      <PreviewFrame
+        src={previewBuild.dist_path}
+        iframeKey={iframeKey}
+        onReload={() => setIframeKey((k) => k + 1)}
+        badge="Updating preview…"
+      />
+    );
+  }
 
   if (status === "pending") {
     return (
       <EmptyState
         title="Building your live preview…"
-        message="Installing dependencies and deploying to Cloudflare Pages. This usually takes 30–90 seconds."
+        message="Publishing to the preview CDN. This usually takes 30–90 seconds."
         spinning
       />
     );
   }
 
   if (status === "failed") {
+    if (previewBuild?.dist_path) {
+      return (
+        <PreviewFrame
+          src={previewBuild.dist_path}
+          iframeKey={iframeKey}
+          onReload={() => setIframeKey((k) => k + 1)}
+          badge="Latest build failed — showing previous preview"
+        />
+      );
+    }
+
     return (
       <div className="flex h-full w-full items-center justify-center bg-aurora p-6">
         <div className="max-w-md rounded-2xl border border-destructive/40 bg-card/90 p-5 text-left shadow-sm backdrop-blur">
@@ -132,10 +210,37 @@ export function MobilePreviewFallback({
   }
 
   return (
+    <PreviewFrame
+      src={build.dist_path}
+      iframeKey={iframeKey}
+      onReload={() => setIframeKey((k) => k + 1)}
+    />
+  );
+}
+
+function PreviewFrame({
+  src,
+  iframeKey,
+  onReload,
+  badge,
+}: {
+  src: string;
+  iframeKey: number;
+  onReload: () => void;
+  badge?: string;
+}) {
+  return (
     <div className="relative flex h-full w-full flex-col">
+      {badge && (
+        <div className="absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded-md border border-border bg-card/90 px-2 py-1 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          <span>{badge}</span>
+        </div>
+      )}
+
       <div className="absolute right-2 top-2 z-10 flex gap-1.5">
         <a
-          href={build.dist_path}
+          href={src}
           target="_blank"
           rel="noreferrer"
           className="grid h-7 w-7 place-items-center rounded-md border border-border bg-card/90 text-muted-foreground backdrop-blur transition hover:text-foreground"
@@ -144,7 +249,7 @@ export function MobilePreviewFallback({
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
         <button
-          onClick={() => setIframeKey((k) => k + 1)}
+          onClick={onReload}
           className="grid h-7 w-7 place-items-center rounded-md border border-border bg-card/90 text-muted-foreground backdrop-blur transition hover:text-foreground"
           title="Reload preview"
         >
@@ -156,7 +261,7 @@ export function MobilePreviewFallback({
         <iframe
           key={iframeKey}
           title="App preview"
-          src={build.dist_path}
+          src={src}
           className="h-full w-full border-0 bg-white"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         />
