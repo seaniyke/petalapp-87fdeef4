@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      billing_currencies: {
+        Row: {
+          code: string
+          created_at: string
+          is_active: boolean
+          name: string
+          paystack_supported: boolean
+          sort_order: number
+          symbol: string
+          updated_at: string
+          usd_rate: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          is_active?: boolean
+          name: string
+          paystack_supported?: boolean
+          sort_order?: number
+          symbol: string
+          updated_at?: string
+          usd_rate?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          is_active?: boolean
+          name?: string
+          paystack_supported?: boolean
+          sort_order?: number
+          symbol?: string
+          updated_at?: string
+          usd_rate?: number
+        }
+        Relationships: []
+      }
       billing_plans: {
         Row: {
           code: string
@@ -61,6 +97,38 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      billing_price_overrides: {
+        Row: {
+          amount_minor: number
+          currency_code: string
+          item_code: string
+          item_kind: string
+          updated_at: string
+        }
+        Insert: {
+          amount_minor: number
+          currency_code: string
+          item_code: string
+          item_kind: string
+          updated_at?: string
+        }
+        Update: {
+          amount_minor?: number
+          currency_code?: string
+          item_code?: string
+          item_kind?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_price_overrides_currency_code_fkey"
+            columns: ["currency_code"]
+            isOneToOne: false
+            referencedRelation: "billing_currencies"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       credit_ledger: {
         Row: {
@@ -157,6 +225,89 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      paystack_events: {
+        Row: {
+          id: string
+          payload: Json | null
+          processed_at: string
+          type: string
+        }
+        Insert: {
+          id: string
+          payload?: Json | null
+          processed_at?: string
+          type: string
+        }
+        Update: {
+          id?: string
+          payload?: Json | null
+          processed_at?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      paystack_transactions: {
+        Row: {
+          amount_minor: number
+          channel: string | null
+          created_at: string
+          currency_code: string
+          environment: string
+          id: string
+          item_code: string
+          paid_at: string | null
+          paystack_reference: string | null
+          purpose: string
+          reference: string
+          status: string
+          updated_at: string
+          usd_amount_cents: number
+          user_id: string
+        }
+        Insert: {
+          amount_minor: number
+          channel?: string | null
+          created_at?: string
+          currency_code: string
+          environment?: string
+          id?: string
+          item_code: string
+          paid_at?: string | null
+          paystack_reference?: string | null
+          purpose: string
+          reference: string
+          status?: string
+          updated_at?: string
+          usd_amount_cents: number
+          user_id: string
+        }
+        Update: {
+          amount_minor?: number
+          channel?: string | null
+          created_at?: string
+          currency_code?: string
+          environment?: string
+          id?: string
+          item_code?: string
+          paid_at?: string | null
+          paystack_reference?: string | null
+          purpose?: string
+          reference?: string
+          status?: string
+          updated_at?: string
+          usd_amount_cents?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paystack_transactions_currency_code_fkey"
+            columns: ["currency_code"]
+            isOneToOne: false
+            referencedRelation: "billing_currencies"
+            referencedColumns: ["code"]
           },
         ]
       }
@@ -615,6 +766,7 @@ export type Database = {
           pending_plan_change_at: string | null
           pending_plan_code: string | null
           plan_code: string
+          preferred_currency: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_status: string | null
@@ -633,6 +785,7 @@ export type Database = {
           pending_plan_change_at?: string | null
           pending_plan_code?: string | null
           plan_code?: string
+          preferred_currency?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
@@ -651,6 +804,7 @@ export type Database = {
           pending_plan_change_at?: string | null
           pending_plan_code?: string | null
           plan_code?: string
+          preferred_currency?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
@@ -666,6 +820,13 @@ export type Database = {
             referencedRelation: "billing_plans"
             referencedColumns: ["code"]
           },
+          {
+            foreignKeyName: "user_wallets_preferred_currency_fkey"
+            columns: ["preferred_currency"]
+            isOneToOne: false
+            referencedRelation: "billing_currencies"
+            referencedColumns: ["code"]
+          },
         ]
       }
     }
@@ -677,6 +838,19 @@ export type Database = {
         Args: {
           _current_period_end: string
           _plan_code: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      apply_paystack_plan_grant: {
+        Args: { _plan_code: string; _reference: string; _user_id: string }
+        Returns: undefined
+      }
+      apply_paystack_topup: {
+        Args: {
+          _environment: string
+          _pack_code: string
+          _reference: string
           _user_id: string
         }
         Returns: undefined
@@ -701,6 +875,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      expire_paystack_plans: { Args: never; Returns: undefined }
       expire_topup_lots: { Args: never; Returns: undefined }
       grant_credits: {
         Args: {
