@@ -1,248 +1,195 @@
-# Credit & Billing System — Full Plan
+## Goal
 
-## Goals
-- Every AI message (`/api/generate`, `/api/discuss`) costs **1 credit**.
-- Every user gets **5 free credits/day, capped at 30/month** (Free plan).
-- Paid users (Pro / Business) get monthly credit grants + can buy top-up packs.
-- Stripe handles checkout, subscriptions, and top-ups. Petal handles the ledger.
-- Admins can grant/revoke credits manually.
-
-## Why this shape
-This mirrors **Lovable** almost verbatim (5 daily / 30 monthly free, monthly grants, top-ups in 50-credit increments). It's the proven pattern for this category and it's what your users will expect.
+- Hide all Stripe UI/code paths.
+- Use **Paystack** for every purchase.
+- Support **NGN, GHS, KES, ZAR, USD**.
+- Per-currency price overrides set by admin (USD is the default; admin can set exact local amounts, otherwise an exchange rate is applied).
+- **No recurring subscriptions** — Pro/Business become one-time monthly top-ups that grant a month of credits per purchase.
+- User picks billing currency in the billing sheet.
 
 ---
 
-## Phase 1 — Database (foundation)
-
-A clean **wallet + ledger + plans** model. The wallet is a fast-read cache; the ledger is the source of truth.
+## 1. Database changes (one migration)
 
 ### New tables
 
-**`billing_plans`** — seeded catalog of plans (no user data)
-```
-code (text, PK)         -- 'free', 'pro_100', 'pro_500', 'business_500', 'business_2000'
-name (text)
-tier (text)             -- 'free' | 'pro' | 'business'
-monthly_credits (int)   -- granted on each renewal (0 for free)
-daily_free_credits (int)-- 5 for everyone
-monthly_free_cap (int)  -- 30 for free, NULL for paid (no cap)
-stripe_price_id (text)  -- nullable for free
-price_cents (int)
-features (jsonb)        -- { custom_domain: true, hide_badge: true, ... }
-sort_order (int)
-is_active (bool)
-```
+- `billing_currencies`
+  - `code` (PK, text — `NGN`, `GHS`, `KES`, `ZAR`, `USD`)
+  - `name` (text)
+  - `symbol` (text)
+  - `usd_rate` (numeric — units of this currency per 1 USD; admin-edited; `USD` row = 1)
+  - `is_active` (bool)
+  - `paystack_supported` (bool)
+  - `sort_order` (int)
 
-**`credit_packs`** — top-up SKUs
-```
-code (text, PK)         -- 'pack_50', 'pack_200', 'pack_1000'
-credits (int)
-price_cents (int)
-stripe_price_id (text)
-is_active (bool)
-```
+- `billing_price_overrides` — optional admin-set local price (overrides rate-based math)
+  - `(item_kind, item_code, currency_code)` PK where `item_kind in ('plan','pack')`
+  - `amount_minor` (bigint — kobo/pesewas/cents in that currency)
+  - `updated_at`
 
-**`user_wallets`** — one row per user (fast-read snapshot)
-```
-user_id (uuid, PK, FK auth.users)
-plan_code (text, FK billing_plans, default 'free')
-balance (int)                     -- monthly + topup combined for fast reads
-monthly_credits_remaining (int)   -- resets on renewal
-topup_credits_remaining (int)     -- 12-month rolling
-daily_free_used (int)             -- resets at UTC midnight
-daily_free_reset_at (date)
-monthly_free_used (int)           -- resets at calendar month
-monthly_free_reset_at (date)
-stripe_customer_id (text)
-stripe_subscription_id (text)
-subscription_status (text)        -- 'active' | 'past_due' | 'canceled' | 'trialing' | null
-current_period_end (timestamptz)
-created_at, updated_at
-```
+- `paystack_events` — webhook idempotency (mirror of `stripe_events`)
+  - `id` (text PK = Paystack event reference)
+  - `type`, `payload`, `processed_at`
 
-**`credit_ledger`** — append-only audit trail
-```
-id (uuid PK)
-user_id (uuid FK)
-delta (int)                       -- negative for spend, positive for grant/topup
-reason (text)                     -- 'ai_message' | 'monthly_grant' | 'topup' | 'daily_free' | 'admin_grant' | 'refund' | 'rollover'
-balance_after (int)
-project_id (uuid, nullable)       -- which project burned it
-metadata (jsonb)                  -- { route, model, stripe_invoice_id, admin_id, ... }
-created_at (timestamptz)
-```
+- `paystack_transactions` — every initiated purchase
+  - `id` (uuid PK)
+  - `user_id`, `reference` (unique — what we send to Paystack), `purpose` (`plan` or `pack`), `item_code`, `currency_code`
+  - `amount_minor`, `usd_amount_cents` (locked at init for audit), `status` (`pending|success|failed|abandoned`)
+  - `paystack_reference` (returned by Paystack), `channel`, `paid_at`, `created_at`
 
-**`stripe_events`** — webhook idempotency (every event id stored once)
-```
-id (text PK)                      -- Stripe event id
-type (text)
-processed_at (timestamptz)
-payload (jsonb)
-```
+### Wallet additions
 
-### Triggers / functions
-- **`handle_new_user`** (extend existing) → also create `user_wallets` row on signup with `plan_code='free'`.
-- **`spend_credit(user_id, reason, project_id, metadata) returns boolean`** — single SQL function that:
-  1. Locks the wallet row (`FOR UPDATE`).
-  2. Refills daily/monthly free buckets if reset dates passed.
-  3. Tries free → monthly → top-up in that order.
-  4. Returns `false` if nothing available; otherwise writes ledger row + decrements balance.
-  5. Atomic — no race conditions even with concurrent AI calls.
-- **`grant_credits(user_id, amount, reason, metadata)`** — admin / webhook entry point.
+- `user_wallets.preferred_currency` (text, default `USD`) — last currency the user picked.
+
+### RPC changes
+
+- New `apply_paystack_topup(_user_id, _pack_code, _reference, _environment)` — same shape as `apply_topup_purchase` but keyed on Paystack reference; idempotent.
+- New `apply_paystack_plan_grant(_user_id, _plan_code, _reference)` — grants `monthly_credits` for the plan to `monthly_credits_remaining`, sets `plan_code`, `current_period_end = now() + 30 days`, `subscription_status = 'active'`. Idempotent on reference.
+- Daily cron call (server-side, in existing `apply_period_end_changes` style) to **revert plans to `free`** when `current_period_end < now()` and there is no fresh Paystack grant — gives the "monthly top-up" feel without recurring billing.
 
 ### RLS
-- `user_wallets` — users SELECT their own; only service role writes (via `spend_credit` / webhooks).
-- `credit_ledger` — users SELECT their own; INSERT only via security-definer functions.
-- `billing_plans`, `credit_packs` — public read.
-- `stripe_events` — service role only.
+
+- Public `SELECT` on `billing_currencies` and `billing_price_overrides` (read-only catalog).
+- Admin-only `INSERT/UPDATE` via service role / admin policies on currencies + overrides.
+- `paystack_events` and `paystack_transactions`: service role only; users can `SELECT` their own `paystack_transactions`.
+
+### Seed data
+
+- Five rows in `billing_currencies` with a sensible starting `usd_rate` (e.g. NGN 1600, GHS 15, KES 130, ZAR 18, USD 1) — admin will tune these.
+
+> Stripe tables (`stripe_events`, `subscriptions`, existing `stripe_*` columns on `user_wallets`) are **kept in place** to preserve history but become unused. No destructive drops.
 
 ---
 
-## Phase 2 — Stripe integration
+## 2. Server: hide Stripe, add Paystack
 
-Use Lovable's built-in Stripe (`enable_stripe_payments`). Zero account setup, test mode out of the box.
+### Files to remove from active routing (delete files)
 
-### Setup steps (in order)
-1. Run `recommend_payment_provider` → confirm Stripe fits (Petal is SaaS).
-2. Run `enable_stripe_payments`.
-3. Choose tax mode: **option 2 (calculation only, +0.5%)** — recommended default for a global SaaS without the burden of full filing yet.
-4. Use `batch_create_product` to create Stripe products that mirror `billing_plans` and `credit_packs`. Each product gets a tax code.
-5. Store the returned `stripe_price_id` values back into our seed data.
+- `src/server/stripe.server.ts`
+- `src/server/stripe-tax-setup.server.ts`
+- `src/lib/stripe.ts`
+- `src/components/StripeEmbeddedCheckout.tsx`
+- `src/components/PaymentTestModeBanner.tsx`
+- `src/routes/api/billing/create-checkout.ts`
+- `src/routes/api/billing/create-portal-session.ts`
+- `src/routes/api/billing/setup-tax-codes.ts`
+- `src/routes/api/public/billing/webhook.ts`
+- `src/routes/checkout.return.tsx`
 
-### Server routes (TanStack `/api/*`)
-- **`POST /api/billing/checkout`** — creates a Stripe checkout session for a `plan_code` or `pack_code`. Auth-gated. Sets `client_reference_id = user_id`.
-- **`POST /api/billing/portal`** — creates a Stripe Customer Portal session (manage card, cancel sub).
-- **`POST /api/public/stripe/webhook`** — public endpoint, signature-verified with `STRIPE_WEBHOOK_SECRET`. Handles:
-  - `checkout.session.completed` → grant initial credits
-  - `invoice.paid` → monthly grant on renewal (Lovable-style: unused monthly credits roll over while sub active)
-  - `invoice.payment_failed` → mark `past_due`, freeze paid credits but keep free daily
-  - `customer.subscription.updated` / `.deleted` → update plan / downgrade to free
-  - All events stored in `stripe_events` for idempotency
+(All Stripe imports in `__root.tsx`, `BillingSheet.tsx`, `CreditBadge.tsx` get rewired to Paystack equivalents.)
 
-### Secrets needed
-- `STRIPE_SECRET_KEY` — auto-set by `enable_stripe_payments`
-- `STRIPE_WEBHOOK_SECRET` — auto-set by `enable_stripe_payments`
+### New Paystack server module
 
----
+- `src/server/paystack.server.ts`
+  - Reads `PAYSTACK_SECRET_KEY` (test or live based on `PAYSTACK_ENV` secret).
+  - `initializeTransaction({ email, amount_minor, currency, reference, callback_url, metadata })` → returns `authorization_url` + `access_code` + `reference`.
+  - `verifyTransaction(reference)` — used by callback + webhook for double-confirmation.
+  - `verifyWebhookSignature(rawBody, signatureHeader)` — HMAC-SHA512 with `PAYSTACK_SECRET_KEY` (Paystack standard).
 
-## Phase 3 — Wire credits into the AI endpoints (the deduction)
+### New routes
 
-Smallest, safest change. Both `/api/generate` and `/api/discuss` already authorize the user — we add **one call** before the AI request:
+- `POST /api/billing/initialize` (auth required)
+  - Body: `{ purpose: 'plan'|'pack', itemCode: string, currency: 'NGN'|'GHS'|'KES'|'ZAR'|'USD' }`
+  - Resolves USD price from `billing_plans`/`credit_packs`, looks up override or applies `usd_rate` from `billing_currencies`, rounds up to whole minor unit.
+  - Inserts `paystack_transactions` row with `status='pending'` and a generated `reference` (`pt_<uuid>`).
+  - Calls Paystack initialize; returns `{ authorization_url, reference }`.
+  - Updates `user_wallets.preferred_currency`.
 
-```ts
-const { data: ok } = await supabaseAdmin.rpc('spend_credit', {
-  _user_id: userId,
-  _reason: 'ai_message',
-  _project_id: projectId,
-  _metadata: { route: 'generate', model }
-});
-if (!ok) {
-  return new Response(JSON.stringify({ error: 'OUT_OF_CREDITS' }), { status: 402 });
-}
-```
+- `POST /api/public/paystack/webhook`
+  - Verifies signature.
+  - Looks up `paystack_transactions` by reference.
+  - On `charge.success`: marks success, runs `apply_paystack_topup` or `apply_paystack_plan_grant` based on `purpose`.
+  - Records in `paystack_events` for idempotency.
 
-- 402 = the standard "Payment Required" status; frontend uses it to show the upgrade dialog.
-- "Try to fix" calls (when the user clicks the auto-fix button) skip the deduction, matching Lovable.
-- Failures **after** the spend (model errors) do **not** auto-refund in v1 — Lovable doesn't either. Refunds happen via admin tool when a user reports an issue.
+- `GET /api/billing/verify?reference=...` (auth required) — used by the return page to surface result immediately even if webhook hasn't fired yet (calls Paystack verify, then runs the same RPC under a unique-event guard).
 
----
+### Replacement of "manage subscription"
 
-## Phase 4 — UI
-
-### Header credit badge (`SiteHeader.tsx`)
-- Pill showing `{balance} credits`, color shifts amber <10, red <3.
-- Hover shows breakdown: `5 daily · 25 monthly · 100 top-up`.
-- Click → opens billing sheet.
-
-### New `BillingSheet.tsx` (sheet, opened from header + settings)
-- **Current plan** card — name, renewal date, balance breakdown, "Manage subscription" → portal.
-- **Upgrade** section — three plan cards (Free / Pro / Business) with credit allowance, features, "Choose plan" button.
-- **Top-up** section (paid users only) — pack_50 / pack_200 / pack_1000 buttons.
-- **Usage history** — last 30 ledger entries (date, reason, delta, project link).
-
-### `OutOfCreditsDialog.tsx`
-- Triggered globally when any AI call returns 402.
-- Shows current plan, free credits reset countdown, "Upgrade" CTA opening `BillingSheet`.
-
-### `/auth/success` route
-- Stripe `success_url` → confirms checkout, polls wallet for the granted credits, then redirects to last project.
+- Remove the Stripe portal link.
+- Add a small **"Renew now"** button when `current_period_end < now() + 5 days` or status is `expired`. It just opens the same plan checkout.
 
 ---
 
-## Phase 5 — Admin tools
+## 3. Client UI
 
-In existing admin surface (gated by `has_role('admin')`):
-- **Users page** — table of users + plan + balance + last activity.
-- Per-user actions: **Grant credits** (amount + reason note), **View ledger**, **Reset daily**, **Switch plan manually** (for refund cases).
-- **Plans editor** — toggle plans active/inactive, edit credit allotments. Stripe prices stay in Stripe.
-- **Stripe events log** — last 100 webhook events, status, retry button.
+### `BillingSheet.tsx` rewrite
 
-Server route: `POST /api/admin/credits` (action: grant | reset | switch_plan), guarded by `has_role`.
+- **Currency selector** (segmented control: NGN ₦ / GHS ₵ / KES KSh / ZAR R / USD $) — defaults to `wallet.preferred_currency` or geo guess (cheap, optional: skip geo for v1, just default `USD`).
+- Plan/pack cards display the **converted local price** based on the selected currency (using overrides + rates fetched from `billing_currencies` / `billing_price_overrides`).
+- Buy button → calls `/api/billing/initialize`, then `window.location.assign(authorization_url)` for Paystack hosted checkout (simplest, avoids the React 19 / embedded race we just fixed).
+- Drop the embedded-checkout view entirely.
 
----
+### New return page
 
-## Phase 6 — Background jobs
+- `src/routes/billing.return.tsx` (`/billing/return?reference=...`)
+  - Calls `GET /api/billing/verify`, shows success/failed state, refreshes wallet a couple times like the old `/checkout/return`.
 
-One scheduled job (pg_cron or external cron hitting `/api/public/cron/billing`):
-- **Daily** (00:05 UTC) — reset `daily_free_used = 0` for everyone, log `daily_free` ledger rows lazily on next spend.
-- **Monthly** (1st 00:10 UTC) — reset `monthly_free_used = 0` for free-tier users; expire top-ups older than 12 months.
+### `CreditBadge.tsx`
 
-Stripe handles the monthly subscription grant via `invoice.paid` webhook — no cron needed for that.
+- No structural change beyond removing Stripe imports.
 
----
+### `__root.tsx`
 
-## Files I'll create / modify
+- Remove `<PaymentTestModeBanner />`. Optionally add a tiny "Paystack test mode" badge driven by `VITE_PAYSTACK_ENV === 'test'` (reads a non-secret `VITE_PAYSTACK_PUBLIC_KEY` so users see a banner in test).
 
-**New migrations**
-- `xxx_billing_plans.sql` — tables, indexes, RLS
-- `xxx_billing_seed.sql` — seed plans + packs
-- `xxx_billing_functions.sql` — `spend_credit`, `grant_credits`, wallet trigger
+### `src/lib/billing.ts`
 
-**New server routes**
-- `src/routes/api/billing/checkout.ts`
-- `src/routes/api/billing/portal.ts`
-- `src/routes/api/public/stripe/webhook.ts`
-- `src/routes/api/public/cron/billing.ts`
-- `src/routes/api/admin/credits.ts`
+- Drop `stripe_price_id` from `CreditPack`.
+- Add `fetchCurrencies()`, `fetchPriceOverrides()`, and a `convertUsdToLocal(usdCents, currency, rates, overrides, item)` helper.
+- Add `BillingCurrency` and `PriceOverride` types.
 
-**Modified server routes**
-- `src/routes/api/generate.ts` — add `spend_credit` call + 402 path
-- `src/routes/api/discuss.ts` — same
+### `use-wallet.ts`
 
-**New client modules**
-- `src/lib/billing.ts` — fetch wallet, fetch plans, start checkout, open portal
-- `src/hooks/use-wallet.ts` — TanStack Query hook with realtime subscription on `user_wallets`
-
-**New components**
-- `src/components/CreditBadge.tsx` (header pill)
-- `src/components/BillingSheet.tsx`
-- `src/components/OutOfCreditsDialog.tsx`
-- `src/components/admin/CreditAdminPanel.tsx`
-
-**Modified components**
-- `src/components/SiteHeader.tsx` — mount `CreditBadge`
-- `src/lib/auth.tsx` — wrap app with `OutOfCreditsDialog` provider (listens to 402 globally)
+- No structural change. The wallet still exposes `current_period_end` and `subscription_status`; UI uses them to show "expires in N days / Renew".
 
 ---
 
-## Rollout strategy (live-system safety)
+## 4. Admin settings (exchange rates + overrides)
 
-Because Petal is in production, I'll ship in **3 deploys**, each independently safe:
+New page: `src/routes/admin.billing.tsx` (gated by `useIsAdmin`) with two sections:
 
-1. **Deploy 1 — Schema + ledger only.** New tables, `spend_credit` function, wallet auto-created on signup. Backfill wallets for existing users with `plan_code='free'` and 5 daily / 30 monthly free credits. **No deduction enforced yet.** Header badge ships in "preview" mode showing balance but with no gating. Zero risk to existing flows.
+1. **Currencies** table: edit `usd_rate`, toggle `is_active`. Saves via a small admin-only server route `POST /api/admin/billing/currencies` that `requireSupabaseAuth` + `has_role('admin')` checks before writing with `supabaseAdmin`.
+2. **Price overrides** table: for each `(plan|pack) × currency`, optional explicit `amount_minor`. Empty = use rate. Saves via `POST /api/admin/billing/price-overrides`.
 
-2. **Deploy 2 — Enable enforcement + Stripe.** Turn on `spend_credit` in `/api/generate` + `/api/discuss`. Ship `BillingSheet`, `OutOfCreditsDialog`, Stripe checkout, webhook. Existing users land on Free plan and immediately have 30 free monthly credits, so nobody is blocked on day one.
+Both routes validate input with Zod (currency in enum, amounts positive, etc.).
 
-3. **Deploy 3 — Top-ups + admin tools + cron.** Lower-risk polish.
-
-After each deploy I'll verify the build is clean and ask you to spot-check the preview before moving to the next phase.
+Add a "Billing settings" entry to admin nav (wherever existing admin tools live — if none, this page is reachable directly at `/admin/billing`).
 
 ---
 
-## Open decisions to confirm before I start
-1. **Plan pricing.** I'll seed Lovable-style defaults (Pro $25/mo for 100 credits, Pro $50/mo for 250, Business $100/mo for 500, etc.) — confirm or send me your numbers.
-2. **Free monthly cap.** 30 credits/month (Lovable's number) or different?
-3. **Top-up sizes.** 50 / 200 / 1000 with proportional pricing — confirm?
-4. **Backfill for existing users** — give everyone the standard Free plan, or grant a one-time bonus (e.g. 50 credits) as a thank-you to early users?
+## 5. Secrets needed
 
-I'll wait for your confirmation on these four, then proceed with Deploy 1.
+After plan approval (default mode), I'll prompt for:
+
+- `PAYSTACK_SECRET_KEY` — single key works for test (`sk_test_...`) or live (`sk_live_...`); webhook signature uses the same key.
+- `PAYSTACK_ENV` — `test` or `live` (informational, for UI banner + log labels).
+- `VITE_PAYSTACK_PUBLIC_KEY` — public key, used only to show the test-mode banner client-side. Optional.
+
+Existing Stripe secrets (`STRIPE_SANDBOX_API_KEY`, `PAYMENTS_SANDBOX_WEBHOOK_SECRET`) are **left untouched** but no code reads them anymore.
+
+---
+
+## 6. Webhook configuration
+
+After deploying, the user (you) will need to add this URL in the Paystack dashboard:
+
+- `https://buildwithpetal.com/api/public/paystack/webhook`
+
+(I'll surface this URL in the success message after implementation.)
+
+---
+
+## 7. Rollout / verification
+
+1. Migration creates new tables, seeds currencies, adds `preferred_currency`.
+2. New routes + components shipped; old Stripe files removed in same change.
+3. Build and typecheck.
+4. End-to-end manual check (you sign in, open billing sheet, switch currency to NGN, click a pack → land on Paystack hosted page; on test card success, return page shows "credits added" and badge updates).
+5. Admin page lets you tune rates without a redeploy.
+
+## Open items I'm NOT doing unless you say so
+
+- True recurring Paystack subscriptions (would only work for NGN/GHS reliably — you chose the simpler one-time monthly model, so I'm skipping plans/subscriptions API entirely).
+- Refunds UI.
+- Multi-currency price display on the marketing landing page (only inside the billing sheet for v1).
+- Migration of existing Stripe customers (none in production yet based on the schema).
