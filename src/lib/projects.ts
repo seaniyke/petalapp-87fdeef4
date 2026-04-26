@@ -160,11 +160,19 @@ export async function appendMessages(projectId: string, msgs: ChatMessage[]) {
   if (error) throw error;
 }
 
+/** Truncate to ~200 chars on a word boundary. Used to keep summaries SEO-friendly. */
+export function truncateSummary(s: string, max = 200): string {
+  const clean = s.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+  const slice = clean.slice(0, max);
+  const lastSpace = slice.lastIndexOf(" ");
+  return (lastSpace > max * 0.6 ? slice.slice(0, lastSpace) : slice).trimEnd() + "…";
+}
+
 /** Update the project title from a generated summary if still default. */
 export async function maybeAutoTitleProject(project: ProjectRow, summary: string, firstUserPrompt: string) {
   if (project.title !== "Untitled project") return;
-  // Use the user's first prompt as the title (trimmed)
   const candidate = firstUserPrompt.replace(/\s+/g, " ").trim().slice(0, 60);
   if (!candidate) return;
-  await updateProject(project.id, { title: candidate, summary });
+  await updateProject(project.id, { title: candidate, summary: truncateSummary(summary) });
 }
