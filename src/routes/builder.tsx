@@ -72,6 +72,7 @@ import {
 } from "@/lib/projects";
 import { createVersion, listVersions } from "@/lib/versions";
 import { triggerBuild } from "@/lib/builds";
+import { supabase } from "@/integrations/supabase/client";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
 import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
