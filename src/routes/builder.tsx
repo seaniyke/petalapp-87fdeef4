@@ -155,7 +155,7 @@ function Builder() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   // Build vs Discuss mode. Discuss = chat-only, no file changes (Base44/Lovable parity).
-  const [mode, setMode] = useState<"build" | "discuss">("build");
+  const [mode, setMode] = useState<"build" | "discuss">(initialMode === "discuss" ? "discuss" : "build");
   // Smart model routing is always on. The /api/generate endpoint auto-picks
   // Pro for big/complex changes and Flash otherwise — users shouldn't choose.
   // Index of the most recent assistant message that came from Discuss mode,
