@@ -317,6 +317,20 @@ export function WebContainerPreview({
           Click an element in the preview · Esc to cancel
         </div>
       )}
+      {pickerWarning && (
+        <div className="pointer-events-auto absolute left-1/2 top-12 z-10 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-destructive/40 bg-card/95 px-3 py-1.5 text-[11px] font-medium text-destructive shadow-sm backdrop-blur">
+          <AlertCircle className="h-3 w-3 shrink-0" />
+          <span>{pickerWarning}</span>
+          <button
+            type="button"
+            onClick={() => setPickerWarning(null)}
+            className="ml-1 rounded p-0.5 text-destructive/70 transition hover:bg-destructive/10 hover:text-destructive"
+            aria-label="Dismiss"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
 
       {/* Iframe */}
       <div className="relative min-h-0 flex-1">
