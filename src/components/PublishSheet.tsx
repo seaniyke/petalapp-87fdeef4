@@ -268,6 +268,96 @@ export function PublishSheet({
     }
   }
 
+  /* ---------------- Petal subdomain (slug) flow ---------------- */
+
+  // Open the editor with a sensible default: keep what's there, or suggest
+  // one from the project title.
+  function startEditingSlug() {
+    const initial = currentSlug ?? suggestSlugFromTitle(project.title);
+    setSlugDraft(initial);
+    setSlugCheck(null);
+    setEditingSlug(true);
+  }
+
+  function cancelEditingSlug() {
+    setEditingSlug(false);
+    setSlugDraft("");
+    setSlugCheck(null);
+    if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
+  }
+
+  // Debounced availability check while the user types. Skips the network
+  // call when the draft equals the currently-claimed slug (always "ours").
+  useEffect(() => {
+    if (!editingSlug) return;
+    if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
+    if (!slugDraft) {
+      setSlugCheck(null);
+      return;
+    }
+    if (slugDraft === currentSlug) {
+      setSlugCheck({
+        available: true,
+        reason: null,
+        hostname: `${slugDraft}.${PETAL_ROOT_DOMAIN}`,
+      });
+      return;
+    }
+    setSlugChecking(true);
+    slugDebounceRef.current = setTimeout(async () => {
+      try {
+        const result = await checkSubdomain(project.id, slugDraft);
+        setSlugCheck(result);
+      } catch (e) {
+        setSlugCheck({
+          available: false,
+          reason: e instanceof Error ? e.message : "Couldn't check availability",
+        });
+      } finally {
+        setSlugChecking(false);
+      }
+    }, 350);
+    return () => {
+      if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
+    };
+  }, [slugDraft, editingSlug, currentSlug, project.id]);
+
+  async function saveSlug() {
+    if (!slugCheck?.available) return;
+    setSlugClaiming(true);
+    try {
+      const result = await claimPetalSubdomain(project.id, slugDraft);
+      // Optimistic local update — keeps the URL row in sync without a refetch.
+      onChange({
+        ...project,
+        subdomain: result.slug,
+      } as ProjectRow);
+      toast.success(
+        currentSlug
+          ? `Subdomain updated to ${result.hostname}`
+          : `Your app is reachable at ${result.hostname}`,
+      );
+      setEditingSlug(false);
+      // Re-resolve the displayed URL since priority just changed.
+      const r = await resolvePublishedUrl(
+        project.id,
+        project.primary_domain_id,
+        project.latest_build_id,
+      );
+      setResolved(r);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't claim subdomain");
+    } finally {
+      setSlugClaiming(false);
+    }
+  }
+
+  // Pretty hostname preview for the input row (always reflects the draft).
+  const slugPreviewHostname = useMemo(
+    () => (slugDraft ? `${slugDraft}.${PETAL_ROOT_DOMAIN}` : `your-slug.${PETAL_ROOT_DOMAIN}`),
+    [slugDraft],
+  );
+
   // CTA state machine — keeps the button label/icon honest with the build.
   const cta = (() => {
     if (publishing || buildStatus === "pending") {
