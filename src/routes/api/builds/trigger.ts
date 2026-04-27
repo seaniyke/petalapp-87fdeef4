@@ -29,6 +29,10 @@ import { postBuildToRailway } from "@/server/builder.server";
 import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { syncViteAliasesWithTsconfig } from "@/server/sync-vite-aliases.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
+import {
+  buildIntegrationEnvFiles,
+  mergeFilesIntoPayload,
+} from "@/server/integrations/env-injector.server";
 
 const BodySchema = z.object({ projectId: z.string().uuid() });
 
@@ -149,6 +153,31 @@ export const Route = createFileRoute("/api/builds/trigger")({
           return { ...f, content: STYLES_CSS };
         });
 
+        // 2e) Inject env files for installed integrations. This loads each
+        //     integration's public options + decrypted secrets and renders
+        //     `.env.production` (Vite-consumed at build time) and `.dev.vars`
+        //     (Cloudflare convention for Pages/Workers runtime + local dev).
+        //     Without this step, scaffolded code that reads
+        //     `import.meta.env.VITE_*` or `process.env.*` would build with
+        //     undefined values and silently no-op at runtime. Failures here
+        //     are non-fatal — we log and continue with no env file rather
+        //     than blocking the deploy.
+        let withEnv = buildFiles;
+        try {
+          const envBundle = await buildIntegrationEnvFiles(projectId, buildFiles);
+          if (envBundle.files.length > 0) {
+            withEnv = mergeFilesIntoPayload(buildFiles, envBundle.files);
+            console.log(
+              `[integrations] project=${projectId} injected env from ${envBundle.integrationCount} integration(s): ${envBundle.envKeys.join(", ")}`
+            );
+          }
+        } catch (e) {
+          console.error(
+            `[integrations] env injection failed for project=${projectId}:`,
+            e instanceof Error ? e.message : String(e)
+          );
+        }
+
         // 3) Insert pending build row + bump latest_build_id BEFORE calling
         //    Railway, so a fast callback never races ahead of our own write.
         const { data: build, error: insertErr } = await supabaseAdmin
@@ -170,7 +199,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
 
         // 4) Fire the build. If the network call fails, mark the row as failed.
         try {
-          await postBuildToRailway({ projectId, buildId: build.id, files: buildFiles });
+          await postBuildToRailway({ projectId, buildId: build.id, files: withEnv });
         } catch (e) {
           const message = e instanceof Error ? e.message : "Failed to reach builder";
           console.error("postBuildToRailway failed", message);
