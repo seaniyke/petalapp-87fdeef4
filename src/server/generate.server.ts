@@ -348,6 +348,10 @@ export type ChatAttachmentRef = {
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  /** Optional structured narrative that powers the Plan / Recap segments
+   *  in the chat bubble. Falls back gracefully to plain `content` if absent. */
+  plan?: string;
+  recap?: string;
   /** Present only on user turns that included image attachments. */
   attachments?: ChatAttachmentRef[];
 };
@@ -357,17 +361,26 @@ export type FileOp =
   | { op: "update"; path: string; content: string }
   | { op: "delete"; path: string };
 
-export type WriteProjectArgs = { summary: string; files: ProjectFile[] };
-export type PatchFilesArgs = { summary: string; ops: FileOp[] };
+export type WriteProjectArgs = { plan?: string; summary: string; recap?: string; files: ProjectFile[] };
+export type PatchFilesArgs = { plan?: string; summary: string; recap?: string; ops: FileOp[] };
 
 /** Stream events emitted from /api/generate to the client. */
 export type StreamEvent =
   | { type: "status"; message: string }
+  | { type: "plan_delta"; delta: string }
   | { type: "summary_delta"; delta: string }
+  | { type: "recap_delta"; delta: string }
   | { type: "tool"; name: "write_project" | "patch_files" }
   | { type: "phase"; phase: "thinking" | "designing" | "writing" | "polishing" }
   | { type: "file_progress"; written: number; latestPath?: string }
-  | { type: "result"; files: ProjectFile[]; summary: string; creditsCharged?: number }
+  | {
+      type: "result";
+      files: ProjectFile[];
+      summary: string;
+      plan?: string;
+      recap?: string;
+      creditsCharged?: number;
+    }
   | { type: "error"; message: string };
 
 /** Apply a list of file operations to a current set of files. */
