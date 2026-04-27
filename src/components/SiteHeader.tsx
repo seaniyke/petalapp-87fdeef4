@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Sparkles, LogOut, FolderOpen, User as UserIcon, Settings } from "lucide-react";
+import { LogOut, FolderOpen, User as UserIcon, Settings } from "lucide-react";
+import petalLogo from "@/assets/petal-logo.png";
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { CreditBadge } from "@/components/CreditBadge";
@@ -23,9 +24,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <Sparkles className="h-4 w-4" />
-          </span>
+          <img src={petalLogo} alt="Petal" className="h-8 w-8 object-contain" />
           <span className="font-display text-xl font-semibold tracking-tight">Petal</span>
         </Link>
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
