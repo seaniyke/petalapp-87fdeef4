@@ -1860,7 +1860,7 @@ function Builder() {
               );
             })}
             {discussBusy && (
-              <div className="mr-3 inline-flex items-center gap-2 rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm text-muted-foreground sm:mr-6">
+              <div className="mr-3 inline-flex items-center gap-2 rounded-2xl bg-secondary px-3.5 py-2.5 text-sm text-muted-foreground sm:mr-6">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
               </div>
             )}
