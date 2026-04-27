@@ -638,9 +638,9 @@ function Builder() {
         setPhases((p) => advanceTo(p, "deploying"));
 
         try {
-          const persistMsgs: ChatMessage[] = opts.isRetry
-            ? [assistantMsg]
-            : [userMsg, assistantMsg];
+          // The user message was already persisted up-front (see send() entry)
+          // so we only need to write the assistant reply now.
+          const persistMsgs: ChatMessage[] = [assistantMsg];
           await Promise.all([
             saveProjectFiles(proj.id, files2),
             appendMessages(proj.id, persistMsgs),
