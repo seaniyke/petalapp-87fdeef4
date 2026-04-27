@@ -1294,7 +1294,7 @@ function Builder() {
           <div className="border-b border-border px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Conversation
           </div>
-          <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+          <div className="flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-4">
             {bootstrapping && (
               <div className="inline-flex items-center gap-2 rounded-2xl bg-card px-3.5 py-2.5 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading project…
@@ -1315,8 +1315,8 @@ function Builder() {
               return (
                 <div key={i} className="group min-w-0">
                   <div
-                    className={`relative min-w-0 overflow-hidden rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                      isUser ? "ml-6 bg-card" : "mr-6 bg-butter/60"
+                    className={`relative min-w-0 overflow-hidden wrap-anywhere rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                      isUser ? "ml-3 bg-card sm:ml-6" : "mr-3 bg-butter/60 sm:mr-6"
                     }`}
                   >
                     <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1364,7 +1364,7 @@ function Builder() {
                     )}
                   </div>
                   {m.role === "assistant" && i === lastDiscussIndex && !busy && !discussBusy && (
-                    <div className="mr-6 mt-1.5 flex justify-end">
+                    <div className="mr-3 mt-1.5 flex justify-end sm:mr-6">
                       <button
                         onClick={applyDiscussedPlan}
                         className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition hover:brightness-105"
@@ -1377,14 +1377,14 @@ function Builder() {
               );
             })}
             {discussBusy && (
-              <div className="mr-6 inline-flex items-center gap-2 rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm text-muted-foreground">
+              <div className="mr-3 inline-flex items-center gap-2 rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm text-muted-foreground sm:mr-6">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
               </div>
             )}
             {/* Live, token-by-token reply while Petal works. Promoted to a real
                 message in `messages` once the run completes. */}
             {busy && streamingAssistant && (
-              <div className="mr-6 rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm leading-relaxed">
+              <div className="mr-3 overflow-hidden wrap-anywhere rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm leading-relaxed sm:mr-6">
                 <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <span>petal</span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-primary">
