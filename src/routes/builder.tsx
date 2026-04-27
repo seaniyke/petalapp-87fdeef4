@@ -613,7 +613,7 @@ function Builder() {
         setStreamingAssistant("");
       }
     },
-    [busy, messages, files, ensureProject],
+    [busy, messages, files, ensureProject, pendingAttachments],
   );
 
   // Discuss mode: ask Petal a question without touching files. The reply is
