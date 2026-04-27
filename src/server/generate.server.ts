@@ -169,7 +169,7 @@ If a section titled "Installed integrations" appears below in this prompt, those
 STREAMING NARRATIVE FIELDS (mandatory — these power the live chat bubble):
 - "plan" — 1-3 short sentences written FIRST, before any files. Explain in plain English what you're about to build and why. Address the user directly ("I'll start with…", "Then I'll wire…"). This is the FIRST thing users see streaming in.
 - "summary" — friendly recap of what you built, written like a short note from a teammate.
-- "recap" — short bulleted list of the key files you created/changed and what each does. Use markdown bullets. Example: "- `src/components/Hero.tsx` — new hero with gradient and CTA\n- `src/routes/index.tsx` — wired the hero into the home page".
+- "recap" — short bulleted list of the key files you created/changed and what each does. Use markdown bullets. Example: "- \`src/components/Hero.tsx\` — new hero with gradient and CTA\\n- \`src/routes/index.tsx\` — wired the hero into the home page".
 
 Order in the tool call MUST be: plan → summary → files → recap. The server streams them in that order so the user sees intent first, then progress, then a clean wrap-up.`;
 
