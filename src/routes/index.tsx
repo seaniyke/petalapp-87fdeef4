@@ -410,6 +410,14 @@ function Landing() {
                 el.scrollIntoView({ behavior: "smooth", block: "center" });
               });
             }}
+            onSwitchToCoach={() => {
+              setMode("coach");
+              requestAnimationFrame(() => {
+                document
+                  .querySelector("form")
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
+              });
+            }}
           />
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
