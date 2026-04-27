@@ -36,6 +36,7 @@ import {
   MAX_ATTACHMENTS_PER_MESSAGE,
 } from "@/lib/attachments";
 import { streamGenerate } from "@/lib/stream";
+import { streamTriage } from "@/lib/triage";
 import { requestDiscussion } from "@/lib/discuss";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { useIsMobile } from "@/hooks/use-mobile";
