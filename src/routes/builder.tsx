@@ -30,6 +30,8 @@ import {
   Globe,
   Paperclip,
   ImageIcon,
+  Menu,
+  ChevronDown as ChevronDownIcon,
 } from "lucide-react";
 import {
   encodeAttachments,
@@ -77,6 +79,9 @@ import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
 import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
 import { RevertPreviewDialog } from "@/components/RevertPreviewDialog";
+import { BuilderActionsSheet } from "@/components/BuilderActionsSheet";
+import { RenameProjectDialog } from "@/components/RenameProjectDialog";
+import { BillingSheet } from "@/components/BillingSheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
