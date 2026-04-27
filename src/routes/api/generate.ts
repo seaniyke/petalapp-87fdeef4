@@ -226,6 +226,24 @@ export const Route = createFileRoute("/api/generate")({
           return new Response("messages must not be empty", { status: 400 });
         }
 
+        // Per-message hard cap. We only enforce this on the LATEST user message
+        // (the one being sent now). History messages are bounded by the
+        // 20-message slice above. The cap exists so a single request can't
+        // submit a megabyte of prose and either OOM the parser or run up an
+        // unbounded LLM bill before we've spent the credit. Picked at 8000
+        // chars (~2000 tokens) which is generous for any plausible prompt.
+        const MAX_PROMPT_CHARS = 8000;
+        const lastUserMsg = [...messages].reverse().find((m) => m?.role === "user");
+        const lastContent = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
+        if (lastContent.length > MAX_PROMPT_CHARS) {
+          return new Response(
+            JSON.stringify({
+              error: `Your message is too long (${lastContent.length} chars, max ${MAX_PROMPT_CHARS}). Try splitting it into smaller asks.`,
+            }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          );
+        }
+
         // Charge ONE credit pre-flight. If the user is out, fail fast with
         // 402 so the chat surfaces the friendly "out of credits" copy.
         // If the generation fails after this point, we refund in the catch.
