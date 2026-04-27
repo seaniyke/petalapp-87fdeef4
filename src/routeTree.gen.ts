@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as BuilderRouteImport } from './routes/builder'
@@ -37,6 +38,11 @@ import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/publi
 import { Route as ApiPublicCronBackendSlotsRouteImport } from './routes/api/public/cron/backend-slots'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
 
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
@@ -184,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/builder': typeof BuilderRoute
   '/gallery': typeof GalleryRoute
   '/projects': typeof ProjectsRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/billing': typeof AdminBillingRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -213,6 +220,7 @@ export interface FileRoutesByTo {
   '/builder': typeof BuilderRoute
   '/gallery': typeof GalleryRoute
   '/projects': typeof ProjectsRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/billing': typeof AdminBillingRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -243,6 +251,7 @@ export interface FileRoutesById {
   '/builder': typeof BuilderRoute
   '/gallery': typeof GalleryRoute
   '/projects': typeof ProjectsRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/billing': typeof AdminBillingRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -274,6 +283,7 @@ export interface FileRouteTypes {
     | '/builder'
     | '/gallery'
     | '/projects'
+    | '/unsubscribe'
     | '/admin/billing'
     | '/api/backend'
     | '/api/discuss'
@@ -303,6 +313,7 @@ export interface FileRouteTypes {
     | '/builder'
     | '/gallery'
     | '/projects'
+    | '/unsubscribe'
     | '/admin/billing'
     | '/api/backend'
     | '/api/discuss'
@@ -332,6 +343,7 @@ export interface FileRouteTypes {
     | '/builder'
     | '/gallery'
     | '/projects'
+    | '/unsubscribe'
     | '/admin/billing'
     | '/api/backend'
     | '/api/discuss'
@@ -362,6 +374,7 @@ export interface RootRouteChildren {
   BuilderRoute: typeof BuilderRoute
   GalleryRoute: typeof GalleryRoute
   ProjectsRoute: typeof ProjectsRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   AdminBillingRoute: typeof AdminBillingRoute
   ApiBackendRoute: typeof ApiBackendRoute
   ApiDiscussRoute: typeof ApiDiscussRoute
@@ -388,6 +401,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects': {
       id: '/projects'
       path: '/projects'
@@ -586,6 +606,7 @@ const rootRouteChildren: RootRouteChildren = {
   BuilderRoute: BuilderRoute,
   GalleryRoute: GalleryRoute,
   ProjectsRoute: ProjectsRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   AdminBillingRoute: AdminBillingRoute,
   ApiBackendRoute: ApiBackendRoute,
   ApiDiscussRoute: ApiDiscussRoute,
