@@ -445,46 +445,112 @@ function Landing() {
 
           </form>
 
-          <StartIdeasPanel
-            onPick={(p) => {
-              setPrompt(p);
-              // Defer focus until after React commits the new value so the
-              // textarea autosizes correctly and the cursor lands at the end.
-              requestAnimationFrame(() => {
-                const el = textareaRef.current;
-                if (!el) return;
-                el.focus();
-                el.setSelectionRange(p.length, p.length);
-                el.scrollIntoView({ behavior: "smooth", block: "center" });
-              });
-            }}
-            onSwitchToCoach={() => {
-              setMode("coach");
-              requestAnimationFrame(() => {
-                document
-                  .querySelector("form")
-                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
-              });
-            }}
-          />
+          {!isAuthed && (
+            <StartIdeasPanel
+              onPick={(p) => {
+                setPrompt(p);
+                requestAnimationFrame(() => {
+                  const el = textareaRef.current;
+                  if (!el) return;
+                  el.focus();
+                  el.setSelectionRange(p.length, p.length);
+                  el.scrollIntoView({ behavior: "smooth", block: "center" });
+                });
+              }}
+              onSwitchToCoach={() => {
+                setMode("coach");
+                requestAnimationFrame(() => {
+                  document
+                    .querySelector("form")
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                });
+              }}
+            />
+          )}
 
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-mint" /> Live preview
-            </span>
-            <span className="hidden sm:inline">•</span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-lilac" /> Multi-file projects
-            </span>
-            <span className="hidden sm:inline">•</span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-sky" /> One-click share
-            </span>
-          </div>
+          {!isAuthed && (
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-mint" /> Live preview
+              </span>
+              <span className="hidden sm:inline">•</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-lilac" /> Multi-file projects
+              </span>
+              <span className="hidden sm:inline">•</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-sky" /> One-click share
+              </span>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Showcase — rotating sample apps */}
+      {isAuthed ? (
+        <section className="relative px-4 pb-24 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <h2 className="font-display text-2xl sm:text-3xl">My projects</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Pick up where you left off, or start something new above.
+                </p>
+              </div>
+              <Link
+                to="/projects"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-sm text-muted-foreground transition hover:text-foreground"
+              >
+                View all
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            <div className="mt-6">
+              {projectsLoading || projects === null ? (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-44 animate-pulse rounded-2xl border border-border bg-card"
+                    />
+                  ))}
+                </div>
+              ) : projects.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-border bg-card/60 p-10 text-center">
+                  <h3 className="font-display text-xl">No projects yet</h3>
+                  <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+                    Describe an app in the box above and Petal will build the
+                    files for you.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {projects.slice(0, 6).map((p) => (
+                    <Link
+                      key={p.id}
+                      to="/builder"
+                      search={{ id: p.id, prompt: undefined, mode: undefined, attachKey: undefined }}
+                      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]"
+                    >
+                      <ProjectThumbnail projectId={p.id} className="h-28" />
+                      <div className="flex flex-1 flex-col p-4">
+                        <h3 className="truncate font-semibold">{p.title}</h3>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                          {p.summary ?? "No description yet."}
+                        </p>
+                        <div className="mt-auto pt-3 text-[11px] text-muted-foreground">
+                          Updated {new Date(p.updated_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <>
       <section id="showcase" className="relative -mt-8 px-4 pb-16 sm:-mt-16 sm:px-6 sm:pb-24">
         <SampleAppShowcase />
       </section>
