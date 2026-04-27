@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as BillingReturnRouteImport } from './routes/billing.return'
+import { Route as ApiGenerateImageRouteImport } from './routes/api/generate-image'
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 import { Route as ApiDomainsRouteImport } from './routes/api/domains'
 import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
@@ -64,6 +65,11 @@ const PSlugRoute = PSlugRouteImport.update({
 const BillingReturnRoute = BillingReturnRouteImport.update({
   id: '/billing/return',
   path: '/billing/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGenerateImageRoute = ApiGenerateImageRouteImport.update({
+  id: '/api/generate-image',
+  path: '/api/generate-image',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGenerateRoute = ApiGenerateRouteImport.update({
@@ -150,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/api/generate-image': typeof ApiGenerateImageRoute
   '/billing/return': typeof BillingReturnRoute
   '/p/$slug': typeof PSlugRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
@@ -173,6 +180,7 @@ export interface FileRoutesByTo {
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/api/generate-image': typeof ApiGenerateImageRoute
   '/billing/return': typeof BillingReturnRoute
   '/p/$slug': typeof PSlugRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
@@ -197,6 +205,7 @@ export interface FileRoutesById {
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/api/generate-image': typeof ApiGenerateImageRoute
   '/billing/return': typeof BillingReturnRoute
   '/p/$slug': typeof PSlugRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
@@ -222,6 +231,7 @@ export interface FileRouteTypes {
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
+    | '/api/generate-image'
     | '/billing/return'
     | '/p/$slug'
     | '/api/billing/initialize'
@@ -245,6 +255,7 @@ export interface FileRouteTypes {
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
+    | '/api/generate-image'
     | '/billing/return'
     | '/p/$slug'
     | '/api/billing/initialize'
@@ -268,6 +279,7 @@ export interface FileRouteTypes {
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
+    | '/api/generate-image'
     | '/billing/return'
     | '/p/$slug'
     | '/api/billing/initialize'
@@ -292,6 +304,7 @@ export interface RootRouteChildren {
   ApiDiscussRoute: typeof ApiDiscussRoute
   ApiDomainsRoute: typeof ApiDomainsRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
+  ApiGenerateImageRoute: typeof ApiGenerateImageRoute
   BillingReturnRoute: typeof BillingReturnRoute
   PSlugRoute: typeof PSlugRoute
   ApiBillingInitializeRoute: typeof ApiBillingInitializeRoute
@@ -354,6 +367,13 @@ declare module '@tanstack/react-router' {
       path: '/billing/return'
       fullPath: '/billing/return'
       preLoaderRoute: typeof BillingReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/generate-image': {
+      id: '/api/generate-image'
+      path: '/api/generate-image'
+      fullPath: '/api/generate-image'
+      preLoaderRoute: typeof ApiGenerateImageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/generate': {
@@ -468,6 +488,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDiscussRoute: ApiDiscussRoute,
   ApiDomainsRoute: ApiDomainsRoute,
   ApiGenerateRoute: ApiGenerateRoute,
+  ApiGenerateImageRoute: ApiGenerateImageRoute,
   BillingReturnRoute: BillingReturnRoute,
   PSlugRoute: PSlugRoute,
   ApiBillingInitializeRoute: ApiBillingInitializeRoute,

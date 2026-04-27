@@ -118,6 +118,18 @@ STYLES.CSS SAFETY RULES (Tailwind v4 aborts the build on ANY invalid CSS):
 - NEVER use \`@apply\` with a class that doesn't exist (e.g. \`@apply bg-brand-foo\` when \`brand-foo\` is not a defined token) — that also aborts the build.
 - When in doubt, EMIT NOTHING for src/styles.css and let the scaffold's default tokens win. Adding styles is optional.
 
+IMAGES (use \`petal-image://\` for AI-generated visuals):
+- For ANY hero image, product photo, profile avatar, illustration, background, or marketing visual, use the \`petal-image://\` protocol. The server replaces each placeholder with a real AI-generated image after you finish, hosted on a stable CDN URL.
+- Syntax: \`petal-image://<descriptive-prompt>\`. The slug IS the prompt — write it like you'd describe the image to a designer. Use kebab-case or URL-encoded sentences. Examples:
+  - \`<img src="petal-image://cozy-coffee-shop-hero-warm-morning-light" alt="Coffee shop" />\`
+  - \`<img src="petal-image://minimalist-product-photo-leather-wallet-on-marble" />\`
+  - \`<img src="petal-image://abstract-purple-gradient-mesh-background" />\`
+- Be SPECIFIC and VISUAL. \`petal-image://hero\` is bad. \`petal-image://founder-portrait-natural-light-warm-smile\` is good.
+- Limits: max 6 unique placeholders per generation (extras fall back to picsum). Same slug used multiple times = one image, deduped automatically.
+- DO NOT use picsum.photos, unsplash.com, placeholder.com, or any other stock-photo URL when \`petal-image://\` would do — generated images always look more on-brand.
+- The ONLY exception: avatars for fake user testimonials can stay as \`https://i.pravatar.cc/150?u=<seed>\` since they're meant to look generic.
+
+
 BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the project):
 - ALWAYS go through \`@/integrations/backend/*\`. NEVER call \`createClient(...)\` yourself, NEVER \`import ... from "@supabase/supabase-js"\`, NEVER hardcode URLs or keys.
 - For ANY auth flow (sign up, sign in, OTP, magic link, password reset), use the helpers on \`useAuth()\` from \`@/integrations/backend/auth\`: \`signUpWithPassword\`, \`signInWithPassword\`, \`signInWithOtp\`, \`verifyOtp\`, \`verifySignupOtp\`, \`resendSignupOtp\`, \`resetPasswordForEmail\`, \`updatePassword\`, \`signOut\`. Do NOT call \`supabase.auth.*\` directly. After \`signUpWithPassword\`, verify the emailed code with \`verifySignupOtp\` (NOT \`verifyOtp\`, which defaults to the \`signInWithOtp\` code type).
@@ -168,6 +180,13 @@ STYLES.CSS SAFETY RULES (Tailwind v4 aborts the build on ANY invalid CSS):
 - Inside \`@theme { ... }\`, every line must be a valid token declaration like \`--color-primary: oklch(0.7 0.15 30);\` ending with \`;\`. NEVER leave bare numbers, words, or fragments — Tailwind will fail with "Invalid declaration".
 - NEVER \`@apply\` a class that isn't a real Tailwind utility or a token you defined. Unknown utilities abort the build.
 - If you don't NEED to change tokens, do NOT emit "src/styles.css" at all — leave the scaffold's defaults.
+
+IMAGES (use \`petal-image://\` for AI-generated visuals):
+- For ANY new hero image, product photo, illustration, background, or marketing visual, use the \`petal-image://<descriptive-prompt>\` protocol. The server replaces each placeholder with a real AI-generated image after you finish.
+- Examples: \`<img src="petal-image://cozy-coffee-shop-hero-warm-morning-light" />\`, \`<img src="petal-image://leather-wallet-on-marble-product-shot" />\`.
+- Be SPECIFIC and VISUAL — the slug IS the prompt to the image model.
+- DO NOT introduce picsum.photos / unsplash / placeholder URLs in NEW image elements when \`petal-image://\` would do. Existing image URLs in the codebase may stay unless the user asks otherwise.
+- Limit: max 6 unique placeholders per turn (extras silently fall back to picsum).
 
 BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the project):
 - ALWAYS go through \`@/integrations/backend/*\`. NEVER call \`createClient(...)\` yourself, NEVER \`import ... from "@supabase/supabase-js"\`, NEVER hardcode URLs or keys.

@@ -3468,8 +3468,92 @@ export default function SalesChartCardExample() {
 `;
 
 /* =================================================================
- * INDEX MARKDOWN
+ * KIT — AI IMAGE PLACEHOLDERS (Phase 4)
+ * Demonstrates the `petal-image://` protocol. Every URL gets replaced
+ * with a real generated image after the build. Use specific, visual
+ * slugs — they are literally the prompt sent to the image model.
  * ================================================================= */
+
+const KIT_AI_IMAGE_HERO = `import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { Stack } from "@/components/ui/stack";
+
+/**
+ * Hero with an AI-generated background. The \`petal-image://\` URL is
+ * resolved server-side after generation — write the slug like a prompt.
+ *
+ * Reuse pattern: copy this into a new feature component, change the slug,
+ * keep the layout. Do NOT import this file directly.
+ */
+export default function AiImageHero() {
+  return (
+    <section className="relative isolate overflow-hidden">
+      <img
+        src="petal-image://moody-mountain-sunrise-soft-pink-fog-cinematic"
+        alt=""
+        className="absolute inset-0 -z-10 h-full w-full object-cover"
+      />
+      <div className="absolute inset-0 -z-10 bg-background/70 backdrop-blur-sm" />
+      <Container size="md" className="py-24 md:py-32">
+        <Stack gap={6} align="center" className="text-center">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground">
+            Built for the next morning
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-xl">
+            Plan your day with calm focus. Wake up with intent and ship with clarity.
+          </p>
+          <div className="flex gap-3">
+            <Button size="lg">Get started</Button>
+            <Button size="lg" variant="outline">See how it works</Button>
+          </div>
+        </Stack>
+      </Container>
+    </section>
+  );
+}
+`;
+
+const KIT_AI_IMAGE_GALLERY = `import { Card, CardContent } from "@/components/ui/card";
+import { Container } from "@/components/ui/container";
+import { Grid } from "@/components/ui/grid";
+
+/**
+ * Product/feature gallery with AI-generated images. Each tile uses a
+ * different slug so each image is unique. Same slug used twice = the
+ * server dedupes to one generation. Stay under 6 unique slugs per turn.
+ */
+const ITEMS = [
+  { slug: "minimalist-leather-wallet-on-marble-product-shot", title: "Daily wallet", price: "$89" },
+  { slug: "ceramic-coffee-mug-soft-morning-light-handmade", title: "Morning mug", price: "$32" },
+  { slug: "linen-tote-bag-natural-color-folded-product-photo", title: "Linen tote", price: "$48" },
+];
+
+export default function AiImageGallery() {
+  return (
+    <Container size="lg" className="py-16">
+      <Grid preset="cards">
+        {ITEMS.map((item) => (
+          <Card key={item.slug} className="overflow-hidden">
+            <img
+              src={\`petal-image://\${item.slug}\`}
+              alt={item.title}
+              className="aspect-square w-full object-cover"
+            />
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-foreground">{item.title}</span>
+                <span className="text-sm text-muted-foreground">{item.price}</span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </Grid>
+    </Container>
+  );
+}
+`;
+
+
 
 const EXAMPLES_INDEX = `# Examples pack — copy-from reference patterns
 
@@ -3546,6 +3630,10 @@ matching file below and adapt — do not invent layouts from scratch.
 - \`kit-command-palette.tsx\` — Cmd/Ctrl+K command palette with grouped items + shortcuts
 - \`kit-validated-form.tsx\` — useForm + FormField + Combobox + DatePicker with inline validation
 - \`kit-sales-chart-card.tsx\` — revenue card with Tabs switching between Area / Line / Bar charts
+
+## AI image placeholders (Phase 4)
+- \`kit-ai-image-hero.tsx\` — full-bleed hero with an AI-generated background via \`petal-image://\`
+- \`kit-ai-image-gallery.tsx\` — three-card product gallery, each tile a unique AI-generated image
 
 ## Conventions
 
@@ -3630,4 +3718,8 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/kit-command-palette.tsx", content: KIT_COMMAND_PALETTE, overwrite: true },
   { path: "src/components/examples/kit-validated-form.tsx", content: KIT_VALIDATED_FORM, overwrite: true },
   { path: "src/components/examples/kit-sales-chart-card.tsx", content: KIT_SALES_CHART_CARD, overwrite: true },
+
+  // AI image placeholders (Phase 4)
+  { path: "src/components/examples/kit-ai-image-hero.tsx", content: KIT_AI_IMAGE_HERO, overwrite: true },
+  { path: "src/components/examples/kit-ai-image-gallery.tsx", content: KIT_AI_IMAGE_GALLERY, overwrite: true },
 ];
