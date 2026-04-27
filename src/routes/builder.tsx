@@ -635,6 +635,8 @@ function Builder() {
       setFinalFileLines({});
       setFileChanges({});
       setStreamingAssistant("");
+      setStreamingPlan("");
+      setStreamingRecap("");
       setActivityVisible(true);
 
       let resultFiles: ProjectFile[] | null = null;
