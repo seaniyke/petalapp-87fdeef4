@@ -40,6 +40,7 @@ import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useBuildActivity } from "@/hooks/use-build-activity";
 import { useAuthReady } from "@/lib/auth";
+import { detectUnsupportedWebContainerBrowser } from "@/lib/browser-support";
 import {
   type Phase,
   type PhaseId,
@@ -113,16 +114,9 @@ const FirstRunTour = lazy(() =>
 // deployed-iframe fallback BEFORE we even mount WebContainerPreview, so iOS
 // and other unsupported browsers see the same live preview that mobile gets.
 function useWebContainerSupported(): boolean {
-  const [supported, setSupported] = useState<boolean>(true);
+  const [supported, setSupported] = useState<boolean>(false);
   useEffect(() => {
-    let cancelled = false;
-    void import("@/components/WebContainerPreview").then(({ detectUnsupportedBrowser }) => {
-      if (cancelled) return;
-      setSupported(detectUnsupportedBrowser() === null);
-    });
-    return () => {
-      cancelled = true;
-    };
+    setSupported(detectUnsupportedWebContainerBrowser() === null);
   }, []);
   return supported;
 }
