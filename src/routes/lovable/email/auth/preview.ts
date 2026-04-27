@@ -105,7 +105,7 @@ export const Route = createFileRoute("/lovable/email/auth/preview")({
           import('react'),
         ])
         const sampleData = SAMPLE_DATA[type] || {}
-        const html = await render(React.createElement(EmailTemplate, sampleData))
+        const html = await render(React.createElement(EmailTemplate as React.ComponentType<any>, sampleData))
 
         return new Response(html, {
           status: 200,
