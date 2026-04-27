@@ -36,6 +36,8 @@ function ProjectsPage() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingDelete, setPendingDelete] = useState<ProjectRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,14 +70,19 @@ function ProjectsPage() {
     navigate({ to: "/builder", search: { id: undefined, prompt: undefined } });
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this project? This can't be undone.")) return;
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const id = pendingDelete.id;
+    setDeleting(true);
     try {
       await deleteProject(id);
       setProjects((prev) => prev.filter((p) => p.id !== id));
       toast.success("Project deleted");
+      setPendingDelete(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete");
+    } finally {
+      setDeleting(false);
     }
   }
 
