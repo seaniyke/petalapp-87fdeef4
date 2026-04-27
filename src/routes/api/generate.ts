@@ -586,6 +586,28 @@ export const Route = createFileRoute("/api/generate")({
                   }),
                 ),
               );
+
+              // Memory writer — fire-and-forget. Distills the user's latest
+              // turn (+ Petal's summary) into durable facts saved to
+              // project_memory. Failures are logged inside; never block the
+              // user's reply or fail the build.
+              if (body.projectId && userJwt) {
+                const lastUserMsg = (() => {
+                  for (let i = messages.length - 1; i >= 0; i--) {
+                    if (messages[i].role === "user") {
+                      const c = messages[i].content;
+                      return typeof c === "string" ? c : "";
+                    }
+                  }
+                  return "";
+                })();
+                void updateProjectMemory({
+                  jwt: userJwt,
+                  projectId: body.projectId,
+                  userMessage: lastUserMsg,
+                  assistantSummary: summary,
+                }).catch((e) => console.warn("[project-memory] writer rejected:", e));
+              }
             } catch (e) {
               const message = e instanceof Error ? e.message : "Generation failed.";
               // No credits were taken — nothing to refund. Just surface the error.
