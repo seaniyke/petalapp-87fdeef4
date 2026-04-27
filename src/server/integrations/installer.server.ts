@@ -18,6 +18,7 @@
  * Encryption: pgcrypto (`pgp_sym_encrypt`) with PETAL_INTEGRATION_SECRET_KEY
  * as the symmetric passphrase. Stored as bytea. Never decrypted client-side.
  */
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { lookupBackendForGenerate } from "@/server/backend-connector.server";
 import {
@@ -31,12 +32,46 @@ import type {
   InstalledIntegrationView,
 } from "./types";
 
-function getEncryptionKey(): string {
-  // Falls back to a fixed dev key so local sandboxes can install integrations
-  // without operator setup. PRODUCTION must override this in env.
-  const k = process.env.PETAL_INTEGRATION_SECRET_KEY;
-  if (k && k.length >= 16) return k;
-  return "dev-only-petal-integration-key-change-me";
+/**
+ * Symmetric encryption: AES-256-GCM. Key is derived from
+ * PETAL_INTEGRATION_SECRET_KEY by SHA-256 so any operator-supplied key length
+ * works. Ciphertext format (stored as a single string in the bytea column):
+ *   v1:<iv-hex>:<tag-hex>:<ct-hex>
+ */
+function getKey(): Buffer {
+  const k =
+    process.env.PETAL_INTEGRATION_SECRET_KEY ??
+    "dev-only-petal-integration-key-change-me";
+  return createHash("sha256").update(k).digest();
+}
+
+function encryptSecret(plaintext: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", getKey(), iv);
+  const ct = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `v1:${iv.toString("hex")}:${tag.toString("hex")}:${ct.toString("hex")}`;
+}
+
+function decryptSecret(payload: string): string | null {
+  if (!payload.startsWith("v1:")) return null;
+  const [, ivHex, tagHex, ctHex] = payload.split(":");
+  if (!ivHex || !tagHex || !ctHex) return null;
+  try {
+    const decipher = createDecipheriv(
+      "aes-256-gcm",
+      getKey(),
+      Buffer.from(ivHex, "hex"),
+    );
+    decipher.setAuthTag(Buffer.from(tagHex, "hex"));
+    const pt = Buffer.concat([
+      decipher.update(Buffer.from(ctHex, "hex")),
+      decipher.final(),
+    ]);
+    return pt.toString("utf8");
+  } catch {
+    return null;
+  }
 }
 
 function validateFields(
