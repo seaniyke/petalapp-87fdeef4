@@ -365,19 +365,41 @@ function Builder() {
   }, [isReady, user, project, navigate, initialPrompt]);
 
   const send = useCallback(
-    async (content: string, opts: { isRetry?: boolean } = {}) => {
+    async (content: string, opts: { isRetry?: boolean; attachments?: ChatAttachment[] } = {}) => {
       const text = content.trim();
       if (!text || busy) return;
       const proj = await ensureProject();
       if (!proj) return;
       setError(null);
       setFriendlyError(null);
-      const userMsg: ChatMessage = { role: "user", content: text };
+      // Attachments precedence: explicit opts > composer state > stashed initial.
+      const attachments =
+        opts.attachments ??
+        (pendingAttachments.length > 0
+          ? pendingAttachments
+          : initialAttachmentsRef.current.length > 0
+            ? initialAttachmentsRef.current
+            : undefined);
+      const userMsg: ChatMessage = {
+        role: "user",
+        content: text,
+        ...(attachments && attachments.length > 0
+          ? {
+              attachments: attachments.map((a) => ({
+                mimeType: a.mimeType,
+                dataUrl: a.dataUrl,
+                name: a.name,
+              })),
+            }
+          : {}),
+      };
       // On retry, the failing user message is already in `messages` — don't double-append.
       const nextMessages: ChatMessage[] = opts.isRetry ? messages : [...messages, userMsg];
       if (!opts.isRetry) setMessages(nextMessages);
       setLastUserPrompt(text);
       setInput("");
+      setPendingAttachments([]);
+      initialAttachmentsRef.current = [];
       setBusy(true);
 
       // Fresh activity feed for this run.
