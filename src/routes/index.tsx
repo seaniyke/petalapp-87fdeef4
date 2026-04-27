@@ -206,25 +206,100 @@ function Landing() {
                   }
                 }}
                 rows={3}
-                placeholder={isFocused || prompt ? "Describe an app you want to build…" : animatedPlaceholder}
-                className="block w-full resize-none bg-transparent px-2 pb-12 pt-1 text-base leading-relaxed outline-none placeholder:text-muted-foreground/80"
-                style={{ minHeight: "5.5rem" }}
+                placeholder={
+                  isFocused || prompt
+                    ? mode === "discuss"
+                      ? "Ask Petal anything about your idea…"
+                      : "Describe an app you want to build…"
+                    : animatedPlaceholder
+                }
+                className="block w-full resize-none bg-transparent px-2 pb-16 pt-1 text-base leading-relaxed outline-none placeholder:text-muted-foreground/80"
+                style={{ minHeight: "6rem" }}
+              />
+
+              {/* Attachment chips */}
+              {attachments.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5 px-1">
+                  {attachments.map((file, idx) => (
+                    <span
+                      key={`${file.name}-${idx}`}
+                      className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 py-0.5 pl-2 pr-1 text-xs text-muted-foreground"
+                    >
+                      <Paperclip className="h-3 w-3" />
+                      <span className="max-w-[120px] truncate">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                        className="grid h-4 w-4 place-items-center rounded-full hover:bg-foreground/10"
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Hidden file inputs */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleAttach}
+                className="hidden"
               />
 
               {/* Bottom toolbar */}
-              <div className="absolute inset-x-3 bottom-3 flex items-center justify-between">
-                <button
-                  type="button"
-                  className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                  aria-label="Attach"
-                >
-                  <Paperclip className="h-4 w-4" />
-                </button>
+              <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    aria-label="Attach a photo or screenshot"
+                    title="Attach a photo or screenshot"
+                  >
+                    <Camera className="h-4 w-4" />
+                  </button>
+
+                  {/* Build / Discuss mode toggle */}
+                  <div className="ml-1 inline-flex items-center rounded-full border border-border bg-background/60 p-0.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setMode("build")}
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
+                        mode === "build"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      aria-pressed={mode === "build"}
+                    >
+                      <Hammer className="h-3 w-3" />
+                      Build
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode("discuss")}
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
+                        mode === "discuss"
+                          ? "bg-foreground text-background"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      aria-pressed={mode === "discuss"}
+                      title="Chat first — Petal won't change any files"
+                    >
+                      <MessageSquare className="h-3 w-3" />
+                      Discuss
+                    </button>
+                  </div>
+                </div>
+
                 <button
                   type="submit"
-                  aria-label="Build it"
+                  aria-label={mode === "discuss" ? "Ask Petal" : "Build it"}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:brightness-105 disabled:opacity-50"
-                  disabled={!prompt.trim() && !isFocused}
+                  disabled={!prompt.trim()}
                 >
                   <ArrowUp className="h-4 w-4" />
                 </button>
