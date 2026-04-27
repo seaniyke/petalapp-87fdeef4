@@ -192,6 +192,7 @@ export function MobilePreviewFallback({
           iframeKey={iframeKey}
           onReload={() => setIframeKey((k) => k + 1)}
           badge="Latest build failed — showing previous preview"
+          cacheBust={previewBuild.id}
         />
       );
     }
