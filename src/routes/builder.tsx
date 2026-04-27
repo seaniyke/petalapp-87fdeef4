@@ -582,6 +582,31 @@ function Builder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady, user, searchId]);
 
+  // Mirror the composer text, queued messages, and pending attachments to
+  // sessionStorage so a browser refresh inside /builder doesn't wipe them.
+  // Per-project, per-tab. Cleared automatically when the values empty out.
+  useEffect(() => {
+    if (!project) return;
+    const key = builderDraftKeys.composer(project.id);
+    if (input.trim()) writeDraft(key, input);
+    else clearDraft(key);
+  }, [project, input]);
+
+  useEffect(() => {
+    if (!project) return;
+    const key = builderDraftKeys.queue(project.id);
+    if (pendingQueue.length > 0) writeDraft(key, pendingQueue);
+    else clearDraft(key);
+  }, [project, pendingQueue]);
+
+  useEffect(() => {
+    if (!project) return;
+    const key = builderDraftKeys.attachments(project.id);
+    if (pendingAttachments.length > 0) writeDraft(key, pendingAttachments);
+    else clearDraft(key);
+  }, [project, pendingAttachments]);
+
+
   // Auto-send the prompt from the landing page once, after bootstrap.
   // Note: project may be null here when arriving with ?prompt but no ?id —
   // send() will lazily create the project on first use.
