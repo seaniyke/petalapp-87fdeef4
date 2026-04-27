@@ -254,6 +254,11 @@ export const WRITE_PROJECT_TOOL = {
     parameters: {
       type: "object",
       properties: {
+        plan: {
+          type: "string",
+          description:
+            "1-3 short sentences written FIRST explaining what you're about to build and why. Streamed to the user before any files appear.",
+        },
         summary: {
           type: "string",
           description: "Friendly 1-2 sentence summary of what was built.",
@@ -271,8 +276,13 @@ export const WRITE_PROJECT_TOOL = {
             additionalProperties: false,
           },
         },
+        recap: {
+          type: "string",
+          description:
+            "Markdown bulleted recap of the key files and what each does. Streamed AFTER files so the user gets a clean wrap-up.",
+        },
       },
-      required: ["summary", "files"],
+      required: ["plan", "summary", "files", "recap"],
       additionalProperties: false,
     },
   },
