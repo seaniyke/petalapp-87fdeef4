@@ -28,6 +28,7 @@ import {
   pickDesignDirection,
   renderDesignDirectionBlock,
 } from "@/server/design-director.server";
+import { runSelfCheck, humanizeBuildError } from "@/server/self-recovery.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
