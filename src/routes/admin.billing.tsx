@@ -94,11 +94,19 @@ function AdminBillingPage() {
           </Link>
         </div>
 
-        <Tabs defaultValue="currencies" className="space-y-6">
+        <Tabs defaultValue="plans" className="space-y-6">
           <TabsList>
+            <TabsTrigger value="plans">Plans</TabsTrigger>
+            <TabsTrigger value="packs">Credit packs</TabsTrigger>
             <TabsTrigger value="currencies">Currencies & rates</TabsTrigger>
             <TabsTrigger value="overrides">Price overrides</TabsTrigger>
           </TabsList>
+          <TabsContent value="plans">
+            <PlansPanel />
+          </TabsContent>
+          <TabsContent value="packs">
+            <CreditPacksPanel />
+          </TabsContent>
           <TabsContent value="currencies">
             <CurrenciesPanel />
           </TabsContent>
