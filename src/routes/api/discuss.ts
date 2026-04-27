@@ -163,7 +163,7 @@ export const Route = createFileRoute("/api/discuss")({
         });
 
         if (!upstream.ok) {
-          await refundDiscuss(`upstream_${upstream.status}`);
+          // Nothing was charged yet — just surface a friendly error.
           let msg = `AI gateway error (${upstream.status})`;
           if (upstream.status === 429) msg = "Rate limit reached. Please wait a moment.";
           else if (upstream.status === 402)
@@ -184,9 +184,24 @@ export const Route = createFileRoute("/api/discuss")({
         };
         const reply = json.choices?.[0]?.message?.content?.trim() ?? "";
         if (!reply) {
-          await refundDiscuss("empty_reply");
+          // Nothing was charged — just report the failure.
           return new Response("Empty reply from AI.", { status: 502 });
         }
+
+        // Charge ONCE, after success. If the wallet emptied between the
+        // pre-flight check and now, we still deliver the reply (the user
+        // already received it) and log a warning.
+        const charge = await spendCredit({
+          userId,
+          amount: 1.0,
+          reason: "ai_discuss_charge",
+          projectId: body.projectId ?? null,
+          metadata: { route: "/api/discuss" },
+        });
+        if (!charge.ok) {
+          console.warn("[credits] post-discuss charge failed", charge);
+        }
+
         return Response.json({ reply });
       },
     },
