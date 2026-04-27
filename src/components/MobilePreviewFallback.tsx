@@ -100,7 +100,7 @@ export function MobilePreviewFallback({
     }, 5_000);
 
     const channel = supabase
-      .channel(`build:${latestBuildId}`)
+      .channel(`build:${latestBuildId}:${Date.now()}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         {
@@ -119,7 +119,13 @@ export function MobilePreviewFallback({
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn("[MobilePreviewFallback] realtime unavailable", err);
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          void loadLatestBuild();
+          void loadLatestReadyBuild();
+        }
+      });
 
     // iOS Safari suspends backgrounded tabs and silently kills realtime
     // websockets. Re-fetch whenever the user returns so the preview catches

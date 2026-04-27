@@ -82,7 +82,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
     // where the websocket gets dropped (locked-down corporate networks, some
     // mobile browsers, sleeping tabs that just resumed).
     const channel = supabase
-      .channel(`build-activity:${latestBuildId}`)
+      .channel(`build-activity:${latestBuildId}:${Date.now()}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         {
@@ -93,7 +93,10 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
         },
         (payload) => apply(payload.new as Parameters<typeof apply>[0]),
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn("[useBuildActivity] realtime unavailable", err);
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") void fetchOnce();
+      });
 
     // Aggressive polling for the first 90s of a pending build (the deploy
     // window is short — bandwidth cost is trivial, stranded spinners are not).

@@ -318,7 +318,7 @@ function Builder() {
     };
 
     const channel = supabase
-      .channel(`project:${projectId}`)
+      .channel(`project:${projectId}:${Date.now()}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         {
@@ -333,7 +333,10 @@ function Builder() {
           setProject((prev) => (prev ? { ...prev, ...next } : prev));
         },
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn("[Builder] project realtime unavailable", err);
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") void refetch();
+      });
 
     // Polling fallback (mobile/iOS where websockets are unreliable).
     const poll = window.setInterval(() => {
