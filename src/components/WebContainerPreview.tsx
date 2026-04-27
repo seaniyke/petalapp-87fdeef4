@@ -291,6 +291,20 @@ export function WebContainerPreview({
             src={serverUrl}
             allow="cross-origin-isolated"
             className="h-full w-full border-0 bg-white"
+            onLoad={() => {
+              // Each iframe load is either a hard reload, an HMR full-page
+              // refresh, or a client-side navigation that swapped the
+              // document. The picker script auto-attaches itself on the new
+              // document via its embedded <script> tag, but we also need to
+              // re-push the current pickActive state so an in-flight pick
+              // survives the navigation.
+              const win = iframeRef.current?.contentWindow;
+              if (!win) return;
+              win.postMessage(
+                { type: pickActive ? "petal:pick:enable" : "petal:pick:disable" },
+                "*",
+              );
+            }}
           />
         ) : (
           <div className="grid h-full place-items-center bg-aurora text-sm text-muted-foreground">
