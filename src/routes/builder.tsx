@@ -101,6 +101,25 @@ const WebContainerPreview = lazy(() =>
 const MobilePreviewFallback = lazy(() =>
   import("@/components/MobilePreviewFallback").then((m) => ({ default: m.MobilePreviewFallback })),
 );
+
+// Detect once on the client whether this browser can run a WebContainer.
+// Mirrors the same logic as the inner component but lets us route to the
+// deployed-iframe fallback BEFORE we even mount WebContainerPreview, so iOS
+// and other unsupported browsers see the same live preview that mobile gets.
+function useWebContainerSupported(): boolean {
+  const [supported, setSupported] = useState<boolean>(true);
+  useEffect(() => {
+    let cancelled = false;
+    void import("@/components/WebContainerPreview").then(({ detectUnsupportedBrowser }) => {
+      if (cancelled) return;
+      setSupported(detectUnsupportedBrowser() === null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return supported;
+}
 type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
 export const Route = createFileRoute("/builder")({
