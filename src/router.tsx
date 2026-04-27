@@ -17,12 +17,17 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
   const chunkError = isRecoverableChunkError(error);
 
   useEffect(() => {
+    console.error("[PetalErrorBoundary]", error);
     if (!chunkError || typeof window === "undefined") return;
     const key = "petal:auto-reloaded-after-chunk-error";
-    if (window.sessionStorage.getItem(key) === "1") return;
-    window.sessionStorage.setItem(key, "1");
+    try {
+      if (window.sessionStorage.getItem(key) === "1") return;
+      window.sessionStorage.setItem(key, "1");
+    } catch {
+      // Private/locked-down browsers may block storage; still allow recovery.
+    }
     window.location.reload();
-  }, [chunkError]);
+  }, [chunkError, error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
