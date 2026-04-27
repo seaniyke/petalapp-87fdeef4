@@ -204,27 +204,3 @@ export async function releaseSubdomain(projectId: string): Promise<void> {
     .eq("id", projectId);
 }
 
-/** Sync the live Cloudflare status of a Petal subdomain into project_domains. */
-export async function refreshSubdomainStatus(domainRowId: string): Promise<void> {
-  const { data: row } = await supabaseAdmin
-    .from("project_domains")
-    .select("provider_hostname_id")
-    .eq("id", domainRowId)
-    .maybeSingle();
-  if (!row?.provider_hostname_id) return;
-  try {
-    const cf = await getCustomHostname(row.provider_hostname_id);
-    const mapped = mapCfStatus(cf);
-    await supabaseAdmin
-      .from("project_domains")
-      .update({
-        status: mapped.status,
-        ssl_status: mapped.ssl_status,
-        error_message: mapped.error_message,
-        last_checked_at: new Date().toISOString(),
-      })
-      .eq("id", domainRowId);
-  } catch {
-    // Soft-fail: status will be re-checked on next user action.
-  }
-}
