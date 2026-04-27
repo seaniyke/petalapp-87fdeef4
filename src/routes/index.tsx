@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SampleAppShowcase } from "@/components/SampleAppShowcase";
 import { StartIdeasPanel } from "@/components/StartIdeasPanel";
 import { ComposerModePicker, type ComposerMode } from "@/components/ComposerModePicker";
 import { IdeaCoach } from "@/components/IdeaCoach";
+import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import { useAuth } from "@/lib/auth";
+import { listProjects, type ProjectRow } from "@/lib/projects";
 import {
   ArrowRight,
   ArrowUp,
@@ -78,7 +80,45 @@ function Landing() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
+  const { user, isReady } = useAuth();
+  const isAuthed = !!user;
+  const firstName = useMemo(() => {
+    const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+    const fromMeta =
+      (typeof meta.full_name === "string" && meta.full_name) ||
+      (typeof meta.name === "string" && meta.name) ||
+      (typeof meta.first_name === "string" && meta.first_name) ||
+      "";
+    if (fromMeta) return String(fromMeta).trim().split(/\s+/)[0];
+    const email = user?.email ?? "";
+    const local = email.split("@")[0] ?? "";
+    if (!local) return "";
+    return local.charAt(0).toUpperCase() + local.slice(1);
+  }, [user]);
+
+  const [projects, setProjects] = useState<ProjectRow[] | null>(null);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  useEffect(() => {
+    if (!isReady || !isAuthed) {
+      setProjects(null);
+      return;
+    }
+    let cancelled = false;
+    setProjectsLoading(true);
+    listProjects()
+      .then((rows) => {
+        if (!cancelled) setProjects(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setProjects([]);
+      })
+      .finally(() => {
+        if (!cancelled) setProjectsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, isAuthed]);
 
   // When the user clicks "+ New project" on /projects we route them here with
   // ?focus=composer. Drop the cursor in the textarea and scroll it into view
@@ -253,28 +293,36 @@ function Landing() {
         <div className="absolute inset-0 bg-aurora opacity-70" aria-hidden />
         <div className="absolute inset-0 bg-grain opacity-40" aria-hidden />
 
-        <div className="relative mx-auto max-w-5xl px-4 pt-12 pb-20 text-center sm:px-6 sm:pt-20 sm:pb-28 md:pt-28 md:pb-36">
-          <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-            Now in early access
-          </div>
+        <div className={`relative mx-auto max-w-5xl px-4 text-center sm:px-6 ${isAuthed ? "pt-10 pb-10 sm:pt-16 sm:pb-12 md:pt-20" : "pt-12 pb-20 sm:pt-20 sm:pb-28 md:pt-28 md:pb-36"}`}>
+          {isAuthed ? (
+            <h1 className="font-display text-3xl font-semibold leading-[1.1] tracking-tight text-balance sm:text-4xl md:text-5xl">
+              Let's build something{firstName ? `, ${firstName}` : ""}.
+            </h1>
+          ) : (
+            <>
+              <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                Now in early access
+              </div>
 
-          <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
-            Build real apps by{" "}
-            <span className="relative whitespace-nowrap">
-              <span className="relative z-10 italic">just chatting</span>
-              <span
-                className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50"
-                aria-hidden
-              />
-            </span>
-            .
-          </h1>
+              <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
+                Build real apps by{" "}
+                <span className="relative whitespace-nowrap">
+                  <span className="relative z-10 italic">just chatting</span>
+                  <span
+                    className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50"
+                    aria-hidden
+                  />
+                </span>
+                .
+              </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-balance text-base text-muted-foreground sm:text-lg md:text-xl">
-            Petal turns plain English into working web apps. Describe what you
-            want, watch the files appear, and share a live preview in seconds.
-          </p>
+              <p className="mx-auto mt-6 max-w-2xl text-balance text-base text-muted-foreground sm:text-lg md:text-xl">
+                Petal turns plain English into working web apps. Describe what you
+                want, watch the files appear, and share a live preview in seconds.
+              </p>
+            </>
+          )}
 
           {/* Prompt box — large chat-style composer */}
           <form
@@ -397,46 +445,112 @@ function Landing() {
 
           </form>
 
-          <StartIdeasPanel
-            onPick={(p) => {
-              setPrompt(p);
-              // Defer focus until after React commits the new value so the
-              // textarea autosizes correctly and the cursor lands at the end.
-              requestAnimationFrame(() => {
-                const el = textareaRef.current;
-                if (!el) return;
-                el.focus();
-                el.setSelectionRange(p.length, p.length);
-                el.scrollIntoView({ behavior: "smooth", block: "center" });
-              });
-            }}
-            onSwitchToCoach={() => {
-              setMode("coach");
-              requestAnimationFrame(() => {
-                document
-                  .querySelector("form")
-                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
-              });
-            }}
-          />
+          {!isAuthed && (
+            <StartIdeasPanel
+              onPick={(p) => {
+                setPrompt(p);
+                requestAnimationFrame(() => {
+                  const el = textareaRef.current;
+                  if (!el) return;
+                  el.focus();
+                  el.setSelectionRange(p.length, p.length);
+                  el.scrollIntoView({ behavior: "smooth", block: "center" });
+                });
+              }}
+              onSwitchToCoach={() => {
+                setMode("coach");
+                requestAnimationFrame(() => {
+                  document
+                    .querySelector("form")
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                });
+              }}
+            />
+          )}
 
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-mint" /> Live preview
-            </span>
-            <span className="hidden sm:inline">•</span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-lilac" /> Multi-file projects
-            </span>
-            <span className="hidden sm:inline">•</span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-sky" /> One-click share
-            </span>
-          </div>
+          {!isAuthed && (
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-mint" /> Live preview
+              </span>
+              <span className="hidden sm:inline">•</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-lilac" /> Multi-file projects
+              </span>
+              <span className="hidden sm:inline">•</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-sky" /> One-click share
+              </span>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Showcase — rotating sample apps */}
+      {isAuthed ? (
+        <section className="relative px-4 pb-24 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <h2 className="font-display text-2xl sm:text-3xl">My projects</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Pick up where you left off, or start something new above.
+                </p>
+              </div>
+              <Link
+                to="/projects"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-sm text-muted-foreground transition hover:text-foreground"
+              >
+                View all
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            <div className="mt-6">
+              {projectsLoading || projects === null ? (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-44 animate-pulse rounded-2xl border border-border bg-card"
+                    />
+                  ))}
+                </div>
+              ) : projects.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-border bg-card/60 p-10 text-center">
+                  <h3 className="font-display text-xl">No projects yet</h3>
+                  <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+                    Describe an app in the box above and Petal will build the
+                    files for you.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {projects.slice(0, 6).map((p) => (
+                    <Link
+                      key={p.id}
+                      to="/builder"
+                      search={{ id: p.id, prompt: undefined, mode: undefined, attachKey: undefined }}
+                      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]"
+                    >
+                      <ProjectThumbnail projectId={p.id} className="h-28" />
+                      <div className="flex flex-1 flex-col p-4">
+                        <h3 className="truncate font-semibold">{p.title}</h3>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                          {p.summary ?? "No description yet."}
+                        </p>
+                        <div className="mt-auto pt-3 text-[11px] text-muted-foreground">
+                          Updated {new Date(p.updated_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <>
       <section id="showcase" className="relative -mt-8 px-4 pb-16 sm:-mt-16 sm:px-6 sm:pb-24">
         <SampleAppShowcase />
       </section>
@@ -599,6 +713,8 @@ function Landing() {
           </div>
         </div>
       </footer>
+        </>
+      )}
     </div>
   );
 }
