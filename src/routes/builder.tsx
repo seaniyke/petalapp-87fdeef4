@@ -1212,6 +1212,19 @@ function Builder() {
                     ) : (
                       <div className="whitespace-pre-wrap">{m.content}</div>
                     )}
+                    {/* Thumbnails of any images attached to this user turn. */}
+                    {m.role === "user" && m.attachments && m.attachments.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {m.attachments.map((a, ai) => (
+                          <img
+                            key={ai}
+                            src={a.dataUrl}
+                            alt={a.name ?? `attachment ${ai + 1}`}
+                            className="h-16 w-16 rounded-md border border-border object-cover"
+                          />
+                        ))}
+                      </div>
+                    )}
                     {canRevert && (
                       <button
                         onClick={() => void prepareRevertToMessage(i)}
