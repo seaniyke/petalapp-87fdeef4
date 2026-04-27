@@ -72,7 +72,7 @@ This is where we close the gap with Lovable / Base44. Today every keystroke depl
 - ✅ **Unpublish** action in the visibility section of the Publish sheet.
 - ✅ **First-publish onboarding** copy: "Not published yet" header + helper line until a build is pinned.
 - ✅ **Push-update toast** in `builder.tsx` after a successful build when the project is already published and the new preview is newer than the pinned build. One-shot per build id, with an "Update" action that opens the Publish sheet.
-- ⏭️ **Visitor count** intentionally deferred — the Plausible integration we ship is *for* the user's app (gets injected into their generated code), not a stats source for Petal's control plane. Wiring a fake count would mislead. Re-open when we have an actual analytics source pointed at Cloudflare Pages traffic.
+- ✅ **Visitor count** wired through Cloudflare's GraphQL Analytics API (`pagesProjectAnalyticsAdaptiveGroups`). New `src/server/cloudflare-analytics.server.ts` resolves the account id (env override or first `/accounts` entry, cached 1h) and queries visits/pageviews per Pages project for 24h/7d/30d windows. New `/api/visitors` route does ownership check + soft-fails (`unavailable: true`) on Cloudflare outages so the sheet stays usable. The Publish sheet shows visitors + pageviews + a 24h/7d/30d toggle, only when the project has a pinned build.
 
 ---
 
