@@ -1,15 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, GitFork, Star, Loader2, ArrowUpRight, Lock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Sparkles, GitFork, Star, ArrowUpRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteHeader } from "@/components/SiteHeader";
+import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import {
   listPublicProjects,
-  loadProjectFiles,
   setProjectFeatured,
   type ProjectRow,
 } from "@/lib/projects";
-import { buildPreviewDoc } from "@/lib/preview";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
 export const Route = createFileRoute("/gallery")({
@@ -154,7 +153,7 @@ function GalleryCard({
       params={{ slug: project.slug }}
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]"
     >
-      <Thumbnail projectId={project.id} />
+      <ProjectThumbnail projectId={project.id} className="h-40" />
 
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-3">
@@ -196,88 +195,5 @@ function GalleryCard({
         </button>
       )}
     </Link>
-  );
-}
-
-/**
- * Renders a tiny live iframe of the project, scaled down. Files are fetched
- * lazily, and the iframe only mounts when the card scrolls into view (and
- * unmounts when scrolled out) so we never run 60 model contexts at once.
- */
-function Thumbnail({ projectId }: { projectId: string }) {
-  const [doc, setDoc] = useState<string | null>(null);
-  const [error, setError] = useState(false);
-  const [visible, setVisible] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  // Observe visibility — only fetch + render when on screen.
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
-      setVisible(true);
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) setVisible(entry.isIntersecting);
-      },
-      { rootMargin: "200px" }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  // Fetch files only once, the first time we become visible.
-  useEffect(() => {
-    if (!visible || doc !== null || error) return;
-    let cancelled = false;
-    loadProjectFiles(projectId)
-      .then((files) => {
-        if (cancelled) return;
-        if (files.length === 0) {
-          setError(true);
-          return;
-        }
-        setDoc(buildPreviewDoc(files));
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [visible, projectId, doc, error]);
-
-  return (
-    <div ref={ref} className="relative h-40 overflow-hidden bg-aurora">
-      <div className="absolute inset-0 bg-grain opacity-30" aria-hidden />
-      {visible && doc ? (
-        <div
-          className="pointer-events-none absolute left-0 top-0"
-          style={{
-            width: "1280px",
-            height: "800px",
-            transform: "scale(0.25)",
-            transformOrigin: "top left",
-          }}
-        >
-          <iframe
-            title="preview"
-            srcDoc={doc}
-            sandbox="allow-scripts"
-            loading="lazy"
-            className="h-full w-full border-0 bg-white"
-          />
-        </div>
-      ) : error ? (
-        <div className="grid h-full place-items-center text-xs text-muted-foreground">
-          <Lock className="h-4 w-4" />
-        </div>
-      ) : (
-        <div className="grid h-full place-items-center">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        </div>
-      )}
-    </div>
   );
 }
