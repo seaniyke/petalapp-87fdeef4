@@ -3362,6 +3362,7 @@ const REQUIRED_DEPS: Record<string, string> = {
   "lucide-react": "^0.460.0",
   "@radix-ui/react-slot": "^1.1.0",
   sonner: "^1.7.0",
+  "react-router-dom": "^6.28.0",
 };
 
 const REQUIRED_DEV_DEPS: Record<string, string> = {
