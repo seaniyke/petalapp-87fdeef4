@@ -121,9 +121,25 @@ export function MobilePreviewFallback({
       )
       .subscribe();
 
+    // iOS Safari suspends backgrounded tabs and silently kills realtime
+    // websockets. Re-fetch whenever the user returns so the preview catches
+    // up instead of staying frozen on stale state.
+    const onAlive = () => {
+      if (document.visibilityState === "visible") {
+        void loadLatestBuild();
+        void loadLatestReadyBuild();
+      }
+    };
+    document.addEventListener("visibilitychange", onAlive);
+    window.addEventListener("online", onAlive);
+    window.addEventListener("focus", onAlive);
+
     return () => {
       cancelled = true;
       window.clearInterval(poll);
+      document.removeEventListener("visibilitychange", onAlive);
+      window.removeEventListener("online", onAlive);
+      window.removeEventListener("focus", onAlive);
       void supabase.removeChannel(channel);
     };
   }, [latestBuildId, projectId]);
@@ -153,6 +169,7 @@ export function MobilePreviewFallback({
         iframeKey={iframeKey}
         onReload={() => setIframeKey((k) => k + 1)}
         badge="Updating preview…"
+        cacheBust={previewBuild.id}
       />
     );
   }
@@ -175,6 +192,7 @@ export function MobilePreviewFallback({
           iframeKey={iframeKey}
           onReload={() => setIframeKey((k) => k + 1)}
           badge="Latest build failed — showing previous preview"
+          cacheBust={previewBuild.id}
         />
       );
     }
@@ -214,6 +232,7 @@ export function MobilePreviewFallback({
       src={build.dist_path}
       iframeKey={iframeKey}
       onReload={() => setIframeKey((k) => k + 1)}
+      cacheBust={build.id}
     />
   );
 }
@@ -223,12 +242,21 @@ function PreviewFrame({
   iframeKey,
   onReload,
   badge,
+  cacheBust,
 }: {
   src: string;
   iframeKey: number;
   onReload: () => void;
   badge?: string;
+  /** Optional value appended as ?v=<cacheBust> to bypass edge cache after a fresh deploy. */
+  cacheBust?: string;
 }) {
+  // Append cache-bust param so a freshly-deployed build isn't masked by
+  // Cloudflare's edge cache (which can serve stale HTML for ~30s post-deploy).
+  // We never overwrite an existing query string the build URL might carry.
+  const finalSrc = cacheBust
+    ? `${src}${src.includes("?") ? "&" : "?"}v=${encodeURIComponent(cacheBust)}`
+    : src;
   return (
     <div className="relative flex h-full w-full flex-col">
       {badge && (
@@ -261,7 +289,7 @@ function PreviewFrame({
         <iframe
           key={iframeKey}
           title="App preview"
-          src={src}
+          src={finalSrc}
           className="h-full w-full border-0 bg-white"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         />

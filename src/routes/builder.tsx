@@ -72,6 +72,7 @@ import {
 } from "@/lib/projects";
 import { createVersion, listVersions } from "@/lib/versions";
 import { triggerBuild } from "@/lib/builds";
+import { supabase } from "@/integrations/supabase/client";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
 import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
@@ -284,6 +285,71 @@ function Builder() {
   const buildSnap = useBuildActivity(project?.latest_build_id ?? null);
   const isDeploying = buildSnap?.status === "pending";
   const isLive = buildSnap?.status === "ready";
+
+  // Subscribe to `projects` row changes so when the build callback writes a
+  // new `latest_build_id` (or any other field), the UI picks it up immediately
+  // without waiting for a manual refetch. Without this, the activity card
+  // can stay subscribed to a stale build id and miss the "ready" event.
+  // Polling fallback covers iOS Safari where realtime websockets often die.
+  useEffect(() => {
+    const projectId = project?.id;
+    if (!projectId) return;
+
+    let cancelled = false;
+    const refetch = async () => {
+      const r = await getProject(projectId);
+      if (cancelled || !r) return;
+      setProject((prev) => {
+        if (!prev) return r;
+        // Only swap when something material changed to avoid render churn.
+        if (
+          prev.latest_build_id === r.latest_build_id &&
+          prev.title === r.title
+        ) {
+          return prev;
+        }
+        return { ...prev, ...r };
+      });
+    };
+
+    const channel = supabase
+      .channel(`project:${projectId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "projects",
+          filter: `id=eq.${projectId}`,
+        },
+        (payload) => {
+          if (cancelled) return;
+          const next = payload.new as Partial<ProjectRow>;
+          setProject((prev) => (prev ? { ...prev, ...next } : prev));
+        },
+      )
+      .subscribe();
+
+    // Polling fallback (mobile/iOS where websockets are unreliable).
+    const poll = window.setInterval(() => {
+      void refetch();
+    }, 10_000);
+
+    // Catch-up when returning from a backgrounded tab (iOS suspends WS).
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refetch();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onVisible);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onVisible);
+      void supabase.removeChannel(channel);
+    };
+  }, [project?.id]);
 
   // Reflect Cloudflare build state into the phase timeline + friendly errors.
   // On failure: auto-trigger the fix loop (Phase 2) up to MAX_AUTO_FIX_ATTEMPTS

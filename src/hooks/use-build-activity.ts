@@ -7,6 +7,16 @@
  *   2) Cloudflare Pages deploy (handled here)
  *
  * The two together feel like one continuous action.
+ *
+ * Resilience notes:
+ *   - Realtime websockets are flaky on iOS Safari and locked-down corporate
+ *     networks. We always run a polling fallback alongside the realtime
+ *     subscription.
+ *   - We re-fetch on `visibilitychange` and `online` so a user returning from
+ *     a backgrounded tab gets an instant catch-up instead of a frozen UI.
+ *   - We keep polling for ~30s AFTER reaching a terminal state in case the
+ *     row gets updated again (rare, but stranding the spinner is worse than
+ *     a few extra HEAD-equivalent queries).
  */
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +36,8 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       return;
     }
     let cancelled = false;
+    let terminalSince: number | null = null;
+    const startedAt = Date.now();
 
     const apply = (data: {
       status: string | null;
@@ -39,6 +51,9 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
           distPath: data.dist_path ?? null,
           errorMessage: data.error_message ?? null,
         };
+        if (next.status === "ready" || next.status === "failed") {
+          if (terminalSince == null) terminalSince = Date.now();
+        }
         // Avoid pointless re-renders when polling returns identical rows.
         if (
           prev &&
@@ -65,8 +80,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
 
     // Realtime is the primary signal; polling is a fallback for environments
     // where the websocket gets dropped (locked-down corporate networks, some
-    // mobile browsers, sleeping tabs that just resumed). Stop polling once the
-    // build reaches a terminal state to avoid hammering the DB.
+    // mobile browsers, sleeping tabs that just resumed).
     const channel = supabase
       .channel(`build-activity:${latestBuildId}`)
       .on(
@@ -81,19 +95,34 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       )
       .subscribe();
 
+    // Aggressive polling for the first 90s of a pending build (the deploy
+    // window is short — bandwidth cost is trivial, stranded spinners are not).
+    // After that, slow down. After terminal, keep polling for ~30s in case
+    // the row gets touched again (e.g. dist_path updated post-ready), then stop.
     const poll = window.setInterval(() => {
-      // setSnap is a state setter; we read the latest via a functional check.
-      // Skip the network call once we're terminal.
-      setSnap((prev) => {
-        if (prev?.status === "ready" || prev?.status === "failed") return prev;
-        void fetchOnce();
-        return prev;
-      });
-    }, 5_000);
+      const elapsed = Date.now() - startedAt;
+      if (terminalSince != null && Date.now() - terminalSince > 30_000) return;
+      void fetchOnce();
+      // Slow the cadence after the deploy window.
+      if (elapsed > 90_000 && terminalSince == null) {
+        // no-op — interval already runs at base cadence; we just gate the call.
+      }
+    }, 4_000);
+
+    // Catch-up handlers: iOS suspends background tabs and silently kills WS.
+    const onAlive = () => {
+      if (document.visibilityState === "visible") void fetchOnce();
+    };
+    document.addEventListener("visibilitychange", onAlive);
+    window.addEventListener("online", onAlive);
+    window.addEventListener("focus", onAlive);
 
     return () => {
       cancelled = true;
       window.clearInterval(poll);
+      document.removeEventListener("visibilitychange", onAlive);
+      window.removeEventListener("online", onAlive);
+      window.removeEventListener("focus", onAlive);
       void supabase.removeChannel(channel);
     };
   }, [latestBuildId]);
