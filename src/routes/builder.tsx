@@ -237,6 +237,11 @@ function Builder() {
   const initialAttachmentsRef = useRef<ChatAttachment[]>([]);
   const composerFileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+  const webContainerSupported = useWebContainerSupported();
+  // Use the deployed-build iframe fallback whenever WebContainers can't run
+  // here — narrow viewport (mobile) OR an unsupported browser (iOS Safari,
+  // Android non-Chromium, no SharedArrayBuffer, etc.).
+  const useDeployedFallback = isMobile || !webContainerSupported;
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
