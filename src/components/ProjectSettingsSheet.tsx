@@ -11,6 +11,9 @@ import {
   Plug,
   CheckCircle2,
   Unplug,
+  ExternalLink,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   Sheet,
@@ -308,6 +311,16 @@ function ConnectForm({
   const [anonKey, setAnonKey] = useState("");
   const [serviceRoleKey, setServiceRoleKey] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Build a best-effort deep link to the user's Supabase API settings page
+  // once they've pasted a valid project URL. Falls back to the dashboard.
+  const apiSettingsUrl = (() => {
+    const m = url.trim().match(/^https:\/\/([a-z0-9-]+)\.supabase\.co\/?$/i);
+    return m
+      ? `https://supabase.com/dashboard/project/${m[1]}/settings/api`
+      : "https://supabase.com/dashboard/projects";
+  })();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -329,14 +342,34 @@ function ConnectForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3 rounded-lg border border-border p-3">
-      <p className="text-xs text-muted-foreground">
-        Find these in your Supabase project under Settings → API.
-      </p>
-      <div className="space-y-1">
-        <Label htmlFor="b-url" className="text-xs">
-          Project URL
-        </Label>
+    <form onSubmit={submit} className="space-y-4 rounded-lg border border-border p-3">
+      {/* Step 1 */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+            1
+          </span>
+          <p className="text-xs font-medium">Open your Supabase API settings</p>
+        </div>
+        <a
+          href={apiSettingsUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-xs text-foreground transition hover:bg-muted"
+        >
+          <ExternalLink className="h-3 w-3" />
+          {url.trim() ? "Open this project's API settings" : "Open Supabase dashboard"}
+        </a>
+      </div>
+
+      {/* Step 2 */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+            2
+          </span>
+          <p className="text-xs font-medium">Paste the Project URL</p>
+        </div>
         <Input
           id="b-url"
           value={url}
@@ -347,10 +380,15 @@ function ConnectForm({
           className="text-sm"
         />
       </div>
-      <div className="space-y-1">
-        <Label htmlFor="b-anon" className="text-xs">
-          Anon (public) key
-        </Label>
+
+      {/* Step 3 */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+            3
+          </span>
+          <p className="text-xs font-medium">Paste the Public API key</p>
+        </div>
         <Input
           id="b-anon"
           value={anonKey}
@@ -360,22 +398,48 @@ function ConnectForm({
           autoComplete="off"
           className="font-mono text-xs"
         />
+        <p className="text-[11px] text-muted-foreground">
+          Labelled <span className="font-medium">anon</span> /{" "}
+          <span className="font-medium">public</span> in Supabase. Safe to share.
+        </p>
       </div>
-      <div className="space-y-1">
-        <Label htmlFor="b-srk" className="text-xs">
-          Service role key{" "}
-          <span className="text-muted-foreground">(optional, for future migrations)</span>
-        </Label>
-        <Input
-          id="b-srk"
-          value={serviceRoleKey}
-          onChange={(e) => setServiceRoleKey(e.target.value)}
-          placeholder="eyJhbGci…"
-          type="password"
-          autoComplete="off"
-          className="font-mono text-xs"
-        />
+
+      {/* Advanced */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="inline-flex items-center gap-1 text-[11px] text-muted-foreground transition hover:text-foreground"
+        >
+          {showAdvanced ? (
+            <ChevronDown className="h-3 w-3" />
+          ) : (
+            <ChevronRight className="h-3 w-3" />
+          )}
+          Advanced
+        </button>
+        {showAdvanced && (
+          <div className="mt-2 space-y-1">
+            <Label htmlFor="b-srk" className="text-xs">
+              Secret key{" "}
+              <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id="b-srk"
+              value={serviceRoleKey}
+              onChange={(e) => setServiceRoleKey(e.target.value)}
+              placeholder="eyJhbGci…"
+              type="password"
+              autoComplete="off"
+              className="font-mono text-xs"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Used later for managed migrations. Leave blank if unsure.
+            </p>
+          </div>
+        )}
       </div>
+
       <div className="flex items-center justify-end gap-2 pt-1">
         <Button
           type="button"
