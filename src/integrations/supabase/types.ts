@@ -468,6 +468,38 @@ export type Database = {
         }
         Relationships: []
       }
+      message_drafts: {
+        Row: {
+          partial_content: string
+          partial_plan: string
+          partial_recap: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          partial_content?: string
+          partial_plan?: string
+          partial_recap?: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          partial_content?: string
+          partial_plan?: string
+          partial_recap?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_drafts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string

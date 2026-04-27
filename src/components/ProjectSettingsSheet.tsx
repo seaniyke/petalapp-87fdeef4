@@ -40,6 +40,7 @@ import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { LabsSection } from "@/components/LabsSection";
 import { IntegrationsSection } from "@/components/IntegrationsSection";
 import { useLabsFlag } from "@/hooks/use-labs-flags";
+import { builderDraftKeys, clearDraft, readDraft, writeDraft } from "@/lib/draft-storage";
 import { toast } from "sonner";
 
 const MAX_LEN = 4000;
@@ -78,12 +79,34 @@ export function ProjectSettingsSheet({
     if (!isControlled) setInternalOpen(v);
     onOpenChange?.(v);
   };
-  const [value, setValue] = useState(project.custom_instructions ?? "");
+  // Initial value: prefer an unsaved draft (rescued from a previous tab/refresh)
+  // over the saved value, so an in-progress edit isn't silently discarded.
+  const knowledgeKey = builderDraftKeys.knowledge(project.id);
+  const [value, setValue] = useState(() => {
+    const draft = readDraft<string>(knowledgeKey);
+    return draft ?? (project.custom_instructions ?? "");
+  });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) setValue(project.custom_instructions ?? "");
-  }, [open, project.custom_instructions]);
+    if (!open) return;
+    // Re-check for a draft when the sheet (re)opens — it may have been written
+    // by another open-instance or by a different tab in the same session.
+    const draft = readDraft<string>(knowledgeKey);
+    setValue(draft ?? (project.custom_instructions ?? ""));
+  }, [open, project.custom_instructions, knowledgeKey]);
+
+  // Mirror unsaved edits to sessionStorage so a refresh keeps them. We only
+  // write when the value diverges from the saved version — once the user
+  // matches what's already on the server, there's nothing to "rescue".
+  useEffect(() => {
+    const saved = project.custom_instructions ?? "";
+    if (value === saved) {
+      clearDraft(knowledgeKey);
+    } else {
+      writeDraft(knowledgeKey, value);
+    }
+  }, [value, project.custom_instructions, knowledgeKey]);
 
   // Scroll to a requested section once the sheet is open.
   useEffect(() => {
@@ -103,6 +126,9 @@ export function ProjectSettingsSheet({
         custom_instructions: value.trim() || null,
       } as never);
       onChange(next);
+      // The saved version now matches what's in the textarea — drop the draft
+      // so a refresh doesn't make it look like there are unsaved changes.
+      clearDraft(knowledgeKey);
       toast.success("Project knowledge saved");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't save");
