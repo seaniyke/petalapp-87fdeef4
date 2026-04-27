@@ -26,6 +26,8 @@ import {
   Smartphone,
   Tablet,
   Monitor,
+  Settings as SettingsIcon,
+  Globe,
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
 import { requestDiscussion } from "@/lib/discuss";
@@ -1023,8 +1025,18 @@ function Builder() {
                 <Download className="mr-2 h-3.5 w-3.5" /> Export .zip
               </DropdownMenuItem>
               {project && (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setSettingsScrollTo("domains");
+                    setSettingsOpen(true);
+                  }}
+                >
+                  <Globe className="mr-2 h-3.5 w-3.5" /> Domains
+                </DropdownMenuItem>
+              )}
+              {project && (
                 <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
-                  <BookOpen className="mr-2 h-3.5 w-3.5" /> Project knowledge
+                  <SettingsIcon className="mr-2 h-3.5 w-3.5" /> Project settings
                   {project.custom_instructions && (
                     <span
                       aria-hidden
