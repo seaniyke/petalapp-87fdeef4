@@ -721,6 +721,13 @@ function Builder() {
       // Kept locally so the catch/finally branches can read the latest value
       // synchronously without going through React state.
       let partialAssistant = "";
+      let partialPlan = "";
+      let partialRecap = "";
+
+      // Persist Petal's in-flight reply to the DB at most every ~600ms so a
+      // browser refresh during the build rehydrates the streaming bubble
+      // instead of leaving the user staring at their own prompt.
+      const draftWriter = createDraftWriter(proj.id);
 
       // Cancel any prior in-flight request before starting a new one.
       abortRef.current?.abort();
@@ -741,7 +748,9 @@ function Builder() {
               setPhases((p) => advanceTo(p, phase));
             },
             onPlanDelta: (d) => {
+              partialPlan += d;
               setStreamingPlan((s) => s + d);
+              draftWriter.queue({ content: partialAssistant, plan: partialPlan, recap: partialRecap });
             },
             onSummaryDelta: (d) => {
               // Two consumers of the same stream:
@@ -750,9 +759,12 @@ function Builder() {
               partialAssistant += d;
               setDesignCaption((s) => s + d);
               setStreamingAssistant((s) => s + d);
+              draftWriter.queue({ content: partialAssistant, plan: partialPlan, recap: partialRecap });
             },
             onRecapDelta: (d) => {
+              partialRecap += d;
               setStreamingRecap((s) => s + d);
+              draftWriter.queue({ content: partialAssistant, plan: partialPlan, recap: partialRecap });
             },
             onFileProgress: (n, path) => {
               setFilesWritten(n);
