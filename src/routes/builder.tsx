@@ -259,18 +259,45 @@ function Builder() {
   const isLive = buildSnap?.status === "ready";
 
   // Reflect Cloudflare build state into the phase timeline + friendly errors.
+  // On failure: auto-trigger the fix loop (Phase 2) up to MAX_AUTO_FIX_ATTEMPTS
+  // before surfacing the manual "Ask Petal to fix it" button.
   useEffect(() => {
     if (!buildSnap) return;
+    const buildId = project?.latest_build_id ?? null;
+
+    // New build id → reset the attempt counter so a brand-new failure gets
+    // its own pair of auto-fix attempts.
+    if (autoFixRef.current.buildId !== buildId) {
+      autoFixRef.current = { buildId, attempts: 0 };
+    }
+
     if (buildSnap.status === "ready") {
       setPhases((p) => completeThrough(p, "live"));
+      // A successful build clears the auto-fix counter — next failure starts fresh.
+      autoFixRef.current.attempts = 0;
     } else if (buildSnap.status === "pending") {
       setPhases((p) => advanceTo(p, "deploying"));
     } else if (buildSnap.status === "failed") {
       setPhases((p) => markFailed(p, "deploying"));
+      const used = autoFixRef.current.attempts;
+      if (used < MAX_AUTO_FIX_ATTEMPTS && !busy) {
+        // Auto-fix path: bump the counter, show a calm "fixing it" panel,
+        // and fire the same prompt the manual button would.
+        autoFixRef.current.attempts = used + 1;
+        setFriendlyError(autoFixingBuild(used + 1));
+        setActivityVisible(true);
+        // Defer to next tick so React commits the state above before send()
+        // resets `friendlyError` and starts a new run.
+        const t = setTimeout(() => {
+          askPetalToFixRef.current?.();
+        }, 50);
+        return () => clearTimeout(t);
+      }
+      // Manual fallback after we've burned both auto-attempts.
       setFriendlyError(friendlyBuildFailure(buildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildSnap?.status, buildSnap?.errorMessage]);
+  }, [buildSnap?.status, buildSnap?.errorMessage, project?.latest_build_id, busy]);
 
   // Auto-hide the success card a little after the app goes live so the chat
   // returns to a calm state. The card itself also self-collapses.
