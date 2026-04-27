@@ -3249,6 +3249,225 @@ function Field({
 `;
 
 /* =================================================================
+ * PHASE 3 — KIT EXPANSION DEMOS
+ * Search palette, validated form, sales chart card. Each shows the
+ * canonical wiring of the new kit components.
+ * ================================================================= */
+
+const KIT_COMMAND_PALETTE = `import { useEffect, useState } from "react";
+import { Calendar, FileText, Settings, User } from "lucide-react";
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+  CommandShortcut,
+} from "@/components/ui/command";
+import { Button } from "@/components/ui/button";
+
+/**
+ * Cmd/Ctrl+K command palette. Drop this anywhere in your app and the
+ * keyboard shortcut works globally. Adapt the items to match your routes.
+ */
+export default function CommandPaletteExample() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setOpen((o) => !o);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+
+  return (
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        Search...
+        <CommandShortcut>⌘K</CommandShortcut>
+      </Button>
+      <CommandDialog open={open} onOpenChange={setOpen}>
+        <CommandInput placeholder="Type a command or search..." />
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandGroup heading="Suggestions">
+            <CommandItem onSelect={() => setOpen(false)}>
+              <Calendar className="mr-2 h-4 w-4" />
+              Calendar
+            </CommandItem>
+            <CommandItem onSelect={() => setOpen(false)}>
+              <FileText className="mr-2 h-4 w-4" />
+              New document
+              <CommandShortcut>⌘N</CommandShortcut>
+            </CommandItem>
+          </CommandGroup>
+          <CommandSeparator />
+          <CommandGroup heading="Account">
+            <CommandItem onSelect={() => setOpen(false)}>
+              <User className="mr-2 h-4 w-4" />
+              Profile
+            </CommandItem>
+            <CommandItem onSelect={() => setOpen(false)}>
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+              <CommandShortcut>⌘,</CommandShortcut>
+            </CommandItem>
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
+    </>
+  );
+}
+`;
+
+const KIT_VALIDATED_FORM = `import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormField, useForm } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Combobox } from "@/components/ui/combobox";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
+
+/**
+ * Account-creation form using useForm + FormField + Combobox + DatePicker.
+ * Replace the validate body with zod or yup once you outgrow inline rules.
+ */
+const ROLES = [
+  { label: "Engineer", value: "engineer" },
+  { label: "Designer", value: "designer" },
+  { label: "Product Manager", value: "pm" },
+  { label: "Founder / CEO", value: "founder" },
+];
+
+export default function ValidatedFormExample() {
+  const form = useForm({
+    defaults: { name: "", email: "", role: "", startDate: undefined as Date | undefined, bio: "" },
+    validate: (v) => ({
+      name: v.name.trim().length < 2 ? "Name must be at least 2 characters" : undefined,
+      email: !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(v.email) ? "Enter a valid email" : undefined,
+      role: !v.role ? "Pick a role" : undefined,
+      startDate: !v.startDate ? "Pick a start date" : undefined,
+      bio: v.bio.length > 280 ? "Keep it under 280 characters" : undefined,
+    }),
+    onSubmit: async (v) => {
+      await new Promise((r) => setTimeout(r, 600));
+      toast.success(\`Welcome, \${v.name}!\`);
+      form.reset();
+    },
+  });
+
+  return (
+    <Card className="mx-auto max-w-lg">
+      <CardHeader>
+        <CardTitle>Create your account</CardTitle>
+        <CardDescription>Tell us a bit about yourself to get started.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form onSubmit={form.handleSubmit}>
+          <FormField name="name" label="Full name" error={form.touched.name ? form.errors.name : undefined}>
+            <Input id="name" {...form.register("name")} placeholder="Ada Lovelace" />
+          </FormField>
+          <FormField name="email" label="Email" error={form.touched.email ? form.errors.email : undefined}>
+            <Input id="email" type="email" {...form.register("email")} placeholder="ada@example.com" />
+          </FormField>
+          <FormField name="role" label="Role" error={form.touched.role ? form.errors.role : undefined}>
+            <Combobox
+              options={ROLES}
+              value={form.values.role}
+              onChange={(v) => form.setValue("role", v)}
+              placeholder="Select a role"
+              className="w-full"
+            />
+          </FormField>
+          <FormField name="startDate" label="Start date" error={form.touched.startDate ? form.errors.startDate : undefined}>
+            <DatePicker
+              value={form.values.startDate}
+              onChange={(d) => form.setValue("startDate", d)}
+              className="w-full"
+            />
+          </FormField>
+          <FormField name="bio" label="Short bio" description="Optional. 280 characters max." error={form.errors.bio}>
+            <Textarea id="bio" {...form.register("bio")} placeholder="What do you build?" />
+          </FormField>
+          <Button type="submit" className="w-full" disabled={form.submitting}>
+            {form.submitting ? "Creating..." : "Create account"}
+          </Button>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
+`;
+
+const KIT_SALES_CHART_CARD = `import { useState } from "react";
+import { TrendingUp } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AreaChart, BarChart, LineChart } from "@/components/ui/chart";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+/**
+ * Revenue chart card with range tabs and three chart variants. Drop into
+ * any dashboard. Swap \`DATA\` with your real time-series.
+ */
+const DATA = [
+  { x: "Jan", y: 4200 },
+  { x: "Feb", y: 5100 },
+  { x: "Mar", y: 4800 },
+  { x: "Apr", y: 6300 },
+  { x: "May", y: 7100 },
+  { x: "Jun", y: 6800 },
+  { x: "Jul", y: 8400 },
+];
+
+export default function SalesChartCardExample() {
+  const [variant, setVariant] = useState<"line" | "area" | "bar">("area");
+  const total = DATA.reduce((s, d) => s + d.y, 0);
+  const last = DATA[DATA.length - 1].y;
+  const prev = DATA[DATA.length - 2].y;
+  const delta = ((last - prev) / prev) * 100;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle>Revenue</CardTitle>
+            <CardDescription>Last 7 months</CardDescription>
+          </div>
+          <Tabs value={variant} onValueChange={(v) => setVariant(v as typeof variant)}>
+            <TabsList>
+              <TabsTrigger value="area">Area</TabsTrigger>
+              <TabsTrigger value="line">Line</TabsTrigger>
+              <TabsTrigger value="bar">Bar</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        <div className="mt-3 flex items-baseline gap-3">
+          <div className="text-3xl font-semibold tabular-nums">\${total.toLocaleString()}</div>
+          <div className="inline-flex items-center gap-1 text-xs text-emerald-600">
+            <TrendingUp className="h-3 w-3" />
+            {delta.toFixed(1)}% vs last month
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {variant === "area" && <AreaChart data={DATA} className="h-56" />}
+        {variant === "line" && <LineChart data={DATA} className="h-56" />}
+        {variant === "bar" && <BarChart data={DATA} className="h-56" />}
+      </CardContent>
+    </Card>
+  );
+}
+`;
+
+/* =================================================================
  * INDEX MARKDOWN
  * ================================================================= */
 
@@ -3322,6 +3541,11 @@ matching file below and adapt — do not invent layouts from scratch.
 - \`table-inline-edit.tsx\` — click-to-edit row with Save/Cancel controls
 - \`table-destructive-confirm.tsx\` — delete row with type-to-confirm AlertDialog guard
 - \`form-multi-step-error.tsx\` — wizard with submit failure: inline alert, retry, recover-to-step
+
+## Kit expansion demos (Phase 3)
+- \`kit-command-palette.tsx\` — Cmd/Ctrl+K command palette with grouped items + shortcuts
+- \`kit-validated-form.tsx\` — useForm + FormField + Combobox + DatePicker with inline validation
+- \`kit-sales-chart-card.tsx\` — revenue card with Tabs switching between Area / Line / Bar charts
 
 ## Conventions
 
@@ -3401,4 +3625,9 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/table-inline-edit.tsx", content: TABLE_INLINE_EDIT, overwrite: true },
   { path: "src/components/examples/table-destructive-confirm.tsx", content: TABLE_DESTRUCTIVE_CONFIRM, overwrite: true },
   { path: "src/components/examples/form-multi-step-error.tsx", content: FORM_MULTI_STEP_ERROR, overwrite: true },
+
+  // Kit expansion demos (Phase 3)
+  { path: "src/components/examples/kit-command-palette.tsx", content: KIT_COMMAND_PALETTE, overwrite: true },
+  { path: "src/components/examples/kit-validated-form.tsx", content: KIT_VALIDATED_FORM, overwrite: true },
+  { path: "src/components/examples/kit-sales-chart-card.tsx", content: KIT_SALES_CHART_CARD, overwrite: true },
 ];

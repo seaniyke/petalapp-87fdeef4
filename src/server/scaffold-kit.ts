@@ -2463,6 +2463,767 @@ export function ExampleTabsSheetSettings() {
 }
 `;
 
+// ============================================================
+// PHASE 3 KIT EXPANSION — Command, Calendar, DatePicker,
+// Combobox, Form, Drawer, Chart. All zero-dep, hand-rolled to
+// match the rest of the kit (no cmdk / vaul / recharts /
+// react-day-picker / react-hook-form additions).
+// ============================================================
+
+const COMMAND = `import * as React from "react";
+import { Search } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+/**
+ * Lightweight command palette primitive. Compose like:
+ *   <Command>
+ *     <CommandInput placeholder="Search..." />
+ *     <CommandList>
+ *       <CommandEmpty>No results</CommandEmpty>
+ *       <CommandGroup heading="Suggestions">
+ *         <CommandItem onSelect={...}>New file</CommandItem>
+ *       </CommandGroup>
+ *     </CommandList>
+ *   </Command>
+ *
+ * Wrap in <CommandDialog open onOpenChange> for a Cmd+K palette.
+ */
+type CommandCtx = { query: string; setQuery: (v: string) => void; matches: number; bumpMatches: () => void; resetMatches: () => void };
+const CommandContext = React.createContext<CommandCtx | null>(null);
+
+export function Command({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  const [query, setQuery] = React.useState("");
+  const matchesRef = React.useRef(0);
+  const [, force] = React.useReducer((x: number) => x + 1, 0);
+  const ctx: CommandCtx = {
+    query,
+    setQuery: (v) => { matchesRef.current = 0; setQuery(v); },
+    matches: matchesRef.current,
+    bumpMatches: () => { matchesRef.current += 1; },
+    resetMatches: () => { matchesRef.current = 0; force(); },
+  };
+  return (
+    <CommandContext.Provider value={ctx}>
+      <div className={cn("flex flex-col overflow-hidden rounded-md bg-popover text-popover-foreground", className)} {...props}>
+        {children}
+      </div>
+    </CommandContext.Provider>
+  );
+}
+
+export function CommandInput({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+  const ctx = React.useContext(CommandContext);
+  if (!ctx) throw new Error("CommandInput must be inside Command");
+  return (
+    <div className="flex items-center border-b px-3">
+      <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+      <input
+        value={ctx.query}
+        onChange={(e) => ctx.setQuery(e.target.value)}
+        className={cn("flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50", className)}
+        {...props}
+      />
+    </div>
+  );
+}
+
+export function CommandList({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden p-1", className)} {...props}>
+      {children}
+    </div>
+  );
+}
+
+export function CommandEmpty({ className, children }: { className?: string; children: React.ReactNode }) {
+  const ctx = React.useContext(CommandContext);
+  // Render only when query is non-empty and zero matches were collected.
+  if (!ctx || !ctx.query || ctx.matches > 0) return null;
+  return <div className={cn("py-6 text-center text-sm text-muted-foreground", className)}>{children}</div>;
+}
+
+export function CommandGroup({ heading, className, children }: { heading?: string; className?: string; children: React.ReactNode }) {
+  return (
+    <div className={cn("overflow-hidden p-1 text-foreground", className)}>
+      {heading && <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">{heading}</div>}
+      {children}
+    </div>
+  );
+}
+
+export function CommandSeparator({ className }: { className?: string }) {
+  return <div className={cn("-mx-1 h-px bg-border", className)} />;
+}
+
+export function CommandItem({
+  value,
+  onSelect,
+  className,
+  children,
+}: {
+  value?: string;
+  onSelect?: (value: string) => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const ctx = React.useContext(CommandContext);
+  if (!ctx) throw new Error("CommandItem must be inside Command");
+  const text = (value ?? (typeof children === "string" ? children : "")).toString().toLowerCase();
+  const visible = !ctx.query || text.includes(ctx.query.toLowerCase());
+  // Count visible items so CommandEmpty knows whether to render.
+  React.useEffect(() => {
+    if (visible) ctx.bumpMatches();
+  });
+  if (!visible) return null;
+  return (
+    <div
+      role="option"
+      tabIndex={0}
+      onClick={() => onSelect?.(value ?? text)}
+      onKeyDown={(e) => { if (e.key === "Enter") onSelect?.(value ?? text); }}
+      className={cn("relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground", className)}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function CommandShortcut({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) {
+  return <span className={cn("ml-auto text-xs tracking-widest text-muted-foreground", className)} {...props} />;
+}
+
+/**
+ * Modal Cmd+K palette. Add <CommandDialog open={open} onOpenChange={setOpen}>
+ * and bind a Cmd/Ctrl+K listener in your component to toggle it.
+ */
+export function CommandDialog({
+  open,
+  onOpenChange,
+  children,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  children: React.ReactNode;
+}) {
+  React.useEffect(() => {
+    if (!open) return;
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onOpenChange(false); };
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+  }, [open, onOpenChange]);
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-[15vh]" onClick={() => onOpenChange(false)}>
+      <div className="w-full max-w-lg rounded-lg border bg-popover text-popover-foreground shadow-lg" onClick={(e) => e.stopPropagation()}>
+        <Command>{children}</Command>
+      </div>
+    </div>
+  );
+}
+`;
+
+const CALENDAR = `import * as React from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+/**
+ * Minimal month-grid Calendar. No third-party deps.
+ *   <Calendar mode="single" selected={date} onSelect={setDate} />
+ *   <Calendar mode="range" selected={{from, to}} onSelect={setRange} />
+ */
+type SingleProps = {
+  mode?: "single";
+  selected?: Date;
+  onSelect?: (d: Date | undefined) => void;
+};
+type RangeProps = {
+  mode: "range";
+  selected?: { from?: Date; to?: Date };
+  onSelect?: (r: { from?: Date; to?: Date }) => void;
+};
+type CalendarProps = (SingleProps | RangeProps) & {
+  className?: string;
+  disabled?: (d: Date) => boolean;
+  initialMonth?: Date;
+};
+
+const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1); }
+function isSameDay(a?: Date, b?: Date) {
+  if (!a || !b) return false;
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+function isInRange(d: Date, from?: Date, to?: Date) {
+  if (!from || !to) return false;
+  const t = d.getTime();
+  return t >= from.getTime() && t <= to.getTime();
+}
+
+export function Calendar(props: CalendarProps) {
+  const { className, disabled, initialMonth } = props;
+  const initial = initialMonth ?? (props.mode === "range" ? props.selected?.from : (props as SingleProps).selected) ?? new Date();
+  const [view, setView] = React.useState(startOfMonth(initial));
+
+  const month = view.getMonth();
+  const year = view.getFullYear();
+  const firstWeekday = view.getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const cells: Array<Date | null> = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const monthLabel = view.toLocaleString("default", { month: "long", year: "numeric" });
+
+  const handleSelect = (d: Date) => {
+    if (disabled?.(d)) return;
+    if (props.mode === "range") {
+      const cur = props.selected;
+      if (!cur?.from || (cur.from && cur.to)) {
+        props.onSelect?.({ from: d, to: undefined });
+      } else if (d.getTime() < cur.from.getTime()) {
+        props.onSelect?.({ from: d, to: cur.from });
+      } else {
+        props.onSelect?.({ from: cur.from, to: d });
+      }
+    } else {
+      props.onSelect?.(d);
+    }
+  };
+
+  return (
+    <div className={cn("p-3 pointer-events-auto", className)}>
+      <div className="flex items-center justify-between pb-2">
+        <button
+          type="button"
+          onClick={() => setView(new Date(year, month - 1, 1))}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent"
+          aria-label="Previous month"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="text-sm font-medium">{monthLabel}</div>
+        <button
+          type="button"
+          onClick={() => setView(new Date(year, month + 1, 1))}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent"
+          aria-label="Next month"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
+        {DAYS.map((d) => <div key={d} className="py-1">{d}</div>)}
+      </div>
+      <div className="mt-1 grid grid-cols-7 gap-1">
+        {cells.map((d, i) => {
+          if (!d) return <div key={i} />;
+          const isDisabled = disabled?.(d) ?? false;
+          let isSelected = false;
+          let isInBetween = false;
+          if (props.mode === "range") {
+            isSelected = isSameDay(d, props.selected?.from) || isSameDay(d, props.selected?.to);
+            isInBetween = isInRange(d, props.selected?.from, props.selected?.to) && !isSelected;
+          } else {
+            isSelected = isSameDay(d, (props as SingleProps).selected);
+          }
+          const isToday = isSameDay(d, new Date());
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={isDisabled}
+              onClick={() => handleSelect(d)}
+              className={cn(
+                "inline-flex h-9 w-9 items-center justify-center rounded-md text-sm",
+                "hover:bg-accent hover:text-accent-foreground",
+                isToday && !isSelected && "border border-border",
+                isInBetween && "bg-accent/50",
+                isSelected && "bg-primary text-primary-foreground hover:bg-primary",
+                isDisabled && "opacity-40 pointer-events-none",
+              )}
+            >
+              {d.getDate()}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+`;
+
+const DATE_PICKER = `import * as React from "react";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+
+/**
+ * Drop-in date picker. Use whenever you need a single calendar field —
+ * NEVER hand-roll a custom date input.
+ *   <DatePicker value={date} onChange={setDate} placeholder="Pick a date" />
+ */
+function format(d: Date) {
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+export function DatePicker({
+  value,
+  onChange,
+  placeholder = "Pick a date",
+  disabled,
+  className,
+}: {
+  value?: Date;
+  onChange?: (d: Date | undefined) => void;
+  placeholder?: string;
+  disabled?: (d: Date) => boolean;
+  className?: string;
+}) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn("w-[240px] justify-start text-left font-normal", !value && "text-muted-foreground", className)}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {value ? format(value) : <span>{placeholder}</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={value}
+          onSelect={(d) => { onChange?.(d); setOpen(false); }}
+          disabled={disabled}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+`;
+
+const COMBOBOX = `import * as React from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+
+/**
+ * Searchable single-select. Use whenever the user picks one option from a
+ * long list (5+) — NEVER hand-roll a styled <select> for that case.
+ *   <Combobox
+ *     options={[{label:"Apple",value:"apple"}, ...]}
+ *     value={picked}
+ *     onChange={setPicked}
+ *     placeholder="Pick a fruit"
+ *   />
+ */
+export type ComboboxOption = { label: string; value: string };
+
+export function Combobox({
+  options,
+  value,
+  onChange,
+  placeholder = "Select...",
+  searchPlaceholder = "Search...",
+  emptyText = "No results.",
+  className,
+}: {
+  options: ComboboxOption[];
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  searchPlaceholder?: string;
+  emptyText?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const current = options.find((o) => o.value === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn("w-[240px] justify-between font-normal", !current && "text-muted-foreground", className)}
+        >
+          {current ? current.label : placeholder}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[240px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={searchPlaceholder} />
+          <CommandList>
+            <CommandEmpty>{emptyText}</CommandEmpty>
+            <CommandGroup>
+              {options.map((opt) => (
+                <CommandItem
+                  key={opt.value}
+                  value={opt.label}
+                  onSelect={() => {
+                    onChange?.(opt.value);
+                    setOpen(false);
+                  }}
+                >
+                  <Check className={cn("mr-2 h-4 w-4", value === opt.value ? "opacity-100" : "opacity-0")} />
+                  {opt.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+`;
+
+const FORM = `import * as React from "react";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+
+/**
+ * Tiny form helper. NOT a react-hook-form clone — a thin wrapper that
+ * gives you typed values, per-field errors, and submit handling without
+ * any new dependencies.
+ *
+ *   const form = useForm({
+ *     defaults: { email: "", password: "" },
+ *     validate: (v) => ({
+ *       email: !v.email.includes("@") ? "Invalid email" : undefined,
+ *       password: v.password.length < 8 ? "Min 8 chars" : undefined,
+ *     }),
+ *     onSubmit: async (v) => { await api.signIn(v); },
+ *   });
+ *
+ *   <Form onSubmit={form.handleSubmit}>
+ *     <FormField name="email" label="Email" error={form.errors.email}>
+ *       <Input {...form.register("email")} />
+ *     </FormField>
+ *     <Button type="submit" disabled={form.submitting}>Sign in</Button>
+ *   </Form>
+ *
+ * For richer needs (async validation, arrays), graduate to react-hook-form.
+ */
+export type FormErrors<T> = { [K in keyof T]?: string };
+
+export function useForm<T extends Record<string, unknown>>(opts: {
+  defaults: T;
+  validate?: (values: T) => FormErrors<T>;
+  onSubmit: (values: T) => void | Promise<void>;
+}) {
+  const [values, setValues] = React.useState<T>(opts.defaults);
+  const [errors, setErrors] = React.useState<FormErrors<T>>({});
+  const [touched, setTouched] = React.useState<Partial<Record<keyof T, boolean>>>({});
+  const [submitting, setSubmitting] = React.useState(false);
+
+  const setValue = React.useCallback(<K extends keyof T>(name: K, value: T[K]) => {
+    setValues((prev) => ({ ...prev, [name]: value }));
+  }, []);
+
+  const register = React.useCallback(<K extends keyof T & string>(name: K) => ({
+    name,
+    value: values[name] as unknown as string,
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      setValue(name, e.target.value as unknown as T[K]);
+    },
+    onBlur: () => setTouched((t) => ({ ...t, [name]: true })),
+  }), [values, setValue]);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const errs = opts.validate?.(values) ?? {};
+    setErrors(errs);
+    const allTouched = Object.keys(values).reduce((acc, k) => ({ ...acc, [k]: true }), {});
+    setTouched(allTouched as Partial<Record<keyof T, boolean>>);
+    if (Object.values(errs).some((v) => v)) return;
+    setSubmitting(true);
+    try {
+      await opts.onSubmit(values);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const reset = (next?: T) => { setValues(next ?? opts.defaults); setErrors({}); setTouched({}); };
+
+  return { values, errors, touched, submitting, setValue, register, handleSubmit, reset };
+}
+
+export function Form({ className, ...props }: React.FormHTMLAttributes<HTMLFormElement>) {
+  return <form className={cn("space-y-4", className)} {...props} />;
+}
+
+export function FormField({
+  name,
+  label,
+  description,
+  error,
+  className,
+  children,
+}: {
+  name: string;
+  label?: string;
+  description?: string;
+  error?: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={cn("space-y-1.5", className)}>
+      {label && <Label htmlFor={name}>{label}</Label>}
+      {children}
+      {description && !error && <p className="text-xs text-muted-foreground">{description}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+`;
+
+const DRAWER = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+/**
+ * Bottom-anchored drawer (mobile-first). Sibling to <Sheet>. Use this
+ * for mobile detail panels and action sheets where you want a draggable
+ * handle and rounded top corners.
+ *
+ *   <Drawer open={open} onOpenChange={setOpen}>
+ *     <DrawerContent>
+ *       <DrawerHeader>
+ *         <DrawerTitle>Filters</DrawerTitle>
+ *         <DrawerDescription>Refine the list below.</DrawerDescription>
+ *       </DrawerHeader>
+ *       <div className="px-4 pb-4">...</div>
+ *       <DrawerFooter>
+ *         <Button>Apply</Button>
+ *       </DrawerFooter>
+ *     </DrawerContent>
+ *   </Drawer>
+ */
+type Ctx = { open: boolean; setOpen: (v: boolean) => void };
+const DrawerContext = React.createContext<Ctx | null>(null);
+
+export function Drawer({
+  open: controlled,
+  defaultOpen = false,
+  onOpenChange,
+  children,
+}: {
+  open?: boolean;
+  defaultOpen?: boolean;
+  onOpenChange?: (v: boolean) => void;
+  children: React.ReactNode;
+}) {
+  const [internal, setInternal] = React.useState(defaultOpen);
+  const open = controlled ?? internal;
+  const setOpen = (v: boolean) => {
+    if (controlled === undefined) setInternal(v);
+    onOpenChange?.(v);
+  };
+  return <DrawerContext.Provider value={{ open, setOpen }}>{children}</DrawerContext.Provider>;
+}
+
+export function DrawerTrigger({ asChild: _asChild, children }: { asChild?: boolean; children: React.ReactElement }) {
+  const ctx = React.useContext(DrawerContext);
+  if (!ctx) throw new Error("DrawerTrigger must be inside Drawer");
+  return React.cloneElement(children, { onClick: () => ctx.setOpen(true) } as React.HTMLAttributes<HTMLElement>);
+}
+
+export function DrawerClose({ asChild: _asChild, children }: { asChild?: boolean; children: React.ReactElement }) {
+  const ctx = React.useContext(DrawerContext);
+  if (!ctx) throw new Error("DrawerClose must be inside Drawer");
+  return React.cloneElement(children, { onClick: () => ctx.setOpen(false) } as React.HTMLAttributes<HTMLElement>);
+}
+
+export function DrawerContent({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  const ctx = React.useContext(DrawerContext);
+  React.useEffect(() => {
+    if (!ctx?.open) return;
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") ctx.setOpen(false); };
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+  }, [ctx]);
+  if (!ctx?.open) return null;
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-black/50" onClick={() => ctx.setOpen(false)} />
+      <div
+        role="dialog"
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[85vh] flex-col rounded-t-[12px] border bg-background",
+          "animate-in slide-in-from-bottom",
+          className,
+        )}
+        {...props}
+      >
+        <div className="mx-auto mt-2 h-1.5 w-12 shrink-0 rounded-full bg-muted" />
+        {children}
+      </div>
+    </>
+  );
+}
+
+export function DrawerHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("grid gap-1.5 p-4 text-center sm:text-left", className)} {...props} />;
+}
+export function DrawerTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+  return <h2 className={cn("text-lg font-semibold", className)} {...props} />;
+}
+export function DrawerDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
+  return <p className={cn("text-sm text-muted-foreground", className)} {...props} />;
+}
+export function DrawerFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("mt-auto flex flex-col gap-2 p-4", className)} {...props} />;
+}
+`;
+
+const CHART = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+/**
+ * Lightweight pure-SVG charts. Zero dependencies. For cases the kit
+ * doesn't cover (treemaps, radial), graduate to recharts manually.
+ *
+ *   <LineChart data={[{x:"Mon",y:120}, ...]} className="h-48" />
+ *   <AreaChart data={[...]} />
+ *   <BarChart data={[...]} />
+ *
+ * All three accept the same props. Colors come from semantic tokens
+ * via CSS variables on the wrapping ChartContainer (--chart-1 etc.).
+ */
+export type ChartPoint = { x: string | number; y: number };
+export type ChartProps = React.HTMLAttributes<HTMLDivElement> & {
+  data: ChartPoint[];
+  /** 1..5 — selects the semantic chart color token. */
+  color?: 1 | 2 | 3 | 4 | 5;
+  /** Show x-axis labels. */
+  xAxis?: boolean;
+  /** Show y-axis ticks. */
+  yAxis?: boolean;
+};
+
+const DEFAULT_COLORS: Record<number, string> = {
+  1: "var(--primary)",
+  2: "oklch(0.65 0.18 200)",
+  3: "oklch(0.6 0.2 30)",
+  4: "oklch(0.65 0.15 140)",
+  5: "oklch(0.6 0.18 320)",
+};
+
+function useDimensions(data: ChartPoint[]) {
+  const max = Math.max(1, ...data.map((d) => d.y));
+  const min = Math.min(0, ...data.map((d) => d.y));
+  return { max, min };
+}
+
+export function ChartContainer({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn("relative h-64 w-full", className)} {...props}>
+      {children}
+    </div>
+  );
+}
+
+export function LineChart({ data, color = 1, xAxis = true, className, ...props }: ChartProps) {
+  const { max, min } = useDimensions(data);
+  const stroke = DEFAULT_COLORS[color];
+  const w = 100;
+  const h = 100;
+  const pad = 4;
+  const points = data.map((d, i) => {
+    const x = pad + (i * (w - pad * 2)) / Math.max(1, data.length - 1);
+    const y = h - pad - ((d.y - min) / (max - min || 1)) * (h - pad * 2);
+    return [x, y] as const;
+  });
+  const path = points.map(([x, y], i) => (i === 0 ? \`M\${x},\${y}\` : \`L\${x},\${y}\`)).join(" ");
+  return (
+    <ChartContainer className={className} {...props}>
+      <svg viewBox={\`0 0 \${w} \${h}\`} preserveAspectRatio="none" className="h-full w-full">
+        <path d={path} fill="none" stroke={stroke} strokeWidth={1.5} vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      {xAxis && (
+        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+          {data.map((d, i) => <span key={i}>{d.x}</span>)}
+        </div>
+      )}
+    </ChartContainer>
+  );
+}
+
+export function AreaChart({ data, color = 1, xAxis = true, className, ...props }: ChartProps) {
+  const { max, min } = useDimensions(data);
+  const stroke = DEFAULT_COLORS[color];
+  const w = 100;
+  const h = 100;
+  const pad = 4;
+  const points = data.map((d, i) => {
+    const x = pad + (i * (w - pad * 2)) / Math.max(1, data.length - 1);
+    const y = h - pad - ((d.y - min) / (max - min || 1)) * (h - pad * 2);
+    return [x, y] as const;
+  });
+  const linePath = points.map(([x, y], i) => (i === 0 ? \`M\${x},\${y}\` : \`L\${x},\${y}\`)).join(" ");
+  const areaPath = \`\${linePath} L\${points[points.length - 1][0]},\${h - pad} L\${points[0][0]},\${h - pad} Z\`;
+  const id = React.useId();
+  return (
+    <ChartContainer className={className} {...props}>
+      <svg viewBox={\`0 0 \${w} \${h}\`} preserveAspectRatio="none" className="h-full w-full">
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={stroke} stopOpacity={0.4} />
+            <stop offset="100%" stopColor={stroke} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill={\`url(#\${id})\`} />
+        <path d={linePath} fill="none" stroke={stroke} strokeWidth={1.5} vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      {xAxis && (
+        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+          {data.map((d, i) => <span key={i}>{d.x}</span>)}
+        </div>
+      )}
+    </ChartContainer>
+  );
+}
+
+export function BarChart({ data, color = 1, xAxis = true, className, ...props }: ChartProps) {
+  const { max } = useDimensions(data);
+  const fill = DEFAULT_COLORS[color];
+  const w = 100;
+  const h = 100;
+  const pad = 4;
+  const slot = (w - pad * 2) / Math.max(1, data.length);
+  const barW = Math.max(1, slot * 0.65);
+  return (
+    <ChartContainer className={className} {...props}>
+      <svg viewBox={\`0 0 \${w} \${h}\`} preserveAspectRatio="none" className="h-full w-full">
+        {data.map((d, i) => {
+          const x = pad + i * slot + (slot - barW) / 2;
+          const barH = ((d.y / (max || 1)) * (h - pad * 2));
+          const y = h - pad - barH;
+          return <rect key={i} x={x} y={y} width={barW} height={Math.max(0, barH)} rx={0.5} fill={fill} />;
+        })}
+      </svg>
+      {xAxis && (
+        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+          {data.map((d, i) => <span key={i}>{d.x}</span>)}
+        </div>
+      )}
+    </ChartContainer>
+  );
+}
+`;
+
 /**
  * Files that are ALWAYS injected/overwritten on initial scaffold. The AI is
  * told these exist and not to emit them; if it does, we replace them anyway
@@ -2505,6 +3266,14 @@ const KIT: KitFile[] = [
   { path: "src/components/ui/stack.tsx", content: STACK, overwrite: true },
   { path: "src/components/ui/inline.tsx", content: INLINE, overwrite: true },
   { path: "src/components/ui/grid.tsx", content: GRID, overwrite: true },
+  // Phase 3 kit expansion — Command, Calendar, DatePicker, Combobox, Form, Drawer, Chart.
+  { path: "src/components/ui/command.tsx", content: COMMAND, overwrite: true },
+  { path: "src/components/ui/calendar.tsx", content: CALENDAR, overwrite: true },
+  { path: "src/components/ui/date-picker.tsx", content: DATE_PICKER, overwrite: true },
+  { path: "src/components/ui/combobox.tsx", content: COMBOBOX, overwrite: true },
+  { path: "src/components/ui/form.tsx", content: FORM, overwrite: true },
+  { path: "src/components/ui/drawer.tsx", content: DRAWER, overwrite: true },
+  { path: "src/components/ui/chart.tsx", content: CHART, overwrite: true },
   // Reference patterns — read-only examples for the AI to copy from.
   // NOT imported by App.tsx unless the user asks for that exact pattern.
   {

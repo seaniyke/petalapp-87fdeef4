@@ -31,6 +31,13 @@ The scaffold ALREADY EXISTS — these files will be auto-injected, do NOT emit t
 - "src/components/ui/scroll-area.tsx" — <ScrollArea>
 - "src/components/ui/table.tsx" — <Table>, <TableHeader>, <TableBody>, <TableFooter>, <TableRow>, <TableHead>, <TableCell>, <TableCaption>
 - "src/components/ui/sheet.tsx" — <Sheet>, <SheetTrigger asChild>, <SheetContent side="top|right|bottom|left">, <SheetHeader>, <SheetTitle>, <SheetDescription>, <SheetFooter>
+- "src/components/ui/drawer.tsx" — <Drawer open onOpenChange>, <DrawerTrigger asChild>, <DrawerClose asChild>, <DrawerContent>, <DrawerHeader>, <DrawerTitle>, <DrawerDescription>, <DrawerFooter>. Bottom-anchored mobile-first sheet with handle. Use for mobile detail panels and action sheets — pair with <Sheet> for desktop.
+- "src/components/ui/command.tsx" — <Command>, <CommandInput placeholder>, <CommandList>, <CommandEmpty>, <CommandGroup heading>, <CommandItem onSelect>, <CommandSeparator>, <CommandShortcut>, <CommandDialog open onOpenChange>. Use for any search/launcher UI. Wrap in CommandDialog and bind Cmd/Ctrl+K for a palette.
+- "src/components/ui/calendar.tsx" — <Calendar mode="single|range" selected onSelect disabled>. Pure month-grid picker. Use only when you need a raw calendar inline; for a field, use DatePicker instead.
+- "src/components/ui/date-picker.tsx" — <DatePicker value onChange placeholder disabled>. Drop-in date field (Button + Popover + Calendar). NEVER hand-roll <input type="date">.
+- "src/components/ui/combobox.tsx" — <Combobox options={[{label,value}]} value onChange placeholder searchPlaceholder emptyText>. Searchable single-select. Use whenever the option list is 5+ items — NEVER a styled <select> for that case.
+- "src/components/ui/form.tsx" — useForm({ defaults, validate, onSubmit }) returns { values, errors, touched, submitting, register, handleSubmit, setValue, reset }. Plus <Form>, <FormField name label description error>. Tiny dependency-free form helper; for arrays/async validation graduate to react-hook-form.
+- "src/components/ui/chart.tsx" — <LineChart data={[{x,y}]} color={1..5}>, <AreaChart>, <BarChart>, <ChartContainer>. Pure-SVG charts with semantic theming. Use these instead of inventing your own SVG bars/lines or pulling recharts.
 - "src/components/ui/toast.tsx" — exports { Toaster, toast } from sonner. Mount <Toaster /> once in App.tsx, then call toast.success("...") / toast.error("...") anywhere
 - "src/components/ui/theme-provider.tsx" — <ThemeProvider defaultTheme="system">. Wrap your app once in main.tsx. Provides useTheme() returning { theme, resolvedTheme, setTheme }.
 - "src/components/ui/theme-toggle.tsx" — <ThemeToggle />. Drop-in dropdown (Light / Dark / System) using lucide icons. Place it in your header.
@@ -77,6 +84,12 @@ Before writing ANY JSX element, ask: "Is there a kit component for this?" If yes
 - Need a dropdown/menu? -> <DropdownMenu>. NEVER a custom popover with absolute positioning.
 - Need a toggle? -> <Switch> or <Checkbox>. NEVER raw checkboxes.
 - Need a notification? -> toast.success(...) from "@/components/ui/toast". NEVER a custom alert div.
+- Need a date field? -> <DatePicker>. NEVER raw <input type="date"> or a hand-rolled calendar.
+- Need a searchable select? -> <Combobox>. NEVER a styled <select> for 5+ options.
+- Need search / a Cmd+K palette? -> <Command> / <CommandDialog>. NEVER a custom filtering dropdown.
+- Need a validated form? -> useForm + <Form> + <FormField>. NEVER track values/errors with scattered useState.
+- Need a chart? -> <LineChart>/<AreaChart>/<BarChart>. NEVER hand-roll SVG bars or pull recharts.
+- Need a mobile sheet with a handle? -> <Drawer>. Use <Sheet> for desktop side panels.
 - Need tabs, accordions, sliders, tooltips, sheets, tables, scroll areas, progress bars, popovers, selects, radio groups? -> use the kit equivalent. ALL of them exist.
 - Need page layout? -> <Container> wraps every section, <Stack>/<Inline> replace ad-hoc \`flex flex-col gap-N\` divs, <Grid cols=... md=... lg=...> replaces hand-written \`grid-cols-N\` chains. Reach for these BEFORE writing layout utilities directly.
 
@@ -131,7 +144,7 @@ Each operation is one of:
 - { "op": "delete", "path": "..." }
 
 REUSE-FIRST PROTOCOL (most important rule):
-The kit at "@/components/ui/*" already provides: Button, Card, Input, Textarea, Label, Badge, Separator, Avatar, Alert, Skeleton, Switch, Tabs, Dialog, Select, Checkbox, RadioGroup, Slider, Progress, Tooltip, Popover, DropdownMenu, Accordion, ScrollArea, Table, Sheet, Toast.
+The kit at "@/components/ui/*" already provides: Button, Card, Input, Textarea, Label, Badge, Separator, Avatar, Alert, Skeleton, Switch, Tabs, Dialog, Select, Checkbox, RadioGroup, Slider, Progress, Tooltip, Popover, DropdownMenu, Accordion, ScrollArea, Table, Sheet, Drawer, Toast, Command (+ CommandDialog), Calendar, DatePicker, Combobox, Form (+ useForm), Chart (Line/Area/Bar).
 - Need a button? -> <Button>. NEVER raw <button> or styled <div onClick>.
 - Need a text field? -> <Input>/<Textarea>. NEVER raw <input>.
 - Need a card/panel? -> <Card>. NEVER a custom <div className="rounded-lg border p-4">.
