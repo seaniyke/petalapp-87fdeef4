@@ -182,25 +182,30 @@ async function relayAndCollect(
         const argDelta = tc.function?.arguments;
         if (typeof argDelta === "string") {
           tool.args += argDelta;
-          // Try to extract a growing "summary" field and stream the new tail.
-          const m = tool.args.match(/"summary"\s*:\s*"((?:\\.|[^"\\])*)/);
-          if (m) {
-            // Decode the partial JSON-string content so far.
-            let decoded = "";
-            try {
-              decoded = JSON.parse(`"${m[1]}"`);
-            } catch {
-              decoded = summaryEmitted; // wait for more chars
+          // Stream the three narrative segments (plan → summary → recap)
+          // as the AI produces them. Each event carries only the new tail
+          // so the client can append without re-rendering the full string.
+          const planNow = partial("plan");
+          if (planNow.length > planEmitted.length) {
+            const tail = planNow.slice(planEmitted.length);
+            planEmitted = planNow;
+            controller.enqueue(encoder.encode(sse({ type: "plan_delta", delta: tail })));
+          }
+          const summaryNow = partial("summary");
+          if (summaryNow.length > summaryEmitted.length) {
+            if (!designingPhaseSent) {
+              controller.enqueue(encoder.encode(sse({ type: "phase", phase: "designing" })));
+              designingPhaseSent = true;
             }
-            if (decoded.length > summaryEmitted.length) {
-              if (!designingPhaseSent) {
-                controller.enqueue(encoder.encode(sse({ type: "phase", phase: "designing" })));
-                designingPhaseSent = true;
-              }
-              const tail = decoded.slice(summaryEmitted.length);
-              summaryEmitted = decoded;
-              controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: tail })));
-            }
+            const tail = summaryNow.slice(summaryEmitted.length);
+            summaryEmitted = summaryNow;
+            controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: tail })));
+          }
+          const recapNow = partial("recap");
+          if (recapNow.length > recapEmitted.length) {
+            const tail = recapNow.slice(recapEmitted.length);
+            recapEmitted = recapNow;
+            controller.enqueue(encoder.encode(sse({ type: "recap_delta", delta: tail })));
           }
 
           // Count completed `"path": "..."` occurrences and announce file progress.
