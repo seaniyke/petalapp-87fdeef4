@@ -45,9 +45,15 @@ const customDomainProxy = createMiddleware().server(async ({ next }) => {
   const request = getRequest();
   const url = new URL(request.url);
 
-  // Lovable email/cron/webhook routes must always run on the Petal app —
-  // never proxy them to a customer's deployed site.
-  if (url.pathname.startsWith("/lovable/")) return next();
+  // Lovable email/cron/webhook routes (and the public unsubscribe API)
+  // must always run on the Petal app — never proxy them to a customer's
+  // deployed site.
+  if (
+    url.pathname.startsWith("/lovable/") ||
+    url.pathname === "/email/unsubscribe"
+  ) {
+    return next();
+  }
 
   const host = url.host;
   if (isReservedHost(host)) return next();
