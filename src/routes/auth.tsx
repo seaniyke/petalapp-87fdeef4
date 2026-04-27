@@ -45,6 +45,14 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Where to land after a successful auth. Defaults to /projects but honors
+  // the ?redirect= param so users who landed here from the home-page composer
+  // (with their prompt baked into /builder?prompt=...) end up building their
+  // app instead of staring at an empty projects list.
+  const postAuthPath = redirect ?? "/projects";
+  const postAuthUrl =
+    typeof window === "undefined" ? postAuthPath : window.location.origin + postAuthPath;
+
   // Already logged in → bounce to projects (or wherever they came from).
   // Use browser navigation here so internal redirect paths with their own query
   // strings (e.g. /builder?prompt=...) are not re-serialized as a route path.
@@ -53,13 +61,6 @@ function AuthPage() {
       window.location.assign(redirect ?? "/projects");
     }
   }, [loading, user, redirect]);
-
-  // Where to land after a successful auth. Defaults to /projects but honors
-  // the ?redirect= param so users who landed here from the home-page composer
-  // (with their prompt baked into /builder?prompt=...) end up building their
-  // app instead of staring at an empty projects list.
-  const postAuthPath = redirect ?? "/projects";
-  const postAuthUrl = window.location.origin + postAuthPath;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
