@@ -319,7 +319,7 @@ function Builder() {
       setProject(p);
       navigate({
         to: "/builder",
-        search: { id: p.id, prompt: initialPrompt },
+        search: { id: p.id, prompt: initialPrompt, mode: initialMode },
         replace: true,
       });
       return p;
