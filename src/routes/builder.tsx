@@ -1883,7 +1883,7 @@ function Builder() {
                 streamingPlan ||
                 streamingAssistant ||
                 streamingRecap) && (
-              <div className="mr-3 overflow-hidden wrap-anywhere rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm leading-relaxed sm:mr-6">
+              <div className="mr-3 overflow-hidden wrap-anywhere rounded-2xl bg-secondary text-foreground px-3.5 py-2.5 text-sm leading-relaxed sm:mr-6">
                 <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <span>petal</span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-primary">
