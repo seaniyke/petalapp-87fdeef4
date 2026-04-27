@@ -96,6 +96,9 @@ export async function streamGenerate(
           case "phase":
             handlers.onPhase?.(evt.phase);
             break;
+          case "design_vibe":
+            handlers.onDesignVibe?.(evt.vibe, evt.rationale);
+            break;
           case "file_progress":
             handlers.onFileProgress?.(evt.written, evt.latestPath);
             break;
