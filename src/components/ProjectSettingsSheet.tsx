@@ -193,9 +193,21 @@ export function ProjectSettingsSheet({
             </Button>
           </div>
         </div>
+
+        {/* Integrations marketplace — gated by Labs flag */}
+        <IntegrationsSectionGated projectId={project.id} />
+
+        {/* Labs toggles */}
+        <LabsSection />
       </SheetContent>
     </Sheet>
   );
+}
+
+function IntegrationsSectionGated({ projectId }: { projectId: string }) {
+  const enabled = useLabsFlag("integrations_marketplace");
+  if (!enabled) return null;
+  return <IntegrationsSection projectId={projectId} />;
 }
 
 /* ---------------- Backend section ---------------- */
