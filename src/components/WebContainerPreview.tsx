@@ -195,10 +195,18 @@ export function WebContainerPreview({
 
   // Listen for picker messages from the iframe (cross-origin postMessage).
   useEffect(() => {
-    if (!onPick) return;
     const handler = (e: MessageEvent) => {
       const data = e.data as { type?: string; payload?: PickedElement } | null;
       if (!data || typeof data !== "object") return;
+      // `ready` arrives every time the picker re-attaches (initial mount, HMR
+      // full-reload, in-app SPA navigation). Always honor it so the watchdog
+      // below knows the picker is alive.
+      if (data.type === "petal:pick:ready") {
+        pickerReadyRef.current = true;
+        setPickerWarning(null);
+        return;
+      }
+      if (!onPick) return;
       if (data.type === "petal:pick:selected" && data.payload) {
         onPick(data.payload);
         setPickActive(false);
@@ -210,11 +218,33 @@ export function WebContainerPreview({
     return () => window.removeEventListener("message", handler);
   }, [onPick]);
 
-  // Push enable/disable into the iframe whenever pickActive flips.
+  // Reset the picker-ready flag whenever the iframe is hard-reloaded — the
+  // new document needs to send `petal:pick:ready` again to be considered live.
+  useEffect(() => {
+    pickerReadyRef.current = false;
+    setPickerWarning(null);
+  }, [iframeKey]);
+
+  // Push enable/disable into the iframe whenever pickActive flips, AND start
+  // a 30s watchdog: if pickActive is true and we never heard `pick:ready`,
+  // surface a friendly toast so the user isn't left clicking a dead picker.
   useEffect(() => {
     const win = iframeRef.current?.contentWindow;
-    if (!win) return;
-    win.postMessage({ type: pickActive ? "petal:pick:enable" : "petal:pick:disable" }, "*");
+    if (win) {
+      win.postMessage({ type: pickActive ? "petal:pick:enable" : "petal:pick:disable" }, "*");
+    }
+    if (!pickActive) {
+      setPickerWarning(null);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (!pickerReadyRef.current) {
+        setPickerWarning(
+          "Picker didn't attach. Try reloading the preview, then click the picker again.",
+        );
+      }
+    }, 30_000);
+    return () => window.clearTimeout(timer);
   }, [pickActive, iframeKey]);
 
   if (phase === "unsupported") {
