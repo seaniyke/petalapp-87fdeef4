@@ -56,7 +56,10 @@ function Landing() {
   const [prompt, setPrompt] = useState("");
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
   const [isFocused, setIsFocused] = useState(false);
+  const [mode, setMode] = useState<"build" | "discuss">("build");
+  const [attachments, setAttachments] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
 
   // Typewriter effect that cycles through samplePrompts. Pauses while the
@@ -65,39 +68,41 @@ function Landing() {
   useEffect(() => {
     if (isFocused || prompt.length > 0) return;
     if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      setAnimatedPlaceholder("Describe an app you want to build…");
+      setAnimatedPlaceholder(
+        mode === "discuss" ? "Ask Petal anything…" : "Describe an app you want to build…",
+      );
       return;
     }
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const prefix = "Ask Petal to build ";
+    const prefix = mode === "discuss" ? "Ask Petal about " : "Ask Petal to build ";
     let promptIdx = 0;
     let charIdx = 0;
-    let mode: "typing" | "pausing" | "deleting" = "typing";
+    let typingMode: "typing" | "pausing" | "deleting" = "typing";
 
     const tick = () => {
       if (cancelled) return;
       const target = samplePrompts[promptIdx % samplePrompts.length];
       const fullText = prefix + target.toLowerCase().replace(/^a /, "a ");
 
-      if (mode === "typing") {
+      if (typingMode === "typing") {
         charIdx++;
         setAnimatedPlaceholder(fullText.slice(0, charIdx));
         if (charIdx >= fullText.length) {
-          mode = "pausing";
+          typingMode = "pausing";
           timer = setTimeout(tick, 1600);
           return;
         }
         timer = setTimeout(tick, 45);
-      } else if (mode === "pausing") {
-        mode = "deleting";
+      } else if (typingMode === "pausing") {
+        typingMode = "deleting";
         timer = setTimeout(tick, 30);
       } else {
         charIdx--;
         setAnimatedPlaceholder(fullText.slice(0, Math.max(charIdx, prefix.length)));
         if (charIdx <= prefix.length) {
-          mode = "typing";
+          typingMode = "typing";
           promptIdx++;
           timer = setTimeout(tick, 250);
           return;
@@ -111,7 +116,7 @@ function Landing() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [isFocused, prompt]);
+  }, [isFocused, prompt, mode]);
 
   // Auto-grow textarea up to a max height.
   useEffect(() => {
@@ -121,15 +126,23 @@ function Landing() {
     el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
   }, [prompt]);
 
+  const handleAttach = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length) setAttachments((prev) => [...prev, ...files].slice(0, 5));
+    e.target.value = "";
+  };
+
   const submit = () => {
     const trimmed = prompt.trim();
+    if (!trimmed) return;
+    const params = new URLSearchParams({ prompt: trimmed });
+    if (mode === "discuss") params.set("mode", "discuss");
+    const target = `/builder?${params.toString()}`;
     if (!user) {
-      const q = encodeURIComponent(trimmed);
-      window.location.href = `/auth?mode=signup${q ? `&redirect=${encodeURIComponent("/builder?prompt=" + q)}` : ""}`;
+      window.location.href = `/auth?mode=signup&redirect=${encodeURIComponent(target)}`;
       return;
     }
-    const q = encodeURIComponent(trimmed);
-    window.location.href = `/builder${q ? `?prompt=${q}` : ""}`;
+    window.location.href = target;
   };
 
 
