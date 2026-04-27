@@ -101,6 +101,9 @@ const WebContainerPreview = lazy(() =>
 const MobilePreviewFallback = lazy(() =>
   import("@/components/MobilePreviewFallback").then((m) => ({ default: m.MobilePreviewFallback })),
 );
+const FirstRunTour = lazy(() =>
+  import("@/components/FirstRunTour").then((m) => ({ default: m.FirstRunTour })),
+);
 
 // Detect once on the client whether this browser can run a WebContainer.
 // Mirrors the same logic as the inner component but lets us route to the
