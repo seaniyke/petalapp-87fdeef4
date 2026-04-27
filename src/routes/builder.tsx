@@ -1062,6 +1062,10 @@ function Builder() {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
+      {/* First-run product tour. Self-gates on localStorage so it shows once per browser. */}
+      <Suspense fallback={null}>
+        <FirstRunTour />
+      </Suspense>
       {/* Top bar */}
       <header className="safe-top sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/80 px-3 backdrop-blur sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
