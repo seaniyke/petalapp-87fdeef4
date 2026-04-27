@@ -1395,6 +1395,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      check_credit_balance: {
+        Args: { _amount: number; _user_id: string }
+        Returns: boolean
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
