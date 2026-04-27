@@ -67,7 +67,7 @@ function ProjectsPage() {
   // when users click "New project" and bounce. The builder lazy-creates the project
   // on the first user prompt (see ensureProject in builder.tsx).
   function handleCreate() {
-    navigate({ to: "/builder", search: { id: undefined, prompt: undefined } });
+    navigate({ to: "/builder", search: { id: undefined, prompt: undefined, mode: undefined } });
   }
 
   async function confirmDelete() {
