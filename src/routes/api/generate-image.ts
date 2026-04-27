@@ -17,7 +17,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { generatePetalImage } from "@/server/image-generation.server";
-import { spendCredit, refundCredit } from "@/server/credits.server";
+import { spendCredit, checkCreditBalance } from "@/server/credits.server";
 
 type Body = {
   prompt?: string;
@@ -129,19 +129,13 @@ export const Route = createFileRoute("/api/generate-image")({
           );
         }
 
-        // 4. Authenticated builder calls: charge ONE credit pre-flight.
-        //    On failure later we refund. Anonymous calls skip this entirely.
-        let imageLedgerId: string | null = null;
+        // 4. Authenticated builder calls: pre-flight balance check ONLY.
+        //    We charge the 1 credit AFTER the image is successfully generated.
+        //    Anonymous calls skip credits entirely.
         if (userId) {
-          const charge = await spendCredit({
-            userId,
-            amount: 1.0,
-            reason: "ai_image",
-            projectId: body.projectId ?? null,
-            metadata: { route: "/api/generate-image" },
-          });
-          if (!charge.ok) {
-            if (charge.reason === "insufficient_credits") {
+          const balance = await checkCreditBalance({ userId, amount: 1.0 });
+          if (!balance.ok) {
+            if (balance.reason === "insufficient_credits") {
               return new Response(
                 JSON.stringify({
                   error:
@@ -155,34 +149,35 @@ export const Route = createFileRoute("/api/generate-image")({
               { status: 500, headers: { "Content-Type": "application/json" } },
             );
           }
-          imageLedgerId = charge.ledgerId;
         }
 
-        // Helper: refund the credit we charged in step 4 (only meaningful
-        // for authenticated callers). No-op for anonymous traffic.
-        const refund = async (note: string) => {
-          if (!userId || !imageLedgerId) return;
-          await refundCredit({
-            userId,
-            ledgerId: imageLedgerId,
-            reason: "ai_image_refund",
-            metadata: { route: "/api/generate-image", failure: note },
-          });
-        };
-
-        // 5. Invoke the upstream image generator. Refund on any failure.
+        // 5. Invoke the upstream image generator. Charge ONLY on success.
         try {
           const result = await generatePetalImage({
             prompt,
             aspectRatio: body.aspectRatio,
           });
+
+          // Charge once, post-success. Anonymous callers pay nothing.
+          if (userId) {
+            const charge = await spendCredit({
+              userId,
+              amount: 1.0,
+              reason: "ai_image_charge",
+              projectId: body.projectId ?? null,
+              metadata: { route: "/api/generate-image" },
+            });
+            if (!charge.ok) {
+              console.warn("[credits] post-image charge failed", charge);
+            }
+          }
+
           return new Response(
             JSON.stringify({ url: result.url, cached: result.cached }),
             {
               status: 200,
               headers: {
                 "Content-Type": "application/json",
-                // Surface the URL to any cross-origin preview that needs it.
                 "Access-Control-Allow-Origin": "*",
               },
             },
@@ -190,11 +185,8 @@ export const Route = createFileRoute("/api/generate-image")({
         } catch (e) {
           const message = e instanceof Error ? e.message : "Image generation failed";
           console.error("/api/generate-image error", e);
-          // Map gateway errors to friendly statuses.
           const status = /402/.test(message) ? 402 : /429/.test(message) ? 429 : 500;
-          // Refund on any upstream failure so the user isn't charged for a
-          // broken image. Best-effort — we log if the refund itself fails.
-          await refund(`upstream_${status}`);
+          // Nothing was charged — no refund needed.
           return new Response(JSON.stringify({ error: message }), {
             status,
             headers: { "Content-Type": "application/json" },

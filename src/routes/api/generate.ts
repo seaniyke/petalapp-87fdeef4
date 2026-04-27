@@ -17,8 +17,8 @@ import { lookupBackendForGenerate } from "@/server/backend-connector.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
-import { spendCredit, refundCredit } from "@/server/credits.server";
-import { priceBuild, BUILD_HOLD } from "@/server/credit-pricing.server";
+import { spendCredit, checkCreditBalance } from "@/server/credits.server";
+import { priceBuild, BUILD_FLOOR } from "@/server/credit-pricing.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -256,19 +256,13 @@ export const Route = createFileRoute("/api/generate")({
           );
         }
 
-        // Reserve a 1-credit HOLD pre-flight. This both verifies the user
-        // has at least 1 credit (so we 402 fast if they don't) and gives us
-        // a precise ledger row id to refund on failure. After the AI returns
-        // we true up the difference based on actual token usage.
-        const charge = await spendCredit({
-          userId,
-          amount: BUILD_HOLD,
-          reason: "ai_build_hold",
-          projectId: body.projectId ?? null,
-          metadata: { route: "/api/generate" },
-        });
-        if (!charge.ok) {
-          if (charge.reason === "insufficient_credits") {
+        // Pre-flight balance check ONLY — we no longer take a "hold". The
+        // user is charged once, after the build succeeds, based on actual
+        // token usage (see post-flight section below). This keeps the
+        // experience honest: failed/aborted builds cost nothing.
+        const balance = await checkCreditBalance({ userId, amount: BUILD_FLOOR });
+        if (!balance.ok) {
+          if (balance.reason === "insufficient_credits") {
             return new Response(
               JSON.stringify({
                 error:
@@ -279,16 +273,6 @@ export const Route = createFileRoute("/api/generate")({
           }
           return new Response("Could not verify credit balance. Try again.", { status: 500 });
         }
-        const holdLedgerId = charge.ledgerId;
-
-        // Helper to refund the hold (used on any failure path).
-        const refund = (note: string) =>
-          refundCredit({
-            userId,
-            ledgerId: holdLedgerId,
-            reason: "ai_build_refund",
-            metadata: { route: "/api/generate", failure: note },
-          });
 
         const isInitial = currentFiles.length === 0;
         const baseSystem = isInitial ? SYSTEM_PROMPT_INITIAL : SYSTEM_PROMPT_PATCH;
@@ -383,9 +367,8 @@ export const Route = createFileRoute("/api/generate")({
         });
 
         if (!upstream.ok || !upstream.body) {
-          // Upstream rejected the call before doing any work — refund the
-          // credit we charged so the user isn't billed for nothing.
-          await refund(`upstream_${upstream.status}`);
+          // Upstream rejected before doing any work — nothing was charged,
+          // nothing to refund. Just surface a friendly error.
           let msg = `AI gateway error (${upstream.status})`;
           if (upstream.status === 429) msg = "Rate limit reached. Please wait a moment.";
           else if (upstream.status === 402)
@@ -520,36 +503,31 @@ export const Route = createFileRoute("/api/generate")({
                 console.warn("[petal-image] resolver failed", e);
               }
 
-              // Post-flight true-up: compute the real cost from token usage
-              // and charge the difference (or refund if cheaper).
+              // Charge ONCE, after the build succeeds. Cost is computed from
+              // actual token usage. If the wallet emptied during the build,
+              // we still deliver the result (the user already received it)
+              // and log a warning — we don't claw back work the user has.
               const priced = priceBuild(collected.usage);
-              let finalCharged = BUILD_HOLD;
-              const diff = Math.round((priced.amount - BUILD_HOLD) * 100) / 100;
-              if (diff > 0) {
-                const top = await spendCredit({
-                  userId,
-                  amount: diff,
-                  reason: "ai_build_topup",
-                  projectId: body.projectId ?? null,
-                  metadata: {
-                    route: "/api/generate",
-                    hold_ledger_id: holdLedgerId,
-                    prompt_tokens: priced.promptTokens,
-                    completion_tokens: priced.completionTokens,
-                    usage_missing: priced.usageMissing,
-                    clamped: priced.clamped,
-                    model,
-                  },
-                });
-                if (top.ok) {
-                  finalCharged = priced.amount;
-                } else {
-                  // Wallet went empty between hold and topup — log but do
-                  // not undo the build the user already received.
-                  console.warn("[credits] post-build topup failed", top);
-                }
+              let finalCharged = 0;
+              const charge = await spendCredit({
+                userId,
+                amount: priced.amount,
+                reason: "ai_build_charge",
+                projectId: body.projectId ?? null,
+                metadata: {
+                  route: "/api/generate",
+                  prompt_tokens: priced.promptTokens,
+                  completion_tokens: priced.completionTokens,
+                  usage_missing: priced.usageMissing,
+                  clamped: priced.clamped,
+                  model,
+                },
+              });
+              if (charge.ok) {
+                finalCharged = priced.amount;
+              } else {
+                console.warn("[credits] post-build charge failed", charge);
               }
-              // (We never refund below 1.00 because BUILD_FLOOR == 1.00.)
 
               controller.enqueue(
                 encoder.encode(
@@ -558,8 +536,7 @@ export const Route = createFileRoute("/api/generate")({
               );
             } catch (e) {
               const message = e instanceof Error ? e.message : "Generation failed.";
-              // Stream errored after upstream accepted — refund the spent credit.
-              await refund(`stream_${message.slice(0, 80)}`);
+              // No credits were taken — nothing to refund. Just surface the error.
               controller.enqueue(encoder.encode(sse({ type: "error", message })));
             } finally {
               controller.close();
