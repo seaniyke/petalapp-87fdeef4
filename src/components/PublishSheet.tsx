@@ -24,7 +24,7 @@
  *   - "Publishing…"    — build pending
  *   - "Retry publish"  — last build failed
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Drawer,
   DrawerContent,
@@ -43,6 +43,8 @@ import {
   ExternalLink,
   EyeOff,
   Users,
+  Pencil,
+  X,
 } from "lucide-react";
 import { triggerBuild } from "@/lib/builds";
 import { publishProject, type PublishVisibility } from "@/lib/publish";
@@ -54,7 +56,15 @@ import {
   type VisitorRange,
   type VisitorStatsResult,
 } from "@/lib/visitors";
+import {
+  PETAL_ROOT_DOMAIN,
+  checkSubdomain,
+  claimSubdomain as claimPetalSubdomain,
+  suggestSlugFromTitle,
+  type CheckResult,
+} from "@/lib/petal-subdomain";
 import { toast } from "sonner";
+
 
 type Props = {
   open: boolean;
@@ -90,6 +100,17 @@ export function PublishSheet({
   const [visitorRange, setVisitorRange] = useState<VisitorRange>("7d");
   const [visitors, setVisitors] = useState<VisitorStatsResult | null>(null);
   const [visitorsLoading, setVisitorsLoading] = useState(false);
+
+  // Petal subdomain (`<slug>.buildwithpetal.com`) — claim/edit flow. The
+  // slug lives on `projects.subdomain`; we keep a local draft for the
+  // input and debounce availability checks against /api/subdomain.
+  const currentSlug = (project as ProjectRow & { subdomain: string | null }).subdomain ?? null;
+  const [editingSlug, setEditingSlug] = useState(false);
+  const [slugDraft, setSlugDraft] = useState<string>("");
+  const [slugCheck, setSlugCheck] = useState<CheckResult | null>(null);
+  const [slugChecking, setSlugChecking] = useState(false);
+  const [slugClaiming, setSlugClaiming] = useState(false);
+  const slugDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Re-resolve the live URL whenever the sheet opens or the build flips to
   // ready. We don't subscribe directly because `useBuildActivity` already
@@ -246,6 +267,96 @@ export function PublishSheet({
       setVisibilityBusy(false);
     }
   }
+
+  /* ---------------- Petal subdomain (slug) flow ---------------- */
+
+  // Open the editor with a sensible default: keep what's there, or suggest
+  // one from the project title.
+  function startEditingSlug() {
+    const initial = currentSlug ?? suggestSlugFromTitle(project.title);
+    setSlugDraft(initial);
+    setSlugCheck(null);
+    setEditingSlug(true);
+  }
+
+  function cancelEditingSlug() {
+    setEditingSlug(false);
+    setSlugDraft("");
+    setSlugCheck(null);
+    if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
+  }
+
+  // Debounced availability check while the user types. Skips the network
+  // call when the draft equals the currently-claimed slug (always "ours").
+  useEffect(() => {
+    if (!editingSlug) return;
+    if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
+    if (!slugDraft) {
+      setSlugCheck(null);
+      return;
+    }
+    if (slugDraft === currentSlug) {
+      setSlugCheck({
+        available: true,
+        reason: null,
+        hostname: `${slugDraft}.${PETAL_ROOT_DOMAIN}`,
+      });
+      return;
+    }
+    setSlugChecking(true);
+    slugDebounceRef.current = setTimeout(async () => {
+      try {
+        const result = await checkSubdomain(project.id, slugDraft);
+        setSlugCheck(result);
+      } catch (e) {
+        setSlugCheck({
+          available: false,
+          reason: e instanceof Error ? e.message : "Couldn't check availability",
+        });
+      } finally {
+        setSlugChecking(false);
+      }
+    }, 350);
+    return () => {
+      if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
+    };
+  }, [slugDraft, editingSlug, currentSlug, project.id]);
+
+  async function saveSlug() {
+    if (!slugCheck?.available) return;
+    setSlugClaiming(true);
+    try {
+      const result = await claimPetalSubdomain(project.id, slugDraft);
+      // Optimistic local update — keeps the URL row in sync without a refetch.
+      onChange({
+        ...project,
+        subdomain: result.slug,
+      } as ProjectRow);
+      toast.success(
+        currentSlug
+          ? `Subdomain updated to ${result.hostname}`
+          : `Your app is reachable at ${result.hostname}`,
+      );
+      setEditingSlug(false);
+      // Re-resolve the displayed URL since priority just changed.
+      const r = await resolvePublishedUrl(
+        project.id,
+        project.primary_domain_id,
+        project.latest_build_id,
+      );
+      setResolved(r);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't claim subdomain");
+    } finally {
+      setSlugClaiming(false);
+    }
+  }
+
+  // Pretty hostname preview for the input row (always reflects the draft).
+  const slugPreviewHostname = useMemo(
+    () => (slugDraft ? `${slugDraft}.${PETAL_ROOT_DOMAIN}` : `your-slug.${PETAL_ROOT_DOMAIN}`),
+    [slugDraft],
+  );
 
   // CTA state machine — keeps the button label/icon honest with the build.
   const cta = (() => {
@@ -446,6 +557,134 @@ export function PublishSheet({
               </a>
             )}
           </div>
+        </div>
+
+        {/* Petal subdomain ( <slug>.buildwithpetal.com ) */}
+        <div className="mt-5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Petal subdomain</span>
+            {currentSlug && !editingSlug && (
+              <button
+                type="button"
+                onClick={startEditingSlug}
+                className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Change
+              </button>
+            )}
+          </div>
+
+          {!editingSlug && currentSlug && (
+            <div className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2.5">
+              <span className="truncate text-sm">
+                <span className="font-medium text-foreground">{currentSlug}</span>
+                <span className="text-muted-foreground">.{PETAL_ROOT_DOMAIN}</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary">
+                <CheckCircle2 className="h-3 w-3" />
+                Claimed
+              </span>
+            </div>
+          )}
+
+          {!editingSlug && !currentSlug && (
+            <button
+              type="button"
+              onClick={startEditingSlug}
+              className="flex w-full items-center justify-between rounded-xl border border-dashed border-border bg-card/50 px-3 py-2.5 text-left transition hover:bg-muted"
+            >
+              <span className="text-sm">
+                <span className="text-muted-foreground">Claim </span>
+                <span className="font-medium text-foreground">your-slug</span>
+                <span className="text-muted-foreground">.{PETAL_ROOT_DOMAIN}</span>
+              </span>
+              <span className="text-xs font-medium text-primary">Claim</span>
+            </button>
+          )}
+
+          {editingSlug && (
+            <div className="space-y-2">
+              <div className="flex items-stretch overflow-hidden rounded-xl border border-border bg-card focus-within:border-primary/60">
+                <input
+                  type="text"
+                  inputMode="url"
+                  autoFocus
+                  value={slugDraft}
+                  onChange={(e) =>
+                    setSlugDraft(
+                      e.target.value
+                        .toLowerCase()
+                        .replace(/[^a-z0-9-]/g, "")
+                        .slice(0, 40),
+                    )
+                  }
+                  placeholder="your-slug"
+                  className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground/60"
+                  aria-label="Petal subdomain slug"
+                />
+                <span className="flex shrink-0 items-center px-3 text-sm text-muted-foreground">
+                  .{PETAL_ROOT_DOMAIN}
+                </span>
+                <button
+                  type="button"
+                  onClick={cancelEditingSlug}
+                  disabled={slugClaiming}
+                  className="grid w-10 shrink-0 place-items-center border-l border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+                  aria-label="Cancel"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Inline status line */}
+              <div className="flex min-h-[1.25rem] items-center gap-1.5 px-1 text-xs">
+                {slugChecking && (
+                  <span className="inline-flex items-center gap-1 text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Checking…
+                  </span>
+                )}
+                {!slugChecking && slugCheck?.available && (
+                  <span className="inline-flex items-center gap-1 text-primary">
+                    <CheckCircle2 className="h-3 w-3" />
+                    {slugDraft === currentSlug
+                      ? "This is your current subdomain"
+                      : `${slugPreviewHostname} is available`}
+                  </span>
+                )}
+                {!slugChecking && slugCheck && !slugCheck.available && (
+                  <span className="inline-flex items-center gap-1 text-destructive">
+                    <AlertCircle className="h-3 w-3" />
+                    {slugCheck.reason ?? "Not available"}
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={saveSlug}
+                disabled={
+                  !slugCheck?.available ||
+                  slugClaiming ||
+                  slugDraft === currentSlug
+                }
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {slugClaiming ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Claiming…
+                  </>
+                ) : (
+                  <>
+                    <Globe className="h-4 w-4" />
+                    {currentSlug ? "Update subdomain" : "Claim subdomain"}
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Visibility */}
