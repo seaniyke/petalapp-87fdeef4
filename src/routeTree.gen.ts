@@ -18,6 +18,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as BillingReturnRouteImport } from './routes/billing.return'
+import { Route as ApiVisitorsRouteImport } from './routes/api/visitors'
 import { Route as ApiPublishRouteImport } from './routes/api/publish'
 import { Route as ApiLabsRouteImport } from './routes/api/labs'
 import { Route as ApiIntegrationsRouteImport } from './routes/api/integrations'
@@ -84,6 +85,11 @@ const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
 const BillingReturnRoute = BillingReturnRouteImport.update({
   id: '/billing/return',
   path: '/billing/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiVisitorsRoute = ApiVisitorsRouteImport.update({
+  id: '/api/visitors',
+  path: '/api/visitors',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublishRoute = ApiPublishRouteImport.update({
@@ -218,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/api/integrations': typeof ApiIntegrationsRoute
   '/api/labs': typeof ApiLabsRoute
   '/api/publish': typeof ApiPublishRoute
+  '/api/visitors': typeof ApiVisitorsRoute
   '/billing/return': typeof BillingReturnRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/api/integrations': typeof ApiIntegrationsRoute
   '/api/labs': typeof ApiLabsRoute
   '/api/publish': typeof ApiPublishRoute
+  '/api/visitors': typeof ApiVisitorsRoute
   '/billing/return': typeof BillingReturnRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
@@ -285,6 +293,7 @@ export interface FileRoutesById {
   '/api/integrations': typeof ApiIntegrationsRoute
   '/api/labs': typeof ApiLabsRoute
   '/api/publish': typeof ApiPublishRoute
+  '/api/visitors': typeof ApiVisitorsRoute
   '/billing/return': typeof BillingReturnRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
@@ -320,6 +329,7 @@ export interface FileRouteTypes {
     | '/api/integrations'
     | '/api/labs'
     | '/api/publish'
+    | '/api/visitors'
     | '/billing/return'
     | '/email/unsubscribe'
     | '/p/$slug'
@@ -353,6 +363,7 @@ export interface FileRouteTypes {
     | '/api/integrations'
     | '/api/labs'
     | '/api/publish'
+    | '/api/visitors'
     | '/billing/return'
     | '/email/unsubscribe'
     | '/p/$slug'
@@ -386,6 +397,7 @@ export interface FileRouteTypes {
     | '/api/integrations'
     | '/api/labs'
     | '/api/publish'
+    | '/api/visitors'
     | '/billing/return'
     | '/email/unsubscribe'
     | '/p/$slug'
@@ -420,6 +432,7 @@ export interface RootRouteChildren {
   ApiIntegrationsRoute: typeof ApiIntegrationsRoute
   ApiLabsRoute: typeof ApiLabsRoute
   ApiPublishRoute: typeof ApiPublishRoute
+  ApiVisitorsRoute: typeof ApiVisitorsRoute
   BillingReturnRoute: typeof BillingReturnRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   PSlugRoute: typeof PSlugRoute
@@ -501,6 +514,13 @@ declare module '@tanstack/react-router' {
       path: '/billing/return'
       fullPath: '/billing/return'
       preLoaderRoute: typeof BillingReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/visitors': {
+      id: '/api/visitors'
+      path: '/api/visitors'
+      fullPath: '/api/visitors'
+      preLoaderRoute: typeof ApiVisitorsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/publish': {
@@ -676,6 +696,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIntegrationsRoute: ApiIntegrationsRoute,
   ApiLabsRoute: ApiLabsRoute,
   ApiPublishRoute: ApiPublishRoute,
+  ApiVisitorsRoute: ApiVisitorsRoute,
   BillingReturnRoute: BillingReturnRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   PSlugRoute: PSlugRoute,
