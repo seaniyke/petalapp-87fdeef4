@@ -15,7 +15,13 @@ type Handlers = {
     summary: string,
     extras?: { plan?: string; recap?: string; creditsCharged?: number },
   ) => void;
-  onError?: (message: string) => void;
+  onSelfCheck?: (verdict: {
+    score: number;
+    verdict: string;
+    gaps: string[];
+    suggestions: string[];
+  }) => void;
+  onError?: (message: string, suggestions?: string[]) => void;
 };
 
 /** Stream a generation request to /api/generate. Resolves once the stream ends. */
