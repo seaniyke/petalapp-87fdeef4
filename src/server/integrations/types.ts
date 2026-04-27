@@ -82,6 +82,17 @@ export type IntegrationDefinition = {
   migration?: (ctx: IntegrationContext) => string | null;
   /** Optional one-paragraph chat message appended after install succeeds. */
   postInstallMessage?: (ctx: IntegrationContext) => string;
+  /**
+   * Optional guidance string injected into the AI system prompt whenever
+   * this integration is installed on the project. Should be SHORT and
+   * PRESCRIPTIVE: tell Petal which helper to import, where to call it from
+   * (server route vs component), what NOT to do (e.g. don't hardcode keys,
+   * don't call the third-party API directly). This is what makes the AI
+   * actually use the integration the user installed instead of reinventing
+   * it. Receives the same context as `files()` so it can reference the
+   * configured domain, default from-address, etc.
+   */
+  aiGuidance?: (ctx: IntegrationContext) => string;
 };
 
 export type ProjectIntegrationRow = {

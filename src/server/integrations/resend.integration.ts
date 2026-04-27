@@ -146,4 +146,14 @@ integration — do not hardcode them.
   ],
   postInstallMessage: () =>
     "Resend is wired up. Petal injected RESEND_API_KEY + RESEND_FROM_ADDRESS into .env.production and .dev.vars. Call `sendEmail()` from a server route — `process.env` is undefined in the browser.",
+  aiGuidance: (ctx) => {
+    const from = ctx.publicValues.from_address || "the configured default";
+    return [
+      `Email is wired up via Resend. Default from-address is \`${from}\`.`,
+      `To send an email, import \`sendEmail\` from \`@/integrations/resend/send\` and call it from a SERVER route under \`src/routes/api/*\` (not from a React component — \`process.env\` is undefined in the browser).`,
+      `Sample template at \`@/integrations/resend/templates/welcome\`. Add new templates as plain functions returning \`{ subject, html, text }\`.`,
+      `Do NOT call \`api.resend.com\` directly, do NOT hardcode the API key, do NOT recreate the helper.`,
+      `When the user asks for "email someone on signup / form submit / purchase", create a server route that calls \`sendEmail(...)\` and have the UI POST to it.`,
+    ].join(" ");
+  },
 };

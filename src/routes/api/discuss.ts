@@ -14,6 +14,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { spendCredit, refundCredit } from "@/server/credits.server";
+import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
 
 type Body = {
   messages: ChatMessage[];
@@ -32,7 +33,7 @@ Rules:
 - When proposing changes, describe them as user-visible outcomes ("a sign-in button on the home page") not as file paths or code.
 - If something is ambiguous, ask one focused question instead of guessing.
 - End with a single line like: "Reply *go* and I'll make these changes." so the user knows how to proceed.
-- Never invent features that aren't possible in a static React + Vite app.`;
+- Never invent features that aren't possible in a static React + Vite app **or covered by an installed integration listed below**. When the user asks for something an installed integration covers (e.g. sending email, tracking analytics, taking payments), say YES and describe how you'd wire it up using that integration.`;
 
 async function authorize(request: Request): Promise<string | Response> {
   const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -120,6 +121,12 @@ export const Route = createFileRoute("/api/discuss")({
           ? `\n\nProject Knowledge — the owner has asked you to always honor these instructions:\n"""\n${knowledge}\n"""\n`
           : "";
 
+        // Marketplace integrations — let Petal answer "can we send email?" with
+        // a confident YES when Resend (or similar) is installed.
+        const integrationsBlock = body.projectId
+          ? await loadInstalledIntegrationsContext(body.projectId)
+          : "";
+
         // If the latest user turn carries image attachments, send it as a
         // multimodal content array so Petal can actually look at the screenshot.
         const lastUserIdx = (() => {
@@ -136,7 +143,7 @@ export const Route = createFileRoute("/api/discuss")({
           : "";
 
         const chatMessages = [
-          { role: "system", content: DISCUSS_SYSTEM_PROMPT + knowledgeBlock + visionAddendum + filesContext },
+          { role: "system", content: DISCUSS_SYSTEM_PROMPT + integrationsBlock + knowledgeBlock + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {
