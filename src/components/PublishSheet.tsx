@@ -106,9 +106,19 @@ export function PublishSheet({
     buildSnap?.distPath,
   ]);
 
-  const status = buildSnap?.status ?? null;
-  const hasEverPublished = !!resolved.url;
+  const buildStatus = buildSnap?.status ?? null;
   const buildError = buildSnap?.errorMessage ?? null;
+
+  // Phase 2 derived state — preview vs published.
+  const visibility = (project.published_visibility ?? "unpublished") as PublishVisibility;
+  const hasPublishedBuild = !!project.published_build_id;
+  const isUnpublished = visibility === "unpublished" || !hasPublishedBuild;
+  const updateAvailable =
+    hasPublishedBuild &&
+    !!project.latest_build_id &&
+    project.latest_build_id !== project.published_build_id &&
+    buildStatus === "ready";
+  const hasUrl = !!resolved.url;
 
   async function copyUrl() {
     if (!resolved.url) return;
@@ -124,11 +134,36 @@ export function PublishSheet({
     }
   }
 
+  /**
+   * Publish (or re-publish) the project. Pins the current latest ready build
+   * as the published build via /api/publish. If the latest build is still
+   * pending or failed we kick off a fresh build first so the user gets a
+   * single "Publish" interaction instead of two.
+   */
   async function publishNow() {
     setPublishing(true);
     try {
-      await triggerBuild(project.id);
-      toast.success("Publishing your changes…");
+      // No build yet at all → trigger one. The user can publish once it's ready.
+      if (!project.latest_build_id) {
+        await triggerBuild(project.id);
+        toast.success("Building your app — publish will be available when it's ready.");
+        return;
+      }
+      // Latest build failed → retry the build first.
+      if (buildStatus === "failed") {
+        await triggerBuild(project.id);
+        toast.success("Retrying the build…");
+        return;
+      }
+      // Latest build still pending → wait it out.
+      if (buildStatus === "pending") {
+        toast.info("A build is already in progress — publish will be available when it finishes.");
+        return;
+      }
+      // Latest build is ready → pin it as published.
+      const result = await publishProject({ projectId: project.id });
+      onChange({ ...project, ...result.project } as ProjectRow);
+      toast.success(isUnpublished ? "Your app is live 🎉" : "Update published");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't publish");
     } finally {
@@ -136,12 +171,24 @@ export function PublishSheet({
     }
   }
 
-  async function toggleVisibility(next: boolean) {
+  async function changeVisibility(next: PublishVisibility) {
+    if (visibility === next) return;
     setVisibilityBusy(true);
     try {
-      const updated = await updateProject(project.id, { is_public: next });
-      onChange(updated);
-      toast.success(next ? "Anyone with the URL can view this app" : "Only you can view this app");
+      const result = await publishProject({
+        projectId: project.id,
+        visibility: next,
+        // Don't pin a new build just because they flipped visibility.
+        pinLatestBuild: false,
+      });
+      onChange({ ...project, ...result.project } as ProjectRow);
+      const message =
+        next === "public"
+          ? "Anyone with the URL can view your app"
+          : next === "private"
+            ? "Only your workspace can view your app"
+            : "Your app is no longer public";
+      toast.success(message);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't update visibility");
     } finally {
@@ -151,15 +198,15 @@ export function PublishSheet({
 
   // CTA state machine — keeps the button label/icon honest with the build.
   const cta = (() => {
-    if (publishing || status === "pending") {
+    if (publishing || buildStatus === "pending") {
       return {
-        label: hasEverPublished ? "Publishing update…" : "Publishing…",
+        label: hasPublishedBuild ? "Publishing update…" : "Publishing…",
         icon: <Loader2 className="h-4 w-4 animate-spin" />,
         disabled: true,
         tone: "primary" as const,
       };
     }
-    if (status === "failed") {
+    if (buildStatus === "failed") {
       return {
         label: "Retry publish",
         icon: <AlertCircle className="h-4 w-4" />,
@@ -167,16 +214,24 @@ export function PublishSheet({
         tone: "destructive" as const,
       };
     }
-    if (status === "ready" && hasEverPublished) {
+    if (updateAvailable) {
+      return {
+        label: "Update",
+        icon: <Globe className="h-4 w-4" />,
+        disabled: false,
+        tone: "primary" as const,
+      };
+    }
+    if (hasPublishedBuild && buildStatus === "ready") {
       return {
         label: "Up to date",
         icon: <CheckCircle2 className="h-4 w-4" />,
-        disabled: false,
+        disabled: true,
         tone: "success" as const,
       };
     }
     return {
-      label: hasEverPublished ? "Publish update" : "Publish",
+      label: "Publish",
       icon: <Globe className="h-4 w-4" />,
       disabled: false,
       tone: "primary" as const,
