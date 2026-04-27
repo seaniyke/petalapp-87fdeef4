@@ -1795,16 +1795,39 @@ function Builder() {
             )}
             {/* Live, token-by-token reply while Petal works. Promoted to a real
                 message in `messages` once the run completes. */}
-            {busy && (streamingPlan || streamingAssistant || streamingRecap) && (
+            {busy &&
+              (streamingPreamble ||
+                streamingPlan ||
+                streamingAssistant ||
+                streamingRecap) && (
               <div className="mr-3 overflow-hidden wrap-anywhere rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm leading-relaxed sm:mr-6">
                 <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <span>petal</span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-primary">
                     <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                    {streamingRecap ? "wrapping up" : streamingAssistant ? "writing" : "planning"}
+                    {streamingRecap
+                      ? "wrapping up"
+                      : streamingAssistant
+                        ? "writing"
+                        : streamingPlan
+                          ? "planning"
+                          : "thinking"}
                   </span>
                 </div>
                 <div className="space-y-2.5">
+                  {/* Warm conversational preamble — always shown plain, never
+                      hidden behind a chip. This is the first thing the user
+                      reads and it sets the tone for the whole turn. */}
+                  {streamingPreamble && (() => {
+                    const safePreamble = sanitizeNarrative(streamingPreamble);
+                    return (
+                      <Suspense
+                        fallback={<div className="whitespace-pre-wrap">{safePreamble}</div>}
+                      >
+                        <MarkdownMessage content={safePreamble} />
+                      </Suspense>
+                    );
+                  })()}
                   {streamingPlan && (() => {
                     const safePlan = sanitizeNarrative(streamingPlan);
                     return (
@@ -1812,7 +1835,7 @@ function Builder() {
                         label="Plan"
                         tone="primary"
                         icon={<Wand2 className="h-2.5 w-2.5" />}
-                        defaultOpen={!streamingAssistant && !streamingRecap}
+                        defaultOpen={false}
                       >
                         <Suspense
                           fallback={<div className="whitespace-pre-wrap text-[13px]">{safePlan}</div>}
