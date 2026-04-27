@@ -421,7 +421,7 @@ function Builder() {
       setFriendlyError(friendlyBuildFailure(buildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildSnap?.status, buildSnap?.errorMessage, project?.latest_build_id, busy]);
+  }, [buildSnap?.status, buildSnap?.errorMessage, project?.latest_build_id, project?.published_build_id, busy]);
 
   // Auto-hide the success card a little after the app goes live so the chat
   // returns to a calm state. The card itself also self-collapses.
