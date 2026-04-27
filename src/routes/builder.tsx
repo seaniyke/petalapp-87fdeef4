@@ -1238,7 +1238,7 @@ function Builder() {
           aria-label="Project menu"
         >
           <span className="truncate font-display text-base font-semibold">
-            {project?.title ?? "Loading…"}
+            {project?.title ?? (bootstrapping ? "Loading…" : "New project")}
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
