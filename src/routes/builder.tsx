@@ -708,7 +708,9 @@ function Builder() {
         }
       }
 
-      // Fresh activity feed for this run.
+      // Fresh activity feed for this run — but DO NOT mount it yet. We mount
+      // the build phase card only after triage classifies this as a "build"
+      // turn, so a casual "hi" never triggers the deploy pipeline UI.
       setPhases(defaultPhases());
       setDesignCaption("");
       setFilesWritten(0);
@@ -719,7 +721,9 @@ function Builder() {
       setStreamingAssistant("");
       setStreamingPlan("");
       setStreamingRecap("");
-      setActivityVisible(true);
+      setStreamingPreamble("");
+      setIntentBuild(false);
+      setActivityVisible(false);
 
       let resultFiles: ProjectFile[] | null = null;
       let resultSummary = "";
@@ -732,6 +736,7 @@ function Builder() {
       let partialAssistant = "";
       let partialPlan = "";
       let partialRecap = "";
+      let partialPreamble = "";
 
       // Persist Petal's in-flight reply to the DB at most every ~600ms so a
       // browser refresh during the build rehydrates the streaming bubble
@@ -744,6 +749,53 @@ function Builder() {
       abortRef.current = controller;
 
       try {
+        // ── Step 1: triage ────────────────────────────────────────────────
+        // Classify the user's message as chat | clarify | build and stream
+        // a warm preamble while we decide. This is what makes Petal feel
+        // human instead of jumping straight into the build pipeline for
+        // every message — including conversational ones like "hi" or "thanks".
+        const triage = await streamTriage(
+          {
+            messages: nextMessages,
+            currentFiles: files,
+            customInstructions: proj.custom_instructions ?? undefined,
+          },
+          {
+            onReplyDelta: (d) => {
+              partialPreamble += d;
+              setStreamingPreamble((s) => s + d);
+            },
+          },
+          controller.signal,
+        );
+
+        if (controller.signal.aborted) return;
+
+        // ── Step 2a: chat / clarify — no build, just promote the warm
+        //            reply into a real assistant message and stop here.
+        if (triage.intent !== "build") {
+          const replyText = (triage.reply || partialPreamble).trim();
+          const assistantMsg: ChatMessage = {
+            role: "assistant",
+            content: replyText.length > 0
+              ? replyText
+              : "Hi! What would you like to build?",
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+          setStreamingPreamble("");
+          setLastUserPrompt(null);
+          try {
+            await appendMessages(proj.id, [assistantMsg]);
+          } catch (persistErr) {
+            console.warn("Could not persist assistant chat reply:", persistErr);
+          }
+          return;
+        }
+
+        // ── Step 2b: build — show the activity card now and continue. ────
+        setIntentBuild(true);
+        setActivityVisible(true);
+
         await streamGenerate(
           {
             messages: nextMessages,
