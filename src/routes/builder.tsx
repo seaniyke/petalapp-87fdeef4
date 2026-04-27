@@ -1221,7 +1221,7 @@ function Builder() {
           <span className="truncate font-display text-base font-semibold">
             {project?.title ?? "Loading…"}
           </span>
-          <ChevronDownIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
         {/* Spacer on desktop so the right column hugs the edge. */}
         <div className="hidden md:block" />
