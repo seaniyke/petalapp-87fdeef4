@@ -54,7 +54,84 @@ const samplePrompts = [
 
 function Landing() {
   const [prompt, setPrompt] = useState("");
+  const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { user } = useAuth();
+
+  // Typewriter effect that cycles through samplePrompts. Pauses while the
+  // textarea is focused or the user has typed anything, and respects
+  // prefers-reduced-motion.
+  useEffect(() => {
+    if (isFocused || prompt.length > 0) return;
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setAnimatedPlaceholder("Describe an app you want to build…");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const prefix = "Ask Petal to build ";
+    let promptIdx = 0;
+    let charIdx = 0;
+    let mode: "typing" | "pausing" | "deleting" = "typing";
+
+    const tick = () => {
+      if (cancelled) return;
+      const target = samplePrompts[promptIdx % samplePrompts.length];
+      const fullText = prefix + target.toLowerCase().replace(/^a /, "a ");
+
+      if (mode === "typing") {
+        charIdx++;
+        setAnimatedPlaceholder(fullText.slice(0, charIdx));
+        if (charIdx >= fullText.length) {
+          mode = "pausing";
+          timer = setTimeout(tick, 1600);
+          return;
+        }
+        timer = setTimeout(tick, 45);
+      } else if (mode === "pausing") {
+        mode = "deleting";
+        timer = setTimeout(tick, 30);
+      } else {
+        charIdx--;
+        setAnimatedPlaceholder(fullText.slice(0, Math.max(charIdx, prefix.length)));
+        if (charIdx <= prefix.length) {
+          mode = "typing";
+          promptIdx++;
+          timer = setTimeout(tick, 250);
+          return;
+        }
+        timer = setTimeout(tick, 22);
+      }
+    };
+
+    timer = setTimeout(tick, 400);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [isFocused, prompt]);
+
+  // Auto-grow textarea up to a max height.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
+  }, [prompt]);
+
+  const submit = () => {
+    const trimmed = prompt.trim();
+    if (!user) {
+      const q = encodeURIComponent(trimmed);
+      window.location.href = `/auth?mode=signup${q ? `&redirect=${encodeURIComponent("/builder?prompt=" + q)}` : ""}`;
+      return;
+    }
+    const q = encodeURIComponent(trimmed);
+    window.location.href = `/builder${q ? `?prompt=${q}` : ""}`;
+  };
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
