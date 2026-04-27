@@ -75,10 +75,18 @@ export const Route = createRootRoute({
   notFoundComponent: NotFoundComponent,
 });
 
+// Blocking inline script — runs before first paint, before React hydrates.
+// Reads the persisted theme (or system preference) and toggles `.dark` on
+// <html> so SSR HTML renders with the correct tokens. Without this, the page
+// paints with `:root` (light) tokens until the useEffect in useTheme runs,
+// causing a visible flash on every refresh.
+const themeInitScript = `(function(){try{var k='petal:theme';var v=localStorage.getItem(k);var t=(v==='light'||v==='dark'||v==='system')?v:'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;if(d)r.classList.add('dark');r.style.colorScheme=d?'dark':'light';}catch(e){}})();`;
+
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <HeadContent />
       </head>
       <body>
