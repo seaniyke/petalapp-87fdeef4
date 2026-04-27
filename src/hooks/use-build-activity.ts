@@ -31,7 +31,7 @@ export type BuildSnapshot = {
   /** When the build row was first observed by this client. Used to escalate
    *  copy ("almost there", "taking longer", "still working") and to surface
    *  a friendly "deploy stalled" card after a long wait — independent of the
-   *  server-side reaper which only kicks in after 10 minutes. */
+   *  server-side reaper which only kicks in after 20 minutes. */
   observedAt: number;
 };
 
