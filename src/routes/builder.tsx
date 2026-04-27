@@ -36,6 +36,7 @@ import {
   MAX_ATTACHMENTS_PER_MESSAGE,
 } from "@/lib/attachments";
 import { streamGenerate } from "@/lib/stream";
+import { streamTriage } from "@/lib/triage";
 import { requestDiscussion } from "@/lib/discuss";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -198,6 +199,14 @@ function Builder() {
   // user sees: Plan → Activity → Recap (Lovable / Bolt / v0 parity).
   const [streamingPlan, setStreamingPlan] = useState<string>("");
   const [streamingRecap, setStreamingRecap] = useState<string>("");
+  // Conversational preamble streamed BEFORE any build work — the warm,
+  // human "Got it, here's what I'll do" reply that competitors (Lovable,
+  // Bolt, v0) say before showing any phase indicators. Comes from /api/triage.
+  const [streamingPreamble, setStreamingPreamble] = useState<string>("");
+  // Whether the current send() turn is actually going to build (vs. just
+  // chat or ask a clarifying question). Drives whether the activity card
+  // and build pipeline UI render at all.
+  const [intentBuild, setIntentBuild] = useState<boolean>(false);
   // Preview device frame: phone | tablet | desktop. Affects only the wrapper
   // around WebContainerPreview / MobilePreviewFallback — they get the iframe
   // sized to a realistic device width so users can spot responsive issues.
@@ -699,7 +708,9 @@ function Builder() {
         }
       }
 
-      // Fresh activity feed for this run.
+      // Fresh activity feed for this run — but DO NOT mount it yet. We mount
+      // the build phase card only after triage classifies this as a "build"
+      // turn, so a casual "hi" never triggers the deploy pipeline UI.
       setPhases(defaultPhases());
       setDesignCaption("");
       setFilesWritten(0);
@@ -710,7 +721,9 @@ function Builder() {
       setStreamingAssistant("");
       setStreamingPlan("");
       setStreamingRecap("");
-      setActivityVisible(true);
+      setStreamingPreamble("");
+      setIntentBuild(false);
+      setActivityVisible(false);
 
       let resultFiles: ProjectFile[] | null = null;
       let resultSummary = "";
@@ -723,6 +736,7 @@ function Builder() {
       let partialAssistant = "";
       let partialPlan = "";
       let partialRecap = "";
+      let partialPreamble = "";
 
       // Persist Petal's in-flight reply to the DB at most every ~600ms so a
       // browser refresh during the build rehydrates the streaming bubble
@@ -735,6 +749,53 @@ function Builder() {
       abortRef.current = controller;
 
       try {
+        // ── Step 1: triage ────────────────────────────────────────────────
+        // Classify the user's message as chat | clarify | build and stream
+        // a warm preamble while we decide. This is what makes Petal feel
+        // human instead of jumping straight into the build pipeline for
+        // every message — including conversational ones like "hi" or "thanks".
+        const triage = await streamTriage(
+          {
+            messages: nextMessages,
+            currentFiles: files,
+            customInstructions: proj.custom_instructions ?? undefined,
+          },
+          {
+            onReplyDelta: (d) => {
+              partialPreamble += d;
+              setStreamingPreamble((s) => s + d);
+            },
+          },
+          controller.signal,
+        );
+
+        if (controller.signal.aborted) return;
+
+        // ── Step 2a: chat / clarify — no build, just promote the warm
+        //            reply into a real assistant message and stop here.
+        if (triage.intent !== "build") {
+          const replyText = (triage.reply || partialPreamble).trim();
+          const assistantMsg: ChatMessage = {
+            role: "assistant",
+            content: replyText.length > 0
+              ? replyText
+              : "Hi! What would you like to build?",
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+          setStreamingPreamble("");
+          setLastUserPrompt(null);
+          try {
+            await appendMessages(proj.id, [assistantMsg]);
+          } catch (persistErr) {
+            console.warn("Could not persist assistant chat reply:", persistErr);
+          }
+          return;
+        }
+
+        // ── Step 2b: build — show the activity card now and continue. ────
+        setIntentBuild(true);
+        setActivityVisible(true);
+
         await streamGenerate(
           {
             messages: nextMessages,
@@ -797,9 +858,16 @@ function Builder() {
 
         const files2: ProjectFile[] = resultFiles;
         const summary2: string = resultSummary || "Updated the project.";
+        // Persist the warm preamble alongside the technical summary so the
+        // chat thread retains the human voice on refresh — without it, all
+        // we'd see in history is the dryer "Updated the project." line.
+        const preambleText = partialPreamble.trim();
+        const combinedContent = preambleText
+          ? `${preambleText}\n\n${summary2}`
+          : summary2;
         const assistantMsg: ChatMessage = {
           role: "assistant",
-          content: summary2,
+          content: combinedContent,
           plan: resultPlan,
           recap: resultRecap,
         };
@@ -812,6 +880,7 @@ function Builder() {
         setStreamingAssistant("");
         setStreamingPlan("");
         setStreamingRecap("");
+        setStreamingPreamble("");
 
         // Compute final per-file line counts for the activity card. We only
         // surface counts for files Petal actually wrote in this run, so the
@@ -929,11 +998,13 @@ function Builder() {
         // whether Petal even started thinking. We persist it locally only;
         // it's not written to the DB because the run failed and `lastUserPrompt`
         // remains set so the retry replays the same user message cleanly.
+        const preambleTrim = partialPreamble.trim();
         const trimmed = partialAssistant.trim();
-        if (trimmed.length > 0) {
+        const rescued = [preambleTrim, trimmed].filter(Boolean).join("\n\n");
+        if (rescued.length > 0) {
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: trimmed },
+            { role: "assistant", content: rescued },
           ]);
         }
       } finally {
@@ -944,6 +1015,7 @@ function Builder() {
         setStreamingAssistant("");
         setStreamingPlan("");
         setStreamingRecap("");
+        setStreamingPreamble("");
         // Tear down the streaming-draft writer and wipe the row so the next
         // refresh doesn't resurrect a reply that's already been promoted into
         // the chat thread (or that failed and shouldn't reappear).
@@ -1723,18 +1795,53 @@ function Builder() {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
               </div>
             )}
+            {/* Bridge state: busy but no streamed content yet. Without this
+                the chat goes blank for ~300ms after send while triage warms
+                up — which feels like a freeze. */}
+            {busy &&
+              !streamingPreamble &&
+              !streamingPlan &&
+              !streamingAssistant &&
+              !streamingRecap && (
+                <div className="mr-3 inline-flex items-center gap-2 rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm text-muted-foreground sm:mr-6">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
+                </div>
+              )}
             {/* Live, token-by-token reply while Petal works. Promoted to a real
                 message in `messages` once the run completes. */}
-            {busy && (streamingPlan || streamingAssistant || streamingRecap) && (
+            {busy &&
+              (streamingPreamble ||
+                streamingPlan ||
+                streamingAssistant ||
+                streamingRecap) && (
               <div className="mr-3 overflow-hidden wrap-anywhere rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm leading-relaxed sm:mr-6">
                 <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <span>petal</span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-primary">
                     <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                    {streamingRecap ? "wrapping up" : streamingAssistant ? "writing" : "planning"}
+                    {streamingRecap
+                      ? "wrapping up"
+                      : streamingAssistant
+                        ? "writing"
+                        : streamingPlan
+                          ? "planning"
+                          : "thinking"}
                   </span>
                 </div>
                 <div className="space-y-2.5">
+                  {/* Warm conversational preamble — always shown plain, never
+                      hidden behind a chip. This is the first thing the user
+                      reads and it sets the tone for the whole turn. */}
+                  {streamingPreamble && (() => {
+                    const safePreamble = sanitizeNarrative(streamingPreamble);
+                    return (
+                      <Suspense
+                        fallback={<div className="whitespace-pre-wrap">{safePreamble}</div>}
+                      >
+                        <MarkdownMessage content={safePreamble} />
+                      </Suspense>
+                    );
+                  })()}
                   {streamingPlan && (() => {
                     const safePlan = sanitizeNarrative(streamingPlan);
                     return (
@@ -1742,7 +1849,7 @@ function Builder() {
                         label="Plan"
                         tone="primary"
                         icon={<Wand2 className="h-2.5 w-2.5" />}
-                        defaultOpen={!streamingAssistant && !streamingRecap}
+                        defaultOpen={false}
                       >
                         <Suspense
                           fallback={<div className="whitespace-pre-wrap text-[13px]">{safePlan}</div>}
