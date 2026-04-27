@@ -1086,6 +1086,30 @@ export type Database = {
         }
         Relationships: []
       }
+      system_settings: {
+        Row: {
+          description: string | null
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          description?: string | null
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       topup_lots: {
         Row: {
           created_at: string
@@ -1238,6 +1262,74 @@ export type Database = {
       }
     }
     Functions: {
+      admin_deduct_credits: {
+        Args: { _amount: number; _reason?: string; _user_id: string }
+        Returns: string
+      }
+      admin_grant_credits: {
+        Args: {
+          _amount: number
+          _bucket?: string
+          _reason?: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      admin_list_transactions: {
+        Args: {
+          _limit?: number
+          _offset?: number
+          _purpose?: string
+          _search?: string
+          _status?: string
+        }
+        Returns: {
+          amount_minor: number
+          channel: string
+          created_at: string
+          currency_code: string
+          environment: string
+          id: string
+          item_code: string
+          paid_at: string
+          paystack_reference: string
+          purpose: string
+          reference: string
+          status: string
+          total_count: number
+          usd_amount_cents: number
+          user_email: string
+          user_id: string
+        }[]
+      }
+      admin_list_users: {
+        Args: { _limit?: number; _offset?: number; _search?: string }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          daily_free_used: number
+          display_name: string
+          email: string
+          is_admin: boolean
+          monthly_credits_remaining: number
+          plan_code: string
+          topup_credits_remaining: number
+          total_count: number
+          user_id: string
+        }[]
+      }
+      admin_refund_ledger: {
+        Args: { _ledger_id: string; _reason?: string; _user_id: string }
+        Returns: boolean
+      }
+      admin_set_user_role: {
+        Args: {
+          _grant: boolean
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
       apply_monthly_renewal: {
         Args: {
           _current_period_end: string
