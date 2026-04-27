@@ -26,6 +26,8 @@ import {
   Smartphone,
   Tablet,
   Monitor,
+  Settings as SettingsIcon,
+  Globe,
 } from "lucide-react";
 import { streamGenerate } from "@/lib/stream";
 import { requestDiscussion } from "@/lib/discuss";
