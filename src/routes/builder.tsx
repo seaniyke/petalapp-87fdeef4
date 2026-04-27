@@ -269,6 +269,9 @@ function Builder() {
   // Stable handle to the latest askPetalToFix so the failure effect (declared
   // before send/askPetalToFix) can call it without stale-closure issues.
   const askPetalToFixRef = useRef<(() => void) | null>(null);
+  // Phase 3 — track the build id we last surfaced an "Update available" toast
+  // for, so a single ready build only nudges the user once.
+  const pushUpdateToastedBuildIdRef = useRef<string | null>(null);
 
   // Pick up attachments stashed by the landing page (sessionStorage),
   // exactly once per attachKey. Drop them from storage so a refresh
