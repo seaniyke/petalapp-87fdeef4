@@ -850,8 +850,19 @@ function Builder() {
                 setLastBuildCredits(extras.creditsCharged);
               }
             },
-            onError: (m) => {
+            onSelfCheck: (v) => {
+              // Layer 5 — surface honest follow-ups as suggestion chips.
+              // Only carry forward suggestions when the model thinks the
+              // build genuinely missed something (score < 90 or non-empty
+              // gaps); a clean build shouldn't nag.
+              if (v.suggestions.length > 0 && (v.score < 90 || v.gaps.length > 0)) {
+                resultSuggestions = v.suggestions;
+              }
+              resultVerdict = v.verdict;
+            },
+            onError: (m, sugg) => {
               streamError = m;
+              if (sugg && sugg.length > 0) errorSuggestions = sugg;
             },
           },
           controller.signal,
