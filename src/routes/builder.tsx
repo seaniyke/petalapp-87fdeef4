@@ -1544,9 +1544,35 @@ function Builder() {
                       )}
                     </div>
                     {m.role === "assistant" ? (
-                      <Suspense fallback={<div className="whitespace-pre-wrap">{m.content}</div>}>
-                        <MarkdownMessage content={m.content} />
-                      </Suspense>
+                      <div className="space-y-2.5">
+                        {m.plan && (
+                          <div className="rounded-lg border border-primary/15 bg-primary/5 px-2.5 py-1.5">
+                            <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-primary/80">
+                              <Wand2 className="h-2.5 w-2.5" /> Plan
+                            </div>
+                            <Suspense
+                              fallback={<div className="whitespace-pre-wrap text-[13px]">{m.plan}</div>}
+                            >
+                              <MarkdownMessage content={m.plan} />
+                            </Suspense>
+                          </div>
+                        )}
+                        <Suspense fallback={<div className="whitespace-pre-wrap">{m.content}</div>}>
+                          <MarkdownMessage content={m.content} />
+                        </Suspense>
+                        {m.recap && (
+                          <div className="rounded-lg border border-border/60 bg-card/50 px-2.5 py-1.5">
+                            <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              <FileText className="h-2.5 w-2.5" /> What changed
+                            </div>
+                            <Suspense
+                              fallback={<div className="whitespace-pre-wrap text-[13px]">{m.recap}</div>}
+                            >
+                              <MarkdownMessage content={m.recap} />
+                            </Suspense>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div className="whitespace-pre-wrap">{m.content}</div>
                     )}
