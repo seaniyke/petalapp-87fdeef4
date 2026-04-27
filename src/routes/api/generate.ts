@@ -560,7 +560,14 @@ export const Route = createFileRoute("/api/generate")({
 
               controller.enqueue(
                 encoder.encode(
-                  sse({ type: "result", files: nextFiles, summary, creditsCharged: finalCharged }),
+                  sse({
+                    type: "result",
+                    files: nextFiles,
+                    summary,
+                    plan,
+                    recap,
+                    creditsCharged: finalCharged,
+                  }),
                 ),
               );
             } catch (e) {
