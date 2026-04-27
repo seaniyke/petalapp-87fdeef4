@@ -165,38 +165,52 @@ function Landing() {
             want, watch the files appear, and share a live preview in seconds.
           </p>
 
-          {/* Prompt box */}
+          {/* Prompt box — large chat-style composer */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              const trimmed = prompt.trim();
-              if (!user) {
-                const q = encodeURIComponent(trimmed);
-                window.location.href = `/auth?mode=signup${q ? `&redirect=${encodeURIComponent("/builder?prompt=" + q)}` : ""}`;
-                return;
-              }
-              const q = encodeURIComponent(trimmed);
-              window.location.href = `/builder${q ? `?prompt=${q}` : ""}`;
+              submit();
             }}
             className="mx-auto mt-10 max-w-2xl"
           >
-            <div className="group relative rounded-2xl border border-border bg-card/90 p-2 shadow-[var(--shadow-glow)] backdrop-blur transition focus-within:border-primary">
-              <div className="flex items-center gap-2">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-butter">
-                  <Wand2 className="h-5 w-5 text-foreground/70" />
-                </span>
-                <input
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Describe an app you want to build…"
-                  className="flex-1 bg-transparent px-1 py-2 text-base outline-none placeholder:text-muted-foreground"
-                />
+            <div className="group relative rounded-3xl border border-border bg-card/90 p-4 text-left shadow-[var(--shadow-glow)] backdrop-blur transition focus-within:border-primary focus-within:shadow-[var(--shadow-soft)]">
+              <textarea
+                ref={textareaRef}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onFocus={() => {
+                  setIsFocused(true);
+                  setAnimatedPlaceholder("");
+                }}
+                onBlur={() => setIsFocused(false)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    submit();
+                  }
+                }}
+                rows={3}
+                placeholder={isFocused || prompt ? "Describe an app you want to build…" : animatedPlaceholder}
+                className="block w-full resize-none bg-transparent px-2 pb-12 pt-1 text-base leading-relaxed outline-none placeholder:text-muted-foreground/80"
+                style={{ minHeight: "5.5rem" }}
+              />
+
+              {/* Bottom toolbar */}
+              <div className="absolute inset-x-3 bottom-3 flex items-center justify-between">
+                <button
+                  type="button"
+                  className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  aria-label="Attach"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </button>
                 <button
                   type="submit"
-                  className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:brightness-105"
+                  aria-label="Build it"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:brightness-105 disabled:opacity-50"
+                  disabled={!prompt.trim() && !isFocused}
                 >
-                  Build it
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowUp className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -206,7 +220,10 @@ function Landing() {
                 <button
                   key={p}
                   type="button"
-                  onClick={() => setPrompt(p)}
+                  onClick={() => {
+                    setPrompt(p);
+                    textareaRef.current?.focus();
+                  }}
                   className="rounded-full border border-border bg-card/60 px-3 py-1.5 text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
                 >
                   {p}
