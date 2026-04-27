@@ -198,11 +198,12 @@ function Landing() {
     e.target.value = "";
   };
 
-  const submit = async () => {
-    const trimmed = prompt.trim();
+  const submit = async (overridePrompt?: string, opts?: { fromCoach?: boolean }) => {
+    const trimmed = (overridePrompt ?? prompt).trim();
     if (!trimmed) return;
     const params = new URLSearchParams({ prompt: trimmed });
     if (mode === "discuss") params.set("mode", "discuss");
+    if (opts?.fromCoach) params.set("source", "coach");
 
     // The draft is about to ride along on the URL — drop the local copy so
     // a future visit to the landing page doesn't pre-fill an old prompt.
@@ -235,6 +236,11 @@ function Landing() {
       return;
     }
     window.location.href = target;
+  };
+
+  const goToAuthForCoach = () => {
+    const target = `/?focus=composer`;
+    window.location.href = `/auth?mode=signup&redirect=${encodeURIComponent(target)}`;
   };
 
 
