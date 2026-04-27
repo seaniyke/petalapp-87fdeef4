@@ -344,6 +344,9 @@ export const Route = createFileRoute("/api/generate")({
         });
 
         if (!upstream.ok || !upstream.body) {
+          // Upstream rejected the call before doing any work — refund the
+          // credit we charged so the user isn't billed for nothing.
+          await refund(`upstream_${upstream.status}`);
           let msg = `AI gateway error (${upstream.status})`;
           if (upstream.status === 429) msg = "Rate limit reached. Please wait a moment.";
           else if (upstream.status === 402)
