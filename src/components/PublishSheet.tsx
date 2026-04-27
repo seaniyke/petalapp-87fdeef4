@@ -101,6 +101,17 @@ export function PublishSheet({
   const [visitors, setVisitors] = useState<VisitorStatsResult | null>(null);
   const [visitorsLoading, setVisitorsLoading] = useState(false);
 
+  // Petal subdomain (`<slug>.buildwithpetal.com`) — claim/edit flow. The
+  // slug lives on `projects.subdomain`; we keep a local draft for the
+  // input and debounce availability checks against /api/subdomain.
+  const currentSlug = (project as ProjectRow & { subdomain: string | null }).subdomain ?? null;
+  const [editingSlug, setEditingSlug] = useState(false);
+  const [slugDraft, setSlugDraft] = useState<string>("");
+  const [slugCheck, setSlugCheck] = useState<CheckResult | null>(null);
+  const [slugChecking, setSlugChecking] = useState(false);
+  const [slugClaiming, setSlugClaiming] = useState(false);
+  const slugDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Re-resolve the live URL whenever the sheet opens or the build flips to
   // ready. We don't subscribe directly because `useBuildActivity` already
   // pushes us re-renders, and the resolve call is cheap (two indexed reads).
