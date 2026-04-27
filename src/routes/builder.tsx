@@ -1086,6 +1086,25 @@ function Builder() {
     if (lastUserPrompt) void send(lastUserPrompt, { isRetry: true });
   }, [lastUserPrompt, send]);
 
+  /** Re-trigger a Cloudflare build for the current files. Used by the
+   *  "deploy stalled" friendly card so the user can recover from a silent
+   *  Railway hiccup without having to re-prompt the AI. */
+  const retryDeploy = useCallback(() => {
+    if (!project?.id) return;
+    setFriendlyError(null);
+    setPhases((p) => advanceTo(p, "deploying"));
+    setActivityVisible(true);
+    void triggerBuild(project.id)
+      .then(async () => {
+        const r = await getProject(project.id);
+        if (r) setProject(r);
+      })
+      .catch((err: unknown) => {
+        setFriendlyError(toFriendlyError(err));
+        setPhases((p) => markFailed(p, "deploying"));
+      });
+  }, [project?.id]);
+
   const askPetalToFix = useCallback(() => {
     setFriendlyError(null);
     // Feed the actual build error/log back into the next prompt so the AI
