@@ -1,15 +1,7 @@
-import * as React from 'react'
-import { render } from '@react-email/components'
 import { parseEmailWebhookPayload } from '@lovable.dev/email-js'
 import { WebhookError, verifyWebhookRequest } from '@lovable.dev/webhooks-js'
 import { createClient } from '@supabase/supabase-js'
 import { createFileRoute } from '@tanstack/react-router'
-import { SignupEmail } from '@/lib/email-templates/signup'
-import { InviteEmail } from '@/lib/email-templates/invite'
-import { MagicLinkEmail } from '@/lib/email-templates/magic-link'
-import { RecoveryEmail } from '@/lib/email-templates/recovery'
-import { EmailChangeEmail } from '@/lib/email-templates/email-change'
-import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 const EMAIL_SUBJECTS: Record<string, string> = {
   signup: 'Confirm your email',
@@ -18,16 +10,6 @@ const EMAIL_SUBJECTS: Record<string, string> = {
   recovery: 'Reset your password',
   email_change: 'Confirm your new email',
   reauthentication: 'Your verification code',
-}
-
-// Template mapping
-const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
-  signup: SignupEmail,
-  invite: InviteEmail,
-  magiclink: MagicLinkEmail,
-  recovery: RecoveryEmail,
-  email_change: EmailChangeEmail,
-  reauthentication: ReauthenticationEmail,
 }
 
 // Configuration
