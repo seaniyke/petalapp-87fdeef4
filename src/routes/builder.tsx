@@ -95,6 +95,7 @@ export const Route = createFileRoute("/builder")({
   validateSearch: (search: Record<string, unknown>) => ({
     prompt: typeof search.prompt === "string" ? search.prompt : undefined,
     id: typeof search.id === "string" ? search.id : undefined,
+    mode: search.mode === "discuss" ? ("discuss" as const) : undefined,
   }),
   head: () => ({
     meta: [
