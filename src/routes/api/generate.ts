@@ -16,6 +16,7 @@ import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { lookupBackendForGenerate } from "@/server/backend-connector.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
+import { spendCredit, refundCredit } from "@/server/credits.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
