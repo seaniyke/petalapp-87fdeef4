@@ -79,6 +79,8 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
   const [showAdd, setShowAdd] = useState(false);
   const [showBuySlot, setShowBuySlot] = useState(false);
   const [recordsFor, setRecordsFor] = useState<ProjectDomain | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<ProjectDomain | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const now = Date.now();
   const availableSlots = useMemo(
