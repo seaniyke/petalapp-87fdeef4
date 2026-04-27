@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Sparkles, Globe, Lock } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
+import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import { useAuth } from "@/lib/auth";
 import {
   listProjects,
@@ -119,8 +120,8 @@ function ProjectCard({ project, onDelete }: { project: ProjectRow; onDelete: () 
         search={{ id: project.id, prompt: undefined }}
         className="flex flex-1 flex-col"
       >
-        <div className="relative h-28 bg-aurora">
-          <div className="absolute inset-0 bg-grain opacity-30" />
+        <div className="relative">
+          <ProjectThumbnail projectId={project.id} className="h-28" />
           <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-card/90 px-2 py-0.5 text-[10px] font-medium text-muted-foreground backdrop-blur">
             {project.is_public ? (
               <>
