@@ -170,8 +170,6 @@ export async function claimSubdomain(args: {
 
   return { hostname, status: "active" };
 }
-  };
-}
 
 /**
  * Release the project's current Petal subdomain (if any). Removes the
