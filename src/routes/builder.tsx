@@ -759,6 +759,7 @@ function Builder() {
             messages: nextMessages,
             currentFiles: files,
             customInstructions: proj.custom_instructions ?? undefined,
+            projectId: proj.id,
           },
           {
             onReplyDelta: (d) => {

@@ -57,6 +57,9 @@ export async function streamTriage(
     messages: ChatMessage[];
     currentFiles: ProjectFile[];
     customInstructions?: string;
+    /** Lets the server load this project's memory and inject it into the
+     *  triage prompt — so Petal feels like it remembers the project. */
+    projectId?: string;
   },
   handlers: Handlers,
   signal?: AbortSignal,

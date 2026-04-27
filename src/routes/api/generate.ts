@@ -19,6 +19,10 @@ import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
 import { priceBuild, BUILD_FLOOR } from "@/server/credit-pricing.server";
+import {
+  loadProjectMemoryBlock,
+  updateProjectMemory,
+} from "@/server/project-memory.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -321,6 +325,18 @@ export const Route = createFileRoute("/api/generate")({
           ? `\n\nProject Knowledge — the owner has asked you to always honor these instructions:\n"""\n${knowledge}\n"""\n`
           : "";
 
+        // Project Memory — durable facts learned across previous turns. Loaded
+        // with the user's JWT so RLS enforces ownership. Empty when there's
+        // no memory yet, so new projects pay no prompt-size cost.
+        const reqAuth = request.headers.get("authorization");
+        const userJwt = reqAuth?.startsWith("Bearer ")
+          ? reqAuth.slice("Bearer ".length)
+          : "";
+        const memoryBlock =
+          body.projectId && userJwt
+            ? await loadProjectMemoryBlock(userJwt, body.projectId)
+            : "";
+
         const filesContext = isInitial
           ? ""
           : `\n\nCurrent project files:\n\n${currentFiles
@@ -346,7 +362,7 @@ export const Route = createFileRoute("/api/generate")({
           : "";
 
         const chatMessages = [
-          { role: "system", content: baseSystem + backendBlock + integrationsBlock + knowledgeBlock + visionAddendum + filesContext },
+          { role: "system", content: baseSystem + backendBlock + integrationsBlock + knowledgeBlock + memoryBlock + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {
@@ -570,6 +586,28 @@ export const Route = createFileRoute("/api/generate")({
                   }),
                 ),
               );
+
+              // Memory writer — fire-and-forget. Distills the user's latest
+              // turn (+ Petal's summary) into durable facts saved to
+              // project_memory. Failures are logged inside; never block the
+              // user's reply or fail the build.
+              if (body.projectId && userJwt) {
+                const lastUserMsg = (() => {
+                  for (let i = messages.length - 1; i >= 0; i--) {
+                    if (messages[i].role === "user") {
+                      const c = messages[i].content;
+                      return typeof c === "string" ? c : "";
+                    }
+                  }
+                  return "";
+                })();
+                void updateProjectMemory({
+                  jwt: userJwt,
+                  projectId: body.projectId,
+                  userMessage: lastUserMsg,
+                  assistantSummary: summary,
+                }).catch((e) => console.warn("[project-memory] writer rejected:", e));
+              }
             } catch (e) {
               const message = e instanceof Error ? e.message : "Generation failed.";
               // No credits were taken — nothing to refund. Just surface the error.

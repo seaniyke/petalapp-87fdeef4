@@ -37,11 +37,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
+import { loadProjectMemoryBlock } from "@/server/project-memory.server";
 
 type Body = {
   messages: ChatMessage[];
   currentFiles: ProjectFile[];
   customInstructions?: string;
+  /** Optional — when present, project memory is loaded and injected into the prompt. */
+  projectId?: string;
 };
 
 /** Coarse intent kept for the builder's existing branching. */
@@ -288,12 +291,24 @@ export const Route = createFileRoute("/api/triage")({
         const knowledge = (body.customInstructions ?? "").trim().slice(0, 2000);
         const knowledgeBlock = knowledge ? `\n\nProject Knowledge: """${knowledge}"""` : "";
 
+        // Project Memory — durable facts learned across previous turns. Read
+        // with the user's JWT so RLS enforces ownership. Empty string when
+        // there's no projectId yet (very first turn) or no memory recorded.
+        let memoryBlock = "";
+        if (body.projectId) {
+          const auth = request.headers.get("authorization");
+          const jwt = auth?.startsWith("Bearer ") ? auth.slice("Bearer ".length) : "";
+          if (jwt) {
+            memoryBlock = await loadProjectMemoryBlock(jwt, body.projectId);
+          }
+        }
+
         // Strip attachments — vision isn't needed for classification and the
         // base64 payloads would balloon the prompt.
         const chatMessages = [
           {
             role: "system",
-            content: TRIAGE_SYSTEM_PROMPT + "\n\n" + stateLine + knowledgeBlock,
+            content: TRIAGE_SYSTEM_PROMPT + "\n\n" + stateLine + knowledgeBlock + memoryBlock,
           },
           ...messages.map((m) => ({
             role: m.role,
