@@ -523,12 +523,46 @@ function Builder() {
             navigate({ to: "/projects" });
             return;
           }
-          const [fs, ms] = await Promise.all([loadProjectFiles(p.id), loadProjectMessages(p.id)]);
+          // Load files + messages + any in-flight assistant draft in parallel.
+          // The draft (if present) means a previous tab was streaming a reply
+          // when the page reloaded — we rehydrate it into the streaming bubble
+          // so the user doesn't think their message vanished.
+          const [fs, ms, draft] = await Promise.all([
+            loadProjectFiles(p.id),
+            loadProjectMessages(p.id),
+            loadMessageDraft(p.id),
+          ]);
           if (cancelled) return;
           setProject(p);
           setFiles(fs);
           setMessages(ms);
           setActiveFile(fs.find((f) => f.path === "index.html")?.path ?? fs[0]?.path ?? null);
+          if (draft) {
+            // Show the partial reply as a normal (non-collapsed) assistant
+            // message tagged so the user understands it was rescued from a
+            // previous session. We don't try to re-attach to the live stream
+            // — that's beyond what a refresh can promise — but the user gets
+            // back the context they had on screen before reload.
+            const rescuedNote =
+              "\n\n_(This reply was being written when the page was refreshed. The build itself may still be running — check the activity card or send a follow-up.)_";
+            const rescued: ChatMessage = {
+              role: "assistant",
+              content: (draft.partial_content || "Petal was writing a reply…") + rescuedNote,
+              plan: draft.partial_plan || undefined,
+              recap: draft.partial_recap || undefined,
+            };
+            setMessages((prev) => [...prev, rescued]);
+            // Drop the draft now that we've surfaced it — a second refresh
+            // shouldn't keep re-appending the same rescue card.
+            void clearMessageDraft(p.id);
+          }
+          // Hydrate composer + queue + attachments from this tab's session.
+          const composerDraft = readDraft<string>(builderDraftKeys.composer(p.id));
+          if (composerDraft) setInput(composerDraft);
+          const queueDraft = readDraft<QueuedMessage[]>(builderDraftKeys.queue(p.id));
+          if (queueDraft && queueDraft.length > 0) setPendingQueue(queueDraft);
+          const attachDraft = readDraft<ChatAttachment[]>(builderDraftKeys.attachments(p.id));
+          if (attachDraft && attachDraft.length > 0) setPendingAttachments(attachDraft);
         } else {
           // No project id in the URL: don't create a row yet. We'll create one
           // lazily on the first send/discuss so empty "Untitled project" rows
