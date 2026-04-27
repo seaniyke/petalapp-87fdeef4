@@ -2,23 +2,23 @@
  * Petal subdomain edge worker.
  *
  * Bound to `*.buildwithpetal.com/*`. For every request:
- *   1. Look up `<slug>.buildwithpetal.com` → project routing target via the
- *      Petal control-plane endpoint `/api/public/host-lookup`.
+ *   1. Look up `<slug>.buildwithpetal.com` → project routing target via
+ *      `https://petalapp.lovable.app/api/public/host-lookup`.
  *   2. If the project is published & public → proxy to its `pages.dev` URL.
  *   3. If unpublished / private → render a friendly placeholder.
- *   4. If the slug is unknown → return a 404 placeholder.
+ *   4. If the slug is unknown → 404 placeholder.
  *
  * Caches lookups for 60s in `caches.default` so static asset bursts don't
  * hammer the control plane.
  *
- * Why a Worker (instead of CF for SaaS)?
+ * Why a Worker (instead of Cloudflare for SaaS)?
  *   CF for SaaS only intercepts traffic for *external* customer-owned
- *   hostnames (CNAMEd in from another zone). It does NOT take precedence
- *   over zone-local DNS records on the SaaS provider's own zone. To serve
- *   `*.buildwithpetal.com` from inside our own zone we need to either
- *   register each subdomain as its own Pages custom domain (option B) or
- *   put a Worker on the wildcard route. Worker = zero per-claim DNS work,
- *   no Pages limits, free tier covers it.
+ *   hostnames CNAMEd in from another zone. It does NOT take precedence
+ *   over zone-local DNS records on our own zone, so we can't use it to
+ *   route `*.buildwithpetal.com`. Worker = zero per-claim DNS work, free
+ *   tier covers it.
+ *
+ * Plain JS (not TS) because Cloudflare's plain script API doesn't transpile.
  */
 
 const PETAL_ROOT = "buildwithpetal.com";
@@ -36,33 +36,25 @@ const HOP_BY_HOP = new Set([
   "content-length",
 ]);
 
-type LookupResult =
-  | { kind: "proxy"; target: string; projectId: string }
-  | { kind: "unpublished" | "private"; projectId: string }
-  | { kind: "unknown" };
-
-async function lookup(host: string): Promise<LookupResult> {
+async function lookup(host) {
   const cacheKey = new Request(
     `https://lookup.internal/?host=${encodeURIComponent(host)}`,
   );
   const cached = await caches.default.match(cacheKey);
-  if (cached) return (await cached.json()) as LookupResult;
+  if (cached) return await cached.json();
 
   const res = await fetch(
     `${CONTROL_PLANE}/api/public/host-lookup?host=${encodeURIComponent(host)}`,
     { headers: { Accept: "application/json" } },
   );
-  if (!res.ok) {
-    // Don't cache failures — try again on next request.
-    return { kind: "unknown" };
-  }
-  const result = (await res.clone().json()) as LookupResult;
+  if (!res.ok) return { kind: "unknown" };
+  const result = await res.clone().json();
   // Cache the response (the upstream sets Cache-Control: max-age=60).
   await caches.default.put(cacheKey, res);
   return result;
 }
 
-function placeholder(kind: "unpublished" | "private" | "unknown"): Response {
+function placeholder(kind) {
   const isPrivate = kind === "private";
   const isUnknown = kind === "unknown";
   const title = isUnknown
@@ -114,7 +106,7 @@ function placeholder(kind: "unpublished" | "private" | "unknown"): Response {
   });
 }
 
-async function proxy(request: Request, target: string): Promise<Response> {
+async function proxy(request, target) {
   const incoming = new URL(request.url);
   const upstreamUrl = new URL(incoming.pathname + incoming.search, target);
 
@@ -153,7 +145,7 @@ async function proxy(request: Request, target: string): Promise<Response> {
 }
 
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request) {
     const url = new URL(request.url);
     const host = url.host.toLowerCase();
 

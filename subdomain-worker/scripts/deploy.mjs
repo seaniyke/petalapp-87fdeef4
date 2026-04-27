@@ -29,7 +29,7 @@ const cf = (p, init = {}) =>
   });
 
 // ---- 1) Upload the Worker module ---------------------------------------
-const code = await readFile(path.join(root, "src/index.ts"), "utf8");
+const code = await readFile(path.join(root, "src/index.js"), "utf8");
 
 const metadata = {
   main_module: "index.mjs",
