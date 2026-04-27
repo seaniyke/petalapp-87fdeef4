@@ -1599,6 +1599,7 @@ function Builder() {
                 writtenPaths={writtenPaths}
                 finalFileLines={finalFileLines}
                 fileChanges={fileChanges}
+                deployElapsedSec={deployElapsed}
                 onStop={busy ? stopGeneration : undefined}
                 onRetry={
                   // The "Publishing is taking longer" stall card retries the
