@@ -221,6 +221,18 @@ function Builder() {
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Phase 2 (auto-fix): when a build fails, Petal automatically reads the log
+  // and sends a fix prompt — capped at 2 attempts per build id so we never
+  // get stuck in a loop. After the cap we fall back to the manual
+  // "Ask Petal to fix it" button (friendlyBuildFailure).
+  const MAX_AUTO_FIX_ATTEMPTS = 2;
+  const autoFixRef = useRef<{ buildId: string | null; attempts: number }>({
+    buildId: null,
+    attempts: 0,
+  });
+  // Stable handle to the latest askPetalToFix so the failure effect (declared
+  // before send/askPetalToFix) can call it without stale-closure issues.
+  const askPetalToFixRef = useRef<(() => void) | null>(null);
 
   // Pick up attachments stashed by the landing page (sessionStorage),
   // exactly once per attachKey. Drop them from storage so a refresh
