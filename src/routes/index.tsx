@@ -327,6 +327,21 @@ function Landing() {
 
           </form>
 
+          <StartIdeasPanel
+            onPick={(p) => {
+              setPrompt(p);
+              // Defer focus until after React commits the new value so the
+              // textarea autosizes correctly and the cursor lands at the end.
+              requestAnimationFrame(() => {
+                const el = textareaRef.current;
+                if (!el) return;
+                el.focus();
+                el.setSelectionRange(p.length, p.length);
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+              });
+            }}
+          />
+
           <div className="mt-10 flex items-center justify-center gap-3 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-mint" /> Live preview
