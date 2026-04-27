@@ -3314,6 +3314,8 @@ const KIT: KitFile[] = [
   { path: "src/components/ui/form.tsx", content: FORM, overwrite: true },
   { path: "src/components/ui/drawer.tsx", content: DRAWER, overwrite: true },
   { path: "src/components/ui/chart.tsx", content: CHART, overwrite: true },
+  // Phase 5 — multi-page routing (re-exports react-router-dom).
+  { path: "src/components/ui/router.tsx", content: ROUTER, overwrite: true },
   // Reference patterns — read-only examples for the AI to copy from.
   // NOT imported by App.tsx unless the user asks for that exact pattern.
   {
