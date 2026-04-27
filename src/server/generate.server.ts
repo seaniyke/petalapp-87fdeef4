@@ -239,7 +239,12 @@ BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the proj
 INSTALLED INTEGRATIONS RULE:
 If a section titled "Installed integrations" appears below in this prompt, those capabilities (email, analytics, payments, etc.) are ALREADY wired up. You MUST use the helpers described in that section. Do NOT call third-party APIs directly with \`fetch\`, do NOT hardcode API keys, do NOT recreate files that already exist under \`src/integrations/*\`. Treat that section as binding rules, not suggestions.
 
-- Always include a short, friendly "summary" describing what you changed.`;
+STREAMING NARRATIVE FIELDS (mandatory — these power the live chat bubble):
+- "plan" — 1-3 short sentences written FIRST, before any ops. Explain in plain English what you're about to change and why. Address the user directly ("I'll update…", "Then I'll add…").
+- "summary" — friendly recap of what you changed, written like a short note from a teammate.
+- "recap" — short bulleted list of the files touched and what each change does. Use markdown bullets. Example: "- \`src/components/Hero.tsx\` — tightened spacing and added CTA\\n- \`src/routes/index.tsx\` — fixed the broken import".
+
+Order in the tool call MUST be: plan → summary → ops → recap.`;
 
 export const WRITE_PROJECT_TOOL = {
   type: "function" as const,
