@@ -5,6 +5,7 @@ import petalLogo from "@/assets/petal-logo.png";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/lib/auth";
+import { clearLastAuthEmail, readLastAuthEmail, writeLastAuthEmail } from "@/lib/draft-storage";
 import { toast } from "sonner";
 
 /**
