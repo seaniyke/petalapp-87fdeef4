@@ -301,7 +301,8 @@ function Builder() {
       messages.length === 0
     ) {
       initialSent.current = true;
-      void send(initialPrompt);
+      if (initialMode === "discuss") void discuss(initialPrompt);
+      else void send(initialPrompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapping, initialPrompt]);
