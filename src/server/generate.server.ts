@@ -118,6 +118,18 @@ STYLES.CSS SAFETY RULES (Tailwind v4 aborts the build on ANY invalid CSS):
 - NEVER use \`@apply\` with a class that doesn't exist (e.g. \`@apply bg-brand-foo\` when \`brand-foo\` is not a defined token) — that also aborts the build.
 - When in doubt, EMIT NOTHING for src/styles.css and let the scaffold's default tokens win. Adding styles is optional.
 
+IMAGES (use \`petal-image://\` for AI-generated visuals):
+- For ANY hero image, product photo, profile avatar, illustration, background, or marketing visual, use the \`petal-image://\` protocol. The server replaces each placeholder with a real AI-generated image after you finish, hosted on a stable CDN URL.
+- Syntax: \`petal-image://<descriptive-prompt>\`. The slug IS the prompt — write it like you'd describe the image to a designer. Use kebab-case or URL-encoded sentences. Examples:
+  - \`<img src="petal-image://cozy-coffee-shop-hero-warm-morning-light" alt="Coffee shop" />\`
+  - \`<img src="petal-image://minimalist-product-photo-leather-wallet-on-marble" />\`
+  - \`<img src="petal-image://abstract-purple-gradient-mesh-background" />\`
+- Be SPECIFIC and VISUAL. \`petal-image://hero\` is bad. \`petal-image://founder-portrait-natural-light-warm-smile\` is good.
+- Limits: max 6 unique placeholders per generation (extras fall back to picsum). Same slug used multiple times = one image, deduped automatically.
+- DO NOT use picsum.photos, unsplash.com, placeholder.com, or any other stock-photo URL when \`petal-image://\` would do — generated images always look more on-brand.
+- The ONLY exception: avatars for fake user testimonials can stay as \`https://i.pravatar.cc/150?u=<seed>\` since they're meant to look generic.
+
+
 BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the project):
 - ALWAYS go through \`@/integrations/backend/*\`. NEVER call \`createClient(...)\` yourself, NEVER \`import ... from "@supabase/supabase-js"\`, NEVER hardcode URLs or keys.
 - For ANY auth flow (sign up, sign in, OTP, magic link, password reset), use the helpers on \`useAuth()\` from \`@/integrations/backend/auth\`: \`signUpWithPassword\`, \`signInWithPassword\`, \`signInWithOtp\`, \`verifyOtp\`, \`verifySignupOtp\`, \`resendSignupOtp\`, \`resetPasswordForEmail\`, \`updatePassword\`, \`signOut\`. Do NOT call \`supabase.auth.*\` directly. After \`signUpWithPassword\`, verify the emailed code with \`verifySignupOtp\` (NOT \`verifyOtp\`, which defaults to the \`signInWithOtp\` code type).
