@@ -5,14 +5,40 @@ import type { Database } from "@/integrations/supabase/types";
 export type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 
 export type ProjectBackend = {
-  status: "connecting" | "ready" | "failed" | "paused";
-  provider: "byo_supabase" | "managed_supabase";
+  status: "connecting" | "ready" | "failed" | "paused" | "provisioning";
+  provider: "byo_supabase" | "managed_petal" | "managed_supabase";
   supabaseUrl: string;
   anonKey: string;
   errorMessage: string | null;
+  supabaseProjectRef?: string | null;
+  pausedAt?: string | null;
+  slot?: { expires_at: string; status: string } | null;
 } | null;
 
-async function backendApi<T>(action: "status" | "connect" | "disconnect", body: unknown): Promise<T> {
+export type ManagedProvisionStatus = {
+  status: "provisioning" | "ready" | "paused" | "failed" | "missing";
+  errorMessage: string | null;
+  supabaseUrl: string | null;
+  supabaseProjectRef: string | null;
+  upstreamStatus: string | null;
+};
+
+export type ManagedCredentials = {
+  supabaseUrl: string;
+  anonKey: string;
+  serviceRoleKey: string | null;
+  supabaseProjectRef: string | null;
+};
+
+type BackendAction =
+  | "status"
+  | "connect"
+  | "disconnect"
+  | "provision-status"
+  | "provision-retry"
+  | "managed-credentials";
+
+async function backendApi<T>(action: BackendAction, body: unknown): Promise<T> {
   const { data: sess } = await supabase.auth.getSession();
   const token = sess.session?.access_token;
   if (!token) throw new Error("Not signed in");
@@ -49,6 +75,21 @@ export function connectProjectBackend(input: {
 /** Disconnect the backend from a project. */
 export function disconnectProjectBackend(projectId: string): Promise<{ ok: true }> {
   return backendApi<{ ok: true }>("disconnect", { projectId });
+}
+
+/** Poll the provisioning status of a Petal-managed backend. */
+export function getManagedProvisionStatus(projectId: string): Promise<ManagedProvisionStatus> {
+  return backendApi<ManagedProvisionStatus>("provision-status", { projectId });
+}
+
+/** Retry provisioning after a failure (or after a pause/restore). */
+export function retryManagedProvision(projectId: string): Promise<{ ok: true }> {
+  return backendApi<{ ok: true }>("provision-retry", { projectId });
+}
+
+/** Download the credentials for a managed backend (for export / lock-in escape). */
+export function getManagedCredentials(projectId: string): Promise<ManagedCredentials> {
+  return backendApi<ManagedCredentials>("managed-credentials", { projectId });
 }
 
 export async function listProjects(): Promise<ProjectRow[]> {

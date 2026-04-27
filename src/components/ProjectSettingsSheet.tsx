@@ -36,6 +36,7 @@ import {
   type ProjectBackend,
 } from "@/lib/projects";
 import { DomainsSection } from "@/components/DomainsSection";
+import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { toast } from "sonner";
 
 const MAX_LEN = 4000;
@@ -232,8 +233,20 @@ function BackendSection({ projectId }: { projectId: string }) {
     }
   }
 
+  const isManaged = backend?.provider === "managed_petal";
+  const isByo = backend?.provider === "byo_supabase" && backend.status === "ready";
+
+  async function refresh() {
+    try {
+      const b = await getProjectBackend(projectId);
+      setBackend(b);
+    } catch {
+      /* ignore */
+    }
+  }
+
   return (
-    <div className="mt-6">
+    <div className="mt-6 space-y-3">
       <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
         <Database className="h-4 w-4" /> Backend
       </h3>
@@ -242,16 +255,17 @@ function BackendSection({ projectId }: { projectId: string }) {
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking…
         </div>
-      ) : backend?.status === "ready" ? (
+      ) : isByo ? (
+        // BYO connected — show only this card
         <div className="rounded-lg border border-border bg-muted/30 p-3">
           <div className="flex items-start gap-2">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
             <div className="flex-1 text-sm">
-              <div className="font-medium">Connected</div>
+              <div className="font-medium">Connected (your Supabase)</div>
               <div className="mt-0.5 text-xs text-muted-foreground">
                 Auth, database, and file storage are connected to{" "}
                 <code className="rounded bg-background px-1 py-0.5 text-[11px]">
-                  {new URL(backend.supabaseUrl).hostname}
+                  {new URL(backend!.supabaseUrl).hostname}
                 </code>
                 .
               </div>
@@ -269,29 +283,47 @@ function BackendSection({ projectId }: { projectId: string }) {
             </Button>
           </div>
         </div>
-      ) : showForm ? (
-        <ConnectForm
+      ) : isManaged ? (
+        // Managed flow — single card handles all states
+        <ManagedBackendCard
           projectId={projectId}
-          onCancel={() => setShowForm(false)}
-          onConnected={(b) => {
-            setBackend(b);
-            setShowForm(false);
-          }}
+          backend={backend}
+          onChanged={refresh}
         />
       ) : (
-        <div className="rounded-lg border border-dashed border-border p-3">
-          <p className="text-xs text-muted-foreground">
-            Add auth, a database, and file storage to your generated app. Connect a Supabase
-            project you own — Petal will inject a pre-configured client into the app.
-          </p>
-          <Button
-            size="sm"
-            onClick={() => setShowForm(true)}
-            className="mt-3 inline-flex items-center gap-1.5"
-          >
-            <Plug className="h-3.5 w-3.5" />
-            Connect a backend
-          </Button>
+        // Nothing connected — show both options
+        <div className="space-y-3">
+          <ManagedBackendCard
+            projectId={projectId}
+            backend={backend}
+            onChanged={refresh}
+          />
+          {showForm ? (
+            <ConnectForm
+              projectId={projectId}
+              onCancel={() => setShowForm(false)}
+              onConnected={(b) => {
+                setBackend(b);
+                setShowForm(false);
+              }}
+            />
+          ) : (
+            <div className="rounded-lg border border-dashed border-border p-3">
+              <p className="text-xs text-muted-foreground">
+                Already have a Supabase project? Connect it for free — Petal will inject a
+                pre-configured client into the generated app.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowForm(true)}
+                className="mt-3 inline-flex items-center gap-1.5"
+              >
+                <Plug className="h-3.5 w-3.5" />
+                Connect existing (free)
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
