@@ -98,3 +98,33 @@ export async function refundCredit(opts: RefundCreditOptions): Promise<void> {
     console.error("[credits] refund_credit threw — credit not refunded", e);
   }
 }
+
+export type CheckBalanceResult =
+  | { ok: true }
+  | { ok: false; reason: "insufficient_credits" }
+  | { ok: false; reason: "internal_error"; message: string };
+
+/** Read-only "does the user have at least N credits available?" check.
+ *  Mirrors the bucket math in `spend_credit` without writing anything,
+ *  so we can 402 BEFORE kicking off an AI call without taking a hold. */
+export async function checkCreditBalance(opts: {
+  userId: string;
+  amount: number;
+}): Promise<CheckBalanceResult> {
+  try {
+    const { data, error } = await supabaseAdmin.rpc("check_credit_balance", {
+      _user_id: opts.userId,
+      _amount: opts.amount as never,
+    });
+    if (error) {
+      console.error("[credits] check_credit_balance RPC error", error);
+      return { ok: false, reason: "internal_error", message: error.message };
+    }
+    if (data === true) return { ok: true };
+    return { ok: false, reason: "insufficient_credits" };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "unknown error";
+    console.error("[credits] check_credit_balance threw", e);
+    return { ok: false, reason: "internal_error", message };
+  }
+}
