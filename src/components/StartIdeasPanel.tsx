@@ -141,6 +141,18 @@ export function StartIdeasPanel({
           </li>
         ))}
       </ul>
+      {onSwitchToCoach && (
+        <div className="mt-3 text-center">
+          <button
+            type="button"
+            onClick={onSwitchToCoach}
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            <Sparkles className="h-3 w-3 text-lilac" />
+            Not seeing what you want? Help me think →
+          </button>
+        </div>
+      )}
     </section>
   );
 }
