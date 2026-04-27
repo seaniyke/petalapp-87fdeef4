@@ -166,7 +166,12 @@ BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the proj
 INSTALLED INTEGRATIONS RULE:
 If a section titled "Installed integrations" appears below in this prompt, those capabilities (email, analytics, payments, etc.) are ALREADY wired up. You MUST use the helpers described in that section. Do NOT call third-party APIs directly with \`fetch\`, do NOT hardcode API keys, do NOT recreate files that already exist under \`src/integrations/*\`. Treat that section as binding rules, not suggestions.
 
-- Always include a short, friendly "summary" describing what you built.`;
+STREAMING NARRATIVE FIELDS (mandatory — these power the live chat bubble):
+- "plan" — 1-3 short sentences written FIRST, before any files. Explain in plain English what you're about to build and why. Address the user directly ("I'll start with…", "Then I'll wire…"). This is the FIRST thing users see streaming in.
+- "summary" — friendly recap of what you built, written like a short note from a teammate.
+- "recap" — short bulleted list of the key files you created/changed and what each does. Use markdown bullets. Example: "- \`src/components/Hero.tsx\` — new hero with gradient and CTA\\n- \`src/routes/index.tsx\` — wired the hero into the home page".
+
+Order in the tool call MUST be: plan → summary → files → recap. The server streams them in that order so the user sees intent first, then progress, then a clean wrap-up.`;
 
 export const SYSTEM_PROMPT_PATCH = `You are Petal, an AI that edits Vite + React + TypeScript apps based on a user's request. Every project uses Tailwind CSS v4 and a pre-installed shadcn-style UI kit at "src/components/ui/*".
 
@@ -234,7 +239,12 @@ BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the proj
 INSTALLED INTEGRATIONS RULE:
 If a section titled "Installed integrations" appears below in this prompt, those capabilities (email, analytics, payments, etc.) are ALREADY wired up. You MUST use the helpers described in that section. Do NOT call third-party APIs directly with \`fetch\`, do NOT hardcode API keys, do NOT recreate files that already exist under \`src/integrations/*\`. Treat that section as binding rules, not suggestions.
 
-- Always include a short, friendly "summary" describing what you changed.`;
+STREAMING NARRATIVE FIELDS (mandatory — these power the live chat bubble):
+- "plan" — 1-3 short sentences written FIRST, before any ops. Explain in plain English what you're about to change and why. Address the user directly ("I'll update…", "Then I'll add…").
+- "summary" — friendly recap of what you changed, written like a short note from a teammate.
+- "recap" — short bulleted list of the files touched and what each change does. Use markdown bullets. Example: "- \`src/components/Hero.tsx\` — tightened spacing and added CTA\\n- \`src/routes/index.tsx\` — fixed the broken import".
+
+Order in the tool call MUST be: plan → summary → ops → recap.`;
 
 export const WRITE_PROJECT_TOOL = {
   type: "function" as const,
@@ -244,6 +254,11 @@ export const WRITE_PROJECT_TOOL = {
     parameters: {
       type: "object",
       properties: {
+        plan: {
+          type: "string",
+          description:
+            "1-3 short sentences written FIRST explaining what you're about to build and why. Streamed to the user before any files appear.",
+        },
         summary: {
           type: "string",
           description: "Friendly 1-2 sentence summary of what was built.",
@@ -261,8 +276,13 @@ export const WRITE_PROJECT_TOOL = {
             additionalProperties: false,
           },
         },
+        recap: {
+          type: "string",
+          description:
+            "Markdown bulleted recap of the key files and what each does. Streamed AFTER files so the user gets a clean wrap-up.",
+        },
       },
-      required: ["summary", "files"],
+      required: ["plan", "summary", "files", "recap"],
       additionalProperties: false,
     },
   },
@@ -277,6 +297,11 @@ export const PATCH_FILES_TOOL = {
     parameters: {
       type: "object",
       properties: {
+        plan: {
+          type: "string",
+          description:
+            "1-3 short sentences written FIRST explaining what you're about to change and why. Streamed before any ops.",
+        },
         summary: {
           type: "string",
           description: "Friendly 1-2 sentence summary of what was changed.",
@@ -298,8 +323,13 @@ export const PATCH_FILES_TOOL = {
             additionalProperties: false,
           },
         },
+        recap: {
+          type: "string",
+          description:
+            "Markdown bulleted recap of files touched and what each change does. Streamed AFTER ops.",
+        },
       },
-      required: ["summary", "ops"],
+      required: ["plan", "summary", "ops", "recap"],
       additionalProperties: false,
     },
   },
@@ -318,6 +348,10 @@ export type ChatAttachmentRef = {
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  /** Optional structured narrative that powers the Plan / Recap segments
+   *  in the chat bubble. Falls back gracefully to plain `content` if absent. */
+  plan?: string;
+  recap?: string;
   /** Present only on user turns that included image attachments. */
   attachments?: ChatAttachmentRef[];
 };
@@ -327,17 +361,26 @@ export type FileOp =
   | { op: "update"; path: string; content: string }
   | { op: "delete"; path: string };
 
-export type WriteProjectArgs = { summary: string; files: ProjectFile[] };
-export type PatchFilesArgs = { summary: string; ops: FileOp[] };
+export type WriteProjectArgs = { plan?: string; summary: string; recap?: string; files: ProjectFile[] };
+export type PatchFilesArgs = { plan?: string; summary: string; recap?: string; ops: FileOp[] };
 
 /** Stream events emitted from /api/generate to the client. */
 export type StreamEvent =
   | { type: "status"; message: string }
+  | { type: "plan_delta"; delta: string }
   | { type: "summary_delta"; delta: string }
+  | { type: "recap_delta"; delta: string }
   | { type: "tool"; name: "write_project" | "patch_files" }
   | { type: "phase"; phase: "thinking" | "designing" | "writing" | "polishing" }
   | { type: "file_progress"; written: number; latestPath?: string }
-  | { type: "result"; files: ProjectFile[]; summary: string; creditsCharged?: number }
+  | {
+      type: "result";
+      files: ProjectFile[];
+      summary: string;
+      plan?: string;
+      recap?: string;
+      creditsCharged?: number;
+    }
   | { type: "error"; message: string };
 
 /** Apply a list of file operations to a current set of files. */

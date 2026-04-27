@@ -113,7 +113,12 @@ async function relayAndCollect(
   const decoder = new TextDecoder();
   let buf = "";
   const tool: ParsedTool = { name: null, args: "", usage: null };
-  let summaryEmitted = ""; // running prefix of `summary` field already streamed
+  // Running prefixes of the structured narrative fields already streamed to
+  // the client. We re-extract from `tool.args` on every chunk and emit only
+  // the new tail, so the client renders a clean token-by-token feel.
+  let planEmitted = "";
+  let summaryEmitted = "";
+  let recapEmitted = "";
   let toolAnnounced = false;
   let designingPhaseSent = false;
   let writingPhaseSent = false;
@@ -121,6 +126,17 @@ async function relayAndCollect(
 
   // Matches a completed `"path": "<value>"` occurrence (handles escaped chars).
   const PATH_RE = /"path"\s*:\s*"((?:\\.|[^"\\])*)"/g;
+  // Helper: extract the partial value of a top-level string field from the
+  // streaming JSON args. Returns "" until the field appears.
+  const partial = (field: string): string => {
+    const m = tool.args.match(new RegExp(`"${field}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)`));
+    if (!m) return "";
+    try {
+      return JSON.parse(`"${m[1]}"`);
+    } catch {
+      return "";
+    }
+  };
 
   while (true) {
     const { value, done } = await reader.read();
@@ -166,25 +182,30 @@ async function relayAndCollect(
         const argDelta = tc.function?.arguments;
         if (typeof argDelta === "string") {
           tool.args += argDelta;
-          // Try to extract a growing "summary" field and stream the new tail.
-          const m = tool.args.match(/"summary"\s*:\s*"((?:\\.|[^"\\])*)/);
-          if (m) {
-            // Decode the partial JSON-string content so far.
-            let decoded = "";
-            try {
-              decoded = JSON.parse(`"${m[1]}"`);
-            } catch {
-              decoded = summaryEmitted; // wait for more chars
+          // Stream the three narrative segments (plan → summary → recap)
+          // as the AI produces them. Each event carries only the new tail
+          // so the client can append without re-rendering the full string.
+          const planNow = partial("plan");
+          if (planNow.length > planEmitted.length) {
+            const tail = planNow.slice(planEmitted.length);
+            planEmitted = planNow;
+            controller.enqueue(encoder.encode(sse({ type: "plan_delta", delta: tail })));
+          }
+          const summaryNow = partial("summary");
+          if (summaryNow.length > summaryEmitted.length) {
+            if (!designingPhaseSent) {
+              controller.enqueue(encoder.encode(sse({ type: "phase", phase: "designing" })));
+              designingPhaseSent = true;
             }
-            if (decoded.length > summaryEmitted.length) {
-              if (!designingPhaseSent) {
-                controller.enqueue(encoder.encode(sse({ type: "phase", phase: "designing" })));
-                designingPhaseSent = true;
-              }
-              const tail = decoded.slice(summaryEmitted.length);
-              summaryEmitted = decoded;
-              controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: tail })));
-            }
+            const tail = summaryNow.slice(summaryEmitted.length);
+            summaryEmitted = summaryNow;
+            controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: tail })));
+          }
+          const recapNow = partial("recap");
+          if (recapNow.length > recapEmitted.length) {
+            const tail = recapNow.slice(recapEmitted.length);
+            recapEmitted = recapNow;
+            controller.enqueue(encoder.encode(sse({ type: "recap_delta", delta: tail })));
           }
 
           // Count completed `"path": "..."` occurrences and announce file progress.
@@ -414,7 +435,13 @@ export const Route = createFileRoute("/api/generate")({
                 );
               }
 
-              let parsed: { summary?: string; files?: ProjectFile[]; ops?: FileOp[] };
+              let parsed: {
+                plan?: string;
+                summary?: string;
+                recap?: string;
+                files?: ProjectFile[];
+                ops?: FileOp[];
+              };
               try {
                 parsed = JSON.parse(collected.args);
               } catch (e) {
@@ -423,6 +450,8 @@ export const Route = createFileRoute("/api/generate")({
               }
 
               const summary = parsed.summary?.trim() || "Updated the project.";
+              const plan = parsed.plan?.trim() || undefined;
+              const recap = parsed.recap?.trim() || undefined;
               let nextFiles: ProjectFile[];
               if (collected.name === "write_project") {
                 if (!parsed.files?.length) throw new Error("AI returned no files.");
@@ -531,7 +560,14 @@ export const Route = createFileRoute("/api/generate")({
 
               controller.enqueue(
                 encoder.encode(
-                  sse({ type: "result", files: nextFiles, summary, creditsCharged: finalCharged }),
+                  sse({
+                    type: "result",
+                    files: nextFiles,
+                    summary,
+                    plan,
+                    recap,
+                    creditsCharged: finalCharged,
+                  }),
                 ),
               );
             } catch (e) {

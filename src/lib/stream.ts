@@ -3,11 +3,17 @@ import type { ChatMessage, ProjectFile, StreamEvent } from "@/server/generate.se
 
 type Handlers = {
   onStatus?: (message: string) => void;
+  onPlanDelta?: (delta: string) => void;
   onSummaryDelta?: (delta: string) => void;
+  onRecapDelta?: (delta: string) => void;
   onTool?: (name: "write_project" | "patch_files") => void;
   onPhase?: (phase: "thinking" | "designing" | "writing" | "polishing") => void;
   onFileProgress?: (written: number, latestPath?: string) => void;
-  onResult?: (files: ProjectFile[], summary: string, creditsCharged?: number) => void;
+  onResult?: (
+    files: ProjectFile[],
+    summary: string,
+    extras?: { plan?: string; recap?: string; creditsCharged?: number },
+  ) => void;
   onError?: (message: string) => void;
 };
 
@@ -74,8 +80,14 @@ export async function streamGenerate(
           case "status":
             handlers.onStatus?.(evt.message);
             break;
+          case "plan_delta":
+            handlers.onPlanDelta?.(evt.delta);
+            break;
           case "summary_delta":
             handlers.onSummaryDelta?.(evt.delta);
+            break;
+          case "recap_delta":
+            handlers.onRecapDelta?.(evt.delta);
             break;
           case "tool":
             handlers.onTool?.(evt.name);
@@ -87,7 +99,11 @@ export async function streamGenerate(
             handlers.onFileProgress?.(evt.written, evt.latestPath);
             break;
           case "result":
-            handlers.onResult?.(evt.files, evt.summary, evt.creditsCharged);
+            handlers.onResult?.(evt.files, evt.summary, {
+              plan: evt.plan,
+              recap: evt.recap,
+              creditsCharged: evt.creditsCharged,
+            });
             break;
           case "error":
             handlers.onError?.(evt.message);

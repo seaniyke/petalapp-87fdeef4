@@ -28,6 +28,7 @@ import {
   Paperclip,
   ImageIcon,
   Globe,
+  FileText,
 } from "lucide-react";
 import {
   encodeAttachments,
@@ -180,6 +181,10 @@ function Builder() {
   // This mirrors what Lovable/Bolt/v0 do — the user sees Petal "talking" in real
   // time, not just a structured timeline. Cleared when the run completes.
   const [streamingAssistant, setStreamingAssistant] = useState<string>("");
+  // Structured streaming segments — render alongside the live summary so the
+  // user sees: Plan → Activity → Recap (Lovable / Bolt / v0 parity).
+  const [streamingPlan, setStreamingPlan] = useState<string>("");
+  const [streamingRecap, setStreamingRecap] = useState<string>("");
   // Preview device frame: phone | tablet | desktop. Affects only the wrapper
   // around WebContainerPreview / MobilePreviewFallback — they get the iframe
   // sized to a realistic device width so users can spot responsive issues.
@@ -631,10 +636,14 @@ function Builder() {
       setFinalFileLines({});
       setFileChanges({});
       setStreamingAssistant("");
+      setStreamingPlan("");
+      setStreamingRecap("");
       setActivityVisible(true);
 
       let resultFiles: ProjectFile[] | null = null;
       let resultSummary = "";
+      let resultPlan: string | undefined;
+      let resultRecap: string | undefined;
       let streamError: string | null = null;
       // Mirror of the streamingAssistant state we accumulate as deltas come in.
       // Kept locally so the catch/finally branches can read the latest value
@@ -659,6 +668,9 @@ function Builder() {
             onPhase: (phase: PhaseId) => {
               setPhases((p) => advanceTo(p, phase));
             },
+            onPlanDelta: (d) => {
+              setStreamingPlan((s) => s + d);
+            },
             onSummaryDelta: (d) => {
               // Two consumers of the same stream:
               //   - structured timeline (designCaption under "Designing")
@@ -666,6 +678,9 @@ function Builder() {
               partialAssistant += d;
               setDesignCaption((s) => s + d);
               setStreamingAssistant((s) => s + d);
+            },
+            onRecapDelta: (d) => {
+              setStreamingRecap((s) => s + d);
             },
             onFileProgress: (n, path) => {
               setFilesWritten(n);
@@ -676,10 +691,14 @@ function Builder() {
                 setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
               }
             },
-            onResult: (f, s, charged) => {
+            onResult: (f, s, extras) => {
               resultFiles = f;
               resultSummary = s;
-              if (typeof charged === "number") setLastBuildCredits(charged);
+              resultPlan = extras?.plan;
+              resultRecap = extras?.recap;
+              if (typeof extras?.creditsCharged === "number") {
+                setLastBuildCredits(extras.creditsCharged);
+              }
             },
             onError: (m) => {
               streamError = m;
@@ -694,7 +713,12 @@ function Builder() {
 
         const files2: ProjectFile[] = resultFiles;
         const summary2: string = resultSummary || "Updated the project.";
-        const assistantMsg: ChatMessage = { role: "assistant", content: summary2 };
+        const assistantMsg: ChatMessage = {
+          role: "assistant",
+          content: summary2,
+          plan: resultPlan,
+          recap: resultRecap,
+        };
         setFiles(files2);
         setActiveFile((prev) => prev ?? "index.html");
         setMessages((prev) => [...prev, assistantMsg]);
@@ -702,6 +726,8 @@ function Builder() {
         setLastUserPrompt(null);
         // The streaming bubble has been promoted into a real message — clear it.
         setStreamingAssistant("");
+        setStreamingPlan("");
+        setStreamingRecap("");
 
         // Compute final per-file line counts for the activity card. We only
         // surface counts for files Petal actually wrote in this run, so the
@@ -832,6 +858,8 @@ function Builder() {
         // Drop any partial streaming text — either it became a real message
         // above, or the run failed/aborted and we don't want a stale bubble.
         setStreamingAssistant("");
+        setStreamingPlan("");
+        setStreamingRecap("");
       }
     },
     [busy, messages, files, ensureProject, pendingAttachments],
@@ -1517,9 +1545,35 @@ function Builder() {
                       )}
                     </div>
                     {m.role === "assistant" ? (
-                      <Suspense fallback={<div className="whitespace-pre-wrap">{m.content}</div>}>
-                        <MarkdownMessage content={m.content} />
-                      </Suspense>
+                      <div className="space-y-2.5">
+                        {m.plan && (
+                          <div className="rounded-lg border border-primary/15 bg-primary/5 px-2.5 py-1.5">
+                            <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-primary/80">
+                              <Wand2 className="h-2.5 w-2.5" /> Plan
+                            </div>
+                            <Suspense
+                              fallback={<div className="whitespace-pre-wrap text-[13px]">{m.plan}</div>}
+                            >
+                              <MarkdownMessage content={m.plan} />
+                            </Suspense>
+                          </div>
+                        )}
+                        <Suspense fallback={<div className="whitespace-pre-wrap">{m.content}</div>}>
+                          <MarkdownMessage content={m.content} />
+                        </Suspense>
+                        {m.recap && (
+                          <div className="rounded-lg border border-border/60 bg-card/50 px-2.5 py-1.5">
+                            <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              <FileText className="h-2.5 w-2.5" /> What changed
+                            </div>
+                            <Suspense
+                              fallback={<div className="whitespace-pre-wrap text-[13px]">{m.recap}</div>}
+                            >
+                              <MarkdownMessage content={m.recap} />
+                            </Suspense>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div className="whitespace-pre-wrap">{m.content}</div>
                     )}
@@ -1572,19 +1626,48 @@ function Builder() {
             )}
             {/* Live, token-by-token reply while Petal works. Promoted to a real
                 message in `messages` once the run completes. */}
-            {busy && streamingAssistant && (
+            {busy && (streamingPlan || streamingAssistant || streamingRecap) && (
               <div className="mr-3 overflow-hidden wrap-anywhere rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm leading-relaxed sm:mr-6">
-                <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <span>petal</span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-primary">
-                    <Loader2 className="h-2.5 w-2.5 animate-spin" /> writing
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    {streamingRecap ? "wrapping up" : streamingAssistant ? "writing" : "planning"}
                   </span>
                 </div>
-                <Suspense
-                  fallback={<div className="whitespace-pre-wrap">{streamingAssistant}</div>}
-                >
-                  <MarkdownMessage content={streamingAssistant} />
-                </Suspense>
+                <div className="space-y-2.5">
+                  {streamingPlan && (
+                    <div className="rounded-lg border border-primary/15 bg-primary/5 px-2.5 py-1.5">
+                      <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-primary/80">
+                        <Wand2 className="h-2.5 w-2.5" /> Plan
+                      </div>
+                      <Suspense
+                        fallback={<div className="whitespace-pre-wrap text-[13px]">{streamingPlan}</div>}
+                      >
+                        <MarkdownMessage content={streamingPlan} />
+                      </Suspense>
+                    </div>
+                  )}
+                  {streamingAssistant && (
+                    <Suspense
+                      fallback={<div className="whitespace-pre-wrap">{streamingAssistant}</div>}
+                    >
+                      <MarkdownMessage content={streamingAssistant} />
+                    </Suspense>
+                  )}
+                  {streamingRecap && (
+                    <div className="rounded-lg border border-border/60 bg-card/50 px-2.5 py-1.5">
+                      <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <FileText className="h-2.5 w-2.5" /> What changed
+                      </div>
+                      <Suspense
+                        fallback={<div className="whitespace-pre-wrap text-[13px]">{streamingRecap}</div>}
+                      >
+                        <MarkdownMessage content={streamingRecap} />
+                      </Suspense>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             {activityVisible && (

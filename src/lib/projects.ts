@@ -212,6 +212,41 @@ export async function loadProjectFiles(projectId: string): Promise<ProjectFile[]
   return (data ?? []).map((r) => ({ path: r.path, content: r.content }));
 }
 
+/** Marker prefix used to embed structured assistant fields (plan/recap) inside
+ *  the existing `content` text column. Backward-compatible: any row without
+ *  this prefix is treated as a plain text message. */
+const STRUCTURED_PREFIX = "@@petal/v1:";
+
+function encodeAssistantContent(m: ChatMessage): string {
+  if (m.role !== "assistant" || (!m.plan && !m.recap)) return m.content;
+  return STRUCTURED_PREFIX + JSON.stringify({
+    content: m.content,
+    plan: m.plan ?? null,
+    recap: m.recap ?? null,
+  });
+}
+
+function decodeAssistantContent(role: string, raw: string): ChatMessage {
+  if (role === "assistant" && raw.startsWith(STRUCTURED_PREFIX)) {
+    try {
+      const parsed = JSON.parse(raw.slice(STRUCTURED_PREFIX.length)) as {
+        content?: string;
+        plan?: string | null;
+        recap?: string | null;
+      };
+      return {
+        role: "assistant",
+        content: parsed.content ?? "",
+        plan: parsed.plan ?? undefined,
+        recap: parsed.recap ?? undefined,
+      };
+    } catch {
+      // Fall through to plain text on corrupt payload.
+    }
+  }
+  return { role: role as ChatMessage["role"], content: raw };
+}
+
 export async function loadProjectMessages(projectId: string): Promise<ChatMessage[]> {
   const { data, error } = await supabase
     .from("messages")
@@ -219,10 +254,7 @@ export async function loadProjectMessages(projectId: string): Promise<ChatMessag
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((r) => ({
-    role: r.role as ChatMessage["role"],
-    content: r.content,
-  }));
+  return (data ?? []).map((r) => decodeAssistantContent(r.role, r.content));
 }
 
 /**
@@ -244,7 +276,13 @@ export async function appendMessages(projectId: string, msgs: ChatMessage[]) {
   if (msgs.length === 0) return;
   const { error } = await supabase
     .from("messages")
-    .insert(msgs.map((m) => ({ project_id: projectId, role: m.role, content: m.content })));
+    .insert(
+      msgs.map((m) => ({
+        project_id: projectId,
+        role: m.role,
+        content: encodeAssistantContent(m),
+      })),
+    );
   if (error) throw error;
 }
 
