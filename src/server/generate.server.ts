@@ -233,7 +233,21 @@ export const PATCH_FILES_TOOL = {
 };
 
 export type ProjectFile = { path: string; content: string };
-export type ChatMessage = { role: "user" | "assistant"; content: string };
+
+/** Optional image attachment carried with a user message (vision input). */
+export type ChatAttachmentRef = {
+  mimeType: string;
+  /** data:<mime>;base64,... — used both as <img src> and as the AI image_url. */
+  dataUrl: string;
+  name?: string;
+};
+
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+  /** Present only on user turns that included image attachments. */
+  attachments?: ChatAttachmentRef[];
+};
 
 export type FileOp =
   | { op: "create"; path: string; content: string }
