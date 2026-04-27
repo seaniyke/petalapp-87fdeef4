@@ -119,6 +119,7 @@ function Landing() {
 
   const [projects, setProjects] = useState<ProjectRow[] | null>(null);
   const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectFilter, setProjectFilter] = useState<ProjectFilter>("all");
   useEffect(() => {
     if (!isReady || !isAuthed) {
       setProjects(null);
