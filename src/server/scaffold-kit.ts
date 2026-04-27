@@ -1287,6 +1287,46 @@ export function ThemeToggle() {
 }
 `;
 
+const ROUTER = `/**
+ * Thin, opinionated re-export of react-router-dom for the Petal kit.
+ *
+ * Use this for any multi-page app. Define <Route> children once in App.tsx,
+ * use <Link to="/about"> for navigation, useNavigate() for programmatic moves,
+ * and useParams() for dynamic segments like "/post/:id".
+ *
+ * Common pattern (in App.tsx):
+ *   import { Router, Routes, Route, Link, NavLink, Outlet } from "@/components/ui/router";
+ *   <Router>
+ *     <Routes>
+ *       <Route element={<SiteLayout />}>
+ *         <Route path="/" element={<HomePage />} />
+ *         <Route path="/about" element={<AboutPage />} />
+ *         <Route path="/post/:slug" element={<PostPage />} />
+ *         <Route path="*" element={<NotFoundPage />} />
+ *       </Route>
+ *     </Routes>
+ *   </Router>
+ *
+ * SiteLayout renders the shared header/footer and an <Outlet /> where the
+ * matched child route is rendered. Use <NavLink> in headers — its
+ * \`isActive\` render-prop child or \`className\` callback gives you free
+ * active styling.
+ */
+export {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Link,
+  NavLink,
+  Outlet,
+  Navigate,
+  useNavigate,
+  useParams,
+  useLocation,
+  useSearchParams,
+} from "react-router-dom";
+`;
+
 const CONTAINER = `import * as React from "react";
 import { cn } from "@/lib/utils";
 
@@ -3274,6 +3314,8 @@ const KIT: KitFile[] = [
   { path: "src/components/ui/form.tsx", content: FORM, overwrite: true },
   { path: "src/components/ui/drawer.tsx", content: DRAWER, overwrite: true },
   { path: "src/components/ui/chart.tsx", content: CHART, overwrite: true },
+  // Phase 5 — multi-page routing (re-exports react-router-dom).
+  { path: "src/components/ui/router.tsx", content: ROUTER, overwrite: true },
   // Reference patterns — read-only examples for the AI to copy from.
   // NOT imported by App.tsx unless the user asks for that exact pattern.
   {
@@ -3320,6 +3362,7 @@ const REQUIRED_DEPS: Record<string, string> = {
   "lucide-react": "^0.460.0",
   "@radix-ui/react-slot": "^1.1.0",
   sonner: "^1.7.0",
+  "react-router-dom": "^6.28.0",
 };
 
 const REQUIRED_DEV_DEPS: Record<string, string> = {

@@ -3553,6 +3553,173 @@ export default function AiImageGallery() {
 }
 `;
 
+const KIT_MULTI_PAGE_APP = `import { Router, Routes, Route, Outlet, NavLink, Link, useParams } from "@/components/ui/router";
+import { Container } from "@/components/ui/container";
+import { Inline } from "@/components/ui/inline";
+import { Stack } from "@/components/ui/stack";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+
+/**
+ * Canonical multi-page app pattern. Copy this into App.tsx as the starting
+ * point for ANY app with more than one screen. Add new <Route> entries and
+ * \`src/pages/<Name>.tsx\` files as needed.
+ *
+ * Key rules:
+ * - One <Router> per app (never nested).
+ * - Shared chrome lives inside a layout route via <Outlet />.
+ * - <NavLink> in the header gives free active styling.
+ * - <Link> for navigation (NEVER <a href>) — preserves SPA routing.
+ * - useParams() for dynamic segments like /post/:slug.
+ */
+
+function SiteHeader() {
+  return (
+    <header className="border-b border-border bg-background/80 backdrop-blur sticky top-0 z-40">
+      <Container>
+        <Inline justify="between" align="center" className="h-14">
+          <Link to="/" className="font-semibold text-foreground">Acme</Link>
+          <Inline gap={1}>
+            {[
+              { to: "/", label: "Home", end: true },
+              { to: "/posts", label: "Posts" },
+              { to: "/about", label: "About" },
+            ].map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.end}
+                className={({ isActive }) =>
+                  cn(
+                    "px-3 py-1.5 rounded-md text-sm transition-colors",
+                    isActive
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+                  )
+                }
+              >
+                {link.label}
+              </NavLink>
+            ))}
+          </Inline>
+        </Inline>
+      </Container>
+    </header>
+  );
+}
+
+function SiteLayout() {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <SiteHeader />
+      <main>
+        <Outlet />
+      </main>
+    </div>
+  );
+}
+
+function HomePage() {
+  return (
+    <Container className="py-16">
+      <Stack gap={4}>
+        <h1 className="text-4xl font-semibold tracking-tight">Welcome</h1>
+        <p className="text-muted-foreground">
+          A tiny multi-page app showing the canonical Petal routing pattern.
+        </p>
+        <Inline gap={3}>
+          <Button asChild><Link to="/posts">Read posts</Link></Button>
+          <Button variant="outline" asChild><Link to="/about">About us</Link></Button>
+        </Inline>
+      </Stack>
+    </Container>
+  );
+}
+
+const POSTS = [
+  { slug: "hello-world", title: "Hello, world", excerpt: "Our very first post." },
+  { slug: "design-systems", title: "On design systems", excerpt: "Why constraints help you ship." },
+  { slug: "ship-it", title: "Ship it", excerpt: "Done is better than perfect." },
+];
+
+function PostsPage() {
+  return (
+    <Container className="py-16">
+      <Stack gap={4}>
+        <h1 className="text-3xl font-semibold tracking-tight">Posts</h1>
+        <Stack gap={3}>
+          {POSTS.map((p) => (
+            <Card key={p.slug} className="hover:border-foreground/20 transition-colors">
+              <CardHeader>
+                <CardTitle>
+                  <Link to={\`/post/\${p.slug}\`} className="hover:underline">{p.title}</Link>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">{p.excerpt}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </Stack>
+      </Stack>
+    </Container>
+  );
+}
+
+function PostDetailPage() {
+  const { slug } = useParams<{ slug: string }>();
+  const post = POSTS.find((p) => p.slug === slug);
+  return (
+    <Container className="py-16">
+      <Stack gap={4}>
+        <Link to="/posts" className="text-sm text-muted-foreground hover:text-foreground">&larr; Back to posts</Link>
+        <h1 className="text-3xl font-semibold tracking-tight">{post?.title ?? "Not found"}</h1>
+        <p className="text-muted-foreground">{post?.excerpt ?? "We couldn't find that post."}</p>
+      </Stack>
+    </Container>
+  );
+}
+
+function AboutPage() {
+  return (
+    <Container className="py-16">
+      <Stack gap={4}>
+        <h1 className="text-3xl font-semibold tracking-tight">About</h1>
+        <p className="text-muted-foreground">Acme builds tools that help teams ship faster.</p>
+      </Stack>
+    </Container>
+  );
+}
+
+function NotFoundPage() {
+  return (
+    <Container className="py-24">
+      <Stack gap={4} align="center">
+        <h1 className="text-4xl font-semibold tracking-tight">404</h1>
+        <p className="text-muted-foreground">That page doesn't exist.</p>
+        <Button asChild><Link to="/">Go home</Link></Button>
+      </Stack>
+    </Container>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route element={<SiteLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/posts" element={<PostsPage />} />
+          <Route path="/post/:slug" element={<PostDetailPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
+    </Router>
+  );
+}
+`;
 
 
 const EXAMPLES_INDEX = `# Examples pack — copy-from reference patterns
@@ -3634,6 +3801,9 @@ matching file below and adapt — do not invent layouts from scratch.
 ## AI image placeholders (Phase 4)
 - \`kit-ai-image-hero.tsx\` — full-bleed hero with an AI-generated background via \`petal-image://\`
 - \`kit-ai-image-gallery.tsx\` — three-card product gallery, each tile a unique AI-generated image
+
+## Multi-page routing (Phase 5)
+- \`kit-multi-page-app.tsx\` — canonical App.tsx with Router/Routes/Route, shared layout via Outlet, NavLink active states, dynamic \`/post/:slug\`, and a 404 catch-all. Copy this when the user wants more than one page.
 
 ## Conventions
 
@@ -3722,4 +3892,7 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   // AI image placeholders (Phase 4)
   { path: "src/components/examples/kit-ai-image-hero.tsx", content: KIT_AI_IMAGE_HERO, overwrite: true },
   { path: "src/components/examples/kit-ai-image-gallery.tsx", content: KIT_AI_IMAGE_GALLERY, overwrite: true },
+
+  // Multi-page routing (Phase 5)
+  { path: "src/components/examples/kit-multi-page-app.tsx", content: KIT_MULTI_PAGE_APP, overwrite: true },
 ];

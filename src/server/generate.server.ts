@@ -44,6 +44,7 @@ The scaffold ALREADY EXISTS — these files will be auto-injected, do NOT emit t
 - "src/components/ui/container.tsx" — <Container size="sm|md|lg|xl|full"> (default "lg"). Centered max-width wrapper with responsive horizontal padding. Use as the outermost wrapper inside every page section.
 - "src/components/ui/stack.tsx" — <Stack gap={4} align="start|center|end|stretch" justify="..."> for vertical columns; <Inline gap={2} align="center" wrap> for horizontal rows. Use these instead of writing flex/gap utility chains by hand.
 - "src/components/ui/grid.tsx" — <Grid preset="..."> for instant dashboard layouts. Presets: "stats" (1->2->4 stat cards), "kpis" (2->4->6 dense tiles), "dashboard" (1->2->3 widgets), "cards" (1->2->3->4 product/feature cards), "features" (1->2->3 marketing), "pricing" (1->3 tiers), "split" (1->2 two-column), "gallery" (2->3->4 media). Or compose manually: <Grid cols={1} sm={2} md={3} lg={4} gap={6}>. Allowed cols values: 1, 2, 3, 4, 6, 12. Explicit props override the preset.
+- "src/components/ui/router.tsx" — re-exports { Router, Routes, Route, Link, NavLink, Outlet, Navigate, useNavigate, useParams, useLocation, useSearchParams } from react-router-dom. Use for ANY app with more than one page. NEVER hand-roll routing with useState page-switchers or window.location.pathname checks.
 
 REFERENCE PATTERNS (copy-from, do NOT import directly):
 The scaffold also injects working examples under "src/components/examples/*". They exist purely as a reference you can read and adapt — DO NOT import them into App.tsx, and DO NOT emit them yourself (they are auto-injected). When the user asks for the matching interaction, copy the pattern into your own feature component.
@@ -129,11 +130,37 @@ IMAGES (use \`petal-image://\` for AI-generated visuals):
 - DO NOT use picsum.photos, unsplash.com, placeholder.com, or any other stock-photo URL when \`petal-image://\` would do — generated images always look more on-brand.
 - The ONLY exception: avatars for fake user testimonials can stay as \`https://i.pravatar.cc/150?u=<seed>\` since they're meant to look generic.
 
+MULTI-PAGE ROUTING (use \`@/components/ui/router\` whenever the app has more than one page):
+- The scaffold ships react-router-dom (BrowserRouter) re-exported through \`@/components/ui/router\`. ALWAYS import routing primitives from there — never directly from "react-router-dom" — so the kit can swap implementations later.
+- Default to multi-page architecture for ANY app with distinct sections (Home, About, Pricing, Contact, Dashboard, Product detail, Blog, Settings, Auth flows, etc.). One \`src/App.tsx\` per page is the WRONG mental model — split pages into \`src/pages/<Name>.tsx\` and wire them in App.tsx.
+- Canonical wiring (in \`src/App.tsx\`):
+    import { Router, Routes, Route, Outlet, NavLink } from "@/components/ui/router";
+    function SiteLayout() { return (<><Header /><main><Outlet /></main><Footer /></>); }
+    export default function App() {
+      return (
+        <Router>
+          <Routes>
+            <Route element={<SiteLayout />}>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Route>
+          </Routes>
+        </Router>
+      );
+    }
+- Use \`<Link to="/about">\` for in-app navigation. NEVER \`<a href="/about">\` (it triggers a full page reload).
+- Use \`<NavLink to="/about">{({ isActive }) => ...}</NavLink>\` (or its \`className\` callback) for header links so the active route gets visual emphasis. NEVER track "current page" with useState.
+- Use dynamic segments like \`/post/:slug\` and read them with \`useParams()\`. NEVER parse \`window.location.pathname\` by hand.
+- Use \`useNavigate()\` for programmatic navigation after form submit / async actions. Use \`<Navigate to="..." replace />\` for declarative redirects.
+- Single-page tools (one calculator, one timer, one chat) do NOT need a router. Heuristic: if you'd write more than one screen-level page, add the router.
+- See \`src/components/examples/kit-multi-page-app.tsx\` for the canonical pattern.
 
 BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the project):
 - ALWAYS go through \`@/integrations/backend/*\`. NEVER call \`createClient(...)\` yourself, NEVER \`import ... from "@supabase/supabase-js"\`, NEVER hardcode URLs or keys.
 - For ANY auth flow (sign up, sign in, OTP, magic link, password reset), use the helpers on \`useAuth()\` from \`@/integrations/backend/auth\`: \`signUpWithPassword\`, \`signInWithPassword\`, \`signInWithOtp\`, \`verifyOtp\`, \`verifySignupOtp\`, \`resendSignupOtp\`, \`resetPasswordForEmail\`, \`updatePassword\`, \`signOut\`. Do NOT call \`supabase.auth.*\` directly. After \`signUpWithPassword\`, verify the emailed code with \`verifySignupOtp\` (NOT \`verifyOtp\`, which defaults to the \`signInWithOtp\` code type).
-- If you call \`resetPasswordForEmail\`, you MUST also handle the \`/reset-password\` landing in App.tsx. The scaffold has NO router, so gate the reset view on \`window.location.pathname === "/reset-password"\` and call \`updatePassword\` from it. See \`src/components/examples/auth-reset-password.tsx\` and the snippet in \`BACKEND.md\`.
+- If you call \`resetPasswordForEmail\`, add a \`/reset-password\` route via \`@/components/ui/router\` and render \`auth-reset-password.tsx\` there; that page calls \`updatePassword\`. See \`src/components/examples/auth-reset-password.tsx\` and the snippet in \`BACKEND.md\`.
 - Read \`src/components/examples/BACKEND.md\` for the full helper reference before writing data or auth code.
 - Always include a short, friendly "summary" describing what you built.`;
 
@@ -156,7 +183,7 @@ Each operation is one of:
 - { "op": "delete", "path": "..." }
 
 REUSE-FIRST PROTOCOL (most important rule):
-The kit at "@/components/ui/*" already provides: Button, Card, Input, Textarea, Label, Badge, Separator, Avatar, Alert, Skeleton, Switch, Tabs, Dialog, Select, Checkbox, RadioGroup, Slider, Progress, Tooltip, Popover, DropdownMenu, Accordion, ScrollArea, Table, Sheet, Drawer, Toast, Command (+ CommandDialog), Calendar, DatePicker, Combobox, Form (+ useForm), Chart (Line/Area/Bar).
+The kit at "@/components/ui/*" already provides: Button, Card, Input, Textarea, Label, Badge, Separator, Avatar, Alert, Skeleton, Switch, Tabs, Dialog, Select, Checkbox, RadioGroup, Slider, Progress, Tooltip, Popover, DropdownMenu, Accordion, ScrollArea, Table, Sheet, Drawer, Toast, Command (+ CommandDialog), Calendar, DatePicker, Combobox, Form (+ useForm), Chart (Line/Area/Bar), Router (re-exports react-router-dom: Router/Routes/Route/Link/NavLink/Outlet/Navigate/useNavigate/useParams/useLocation/useSearchParams).
 - Need a button? -> <Button>. NEVER raw <button> or styled <div onClick>.
 - Need a text field? -> <Input>/<Textarea>. NEVER raw <input>.
 - Need a card/panel? -> <Card>. NEVER a custom <div className="rounded-lg border p-4">.
@@ -188,10 +215,16 @@ IMAGES (use \`petal-image://\` for AI-generated visuals):
 - DO NOT introduce picsum.photos / unsplash / placeholder URLs in NEW image elements when \`petal-image://\` would do. Existing image URLs in the codebase may stay unless the user asks otherwise.
 - Limit: max 6 unique placeholders per turn (extras silently fall back to picsum).
 
+MULTI-PAGE ROUTING (use \`@/components/ui/router\` whenever the app has more than one page):
+- The scaffold ships react-router-dom re-exported through \`@/components/ui/router\`. ALWAYS import routing primitives from there — never directly from "react-router-dom".
+- When the user asks to ADD a new page (e.g. "add an /about page", "add a checkout page"), wire it through the existing <Routes>. NEVER create another <Router> — there must be exactly ONE per app.
+- Use \`<Link to="/about">\` for navigation (NEVER \`<a href>\`), \`<NavLink>\` for active-aware header links, \`useParams()\` for dynamic segments, \`useNavigate()\` for programmatic moves, and \`<Navigate to="..." replace />\` for declarative redirects.
+- If the project does NOT yet have a router and the user asks for a second page, introduce the router pattern: replace the App.tsx body with a \`<Router><Routes>...</Routes></Router>\` and split the existing screen into \`src/pages/HomePage.tsx\` plus the new page. See \`src/components/examples/kit-multi-page-app.tsx\`.
+
 BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the project):
 - ALWAYS go through \`@/integrations/backend/*\`. NEVER call \`createClient(...)\` yourself, NEVER \`import ... from "@supabase/supabase-js"\`, NEVER hardcode URLs or keys.
 - For ANY auth flow (sign up, sign in, OTP, magic link, password reset), use the helpers on \`useAuth()\` from \`@/integrations/backend/auth\`: \`signUpWithPassword\`, \`signInWithPassword\`, \`signInWithOtp\`, \`verifyOtp\`, \`verifySignupOtp\`, \`resendSignupOtp\`, \`resetPasswordForEmail\`, \`updatePassword\`, \`signOut\`. Do NOT call \`supabase.auth.*\` directly. After \`signUpWithPassword\`, verify the emailed code with \`verifySignupOtp\` (NOT \`verifyOtp\`, which defaults to the \`signInWithOtp\` code type).
-- If you call \`resetPasswordForEmail\`, you MUST also handle the \`/reset-password\` landing in App.tsx. The scaffold has NO router, so gate the reset view on \`window.location.pathname === "/reset-password"\` and call \`updatePassword\` from it. Copy from \`src/components/examples/auth-reset-password.tsx\` and see the snippet in \`BACKEND.md\`.
+- If you call \`resetPasswordForEmail\`, add a \`/reset-password\` route via \`@/components/ui/router\` and render \`auth-reset-password.tsx\` there; that page calls \`updatePassword\`. See \`src/components/examples/auth-reset-password.tsx\` and the snippet in \`BACKEND.md\`.
 - Treat existing \`src/integrations/backend/*\` files as read-only. Enhance the user's auth UI; do not replace the auth integration.
 - Always include a short, friendly "summary" describing what you changed.`;
 
