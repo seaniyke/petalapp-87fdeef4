@@ -215,21 +215,6 @@ function Landing() {
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs">
-              {samplePrompts.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => {
-                    setPrompt(p);
-                    textareaRef.current?.focus();
-                  }}
-                  className="rounded-full border border-border bg-card/60 px-3 py-1.5 text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
           </form>
 
           <div className="mt-10 flex items-center justify-center gap-3 text-xs text-muted-foreground">
