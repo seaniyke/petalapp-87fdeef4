@@ -1,115 +1,64 @@
-# Petal Launch-Blocker Plan (Revised)
+# Petal Launch-Blocker Plan — Shipped ✅
 
-Goal: ship a public-launch-ready Petal in ~2 focused days. Four fixes, scoped tight, no infrastructure we'll throw away.
+All four launch blockers landed. This document is now the as-shipped record.
 
-## What we're shipping
+## 1. Mobile preview fallback ✅
 
-1. **Mobile preview fallback** — when WebContainers can't run (iOS, old Android, no SharedArrayBuffer), show the project's last published deployment instead of a dead-end message.
-2. **Element picker stabilization** — fix silent failures and make the pick → patch loop reliable.
-3. **Soft cost guardrails** — auth checks + per-request hard ceilings on `/api/generate` and `/api/generate-image`. No backend rate-limit infrastructure (platform doesn't have primitives for it yet — revisit when it does).
-4. **First-run onboarding polish** — curated starter prompts on the empty Builder state + a one-time 3-step tour.
+**Approach:** Promoted the existing `MobilePreviewFallback` (deployed-build iframe with realtime + 5s polling against `project_builds`) to cover all WebContainer-incompatible browsers, not just narrow viewports.
 
-Out of scope: managed Supabase auto-provisioning, GitHub sync, RAG, voice, full sliding-window rate limiting.
+- Added `useWebContainerSupported()` in `src/routes/builder.tsx` that lazy-runs `detectUnsupportedBrowser()` from `WebContainerPreview` once on mount.
+- Renamed the render gate to `useDeployedFallback = isMobile || !webContainerSupported`. iOS Safari, iPadOS-as-MacIntel, Android non-Chromium, and any browser without `SharedArrayBuffer` now see the live deployed preview instead of the dead-end "not supported" card.
+- Layout-only `isMobile` checks (device frame width chooser, mobile tab nav) intentionally kept as-is.
 
----
+**Note vs original plan:** We did not add a new `published-url.ts` helper. `MobilePreviewFallback` already resolves the deployed URL from `project_builds.dist_path` directly, with the same priority semantics (latest ready build, fall back to last successful one when the newest is pending/failed). No new code path needed.
 
-## 1. Mobile preview fallback
+## 2. Element picker stabilization ✅
 
-### Problem
-On iPhone/iPad (most consumer traffic), `WebContainerPreview.tsx` returns "Live preview isn't supported on iOS" — a dead end, even when the project has a live deployment.
+- `src/lib/webcontainer.ts`: bumped picker to `PICKER_VERSION = 2`. Script tag carries `data-petal-picker-version="N"`.
+- Picker is now self-superseding inside the iframe: detects an older `window.__petalPickerVersion`, calls a stored `__petalPickerCleanup`, then installs itself. Always re-emits `petal:pick:ready` on attach.
+- `ensurePickerInstalled` is fully idempotent: rewrites the public asset every call (cheap), strips any older `__petal_picker.js` script tags from `index.html`, and short-circuits when the current version tag is already present.
+- `WebContainerPreview.tsx` re-pushes the live `pickActive` state on every iframe `onLoad` so picks survive HMR full-reloads and SPA navigations inside the user's app.
+- 30-second watchdog: if the user arms the picker but no `petal:pick:ready` ever arrives, an inline destructive-toned banner appears with a "Picker didn't attach — try reloading" message.
 
-### Fix
-- Add a `publishedUrl?: string | null` prop to `WebContainerPreview`. Resolved server-side in `builder.tsx` loader.
-- Resolution priority:
-  1. `projects.primary_domain_id` → `project_domains.hostname` (only if `status = 'active'`)
-  2. Petal-hosted URL `https://project--{projectId}.lovable.app` if a successful `project_builds` row exists (`status = 'ready'`)
-  3. Otherwise null
-- When `detectUnsupportedBrowser()` returns a message AND `publishedUrl` exists: render the URL in an iframe with a small banner: "Showing your last published version — open on desktop to edit live."
-- When `detectUnsupportedBrowser()` returns a message AND no `publishedUrl`: keep the current message + add a "Publish your project" CTA.
+## 3. Soft cost guardrails ✅
 
-### Files
-- `src/components/WebContainerPreview.tsx` (new fallback render branch + new prop)
-- `src/routes/builder.tsx` (resolve published URL in loader, pass as prop)
-- New `src/lib/published-url.ts` (helper to resolve the URL from project + domains + builds)
+- **Auth + credit gating wired on `/api/generate`**: `requireSupabaseAuth` equivalent (`authorize` helper) → `spendCredit({ reason: "ai_message" })` pre-flight → `refundCredit` on any upstream failure.
+- **`/api/generate-image` (option B)**: bearer token present → validate, charge `ai_image` credit, refund on failure. No bearer (calls from generated end-user apps) → keep the existing 10/min per-IP soft cap. This preserves end-user app functionality without giving anonymous traffic unlimited spend.
+- **`refund_credit` Postgres function**: bucket-aware refund (daily_free / monthly_grant / topup), with an audit-trail entry in `credit_ledger`.
+- **Server-side input cap on `/api/generate`**: latest user message capped at 8000 chars (~2000 tokens). Cap runs BEFORE the credit charge so rejected payloads don't cost the user a credit.
+- **Server-side input cap on `/api/generate-image`**: prompt capped at 500 chars (existing).
+- **Friendly errors**: added a "too long / too large" pattern in `src/lib/friendly-errors.ts`. 402 (out of credits) and 401 (signed out) were already covered.
 
----
+**Out of scope (deferred per platform constraints):** sliding-window per-user request limits, dedicated `rate_limits` table. Will revisit when the platform ships rate-limiting primitives.
 
-## 2. Element picker stabilization
+## 4. First-run onboarding polish ✅
 
-### Problem
-The picker (`ensurePickerInstalled` + postMessage `onPick`) silently fails:
-- Picker script isn't re-injected after SPA route changes inside the iframe.
-- `postMessage` events drop if the iframe reloads mid-pick.
-- No visible error when injection fails — user clicks "Pick" and nothing happens.
+- `src/components/StartIdeasPanel.tsx`: 8 hand-written, specific starter prompts in a 2/3/4-column grid under the landing-page composer. Click → fills textarea, focuses, scrolls into view. Mounted on `/` (landing).
+- `src/components/FirstRunTour.tsx`: 3-step product tour (Chat → Preview → Publish) gated on `localStorage["petal:first-run-tour:v1"]`. Versioned key so we can re-show the tour to existing users if we materially change the product. Lazy-loaded on `/builder` so the route's initial bundle is unaffected.
 
-### Fix
-- In `src/lib/webcontainer.ts`: make `ensurePickerInstalled` idempotent and safe to call repeatedly. Tag the injected script with `data-petal-picker-version="<const>"` so we can detect/replace stale versions.
-- In `src/components/WebContainerPreview.tsx`:
-  - Re-inject on every `iframe.onLoad` event, not just initial mount.
-  - When `pickActive` is true but no message arrives within 30s, surface a toast: "Picker didn't attach — try reloading the preview."
-  - Add a visible armed-state ring on the iframe while `pickActive` is true.
-
-### Files
-- `src/lib/webcontainer.ts` (idempotent re-inject, version tag)
-- `src/components/WebContainerPreview.tsx` (onLoad re-inject, timeout toast, armed-state UI)
+**Note vs original plan:** The tour uses centered cards with arrow-text pointers ("← The chat panel", "↑ Live preview") instead of absolutely-positioned tooltips against specific DOM nodes. Same mental model, but resilient to any future builder layout change.
 
 ---
 
-## 3. Soft cost guardrails (no backend rate limiting)
+## Files changed (final tally)
 
-### Problem
-`/api/generate` and `/api/generate-image` could be abused to rack up Lovable AI / image gen costs. The platform doesn't have backend rate-limiting primitives yet, so building ad-hoc infrastructure now is wasted work.
+### New
+- `src/components/StartIdeasPanel.tsx`
+- `src/components/FirstRunTour.tsx`
+- `src/server/credits.server.ts`
+- `supabase/migrations/...refund_credit.sql`
 
-### Fix — three lightweight protections
-1. **Verify auth on both endpoints**: confirm both routes use `requireSupabaseAuth` (or equivalent) and reject unauthenticated requests with 401. This alone removes the bulk of the abuse surface.
-2. **Per-request hard ceilings** (server-side, can't be bypassed by client):
-   - `/api/generate`: cap input prompt at 8000 chars, cap max output tokens at a fixed value, reject malformed payloads via Zod.
-   - `/api/generate-image`: cap prompt at 2000 chars, only allow approved size/quality combos.
-3. **Credit gating already exists** (`spend_credit` RPC + `user_wallets`) — verify both endpoints call it BEFORE invoking the AI provider, not after. A user who runs out of credits gets a clean 402-style response and can't keep generating.
+### Modified
+- `src/routes/builder.tsx` — `useWebContainerSupported`, deployed-fallback gate, FirstRunTour mount
+- `src/components/WebContainerPreview.tsx` — onLoad re-push, picker-ready tracking, 30s watchdog, warning banner
+- `src/lib/webcontainer.ts` — versioned picker, cleanup hook, idempotent install
+- `src/routes/api/generate.ts` — credit pre-flight + refund + 8000-char input cap
+- `src/routes/api/generate-image.ts` — option-B auth/credit branch (anonymous keeps IP cap)
+- `src/lib/friendly-errors.ts` — "too long" pattern
+- `src/routes/index.tsx` — StartIdeasPanel mount
 
-### Out of scope (deferred)
-- Sliding-window per-user request limits (waiting on platform primitives).
-- New `rate_limits` table.
+## What's still open (post-launch backlog)
 
-### Files
-- `src/routes/api/generate.ts` (verify auth middleware, add Zod input caps, confirm `spend_credit` is called pre-flight)
-- `src/routes/api/generate-image.ts` (same)
-- `src/lib/friendly-errors.ts` (handle 402 "out of credits" + 400 "input too large" with friendly chat messages)
-
----
-
-## 4. First-run onboarding polish
-
-### Problem
-New users land on the Builder with an empty input and no idea what to type.
-
-### Fix
-- On the empty Builder state (no current project, no draft), render a "Start with an idea" panel above the input with 6 curated prompts. Examples: "A booking page for a barbershop", "A community for indie game devs", "An invoicing tool for freelancers", "A landing page for a SaaS launch", "A personal portfolio for a designer", "A waitlist page for a new product".
-- Clicking a prompt fills the input and focuses it (does NOT auto-submit).
-- One-time 3-step tour using a `localStorage` flag `petal_tour_v1_seen`:
-  1. Input box → "Describe what you want to build."
-  2. Preview pane → "See your app run live as you iterate."
-  3. Publish button → "One click to ship it to the world."
-
-### Files
-- New `src/components/StartIdeasPanel.tsx`
-- New `src/components/FirstRunTour.tsx`
-- `src/routes/builder.tsx` (mount both: panel when empty state, tour on first visit)
-
----
-
-## Technical notes
-
-- **Published URL** resolved server-side in the builder loader to avoid a client round-trip; SSR'd into the page.
-- **Picker version tag**: bump a constant in `webcontainer.ts` whenever the injected script changes; the re-inject check compares the iframe's `<script data-petal-picker-version>` to the constant.
-- **No new tables, no new migrations** — keeps blast radius small.
-- **Tour**: pure CSS/React, no external library.
-- All four items are independent; can ship in any order.
-
-## Order of work
-1. Soft cost guardrails (lowest risk, ship first quietly)
-2. Mobile fallback (biggest visible win)
-3. Element picker fixes
-4. Onboarding polish
-
-Estimated time: ~2 focused days.
+- Rate limiting infrastructure when the platform exposes primitives.
+- Telemetry on tour completion / start-idea pick rate to inform copy iteration.
+- A/B prompt copy on the StartIdeas cards (currently static, hand-curated).
