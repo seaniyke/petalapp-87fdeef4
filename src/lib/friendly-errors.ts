@@ -122,6 +122,22 @@ export function toFriendlyError(raw: unknown): FriendlyError {
   return { ...GENERIC, technicalDetail: text };
 }
 
+/** Shown while Petal is auto-fixing a failed build (Phase 2).
+ *  This is purely informational — there's no action button because Petal is
+ *  already on it. After 2 attempts we fall back to `friendlyBuildFailure`
+ *  with the manual "Ask Petal to fix it" button. */
+export function autoFixingBuild(attempt: number): FriendlyError {
+  return {
+    title: attempt === 1 ? "Petal spotted an error and is fixing it" : "Trying one more fix",
+    message:
+      attempt === 1
+        ? "The build didn't compile. Petal is reading the error and patching the code — no action needed."
+        : "The first fix didn't quite work. Petal is taking another pass.",
+    actionLabel: "Working on it",
+    actionKind: "dismiss",
+  };
+}
+
 /** Friendly copy specifically for a failed Cloudflare Pages build.
  *  We pass the raw log into the friendly error so the user can read it
  *  under "Show details" — and `askPetalToFix` in builder.tsx forwards the

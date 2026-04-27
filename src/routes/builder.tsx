@@ -50,7 +50,12 @@ import {
   defaultPhases,
   markFailed,
 } from "@/lib/build-phases";
-import { friendlyBuildFailure, toFriendlyError, type FriendlyError } from "@/lib/friendly-errors";
+import {
+  autoFixingBuild,
+  friendlyBuildFailure,
+  toFriendlyError,
+  type FriendlyError,
+} from "@/lib/friendly-errors";
 import { BuildActivityCard } from "@/components/BuildActivityCard";
 
 
@@ -216,6 +221,18 @@ function Builder() {
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Phase 2 (auto-fix): when a build fails, Petal automatically reads the log
+  // and sends a fix prompt — capped at 2 attempts per build id so we never
+  // get stuck in a loop. After the cap we fall back to the manual
+  // "Ask Petal to fix it" button (friendlyBuildFailure).
+  const MAX_AUTO_FIX_ATTEMPTS = 2;
+  const autoFixRef = useRef<{ buildId: string | null; attempts: number }>({
+    buildId: null,
+    attempts: 0,
+  });
+  // Stable handle to the latest askPetalToFix so the failure effect (declared
+  // before send/askPetalToFix) can call it without stale-closure issues.
+  const askPetalToFixRef = useRef<(() => void) | null>(null);
 
   // Pick up attachments stashed by the landing page (sessionStorage),
   // exactly once per attachKey. Drop them from storage so a refresh
@@ -242,18 +259,45 @@ function Builder() {
   const isLive = buildSnap?.status === "ready";
 
   // Reflect Cloudflare build state into the phase timeline + friendly errors.
+  // On failure: auto-trigger the fix loop (Phase 2) up to MAX_AUTO_FIX_ATTEMPTS
+  // before surfacing the manual "Ask Petal to fix it" button.
   useEffect(() => {
     if (!buildSnap) return;
+    const buildId = project?.latest_build_id ?? null;
+
+    // New build id → reset the attempt counter so a brand-new failure gets
+    // its own pair of auto-fix attempts.
+    if (autoFixRef.current.buildId !== buildId) {
+      autoFixRef.current = { buildId, attempts: 0 };
+    }
+
     if (buildSnap.status === "ready") {
       setPhases((p) => completeThrough(p, "live"));
+      // A successful build clears the auto-fix counter — next failure starts fresh.
+      autoFixRef.current.attempts = 0;
     } else if (buildSnap.status === "pending") {
       setPhases((p) => advanceTo(p, "deploying"));
     } else if (buildSnap.status === "failed") {
       setPhases((p) => markFailed(p, "deploying"));
+      const used = autoFixRef.current.attempts;
+      if (used < MAX_AUTO_FIX_ATTEMPTS && !busy) {
+        // Auto-fix path: bump the counter, show a calm "fixing it" panel,
+        // and fire the same prompt the manual button would.
+        autoFixRef.current.attempts = used + 1;
+        setFriendlyError(autoFixingBuild(used + 1));
+        setActivityVisible(true);
+        // Defer to next tick so React commits the state above before send()
+        // resets `friendlyError` and starts a new run.
+        const t = setTimeout(() => {
+          askPetalToFixRef.current?.();
+        }, 50);
+        return () => clearTimeout(t);
+      }
+      // Manual fallback after we've burned both auto-attempts.
       setFriendlyError(friendlyBuildFailure(buildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildSnap?.status, buildSnap?.errorMessage]);
+  }, [buildSnap?.status, buildSnap?.errorMessage, project?.latest_build_id, busy]);
 
   // Auto-hide the success card a little after the app goes live so the chat
   // returns to a calm state. The card itself also self-collapses.
@@ -855,6 +899,13 @@ function Builder() {
     const tail = rawLog
       ? rawLog.split("\n").slice(-60).join("\n").slice(-3500)
       : "";
+    // When this is an auto-fix retry (Phase 2), nudge the AI to try a
+    // different angle than its previous attempt.
+    const attempt = autoFixRef.current.attempts;
+    const retryNote =
+      attempt > 1
+        ? "\n\nNote: this is your second attempt at fixing the same build. Your previous fix did not resolve the issue — re-read the error carefully and try a different approach."
+        : "";
     const prompt = tail
       ? [
           "The build just failed with this error from the bundler:",
@@ -864,10 +915,17 @@ function Builder() {
           "```",
           "",
           "Please look at the relevant files in the project, identify the root cause, and fix it. Make the smallest change that will let the build succeed.",
-        ].join("\n")
-      : "The build failed but no error log was captured. Please review the project files for obvious mistakes (missing imports, syntax errors, typos in package.json) and fix them.";
+        ].join("\n") + retryNote
+      : "The build failed but no error log was captured. Please review the project files for obvious mistakes (missing imports, syntax errors, typos in package.json) and fix them." +
+        retryNote;
     void send(prompt, { isRetry: false });
   }, [send, buildSnap]);
+
+  // Keep the ref in sync so the build-failure effect (declared earlier in
+  // the component) can call into the latest closure.
+  useEffect(() => {
+    askPetalToFixRef.current = askPetalToFix;
+  }, [askPetalToFix]);
 
   async function downloadProject() {
     if (!files.length) return;
