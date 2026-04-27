@@ -185,6 +185,72 @@ async function handleDisconnect(userId: string, body: unknown): Promise<Response
   return Response.json({ ok: true });
 }
 
+/* ---------------- Managed-backend actions ---------------- */
+
+async function handleProvisionStatus(userId: string, body: unknown): Promise<Response> {
+  const parsed = ProjectIdInput.safeParse(body);
+  if (!parsed.success) return new Response(parsed.error.message, { status: 400 });
+  const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
+  if (ownerErr) return ownerErr;
+  const status = await refreshStatus(parsed.data.projectId);
+  return Response.json(status);
+}
+
+async function handleProvisionRetry(userId: string, body: unknown): Promise<Response> {
+  const parsed = ProjectIdInput.safeParse(body);
+  if (!parsed.success) return new Response(parsed.error.message, { status: 400 });
+  const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
+  if (ownerErr) return ownerErr;
+
+  // Only allow retry from a failed state — otherwise we might double-create.
+  const { data: row } = await supabaseAdmin
+    .from("project_backends")
+    .select("status, provider")
+    .eq("project_id", parsed.data.projectId)
+    .maybeSingle();
+  if (!row || row.provider !== "managed_petal") {
+    return new Response("No managed backend on this project", { status: 404 });
+  }
+  if (row.status === "failed" || row.status === "paused") {
+    if (row.status === "paused") {
+      await restoreForProject(parsed.data.projectId);
+    } else {
+      await supabaseAdmin
+        .from("project_backends")
+        .update({ status: "provisioning", error_message: null })
+        .eq("project_id", parsed.data.projectId);
+    }
+  }
+  // Fire-and-forget; client polls for status.
+  provisionForProject(parsed.data.projectId).catch((e) =>
+    console.error("[backend retry] provision failed", e),
+  );
+  return Response.json({ ok: true });
+}
+
+async function handleManagedCredentials(userId: string, body: unknown): Promise<Response> {
+  const parsed = ProjectIdInput.safeParse(body);
+  if (!parsed.success) return new Response(parsed.error.message, { status: 400 });
+  const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
+  if (ownerErr) return ownerErr;
+  const { data } = await supabaseAdmin
+    .from("project_backends")
+    .select(
+      "provider, status, supabase_url, anon_key, service_role_key, supabase_project_ref",
+    )
+    .eq("project_id", parsed.data.projectId)
+    .maybeSingle();
+  if (!data || data.provider !== "managed_petal" || data.status !== "ready") {
+    return new Response("Managed backend not ready", { status: 404 });
+  }
+  return Response.json({
+    supabaseUrl: data.supabase_url,
+    anonKey: data.anon_key,
+    serviceRoleKey: data.service_role_key,
+    supabaseProjectRef: data.supabase_project_ref,
+  });
+}
+
 export const Route = createFileRoute("/api/backend")({
   server: {
     handlers: {
@@ -209,6 +275,12 @@ export const Route = createFileRoute("/api/backend")({
             return handleConnect(auth, body);
           case "disconnect":
             return handleDisconnect(auth, body);
+          case "provision-status":
+            return handleProvisionStatus(auth, body);
+          case "provision-retry":
+            return handleProvisionRetry(auth, body);
+          case "managed-credentials":
+            return handleManagedCredentials(auth, body);
           default:
             return new Response("Unknown action", { status: 400 });
         }
