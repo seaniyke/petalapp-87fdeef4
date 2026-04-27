@@ -181,6 +181,14 @@ function Landing() {
     const params = new URLSearchParams({ prompt: trimmed });
     if (mode === "discuss") params.set("mode", "discuss");
 
+    // The draft is about to ride along on the URL — drop the local copy so
+    // a future visit to the landing page doesn't pre-fill an old prompt.
+    try {
+      sessionStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* ignore */
+    }
+
     // Stash any attached images in sessionStorage so they survive the redirect
     // (URL would blow past 32KB instantly with even one screenshot). The
     // builder picks them up by `attachKey` on first send.
