@@ -89,7 +89,7 @@ export const Route = createFileRoute("/lovable/email/auth/preview")({
           )
         }
 
-        const EmailTemplate = await getEmailTemplate(type)
+        const EmailTemplate = EMAIL_TEMPLATES[type]
 
         if (!EmailTemplate) {
           return Response.json(
@@ -98,12 +98,8 @@ export const Route = createFileRoute("/lovable/email/auth/preview")({
           )
         }
 
-        const [{ render }, React] = await Promise.all([
-          import('@react-email/components'),
-          import('react'),
-        ])
         const sampleData = SAMPLE_DATA[type] || {}
-        const html = await render(React.createElement(EmailTemplate as React.ComponentType<any>, sampleData))
+        const html = await render(React.createElement(EmailTemplate, sampleData))
 
         return new Response(html, {
           status: 200,
