@@ -26,6 +26,7 @@ import { Route as ApiGenerateImageRouteImport } from './routes/api/generate-imag
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 import { Route as ApiDomainsRouteImport } from './routes/api/domains'
 import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
+import { Route as ApiCoachRouteImport } from './routes/api/coach'
 import { Route as ApiBackendRouteImport } from './routes/api/backend'
 import { Route as AdminBillingRouteImport } from './routes/admin.billing'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -127,6 +128,11 @@ const ApiDiscussRoute = ApiDiscussRouteImport.update({
   path: '/api/discuss',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCoachRoute = ApiCoachRouteImport.update({
+  id: '/api/coach',
+  path: '/api/coach',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiBackendRoute = ApiBackendRouteImport.update({
   id: '/api/backend',
   path: '/api/backend',
@@ -217,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/billing': typeof AdminBillingRoute
   '/api/backend': typeof ApiBackendRoute
+  '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/billing': typeof AdminBillingRoute
   '/api/backend': typeof ApiBackendRoute
+  '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
@@ -286,6 +294,7 @@ export interface FileRoutesById {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/billing': typeof AdminBillingRoute
   '/api/backend': typeof ApiBackendRoute
+  '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
@@ -322,6 +331,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin/billing'
     | '/api/backend'
+    | '/api/coach'
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
@@ -356,6 +366,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin/billing'
     | '/api/backend'
+    | '/api/coach'
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
@@ -390,6 +401,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin/billing'
     | '/api/backend'
+    | '/api/coach'
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
@@ -425,6 +437,7 @@ export interface RootRouteChildren {
   UnsubscribeRoute: typeof UnsubscribeRoute
   AdminBillingRoute: typeof AdminBillingRoute
   ApiBackendRoute: typeof ApiBackendRoute
+  ApiCoachRoute: typeof ApiCoachRoute
   ApiDiscussRoute: typeof ApiDiscussRoute
   ApiDomainsRoute: typeof ApiDomainsRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
@@ -572,6 +585,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDiscussRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/coach': {
+      id: '/api/coach'
+      path: '/api/coach'
+      fullPath: '/api/coach'
+      preLoaderRoute: typeof ApiCoachRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/backend': {
       id: '/api/backend'
       path: '/api/backend'
@@ -689,6 +709,7 @@ const rootRouteChildren: RootRouteChildren = {
   UnsubscribeRoute: UnsubscribeRoute,
   AdminBillingRoute: AdminBillingRoute,
   ApiBackendRoute: ApiBackendRoute,
+  ApiCoachRoute: ApiCoachRoute,
   ApiDiscussRoute: ApiDiscussRoute,
   ApiDomainsRoute: ApiDomainsRoute,
   ApiGenerateRoute: ApiGenerateRoute,
