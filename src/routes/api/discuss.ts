@@ -169,6 +169,7 @@ export const Route = createFileRoute("/api/discuss")({
         });
 
         if (!upstream.ok) {
+          await refundDiscuss(`upstream_${upstream.status}`);
           let msg = `AI gateway error (${upstream.status})`;
           if (upstream.status === 429) msg = "Rate limit reached. Please wait a moment.";
           else if (upstream.status === 402)
@@ -189,6 +190,7 @@ export const Route = createFileRoute("/api/discuss")({
         };
         const reply = json.choices?.[0]?.message?.content?.trim() ?? "";
         if (!reply) {
+          await refundDiscuss("empty_reply");
           return new Response("Empty reply from AI.", { status: 502 });
         }
         return Response.json({ reply });
