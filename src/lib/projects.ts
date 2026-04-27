@@ -218,11 +218,17 @@ export async function loadProjectFiles(projectId: string): Promise<ProjectFile[]
 const STRUCTURED_PREFIX = "@@petal/v1:";
 
 function encodeAssistantContent(m: ChatMessage): string {
-  if (m.role !== "assistant" || (!m.plan && !m.recap)) return m.content;
+  if (
+    m.role !== "assistant" ||
+    (!m.plan && !m.recap && !(m.suggestions && m.suggestions.length > 0))
+  ) {
+    return m.content;
+  }
   return STRUCTURED_PREFIX + JSON.stringify({
     content: m.content,
     plan: m.plan ?? null,
     recap: m.recap ?? null,
+    suggestions: m.suggestions ?? null,
   });
 }
 
@@ -233,12 +239,17 @@ function decodeAssistantContent(role: string, raw: string): ChatMessage {
         content?: string;
         plan?: string | null;
         recap?: string | null;
+        suggestions?: string[] | null;
       };
       return {
         role: "assistant",
         content: parsed.content ?? "",
         plan: parsed.plan ?? undefined,
         recap: parsed.recap ?? undefined,
+        suggestions:
+          Array.isArray(parsed.suggestions) && parsed.suggestions.length > 0
+            ? parsed.suggestions.filter((s): s is string => typeof s === "string")
+            : undefined,
       };
     } catch {
       // Fall through to plain text on corrupt payload.
