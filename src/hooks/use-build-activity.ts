@@ -22,9 +22,17 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type BuildSnapshot = {
-  status: "pending" | "ready" | "failed";
+  /** Includes 'building' (Railway picked up the job, not yet finished) so the
+   *  UI can advance the activity card past "deploying" without getting stuck.
+   *  The DB-level status check constraint allows the same four values. */
+  status: "pending" | "building" | "ready" | "failed";
   distPath: string | null;
   errorMessage: string | null;
+  /** When the build row was first observed by this client. Used to escalate
+   *  copy ("almost there", "taking longer", "still working") and to surface
+   *  a friendly "deploy stalled" card after a long wait — independent of the
+   *  server-side reaper which only kicks in after 10 minutes. */
+  observedAt: number;
 };
 
 export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | null {
