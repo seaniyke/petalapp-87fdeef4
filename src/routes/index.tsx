@@ -135,11 +135,29 @@ function Landing() {
     e.target.value = "";
   };
 
-  const submit = () => {
+  const submit = async () => {
     const trimmed = prompt.trim();
     if (!trimmed) return;
     const params = new URLSearchParams({ prompt: trimmed });
     if (mode === "discuss") params.set("mode", "discuss");
+
+    // Stash any attached images in sessionStorage so they survive the redirect
+    // (URL would blow past 32KB instantly with even one screenshot). The
+    // builder picks them up by `attachKey` on first send.
+    if (attachments.length > 0) {
+      try {
+        const { encodeAttachments } = await import("@/lib/attachments");
+        const encoded = await encodeAttachments(attachments);
+        if (encoded.length > 0) {
+          const key = `petal:attach:${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+          sessionStorage.setItem(key, JSON.stringify(encoded));
+          params.set("attachKey", key);
+        }
+      } catch (e) {
+        console.warn("Could not encode attachments:", e);
+      }
+    }
+
     const target = `/builder?${params.toString()}`;
     if (!user) {
       window.location.href = `/auth?mode=signup&redirect=${encodeURIComponent(target)}`;
