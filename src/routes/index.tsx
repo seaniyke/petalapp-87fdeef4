@@ -1,16 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SampleAppShowcase } from "@/components/SampleAppShowcase";
 import { useAuth } from "@/lib/auth";
 import {
   ArrowRight,
+  ArrowUp,
   MessageSquare,
   Code2,
   Eye,
   Rocket,
   Layers,
   Wand2,
+  Paperclip,
   Github,
 } from "lucide-react";
 
@@ -52,7 +54,84 @@ const samplePrompts = [
 
 function Landing() {
   const [prompt, setPrompt] = useState("");
+  const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { user } = useAuth();
+
+  // Typewriter effect that cycles through samplePrompts. Pauses while the
+  // textarea is focused or the user has typed anything, and respects
+  // prefers-reduced-motion.
+  useEffect(() => {
+    if (isFocused || prompt.length > 0) return;
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setAnimatedPlaceholder("Describe an app you want to build…");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const prefix = "Ask Petal to build ";
+    let promptIdx = 0;
+    let charIdx = 0;
+    let mode: "typing" | "pausing" | "deleting" = "typing";
+
+    const tick = () => {
+      if (cancelled) return;
+      const target = samplePrompts[promptIdx % samplePrompts.length];
+      const fullText = prefix + target.toLowerCase().replace(/^a /, "a ");
+
+      if (mode === "typing") {
+        charIdx++;
+        setAnimatedPlaceholder(fullText.slice(0, charIdx));
+        if (charIdx >= fullText.length) {
+          mode = "pausing";
+          timer = setTimeout(tick, 1600);
+          return;
+        }
+        timer = setTimeout(tick, 45);
+      } else if (mode === "pausing") {
+        mode = "deleting";
+        timer = setTimeout(tick, 30);
+      } else {
+        charIdx--;
+        setAnimatedPlaceholder(fullText.slice(0, Math.max(charIdx, prefix.length)));
+        if (charIdx <= prefix.length) {
+          mode = "typing";
+          promptIdx++;
+          timer = setTimeout(tick, 250);
+          return;
+        }
+        timer = setTimeout(tick, 22);
+      }
+    };
+
+    timer = setTimeout(tick, 400);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [isFocused, prompt]);
+
+  // Auto-grow textarea up to a max height.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
+  }, [prompt]);
+
+  const submit = () => {
+    const trimmed = prompt.trim();
+    if (!user) {
+      const q = encodeURIComponent(trimmed);
+      window.location.href = `/auth?mode=signup${q ? `&redirect=${encodeURIComponent("/builder?prompt=" + q)}` : ""}`;
+      return;
+    }
+    const q = encodeURIComponent(trimmed);
+    window.location.href = `/builder${q ? `?prompt=${q}` : ""}`;
+  };
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -86,38 +165,52 @@ function Landing() {
             want, watch the files appear, and share a live preview in seconds.
           </p>
 
-          {/* Prompt box */}
+          {/* Prompt box — large chat-style composer */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              const trimmed = prompt.trim();
-              if (!user) {
-                const q = encodeURIComponent(trimmed);
-                window.location.href = `/auth?mode=signup${q ? `&redirect=${encodeURIComponent("/builder?prompt=" + q)}` : ""}`;
-                return;
-              }
-              const q = encodeURIComponent(trimmed);
-              window.location.href = `/builder${q ? `?prompt=${q}` : ""}`;
+              submit();
             }}
             className="mx-auto mt-10 max-w-2xl"
           >
-            <div className="group relative rounded-2xl border border-border bg-card/90 p-2 shadow-[var(--shadow-glow)] backdrop-blur transition focus-within:border-primary">
-              <div className="flex items-center gap-2">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-butter">
-                  <Wand2 className="h-5 w-5 text-foreground/70" />
-                </span>
-                <input
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Describe an app you want to build…"
-                  className="flex-1 bg-transparent px-1 py-2 text-base outline-none placeholder:text-muted-foreground"
-                />
+            <div className="group relative rounded-3xl border border-border bg-card/90 p-4 text-left shadow-[var(--shadow-glow)] backdrop-blur transition focus-within:border-primary focus-within:shadow-[var(--shadow-soft)]">
+              <textarea
+                ref={textareaRef}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onFocus={() => {
+                  setIsFocused(true);
+                  setAnimatedPlaceholder("");
+                }}
+                onBlur={() => setIsFocused(false)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    submit();
+                  }
+                }}
+                rows={3}
+                placeholder={isFocused || prompt ? "Describe an app you want to build…" : animatedPlaceholder}
+                className="block w-full resize-none bg-transparent px-2 pb-12 pt-1 text-base leading-relaxed outline-none placeholder:text-muted-foreground/80"
+                style={{ minHeight: "5.5rem" }}
+              />
+
+              {/* Bottom toolbar */}
+              <div className="absolute inset-x-3 bottom-3 flex items-center justify-between">
+                <button
+                  type="button"
+                  className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  aria-label="Attach"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </button>
                 <button
                   type="submit"
-                  className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:brightness-105"
+                  aria-label="Build it"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:brightness-105 disabled:opacity-50"
+                  disabled={!prompt.trim() && !isFocused}
                 >
-                  Build it
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowUp className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -127,7 +220,10 @@ function Landing() {
                 <button
                   key={p}
                   type="button"
-                  onClick={() => setPrompt(p)}
+                  onClick={() => {
+                    setPrompt(p);
+                    textareaRef.current?.focus();
+                  }}
                   className="rounded-full border border-border bg-card/60 px-3 py-1.5 text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
                 >
                   {p}
