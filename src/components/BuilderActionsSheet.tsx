@@ -22,6 +22,7 @@ import {
   Moon,
   Monitor as MonitorIcon,
   Sparkles,
+  Globe,
 } from "lucide-react";
 import { useWallet } from "@/hooks/use-wallet";
 import { useTheme, type Theme } from "@/hooks/use-theme";
@@ -34,6 +35,7 @@ type Props = {
   onOpenSettings: () => void;
   onOpenRename: () => void;
   onOpenBilling: () => void;
+  onOpenPublish: () => void;
 };
 
 export function BuilderActionsSheet({
@@ -42,6 +44,7 @@ export function BuilderActionsSheet({
   onOpenSettings,
   onOpenRename,
   onOpenBilling,
+  onOpenPublish,
 }: Props) {
   const { wallet, plan, breakdown, loading } = useWallet();
   const { theme, setTheme } = useTheme();
@@ -113,6 +116,14 @@ export function BuilderActionsSheet({
 
         {/* Actions */}
         <ul className="mt-3 divide-y divide-border/60 rounded-2xl bg-card">
+          <ActionRow
+            icon={<Globe className="h-5 w-5" />}
+            label="Publish"
+            onClick={() => {
+              onOpenChange(false);
+              onOpenPublish();
+            }}
+          />
           <ActionRow
             icon={<SettingsIcon className="h-5 w-5" />}
             label="Settings"

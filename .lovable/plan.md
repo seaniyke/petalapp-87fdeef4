@@ -1,105 +1,104 @@
-# Make the AI integration-aware
+## Where Petal stands today vs Lovable / Base44
 
-## Today's behavior
+### What Petal already has
+- Every AI prompt triggers a Cloudflare Pages build via `/api/builds/trigger`. The build streams live status (pending → ready/failed) into `BuildActivityCard`.
+- A `/p/$slug` public share route gated by `is_public`, controlled in `SharePopover`.
+- Custom domains (`project_domains`) with proxy routing in `host-routing.server.ts`, and a Domains section in project settings.
+- A subdomain pattern (`petal-<id>.pages.dev`) that already serves the latest successful build.
 
-You already have the plumbing for integrations:
+### The gap vs Lovable / Base44
+There is **no separation between "preview" and "published"**. Today, every prompt's build is what visitors see — there's no concept of:
 
-- **Marketplace + installer** (`src/server/integrations/`) — Resend and Plausible defined; installer writes files into `project_files`, encrypts secrets, records a manifest.
-- **Build-time env injection** (`env-injector.server.ts`) — renders `.env.production` and `.dev.vars` for the deploy.
-- **Generated helper files** — e.g. `src/integrations/resend/send.ts` lands in the project so code that imports it works.
-- **Backend awareness in prompts** — `/api/generate` already injects a `backendBlock` when a managed backend is attached, telling the AI to use `@/integrations/backend/*`.
+1. **A dedicated Publish action** ("Publish" / "Update" button surfaced in the header).
+2. **A Publish dialog** showing the live URL, visibility (Public / Private / Workspace), domain manager link, "Up to date" / "Update" CTA, and visitor count.
+3. **A pinned production build** distinct from the latest preview build, so the user can keep iterating without instantly pushing every change to their audience.
+4. **Visibility controls** on the published site (currently only a slug share toggle, not a true public/private/unpublish state).
+5. **A first-time Publish flow** (the Lovable bottom sheet "Publish" with website URL + "Manage domains" + "Who can see this website").
 
-What's **missing** is the equivalent for marketplace integrations. Today:
+So the answer: **plumbing parity (we already build & deploy on every change), but UX parity is missing.** Users can't tell whether their app is "live" in the public sense, can't manually push an update, and can't pause publishing.
 
-- `/api/generate` and `/api/discuss` have **zero awareness** of which integrations are installed.
-- If a user says "send a welcome email when someone signs up," the AI may invent its own `fetch("api.resend.com")` call, hardcode keys, or skip the helper entirely.
-- The AI doesn't know `@/integrations/resend/send` exists, that it's server-only, or that `RESEND_FROM_ADDRESS` is already configured.
-- The discuss-mode prompt explicitly says "Never invent features that aren't possible in a static React + Vite app" — which actively discourages proposing email/payments even when they're wired up.
+---
 
-So: the foundation works, but the AI can't take advantage of it. Users have to know to mention "use Resend" or paste the import path themselves.
+## Plan
 
-## What to build
+Add a real Publish surface that matches the Lovable screenshots. Two phases — Phase 1 ships parity with Lovable's dialog using existing build infra, Phase 2 adds the preview/production split.
 
-A small, reusable **integration context block** that gets injected into both the build prompt and the discuss prompt — same pattern as `backendBlock` today.
+### Phase 1 — Publish UI parity (small, ships immediately)
 
-### 1. Per-integration AI guidance
+1. **Header "Publish" button**
+   - Desktop (`SiteHeader` in builder + `builder.tsx` top-right): add a Publish button next to Share.
+   - Mobile: add "Publish" entry to the existing `BuilderActionsSheet` (matches the third uploaded screenshot).
 
-Extend `IntegrationDefinition` (`src/server/integrations/types.ts`) with one new optional field:
+2. **`PublishSheet` component** (new, mobile bottom sheet + desktop dialog)
+   - Header: "Published" title + visitor count placeholder.
+   - **Website URL** row showing the live URL (custom domain if set, else `petal-<id>.pages.dev` or the configured subdomain), with copy + "Manage domains" link that opens existing Domains section.
+   - **Who can see this website** row: Public / Private toggle (drives a new `projects.published_visibility` column — `public` | `private` | `unpublished`). Default `public` for current behavior.
+   - **Primary CTA**:
+     - "Up to date" (disabled, green) when latest build is ready and no newer files exist.
+     - "Update" (primary) when the user has made changes since last successful build → calls `triggerBuild(projectId)`.
+     - "Publishing…" with spinner when build is pending.
+     - "Retry publish" (destructive tone) when latest build is failed.
+   - Secondary actions: "Edit settings" (opens project settings), "Review security" link (placeholder for now).
 
-```ts
-aiGuidance?: (ctx: IntegrationContext) => string;
-```
+3. **Published-status indicator** in the header
+   - Tiny dot + label next to the project title: "Live", "Update available", "Publishing…", or "Not published".
+   - Derived from `latest_build_id` build status + a new `last_published_build_id` column (Phase 2). For Phase 1 just mirror `latest_build_id`.
 
-Each integration returns a short, prescriptive paragraph the AI can follow:
+4. **Friendly URL resolution helper** (`src/lib/published-url.ts`)
+   - Centralize: primary custom domain → workspace branded subdomain → `petal-<id>.pages.dev`.
 
-- **Resend example:** "Email is wired. To send, import `sendEmail` from `@/integrations/resend/send` inside a server route under `src/routes/api/*` (never a React component — `process.env` is undefined in the browser). Default from address is already configured. Sample template at `@/integrations/resend/templates/welcome`."
-- **Plausible example:** "Analytics is wired. Pageviews track automatically. To track a custom event, call `trackEvent('event_name', { props })` from `@/integrations/plausible/track`."
-- Future Stripe/Paystack: "Checkout is wired. Create a session via `createCheckoutSession()` in `src/routes/api/checkout.ts`. Webhook handler is at `/api/public/payments/webhook`. Never expose the secret key to the client."
+### Phase 2 — Preview vs Production split (the real win)
 
-### 2. Loader: `loadInstalledIntegrationsContext(projectId)`
+This is where we close the gap with Lovable / Base44. Today every keystroke deploys to production. Instead:
 
-New helper in `src/server/integrations/installer.server.ts` (or a new `prompt-context.server.ts`). Returns a single string ready to drop into the system prompt:
+1. **DB migration** on `projects`:
+   - `published_build_id uuid null` (the build currently serving public visitors).
+   - `published_visibility text not null default 'public'` (`public` | `private` | `unpublished`).
+   - `published_at timestamptz`.
 
-```text
-### Installed integrations (use these — do NOT reinvent)
+2. **`/api/builds/trigger`** keeps building on every prompt (these become **preview** builds — used by `MobilePreviewFallback`, the iframe preview, and `/p/$slug`).
 
-**Resend (email)** — <aiGuidance text>
-**Plausible (analytics)** — <aiGuidance text>
-```
+3. **New `/api/publish` route**: pins the current `latest_build_id` as `published_build_id`, sets `published_at`, optionally updates `published_visibility`. This is what the "Update" / "Publish" button in the new dialog calls.
 
-When nothing is installed, returns `""`.
+4. **`host-routing.server.ts`** changes:
+   - Custom domains and the canonical published subdomain proxy to the **published** build (`published_build_id` → its `dist_path`), not the latest preview.
+   - `/p/$slug` and the in-builder iframe continue to show the latest preview build.
+   - Honor `published_visibility`: `private` → 403 (or auth-gated), `unpublished` → 404 with "This app isn't published yet" page.
 
-### 3. Wire into `/api/generate`
+5. **Diff detection**: "Update available" surfaces when `latest_build_id !== published_build_id` and the latest build is `ready`.
 
-In `src/routes/api/generate.ts` around line 293–337, add:
+### Phase 3 — Polish (parity touches)
 
-```ts
-const integrationsBlock = body.projectId
-  ? await loadInstalledIntegrationsContext(body.projectId)
-  : "";
-// then:
-content: baseSystem + backendBlock + integrationsBlock + knowledgeBlock + visionAddendum + filesContext
-```
+- **Visitor count** on the Publish sheet (we already have a Plausible integration helper — wire it up).
+- **First-publish onboarding**: if `published_build_id is null`, the dialog opens with a single "Publish" CTA + a short copy block ("Your app will be live at …"), matching Lovable's first-publish state.
+- **Unpublish** action in the visibility menu.
+- **Push-update toast** after a successful prompt: "Changes ready to publish — Update".
 
-### 4. Wire into `/api/discuss`
+---
 
-Same call in `src/routes/api/discuss.ts` around line 138–139, plus soften the "Never invent features" rule so it doesn't override installed capabilities:
+## Files affected
 
-> "Never invent features that aren't possible in a Vite + React app **or any installed integration listed below**."
+**Phase 1**
+- `src/components/PublishSheet.tsx` (new)
+- `src/components/BuilderActionsSheet.tsx` (add Publish entry)
+- `src/routes/builder.tsx` (wire button + sheet, header status pill)
+- `src/lib/published-url.ts` (new helper)
 
-This is the key fix for the "discuss" experience: the user can ask "can we email people on signup?" and Petal will say yes (because Resend is installed) instead of deflecting.
+**Phase 2**
+- DB migration (`projects` columns above)
+- `src/routes/api/publish.ts` (new)
+- `src/server/host-routing.server.ts` (proxy to `published_build_id`)
+- `src/lib/projects.ts` (typing + helpers)
+- `src/hooks/use-build-activity.ts` (also expose "update available" derived state)
 
-### 5. Generation-mode hard rules
+**Phase 3**
+- `src/components/PublishSheet.tsx` (visitor count, unpublish, first-run copy)
+- Toast hook in `builder.tsx` after successful generation.
 
-Append to `SYSTEM_PROMPT_INITIAL` and `SYSTEM_PROMPT_PATCH`:
+---
 
-> When an integration block is present below, you **MUST** use those helpers for that capability. Do NOT call third-party APIs directly, do NOT hardcode keys, do NOT recreate helpers that already exist under `src/integrations/*`.
+## Recommendation
 
-### 6. (Optional, follow-up) Fill in guidance for existing integrations
+Ship **Phase 1 first** — it gives users the Publish/Update dialog, visibility control, and live URL in one place, which is the visible UX gap vs Lovable. Phase 2 (preview/production split) is the more strategic change but requires the DB migration and host-routing rewrite, so it's worth landing separately once Phase 1 is validated.
 
-Add `aiGuidance` to `resendIntegration` and `plausibleIntegration` in this same change so the feature ships useful from day one.
-
-## Files touched
-
-- `src/server/integrations/types.ts` — add `aiGuidance` to the definition type.
-- `src/server/integrations/installer.server.ts` — add `loadInstalledIntegrationsContext()`.
-- `src/server/integrations/resend.integration.ts` — add `aiGuidance`.
-- `src/server/integrations/plausible.integration.ts` — add `aiGuidance`.
-- `src/server/generate.server.ts` — append the new hard rule to both system prompts.
-- `src/routes/api/generate.ts` — load + inject `integrationsBlock`.
-- `src/routes/api/discuss.ts` — load + inject `integrationsBlock`, soften the "never invent" rule.
-
-No DB migrations, no new tables, no UI changes.
-
-## Why this is the right shape
-
-- **Mirrors the backend pattern.** `backendBlock` already proves the approach works.
-- **One source of truth.** Each integration ships its own AI guidance next to its files — adding Stripe later is one new field, no changes to `/api/generate`.
-- **Cheap.** Adds ~200–600 chars per installed integration to the prompt. No extra round trips.
-- **Discuss + Build both improve.** Today only build sees backend context; both should see integrations.
-
-## Out of scope (future ideas)
-
-- Suggesting installs from chat ("It looks like you want email — install Resend?"). Useful but a separate UX problem.
-- A `recommend_integration` tool the AI could call mid-turn. Worth doing once the catalog grows past ~5 entries.
-- Showing the user, in the chat UI, *which* integrations were factored into a given turn (transparency).
+Want me to start with Phase 1 only, or queue Phase 1 + 2 together?

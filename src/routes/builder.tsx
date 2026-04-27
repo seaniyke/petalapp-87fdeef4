@@ -27,6 +27,7 @@ import {
   Monitor,
   Paperclip,
   ImageIcon,
+  Globe,
 } from "lucide-react";
 import {
   encodeAttachments,
@@ -75,6 +76,7 @@ import { SharePopover } from "@/components/SharePopover";
 import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
 import { RevertPreviewDialog } from "@/components/RevertPreviewDialog";
 import { BuilderActionsSheet } from "@/components/BuilderActionsSheet";
+import { PublishSheet } from "@/components/PublishSheet";
 import { RenameProjectDialog } from "@/components/RenameProjectDialog";
 import { BillingSheet } from "@/components/BillingSheet";
 import {
@@ -224,6 +226,7 @@ function Builder() {
   const [actionsOpen, setActionsOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
   // Visual element edit (Phase 5): selected element from the preview iframe.
   type PickedElement = {
@@ -1285,6 +1288,23 @@ function Builder() {
             </div>
           )}
           {project && (
+            <button
+              type="button"
+              onClick={() => setPublishOpen(true)}
+              className="hidden h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 md:inline-flex"
+              title="Publish"
+            >
+              <Globe className="h-3.5 w-3.5" />
+              {buildSnap?.status === "pending"
+                ? "Publishing…"
+                : buildSnap?.status === "failed"
+                  ? "Retry publish"
+                  : project.latest_build_id && buildSnap?.status === "ready"
+                    ? "Published"
+                    : "Publish"}
+            </button>
+          )}
+          {project && (
             <ProjectSettingsSheet
               project={project}
               onChange={setProject}
@@ -1316,6 +1336,7 @@ function Builder() {
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenRename={() => setRenameOpen(true)}
             onOpenBilling={() => setBillingOpen(true)}
+            onOpenPublish={() => setPublishOpen(true)}
           />
           <RenameProjectDialog
             project={project}
@@ -1324,6 +1345,17 @@ function Builder() {
             onChange={setProject}
           />
           <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
+          <PublishSheet
+            open={publishOpen}
+            onOpenChange={setPublishOpen}
+            project={project}
+            onChange={setProject}
+            onManageDomains={() => {
+              setSettingsScrollTo("domains");
+              setSettingsOpen(true);
+            }}
+            onOpenSettings={() => setSettingsOpen(true)}
+          />
         </>
       )}
 
