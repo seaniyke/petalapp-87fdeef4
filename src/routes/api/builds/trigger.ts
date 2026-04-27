@@ -197,7 +197,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
 
         // 4) Fire the build. If the network call fails, mark the row as failed.
         try {
-          await postBuildToRailway({ projectId, buildId: build.id, files: buildFiles });
+          await postBuildToRailway({ projectId, buildId: build.id, files: withEnv });
         } catch (e) {
           const message = e instanceof Error ? e.message : "Failed to reach builder";
           console.error("postBuildToRailway failed", message);
