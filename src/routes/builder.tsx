@@ -998,11 +998,13 @@ function Builder() {
         // whether Petal even started thinking. We persist it locally only;
         // it's not written to the DB because the run failed and `lastUserPrompt`
         // remains set so the retry replays the same user message cleanly.
+        const preambleTrim = partialPreamble.trim();
         const trimmed = partialAssistant.trim();
-        if (trimmed.length > 0) {
+        const rescued = [preambleTrim, trimmed].filter(Boolean).join("\n\n");
+        if (rescued.length > 0) {
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: trimmed },
+            { role: "assistant", content: rescued },
           ]);
         }
       } finally {
