@@ -97,6 +97,20 @@ const PATTERNS: Array<{
       technicalDetail: raw,
     }),
   },
+  {
+    // Server-side input cap rejections from /api/generate (8000 chars) or
+    // /api/generate-image (500 chars). Both surface "too long" / "too large"
+    // in the response body, so a single pattern catches both.
+    test: /too long|too large|max(?:imum)?\s+\d+\s*chars?|prompt is too/i,
+    build: (raw) => ({
+      title: "That message is a bit too long",
+      message:
+        "Try splitting it into smaller asks — Petal works best with one focused change at a time.",
+      actionLabel: "Dismiss",
+      actionKind: "dismiss",
+      technicalDetail: raw,
+    }),
+  },
 ];
 
 const GENERIC: FriendlyError = {
