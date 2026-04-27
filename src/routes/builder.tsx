@@ -100,6 +100,7 @@ const CommandPalette = lazy(() =>
 const MarkdownMessage = lazy(() =>
   import("@/components/MarkdownMessage").then((m) => ({ default: m.MarkdownMessage })),
 );
+import { CollapsibleSegment } from "@/components/CollapsibleSegment";
 const WebContainerPreview = lazy(() =>
   import("@/components/WebContainerPreview").then((m) => ({ default: m.WebContainerPreview })),
 );
