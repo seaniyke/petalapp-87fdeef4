@@ -239,12 +239,21 @@ function PreviewFrame({
   iframeKey,
   onReload,
   badge,
+  cacheBust,
 }: {
   src: string;
   iframeKey: number;
   onReload: () => void;
   badge?: string;
+  /** Optional value appended as ?v=<cacheBust> to bypass edge cache after a fresh deploy. */
+  cacheBust?: string;
 }) {
+  // Append cache-bust param so a freshly-deployed build isn't masked by
+  // Cloudflare's edge cache (which can serve stale HTML for ~30s post-deploy).
+  // We never overwrite an existing query string the build URL might carry.
+  const finalSrc = cacheBust
+    ? `${src}${src.includes("?") ? "&" : "?"}v=${encodeURIComponent(cacheBust)}`
+    : src;
   return (
     <div className="relative flex h-full w-full flex-col">
       {badge && (
@@ -277,7 +286,7 @@ function PreviewFrame({
         <iframe
           key={iframeKey}
           title="App preview"
-          src={src}
+          src={finalSrc}
           className="h-full w-full border-0 bg-white"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         />
