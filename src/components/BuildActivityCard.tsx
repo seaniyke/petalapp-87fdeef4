@@ -104,6 +104,17 @@ export function BuildActivityCard({
     if (latestPath) subCaption = latestPath;
     else if (filesWritten && filesWritten > 0)
       subCaption = `${filesWritten} file${filesWritten === 1 ? "" : "s"} so far`;
+  } else if (currentPhase?.id === "deploying" && typeof deployElapsedSec === "number") {
+    // Escalate the deploy copy so the user sees the wait acknowledged. The
+    // long tail (>90s) is calmer on purpose — we don't want to alarm anyone
+    // about a deploy that's still healthy, just confirm we're paying attention.
+    if (deployElapsedSec >= 90) {
+      subCaption = "Still working on it — your code is safe, you can keep editing.";
+    } else if (deployElapsedSec >= 60) {
+      subCaption = "Almost there — bundling and uploading assets.";
+    } else if (deployElapsedSec >= 30) {
+      subCaption = "Wrapping up the build…";
+    }
   } else if (
     isActive &&
     currentPhase?.startedAt &&
