@@ -398,7 +398,14 @@ export type StreamEvent =
       recap?: string;
       creditsCharged?: number;
     }
-  | { type: "error"; message: string };
+  | {
+      type: "self_check";
+      score: number;
+      verdict: string;
+      gaps: string[];
+      suggestions: string[];
+    }
+  | { type: "error"; message: string; suggestions?: string[] };
 
 /** Apply a list of file operations to a current set of files. */
 export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {

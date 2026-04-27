@@ -729,7 +729,12 @@ function Builder() {
       let resultSummary = "";
       let resultPlan: string | undefined;
       let resultRecap: string | undefined;
+      // Layer 5 — populated by onSelfCheck so we can attach gap-driven
+      // follow-up chips to the assistant message and on error suggestions.
+      let resultSuggestions: string[] = [];
+      let resultVerdict: string | undefined;
       let streamError: string | null = null;
+      let errorSuggestions: string[] = [];
       // Mirror of the streamingAssistant state we accumulate as deltas come in.
       // Kept locally so the catch/finally branches can read the latest value
       // synchronously without going through React state.
@@ -850,8 +855,19 @@ function Builder() {
                 setLastBuildCredits(extras.creditsCharged);
               }
             },
-            onError: (m) => {
+            onSelfCheck: (v) => {
+              // Layer 5 — surface honest follow-ups as suggestion chips.
+              // Only carry forward suggestions when the model thinks the
+              // build genuinely missed something (score < 90 or non-empty
+              // gaps); a clean build shouldn't nag.
+              if (v.suggestions.length > 0 && (v.score < 90 || v.gaps.length > 0)) {
+                resultSuggestions = v.suggestions;
+              }
+              resultVerdict = v.verdict;
+            },
+            onError: (m, sugg) => {
               streamError = m;
+              if (sugg && sugg.length > 0) errorSuggestions = sugg;
             },
           },
           controller.signal,
@@ -875,6 +891,9 @@ function Builder() {
           content: combinedContent,
           plan: resultPlan,
           recap: resultRecap,
+          // Layer 5 — gap-driven follow-up chips. Empty array stays out of
+          // the message so a clean build doesn't render an empty chip row.
+          ...(resultSuggestions.length > 0 ? { suggestions: resultSuggestions } : {}),
         };
         setFiles(files2);
         setActiveFile((prev) => prev ?? "index.html");
@@ -1006,10 +1025,18 @@ function Builder() {
         const preambleTrim = partialPreamble.trim();
         const trimmed = partialAssistant.trim();
         const rescued = [preambleTrim, trimmed].filter(Boolean).join("\n\n");
-        if (rescued.length > 0) {
+        // If Petal had partial output OR Layer 5 produced retry suggestions,
+        // append a single message that carries both — the chips piggyback on
+        // the existing assistant-suggestions render path (line ~1741).
+        if (rescued.length > 0 || errorSuggestions.length > 0) {
+          const fallbackContent = rescued.length > 0 ? rescued : msg;
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: rescued },
+            {
+              role: "assistant",
+              content: fallbackContent,
+              ...(errorSuggestions.length > 0 ? { suggestions: errorSuggestions } : {}),
+            },
           ]);
         }
       } finally {

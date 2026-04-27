@@ -15,7 +15,13 @@ type Handlers = {
     summary: string,
     extras?: { plan?: string; recap?: string; creditsCharged?: number },
   ) => void;
-  onError?: (message: string) => void;
+  onSelfCheck?: (verdict: {
+    score: number;
+    verdict: string;
+    gaps: string[];
+    suggestions: string[];
+  }) => void;
+  onError?: (message: string, suggestions?: string[]) => void;
 };
 
 /** Stream a generation request to /api/generate. Resolves once the stream ends. */
@@ -109,8 +115,16 @@ export async function streamGenerate(
               creditsCharged: evt.creditsCharged,
             });
             break;
+          case "self_check":
+            handlers.onSelfCheck?.({
+              score: evt.score,
+              verdict: evt.verdict,
+              gaps: evt.gaps,
+              suggestions: evt.suggestions,
+            });
+            break;
           case "error":
-            handlers.onError?.(evt.message);
+            handlers.onError?.(evt.message, evt.suggestions);
             break;
         }
       }
