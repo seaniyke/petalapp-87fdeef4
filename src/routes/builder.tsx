@@ -1782,7 +1782,13 @@ function Builder() {
                               <button
                                 key={si}
                                 type="button"
-                                onClick={() => void send(s)}
+                                // One-click follow-up: skip triage and go
+                                // straight into a build turn. The user
+                                // already decided by tapping the chip; a
+                                // re-classification round-trip here would
+                                // feel broken (and sometimes mis-routes
+                                // short edits as "clarify").
+                                onClick={() => void send(s, { forceBuild: true })}
                                 className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs text-foreground shadow-sm transition hover:bg-accent hover:text-accent-foreground"
                               >
                                 {s}
