@@ -16,6 +16,7 @@ import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { lookupBackendForGenerate } from "@/server/backend-connector.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
+import { spendCredit, refundCredit } from "@/server/credits.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -206,6 +207,7 @@ export const Route = createFileRoute("/api/generate")({
       POST: async ({ request }) => {
         const authResult = await authorize(request);
         if (authResult instanceof Response) return authResult;
+        const userId = authResult;
 
         const apiKey = process.env.LOVABLE_API_KEY;
         if (!apiKey) {
@@ -223,6 +225,37 @@ export const Route = createFileRoute("/api/generate")({
         if (messages.length === 0) {
           return new Response("messages must not be empty", { status: 400 });
         }
+
+        // Charge ONE credit pre-flight. If the user is out, fail fast with
+        // 402 so the chat surfaces the friendly "out of credits" copy.
+        // If the generation fails after this point, we refund in the catch.
+        const charge = await spendCredit({
+          userId,
+          reason: "ai_message",
+          projectId: body.projectId ?? null,
+          metadata: { route: "/api/generate" },
+        });
+        if (!charge.ok) {
+          if (charge.reason === "insufficient_credits") {
+            return new Response(
+              JSON.stringify({
+                error:
+                  "You're out of credits. Add credits in Settings → Plans & Credits to keep generating.",
+              }),
+              { status: 402, headers: { "Content-Type": "application/json" } },
+            );
+          }
+          return new Response("Could not verify credit balance. Try again.", { status: 500 });
+        }
+
+        // Helper to refund the credit we just spent. Used on any failure path.
+        const refund = (note: string) =>
+          refundCredit({
+            userId,
+            reason: "ai_message",
+            projectId: body.projectId ?? null,
+            metadata: { route: "/api/generate", failure: note },
+          });
 
         const isInitial = currentFiles.length === 0;
         const baseSystem = isInitial ? SYSTEM_PROMPT_INITIAL : SYSTEM_PROMPT_PATCH;
@@ -311,6 +344,9 @@ export const Route = createFileRoute("/api/generate")({
         });
 
         if (!upstream.ok || !upstream.body) {
+          // Upstream rejected the call before doing any work — refund the
+          // credit we charged so the user isn't billed for nothing.
+          await refund(`upstream_${upstream.status}`);
           let msg = `AI gateway error (${upstream.status})`;
           if (upstream.status === 429) msg = "Rate limit reached. Please wait a moment.";
           else if (upstream.status === 402)
@@ -450,6 +486,8 @@ export const Route = createFileRoute("/api/generate")({
               );
             } catch (e) {
               const message = e instanceof Error ? e.message : "Generation failed.";
+              // Stream errored after upstream accepted — refund the spent credit.
+              await refund(`stream_${message.slice(0, 80)}`);
               controller.enqueue(encoder.encode(sse({ type: "error", message })));
             } finally {
               controller.close();
