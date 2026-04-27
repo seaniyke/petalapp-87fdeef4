@@ -900,7 +900,7 @@ function Builder() {
   const submitPrompt = useCallback(
     (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed || !project || bootstrapping) return;
+      if (!trimmed || bootstrapping) return;
       if (busy || discussBusy) {
         setPendingQueue((q) => [
           ...q,
@@ -912,7 +912,7 @@ function Builder() {
       if (mode === "discuss") void discuss(trimmed);
       else void send(trimmed);
     },
-    [project, bootstrapping, busy, discussBusy, mode, discuss, send],
+    [bootstrapping, busy, discussBusy, mode, discuss, send],
   );
 
   // Auto-dequeue the next prompt as soon as Petal frees up.
