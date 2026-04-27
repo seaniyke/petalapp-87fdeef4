@@ -28,7 +28,14 @@ import {
   Monitor,
   Settings as SettingsIcon,
   Globe,
+  Paperclip,
+  ImageIcon,
 } from "lucide-react";
+import {
+  encodeAttachments,
+  type ChatAttachment,
+  MAX_ATTACHMENTS_PER_MESSAGE,
+} from "@/lib/attachments";
 import { streamGenerate } from "@/lib/stream";
 import { requestDiscussion } from "@/lib/discuss";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
