@@ -37,11 +37,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
+import { loadProjectMemoryBlock } from "@/server/project-memory.server";
 
 type Body = {
   messages: ChatMessage[];
   currentFiles: ProjectFile[];
   customInstructions?: string;
+  /** Optional — when present, project memory is loaded and injected into the prompt. */
+  projectId?: string;
 };
 
 /** Coarse intent kept for the builder's existing branching. */
