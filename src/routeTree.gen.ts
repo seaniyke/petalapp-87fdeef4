@@ -15,6 +15,7 @@ import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as BillingReturnRouteImport } from './routes/billing.return'
@@ -71,6 +72,11 @@ const AuthRoute = AuthRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PSlugRoute = PSlugRouteImport.update({
@@ -235,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/billing/return': typeof BillingReturnRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
+  '/admin/': typeof AdminIndexRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
@@ -270,6 +277,7 @@ export interface FileRoutesByTo {
   '/billing/return': typeof BillingReturnRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
+  '/admin': typeof AdminIndexRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
@@ -306,6 +314,7 @@ export interface FileRoutesById {
   '/billing/return': typeof BillingReturnRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
+  '/admin/': typeof AdminIndexRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
@@ -343,6 +352,7 @@ export interface FileRouteTypes {
     | '/billing/return'
     | '/email/unsubscribe'
     | '/p/$slug'
+    | '/admin/'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/trigger'
@@ -378,6 +388,7 @@ export interface FileRouteTypes {
     | '/billing/return'
     | '/email/unsubscribe'
     | '/p/$slug'
+    | '/admin'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/trigger'
@@ -413,6 +424,7 @@ export interface FileRouteTypes {
     | '/billing/return'
     | '/email/unsubscribe'
     | '/p/$slug'
+    | '/admin/'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/trigger'
@@ -449,6 +461,7 @@ export interface RootRouteChildren {
   BillingReturnRoute: typeof BillingReturnRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   PSlugRoute: typeof PSlugRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   ApiBillingInitializeRoute: typeof ApiBillingInitializeRoute
   ApiBillingVerifyRoute: typeof ApiBillingVerifyRoute
   ApiBuildsTriggerRoute: typeof ApiBuildsTriggerRoute
@@ -506,6 +519,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/p/$slug': {
@@ -721,6 +741,7 @@ const rootRouteChildren: RootRouteChildren = {
   BillingReturnRoute: BillingReturnRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   PSlugRoute: PSlugRoute,
+  AdminIndexRoute: AdminIndexRoute,
   ApiBillingInitializeRoute: ApiBillingInitializeRoute,
   ApiBillingVerifyRoute: ApiBillingVerifyRoute,
   ApiBuildsTriggerRoute: ApiBuildsTriggerRoute,
