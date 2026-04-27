@@ -473,6 +473,20 @@ function Builder() {
       initialAttachmentsRef.current = [];
       setBusy(true);
 
+      // Persist the user message to the DB *before* the stream starts. If the
+      // user refreshes mid-build (which can take 30–60s) we still want to show
+      // them what they just asked Petal — losing the prompt entirely is the
+      // single most disorienting failure mode here. The assistant reply is
+      // persisted later, after a successful stream.
+      if (!opts.isRetry) {
+        try {
+          await appendMessages(proj.id, [userMsg]);
+        } catch (persistErr) {
+          // Non-fatal: the message still lives in local state for this session.
+          console.warn("Could not persist user message early:", persistErr);
+        }
+      }
+
       // Fresh activity feed for this run.
       setPhases(defaultPhases());
       setDesignCaption("");
