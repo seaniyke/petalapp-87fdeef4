@@ -85,6 +85,11 @@ export function PublishSheet({
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [visibilityBusy, setVisibilityBusy] = useState(false);
+  // Visitor analytics — Cloudflare Pages traffic for the project's site.
+  // We fetch on open and when the user flips the range, never poll.
+  const [visitorRange, setVisitorRange] = useState<VisitorRange>("7d");
+  const [visitors, setVisitors] = useState<VisitorStatsResult | null>(null);
+  const [visitorsLoading, setVisitorsLoading] = useState(false);
 
   // Re-resolve the live URL whenever the sheet opens or the build flips to
   // ready. We don't subscribe directly because `useBuildActivity` already
