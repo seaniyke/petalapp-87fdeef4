@@ -3542,6 +3542,11 @@ matching file below and adapt — do not invent layouts from scratch.
 - \`table-destructive-confirm.tsx\` — delete row with type-to-confirm AlertDialog guard
 - \`form-multi-step-error.tsx\` — wizard with submit failure: inline alert, retry, recover-to-step
 
+## Kit expansion demos (Phase 3)
+- \`kit-command-palette.tsx\` — Cmd/Ctrl+K command palette with grouped items + shortcuts
+- \`kit-validated-form.tsx\` — useForm + FormField + Combobox + DatePicker with inline validation
+- \`kit-sales-chart-card.tsx\` — revenue card with Tabs switching between Area / Line / Bar charts
+
 ## Conventions
 
 - Every example uses semantic tokens only — no raw hex, no Tailwind colour names.
