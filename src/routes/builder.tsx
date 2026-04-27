@@ -607,9 +607,10 @@ function Builder() {
                 setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
               }
             },
-            onResult: (f, s) => {
+            onResult: (f, s, charged) => {
               resultFiles = f;
               resultSummary = s;
+              if (typeof charged === "number") setLastBuildCredits(charged);
             },
             onError: (m) => {
               streamError = m;
