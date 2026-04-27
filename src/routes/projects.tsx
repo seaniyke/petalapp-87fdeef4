@@ -119,7 +119,7 @@ function ProjectsPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {projects.map((p) => (
-                <ProjectCard key={p.id} project={p} onDelete={() => handleDelete(p.id)} />
+                <ProjectCard key={p.id} project={p} onDelete={() => setPendingDelete(p)} />
               ))}
             </div>
           )}
