@@ -899,6 +899,33 @@ export type Database = {
         }
         Relationships: []
       }
+      project_memory: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          project_id: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          project_id: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          project_id?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       project_versions: {
         Row: {
           created_at: string
