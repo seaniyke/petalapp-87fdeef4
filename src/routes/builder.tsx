@@ -1025,10 +1025,18 @@ function Builder() {
         const preambleTrim = partialPreamble.trim();
         const trimmed = partialAssistant.trim();
         const rescued = [preambleTrim, trimmed].filter(Boolean).join("\n\n");
-        if (rescued.length > 0) {
+        // If Petal had partial output OR Layer 5 produced retry suggestions,
+        // append a single message that carries both — the chips piggyback on
+        // the existing assistant-suggestions render path (line ~1741).
+        if (rescued.length > 0 || errorSuggestions.length > 0) {
+          const fallbackContent = rescued.length > 0 ? rescued : msg;
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: rescued },
+            {
+              role: "assistant",
+              content: fallbackContent,
+              ...(errorSuggestions.length > 0 ? { suggestions: errorSuggestions } : {}),
+            },
           ]);
         }
       } finally {
