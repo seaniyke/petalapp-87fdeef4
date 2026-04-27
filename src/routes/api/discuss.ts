@@ -13,11 +13,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
+import { spendCredit, refundCredit } from "@/server/credits.server";
 
 type Body = {
   messages: ChatMessage[];
   currentFiles: ProjectFile[];
   customInstructions?: string;
+  projectId?: string;
 };
 
 const DISCUSS_SYSTEM_PROMPT = `You are Petal, a friendly product collaborator helping the user think through changes to their small web app.
