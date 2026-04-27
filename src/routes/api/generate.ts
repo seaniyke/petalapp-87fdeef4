@@ -138,6 +138,13 @@ async function relayAndCollect(
       } catch {
         continue;
       }
+      // Capture token usage. The Lovable AI gateway emits a final SSE chunk
+      // with `usage: { prompt_tokens, completion_tokens, total_tokens }` and
+      // an empty `choices` array — that's where we read it.
+      const usage = (json as { usage?: typeof tool.usage }).usage;
+      if (usage && (usage.prompt_tokens || usage.completion_tokens)) {
+        tool.usage = usage;
+      }
       const choice = (json as { choices?: Array<{ delta?: unknown }> })?.choices?.[0];
       const delta = (choice as { delta?: { tool_calls?: unknown[] } })?.delta;
       const toolCalls = delta?.tool_calls as
