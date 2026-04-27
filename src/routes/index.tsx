@@ -21,6 +21,12 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
+  // Allow ?focus=composer so "+ New project" on /projects can land here and
+  // immediately drop the cursor into the composer (avoids the empty
+  // "Loading…" builder state — we only enter /builder once we have a prompt).
+  validateSearch: (search: Record<string, unknown>) => ({
+    focus: search.focus === "composer" ? ("composer" as const) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Petal — Build real apps with AI" },
