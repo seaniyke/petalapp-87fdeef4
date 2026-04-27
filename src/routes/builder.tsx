@@ -1765,7 +1765,7 @@ function Builder() {
               </div>
             </div>
           ) : (
-            <div className="grid min-h-0 flex-1 grid-cols-[200px_1fr]">
+            <div className="grid min-h-0 flex-1 grid-cols-[140px_1fr] sm:grid-cols-[200px_1fr]">
               <div className="min-h-0 overflow-y-auto border-r border-border bg-sidebar/40">
                 <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Files
