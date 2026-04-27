@@ -86,7 +86,7 @@ function AdminBillingPage() {
           <div>
             <h1 className="font-display text-3xl font-semibold tracking-tight">Billing settings</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Manage exchange rates and per-currency price overrides for plans and credit packs.
+              Manage subscription plans, credit packs, exchange rates, and per-currency price overrides.
             </p>
           </div>
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
@@ -94,11 +94,19 @@ function AdminBillingPage() {
           </Link>
         </div>
 
-        <Tabs defaultValue="currencies" className="space-y-6">
+        <Tabs defaultValue="plans" className="space-y-6">
           <TabsList>
+            <TabsTrigger value="plans">Plans</TabsTrigger>
+            <TabsTrigger value="packs">Credit packs</TabsTrigger>
             <TabsTrigger value="currencies">Currencies & rates</TabsTrigger>
             <TabsTrigger value="overrides">Price overrides</TabsTrigger>
           </TabsList>
+          <TabsContent value="plans">
+            <PlansPanel />
+          </TabsContent>
+          <TabsContent value="packs">
+            <CreditPacksPanel />
+          </TabsContent>
           <TabsContent value="currencies">
             <CurrenciesPanel />
           </TabsContent>
@@ -538,4 +546,572 @@ function OverridesPanel() {
       </Card>
     </div>
   );
+}
+
+/* --------------------------------- Plans ---------------------------------- */
+
+type PlanRow = {
+  code: string;
+  name: string;
+  tier: string;
+  monthly_credits: number;
+  daily_free_credits: number;
+  monthly_free_cap: number | null;
+  price_cents: number;
+  stripe_price_id: string | null;
+  is_active: boolean;
+  sort_order: number;
+};
+
+function PlansPanel() {
+  const [rows, setRows] = useState<PlanRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingCode, setSavingCode] = useState<string | null>(null);
+  const [deletingCode, setDeletingCode] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState<PlanRow>(emptyPlan());
+
+  function emptyPlanLocal(): PlanRow { return emptyPlan(); }
+
+  async function load() {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("billing_plans")
+        .select(
+          "code, name, tier, monthly_credits, daily_free_credits, monthly_free_cap, price_cents, stripe_price_id, is_active, sort_order"
+        )
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      setRows((data ?? []) as PlanRow[]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load plans");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  function update(code: string, patch: Partial<PlanRow>) {
+    setRows((prev) => prev.map((r) => (r.code === code ? { ...r, ...patch } : r)));
+  }
+
+  async function save(row: PlanRow) {
+    setSavingCode(row.code);
+    try {
+      const { error } = await supabase
+        .from("billing_plans")
+        .update({
+          name: row.name,
+          tier: row.tier,
+          monthly_credits: row.monthly_credits,
+          daily_free_credits: row.daily_free_credits,
+          monthly_free_cap: row.monthly_free_cap,
+          price_cents: row.price_cents,
+          stripe_price_id: row.stripe_price_id || null,
+          is_active: row.is_active,
+          sort_order: row.sort_order,
+        })
+        .eq("code", row.code);
+      if (error) throw error;
+      toast.success(`${row.code} saved`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingCode(null);
+    }
+  }
+
+  async function remove(row: PlanRow) {
+    if (!confirm(`Delete plan "${row.code}"? This cannot be undone.`)) return;
+    setDeletingCode(row.code);
+    try {
+      const { error } = await supabase.from("billing_plans").delete().eq("code", row.code);
+      if (error) throw error;
+      toast.success(`${row.code} deleted`);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeletingCode(null);
+    }
+  }
+
+  async function create() {
+    if (!draft.code.trim() || !draft.name.trim()) {
+      toast.error("Code and name are required");
+      return;
+    }
+    setCreating(true);
+    try {
+      const { error } = await supabase.from("billing_plans").insert({
+        code: draft.code.trim(),
+        name: draft.name.trim(),
+        tier: draft.tier || draft.code.trim(),
+        monthly_credits: draft.monthly_credits,
+        daily_free_credits: draft.daily_free_credits,
+        monthly_free_cap: draft.monthly_free_cap,
+        price_cents: draft.price_cents,
+        stripe_price_id: draft.stripe_price_id || null,
+        is_active: draft.is_active,
+        sort_order: draft.sort_order,
+        features: {},
+      });
+      if (error) throw error;
+      toast.success("Plan created");
+      setDraft(emptyPlanLocal());
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Create failed");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Plans</CardTitle>
+          <CardDescription>
+            Subscription plan tiers and their base USD price. Per-currency prices are derived from
+            the USD rate or a price override.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center py-8 text-sm text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Tier</TableHead>
+                  <TableHead>Monthly credits</TableHead>
+                  <TableHead>Daily free</TableHead>
+                  <TableHead>Monthly free cap</TableHead>
+                  <TableHead>Price (USD)</TableHead>
+                  <TableHead>Stripe price ID</TableHead>
+                  <TableHead>Active</TableHead>
+                  <TableHead>Sort</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r) => (
+                  <TableRow key={r.code}>
+                    <TableCell className="font-mono text-sm font-medium">{r.code}</TableCell>
+                    <TableCell><Input value={r.name} onChange={(e) => update(r.code, { name: e.target.value })} /></TableCell>
+                    <TableCell className="w-28">
+                      <Input value={r.tier} onChange={(e) => update(r.code, { tier: e.target.value })} />
+                    </TableCell>
+                    <TableCell className="w-32">
+                      <Input
+                        type="number" min="0"
+                        value={r.monthly_credits}
+                        onChange={(e) => update(r.code, { monthly_credits: parseInt(e.target.value, 10) || 0 })}
+                      />
+                    </TableCell>
+                    <TableCell className="w-28">
+                      <Input
+                        type="number" min="0"
+                        value={r.daily_free_credits}
+                        onChange={(e) => update(r.code, { daily_free_credits: parseInt(e.target.value, 10) || 0 })}
+                      />
+                    </TableCell>
+                    <TableCell className="w-32">
+                      <Input
+                        type="number" min="0"
+                        placeholder="∞"
+                        value={r.monthly_free_cap ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          update(r.code, { monthly_free_cap: v === "" ? null : parseInt(v, 10) || 0 });
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell className="w-32">
+                      <Input
+                        type="number" step="0.01" min="0"
+                        value={(r.price_cents / 100).toFixed(2)}
+                        onChange={(e) => update(r.code, { price_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+                      />
+                    </TableCell>
+                    <TableCell className="w-44">
+                      <Input
+                        value={r.stripe_price_id ?? ""}
+                        onChange={(e) => update(r.code, { stripe_price_id: e.target.value })}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Switch checked={r.is_active} onCheckedChange={(v) => update(r.code, { is_active: v })} />
+                    </TableCell>
+                    <TableCell className="w-20">
+                      <Input
+                        type="number"
+                        value={r.sort_order}
+                        onChange={(e) => update(r.code, { sort_order: parseInt(e.target.value, 10) || 0 })}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right space-x-1">
+                      <Button size="sm" onClick={() => save(r)} disabled={savingCode === r.code}>
+                        {savingCode === r.code ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Save className="mr-1.5 h-3.5 w-3.5" /> Save</>}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => remove(r)} disabled={deletingCode === r.code} className="text-destructive hover:text-destructive">
+                        {deletingCode === r.code ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Add a new plan</CardTitle>
+          <CardDescription>Code is unique and used internally. USD price is in dollars.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="space-y-1.5">
+              <Label>Code</Label>
+              <Input value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value })} placeholder="e.g. team" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Name</Label>
+              <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="e.g. Team" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tier</Label>
+              <Input value={draft.tier} onChange={(e) => setDraft({ ...draft, tier: e.target.value })} placeholder="e.g. business" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Price (USD)</Label>
+              <Input
+                type="number" step="0.01" min="0"
+                value={(draft.price_cents / 100).toString()}
+                onChange={(e) => setDraft({ ...draft, price_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Monthly credits</Label>
+              <Input
+                type="number" min="0"
+                value={draft.monthly_credits}
+                onChange={(e) => setDraft({ ...draft, monthly_credits: parseInt(e.target.value, 10) || 0 })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Daily free</Label>
+              <Input
+                type="number" min="0"
+                value={draft.daily_free_credits}
+                onChange={(e) => setDraft({ ...draft, daily_free_credits: parseInt(e.target.value, 10) || 0 })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Monthly free cap</Label>
+              <Input
+                type="number" min="0"
+                placeholder="leave empty for ∞"
+                value={draft.monthly_free_cap ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDraft({ ...draft, monthly_free_cap: v === "" ? null : parseInt(v, 10) || 0 });
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Sort order</Label>
+              <Input
+                type="number"
+                value={draft.sort_order}
+                onChange={(e) => setDraft({ ...draft, sort_order: parseInt(e.target.value, 10) || 0 })}
+              />
+            </div>
+            <div className="md:col-span-4">
+              <Button onClick={create} disabled={creating}>
+                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="mr-1.5 h-4 w-4" /> Create plan</>}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function emptyPlan(): PlanRow {
+  return {
+    code: "",
+    name: "",
+    tier: "",
+    monthly_credits: 0,
+    daily_free_credits: 0,
+    monthly_free_cap: null,
+    price_cents: 0,
+    stripe_price_id: null,
+    is_active: true,
+    sort_order: 0,
+  };
+}
+
+/* ----------------------------- Credit packs ------------------------------- */
+
+type CreditPackRow = {
+  code: string;
+  name: string;
+  credits: number;
+  price_cents: number;
+  stripe_price_id: string | null;
+  is_active: boolean;
+  sort_order: number;
+};
+
+function CreditPacksPanel() {
+  const [rows, setRows] = useState<CreditPackRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingCode, setSavingCode] = useState<string | null>(null);
+  const [deletingCode, setDeletingCode] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState<CreditPackRow>(emptyPack());
+
+  async function load() {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("credit_packs")
+        .select("code, name, credits, price_cents, stripe_price_id, is_active, sort_order")
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      setRows((data ?? []).map((p) => ({ ...p, credits: Number(p.credits) })) as CreditPackRow[]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load credit packs");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  function update(code: string, patch: Partial<CreditPackRow>) {
+    setRows((prev) => prev.map((r) => (r.code === code ? { ...r, ...patch } : r)));
+  }
+
+  async function save(row: CreditPackRow) {
+    setSavingCode(row.code);
+    try {
+      const { error } = await supabase
+        .from("credit_packs")
+        .update({
+          name: row.name,
+          credits: row.credits,
+          price_cents: row.price_cents,
+          stripe_price_id: row.stripe_price_id || null,
+          is_active: row.is_active,
+          sort_order: row.sort_order,
+        })
+        .eq("code", row.code);
+      if (error) throw error;
+      toast.success(`${row.code} saved`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingCode(null);
+    }
+  }
+
+  async function remove(row: CreditPackRow) {
+    if (!confirm(`Delete credit pack "${row.code}"? This cannot be undone.`)) return;
+    setDeletingCode(row.code);
+    try {
+      const { error } = await supabase.from("credit_packs").delete().eq("code", row.code);
+      if (error) throw error;
+      toast.success(`${row.code} deleted`);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeletingCode(null);
+    }
+  }
+
+  async function create() {
+    if (!draft.code.trim() || !draft.name.trim()) {
+      toast.error("Code and name are required");
+      return;
+    }
+    setCreating(true);
+    try {
+      const { error } = await supabase.from("credit_packs").insert({
+        code: draft.code.trim(),
+        name: draft.name.trim(),
+        credits: draft.credits,
+        price_cents: draft.price_cents,
+        stripe_price_id: draft.stripe_price_id || null,
+        is_active: draft.is_active,
+        sort_order: draft.sort_order,
+      });
+      if (error) throw error;
+      toast.success("Credit pack created");
+      setDraft(emptyPack());
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Create failed");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Credit packs</CardTitle>
+          <CardDescription>
+            One-time credit purchases. USD price is the base; per-currency prices follow rates and overrides.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center py-8 text-sm text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Credits</TableHead>
+                  <TableHead>Price (USD)</TableHead>
+                  <TableHead>Stripe price ID</TableHead>
+                  <TableHead>Active</TableHead>
+                  <TableHead>Sort</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r) => (
+                  <TableRow key={r.code}>
+                    <TableCell className="font-mono text-sm font-medium">{r.code}</TableCell>
+                    <TableCell><Input value={r.name} onChange={(e) => update(r.code, { name: e.target.value })} /></TableCell>
+                    <TableCell className="w-32">
+                      <Input
+                        type="number" min="0"
+                        value={r.credits}
+                        onChange={(e) => update(r.code, { credits: parseInt(e.target.value, 10) || 0 })}
+                      />
+                    </TableCell>
+                    <TableCell className="w-32">
+                      <Input
+                        type="number" step="0.01" min="0"
+                        value={(r.price_cents / 100).toFixed(2)}
+                        onChange={(e) => update(r.code, { price_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+                      />
+                    </TableCell>
+                    <TableCell className="w-44">
+                      <Input
+                        value={r.stripe_price_id ?? ""}
+                        onChange={(e) => update(r.code, { stripe_price_id: e.target.value })}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Switch checked={r.is_active} onCheckedChange={(v) => update(r.code, { is_active: v })} />
+                    </TableCell>
+                    <TableCell className="w-20">
+                      <Input
+                        type="number"
+                        value={r.sort_order}
+                        onChange={(e) => update(r.code, { sort_order: parseInt(e.target.value, 10) || 0 })}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right space-x-1">
+                      <Button size="sm" onClick={() => save(r)} disabled={savingCode === r.code}>
+                        {savingCode === r.code ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Save className="mr-1.5 h-3.5 w-3.5" /> Save</>}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => remove(r)} disabled={deletingCode === r.code} className="text-destructive hover:text-destructive">
+                        {deletingCode === r.code ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Add a new credit pack</CardTitle>
+          <CardDescription>Code is unique. Credits is the number of build credits granted.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="space-y-1.5">
+              <Label>Code</Label>
+              <Input value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value })} placeholder="e.g. pack_500" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Name</Label>
+              <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="e.g. 500 credits" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Credits</Label>
+              <Input
+                type="number" min="0"
+                value={draft.credits}
+                onChange={(e) => setDraft({ ...draft, credits: parseInt(e.target.value, 10) || 0 })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Price (USD)</Label>
+              <Input
+                type="number" step="0.01" min="0"
+                value={(draft.price_cents / 100).toString()}
+                onChange={(e) => setDraft({ ...draft, price_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Sort order</Label>
+              <Input
+                type="number"
+                value={draft.sort_order}
+                onChange={(e) => setDraft({ ...draft, sort_order: parseInt(e.target.value, 10) || 0 })}
+              />
+            </div>
+            <div className="md:col-span-4">
+              <Button onClick={create} disabled={creating}>
+                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="mr-1.5 h-4 w-4" /> Create credit pack</>}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function emptyPack(): CreditPackRow {
+  return {
+    code: "",
+    name: "",
+    credits: 0,
+    price_cents: 0,
+    stripe_price_id: null,
+    is_active: true,
+    sort_order: 0,
+  };
 }
