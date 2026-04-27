@@ -34,6 +34,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -69,6 +79,8 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
   const [showAdd, setShowAdd] = useState(false);
   const [showBuySlot, setShowBuySlot] = useState(false);
   const [recordsFor, setRecordsFor] = useState<ProjectDomain | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<ProjectDomain | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const now = Date.now();
   const availableSlots = useMemo(
@@ -179,21 +191,18 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
   }
 
   async function handleRemove(d: ProjectDomain) {
-    if (
-      !confirm(
-        `Remove ${d.hostname}? Your site will stop being served on this domain.`,
-      )
-    ) {
-      return;
-    }
+    setRemoving(true);
     try {
       await removeDomain(projectId, d.id);
       setDomains((prev) => prev.filter((x) => x.id !== d.id));
       // FK is ON DELETE SET NULL, so the slot is freed server-side; refresh.
       void refreshSlots();
       toast.success("Domain removed — slot freed for another domain");
+      setConfirmRemove(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't remove");
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -296,7 +305,7 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
               onShowRecords={() => setRecordsFor(d)}
               onVerify={() => handleVerify(d)}
               onSetPrimary={() => handleSetPrimary(d)}
-              onRemove={() => handleRemove(d)}
+              onRemove={() => setConfirmRemove(d)}
             />
           ))}
         </ul>
@@ -332,6 +341,43 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
           await handleVerify(recordsFor);
         }}
       />
+
+      <AlertDialog
+        open={!!confirmRemove}
+        onOpenChange={(o) => {
+          if (!o && !removing) setConfirmRemove(null);
+        }}
+      >
+        <AlertDialogContent className="max-w-[calc(100vw-1.5rem)] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="break-all">
+              Remove {confirmRemove?.hostname}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Your site will stop being served on this domain. The domain slot
+              will be freed so you can connect another domain in its place.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel disabled={removing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={removing}
+              onClick={(e) => {
+                e.preventDefault();
+                if (confirmRemove) void handleRemove(confirmRemove);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removing ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-3.5 w-3.5" />
+              )}
+              Remove domain
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
