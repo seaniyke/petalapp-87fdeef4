@@ -86,7 +86,7 @@ function AdminBillingPage() {
           <div>
             <h1 className="font-display text-3xl font-semibold tracking-tight">Billing settings</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Manage exchange rates and per-currency price overrides for plans and credit packs.
+              Manage subscription plans, credit packs, exchange rates, and per-currency price overrides.
             </p>
           </div>
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
