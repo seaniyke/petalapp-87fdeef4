@@ -1679,7 +1679,7 @@ function Builder() {
           }`}
         >
           {view === "preview" ? (
-            <div className="flex min-h-0 flex-1 flex-col p-3">
+            <div className="flex min-h-0 flex-1 flex-col p-2 sm:p-3">
               {/* Device-frame toggle. Desktop only — on mobile the viewport
                   is already the device. Doesn't reload the iframe; just
                   resizes its wrapper, so state is preserved when switching. */}
