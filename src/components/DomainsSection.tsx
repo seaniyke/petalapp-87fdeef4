@@ -305,7 +305,7 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
               onShowRecords={() => setRecordsFor(d)}
               onVerify={() => handleVerify(d)}
               onSetPrimary={() => handleSetPrimary(d)}
-              onRemove={() => handleRemove(d)}
+              onRemove={() => setConfirmRemove(d)}
             />
           ))}
         </ul>
