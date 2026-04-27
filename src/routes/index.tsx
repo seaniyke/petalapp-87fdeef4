@@ -1,16 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SampleAppShowcase } from "@/components/SampleAppShowcase";
 import { useAuth } from "@/lib/auth";
 import {
   ArrowRight,
+  ArrowUp,
   MessageSquare,
   Code2,
   Eye,
   Rocket,
   Layers,
   Wand2,
+  Paperclip,
   Github,
 } from "lucide-react";
 
