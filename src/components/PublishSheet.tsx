@@ -378,7 +378,7 @@ export function PublishSheet({
         </div>
 
         {/* Build error (only when relevant) */}
-        {status === "failed" && buildError && (
+        {buildStatus === "failed" && buildError && (
           <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
             <span className="font-medium">Last publish failed.</span>{" "}
             <span className="opacity-80">
