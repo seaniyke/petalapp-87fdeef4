@@ -74,7 +74,7 @@ function Landing() {
   const [prompt, setPrompt] = useState("");
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
   const [isFocused, setIsFocused] = useState(false);
-  const [mode, setMode] = useState<"build" | "discuss">("build");
+  const [mode, setMode] = useState<ComposerMode>("build");
   const [attachments, setAttachments] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,11 +102,11 @@ function Landing() {
     try {
       const raw = sessionStorage.getItem(DRAFT_KEY);
       if (!raw) return;
-      const parsed = JSON.parse(raw) as { prompt?: string; mode?: "build" | "discuss" };
+      const parsed = JSON.parse(raw) as { prompt?: string; mode?: ComposerMode };
       if (typeof parsed.prompt === "string" && parsed.prompt.length > 0) {
         setPrompt(parsed.prompt);
       }
-      if (parsed.mode === "discuss" || parsed.mode === "build") {
+      if (parsed.mode === "discuss" || parsed.mode === "build" || parsed.mode === "coach") {
         setMode(parsed.mode);
       }
     } catch {
