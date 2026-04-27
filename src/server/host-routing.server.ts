@@ -44,10 +44,23 @@ function pagesProjectName(projectId: string): string {
   return `petal-${id}`;
 }
 
-type DomainTarget = {
-  projectId: string;
-  pagesUrl: string; // e.g. https://petal-abc123def456.pages.dev
-} | null;
+/**
+ * Result of resolving a custom hostname to a target.
+ *
+ *   - `proxy`: forward the request to `pagesUrl`.
+ *   - `unpublished`: the project exists and the domain is active, but the
+ *     owner hasn't published it yet (`published_visibility = 'unpublished'`).
+ *     We render a friendly placeholder instead of proxying to a stale build.
+ *   - `private`: visibility is `private` — only workspace members can view.
+ *     Returned as a 403 placeholder for now (no auth gate yet on the proxy).
+ *   - `null`: hostname isn't owned by any project; fall through to the Petal
+ *     app (404 / marketing).
+ */
+type DomainTarget =
+  | { kind: "proxy"; projectId: string; pagesUrl: string }
+  | { kind: "unpublished"; projectId: string }
+  | { kind: "private"; projectId: string }
+  | null;
 
 const CACHE_TTL_MS = 60_000;
 type CacheEntry = { value: DomainTarget; expiresAt: number };
@@ -63,10 +76,41 @@ async function lookupDomain(hostname: string): Promise<DomainTarget> {
   // Only proxy active domains — pending/failed ones get the default Petal site
   // (which is fine; the user is still mid-setup).
   if (data.status !== "active") return null;
-  return {
-    projectId: data.project_id,
-    pagesUrl: `https://${pagesProjectName(data.project_id)}.pages.dev`,
-  };
+
+  // Look up the project's published state. We only care about visibility +
+  // the pinned build's dist_path (when present) — the latter lets future
+  // per-build deployments serve the pinned version even after a newer
+  // preview build lands. Today every build overwrites the same Pages URL,
+  // so the dist_path lookup is a no-op fallback.
+  const { data: project } = await supabaseAdmin
+    .from("projects")
+    .select("id, published_visibility, published_build_id")
+    .eq("id", data.project_id)
+    .maybeSingle();
+
+  const visibility = project?.published_visibility ?? "unpublished";
+  if (visibility === "unpublished") {
+    return { kind: "unpublished", projectId: data.project_id };
+  }
+  if (visibility === "private") {
+    return { kind: "private", projectId: data.project_id };
+  }
+
+  // Visibility = public. Prefer the pinned published build's dist_path when
+  // we have one (forward-compatible with per-build deployments); otherwise
+  // fall back to the project's canonical Pages URL.
+  let pagesUrl = `https://${pagesProjectName(data.project_id)}.pages.dev`;
+  if (project?.published_build_id) {
+    const { data: build } = await supabaseAdmin
+      .from("project_builds")
+      .select("dist_path, status")
+      .eq("id", project.published_build_id)
+      .maybeSingle();
+    if (build?.status === "ready" && build.dist_path) {
+      pagesUrl = build.dist_path.replace(/\/$/, "");
+    }
+  }
+  return { kind: "proxy", projectId: data.project_id, pagesUrl };
 }
 
 export async function resolveHost(hostname: string): Promise<DomainTarget> {
