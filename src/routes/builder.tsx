@@ -269,6 +269,9 @@ function Builder() {
   // Stable handle to the latest askPetalToFix so the failure effect (declared
   // before send/askPetalToFix) can call it without stale-closure issues.
   const askPetalToFixRef = useRef<(() => void) | null>(null);
+  // Phase 3 — track the build id we last surfaced an "Update available" toast
+  // for, so a single ready build only nudges the user once.
+  const pushUpdateToastedBuildIdRef = useRef<string | null>(null);
 
   // Pick up attachments stashed by the landing page (sessionStorage),
   // exactly once per attachKey. Drop them from storage so a refresh
@@ -376,6 +379,26 @@ function Builder() {
       setPhases((p) => completeThrough(p, "live"));
       // A successful build clears the auto-fix counter — next failure starts fresh.
       autoFixRef.current.attempts = 0;
+      // Phase 3 — push-update toast. If the project has been published before
+      // and this brand-new ready build is newer than the pinned published one,
+      // nudge the user to push the update. We key off the build id via
+      // `pushUpdateToastedBuildIdRef` so the toast only fires once per build.
+      const publishedId = project?.published_build_id ?? null;
+      if (
+        buildId &&
+        publishedId &&
+        publishedId !== buildId &&
+        pushUpdateToastedBuildIdRef.current !== buildId
+      ) {
+        pushUpdateToastedBuildIdRef.current = buildId;
+        toast("Changes ready to publish", {
+          description: "Push the latest preview live for your visitors.",
+          action: {
+            label: "Update",
+            onClick: () => setPublishOpen(true),
+          },
+        });
+      }
     } else if (buildSnap.status === "pending") {
       setPhases((p) => advanceTo(p, "deploying"));
     } else if (buildSnap.status === "failed") {
@@ -398,7 +421,7 @@ function Builder() {
       setFriendlyError(friendlyBuildFailure(buildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildSnap?.status, buildSnap?.errorMessage, project?.latest_build_id, busy]);
+  }, [buildSnap?.status, buildSnap?.errorMessage, project?.latest_build_id, project?.published_build_id, busy]);
 
   // Auto-hide the success card a little after the app goes live so the chat
   // returns to a calm state. The card itself also self-collapses.
