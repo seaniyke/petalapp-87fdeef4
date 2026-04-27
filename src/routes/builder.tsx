@@ -657,7 +657,10 @@ function Builder() {
   }, [isReady, user, project, navigate, initialPrompt]);
 
   const send = useCallback(
-    async (content: string, opts: { isRetry?: boolean; attachments?: ChatAttachment[] } = {}) => {
+    async (
+      content: string,
+      opts: { isRetry?: boolean; attachments?: ChatAttachment[]; forceBuild?: boolean } = {},
+    ) => {
       const text = content.trim();
       if (!text || busy) return;
       const proj = await ensureProject();
@@ -759,47 +762,57 @@ function Builder() {
         // a warm preamble while we decide. This is what makes Petal feel
         // human instead of jumping straight into the build pipeline for
         // every message — including conversational ones like "hi" or "thanks".
-        const triage = await streamTriage(
-          {
-            messages: nextMessages,
-            currentFiles: files,
-            customInstructions: proj.custom_instructions ?? undefined,
-            projectId: proj.id,
-          },
-          {
-            onReplyDelta: (d) => {
-              partialPreamble += d;
-              setStreamingPreamble((s) => s + d);
+        //
+        // forceBuild short-circuits triage entirely. Used by one-click
+        // follow-up chips from the self-check (Layer 5): the user already
+        // committed to the action by tapping it, so re-classifying as
+        // "clarify" or "chat" would feel broken.
+        if (!opts.forceBuild) {
+          const triage = await streamTriage(
+            {
+              messages: nextMessages,
+              currentFiles: files,
+              customInstructions: proj.custom_instructions ?? undefined,
+              projectId: proj.id,
             },
-          },
-          controller.signal,
-        );
+            {
+              onReplyDelta: (d) => {
+                partialPreamble += d;
+                setStreamingPreamble((s) => s + d);
+              },
+            },
+            controller.signal,
+          );
 
-        if (controller.signal.aborted) return;
+          if (controller.signal.aborted) return;
 
-        // ── Step 2a: chat / clarify — no build, just promote the warm
-        //            reply (plus any clickable suggestion chips) into a
-        //            real assistant message and stop here.
-        if (triage.intent !== "build") {
-          const replyText = (triage.reply || partialPreamble).trim();
-          const suggestions = triage.meta?.suggestions ?? [];
-          const assistantMsg: ChatMessage = {
-            role: "assistant",
-            content:
-              replyText.length > 0
-                ? replyText
-                : "Hi! What would you like to build?",
-            ...(suggestions.length > 0 ? { suggestions } : {}),
-          };
-          setMessages((prev) => [...prev, assistantMsg]);
-          setStreamingPreamble("");
-          setLastUserPrompt(null);
-          try {
-            await appendMessages(proj.id, [assistantMsg]);
-          } catch (persistErr) {
-            console.warn("Could not persist assistant chat reply:", persistErr);
+          // ── Step 2a: chat / clarify — no build, just promote the warm
+          //            reply (plus any clickable suggestion chips) into a
+          //            real assistant message and stop here.
+          if (triage.intent !== "build") {
+            const replyText = (triage.reply || partialPreamble).trim();
+            const suggestions = triage.meta?.suggestions ?? [];
+            const assistantMsg: ChatMessage = {
+              role: "assistant",
+              content:
+                replyText.length > 0
+                  ? replyText
+                  : "Hi! What would you like to build?",
+              ...(suggestions.length > 0 ? { suggestions } : {}),
+            };
+            setMessages((prev) => [...prev, assistantMsg]);
+            setStreamingPreamble("");
+            setLastUserPrompt(null);
+            try {
+              await appendMessages(proj.id, [assistantMsg]);
+            } catch (persistErr) {
+              console.warn("Could not persist assistant chat reply:", persistErr);
+            }
+            return;
           }
-          return;
+        } else {
+          // Forced build — clear any preamble state we'd normally fill from triage.
+          setStreamingPreamble("");
         }
 
         // ── Step 2b: build — show the activity card now and continue. ────
@@ -1769,7 +1782,13 @@ function Builder() {
                               <button
                                 key={si}
                                 type="button"
-                                onClick={() => void send(s)}
+                                // One-click follow-up: skip triage and go
+                                // straight into a build turn. The user
+                                // already decided by tapping the chip; a
+                                // re-classification round-trip here would
+                                // feel broken (and sometimes mis-routes
+                                // short edits as "clarify").
+                                onClick={() => void send(s, { forceBuild: true })}
                                 className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs text-foreground shadow-sm transition hover:bg-accent hover:text-accent-foreground"
                               >
                                 {s}
