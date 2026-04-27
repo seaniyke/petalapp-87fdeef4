@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Lock } from "lucide-react";
-import { loadProjectFiles } from "@/lib/projects";
-import { buildPreviewDoc } from "@/lib/preview";
+import { Loader2, ImageOff } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Renders a tiny live iframe of the project, scaled down to act as a real
- * screenshot/thumbnail. Files are fetched lazily, and the iframe only mounts
- * when the card scrolls into view (and unmounts when scrolled out) so we
- * never run dozens of preview contexts at once.
+ * Renders a real screenshot of the project by mounting a scaled-down iframe
+ * pointing at the latest deployed CDN preview (`project_builds.dist_path`).
+ * The iframe only mounts once the card scrolls into view so we never run
+ * dozens of preview contexts at once.
  */
 export function ProjectThumbnail({
   projectId,
@@ -16,8 +15,8 @@ export function ProjectThumbnail({
   projectId: string;
   className?: string;
 }) {
-  const [doc, setDoc] = useState<string | null>(null);
-  const [error, setError] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [state, setState] = useState<"loading" | "ready" | "empty">("loading");
   const [visible, setVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -29,7 +28,7 @@ export function ProjectThumbnail({
     }
     const io = new IntersectionObserver(
       (entries) => {
-        for (const entry of entries) setVisible(entry.isIntersecting);
+        for (const entry of entries) if (entry.isIntersecting) setVisible(true);
       },
       { rootMargin: "200px" },
     );
@@ -38,32 +37,35 @@ export function ProjectThumbnail({
   }, []);
 
   useEffect(() => {
-    if (!visible || doc !== null || error) return;
+    if (!visible || previewUrl !== null || state !== "loading") return;
     let cancelled = false;
-    loadProjectFiles(projectId)
-      .then((files) => {
-        if (cancelled) return;
-        if (files.length === 0) {
-          setError(true);
-          return;
-        }
-        setDoc(buildPreviewDoc(files));
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      });
+    (async () => {
+      const { data } = await supabase
+        .from("project_builds")
+        .select("dist_path")
+        .eq("project_id", projectId)
+        .eq("status", "ready")
+        .not("dist_path", "is", null)
+        .order("ready_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data?.dist_path) {
+        setPreviewUrl(data.dist_path);
+        setState("ready");
+      } else {
+        setState("empty");
+      }
+    })();
     return () => {
       cancelled = true;
     };
-  }, [visible, projectId, doc, error]);
+  }, [visible, projectId, previewUrl, state]);
 
   return (
-    <div
-      ref={ref}
-      className={`relative overflow-hidden bg-aurora ${className}`}
-    >
+    <div ref={ref} className={`relative overflow-hidden bg-aurora ${className}`}>
       <div className="absolute inset-0 bg-grain opacity-30" aria-hidden />
-      {visible && doc ? (
+      {visible && previewUrl ? (
         <div
           className="pointer-events-none absolute left-0 top-0"
           style={{
@@ -75,15 +77,15 @@ export function ProjectThumbnail({
         >
           <iframe
             title="preview"
-            srcDoc={doc}
-            sandbox="allow-scripts"
+            src={previewUrl}
+            sandbox="allow-scripts allow-same-origin"
             loading="lazy"
             className="h-full w-full border-0 bg-white"
           />
         </div>
-      ) : error ? (
-        <div className="grid h-full place-items-center text-xs text-muted-foreground">
-          <Lock className="h-4 w-4" />
+      ) : state === "empty" ? (
+        <div className="grid h-full place-items-center text-muted-foreground">
+          <ImageOff className="h-4 w-4" />
         </div>
       ) : (
         <div className="grid h-full place-items-center">
