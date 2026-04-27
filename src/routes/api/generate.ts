@@ -486,6 +486,8 @@ export const Route = createFileRoute("/api/generate")({
               );
             } catch (e) {
               const message = e instanceof Error ? e.message : "Generation failed.";
+              // Stream errored after upstream accepted — refund the spent credit.
+              await refund(`stream_${message.slice(0, 80)}`);
               controller.enqueue(encoder.encode(sse({ type: "error", message })));
             } finally {
               controller.close();
