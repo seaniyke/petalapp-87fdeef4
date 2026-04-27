@@ -1,8 +1,82 @@
 import { createRouter, useRouter } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { routeTree } from "./routeTree.gen";
+
+/**
+ * After a redeploy, in-memory dynamic imports point at chunk filenames that
+ * no longer exist on the CDN (`assets/projects-CXT8dJWd.js → 404`). The
+ * browser surfaces this as a `ChunkLoadError` / "Failed to fetch dynamically
+ * imported module" / "error loading dynamically imported module". A hard
+ * reload pulls a fresh `index.html` whose <script> tags reference the new
+ * hashed chunks, which fixes the issue without any user action.
+ *
+ * We guard with sessionStorage so a *real* error (not a stale-chunk one) that
+ * happens to match the heuristic doesn't put us in an infinite reload loop.
+ */
+const RELOAD_GUARD_KEY = "petal:chunk-reload-attempted";
+
+function isChunkLoadError(error: unknown): boolean {
+  if (!error) return false;
+  const msg =
+    error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  return (
+    /ChunkLoadError/i.test(msg) ||
+    /Loading chunk \S+ failed/i.test(msg) ||
+    /Failed to fetch dynamically imported module/i.test(msg) ||
+    /error loading dynamically imported module/i.test(msg) ||
+    /Importing a module script failed/i.test(msg) ||
+    /Unable to preload CSS/i.test(msg)
+  );
+}
+
+function tryReloadOnce(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (sessionStorage.getItem(RELOAD_GUARD_KEY) === "1") return false;
+    sessionStorage.setItem(RELOAD_GUARD_KEY, "1");
+  } catch {
+    /* sessionStorage may be unavailable — fall through to reload anyway */
+  }
+  // Bypass any HTTP cache so we get the freshly-deployed index.html.
+  window.location.reload();
+  return true;
+}
+
+function clearReloadGuard() {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(RELOAD_GUARD_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
+  const chunkError = isChunkLoadError(error);
+
+  // Auto-recover from stale-chunk errors after a redeploy by hard-reloading
+  // once. If the reload still fails we fall through to the manual error UI
+  // (the guard prevents an infinite loop).
+  useEffect(() => {
+    if (chunkError) {
+      tryReloadOnce();
+    } else {
+      // Any non-chunk error means we successfully rendered new code, so reset
+      // the guard for future deploys.
+      clearReloadGuard();
+    }
+  }, [chunkError]);
+
+  // While the reload is in flight, render a neutral splash instead of the
+  // alarming "Something went wrong" card.
+  if (chunkError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <p className="text-sm text-muted-foreground">Updating to the latest version…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -53,6 +127,31 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
     </div>
   );
 }
+
+/**
+ * Catch dynamic-import failures that happen *outside* the router error
+ * boundary (e.g. a Suspense lazy() in a component, an event handler, a
+ * background prefetch). Same recovery strategy: one silent hard reload.
+ */
+function installGlobalChunkErrorRecovery() {
+  if (typeof window === "undefined") return;
+  const w = window as Window & { __petalChunkRecoveryInstalled?: boolean };
+  if (w.__petalChunkRecoveryInstalled) return;
+  w.__petalChunkRecoveryInstalled = true;
+
+  window.addEventListener("error", (event) => {
+    if (isChunkLoadError(event.error ?? event.message)) {
+      tryReloadOnce();
+    }
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    if (isChunkLoadError(event.reason)) {
+      tryReloadOnce();
+    }
+  });
+}
+
+installGlobalChunkErrorRecovery();
 
 export const getRouter = () => {
   const router = createRouter({
