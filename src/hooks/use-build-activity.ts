@@ -58,6 +58,9 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
           status: (data.status as BuildSnapshot["status"]) ?? "pending",
           distPath: data.dist_path ?? null,
           errorMessage: data.error_message ?? null,
+          // Preserve the very first observation timestamp across updates so
+          // the long-wait escalation timer is stable for the whole deploy.
+          observedAt: prev?.observedAt ?? Date.now(),
         };
         if (next.status === "ready" || next.status === "failed") {
           if (terminalSince == null) terminalSince = Date.now();
