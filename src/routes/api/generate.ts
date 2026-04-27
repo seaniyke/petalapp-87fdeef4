@@ -503,36 +503,31 @@ export const Route = createFileRoute("/api/generate")({
                 console.warn("[petal-image] resolver failed", e);
               }
 
-              // Post-flight true-up: compute the real cost from token usage
-              // and charge the difference (or refund if cheaper).
+              // Charge ONCE, after the build succeeds. Cost is computed from
+              // actual token usage. If the wallet emptied during the build,
+              // we still deliver the result (the user already received it)
+              // and log a warning — we don't claw back work the user has.
               const priced = priceBuild(collected.usage);
-              let finalCharged = BUILD_HOLD;
-              const diff = Math.round((priced.amount - BUILD_HOLD) * 100) / 100;
-              if (diff > 0) {
-                const top = await spendCredit({
-                  userId,
-                  amount: diff,
-                  reason: "ai_build_topup",
-                  projectId: body.projectId ?? null,
-                  metadata: {
-                    route: "/api/generate",
-                    hold_ledger_id: holdLedgerId,
-                    prompt_tokens: priced.promptTokens,
-                    completion_tokens: priced.completionTokens,
-                    usage_missing: priced.usageMissing,
-                    clamped: priced.clamped,
-                    model,
-                  },
-                });
-                if (top.ok) {
-                  finalCharged = priced.amount;
-                } else {
-                  // Wallet went empty between hold and topup — log but do
-                  // not undo the build the user already received.
-                  console.warn("[credits] post-build topup failed", top);
-                }
+              let finalCharged = 0;
+              const charge = await spendCredit({
+                userId,
+                amount: priced.amount,
+                reason: "ai_build_charge",
+                projectId: body.projectId ?? null,
+                metadata: {
+                  route: "/api/generate",
+                  prompt_tokens: priced.promptTokens,
+                  completion_tokens: priced.completionTokens,
+                  usage_missing: priced.usageMissing,
+                  clamped: priced.clamped,
+                  model,
+                },
+              });
+              if (charge.ok) {
+                finalCharged = priced.amount;
+              } else {
+                console.warn("[credits] post-build charge failed", charge);
               }
-              // (We never refund below 1.00 because BUILD_FLOOR == 1.00.)
 
               controller.enqueue(
                 encoder.encode(
@@ -541,8 +536,7 @@ export const Route = createFileRoute("/api/generate")({
               );
             } catch (e) {
               const message = e instanceof Error ? e.message : "Generation failed.";
-              // Stream errored after upstream accepted — refund the spent credit.
-              await refund(`stream_${message.slice(0, 80)}`);
+              // No credits were taken — nothing to refund. Just surface the error.
               controller.enqueue(encoder.encode(sse({ type: "error", message })));
             } finally {
               controller.close();
