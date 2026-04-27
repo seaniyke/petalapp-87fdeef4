@@ -70,6 +70,13 @@ export function WebContainerPreview({
   const [showLogs, setShowLogs] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [pickActive, setPickActive] = useState(false);
+  // Set to a friendly message when the picker has been "armed" for >30s
+  // without the iframe acknowledging readiness — usually means the picker
+  // script failed to inject (custom index.html, very fast iframe reload, etc).
+  const [pickerWarning, setPickerWarning] = useState<string | null>(null);
+  // True once we've received `petal:pick:ready` from the iframe at least once
+  // for the current iframeKey — used to clear the pending watchdog.
+  const pickerReadyRef = useRef(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const bootedRef = useRef(false);
   const mountedFilesSig = useRef<string>("");
