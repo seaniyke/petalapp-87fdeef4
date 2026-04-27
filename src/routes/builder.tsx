@@ -899,6 +899,13 @@ function Builder() {
     const tail = rawLog
       ? rawLog.split("\n").slice(-60).join("\n").slice(-3500)
       : "";
+    // When this is an auto-fix retry (Phase 2), nudge the AI to try a
+    // different angle than its previous attempt.
+    const attempt = autoFixRef.current.attempts;
+    const retryNote =
+      attempt > 1
+        ? "\n\nNote: this is your second attempt at fixing the same build. Your previous fix did not resolve the issue — re-read the error carefully and try a different approach."
+        : "";
     const prompt = tail
       ? [
           "The build just failed with this error from the bundler:",
@@ -908,10 +915,17 @@ function Builder() {
           "```",
           "",
           "Please look at the relevant files in the project, identify the root cause, and fix it. Make the smallest change that will let the build succeed.",
-        ].join("\n")
-      : "The build failed but no error log was captured. Please review the project files for obvious mistakes (missing imports, syntax errors, typos in package.json) and fix them.";
+        ].join("\n") + retryNote
+      : "The build failed but no error log was captured. Please review the project files for obvious mistakes (missing imports, syntax errors, typos in package.json) and fix them." +
+        retryNote;
     void send(prompt, { isRetry: false });
   }, [send, buildSnap]);
+
+  // Keep the ref in sync so the build-failure effect (declared earlier in
+  // the component) can call into the latest closure.
+  useEffect(() => {
+    askPetalToFixRef.current = askPetalToFix;
+  }, [askPetalToFix]);
 
   async function downloadProject() {
     if (!files.length) return;
