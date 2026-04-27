@@ -37,6 +37,9 @@ import {
 } from "@/lib/projects";
 import { DomainsSection } from "@/components/DomainsSection";
 import { ManagedBackendCard } from "@/components/ManagedBackendCard";
+import { LabsSection } from "@/components/LabsSection";
+import { IntegrationsSection } from "@/components/IntegrationsSection";
+import { useLabsFlag } from "@/hooks/use-labs-flags";
 import { toast } from "sonner";
 
 const MAX_LEN = 4000;
