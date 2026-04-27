@@ -50,7 +50,12 @@ import {
   defaultPhases,
   markFailed,
 } from "@/lib/build-phases";
-import { friendlyBuildFailure, toFriendlyError, type FriendlyError } from "@/lib/friendly-errors";
+import {
+  autoFixingBuild,
+  friendlyBuildFailure,
+  toFriendlyError,
+  type FriendlyError,
+} from "@/lib/friendly-errors";
 import { BuildActivityCard } from "@/components/BuildActivityCard";
 
 
