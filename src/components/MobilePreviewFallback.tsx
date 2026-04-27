@@ -232,6 +232,7 @@ export function MobilePreviewFallback({
       src={build.dist_path}
       iframeKey={iframeKey}
       onReload={() => setIframeKey((k) => k + 1)}
+      cacheBust={build.id}
     />
   );
 }
