@@ -1166,6 +1166,15 @@ export type Database = {
           read_ct: number
         }[]
       }
+      refund_credit: {
+        Args: {
+          _metadata?: Json
+          _project_id?: string
+          _reason?: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       replace_project_files: {
         Args: { _files: Json; _project_id: string }
         Returns: undefined
