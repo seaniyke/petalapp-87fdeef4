@@ -255,12 +255,14 @@ export const Route = createFileRoute("/api/generate")({
           );
         }
 
-        // Charge ONE credit pre-flight. If the user is out, fail fast with
-        // 402 so the chat surfaces the friendly "out of credits" copy.
-        // If the generation fails after this point, we refund in the catch.
+        // Reserve a 1-credit HOLD pre-flight. This both verifies the user
+        // has at least 1 credit (so we 402 fast if they don't) and gives us
+        // a precise ledger row id to refund on failure. After the AI returns
+        // we true up the difference based on actual token usage.
         const charge = await spendCredit({
           userId,
-          reason: "ai_message",
+          amount: BUILD_HOLD,
+          reason: "ai_build_hold",
           projectId: body.projectId ?? null,
           metadata: { route: "/api/generate" },
         });
@@ -276,13 +278,14 @@ export const Route = createFileRoute("/api/generate")({
           }
           return new Response("Could not verify credit balance. Try again.", { status: 500 });
         }
+        const holdLedgerId = charge.ledgerId;
 
-        // Helper to refund the credit we just spent. Used on any failure path.
+        // Helper to refund the hold (used on any failure path).
         const refund = (note: string) =>
           refundCredit({
             userId,
-            reason: "ai_message",
-            projectId: body.projectId ?? null,
+            ledgerId: holdLedgerId,
+            reason: "ai_build_refund",
             metadata: { route: "/api/generate", failure: note },
           });
 
