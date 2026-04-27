@@ -198,6 +198,14 @@ function Builder() {
   // user sees: Plan → Activity → Recap (Lovable / Bolt / v0 parity).
   const [streamingPlan, setStreamingPlan] = useState<string>("");
   const [streamingRecap, setStreamingRecap] = useState<string>("");
+  // Conversational preamble streamed BEFORE any build work — the warm,
+  // human "Got it, here's what I'll do" reply that competitors (Lovable,
+  // Bolt, v0) say before showing any phase indicators. Comes from /api/triage.
+  const [streamingPreamble, setStreamingPreamble] = useState<string>("");
+  // Whether the current send() turn is actually going to build (vs. just
+  // chat or ask a clarifying question). Drives whether the activity card
+  // and build pipeline UI render at all.
+  const [intentBuild, setIntentBuild] = useState<boolean>(false);
   // Preview device frame: phone | tablet | desktop. Affects only the wrapper
   // around WebContainerPreview / MobilePreviewFallback — they get the iframe
   // sized to a realistic device width so users can spot responsive issues.
