@@ -3625,4 +3625,9 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/table-inline-edit.tsx", content: TABLE_INLINE_EDIT, overwrite: true },
   { path: "src/components/examples/table-destructive-confirm.tsx", content: TABLE_DESTRUCTIVE_CONFIRM, overwrite: true },
   { path: "src/components/examples/form-multi-step-error.tsx", content: FORM_MULTI_STEP_ERROR, overwrite: true },
+
+  // Kit expansion demos (Phase 3)
+  { path: "src/components/examples/kit-command-palette.tsx", content: KIT_COMMAND_PALETTE, overwrite: true },
+  { path: "src/components/examples/kit-validated-form.tsx", content: KIT_VALIDATED_FORM, overwrite: true },
+  { path: "src/components/examples/kit-sales-chart-card.tsx", content: KIT_SALES_CHART_CARD, overwrite: true },
 ];
