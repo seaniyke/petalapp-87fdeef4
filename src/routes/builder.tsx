@@ -95,6 +95,7 @@ export const Route = createFileRoute("/builder")({
   validateSearch: (search: Record<string, unknown>) => ({
     prompt: typeof search.prompt === "string" ? search.prompt : undefined,
     id: typeof search.id === "string" ? search.id : undefined,
+    mode: search.mode === "discuss" ? ("discuss" as const) : undefined,
   }),
   head: () => ({
     meta: [
@@ -108,7 +109,7 @@ export const Route = createFileRoute("/builder")({
 type ViewMode = "preview" | "code";
 
 function Builder() {
-  const { prompt: initialPrompt, id: searchId } = Route.useSearch();
+  const { prompt: initialPrompt, id: searchId, mode: initialMode } = Route.useSearch();
   const { user, isReady } = useAuthReady();
   const navigate = useNavigate();
 
@@ -154,7 +155,7 @@ function Builder() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   // Build vs Discuss mode. Discuss = chat-only, no file changes (Base44/Lovable parity).
-  const [mode, setMode] = useState<"build" | "discuss">("build");
+  const [mode, setMode] = useState<"build" | "discuss">(initialMode === "discuss" ? "discuss" : "build");
   // Smart model routing is always on. The /api/generate endpoint auto-picks
   // Pro for big/complex changes and Flash otherwise — users shouldn't choose.
   // Index of the most recent assistant message that came from Discuss mode,
@@ -300,7 +301,8 @@ function Builder() {
       messages.length === 0
     ) {
       initialSent.current = true;
-      void send(initialPrompt);
+      if (initialMode === "discuss") void discuss(initialPrompt);
+      else void send(initialPrompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapping, initialPrompt]);
@@ -318,7 +320,7 @@ function Builder() {
       setProject(p);
       navigate({
         to: "/builder",
-        search: { id: p.id, prompt: initialPrompt },
+        search: { id: p.id, prompt: initialPrompt, mode: initialMode },
         replace: true,
       });
       return p;

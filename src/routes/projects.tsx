@@ -67,7 +67,7 @@ function ProjectsPage() {
   // when users click "New project" and bounce. The builder lazy-creates the project
   // on the first user prompt (see ensureProject in builder.tsx).
   function handleCreate() {
-    navigate({ to: "/builder", search: { id: undefined, prompt: undefined } });
+    navigate({ to: "/builder", search: { id: undefined, prompt: undefined, mode: undefined } });
   }
 
   async function confirmDelete() {
@@ -169,7 +169,7 @@ function ProjectCard({ project, onDelete }: { project: ProjectRow; onDelete: () 
     <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
       <Link
         to="/builder"
-        search={{ id: project.id, prompt: undefined }}
+        search={{ id: project.id, prompt: undefined, mode: undefined }}
         className="flex flex-1 flex-col"
       >
         <div className="relative">
