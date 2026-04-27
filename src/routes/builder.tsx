@@ -641,6 +641,8 @@ function Builder() {
 
       let resultFiles: ProjectFile[] | null = null;
       let resultSummary = "";
+      let resultPlan: string | undefined;
+      let resultRecap: string | undefined;
       let streamError: string | null = null;
       // Mirror of the streamingAssistant state we accumulate as deltas come in.
       // Kept locally so the catch/finally branches can read the latest value
@@ -665,6 +667,9 @@ function Builder() {
             onPhase: (phase: PhaseId) => {
               setPhases((p) => advanceTo(p, phase));
             },
+            onPlanDelta: (d) => {
+              setStreamingPlan((s) => s + d);
+            },
             onSummaryDelta: (d) => {
               // Two consumers of the same stream:
               //   - structured timeline (designCaption under "Designing")
@@ -672,6 +677,9 @@ function Builder() {
               partialAssistant += d;
               setDesignCaption((s) => s + d);
               setStreamingAssistant((s) => s + d);
+            },
+            onRecapDelta: (d) => {
+              setStreamingRecap((s) => s + d);
             },
             onFileProgress: (n, path) => {
               setFilesWritten(n);
@@ -682,10 +690,14 @@ function Builder() {
                 setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
               }
             },
-            onResult: (f, s, charged) => {
+            onResult: (f, s, extras) => {
               resultFiles = f;
               resultSummary = s;
-              if (typeof charged === "number") setLastBuildCredits(charged);
+              resultPlan = extras?.plan;
+              resultRecap = extras?.recap;
+              if (typeof extras?.creditsCharged === "number") {
+                setLastBuildCredits(extras.creditsCharged);
+              }
             },
             onError: (m) => {
               streamError = m;
@@ -700,7 +712,12 @@ function Builder() {
 
         const files2: ProjectFile[] = resultFiles;
         const summary2: string = resultSummary || "Updated the project.";
-        const assistantMsg: ChatMessage = { role: "assistant", content: summary2 };
+        const assistantMsg: ChatMessage = {
+          role: "assistant",
+          content: summary2,
+          plan: resultPlan,
+          recap: resultRecap,
+        };
         setFiles(files2);
         setActiveFile((prev) => prev ?? "index.html");
         setMessages((prev) => [...prev, assistantMsg]);
@@ -708,6 +725,8 @@ function Builder() {
         setLastUserPrompt(null);
         // The streaming bubble has been promoted into a real message — clear it.
         setStreamingAssistant("");
+        setStreamingPlan("");
+        setStreamingRecap("");
 
         // Compute final per-file line counts for the activity card. We only
         // surface counts for files Petal actually wrote in this run, so the
