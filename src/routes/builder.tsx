@@ -657,7 +657,10 @@ function Builder() {
   }, [isReady, user, project, navigate, initialPrompt]);
 
   const send = useCallback(
-    async (content: string, opts: { isRetry?: boolean; attachments?: ChatAttachment[] } = {}) => {
+    async (
+      content: string,
+      opts: { isRetry?: boolean; attachments?: ChatAttachment[]; forceBuild?: boolean } = {},
+    ) => {
       const text = content.trim();
       if (!text || busy) return;
       const proj = await ensureProject();
