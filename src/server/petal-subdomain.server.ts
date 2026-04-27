@@ -113,32 +113,34 @@ export async function isSlugAvailable(
 }
 
 /**
- * Claim `<slug>.buildwithpetal.com` for a project:
- *   1. Validate the slug (cheap, local) and check uniqueness.
- *   2. Set `projects.subdomain = slug` (DB trigger re-validates).
- *   3. Register the hostname with Cloudflare via the SaaS API. Idempotent —
- *      if Cloudflare already knows the hostname (e.g. retry after a partial
- *      failure) we treat that as success and reuse the existing record.
- *   4. Mirror it into `project_domains` (status=active immediately, since
- *      Cloudflare auto-issues certs for hostnames inside our own SaaS zone).
+ * Claim `<slug>.buildwithpetal.com` for a project.
  *
- * If the user already had a different Petal subdomain claimed for this
- * project, the *caller* should release the old one first (see `releaseSubdomain`).
+ * Implementation: just persist the slug. The actual request routing is
+ * handled by an edge Worker bound to `*.buildwithpetal.com/*` (see
+ * `subdomain-worker/`), which calls `/api/public/host-lookup` to resolve
+ * `<slug>` → project → pages.dev URL on every request.
+ *
+ * SSL is handled by Cloudflare Universal SSL on the wildcard A record we
+ * keep on the zone — no per-claim cert issuance needed.
+ *
+ * No Cloudflare for SaaS custom-hostname registration here: that API only
+ * intercepts traffic for *external* (CNAMEd) customer domains, not
+ * subdomains of our own zone. See `cloudflare-saas.server.ts` (still used
+ * for user-owned custom domains like `acme.com`).
  */
 export async function claimSubdomain(args: {
   projectId: string;
   slug: string;
 }): Promise<{
   hostname: string;
-  domainRowId: string;
-  status: "active" | "verifying" | "pending" | "failed";
+  status: "active";
 }> {
   const v = validateSlug(args.slug);
   if (!v.ok) throw new Error(v.reason);
   const slug = v.slug;
   const hostname = `${slug}.${PETAL_ROOT_DOMAIN}`;
 
-  // Step 1: persist the slug on the project. The unique index + trigger
+  // Persist the slug on the project. The unique index + trigger
   // double-check format/uniqueness for us.
   const { error: projErr } = await supabaseAdmin
     .from("projects")
@@ -151,73 +153,23 @@ export async function claimSubdomain(args: {
     throw new Error(projErr.message);
   }
 
-  // Step 2: register with Cloudflare. If the hostname already exists on our
-  // zone (idempotent retry, or a stale row from a failed prior attempt),
-  // surface that as a soft success so the caller can move on.
-  let cf;
-  try {
-    // HTTP-01 validation: the `*.buildwithpetal.com` wildcard already points
-    // at Cloudflare's edge, so HTTP challenge completes in seconds without
-    // any per-subdomain DNS work. (TXT would require us to also create an
-    // `_acme-challenge.<slug>` record per claim.)
-    cf = await createCustomHostname(hostname, { sslMethod: "http" });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Cloudflare error";
-    // 1414 = "custom hostname already exists in this zone".
-    if (msg.includes("1414") || msg.toLowerCase().includes("already exists")) {
-      // Look it up via the existing project_domains row (best effort) so we
-      // can keep going. If we can't find it, surface a useful error.
-      const { data: existing } = await supabaseAdmin
-        .from("project_domains")
-        .select("id, provider_hostname_id, status")
-        .eq("hostname", hostname)
-        .maybeSingle();
-      if (!existing) {
-        throw new Error(
-          `That subdomain is registered with Cloudflare but not tracked in Petal — contact support.`,
-        );
-      }
-      return {
-        hostname,
-        domainRowId: existing.id,
-        status: (existing.status as "active" | "verifying" | "pending" | "failed") ?? "verifying",
-      };
-    }
-    throw new Error(`Couldn't register with Cloudflare: ${msg}`);
-  }
-
-  const mapped = mapCfStatus(cf);
-
-  // Step 3: mirror into project_domains. Petal subdomains don't need TXT
-  // verification (the zone is ours), so we store an empty placeholder.
-  const { data: domainRow, error: domErr } = await supabaseAdmin
+  // Clean up any stale `project_domains` row from the previous CF for SaaS
+  // attempt for this hostname. Petal subdomains don't live in project_domains
+  // anymore — they're identified by `projects.subdomain` alone.
+  const { data: stale } = await supabaseAdmin
     .from("project_domains")
-    .upsert(
-      {
-        project_id: args.projectId,
-        hostname,
-        status: mapped.status,
-        ssl_status: mapped.ssl_status,
-        error_message: mapped.error_message,
-        verification_txt_name: "(not required for petal subdomain)",
-        verification_txt_value: "(not required for petal subdomain)",
-        provider_hostname_id: cf.id,
-        last_checked_at: new Date().toISOString(),
-      },
-      { onConflict: "hostname" },
-    )
-    .select("id, status")
-    .single();
-  if (domErr) {
-    // Best-effort rollback of the Cloudflare hostname.
-    await deleteCustomHostname(cf.id).catch(() => {});
-    throw new Error(domErr.message);
+    .select("id, provider_hostname_id")
+    .eq("hostname", hostname)
+    .maybeSingle();
+  if (stale) {
+    if (stale.provider_hostname_id) {
+      await deleteCustomHostname(stale.provider_hostname_id).catch(() => {});
+    }
+    await supabaseAdmin.from("project_domains").delete().eq("id", stale.id);
   }
 
-  return {
-    hostname,
-    domainRowId: domainRow.id,
-    status: domainRow.status as "active" | "verifying" | "pending" | "failed",
+  return { hostname, status: "active" };
+}
   };
 }
 
