@@ -178,7 +178,9 @@ export const Route = createFileRoute("/api/builds/trigger")({
           );
         }
 
-
+        // 3) Insert pending build row + bump latest_build_id BEFORE calling
+        //    Railway, so a fast callback never races ahead of our own write.
+        const { data: build, error: insertErr } = await supabaseAdmin
           .from("project_builds")
           .insert({ project_id: projectId, status: "pending" })
           .select("id")
