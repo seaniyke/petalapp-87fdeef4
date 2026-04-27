@@ -34,6 +34,8 @@ type Body = {
 
 const MODEL_FAST = "google/gemini-3-flash-preview";
 const MODEL_BEST = "google/gemini-2.5-pro";
+/** Vision-capable model used whenever the latest turn carries image attachments. */
+const MODEL_VISION = "google/gemini-2.5-pro";
 
 /** Heuristic: when in "smart" mode, decide whether the turn deserves the Pro model. */
 function pickSmartModel(latestPrompt: string, fileCount: number): string {
