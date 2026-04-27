@@ -86,7 +86,7 @@ export function FirstRunTour() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+      className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center p-4 pt-20 sm:items-center sm:inset-0 sm:pt-4"
       role="dialog"
       aria-modal="false"
       aria-labelledby="first-run-tour-title"
