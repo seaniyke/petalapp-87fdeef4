@@ -27,6 +27,7 @@ import {
   Monitor,
   Paperclip,
   ImageIcon,
+  Globe,
 } from "lucide-react";
 import {
   encodeAttachments,
@@ -75,6 +76,7 @@ import { SharePopover } from "@/components/SharePopover";
 import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
 import { RevertPreviewDialog } from "@/components/RevertPreviewDialog";
 import { BuilderActionsSheet } from "@/components/BuilderActionsSheet";
+import { PublishSheet } from "@/components/PublishSheet";
 import { RenameProjectDialog } from "@/components/RenameProjectDialog";
 import { BillingSheet } from "@/components/BillingSheet";
 import {
@@ -224,6 +226,7 @@ function Builder() {
   const [actionsOpen, setActionsOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
   // Visual element edit (Phase 5): selected element from the preview iframe.
   type PickedElement = {
