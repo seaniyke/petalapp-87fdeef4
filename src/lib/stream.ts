@@ -3,11 +3,17 @@ import type { ChatMessage, ProjectFile, StreamEvent } from "@/server/generate.se
 
 type Handlers = {
   onStatus?: (message: string) => void;
+  onPlanDelta?: (delta: string) => void;
   onSummaryDelta?: (delta: string) => void;
+  onRecapDelta?: (delta: string) => void;
   onTool?: (name: "write_project" | "patch_files") => void;
   onPhase?: (phase: "thinking" | "designing" | "writing" | "polishing") => void;
   onFileProgress?: (written: number, latestPath?: string) => void;
-  onResult?: (files: ProjectFile[], summary: string, creditsCharged?: number) => void;
+  onResult?: (
+    files: ProjectFile[],
+    summary: string,
+    extras?: { plan?: string; recap?: string; creditsCharged?: number },
+  ) => void;
   onError?: (message: string) => void;
 };
 
