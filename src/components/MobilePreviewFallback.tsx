@@ -121,9 +121,25 @@ export function MobilePreviewFallback({
       )
       .subscribe();
 
+    // iOS Safari suspends backgrounded tabs and silently kills realtime
+    // websockets. Re-fetch whenever the user returns so the preview catches
+    // up instead of staying frozen on stale state.
+    const onAlive = () => {
+      if (document.visibilityState === "visible") {
+        void loadLatestBuild();
+        void loadLatestReadyBuild();
+      }
+    };
+    document.addEventListener("visibilitychange", onAlive);
+    window.addEventListener("online", onAlive);
+    window.addEventListener("focus", onAlive);
+
     return () => {
       cancelled = true;
       window.clearInterval(poll);
+      document.removeEventListener("visibilitychange", onAlive);
+      window.removeEventListener("online", onAlive);
+      window.removeEventListener("focus", onAlive);
       void supabase.removeChannel(channel);
     };
   }, [latestBuildId, projectId]);
