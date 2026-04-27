@@ -121,6 +121,12 @@ export const Route = createFileRoute("/api/discuss")({
           ? `\n\nProject Knowledge — the owner has asked you to always honor these instructions:\n"""\n${knowledge}\n"""\n`
           : "";
 
+        // Marketplace integrations — let Petal answer "can we send email?" with
+        // a confident YES when Resend (or similar) is installed.
+        const integrationsBlock = body.projectId
+          ? await loadInstalledIntegrationsContext(body.projectId)
+          : "";
+
         // If the latest user turn carries image attachments, send it as a
         // multimodal content array so Petal can actually look at the screenshot.
         const lastUserIdx = (() => {
@@ -137,7 +143,7 @@ export const Route = createFileRoute("/api/discuss")({
           : "";
 
         const chatMessages = [
-          { role: "system", content: DISCUSS_SYSTEM_PROMPT + knowledgeBlock + visionAddendum + filesContext },
+          { role: "system", content: DISCUSS_SYSTEM_PROMPT + integrationsBlock + knowledgeBlock + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {
