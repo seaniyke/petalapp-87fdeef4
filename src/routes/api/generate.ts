@@ -17,6 +17,7 @@ import { lookupBackendForGenerate } from "@/server/backend-connector.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, refundCredit } from "@/server/credits.server";
+import { priceBuild, BUILD_HOLD } from "@/server/credit-pricing.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -95,10 +96,13 @@ async function authorize(request: Request): Promise<string | Response> {
 type ParsedTool = {
   name: "write_project" | "patch_files" | null;
   args: string;
+  /** Token usage from the gateway (final SSE chunk usually carries it). */
+  usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
 };
 
 /** Parse a streamed OpenAI-style SSE body, emit summary deltas as they arrive,
- *  accumulate the tool-call arguments string, and return the parsed final args. */
+ *  accumulate the tool-call arguments string, and return the parsed final args
+ *  along with any `usage` payload the gateway emitted. */
 async function relayAndCollect(
   upstream: Response,
   controller: ReadableStreamDefaultController<Uint8Array>,
@@ -107,7 +111,7 @@ async function relayAndCollect(
   const reader = upstream.body!.getReader();
   const decoder = new TextDecoder();
   let buf = "";
-  const tool: ParsedTool = { name: null, args: "" };
+  const tool: ParsedTool = { name: null, args: "", usage: null };
   let summaryEmitted = ""; // running prefix of `summary` field already streamed
   let toolAnnounced = false;
   let designingPhaseSent = false;
