@@ -1738,8 +1738,8 @@ function Builder() {
               return (
                 <div key={i} className="group min-w-0">
                   <div
-                    className={`relative min-w-0 overflow-hidden wrap-anywhere rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                      isUser ? "ml-3 bg-card sm:ml-6" : "mr-3 bg-butter/60 sm:mr-6"
+                    className={`relative min-w-0 overflow-hidden wrap-anywhere rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed text-foreground ${
+                      isUser ? "ml-3 bg-card sm:ml-6" : "mr-3 bg-secondary sm:mr-6"
                     }`}
                   >
                     <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
