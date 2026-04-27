@@ -24,12 +24,7 @@
  *     - never matches the reserved list enforced by the DB trigger
  *     - falls back to `petal-app-XXXXXX` if the title is unusable
  */
-import {
-  createCustomHostname,
-  deleteCustomHostname,
-  getCustomHostname,
-  mapCfStatus,
-} from "@/server/cloudflare-saas.server";
+import { deleteCustomHostname } from "@/server/cloudflare-saas.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export const PETAL_ROOT_DOMAIN = "buildwithpetal.com";
