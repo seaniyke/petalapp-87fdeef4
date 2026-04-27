@@ -858,9 +858,16 @@ function Builder() {
 
         const files2: ProjectFile[] = resultFiles;
         const summary2: string = resultSummary || "Updated the project.";
+        // Persist the warm preamble alongside the technical summary so the
+        // chat thread retains the human voice on refresh — without it, all
+        // we'd see in history is the dryer "Updated the project." line.
+        const preambleText = partialPreamble.trim();
+        const combinedContent = preambleText
+          ? `${preambleText}\n\n${summary2}`
+          : summary2;
         const assistantMsg: ChatMessage = {
           role: "assistant",
-          content: summary2,
+          content: combinedContent,
           plan: resultPlan,
           recap: resultRecap,
         };
@@ -873,6 +880,7 @@ function Builder() {
         setStreamingAssistant("");
         setStreamingPlan("");
         setStreamingRecap("");
+        setStreamingPreamble("");
 
         // Compute final per-file line counts for the activity card. We only
         // surface counts for files Petal actually wrote in this run, so the
