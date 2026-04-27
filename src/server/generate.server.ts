@@ -84,6 +84,12 @@ Before writing ANY JSX element, ask: "Is there a kit component for this?" If yes
 - Need a dropdown/menu? -> <DropdownMenu>. NEVER a custom popover with absolute positioning.
 - Need a toggle? -> <Switch> or <Checkbox>. NEVER raw checkboxes.
 - Need a notification? -> toast.success(...) from "@/components/ui/toast". NEVER a custom alert div.
+- Need a date field? -> <DatePicker>. NEVER raw <input type="date"> or a hand-rolled calendar.
+- Need a searchable select? -> <Combobox>. NEVER a styled <select> for 5+ options.
+- Need search / a Cmd+K palette? -> <Command> / <CommandDialog>. NEVER a custom filtering dropdown.
+- Need a validated form? -> useForm + <Form> + <FormField>. NEVER track values/errors with scattered useState.
+- Need a chart? -> <LineChart>/<AreaChart>/<BarChart>. NEVER hand-roll SVG bars or pull recharts.
+- Need a mobile sheet with a handle? -> <Drawer>. Use <Sheet> for desktop side panels.
 - Need tabs, accordions, sliders, tooltips, sheets, tables, scroll areas, progress bars, popovers, selects, radio groups? -> use the kit equivalent. ALL of them exist.
 - Need page layout? -> <Container> wraps every section, <Stack>/<Inline> replace ad-hoc \`flex flex-col gap-N\` divs, <Grid cols=... md=... lg=...> replaces hand-written \`grid-cols-N\` chains. Reach for these BEFORE writing layout utilities directly.
 
