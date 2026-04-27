@@ -274,27 +274,3 @@ export async function refreshSubdomainStatus(domainRowId: string): Promise<void>
     // Soft-fail: status will be re-checked on next user action.
   }
 }
-
-/**
- * Resolves the published URL for a project.
- * Priority: Custom Domain > Petal Subdomain > Pages.dev
- */
-export async function resolvePublishedUrl(projectId: string): Promise<string | null> {
-  const { data: project } = await supabaseAdmin
-    .from("projects")
-    .select("subdomain, custom_domain, pages_url")
-    .eq("id", projectId)
-    .single();
-
-  if (!project) return null;
-
-  if (project.custom_domain) {
-    return `https://${project.custom_domain}`;
-  }
-
-  if (project.subdomain) {
-    return `https://${project.subdomain}.${PETAL_ROOT_DOMAIN}`;
-  }
-
-  return project.pages_url;
-}
