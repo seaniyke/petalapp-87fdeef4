@@ -250,15 +250,49 @@ export const Route = createFileRoute("/api/generate")({
               .join("\n\n")}`;
         const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
 
+        // Build the chat-completion messages. The LAST user turn may carry
+        // image attachments — when it does, we use OpenAI's multimodal content
+        // array shape so the model actually sees the screenshot. All earlier
+        // messages stay as plain strings to keep the payload small.
+        const lastUserIdx = (() => {
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === "user") return i;
+          }
+          return -1;
+        })();
+        const hasVisionTurn =
+          lastUserIdx >= 0 && (messages[lastUserIdx].attachments?.length ?? 0) > 0;
+
+        const visionAddendum = hasVisionTurn
+          ? "\n\nThe user attached one or more reference images with their latest message. Treat them as design references — match the layout, color palette, typography style, spacing, and overall mood as closely as the kit components allow. Describe in your summary which parts you matched and which you adapted."
+          : "";
+
         const chatMessages = [
-          { role: "system", content: baseSystem + backendBlock + knowledgeBlock + filesContext },
-          ...messages.map((m) => ({ role: m.role, content: m.content })),
+          { role: "system", content: baseSystem + backendBlock + knowledgeBlock + visionAddendum + filesContext },
+          ...messages.map((m, i) => {
+            if (i === lastUserIdx && hasVisionTurn) {
+              return {
+                role: m.role,
+                content: [
+                  { type: "text", text: m.content },
+                  ...(m.attachments ?? []).map((a) => ({
+                    type: "image_url" as const,
+                    image_url: { url: a.dataUrl },
+                  })),
+                ],
+              };
+            }
+            return { role: m.role, content: m.content };
+          }),
         ];
 
-        // Smart model routing (Phase 4). Default to "smart".
+        // Smart model routing (Phase 4). Default to "smart". Vision turns
+        // ALWAYS go to a vision-capable model regardless of preset.
         const preset: ModelPreset = body.model ?? "smart";
         const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
-        const model = resolveModel(preset, lastUser, currentFiles.length);
+        const model = hasVisionTurn
+          ? MODEL_VISION
+          : resolveModel(preset, lastUser, currentFiles.length);
 
         const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
