@@ -641,31 +641,64 @@ export const Route = createFileRoute("/api/generate")({
                 ),
               );
 
+              // Layer 5 — Self-check. Awaited (not fire-and-forget) so the
+              // verdict reaches the client BEFORE the stream closes. Bounded
+              // to a single fast model call; on any failure we emit nothing
+              // and the user just sees their normal result.
+              try {
+                const verdict = await runSelfCheck({
+                  brief: lastUserContent,
+                  assistantSummary: summary,
+                  filePaths: nextFiles.map((f) => f.path),
+                });
+                if (verdict) {
+                  controller.enqueue(
+                    encoder.encode(
+                      sse({
+                        type: "self_check",
+                        score: verdict.score,
+                        verdict: verdict.verdict,
+                        gaps: verdict.gaps,
+                        suggestions: verdict.suggestions,
+                      }),
+                    ),
+                  );
+                }
+              } catch (e) {
+                console.warn("[self-check] rejected:", e);
+              }
+
               // Memory writer — fire-and-forget. Distills the user's latest
               // turn (+ Petal's summary) into durable facts saved to
               // project_memory. Failures are logged inside; never block the
               // user's reply or fail the build.
               if (body.projectId && userJwt) {
-                const lastUserMsg = (() => {
-                  for (let i = messages.length - 1; i >= 0; i--) {
-                    if (messages[i].role === "user") {
-                      const c = messages[i].content;
-                      return typeof c === "string" ? c : "";
-                    }
-                  }
-                  return "";
-                })();
                 void updateProjectMemory({
                   jwt: userJwt,
                   projectId: body.projectId,
-                  userMessage: lastUserMsg,
+                  userMessage: lastUserContent,
                   assistantSummary: summary,
                 }).catch((e) => console.warn("[project-memory] writer rejected:", e));
               }
             } catch (e) {
-              const message = e instanceof Error ? e.message : "Generation failed.";
-              // No credits were taken — nothing to refund. Just surface the error.
-              controller.enqueue(encoder.encode(sse({ type: "error", message })));
+              const raw = e instanceof Error ? e.message : "Generation failed.";
+              // Layer 5 — humanize the raw error before showing it. No credits
+              // were taken — nothing to refund. The friendly rewrite gives the
+              // user a clear next step (retry, simplify, top up, …) instead
+              // of a stack-trace-flavored sentence.
+              const friendly = await humanizeBuildError({
+                rawMessage: raw,
+                brief: lastUserContent,
+              });
+              controller.enqueue(
+                encoder.encode(
+                  sse({
+                    type: "error",
+                    message: friendly.message,
+                    suggestions: friendly.suggestions,
+                  }),
+                ),
+              );
             } finally {
               controller.close();
             }
