@@ -1336,6 +1336,7 @@ function Builder() {
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenRename={() => setRenameOpen(true)}
             onOpenBilling={() => setBillingOpen(true)}
+            onOpenPublish={() => setPublishOpen(true)}
           />
           <RenameProjectDialog
             project={project}
@@ -1344,6 +1345,17 @@ function Builder() {
             onChange={setProject}
           />
           <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
+          <PublishSheet
+            open={publishOpen}
+            onOpenChange={setPublishOpen}
+            project={project}
+            onChange={setProject}
+            onManageDomains={() => {
+              setSettingsScrollTo("domains");
+              setSettingsOpen(true);
+            }}
+            onOpenSettings={() => setSettingsOpen(true)}
+          />
         </>
       )}
 
