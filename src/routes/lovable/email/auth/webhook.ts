@@ -25,6 +25,43 @@ function redactEmail(email: string | null | undefined): string {
   return `${localPart[0]}***@${domain}`
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function renderAuthEmail(type: string, props: Record<string, string | undefined>) {
+  const title = EMAIL_SUBJECTS[type] || 'Notification'
+  const url = props.confirmationUrl || props.siteUrl || `https://${ROOT_DOMAIN}`
+  const token = props.token ? `<div style="font-size:28px;font-weight:600;letter-spacing:0.2em;background:#ffffff;border:1px solid #f1e6db;border-radius:12px;padding:18px 24px;text-align:center;margin:0 0 28px;">${escapeHtml(props.token)}</div>` : ''
+  const introByType: Record<string, string> = {
+    signup: `Welcome to ${SITE_NAME}. Please confirm ${props.recipient || 'your email'} to activate your account.`,
+    invite: `You've been invited to join ${SITE_NAME}. Accept the invitation to create your account.`,
+    magiclink: `Click the button below to sign in to ${SITE_NAME}. This link will expire shortly.`,
+    recovery: `We received a request to reset the password for your ${SITE_NAME} account.`,
+    email_change: `Confirm the requested email change for your ${SITE_NAME} account.`,
+    reauthentication: `Use this verification code to continue with ${SITE_NAME}.`,
+  }
+  const ctaByType: Record<string, string> = {
+    signup: 'Verify email',
+    invite: 'Accept invitation',
+    magiclink: 'Sign in',
+    recovery: 'Reset password',
+    email_change: 'Confirm email change',
+    reauthentication: 'Open Petal',
+  }
+  const intro = introByType[type] || `You have a new notification from ${SITE_NAME}.`
+
+  const html = `<!doctype html><html lang="en"><body style="margin:0;background:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#3a2a20;"><main style="max-width:480px;margin:40px auto;padding:40px 32px;background:#fffaf6;border:1px solid #f1e6db;border-radius:16px;"><p style="margin:0 0 28px;font-family:Georgia,serif;font-size:20px;font-weight:600;color:#2a1c14;">🌸 ${SITE_NAME}</p><h1 style="margin:0 0 16px;font-family:Georgia,serif;font-size:26px;line-height:1.2;color:#2a1c14;">${escapeHtml(title)}</h1><p style="margin:0 0 20px;font-size:15px;line-height:1.6;">${escapeHtml(intro)}</p>${token}<a href="${escapeHtml(url)}" style="display:inline-block;margin:8px 0 24px;padding:13px 24px;border-radius:12px;background:#e2674d;color:#fff;text-decoration:none;font-size:15px;font-weight:500;">${escapeHtml(ctaByType[type] || 'Open Petal')}</a><p style="margin:24px 0 0;padding-top:20px;border-top:1px solid #f1e6db;color:#a8978a;font-size:13px;line-height:1.5;">If you did not request this email, you can safely ignore it.</p></main></body></html>`
+  const text = `${title}\n\n${intro}${props.token ? `\n\nCode: ${props.token}` : ''}\n\n${url}\n\nIf you did not request this email, you can safely ignore it.`
+
+  return { html, text }
+}
+
 export const Route = createFileRoute("/lovable/email/auth/webhook")({
   server: {
     handlers: {
