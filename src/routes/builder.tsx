@@ -496,6 +496,16 @@ function Builder() {
     return () => clearTimeout(t);
   }, [isLive, friendlyError]);
 
+  // If a newer build flips to ready while the "Publishing is taking longer"
+  // stall card is still on screen, clear it — the deploy did succeed, we were
+  // just watching an older orphaned build row that never got its callback.
+  useEffect(() => {
+    if (!isLive) return;
+    if (friendlyError?.title?.startsWith("Publishing is taking")) {
+      setFriendlyError(null);
+    }
+  }, [isLive, friendlyError]);
+
   // Cancel any in-flight generation on unmount or when switching projects.
   useEffect(() => {
     return () => {
