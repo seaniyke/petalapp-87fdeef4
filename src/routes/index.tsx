@@ -69,6 +69,7 @@ const samplePrompts = [
 const DRAFT_KEY = "petal:landing:draft";
 
 function Landing() {
+  const { focus: focusParam } = Route.useSearch();
   const [prompt, setPrompt] = useState("");
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
   const [isFocused, setIsFocused] = useState(false);
@@ -77,6 +78,20 @@ function Landing() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
+
+  // When the user clicks "+ New project" on /projects we route them here with
+  // ?focus=composer. Drop the cursor in the textarea and scroll it into view
+  // so the composer is unmistakably the next thing to do.
+  useEffect(() => {
+    if (focusParam !== "composer") return;
+    const t = window.setTimeout(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus({ preventScroll: true });
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+    return () => window.clearTimeout(t);
+  }, [focusParam]);
 
   // Restore any draft the user had typed before refresh / auth redirect.
   // Runs once on mount; attachments aren't restored (Files can't survive a
