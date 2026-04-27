@@ -18,6 +18,11 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import {
+  provisionForProject,
+  refreshStatus,
+  restoreForProject,
+} from "@/server/managed-backend.server";
 
 const SUPABASE_URL_RE = /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i;
 
