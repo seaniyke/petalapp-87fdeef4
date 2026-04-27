@@ -139,12 +139,6 @@ export function BillingSheet({ open, onOpenChange }: Props) {
               );
             })}
           </div>
-          {activeCurrency && currency !== "USD" && (
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
-              Converted at {activeCurrency.symbol}
-              {activeCurrency.usd_rate.toLocaleString()} per $1
-            </p>
-          )}
         </div>
 
         {wallet && wallet.plan_code !== "free" && expiresSoon && (
