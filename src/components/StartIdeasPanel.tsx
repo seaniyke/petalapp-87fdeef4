@@ -88,7 +88,13 @@ const ACCENT_BG: Record<StartIdea["accent"], string> = {
   butter: "bg-butter/40 text-foreground/80",
 };
 
-export function StartIdeasPanel({ onPick }: { onPick: (prompt: string) => void }) {
+export function StartIdeasPanel({
+  onPick,
+  onSwitchToCoach,
+}: {
+  onPick: (prompt: string) => void;
+  onSwitchToCoach?: () => void;
+}) {
   return (
     <section aria-labelledby="start-ideas-heading" className="mx-auto mt-8 max-w-4xl md:px-0">
       <div className="mb-3 flex items-center justify-center gap-2">
@@ -135,6 +141,18 @@ export function StartIdeasPanel({ onPick }: { onPick: (prompt: string) => void }
           </li>
         ))}
       </ul>
+      {onSwitchToCoach && (
+        <div className="mt-3 text-center">
+          <button
+            type="button"
+            onClick={onSwitchToCoach}
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            <Sparkles className="h-3 w-3 text-lilac" />
+            Not seeing what you want? Help me think →
+          </button>
+        </div>
+      )}
     </section>
   );
 }

@@ -29,6 +29,7 @@ export type SpendReason =
   | "ai_image_charge"
   | "ai_discuss"
   | "ai_discuss_charge"
+  | "ai_coach_charge"
   | "ai_build_hold"
   | "ai_build_topup"
   | "ai_build_charge";
