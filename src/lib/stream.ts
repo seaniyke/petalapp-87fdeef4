@@ -115,8 +115,16 @@ export async function streamGenerate(
               creditsCharged: evt.creditsCharged,
             });
             break;
+          case "self_check":
+            handlers.onSelfCheck?.({
+              score: evt.score,
+              verdict: evt.verdict,
+              gaps: evt.gaps,
+              suggestions: evt.suggestions,
+            });
+            break;
           case "error":
-            handlers.onError?.(evt.message);
+            handlers.onError?.(evt.message, evt.suggestions);
             break;
         }
       }
