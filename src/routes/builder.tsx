@@ -1793,6 +1793,18 @@ function Builder() {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
               </div>
             )}
+            {/* Bridge state: busy but no streamed content yet. Without this
+                the chat goes blank for ~300ms after send while triage warms
+                up — which feels like a freeze. */}
+            {busy &&
+              !streamingPreamble &&
+              !streamingPlan &&
+              !streamingAssistant &&
+              !streamingRecap && (
+                <div className="mr-3 inline-flex items-center gap-2 rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm text-muted-foreground sm:mr-6">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
+                </div>
+              )}
             {/* Live, token-by-token reply while Petal works. Promoted to a real
                 message in `messages` once the run completes. */}
             {busy &&
