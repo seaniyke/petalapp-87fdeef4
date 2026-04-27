@@ -29,6 +29,10 @@ import { postBuildToRailway } from "@/server/builder.server";
 import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { syncViteAliasesWithTsconfig } from "@/server/sync-vite-aliases.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
+import {
+  buildIntegrationEnvFiles,
+  mergeFilesIntoPayload,
+} from "@/server/integrations/env-injector.server";
 
 const BodySchema = z.object({ projectId: z.string().uuid() });
 
