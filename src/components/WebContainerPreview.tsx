@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Terminal, RotateCw, AlertCircle, Smartphone, MousePointerClick } from "lucide-react";
+import { Loader2, Terminal, RotateCw, AlertCircle, Smartphone, MousePointerClick, X } from "lucide-react";
 import type { ProjectFile } from "@/server/generate.server";
 import {
   ensurePickerInstalled,
