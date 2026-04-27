@@ -87,7 +87,7 @@ Before writing ANY JSX element, ask: "Is there a kit component for this?" If yes
 - Need a notification? -> toast.success(...) from "@/components/ui/toast". NEVER a custom alert div.
 - Need a date field? -> <DatePicker>. NEVER raw <input type="date"> or a hand-rolled calendar.
 - Need a searchable select? -> <Combobox>. NEVER a styled <select> for 5+ options.
-- Need search / a Cmd+K palette? -> <Command> / <CommandDialog>. NEVER a custom filtering dropdown.
+- Need an inline search field? -> <Input> with a Search icon and a filtered list. Do NOT build a Cmd+K palette unless the user asks for one explicitly.
 - Need a validated form? -> useForm + <Form> + <FormField>. NEVER track values/errors with scattered useState.
 - Need a chart? -> <LineChart>/<AreaChart>/<BarChart>. NEVER hand-roll SVG bars or pull recharts.
 - Need a mobile sheet with a handle? -> <Drawer>. Use <Sheet> for desktop side panels.
