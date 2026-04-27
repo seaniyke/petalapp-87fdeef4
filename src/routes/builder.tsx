@@ -729,7 +729,12 @@ function Builder() {
       let resultSummary = "";
       let resultPlan: string | undefined;
       let resultRecap: string | undefined;
+      // Layer 5 — populated by onSelfCheck so we can attach gap-driven
+      // follow-up chips to the assistant message and on error suggestions.
+      let resultSuggestions: string[] = [];
+      let resultVerdict: string | undefined;
       let streamError: string | null = null;
+      let errorSuggestions: string[] = [];
       // Mirror of the streamingAssistant state we accumulate as deltas come in.
       // Kept locally so the catch/finally branches can read the latest value
       // synchronously without going through React state.
