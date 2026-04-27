@@ -18,7 +18,7 @@ export type StartIdea = {
   title: string;
   prompt: string;
   Icon: typeof Sparkles;
-  accent: "pink" | "mint" | "lilac" | "sky" | "butter" | "peach";
+  accent: "pink" | "mint" | "lilac" | "sky" | "butter";
 };
 
 const IDEAS: StartIdea[] = [
@@ -34,7 +34,7 @@ const IDEAS: StartIdea[] = [
     prompt:
       "A recipe finder where I type ingredients I have and get 6 recipe cards back, each with a hero photo, time, and difficulty.",
     Icon: Sparkles,
-    accent: "peach",
+    accent: "butter",
   },
   {
     title: "Coffee shop site",
@@ -86,7 +86,6 @@ const ACCENT_BG: Record<StartIdea["accent"], string> = {
   lilac: "bg-lilac/30 text-foreground/80",
   sky: "bg-sky/30 text-foreground/80",
   butter: "bg-butter/40 text-foreground/80",
-  peach: "bg-peach/40 text-foreground/80",
 };
 
 export function StartIdeasPanel({ onPick }: { onPick: (prompt: string) => void }) {
