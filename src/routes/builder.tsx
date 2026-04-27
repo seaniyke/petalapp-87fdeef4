@@ -28,6 +28,7 @@ import {
   Paperclip,
   ImageIcon,
   Globe,
+  FileText,
 } from "lucide-react";
 import {
   encodeAttachments,
