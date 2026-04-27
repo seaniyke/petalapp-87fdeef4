@@ -14,7 +14,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -279,8 +279,3 @@ function SectionCard({
   );
 }
 
-// Tag CardHeader/CardTitle/CardDescription as used so unused-import lints stay
-// quiet if a future trim removes them inline.
-void CardHeader;
-void CardTitle;
-void CardDescription;

@@ -56,8 +56,8 @@ export function SiteHeader() {
                     <FolderOpen className="mr-2 h-4 w-4" /> My projects
                   </DropdownMenuItem>
                   {isAdmin && (
-                    <DropdownMenuItem onSelect={() => navigate({ to: "/admin/billing" })}>
-                      <Settings className="mr-2 h-4 w-4" /> Billing settings
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/admin" })}>
+                      <Settings className="mr-2 h-4 w-4" /> Admin
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem

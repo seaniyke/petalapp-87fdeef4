@@ -29,6 +29,9 @@ import { Route as ApiDomainsRouteImport } from './routes/api/domains'
 import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
 import { Route as ApiCoachRouteImport } from './routes/api/coach'
 import { Route as ApiBackendRouteImport } from './routes/api/backend'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
+import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
 import { Route as AdminBillingRouteImport } from './routes/admin.billing'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
@@ -144,6 +147,21 @@ const ApiBackendRoute = ApiBackendRouteImport.update({
   path: '/api/backend',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminProjectsRoute = AdminProjectsRouteImport.update({
+  id: '/admin/projects',
+  path: '/admin/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLedgersRoute = AdminLedgersRouteImport.update({
+  id: '/admin/ledgers',
+  path: '/admin/ledgers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminBillingRoute = AdminBillingRouteImport.update({
   id: '/admin/billing',
   path: '/admin/billing',
@@ -228,6 +246,9 @@ export interface FileRoutesByFullPath {
   '/projects': typeof ProjectsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/ledgers': typeof AdminLedgersRoute
+  '/admin/projects': typeof AdminProjectsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -264,6 +285,9 @@ export interface FileRoutesByTo {
   '/projects': typeof ProjectsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/ledgers': typeof AdminLedgersRoute
+  '/admin/projects': typeof AdminProjectsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -301,6 +325,9 @@ export interface FileRoutesById {
   '/projects': typeof ProjectsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/ledgers': typeof AdminLedgersRoute
+  '/admin/projects': typeof AdminProjectsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -339,6 +366,9 @@ export interface FileRouteTypes {
     | '/projects'
     | '/unsubscribe'
     | '/admin/billing'
+    | '/admin/ledgers'
+    | '/admin/projects'
+    | '/admin/users'
     | '/api/backend'
     | '/api/coach'
     | '/api/discuss'
@@ -375,6 +405,9 @@ export interface FileRouteTypes {
     | '/projects'
     | '/unsubscribe'
     | '/admin/billing'
+    | '/admin/ledgers'
+    | '/admin/projects'
+    | '/admin/users'
     | '/api/backend'
     | '/api/coach'
     | '/api/discuss'
@@ -411,6 +444,9 @@ export interface FileRouteTypes {
     | '/projects'
     | '/unsubscribe'
     | '/admin/billing'
+    | '/admin/ledgers'
+    | '/admin/projects'
+    | '/admin/users'
     | '/api/backend'
     | '/api/coach'
     | '/api/discuss'
@@ -448,6 +484,9 @@ export interface RootRouteChildren {
   ProjectsRoute: typeof ProjectsRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   AdminBillingRoute: typeof AdminBillingRoute
+  AdminLedgersRoute: typeof AdminLedgersRoute
+  AdminProjectsRoute: typeof AdminProjectsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   ApiBackendRoute: typeof ApiBackendRoute
   ApiCoachRoute: typeof ApiCoachRoute
   ApiDiscussRoute: typeof ApiDiscussRoute
@@ -619,6 +658,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBackendRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/projects': {
+      id: '/admin/projects'
+      path: '/admin/projects'
+      fullPath: '/admin/projects'
+      preLoaderRoute: typeof AdminProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/ledgers': {
+      id: '/admin/ledgers'
+      path: '/admin/ledgers'
+      fullPath: '/admin/ledgers'
+      preLoaderRoute: typeof AdminLedgersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/billing': {
       id: '/admin/billing'
       path: '/admin/billing'
@@ -728,6 +788,9 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsRoute: ProjectsRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   AdminBillingRoute: AdminBillingRoute,
+  AdminLedgersRoute: AdminLedgersRoute,
+  AdminProjectsRoute: AdminProjectsRoute,
+  AdminUsersRoute: AdminUsersRoute,
   ApiBackendRoute: ApiBackendRoute,
   ApiCoachRoute: ApiCoachRoute,
   ApiDiscussRoute: ApiDiscussRoute,
