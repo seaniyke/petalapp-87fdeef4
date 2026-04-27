@@ -198,7 +198,7 @@ function ProjectCard({ project, onDelete }: { project: ProjectRow; onDelete: () 
       </Link>
       <button
         onClick={onDelete}
-        className="absolute right-3 bottom-3 grid h-7 w-7 place-items-center rounded-full bg-card/0 text-muted-foreground opacity-0 transition group-hover:bg-card group-hover:opacity-100 hover:text-destructive"
+        className="absolute right-3 bottom-3 grid h-7 w-7 place-items-center rounded-full bg-card text-muted-foreground shadow-sm transition hover:text-destructive md:bg-card/0 md:opacity-0 md:shadow-none md:group-hover:bg-card md:group-hover:opacity-100"
         aria-label="Delete project"
       >
         <Trash2 className="h-3.5 w-3.5" />
