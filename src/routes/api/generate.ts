@@ -513,8 +513,41 @@ export const Route = createFileRoute("/api/generate")({
                 console.warn("[petal-image] resolver failed", e);
               }
 
+              // Post-flight true-up: compute the real cost from token usage
+              // and charge the difference (or refund if cheaper).
+              const priced = priceBuild(collected.usage);
+              let finalCharged = BUILD_HOLD;
+              const diff = Math.round((priced.amount - BUILD_HOLD) * 100) / 100;
+              if (diff > 0) {
+                const top = await spendCredit({
+                  userId,
+                  amount: diff,
+                  reason: "ai_build_topup",
+                  projectId: body.projectId ?? null,
+                  metadata: {
+                    route: "/api/generate",
+                    hold_ledger_id: holdLedgerId,
+                    prompt_tokens: priced.promptTokens,
+                    completion_tokens: priced.completionTokens,
+                    usage_missing: priced.usageMissing,
+                    clamped: priced.clamped,
+                    model,
+                  },
+                });
+                if (top.ok) {
+                  finalCharged = priced.amount;
+                } else {
+                  // Wallet went empty between hold and topup — log but do
+                  // not undo the build the user already received.
+                  console.warn("[credits] post-build topup failed", top);
+                }
+              }
+              // (We never refund below 1.00 because BUILD_FLOOR == 1.00.)
+
               controller.enqueue(
-                encoder.encode(sse({ type: "result", files: nextFiles, summary })),
+                encoder.encode(
+                  sse({ type: "result", files: nextFiles, summary, creditsCharged: finalCharged }),
+                ),
               );
             } catch (e) {
               const message = e instanceof Error ? e.message : "Generation failed.";

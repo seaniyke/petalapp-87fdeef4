@@ -7,7 +7,7 @@ type Handlers = {
   onTool?: (name: "write_project" | "patch_files") => void;
   onPhase?: (phase: "thinking" | "designing" | "writing" | "polishing") => void;
   onFileProgress?: (written: number, latestPath?: string) => void;
-  onResult?: (files: ProjectFile[], summary: string) => void;
+  onResult?: (files: ProjectFile[], summary: string, creditsCharged?: number) => void;
   onError?: (message: string) => void;
 };
 
@@ -87,7 +87,7 @@ export async function streamGenerate(
             handlers.onFileProgress?.(evt.written, evt.latestPath);
             break;
           case "result":
-            handlers.onResult?.(evt.files, evt.summary);
+            handlers.onResult?.(evt.files, evt.summary, evt.creditsCharged);
             break;
           case "error":
             handlers.onError?.(evt.message);

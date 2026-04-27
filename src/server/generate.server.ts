@@ -329,7 +329,7 @@ export type StreamEvent =
   | { type: "tool"; name: "write_project" | "patch_files" }
   | { type: "phase"; phase: "thinking" | "designing" | "writing" | "polishing" }
   | { type: "file_progress"; written: number; latestPath?: string }
-  | { type: "result"; files: ProjectFile[]; summary: string }
+  | { type: "result"; files: ProjectFile[]; summary: string; creditsCharged?: number }
   | { type: "error"; message: string };
 
 /** Apply a list of file operations to a current set of files. */
