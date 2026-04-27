@@ -63,11 +63,12 @@ function ProjectsPage() {
     };
   }, [isReady, user]);
 
-  // Note: we deliberately do NOT pre-create a project row here. Empty rows pile up
-  // when users click "New project" and bounce. The builder lazy-creates the project
-  // on the first user prompt (see ensureProject in builder.tsx).
+  // Send the user to the landing page composer instead of straight to /builder.
+  // This way, by the time they arrive at /builder, the prompt is already in flight
+  // and a real project title can be inferred from it — no more "Loading…" header
+  // sitting over an empty composer. Mirrors the Lovable / v0 / Bolt flow.
   function handleCreate() {
-    navigate({ to: "/builder", search: { id: undefined, prompt: undefined, mode: undefined, attachKey: undefined } });
+    navigate({ to: "/", search: { focus: "composer" } });
   }
 
   async function confirmDelete() {

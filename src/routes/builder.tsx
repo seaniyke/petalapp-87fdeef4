@@ -1219,7 +1219,7 @@ function Builder() {
             </span>
             <div className="flex min-w-0 flex-col leading-tight">
               <span className="truncate font-display text-base" title={project?.title ?? undefined}>
-                {project?.title ?? "Loading…"}
+                {project?.title ?? (bootstrapping ? "Loading…" : "New project")}
               </span>
               {project?.summary && (
                 <span className="hidden truncate text-[11px] text-muted-foreground sm:block">
@@ -1238,7 +1238,7 @@ function Builder() {
           aria-label="Project menu"
         >
           <span className="truncate font-display text-base font-semibold">
-            {project?.title ?? "Loading…"}
+            {project?.title ?? (bootstrapping ? "Loading…" : "New project")}
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
