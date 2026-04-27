@@ -82,17 +82,37 @@ async function handleStatus(userId: string, body: unknown): Promise<Response> {
   if (ownerErr) return ownerErr;
   const { data, error } = await supabaseAdmin
     .from("project_backends")
-    .select("status, provider, supabase_url, anon_key, error_message")
+    .select(
+      "status, provider, supabase_url, anon_key, error_message, supabase_project_ref, paused_at",
+    )
     .eq("project_id", parsed.data.projectId)
     .maybeSingle();
   if (error) return new Response(error.message, { status: 500 });
   if (!data) return Response.json(null);
+
+  // For managed backends, also include the most recent slot's expiry so the
+  // UI can show a renewal countdown.
+  let slot: { expires_at: string; status: string } | null = null;
+  if (data.provider === "managed_petal") {
+    const { data: slotRow } = await supabaseAdmin
+      .from("backend_slots")
+      .select("expires_at, status")
+      .eq("project_id", parsed.data.projectId)
+      .order("expires_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    slot = slotRow ?? null;
+  }
+
   return Response.json({
     status: data.status,
     provider: data.provider,
     supabaseUrl: data.supabase_url,
     anonKey: data.anon_key,
     errorMessage: data.error_message,
+    supabaseProjectRef: data.supabase_project_ref,
+    pausedAt: data.paused_at,
+    slot,
   });
 }
 
