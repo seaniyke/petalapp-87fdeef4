@@ -435,7 +435,13 @@ export const Route = createFileRoute("/api/generate")({
                 );
               }
 
-              let parsed: { summary?: string; files?: ProjectFile[]; ops?: FileOp[] };
+              let parsed: {
+                plan?: string;
+                summary?: string;
+                recap?: string;
+                files?: ProjectFile[];
+                ops?: FileOp[];
+              };
               try {
                 parsed = JSON.parse(collected.args);
               } catch (e) {
@@ -444,6 +450,8 @@ export const Route = createFileRoute("/api/generate")({
               }
 
               const summary = parsed.summary?.trim() || "Updated the project.";
+              const plan = parsed.plan?.trim() || undefined;
+              const recap = parsed.recap?.trim() || undefined;
               let nextFiles: ProjectFile[];
               if (collected.name === "write_project") {
                 if (!parsed.files?.length) throw new Error("AI returned no files.");
