@@ -113,7 +113,12 @@ async function relayAndCollect(
   const decoder = new TextDecoder();
   let buf = "";
   const tool: ParsedTool = { name: null, args: "", usage: null };
-  let summaryEmitted = ""; // running prefix of `summary` field already streamed
+  // Running prefixes of the structured narrative fields already streamed to
+  // the client. We re-extract from `tool.args` on every chunk and emit only
+  // the new tail, so the client renders a clean token-by-token feel.
+  let planEmitted = "";
+  let summaryEmitted = "";
+  let recapEmitted = "";
   let toolAnnounced = false;
   let designingPhaseSent = false;
   let writingPhaseSent = false;
@@ -121,6 +126,17 @@ async function relayAndCollect(
 
   // Matches a completed `"path": "<value>"` occurrence (handles escaped chars).
   const PATH_RE = /"path"\s*:\s*"((?:\\.|[^"\\])*)"/g;
+  // Helper: extract the partial value of a top-level string field from the
+  // streaming JSON args. Returns "" until the field appears.
+  const partial = (field: string): string => {
+    const m = tool.args.match(new RegExp(`"${field}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)`));
+    if (!m) return "";
+    try {
+      return JSON.parse(`"${m[1]}"`);
+    } catch {
+      return "";
+    }
+  };
 
   while (true) {
     const { value, done } = await reader.read();
