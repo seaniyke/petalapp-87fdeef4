@@ -461,6 +461,25 @@ export const Route = createFileRoute("/api/generate")({
             try {
               controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
               controller.enqueue(encoder.encode(sse({ type: "status", message: "Thinking…" })));
+              if (designDirection) {
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "design_vibe",
+                      vibe: designDirection.vibe,
+                      rationale: designDirection.rationale,
+                    }),
+                  ),
+                );
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "status",
+                      message: `Design direction: ${designDirection.vibe} — ${designDirection.rationale}`,
+                    }),
+                  ),
+                );
+              }
               const collected = await relayAndCollect(upstream, controller, encoder);
               controller.enqueue(encoder.encode(sse({ type: "phase", phase: "polishing" })));
               controller.enqueue(
