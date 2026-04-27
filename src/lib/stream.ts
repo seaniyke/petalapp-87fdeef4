@@ -8,6 +8,7 @@ type Handlers = {
   onRecapDelta?: (delta: string) => void;
   onTool?: (name: "write_project" | "patch_files") => void;
   onPhase?: (phase: "thinking" | "designing" | "writing" | "polishing") => void;
+  onDesignVibe?: (vibe: string, rationale: string) => void;
   onFileProgress?: (written: number, latestPath?: string) => void;
   onResult?: (
     files: ProjectFile[],
@@ -94,6 +95,9 @@ export async function streamGenerate(
             break;
           case "phase":
             handlers.onPhase?.(evt.phase);
+            break;
+          case "design_vibe":
+            handlers.onDesignVibe?.(evt.vibe, evt.rationale);
             break;
           case "file_progress":
             handlers.onFileProgress?.(evt.written, evt.latestPath);

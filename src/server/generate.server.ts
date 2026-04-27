@@ -388,6 +388,7 @@ export type StreamEvent =
   | { type: "recap_delta"; delta: string }
   | { type: "tool"; name: "write_project" | "patch_files" }
   | { type: "phase"; phase: "thinking" | "designing" | "writing" | "polishing" }
+  | { type: "design_vibe"; vibe: string; rationale: string }
   | { type: "file_progress"; written: number; latestPath?: string }
   | {
       type: "result";

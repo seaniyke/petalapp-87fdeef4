@@ -20,9 +20,14 @@ import { resolvePetalImagePlaceholders } from "@/server/image-generation.server"
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
 import { priceBuild, BUILD_FLOOR } from "@/server/credit-pricing.server";
 import {
-  loadProjectMemoryBlock,
+  loadProjectMemory,
+  renderMemoryBlock,
   updateProjectMemory,
 } from "@/server/project-memory.server";
+import {
+  pickDesignDirection,
+  renderDesignDirectionBlock,
+} from "@/server/design-director.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -332,10 +337,39 @@ export const Route = createFileRoute("/api/generate")({
         const userJwt = reqAuth?.startsWith("Bearer ")
           ? reqAuth.slice("Bearer ".length)
           : "";
-        const memoryBlock =
+        const memoryEntries =
           body.projectId && userJwt
-            ? await loadProjectMemoryBlock(userJwt, body.projectId)
-            : "";
+            ? await loadProjectMemory(userJwt, body.projectId)
+            : [];
+        const memoryBlock = renderMemoryBlock(memoryEntries);
+
+        // Layer 4 — Design Director Pass.
+        // On the very first build, pick a bold visual direction up-front so
+        // the model doesn't fall back to the generic AI aesthetic. On
+        // subsequent turns, the cached direction in project_memory is
+        // honored automatically (pickDesignDirection short-circuits to it).
+        // Patches skip the call entirely — the existing aesthetic wins.
+        const lastUserContent = (() => {
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === "user") {
+              const c = messages[i].content;
+              return typeof c === "string" ? c : "";
+            }
+          }
+          return "";
+        })();
+        const designDirection =
+          isInitial && userJwt
+            ? await pickDesignDirection({
+                jwt: userJwt,
+                projectId: body.projectId,
+                brief: lastUserContent,
+                memoryEntries,
+              })
+            : null;
+        const designBlock = designDirection
+          ? renderDesignDirectionBlock(designDirection)
+          : "";
 
         const filesContext = isInitial
           ? ""
@@ -362,7 +396,7 @@ export const Route = createFileRoute("/api/generate")({
           : "";
 
         const chatMessages = [
-          { role: "system", content: baseSystem + backendBlock + integrationsBlock + knowledgeBlock + memoryBlock + visionAddendum + filesContext },
+          { role: "system", content: baseSystem + backendBlock + integrationsBlock + knowledgeBlock + memoryBlock + designBlock + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {
@@ -427,6 +461,25 @@ export const Route = createFileRoute("/api/generate")({
             try {
               controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
               controller.enqueue(encoder.encode(sse({ type: "status", message: "Thinking…" })));
+              if (designDirection) {
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "design_vibe",
+                      vibe: designDirection.vibe,
+                      rationale: designDirection.rationale,
+                    }),
+                  ),
+                );
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "status",
+                      message: `Design direction: ${designDirection.vibe} — ${designDirection.rationale}`,
+                    }),
+                  ),
+                );
+              }
               const collected = await relayAndCollect(upstream, controller, encoder);
               controller.enqueue(encoder.encode(sse({ type: "phase", phase: "polishing" })));
               controller.enqueue(
