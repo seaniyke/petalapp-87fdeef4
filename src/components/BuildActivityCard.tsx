@@ -58,6 +58,7 @@ export function BuildActivityCard({
   writtenPaths,
   finalFileLines,
   fileChanges,
+  deployElapsedSec,
   onStop,
   onRetry,
   onAskFix,
