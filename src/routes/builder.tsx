@@ -1288,6 +1288,23 @@ function Builder() {
             </div>
           )}
           {project && (
+            <button
+              type="button"
+              onClick={() => setPublishOpen(true)}
+              className="hidden h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 md:inline-flex"
+              title="Publish"
+            >
+              <Globe className="h-3.5 w-3.5" />
+              {buildSnap?.status === "pending"
+                ? "Publishing…"
+                : buildSnap?.status === "failed"
+                  ? "Retry publish"
+                  : project.latest_build_id && buildSnap?.status === "ready"
+                    ? "Published"
+                    : "Publish"}
+            </button>
+          )}
+          {project && (
             <ProjectSettingsSheet
               project={project}
               onChange={setProject}
