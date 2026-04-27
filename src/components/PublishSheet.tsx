@@ -2,23 +2,27 @@
  * PublishSheet — bottom sheet (mobile) / centered dialog (desktop) that
  * shows the project's published state, modeled on Lovable's Publish sheet.
  *
- * What it surfaces:
- *   - A "Published" / "Not published yet" header with the latest build status.
- *   - The website URL (custom domain if set, otherwise the Cloudflare Pages
- *     deployment URL), with copy + "Manage domains" shortcut.
- *   - Visibility row (Public / Private), driven by `projects.is_public` for
- *     now since that's the only public/private flag we have. Phase 2 will
- *     introduce a separate `published_visibility` column.
- *   - Primary CTA that adapts to build state:
- *       • "Up to date"        — latest build is ready
- *       • "Publishing…"       — build is pending
- *       • "Update"            — no successful build yet (or after a failure)
- *       • "Retry publish"     — last build failed
- *   - Secondary action: open project settings ("Edit settings").
+ * Phase 2 model: we now distinguish the *latest preview build* (always rebuilt
+ * on every prompt — what the in-builder preview shows) from the *published
+ * build* (`projects.published_build_id`, what visitors on the custom domain
+ * see). Hitting Publish/Update calls `/api/publish` which pins the current
+ * latest build as the published one. Visibility lives in
+ * `projects.published_visibility` (`public` | `private` | `unpublished`).
  *
- * Triggers `triggerBuild()` when the user taps Update / Retry — the same
- * code path the AI uses after a successful generation, so users can manually
- * push out a fresh deployment without prompting the AI again.
+ * Header status maps to:
+ *   - "Live"             — published build === latest build, ready
+ *   - "Update available" — latest preview newer than published build
+ *   - "Publishing…"      — a build is pending
+ *   - "Failed"           — latest build failed
+ *   - "Private"          — published_visibility = 'private'
+ *   - "Unpublished"      — published_visibility = 'unpublished'
+ *
+ * CTA states:
+ *   - "Publish"        — never published (no pinned build yet)
+ *   - "Update"         — pinned but newer build is ready
+ *   - "Up to date"     — pinned and current
+ *   - "Publishing…"    — build pending
+ *   - "Retry publish"  — last build failed
  */
 import { useEffect, useState } from "react";
 import {
@@ -37,10 +41,12 @@ import {
   AlertCircle,
   CheckCircle2,
   ExternalLink,
+  EyeOff,
 } from "lucide-react";
 import { triggerBuild } from "@/lib/builds";
+import { publishProject, type PublishVisibility } from "@/lib/publish";
 import { resolvePublishedUrl, type PublishedUrlResult } from "@/lib/published-url";
-import { updateProject, type ProjectRow } from "@/lib/projects";
+import { type ProjectRow } from "@/lib/projects";
 import { useBuildActivity } from "@/hooks/use-build-activity";
 import { toast } from "sonner";
 
@@ -100,9 +106,19 @@ export function PublishSheet({
     buildSnap?.distPath,
   ]);
 
-  const status = buildSnap?.status ?? null;
-  const hasEverPublished = !!resolved.url;
+  const buildStatus = buildSnap?.status ?? null;
   const buildError = buildSnap?.errorMessage ?? null;
+
+  // Phase 2 derived state — preview vs published.
+  const visibility = (project.published_visibility ?? "unpublished") as PublishVisibility;
+  const hasPublishedBuild = !!project.published_build_id;
+  const isUnpublished = visibility === "unpublished" || !hasPublishedBuild;
+  const updateAvailable =
+    hasPublishedBuild &&
+    !!project.latest_build_id &&
+    project.latest_build_id !== project.published_build_id &&
+    buildStatus === "ready";
+  const hasUrl = !!resolved.url;
 
   async function copyUrl() {
     if (!resolved.url) return;
@@ -118,11 +134,36 @@ export function PublishSheet({
     }
   }
 
+  /**
+   * Publish (or re-publish) the project. Pins the current latest ready build
+   * as the published build via /api/publish. If the latest build is still
+   * pending or failed we kick off a fresh build first so the user gets a
+   * single "Publish" interaction instead of two.
+   */
   async function publishNow() {
     setPublishing(true);
     try {
-      await triggerBuild(project.id);
-      toast.success("Publishing your changes…");
+      // No build yet at all → trigger one. The user can publish once it's ready.
+      if (!project.latest_build_id) {
+        await triggerBuild(project.id);
+        toast.success("Building your app — publish will be available when it's ready.");
+        return;
+      }
+      // Latest build failed → retry the build first.
+      if (buildStatus === "failed") {
+        await triggerBuild(project.id);
+        toast.success("Retrying the build…");
+        return;
+      }
+      // Latest build still pending → wait it out.
+      if (buildStatus === "pending") {
+        toast.info("A build is already in progress — publish will be available when it finishes.");
+        return;
+      }
+      // Latest build is ready → pin it as published.
+      const result = await publishProject({ projectId: project.id });
+      onChange({ ...project, ...result.project } as ProjectRow);
+      toast.success(isUnpublished ? "Your app is live 🎉" : "Update published");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't publish");
     } finally {
@@ -130,12 +171,24 @@ export function PublishSheet({
     }
   }
 
-  async function toggleVisibility(next: boolean) {
+  async function changeVisibility(next: PublishVisibility) {
+    if (visibility === next) return;
     setVisibilityBusy(true);
     try {
-      const updated = await updateProject(project.id, { is_public: next });
-      onChange(updated);
-      toast.success(next ? "Anyone with the URL can view this app" : "Only you can view this app");
+      const result = await publishProject({
+        projectId: project.id,
+        visibility: next,
+        // Don't pin a new build just because they flipped visibility.
+        pinLatestBuild: false,
+      });
+      onChange({ ...project, ...result.project } as ProjectRow);
+      const message =
+        next === "public"
+          ? "Anyone with the URL can view your app"
+          : next === "private"
+            ? "Only your workspace can view your app"
+            : "Your app is no longer public";
+      toast.success(message);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't update visibility");
     } finally {
@@ -145,15 +198,15 @@ export function PublishSheet({
 
   // CTA state machine — keeps the button label/icon honest with the build.
   const cta = (() => {
-    if (publishing || status === "pending") {
+    if (publishing || buildStatus === "pending") {
       return {
-        label: hasEverPublished ? "Publishing update…" : "Publishing…",
+        label: hasPublishedBuild ? "Publishing update…" : "Publishing…",
         icon: <Loader2 className="h-4 w-4 animate-spin" />,
         disabled: true,
         tone: "primary" as const,
       };
     }
-    if (status === "failed") {
+    if (buildStatus === "failed") {
       return {
         label: "Retry publish",
         icon: <AlertCircle className="h-4 w-4" />,
@@ -161,16 +214,24 @@ export function PublishSheet({
         tone: "destructive" as const,
       };
     }
-    if (status === "ready" && hasEverPublished) {
+    if (updateAvailable) {
+      return {
+        label: "Update",
+        icon: <Globe className="h-4 w-4" />,
+        disabled: false,
+        tone: "primary" as const,
+      };
+    }
+    if (hasPublishedBuild && buildStatus === "ready") {
       return {
         label: "Up to date",
         icon: <CheckCircle2 className="h-4 w-4" />,
-        disabled: false,
+        disabled: true,
         tone: "success" as const,
       };
     }
     return {
-      label: hasEverPublished ? "Publish update" : "Publish",
+      label: "Publish",
       icon: <Globe className="h-4 w-4" />,
       disabled: false,
       tone: "primary" as const,
@@ -193,32 +254,43 @@ export function PublishSheet({
         <div className="mt-2 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold tracking-tight">
-              {hasEverPublished ? "Published" : "Not published yet"}
+              {isUnpublished
+                ? "Not published yet"
+                : visibility === "private"
+                  ? "Published privately"
+                  : "Published"}
             </h2>
-            {hasEverPublished && resolved.source === "deployment" && (
-              <p className="text-xs text-muted-foreground">
-                Live on the Petal subdomain
-              </p>
+            {hasPublishedBuild && resolved.source === "deployment" && (
+              <p className="text-xs text-muted-foreground">Live on the Petal subdomain</p>
             )}
-            {hasEverPublished && resolved.source === "custom_domain" && (
+            {hasPublishedBuild && resolved.source === "custom_domain" && (
+              <p className="text-xs text-muted-foreground">Live on your custom domain</p>
+            )}
+            {isUnpublished && (
               <p className="text-xs text-muted-foreground">
-                Live on your custom domain
+                Publish when you're ready to share with the world.
               </p>
             )}
           </div>
-          {status === "pending" && (
+          {buildStatus === "pending" && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
               <Loader2 className="h-3 w-3 animate-spin" />
               Publishing
             </span>
           )}
-          {status === "failed" && (
+          {buildStatus === "failed" && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
               <AlertCircle className="h-3 w-3" />
               Failed
             </span>
           )}
-          {status === "ready" && hasEverPublished && (
+          {!publishing && buildStatus !== "pending" && buildStatus !== "failed" && updateAvailable && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+              <AlertCircle className="h-3 w-3" />
+              Update available
+            </span>
+          )}
+          {!publishing && buildStatus === "ready" && hasPublishedBuild && !updateAvailable && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
               <CheckCircle2 className="h-3 w-3" />
               Live
@@ -276,26 +348,37 @@ export function PublishSheet({
           <span className="text-sm font-medium">Who can see this website</span>
           <div className="grid grid-cols-2 gap-2">
             <VisibilityChoice
-              active={project.is_public}
+              active={visibility === "public"}
               icon={<Globe className="h-4 w-4" />}
               title="Public"
               subtitle="Anyone with the URL"
               busy={visibilityBusy}
-              onClick={() => !project.is_public && toggleVisibility(true)}
+              onClick={() => changeVisibility("public")}
             />
             <VisibilityChoice
-              active={!project.is_public}
+              active={visibility === "private"}
               icon={<Lock className="h-4 w-4" />}
               title="Private"
-              subtitle="Only you"
+              subtitle="Only your workspace"
               busy={visibilityBusy}
-              onClick={() => project.is_public && toggleVisibility(false)}
+              onClick={() => changeVisibility("private")}
             />
           </div>
+          {hasPublishedBuild && (
+            <button
+              type="button"
+              onClick={() => changeVisibility("unpublished")}
+              disabled={visibilityBusy}
+              className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive disabled:opacity-40"
+            >
+              <EyeOff className="h-3.5 w-3.5" />
+              Unpublish this site
+            </button>
+          )}
         </div>
 
         {/* Build error (only when relevant) */}
-        {status === "failed" && buildError && (
+        {buildStatus === "failed" && buildError && (
           <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
             <span className="font-medium">Last publish failed.</span>{" "}
             <span className="opacity-80">

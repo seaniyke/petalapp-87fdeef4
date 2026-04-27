@@ -44,10 +44,23 @@ function pagesProjectName(projectId: string): string {
   return `petal-${id}`;
 }
 
-type DomainTarget = {
-  projectId: string;
-  pagesUrl: string; // e.g. https://petal-abc123def456.pages.dev
-} | null;
+/**
+ * Result of resolving a custom hostname to a target.
+ *
+ *   - `proxy`: forward the request to `pagesUrl`.
+ *   - `unpublished`: the project exists and the domain is active, but the
+ *     owner hasn't published it yet (`published_visibility = 'unpublished'`).
+ *     We render a friendly placeholder instead of proxying to a stale build.
+ *   - `private`: visibility is `private` — only workspace members can view.
+ *     Returned as a 403 placeholder for now (no auth gate yet on the proxy).
+ *   - `null`: hostname isn't owned by any project; fall through to the Petal
+ *     app (404 / marketing).
+ */
+type DomainTarget =
+  | { kind: "proxy"; projectId: string; pagesUrl: string }
+  | { kind: "unpublished"; projectId: string }
+  | { kind: "private"; projectId: string }
+  | null;
 
 const CACHE_TTL_MS = 60_000;
 type CacheEntry = { value: DomainTarget; expiresAt: number };
@@ -63,10 +76,41 @@ async function lookupDomain(hostname: string): Promise<DomainTarget> {
   // Only proxy active domains — pending/failed ones get the default Petal site
   // (which is fine; the user is still mid-setup).
   if (data.status !== "active") return null;
-  return {
-    projectId: data.project_id,
-    pagesUrl: `https://${pagesProjectName(data.project_id)}.pages.dev`,
-  };
+
+  // Look up the project's published state. We only care about visibility +
+  // the pinned build's dist_path (when present) — the latter lets future
+  // per-build deployments serve the pinned version even after a newer
+  // preview build lands. Today every build overwrites the same Pages URL,
+  // so the dist_path lookup is a no-op fallback.
+  const { data: project } = await supabaseAdmin
+    .from("projects")
+    .select("id, published_visibility, published_build_id")
+    .eq("id", data.project_id)
+    .maybeSingle();
+
+  const visibility = project?.published_visibility ?? "unpublished";
+  if (visibility === "unpublished") {
+    return { kind: "unpublished", projectId: data.project_id };
+  }
+  if (visibility === "private") {
+    return { kind: "private", projectId: data.project_id };
+  }
+
+  // Visibility = public. Prefer the pinned published build's dist_path when
+  // we have one (forward-compatible with per-build deployments); otherwise
+  // fall back to the project's canonical Pages URL.
+  let pagesUrl = `https://${pagesProjectName(data.project_id)}.pages.dev`;
+  if (project?.published_build_id) {
+    const { data: build } = await supabaseAdmin
+      .from("project_builds")
+      .select("dist_path, status")
+      .eq("id", project.published_build_id)
+      .maybeSingle();
+    if (build?.status === "ready" && build.dist_path) {
+      pagesUrl = build.dist_path.replace(/\/$/, "");
+    }
+  }
+  return { kind: "proxy", projectId: data.project_id, pagesUrl };
 }
 
 export async function resolveHost(hostname: string): Promise<DomainTarget> {
@@ -139,5 +183,56 @@ export async function proxyToPages(
     status: upstream.status,
     statusText: upstream.statusText,
     headers: respHeaders,
+  });
+}
+
+/**
+ * Render a friendly placeholder when a custom domain is connected but the
+ * project isn't published (or is published privately). Visitors get a clean
+ * branded page instead of a confusing proxy error.
+ */
+export function renderUnpublishedPage(
+  kind: "unpublished" | "private",
+): Response {
+  const isPrivate = kind === "private";
+  const title = isPrivate ? "This site is private" : "This site isn't published yet";
+  const body = isPrivate
+    ? "The owner of this app has restricted access. Sign in with the owner's workspace to view it."
+    : "The owner is still working on this app. Check back soon, or get in touch with them for an update.";
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>${title}</title>
+<meta name="robots" content="noindex" />
+<style>
+  :root { color-scheme: light dark; }
+  html, body { height: 100%; margin: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #fafafa; color: #111; display: grid; place-items: center; padding: 2rem; }
+  @media (prefers-color-scheme: dark) { body { background: #0a0a0a; color: #f5f5f5; } }
+  main { max-width: 32rem; text-align: center; }
+  h1 { font-size: 1.5rem; margin: 0 0 0.5rem; letter-spacing: -0.01em; }
+  p { margin: 0; line-height: 1.55; opacity: 0.75; }
+  .badge { display: inline-block; padding: 0.25rem 0.625rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; background: rgba(0,0,0,0.06); margin-bottom: 1rem; }
+  @media (prefers-color-scheme: dark) { .badge { background: rgba(255,255,255,0.08); } }
+  .footer { margin-top: 2rem; font-size: 0.75rem; opacity: 0.5; }
+</style>
+</head>
+<body>
+  <main>
+    <span class="badge">${isPrivate ? "Private" : "Coming soon"}</span>
+    <h1>${title}</h1>
+    <p>${body}</p>
+    <div class="footer">Built with Petal</div>
+  </main>
+</body>
+</html>`;
+  return new Response(html, {
+    status: isPrivate ? 403 : 404,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
   });
 }
