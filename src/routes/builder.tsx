@@ -891,6 +891,9 @@ function Builder() {
           content: combinedContent,
           plan: resultPlan,
           recap: resultRecap,
+          // Layer 5 — gap-driven follow-up chips. Empty array stays out of
+          // the message so a clean build doesn't render an empty chip row.
+          ...(resultSuggestions.length > 0 ? { suggestions: resultSuggestions } : {}),
         };
         setFiles(files2);
         setActiveFile((prev) => prev ?? "index.html");
