@@ -1214,7 +1214,19 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_build_costs: {
+        Row: {
+          entries: number | null
+          first_at: string | null
+          gross_spent: number | null
+          last_at: string | null
+          net_spent: number | null
+          project_id: string | null
+          refunded: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       apply_monthly_renewal: {
@@ -1330,8 +1342,8 @@ export type Database = {
       }
       refund_credit: {
         Args: {
+          _ledger_id: string
           _metadata?: Json
-          _project_id?: string
           _reason?: string
           _user_id: string
         }
@@ -1352,15 +1364,26 @@ export type Database = {
         }
         Returns: undefined
       }
-      spend_credit: {
-        Args: {
-          _metadata?: Json
-          _project_id?: string
-          _reason?: string
-          _user_id: string
-        }
-        Returns: boolean
-      }
+      spend_credit:
+        | {
+            Args: {
+              _amount: number
+              _metadata?: Json
+              _project_id?: string
+              _reason?: string
+              _user_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _metadata?: Json
+              _project_id?: string
+              _reason?: string
+              _user_id: string
+            }
+            Returns: boolean
+          }
     }
     Enums: {
       app_role: "admin" | "user"
