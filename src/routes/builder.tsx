@@ -101,6 +101,7 @@ const MarkdownMessage = lazy(() =>
   import("@/components/MarkdownMessage").then((m) => ({ default: m.MarkdownMessage })),
 );
 import { CollapsibleSegment } from "@/components/CollapsibleSegment";
+import { sanitizeNarrative } from "@/lib/sanitize-narrative";
 const WebContainerPreview = lazy(() =>
   import("@/components/WebContainerPreview").then((m) => ({ default: m.WebContainerPreview })),
 );
@@ -1547,37 +1548,43 @@ function Builder() {
                     </div>
                     {m.role === "assistant" ? (
                       <div className="space-y-2.5">
-                        {m.plan && (
-                          <CollapsibleSegment
-                            label="Plan"
-                            tone="primary"
-                            icon={<Wand2 className="h-2.5 w-2.5" />}
-                            defaultOpen={false}
-                          >
-                            <Suspense
-                              fallback={<div className="whitespace-pre-wrap text-[13px]">{m.plan}</div>}
+                        {m.plan && (() => {
+                          const safePlan = sanitizeNarrative(m.plan);
+                          return (
+                            <CollapsibleSegment
+                              label="Plan"
+                              tone="primary"
+                              icon={<Wand2 className="h-2.5 w-2.5" />}
+                              defaultOpen={false}
                             >
-                              <MarkdownMessage content={m.plan} />
-                            </Suspense>
-                          </CollapsibleSegment>
-                        )}
-                        <Suspense fallback={<div className="whitespace-pre-wrap">{m.content}</div>}>
-                          <MarkdownMessage content={m.content} />
+                              <Suspense
+                                fallback={<div className="whitespace-pre-wrap text-[13px]">{safePlan}</div>}
+                              >
+                                <MarkdownMessage content={safePlan} />
+                              </Suspense>
+                            </CollapsibleSegment>
+                          );
+                        })()}
+                        <Suspense fallback={<div className="whitespace-pre-wrap">{sanitizeNarrative(m.content)}</div>}>
+                          <MarkdownMessage content={sanitizeNarrative(m.content)} />
                         </Suspense>
-                        {m.recap && (
-                          <CollapsibleSegment
-                            label="What changed"
-                            tone="muted"
-                            icon={<FileText className="h-2.5 w-2.5" />}
-                            defaultOpen={false}
-                          >
-                            <Suspense
-                              fallback={<div className="whitespace-pre-wrap text-[13px]">{m.recap}</div>}
+                        {m.recap && (() => {
+                          const safeRecap = sanitizeNarrative(m.recap);
+                          return (
+                            <CollapsibleSegment
+                              label="What changed"
+                              tone="muted"
+                              icon={<FileText className="h-2.5 w-2.5" />}
+                              defaultOpen={false}
                             >
-                              <MarkdownMessage content={m.recap} />
-                            </Suspense>
-                          </CollapsibleSegment>
-                        )}
+                              <Suspense
+                                fallback={<div className="whitespace-pre-wrap text-[13px]">{safeRecap}</div>}
+                              >
+                                <MarkdownMessage content={safeRecap} />
+                              </Suspense>
+                            </CollapsibleSegment>
+                          );
+                        })()}
                       </div>
                     ) : (
                       <div className="whitespace-pre-wrap">{m.content}</div>
@@ -1641,41 +1648,50 @@ function Builder() {
                   </span>
                 </div>
                 <div className="space-y-2.5">
-                  {streamingPlan && (
-                    <CollapsibleSegment
-                      label="Plan"
-                      tone="primary"
-                      icon={<Wand2 className="h-2.5 w-2.5" />}
-                      defaultOpen={!streamingAssistant && !streamingRecap}
-                    >
-                      <Suspense
-                        fallback={<div className="whitespace-pre-wrap text-[13px]">{streamingPlan}</div>}
+                  {streamingPlan && (() => {
+                    const safePlan = sanitizeNarrative(streamingPlan);
+                    return (
+                      <CollapsibleSegment
+                        label="Plan"
+                        tone="primary"
+                        icon={<Wand2 className="h-2.5 w-2.5" />}
+                        defaultOpen={!streamingAssistant && !streamingRecap}
                       >
-                        <MarkdownMessage content={streamingPlan} />
-                      </Suspense>
-                    </CollapsibleSegment>
-                  )}
-                  {streamingAssistant && (
-                    <Suspense
-                      fallback={<div className="whitespace-pre-wrap">{streamingAssistant}</div>}
-                    >
-                      <MarkdownMessage content={streamingAssistant} />
-                    </Suspense>
-                  )}
-                  {streamingRecap && (
-                    <CollapsibleSegment
-                      label="What changed"
-                      tone="muted"
-                      icon={<FileText className="h-2.5 w-2.5" />}
-                      defaultOpen={true}
-                    >
+                        <Suspense
+                          fallback={<div className="whitespace-pre-wrap text-[13px]">{safePlan}</div>}
+                        >
+                          <MarkdownMessage content={safePlan} />
+                        </Suspense>
+                      </CollapsibleSegment>
+                    );
+                  })()}
+                  {streamingAssistant && (() => {
+                    const safeAssistant = sanitizeNarrative(streamingAssistant);
+                    return (
                       <Suspense
-                        fallback={<div className="whitespace-pre-wrap text-[13px]">{streamingRecap}</div>}
+                        fallback={<div className="whitespace-pre-wrap">{safeAssistant}</div>}
                       >
-                        <MarkdownMessage content={streamingRecap} />
+                        <MarkdownMessage content={safeAssistant} />
                       </Suspense>
-                    </CollapsibleSegment>
-                  )}
+                    );
+                  })()}
+                  {streamingRecap && (() => {
+                    const safeRecap = sanitizeNarrative(streamingRecap);
+                    return (
+                      <CollapsibleSegment
+                        label="What changed"
+                        tone="muted"
+                        icon={<FileText className="h-2.5 w-2.5" />}
+                        defaultOpen={true}
+                      >
+                        <Suspense
+                          fallback={<div className="whitespace-pre-wrap text-[13px]">{safeRecap}</div>}
+                        >
+                          <MarkdownMessage content={safeRecap} />
+                        </Suspense>
+                      </CollapsibleSegment>
+                    );
+                  })()}
                 </div>
               </div>
             )}
