@@ -980,6 +980,7 @@ export type Database = {
           remix_count: number
           remixed_from_id: string | null
           slug: string
+          subdomain: string | null
           summary: string | null
           title: string
           updated_at: string
@@ -999,6 +1000,7 @@ export type Database = {
           remix_count?: number
           remixed_from_id?: string | null
           slug: string
+          subdomain?: string | null
           summary?: string | null
           title?: string
           updated_at?: string
@@ -1018,6 +1020,7 @@ export type Database = {
           remix_count?: number
           remixed_from_id?: string | null
           slug?: string
+          subdomain?: string | null
           summary?: string | null
           title?: string
           updated_at?: string
