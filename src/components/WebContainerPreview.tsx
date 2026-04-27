@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Terminal, RotateCw, AlertCircle, Smartphone, MousePointerClick } from "lucide-react";
+import { Loader2, Terminal, RotateCw, AlertCircle, Smartphone, MousePointerClick, X } from "lucide-react";
 import type { ProjectFile } from "@/server/generate.server";
 import {
   ensurePickerInstalled,
@@ -70,6 +70,13 @@ export function WebContainerPreview({
   const [showLogs, setShowLogs] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [pickActive, setPickActive] = useState(false);
+  // Set to a friendly message when the picker has been "armed" for >30s
+  // without the iframe acknowledging readiness — usually means the picker
+  // script failed to inject (custom index.html, very fast iframe reload, etc).
+  const [pickerWarning, setPickerWarning] = useState<string | null>(null);
+  // True once we've received `petal:pick:ready` from the iframe at least once
+  // for the current iframeKey — used to clear the pending watchdog.
+  const pickerReadyRef = useRef(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const bootedRef = useRef(false);
   const mountedFilesSig = useRef<string>("");
@@ -188,10 +195,18 @@ export function WebContainerPreview({
 
   // Listen for picker messages from the iframe (cross-origin postMessage).
   useEffect(() => {
-    if (!onPick) return;
     const handler = (e: MessageEvent) => {
       const data = e.data as { type?: string; payload?: PickedElement } | null;
       if (!data || typeof data !== "object") return;
+      // `ready` arrives every time the picker re-attaches (initial mount, HMR
+      // full-reload, in-app SPA navigation). Always honor it so the watchdog
+      // below knows the picker is alive.
+      if (data.type === "petal:pick:ready") {
+        pickerReadyRef.current = true;
+        setPickerWarning(null);
+        return;
+      }
+      if (!onPick) return;
       if (data.type === "petal:pick:selected" && data.payload) {
         onPick(data.payload);
         setPickActive(false);
@@ -203,11 +218,33 @@ export function WebContainerPreview({
     return () => window.removeEventListener("message", handler);
   }, [onPick]);
 
-  // Push enable/disable into the iframe whenever pickActive flips.
+  // Reset the picker-ready flag whenever the iframe is hard-reloaded — the
+  // new document needs to send `petal:pick:ready` again to be considered live.
+  useEffect(() => {
+    pickerReadyRef.current = false;
+    setPickerWarning(null);
+  }, [iframeKey]);
+
+  // Push enable/disable into the iframe whenever pickActive flips, AND start
+  // a 30s watchdog: if pickActive is true and we never heard `pick:ready`,
+  // surface a friendly toast so the user isn't left clicking a dead picker.
   useEffect(() => {
     const win = iframeRef.current?.contentWindow;
-    if (!win) return;
-    win.postMessage({ type: pickActive ? "petal:pick:enable" : "petal:pick:disable" }, "*");
+    if (win) {
+      win.postMessage({ type: pickActive ? "petal:pick:enable" : "petal:pick:disable" }, "*");
+    }
+    if (!pickActive) {
+      setPickerWarning(null);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (!pickerReadyRef.current) {
+        setPickerWarning(
+          "Picker didn't attach. Try reloading the preview, then click the picker again.",
+        );
+      }
+    }, 30_000);
+    return () => window.clearTimeout(timer);
   }, [pickActive, iframeKey]);
 
   if (phase === "unsupported") {
@@ -278,6 +315,20 @@ export function WebContainerPreview({
       {pickActive && (
         <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary backdrop-blur">
           Click an element in the preview · Esc to cancel
+        </div>
+      )}
+      {pickerWarning && (
+        <div className="pointer-events-auto absolute left-1/2 top-12 z-10 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-destructive/40 bg-card/95 px-3 py-1.5 text-[11px] font-medium text-destructive shadow-sm backdrop-blur">
+          <AlertCircle className="h-3 w-3 shrink-0" />
+          <span>{pickerWarning}</span>
+          <button
+            type="button"
+            onClick={() => setPickerWarning(null)}
+            className="ml-1 rounded p-0.5 text-destructive/70 transition hover:bg-destructive/10 hover:text-destructive"
+            aria-label="Dismiss"
+          >
+            <X className="h-3 w-3" />
+          </button>
         </div>
       )}
 
