@@ -362,7 +362,7 @@ export const Route = createFileRoute("/api/generate")({
           : "";
 
         const chatMessages = [
-          { role: "system", content: baseSystem + backendBlock + integrationsBlock + knowledgeBlock + visionAddendum + filesContext },
+          { role: "system", content: baseSystem + backendBlock + integrationsBlock + knowledgeBlock + memoryBlock + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {
