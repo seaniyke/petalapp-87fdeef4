@@ -205,10 +205,35 @@ function Builder() {
   };
   const [pickedElement, setPickedElement] = useState<PickedElement | null>(null);
   const [pickInstruction, setPickInstruction] = useState("");
+  // Composer attachments — encoded images that ride along with the next prompt.
+  // Cleared after each send. The `initialAttachments` ref holds attachments
+  // stashed by the landing page (via sessionStorage attachKey) until the
+  // first auto-send consumes them.
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
+  const initialAttachmentsRef = useRef<ChatAttachment[]>([]);
+  const composerFileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Pick up attachments stashed by the landing page (sessionStorage),
+  // exactly once per attachKey. Drop them from storage so a refresh
+  // doesn't re-attach them.
+  useEffect(() => {
+    if (!attachKey || typeof window === "undefined") return;
+    try {
+      const raw = sessionStorage.getItem(attachKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as ChatAttachment[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        initialAttachmentsRef.current = parsed.slice(0, MAX_ATTACHMENTS_PER_MESSAGE);
+      }
+      sessionStorage.removeItem(attachKey);
+    } catch {
+      /* ignore — stale or corrupt */
+    }
+  }, [attachKey]);
 
   // Subscribe to the live Cloudflare build for this project so we can fold
   // its status into the activity feed seamlessly with AI generation.
