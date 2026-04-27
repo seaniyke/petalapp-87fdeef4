@@ -1731,6 +1731,24 @@ function Builder() {
                         <Suspense fallback={<div className="whitespace-pre-wrap">{sanitizeNarrative(m.content)}</div>}>
                           <MarkdownMessage content={sanitizeNarrative(m.content)} />
                         </Suspense>
+                        {/* Quick-reply chips. Tapping a chip sends its label
+                            as the next user turn — same as if they'd typed it.
+                            Only the most recent assistant message shows them
+                            so old chips don't pile up in the thread. */}
+                        {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !busy && !discussBusy && (
+                          <div className="-mx-0.5 mt-1 flex flex-wrap gap-1.5">
+                            {m.suggestions.map((s, si) => (
+                              <button
+                                key={si}
+                                type="button"
+                                onClick={() => void send(s)}
+                                className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs text-foreground shadow-sm transition hover:bg-accent hover:text-accent-foreground"
+                              >
+                                {s}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                         {m.recap && (() => {
                           const safeRecap = sanitizeNarrative(m.recap);
                           return (
