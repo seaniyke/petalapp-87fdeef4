@@ -857,6 +857,8 @@ function Builder() {
         // Drop any partial streaming text — either it became a real message
         // above, or the run failed/aborted and we don't want a stale bubble.
         setStreamingAssistant("");
+        setStreamingPlan("");
+        setStreamingRecap("");
       }
     },
     [busy, messages, files, ensureProject, pendingAttachments],
