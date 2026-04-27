@@ -1,18 +1,36 @@
 /**
  * Client helper for /api/triage. Streams a warm preamble reply token-by-token
- * and resolves with the classifier's final intent ("chat" | "clarify" | "build").
- *
- * The builder uses this BEFORE deciding whether to kick off /api/generate, so
- * conversational turns ("hi", "thanks", "what can you do?") never trigger the
- * full build pipeline UI.
+ * AND captures the structured `meta` (mode, scope, suggestions, …) so the
+ * builder can adapt its UI per turn.
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 
 export type TriageIntent = "chat" | "clarify" | "build";
 
+export type TriageMode =
+  | "chat"
+  | "clarify"
+  | "build"
+  | "edit"
+  | "fix"
+  | "explain"
+  | "redesign";
+
+export type TriageMeta = {
+  mode: TriageMode;
+  confidence: number;
+  language: string;
+  audience_level: "non_technical" | "mixed" | "technical";
+  scope: "tiny" | "small" | "medium" | "large";
+  brief: string;
+  unknowns: string[];
+  suggestions: string[];
+};
+
 type Handlers = {
   onReplyDelta?: (delta: string) => void;
+  onMeta?: (meta: TriageMeta) => void;
   onIntent?: (intent: TriageIntent) => void;
   onError?: (message: string) => void;
 };
@@ -20,6 +38,18 @@ type Handlers = {
 export type TriageResult = {
   reply: string;
   intent: TriageIntent;
+  meta: TriageMeta | null;
+};
+
+const DEFAULT_META: TriageMeta = {
+  mode: "build",
+  confidence: 0.6,
+  language: "en",
+  audience_level: "non_technical",
+  scope: "small",
+  brief: "",
+  unknowns: [],
+  suggestions: [],
 };
 
 export async function streamTriage(
@@ -48,7 +78,7 @@ export async function streamTriage(
     });
   } catch (e) {
     if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) {
-      return { reply: "", intent: "build" };
+      return { reply: "", intent: "build", meta: null };
     }
     throw e;
   }
@@ -62,10 +92,8 @@ export async function streamTriage(
   const decoder = new TextDecoder();
   let buf = "";
   let reply = "";
-  // Default to "build" so a parsing/network glitch never silently swallows
-  // a real build request — the user can always retry, but losing a build
-  // request is the more confusing failure.
   let intent: TriageIntent = "build";
+  let meta: TriageMeta | null = null;
 
   try {
     while (true) {
@@ -81,6 +109,7 @@ export async function streamTriage(
         if (!payload) continue;
         let evt:
           | { type: "reply_delta"; delta: string }
+          | { type: "meta"; meta: TriageMeta }
           | { type: "intent"; intent: TriageIntent }
           | { type: "error"; message: string };
         try {
@@ -91,6 +120,9 @@ export async function streamTriage(
         if (evt.type === "reply_delta") {
           reply += evt.delta;
           handlers.onReplyDelta?.(evt.delta);
+        } else if (evt.type === "meta") {
+          meta = { ...DEFAULT_META, ...evt.meta };
+          handlers.onMeta?.(meta);
         } else if (evt.type === "intent") {
           intent = evt.intent;
           handlers.onIntent?.(evt.intent);
@@ -101,10 +133,10 @@ export async function streamTriage(
     }
   } catch (e) {
     if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) {
-      return { reply, intent };
+      return { reply, intent, meta };
     }
     throw e;
   }
 
-  return { reply, intent };
+  return { reply, intent, meta };
 }

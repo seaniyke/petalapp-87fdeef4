@@ -4,19 +4,29 @@
  * Why this exists:
  *   The old Build flow forced a `write_project` / `patch_files` tool call on
  *   every turn, which meant typing "hi" or "what can you do?" jumped straight
- *   into the build pipeline (Reading → Designing → Writing → Deploying).
- *   Competitors (Lovable, Bolt, v0, Base44) always say a warm sentence or two
- *   first and only build when the user has actually described something.
+ *   into the build pipeline. Competitors (Lovable, Bolt, v0, Base44) always
+ *   say a warm sentence or two first and only build when the user has actually
+ *   described something. Petal does both — and now also extracts a STRUCTURED
+ *   read of the user's intent so downstream stages can adapt.
  *
- * What it does:
- *   Runs a tiny, fast classifier on the latest user turn and streams back:
- *     1. SSE `reply` chunks — a warm, human reply that the chat bubble shows
- *        token-by-token while the user is still reading.
- *     2. A final SSE `intent` event with one of:
- *          - "chat"    : just smalltalk, do nothing else
- *          - "clarify" : we asked a focused follow-up question
- *          - "build"   : the reply is a 1–2 sentence acknowledgement and the
- *                        client should now kick off the real build flow.
+ * What it returns:
+ *   1. SSE `reply_delta` events streaming the warm reply token-by-token so the
+ *      chat bubble fills in within ~200ms of pressing Enter.
+ *   2. A final SSE `meta` event with the structured intent record:
+ *        {
+ *          mode: "chat" | "clarify" | "build" | "edit" | "fix" | "explain" | "redesign",
+ *          confidence: 0..1,
+ *          language: ISO-ish lang tag the user wrote in,
+ *          audience_level: "non_technical" | "mixed" | "technical",
+ *          scope: "tiny" | "small" | "medium" | "large",
+ *          brief: one-line restatement of what they want,
+ *          unknowns: the (max 3) most important missing facts,
+ *          suggestions: 0–4 short clickable answers the UI can render as chips,
+ *        }
+ *   3. A final SSE `intent` event ("chat" | "clarify" | "build") for backward
+ *      compatibility with the existing builder send() path. `edit`/`fix`/
+ *      `redesign` all collapse to "build" here — they take the build pipeline.
+ *      `explain` collapses to "chat".
  *
  * Cost:
  *   Uses the cheap flash model. We don't charge a credit for triage —
@@ -34,36 +44,135 @@ type Body = {
   customInstructions?: string;
 };
 
+/** Coarse intent kept for the builder's existing branching. */
 export type TriageIntent = "chat" | "clarify" | "build";
+
+/** Fine-grained mode the model picks; collapses to TriageIntent for routing. */
+export type TriageMode =
+  | "chat"
+  | "clarify"
+  | "build"
+  | "edit"
+  | "fix"
+  | "explain"
+  | "redesign";
+
+export type TriageMeta = {
+  mode: TriageMode;
+  confidence: number;
+  language: string;
+  audience_level: "non_technical" | "mixed" | "technical";
+  scope: "tiny" | "small" | "medium" | "large";
+  brief: string;
+  unknowns: string[];
+  suggestions: string[];
+};
 
 export type TriageEvent =
   | { type: "reply_delta"; delta: string }
+  | { type: "meta"; meta: TriageMeta }
   | { type: "intent"; intent: TriageIntent }
   | { type: "error"; message: string };
 
-const TRIAGE_SYSTEM_PROMPT = `You are Petal — a warm, intelligent product collaborator who helps non-technical people build small web apps.
+const TRIAGE_SYSTEM_PROMPT = `You are Petal — a warm, intelligent product collaborator who helps people (mostly non-technical) build small web apps.
 
-You are the FIRST thing the user hears. Your job is to feel like a kind, smart human teammate who actually understands what they're trying to do.
+You are the FIRST thing the user hears. Your job is to feel like a kind, smart human teammate who actually understands what they're trying to do — even if their English is broken, mixed with another language, or full of typos. Always read meaning, never fixate on form.
 
-Decide which of these THREE intents fits the user's latest message:
+You ALWAYS respond by calling the "triage" tool. Never reply in plain text.
 
-1. "chat" — Greetings, smalltalk, thanks, questions about Petal itself ("what can you do?", "are you AI?"), or anything that does NOT ask for a change to their app. Reply warmly in 1–3 short sentences. Do NOT propose to build anything unless they ask.
+How to fill the tool fields:
 
-2. "clarify" — They want to build or change something but the request is too vague to do well ("make it nice", "build something cool", "help me", "i need a website"). Reply warmly in 1–2 sentences and ask ONE focused question that unblocks you. Never ask multiple questions.
+- mode: pick the single best fit
+    "chat"      → greetings, smalltalk, thanks, "what can you do?", anything that does NOT request a change to their app.
+    "clarify"   → they want to build/change something but the request is too vague to do it well. Ask ONE focused question.
+    "build"     → they want a NEW app or a NEW major feature added to an existing app, and you have enough to start.
+    "edit"      → they want a small, surgical change to what already exists ("change the button to blue", "make the title bigger").
+    "fix"       → something is broken or wrong and they want it corrected ("the form doesn't submit", "this looks weird on mobile").
+    "redesign"  → they want a substantial visual overhaul of an existing app ("make it feel premium", "redo the homepage").
+    "explain"   → they want you to describe what's there, how it works, or what's possible — no changes.
 
-3. "build" — They have described something concrete enough to start building or editing. Reply warmly in 1–2 sentences acknowledging what they want, in plain human language about THEIR product (their store, their landing page, their idea), then end with a brief "Building it now…" or similar. Do NOT list files, components, frameworks, or any technical detail.
+- confidence: 0..1, how sure you are about \`mode\` and \`brief\`. If under ~0.5, you should usually be in "clarify".
 
-Voice & style (always):
-- Sound like a friendly senior designer who happens to be very good at building things — never robotic, never corporate, never a status line.
-- Be concise. 1–3 sentences. No bullet lists, no headings, no code blocks.
-- Use natural contractions ("I'll", "let's", "you're"). Never say "As an AI".
-- Talk about THEIR app and THEIR users — never mention React, Tailwind, components, files, scaffolds, builds, or deploys.
-- If they wrote in another language, reply in that language.
+- language: short tag for the language they wrote in. Use "en" for standard English, "pidgin" for West African pidgin / broken English, "fr" for French, "es" for Spanish, "pt" for Portuguese, etc. Detect from the actual message — never assume English.
 
-Output format — RESPOND WITH RAW JSON ONLY, no markdown fences, no prose around it:
-{"intent":"chat"|"clarify"|"build","reply":"your warm reply here"}
+- audience_level: "non_technical" by default. Use "technical" only if they reference code, frameworks, APIs, or other engineer-speak. "mixed" if unclear.
 
-The reply field is what the user will see streamed into the chat bubble. Make it feel human.`;
+- scope: how big is this turn?
+    "tiny"   → 1–2 lines change, copy tweak, single style change.
+    "small"  → one component or section.
+    "medium" → multi-component feature, new page.
+    "large" → a whole new app, or a sweeping redesign.
+  For "chat" / "explain" / "clarify", set scope to "tiny".
+
+- brief: one short sentence in plain English restating what the user wants in terms of THEIR product. No file paths, no frameworks. e.g. "A one-page site for the user's barber shop with hours, photos, and a WhatsApp booking button." For non-build modes this can be a short summary of what they said.
+
+- unknowns: at most 3 short bullet strings, each naming ONE missing fact whose answer would meaningfully change what you build. Empty array if nothing important is missing. Never include "what color?" type questions if you can pick a tasteful default.
+
+- suggestions: 0–4 SHORT clickable answers (1–4 words each) the UI can render as chips for the user to tap. Use them to:
+    • offer focused choices when mode = "clarify" (e.g. ["My barber shop", "A side project", "A client", "Other"])
+    • propose obvious next moves when mode = "chat" or "explain" (e.g. ["Show me an example", "Build something for me"])
+    • leave EMPTY ([]) when mode = "build"/"edit"/"fix"/"redesign" — you're already going to do the work, no chips needed.
+  Each chip MUST read as something the user themselves would naturally type back. Never write chips from Petal's voice.
+
+- reply: the warm message that streams into the chat bubble. Rules for reply:
+    • 1–3 short sentences. No bullet lists, no headings, no code blocks.
+    • Sound like a friendly senior designer who happens to be very good at building things.
+    • Use natural contractions. Never say "As an AI". Never reference React, Tailwind, components, files, scaffolds, builds, or deploys.
+    • Reply in the SAME language/register the user wrote in (mirror pidgin with pidgin, French with French).
+    • For mode = "build"/"edit"/"fix"/"redesign": acknowledge in plain words what they want and end with a brief "Building it now…" / "On it…" / equivalent in their language.
+    • For mode = "clarify": ask ONE focused question. The chips will provide quick answers.
+    • For mode = "chat"/"explain": just be warm and helpful. Do not propose to build unless asked.
+
+Always be honest. If you genuinely can't tell what they want, say so kindly and use clarify + suggestions.`;
+
+const TRIAGE_TOOL = {
+  type: "function" as const,
+  function: {
+    name: "triage",
+    description:
+      "Classify the user's latest turn and produce a warm, human reply. Always call this exactly once per turn.",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        mode: {
+          type: "string",
+          enum: ["chat", "clarify", "build", "edit", "fix", "explain", "redesign"],
+        },
+        confidence: { type: "number", minimum: 0, maximum: 1 },
+        language: { type: "string" },
+        audience_level: {
+          type: "string",
+          enum: ["non_technical", "mixed", "technical"],
+        },
+        scope: { type: "string", enum: ["tiny", "small", "medium", "large"] },
+        brief: { type: "string" },
+        unknowns: {
+          type: "array",
+          items: { type: "string" },
+          maxItems: 3,
+        },
+        suggestions: {
+          type: "array",
+          items: { type: "string" },
+          maxItems: 4,
+        },
+        reply: { type: "string" },
+      },
+      required: [
+        "mode",
+        "confidence",
+        "language",
+        "audience_level",
+        "scope",
+        "brief",
+        "unknowns",
+        "suggestions",
+        "reply",
+      ],
+    },
+  },
+};
 
 async function authorize(request: Request): Promise<string | Response> {
   const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -86,11 +195,9 @@ function sse(event: TriageEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;
 }
 
-/**
- * Pull the value of a top-level string field from streaming JSON. Tolerates
- * partial / unterminated strings (so we can emit `reply` chunks before the
- * model has closed the JSON object).
- */
+/** Pull the value of a named string ARGUMENT from a streaming tool-call
+ *  arguments JSON. Tolerates partial / unterminated strings so we can emit
+ *  reply chunks before the JSON object closes. */
 function partialField(buf: string, field: string): string {
   const m = buf.match(new RegExp(`"${field}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)`));
   if (!m) return "";
@@ -101,22 +208,52 @@ function partialField(buf: string, field: string): string {
   }
 }
 
-function parseFinalIntent(buf: string): TriageIntent {
-  // Try strict JSON first.
-  try {
-    const obj = JSON.parse(buf) as { intent?: string };
-    if (obj.intent === "chat" || obj.intent === "clarify" || obj.intent === "build") {
-      return obj.intent;
-    }
-  } catch {
-    /* fall through to regex */
-  }
-  const m = buf.match(/"intent"\s*:\s*"(chat|clarify|build)"/);
-  if (m) return m[1] as TriageIntent;
-  // Default to "build" — being too cautious would silently break the user's
-  // build request, while a wrong "build" classification is recoverable
-  // (the downstream build prompt handles it).
-  return "build";
+/** Collapse the fine-grained mode to the coarse intent the builder branches on. */
+function modeToIntent(mode: TriageMode): TriageIntent {
+  if (mode === "chat" || mode === "explain") return "chat";
+  if (mode === "clarify") return "clarify";
+  return "build"; // build / edit / fix / redesign all run the build pipeline
+}
+
+function safeMeta(args: unknown): TriageMeta {
+  // Defensive parse — the gateway can occasionally drop fields.
+  const obj = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
+  const mode = (typeof obj.mode === "string" ? obj.mode : "build") as TriageMode;
+  const allowedModes = new Set<TriageMode>([
+    "chat",
+    "clarify",
+    "build",
+    "edit",
+    "fix",
+    "explain",
+    "redesign",
+  ]);
+  return {
+    mode: allowedModes.has(mode) ? mode : "build",
+    confidence:
+      typeof obj.confidence === "number" && obj.confidence >= 0 && obj.confidence <= 1
+        ? obj.confidence
+        : 0.6,
+    language: typeof obj.language === "string" && obj.language.length > 0 ? obj.language : "en",
+    audience_level:
+      obj.audience_level === "technical" || obj.audience_level === "mixed"
+        ? obj.audience_level
+        : "non_technical",
+    scope:
+      obj.scope === "tiny" || obj.scope === "small" || obj.scope === "medium" || obj.scope === "large"
+        ? obj.scope
+        : "small",
+    brief: typeof obj.brief === "string" ? obj.brief.slice(0, 400) : "",
+    unknowns: Array.isArray(obj.unknowns)
+      ? (obj.unknowns as unknown[]).filter((s): s is string => typeof s === "string").slice(0, 3)
+      : [],
+    suggestions: Array.isArray(obj.suggestions)
+      ? (obj.suggestions as unknown[])
+          .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+          .map((s) => s.trim().slice(0, 60))
+          .slice(0, 4)
+      : [],
+  };
 }
 
 export const Route = createFileRoute("/api/triage")({
@@ -140,23 +277,24 @@ export const Route = createFileRoute("/api/triage")({
           return new Response("messages must not be empty", { status: 400 });
         }
 
-        // Compact context: project state in one line + small file list. Triage
-        // only needs to know whether the user already has an app, not its guts.
+        // Compact context: project state in one line. Triage only needs to know
+        // whether the user already has an app, not its guts.
         const fileCount = Array.isArray(body.currentFiles) ? body.currentFiles.length : 0;
         const stateLine =
           fileCount === 0
             ? "Project context: the user has NOT built anything yet — this is the very first conversation."
-            : `Project context: the user already has an app with ${fileCount} files (most recent message likely refers to it).`;
+            : `Project context: the user already has an app with ${fileCount} files. Most messages will be edits/fixes to it, not new builds.`;
 
         const knowledge = (body.customInstructions ?? "").trim().slice(0, 2000);
-        const knowledgeBlock = knowledge
-          ? `\n\nProject Knowledge: """${knowledge}"""`
-          : "";
+        const knowledgeBlock = knowledge ? `\n\nProject Knowledge: """${knowledge}"""` : "";
 
-        // Strip attachments from the history we send to triage — vision isn't
-        // needed for classification and the data URLs would balloon the prompt.
+        // Strip attachments — vision isn't needed for classification and the
+        // base64 payloads would balloon the prompt.
         const chatMessages = [
-          { role: "system", content: TRIAGE_SYSTEM_PROMPT + "\n\n" + stateLine + knowledgeBlock },
+          {
+            role: "system",
+            content: TRIAGE_SYSTEM_PROMPT + "\n\n" + stateLine + knowledgeBlock,
+          },
           ...messages.map((m) => ({
             role: m.role,
             content: typeof m.content === "string" ? m.content : "",
@@ -173,8 +311,8 @@ export const Route = createFileRoute("/api/triage")({
             model: "google/gemini-3-flash-preview",
             messages: chatMessages,
             stream: true,
-            // Force a JSON object back so we can parse the intent reliably.
-            response_format: { type: "json_object" },
+            tools: [TRIAGE_TOOL],
+            tool_choice: { type: "function", function: { name: "triage" } },
           }),
         });
 
@@ -192,7 +330,7 @@ export const Route = createFileRoute("/api/triage")({
             const reader = upstream.body!.getReader();
             const decoder = new TextDecoder();
             let buf = "";
-            let json = "";
+            let argsBuf = ""; // accumulating tool-call arguments JSON
             let replyEmitted = "";
 
             try {
@@ -209,19 +347,37 @@ export const Route = createFileRoute("/api/triage")({
                   if (!payload || payload === "[DONE]") continue;
                   try {
                     const parsed = JSON.parse(payload) as {
-                      choices?: Array<{ delta?: { content?: string } }>;
+                      choices?: Array<{
+                        delta?: {
+                          content?: string;
+                          tool_calls?: Array<{
+                            function?: { arguments?: string };
+                          }>;
+                        };
+                      }>;
                     };
-                    const piece = parsed.choices?.[0]?.delta?.content;
-                    if (typeof piece !== "string" || piece.length === 0) continue;
-                    json += piece;
-                    // Stream just the new tail of the `reply` field so the chat
-                    // bubble fills in token-by-token before the JSON is closed.
-                    const replyNow = partialField(json, "reply");
-                    if (replyNow.length > replyEmitted.length) {
-                      const tail = replyNow.slice(replyEmitted.length);
-                      replyEmitted = replyNow;
+                    const delta = parsed.choices?.[0]?.delta;
+                    // Tool-call argument deltas: this is where the model
+                    // streams the JSON for our `triage` tool.
+                    const toolPiece = delta?.tool_calls?.[0]?.function?.arguments;
+                    if (typeof toolPiece === "string" && toolPiece.length > 0) {
+                      argsBuf += toolPiece;
+                      const replyNow = partialField(argsBuf, "reply");
+                      if (replyNow.length > replyEmitted.length) {
+                        const tail = replyNow.slice(replyEmitted.length);
+                        replyEmitted = replyNow;
+                        controller.enqueue(
+                          encoder.encode(sse({ type: "reply_delta", delta: tail })),
+                        );
+                      }
+                    }
+                    // Some providers also send free-form text. Treat it as
+                    // additional reply tokens so we never lose them.
+                    const textPiece = delta?.content;
+                    if (typeof textPiece === "string" && textPiece.length > 0 && !argsBuf) {
+                      replyEmitted += textPiece;
                       controller.enqueue(
-                        encoder.encode(sse({ type: "reply_delta", delta: tail })),
+                        encoder.encode(sse({ type: "reply_delta", delta: textPiece })),
                       );
                     }
                   } catch {
@@ -229,8 +385,23 @@ export const Route = createFileRoute("/api/triage")({
                   }
                 }
               }
-              const intent = parseFinalIntent(json);
-              controller.enqueue(encoder.encode(sse({ type: "intent", intent })));
+
+              // Final parse of the tool-call arguments. If parsing fails we
+              // fall back to defaults — better to build than to silently
+              // drop a real request.
+              let parsedArgs: unknown = null;
+              try {
+                parsedArgs = JSON.parse(argsBuf);
+              } catch {
+                /* fall back below */
+              }
+              const meta = safeMeta(parsedArgs);
+              if (!meta.brief && replyEmitted) meta.brief = replyEmitted.slice(0, 200);
+
+              controller.enqueue(encoder.encode(sse({ type: "meta", meta })));
+              controller.enqueue(
+                encoder.encode(sse({ type: "intent", intent: modeToIntent(meta.mode) })),
+              );
             } catch (e) {
               const message = e instanceof Error ? e.message : "Triage stream failed.";
               controller.enqueue(encoder.encode(sse({ type: "error", message })));

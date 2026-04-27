@@ -366,6 +366,10 @@ export type ChatMessage = {
   recap?: string;
   /** Present only on user turns that included image attachments. */
   attachments?: ChatAttachmentRef[];
+  /** Quick-reply chips Petal offers under an assistant message. Tapping a
+   *  chip sends its label as the user's next turn. Used most often on
+   *  "clarify" turns so users don't have to type a full answer. */
+  suggestions?: string[];
 };
 
 export type FileOp =
