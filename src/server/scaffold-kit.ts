@@ -3266,6 +3266,14 @@ const KIT: KitFile[] = [
   { path: "src/components/ui/stack.tsx", content: STACK, overwrite: true },
   { path: "src/components/ui/inline.tsx", content: INLINE, overwrite: true },
   { path: "src/components/ui/grid.tsx", content: GRID, overwrite: true },
+  // Phase 3 kit expansion — Command, Calendar, DatePicker, Combobox, Form, Drawer, Chart.
+  { path: "src/components/ui/command.tsx", content: COMMAND, overwrite: true },
+  { path: "src/components/ui/calendar.tsx", content: CALENDAR, overwrite: true },
+  { path: "src/components/ui/date-picker.tsx", content: DATE_PICKER, overwrite: true },
+  { path: "src/components/ui/combobox.tsx", content: COMBOBOX, overwrite: true },
+  { path: "src/components/ui/form.tsx", content: FORM, overwrite: true },
+  { path: "src/components/ui/drawer.tsx", content: DRAWER, overwrite: true },
+  { path: "src/components/ui/chart.tsx", content: CHART, overwrite: true },
   // Reference patterns — read-only examples for the AI to copy from.
   // NOT imported by App.tsx unless the user asks for that exact pattern.
   {
