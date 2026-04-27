@@ -225,6 +225,10 @@ function Builder() {
   const [settingsScrollTo, setSettingsScrollTo] = useState<
     "domains" | "backend" | "knowledge" | null
   >(null);
+  // Mobile builder menu (bottom sheet) + dependent dialogs.
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [billingOpen, setBillingOpen] = useState(false);
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
   // Visual element edit (Phase 5): selected element from the preview iframe.
   type PickedElement = {
