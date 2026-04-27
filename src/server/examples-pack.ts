@@ -3722,6 +3722,8 @@ export default function App() {
 `;
 
 
+const EXAMPLES_INDEX = `# Examples pack — copy-from reference patterns
+
 These files are NOT imported by App.tsx. They exist purely as a high-quality
 source of patterns the AI can read and adapt. When the user asks for a
 "sign-in screen", "pricing page", "team members table", etc., open the
