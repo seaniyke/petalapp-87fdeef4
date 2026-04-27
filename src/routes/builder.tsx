@@ -620,17 +620,38 @@ function Builder() {
   // appended as a normal assistant message and tagged so we can show an
   // "Apply this plan" button under it.
   const discuss = useCallback(
-    async (content: string) => {
+    async (content: string, opts: { attachments?: ChatAttachment[] } = {}) => {
       const text = content.trim();
       if (!text || busy || discussBusy) return;
       const proj = await ensureProject();
       if (!proj) return;
       setError(null);
       setFriendlyError(null);
-      const userMsg: ChatMessage = { role: "user", content: text };
+      const attachments =
+        opts.attachments ??
+        (pendingAttachments.length > 0
+          ? pendingAttachments
+          : initialAttachmentsRef.current.length > 0
+            ? initialAttachmentsRef.current
+            : undefined);
+      const userMsg: ChatMessage = {
+        role: "user",
+        content: text,
+        ...(attachments && attachments.length > 0
+          ? {
+              attachments: attachments.map((a) => ({
+                mimeType: a.mimeType,
+                dataUrl: a.dataUrl,
+                name: a.name,
+              })),
+            }
+          : {}),
+      };
       const nextMessages: ChatMessage[] = [...messages, userMsg];
       setMessages(nextMessages);
       setInput("");
+      setPendingAttachments([]);
+      initialAttachmentsRef.current = [];
       setDiscussBusy(true);
 
       try {
@@ -661,7 +682,7 @@ function Builder() {
         setDiscussBusy(false);
       }
     },
-    [busy, discussBusy, project, messages, files, ensureProject],
+    [busy, discussBusy, project, messages, files, ensureProject, pendingAttachments],
   );
 
   // Apply the most recent Discuss reply by switching to Build mode and asking
