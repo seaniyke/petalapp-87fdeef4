@@ -37,6 +37,10 @@ type Props = {
     string,
     { kind: "added" | "modified" | "unchanged" | "deleted"; addedLines: number; removedLines: number }
   >;
+  /** Seconds we've been waiting on the deploy phase. Drives the escalation
+   *  copy ("Almost there", "Taking longer", "Still working") so the user
+   *  always sees movement rather than a frozen "Putting your app online…". */
+  deployElapsedSec?: number;
   onStop?: () => void;
   onRetry?: () => void;
   onAskFix?: () => void;
