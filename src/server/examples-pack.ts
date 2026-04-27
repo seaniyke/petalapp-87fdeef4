@@ -3802,6 +3802,9 @@ matching file below and adapt — do not invent layouts from scratch.
 - \`kit-ai-image-hero.tsx\` — full-bleed hero with an AI-generated background via \`petal-image://\`
 - \`kit-ai-image-gallery.tsx\` — three-card product gallery, each tile a unique AI-generated image
 
+## Multi-page routing (Phase 5)
+- \`kit-multi-page-app.tsx\` — canonical App.tsx with Router/Routes/Route, shared layout via Outlet, NavLink active states, dynamic \`/post/:slug\`, and a 404 catch-all. Copy this when the user wants more than one page.
+
 ## Conventions
 
 - Every example uses semantic tokens only — no raw hex, no Tailwind colour names.
