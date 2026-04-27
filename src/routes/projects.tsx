@@ -10,6 +10,16 @@ import {
   type ProjectRow,
 } from "@/lib/projects";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/projects")({
   head: () => ({
@@ -26,6 +36,8 @@ function ProjectsPage() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingDelete, setPendingDelete] = useState<ProjectRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,14 +70,19 @@ function ProjectsPage() {
     navigate({ to: "/builder", search: { id: undefined, prompt: undefined } });
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this project? This can't be undone.")) return;
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const id = pendingDelete.id;
+    setDeleting(true);
     try {
       await deleteProject(id);
       setProjects((prev) => prev.filter((p) => p.id !== id));
       toast.success("Project deleted");
+      setPendingDelete(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -102,12 +119,47 @@ function ProjectsPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {projects.map((p) => (
-                <ProjectCard key={p.id} project={p} onDelete={() => handleDelete(p.id)} />
+                <ProjectCard key={p.id} project={p} onDelete={() => setPendingDelete(p)} />
               ))}
             </div>
           )}
         </div>
       </main>
+
+      <AlertDialog
+        open={!!pendingDelete}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete ? (
+                <>
+                  <span className="font-medium text-foreground">{pendingDelete.title}</span>{" "}
+                  and all of its files, messages, and versions will be permanently
+                  removed. This can't be undone.
+                </>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmDelete();
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting…" : "Delete project"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
