@@ -97,4 +97,14 @@ Tracked under the domain: \`${domain}\`. Pageviews are auto-tracked.
   },
   postInstallMessage: (ctx) =>
     `Plausible installed. Mount \`<Plausible />\` once near the top of your app. Pageviews are auto-tracked under \`${ctx.publicValues.domain}\`.`,
+  aiGuidance: (ctx) => {
+    const domain = ctx.publicValues.domain || "the configured domain";
+    return [
+      `Analytics is wired via Plausible (domain: \`${domain}\`).`,
+      `Mount \`<Plausible />\` from \`@/integrations/plausible/Plausible\` ONCE near the top of the app (e.g. inside the root layout in \`src/App.tsx\`). Pageviews are then auto-tracked.`,
+      `For custom events, import \`track\` from \`@/integrations/plausible/track\` and call \`track("EventName", { plan: "pro" })\` from any component or handler.`,
+      `Do NOT add a Plausible \`<script>\` tag manually, do NOT call any other analytics SDK, do NOT recreate the helper.`,
+      `When the user asks to "track signups / clicks / conversions", call \`track(...)\` at the moment that action completes.`,
+    ].join(" ");
+  },
 };
