@@ -1600,7 +1600,16 @@ function Builder() {
                 finalFileLines={finalFileLines}
                 fileChanges={fileChanges}
                 onStop={busy ? stopGeneration : undefined}
-                onRetry={lastUserPrompt ? retry : undefined}
+                onRetry={
+                  // The "Publishing is taking longer" stall card retries the
+                  // deploy directly. Every other retryable error replays the
+                  // last user prompt through the AI.
+                  isDeploying && friendlyError?.title?.startsWith("Publishing is taking")
+                    ? retryDeploy
+                    : lastUserPrompt
+                      ? retry
+                      : undefined
+                }
                 onAskFix={askPetalToFix}
                 onDismissError={() => setFriendlyError(null)}
               />
