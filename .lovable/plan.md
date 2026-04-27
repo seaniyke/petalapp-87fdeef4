@@ -1,81 +1,115 @@
-## Goal
-Move Petal from "single-page tool builder" to "competitive general-purpose app builder" by closing the highest-leverage gaps vs Lovable, Bolt, and v0. Tackled in priority order — each phase ships independently and the user can stop after any one.
+# Petal Launch-Blocker Plan
+
+Goal: close the gap between current state and a public launch in ~2–3 days of focused work. Four fixes, scoped tight.
+
+## What we're shipping
+
+1. **Mobile preview fallback** — when WebContainers can't run (iOS, old Android, no SharedArrayBuffer), show the project's last published deployment in an iframe instead of a dead-end message.
+2. **Element picker stabilization** — fix silent failures and make the pick → patch loop reliable.
+3. **Rate limiting on generation endpoints** — protect `/api/generate` and `/api/generate-image` from cost runaway and abuse.
+4. **First-run onboarding polish** — a one-time tour + curated starter prompts on the empty Builder state.
+
+Out of scope (deliberately): managed Supabase auto-provisioning, GitHub sync, RAG, voice. These are post-launch.
 
 ---
 
-### Phase 1 — Vision input (biggest UX gap, ~half a day)
-The composer already collects image attachments (`src/routes/index.tsx`, `src/routes/builder.tsx`) but they are dropped on the floor. Wire them through end-to-end.
+## 1. Mobile preview fallback
 
-- **`src/lib/stream.ts` & `src/lib/discuss.ts`**: extend the request body with `attachments: { mimeType: string; dataUrl: string }[]`. Convert files to base64 data URLs client-side (cap at 4 images, 4 MB each).
-- **`src/routes/api/generate.ts` & `src/routes/api/discuss.ts`**: when attachments exist, build the latest user message in OpenAI multimodal format (`content: [{ type: "text", text }, { type: "image_url", image_url: { url } }]`) and force the model to `google/gemini-2.5-pro` (vision-capable) regardless of preset. Fall back to text-only if model rejects.
-- **`src/routes/builder.tsx`**: pipe attachments from the composer + queue items into `streamGenerate`/`requestDiscussion`. Show thumbnails in the chat history so the user remembers what they sent.
-- **System prompt addendum**: "If images are attached, treat them as design references — match layout, color, typography, and spacing as closely as kit components allow."
+### Problem
+On iPhone/iPad (most consumer traffic), `WebContainerPreview.tsx` returns the "Live preview isn't supported on iOS" message. The user sees nothing — even if their project has a live deployed URL on Cloudflare Pages.
 
-Result: users can paste a screenshot of any app/Figma and Petal recreates it.
+### Fix
+- In `WebContainerPreview.tsx`, when `detectUnsupportedBrowser()` returns a message, look up the project's latest successful build / primary domain and render an `<iframe>` of the published URL with a small banner: "Showing your last published version — open on desktop to edit live."
+- Add a prop `publishedUrl?: string | null` to `WebContainerPreview`, plumbed from `builder.tsx` which already knows the current project.
+- Resolve the URL in this priority order:
+  1. `projects.primary_domain_id` → `project_domains.hostname` (custom domain, if `ssl_status = 'active'`)
+  2. The Petal-hosted `project--{id}.lovable.app` URL when a successful `project_builds` row exists
+  3. If neither, keep the current "open on desktop" message (no regression)
+- If the project has never been published, show a CTA: "Publish your project to preview it on mobile."
 
----
-
-### Phase 2 — Build-error auto-fix loop (kills the #1 frustration, ~half a day)
-Today when the Cloudflare build fails (`src/routes/api/public/builds/callback.ts`), the user sees a red error and has to manually prompt "fix it". Lovable and Bolt automatically retry.
-
-- New server action `autoFixBuild(projectId, buildId, errorLog)` triggered when a build callback arrives with `status: "failed"`.
-- Sends a synthetic system message to `/api/generate` with the failing files + truncated error log + instruction "Fix this build error. Patch only the files needed."
-- Caps at **2 auto-retry attempts** per user turn to prevent infinite loops / runaway spend.
-- Surfaces in `BuildActivityCard` as "Petal is fixing a build error… (attempt 1/2)" so the user sees what's happening.
-
-Result: most Tailwind/TS typos self-heal silently before the user notices.
+### Files
+- `src/components/WebContainerPreview.tsx` (add fallback render branch + new prop)
+- `src/routes/builder.tsx` (query published URL, pass as prop)
+- New helper `src/lib/published-url.ts` (resolves the URL from project row + domains + builds)
 
 ---
 
-### Phase 3 — Add 6 critical kit components (~half a day)
-Adds these to `src/server/scaffold-kit.ts` so the AI can compose richer apps:
-1. **Command / CommandPalette** (cmdk) — required for any search-driven UI
-2. **Calendar / DatePicker** (react-day-picker, already in deps)
-3. **Combobox** (Command + Popover composition)
-4. **Form** (react-hook-form + zod resolver wrapper)
-5. **Drawer** (vaul) — mobile-friendly Sheet
-6. **Chart** (recharts wrapper with theming)
+## 2. Element picker stabilization
 
-Update `SYSTEM_PROMPT_INITIAL` and `SYSTEM_PROMPT_PATCH` to list them. Add 2-3 new entries to `examples-pack.ts` showing typical usage (search-everywhere palette, form with zod validation, sales chart card).
+### Problem
+The picker (`ensurePickerInstalled` + postMessage `onPick`) silently fails in several cases:
+- Picker script isn't re-injected when the user navigates inside the iframe (SPA route change).
+- `postMessage` events get dropped if the iframe reloads mid-pick.
+- No visible error when injection fails — user clicks "Pick" and nothing happens.
 
-Result: AI stops hand-rolling broken date pickers and search boxes.
+### Fix
+- In `src/lib/webcontainer.ts`, make `ensurePickerInstalled` idempotent and re-run on every `iframe.load` event, not just on initial mount.
+- In `WebContainerPreview.tsx`:
+  - Move the `ensurePickerInstalled` call into an `iframe.onLoad` handler so it survives in-app navigation.
+  - When `pickActive` is true but no message arrives within 30s, surface a toast: "Picker didn't attach — try reloading the preview."
+  - Add a visible state ring on the iframe while `pickActive` is true so users know it's armed.
+- Add a `data-petal-picker-version` attribute to the injected script so we can detect stale versions and re-inject.
 
----
-
-### Phase 4 — AI image generation for placeholders (~3 hours)
-Right now the AI uses `https://images.unsplash.com/...` random photos that often 404 or look generic. Lovable uses Gemini/Imagen for hero images.
-
-- New server endpoint `/api/generate-image` calling `google/gemini-3-pro-image-preview` via the existing Lovable AI gateway (no new key needed — already supported).
-- Add a tool function `generate_image(prompt, aspect_ratio)` available during `write_project` / `patch_files` calls. AI emits placeholder URLs like `petal://img/hero-1`; server resolves them to data URLs or uploads to a `project-assets` Supabase bucket and rewrites paths in emitted files.
-- Update system prompt: "For hero/feature illustrations, call generate_image instead of using stock URLs."
-
-Result: every generated app gets cohesive on-brand imagery.
+### Files
+- `src/lib/webcontainer.ts` (idempotent re-inject, version tag)
+- `src/components/WebContainerPreview.tsx` (onLoad re-inject, timeout toast, visible armed state)
 
 ---
 
-### Phase 5 — Multi-page apps via React Router (~1 day, larger lift)
-Single `src/App.tsx` is the hard ceiling on app sophistication. Add a router to the scaffold so the AI can build blogs, marketplaces, admin + user portals.
+## 3. Rate limiting on generation endpoints
 
-- Inject `react-router-dom` v6 into scaffold, plus `src/router.tsx` and an updated `src/main.tsx` wrapping `<RouterProvider>`.
-- Convention: pages live at `src/pages/<name>.tsx` and are auto-registered by a generated `src/pages.gen.ts` that the scaffold maintains (similar to TanStack's flat routing).
-- Update both system prompts with the routing convention + a new rule: "When the user asks for multiple pages, create files under `src/pages/`. The router auto-picks them up."
-- Add example: `examples/multi-page-blog.tsx` showing layout + nested routes.
+### Problem
+`/api/generate` and `/api/generate-image` have no per-user limits. A leaked session or abusive user could rack up hundreds of dollars in Lovable AI / image gen costs in minutes.
 
-Result: Petal can build real multi-page products, not just single-screen tools.
+### Fix
+- Add a `rate_limits` table keyed by `(user_id, bucket, window_start)` with an integer counter.
+- New helper `src/server/rate-limit.server.ts` exposing `enforceRateLimit(userId, bucket, max, windowSeconds)`. Uses a Postgres upsert with `ON CONFLICT DO UPDATE` to atomically increment.
+- Wire into both routes:
+  - `/api/generate`: 30 generations per user per hour, 200 per day.
+  - `/api/generate-image`: 20 images per user per hour, 100 per day.
+- On limit hit, return `429` with a friendly JSON body `{ error, retryAfterSeconds }`.
+- Surface the `429` in `friendly-errors.ts` so the chat shows: "You've hit your hourly generation limit. Try again in X minutes."
+
+### Files
+- New migration: `rate_limits` table + index on `(user_id, bucket, window_start)`
+- New `src/server/rate-limit.server.ts`
+- `src/routes/api/generate.ts` and `src/routes/api/generate-image.ts` (call `enforceRateLimit` at top of handler)
+- `src/lib/friendly-errors.ts` (handle 429)
 
 ---
 
-### Out of scope for this plan (separate future work)
-- **Element picker reliability** — current `WebContainerPreview` picker is shaky; needs its own debugging pass.
-- **RAG / large-codebase support** — only matters once apps regularly exceed 30 files; revisit after Phase 5.
-- **Voice input, generated tests, one-click connectors** — lower ROI right now.
-- **Managed Supabase auto-provisioning** — separate billing/infra workstream.
+## 4. First-run onboarding polish
+
+### Problem
+New users land on the Builder with an empty input and no idea what to type. Lovable/Bolt both have curated prompt cards; we don't.
+
+### Fix
+- On the empty Builder state (no current project, no draft), render a "Start with an idea" panel above the input with 6 curated prompts (3 app types × 2 styles). Examples: "A booking page for a barbershop", "A community for indie game devs", "An invoicing tool for freelancers".
+- Clicking a prompt fills the input and focuses it (does not auto-submit — user keeps agency).
+- Add a one-time tour (3 tooltips) shown on first visit, dismissed via `localStorage` flag `petal_tour_v1_seen`:
+  1. Input box → "Describe what you want to build."
+  2. Preview pane → "See your app run live as you iterate."
+  3. Publish button → "One click to ship it to the world."
+
+### Files
+- New `src/components/StartIdeasPanel.tsx`
+- New `src/components/FirstRunTour.tsx`
+- `src/routes/builder.tsx` (mount both when empty state + first visit)
 
 ---
 
-### Recommended order
-**Phase 1 (vision) → Phase 2 (auto-fix) → Phase 3 (kit) → Phase 4 (images) → Phase 5 (router)**
+## Technical notes
 
-Phases 1, 2, 3 each take ≤ half a day and deliver the biggest perceived quality jumps. Phase 5 is the largest lift and should only happen once the first three are stable.
+- **Mobile fallback URL resolution** runs server-side in the builder loader to avoid a client round-trip; SSR'd into the page.
+- **Rate limit windows** use truncated hour/day timestamps as `window_start`, so old rows naturally fall out of the active count. A daily cron (later) can prune `window_start < now() - 7 days`.
+- **Picker version tag**: bump a constant in `webcontainer.ts` whenever the injected script changes; the re-inject check compares the attribute to the constant.
+- **Tour**: pure CSS/React, no external library — keeps bundle small.
+- All four items are independent and can ship in any order; no cross-dependencies.
 
-Want me to start with Phase 1 (vision input), or pick a different order?
+## Order of work
+1. Rate limiting (highest risk, lowest UX visibility — ship first quietly)
+2. Mobile fallback (biggest user-visible win)
+3. Element picker fixes
+4. Onboarding polish
+
+Estimated time: 2–3 focused days.
