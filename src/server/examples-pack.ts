@@ -3254,77 +3254,7 @@ function Field({
  * canonical wiring of the new kit components.
  * ================================================================= */
 
-const KIT_COMMAND_PALETTE = `import { useEffect, useState } from "react";
-import { Calendar, FileText, Settings, User } from "lucide-react";
-import {
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-  CommandShortcut,
-} from "@/components/ui/command";
-import { Button } from "@/components/ui/button";
-
-/**
- * Cmd/Ctrl+K command palette. Drop this anywhere in your app and the
- * keyboard shortcut works globally. Adapt the items to match your routes.
- */
-export default function CommandPaletteExample() {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setOpen((o) => !o);
-      }
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, []);
-
-  return (
-    <>
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        Search...
-        <CommandShortcut>⌘K</CommandShortcut>
-      </Button>
-      <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Type a command or search..." />
-        <CommandList>
-          <CommandEmpty>No results found.</CommandEmpty>
-          <CommandGroup heading="Suggestions">
-            <CommandItem onSelect={() => setOpen(false)}>
-              <Calendar className="mr-2 h-4 w-4" />
-              Calendar
-            </CommandItem>
-            <CommandItem onSelect={() => setOpen(false)}>
-              <FileText className="mr-2 h-4 w-4" />
-              New document
-              <CommandShortcut>⌘N</CommandShortcut>
-            </CommandItem>
-          </CommandGroup>
-          <CommandSeparator />
-          <CommandGroup heading="Account">
-            <CommandItem onSelect={() => setOpen(false)}>
-              <User className="mr-2 h-4 w-4" />
-              Profile
-            </CommandItem>
-            <CommandItem onSelect={() => setOpen(false)}>
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-              <CommandShortcut>⌘,</CommandShortcut>
-            </CommandItem>
-          </CommandGroup>
-        </CommandList>
-      </CommandDialog>
-    </>
-  );
-}
-`;
+// (Command palette example removed — generated apps don't ship a Cmd+K palette.)
 
 const KIT_VALIDATED_FORM = `import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormField, useForm } from "@/components/ui/form";
@@ -3794,7 +3724,6 @@ matching file below and adapt — do not invent layouts from scratch.
 - \`form-multi-step-error.tsx\` — wizard with submit failure: inline alert, retry, recover-to-step
 
 ## Kit expansion demos (Phase 3)
-- \`kit-command-palette.tsx\` — Cmd/Ctrl+K command palette with grouped items + shortcuts
 - \`kit-validated-form.tsx\` — useForm + FormField + Combobox + DatePicker with inline validation
 - \`kit-sales-chart-card.tsx\` — revenue card with Tabs switching between Area / Line / Bar charts
 
@@ -3885,7 +3814,6 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/form-multi-step-error.tsx", content: FORM_MULTI_STEP_ERROR, overwrite: true },
 
   // Kit expansion demos (Phase 3)
-  { path: "src/components/examples/kit-command-palette.tsx", content: KIT_COMMAND_PALETTE, overwrite: true },
   { path: "src/components/examples/kit-validated-form.tsx", content: KIT_VALIDATED_FORM, overwrite: true },
   { path: "src/components/examples/kit-sales-chart-card.tsx", content: KIT_SALES_CHART_CARD, overwrite: true },
 

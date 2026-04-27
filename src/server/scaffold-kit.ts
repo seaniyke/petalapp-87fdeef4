@@ -2504,163 +2504,17 @@ export function ExampleTabsSheetSettings() {
 `;
 
 // ============================================================
-// PHASE 3 KIT EXPANSION — Command, Calendar, DatePicker,
-// Combobox, Form, Drawer, Chart. All zero-dep, hand-rolled to
-// match the rest of the kit (no cmdk / vaul / recharts /
-// react-day-picker / react-hook-form additions).
+// PHASE 3 KIT EXPANSION — Calendar, DatePicker, Combobox, Form,
+// Drawer, Chart. All zero-dep, hand-rolled to match the rest of
+// the kit (no cmdk / vaul / recharts / react-day-picker /
+// react-hook-form additions).
+//
+// NOTE: Command palette intentionally omitted — generated apps
+// are consumer-facing, not IDE-style tools, so a Cmd+K palette
+// adds bundle weight and confusion for end users. If a user ever
+// asks for one specifically, build it ad-hoc on top of <Dialog>
+// + <Input> rather than re-introducing a primitive here.
 // ============================================================
-
-const COMMAND = `import * as React from "react";
-import { Search } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-/**
- * Lightweight command palette primitive. Compose like:
- *   <Command>
- *     <CommandInput placeholder="Search..." />
- *     <CommandList>
- *       <CommandEmpty>No results</CommandEmpty>
- *       <CommandGroup heading="Suggestions">
- *         <CommandItem onSelect={...}>New file</CommandItem>
- *       </CommandGroup>
- *     </CommandList>
- *   </Command>
- *
- * Wrap in <CommandDialog open onOpenChange> for a Cmd+K palette.
- */
-type CommandCtx = { query: string; setQuery: (v: string) => void; matches: number; bumpMatches: () => void; resetMatches: () => void };
-const CommandContext = React.createContext<CommandCtx | null>(null);
-
-export function Command({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  const [query, setQuery] = React.useState("");
-  const matchesRef = React.useRef(0);
-  const [, force] = React.useReducer((x: number) => x + 1, 0);
-  const ctx: CommandCtx = {
-    query,
-    setQuery: (v) => { matchesRef.current = 0; setQuery(v); },
-    matches: matchesRef.current,
-    bumpMatches: () => { matchesRef.current += 1; },
-    resetMatches: () => { matchesRef.current = 0; force(); },
-  };
-  return (
-    <CommandContext.Provider value={ctx}>
-      <div className={cn("flex flex-col overflow-hidden rounded-md bg-popover text-popover-foreground", className)} {...props}>
-        {children}
-      </div>
-    </CommandContext.Provider>
-  );
-}
-
-export function CommandInput({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-  const ctx = React.useContext(CommandContext);
-  if (!ctx) throw new Error("CommandInput must be inside Command");
-  return (
-    <div className="flex items-center border-b px-3">
-      <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-      <input
-        value={ctx.query}
-        onChange={(e) => ctx.setQuery(e.target.value)}
-        className={cn("flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50", className)}
-        {...props}
-      />
-    </div>
-  );
-}
-
-export function CommandList({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden p-1", className)} {...props}>
-      {children}
-    </div>
-  );
-}
-
-export function CommandEmpty({ className, children }: { className?: string; children: React.ReactNode }) {
-  const ctx = React.useContext(CommandContext);
-  // Render only when query is non-empty and zero matches were collected.
-  if (!ctx || !ctx.query || ctx.matches > 0) return null;
-  return <div className={cn("py-6 text-center text-sm text-muted-foreground", className)}>{children}</div>;
-}
-
-export function CommandGroup({ heading, className, children }: { heading?: string; className?: string; children: React.ReactNode }) {
-  return (
-    <div className={cn("overflow-hidden p-1 text-foreground", className)}>
-      {heading && <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">{heading}</div>}
-      {children}
-    </div>
-  );
-}
-
-export function CommandSeparator({ className }: { className?: string }) {
-  return <div className={cn("-mx-1 h-px bg-border", className)} />;
-}
-
-export function CommandItem({
-  value,
-  onSelect,
-  className,
-  children,
-}: {
-  value?: string;
-  onSelect?: (value: string) => void;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  const ctx = React.useContext(CommandContext);
-  if (!ctx) throw new Error("CommandItem must be inside Command");
-  const text = (value ?? (typeof children === "string" ? children : "")).toString().toLowerCase();
-  const visible = !ctx.query || text.includes(ctx.query.toLowerCase());
-  // Count visible items so CommandEmpty knows whether to render.
-  React.useEffect(() => {
-    if (visible) ctx.bumpMatches();
-  });
-  if (!visible) return null;
-  return (
-    <div
-      role="option"
-      tabIndex={0}
-      onClick={() => onSelect?.(value ?? text)}
-      onKeyDown={(e) => { if (e.key === "Enter") onSelect?.(value ?? text); }}
-      className={cn("relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground", className)}
-    >
-      {children}
-    </div>
-  );
-}
-
-export function CommandShortcut({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) {
-  return <span className={cn("ml-auto text-xs tracking-widest text-muted-foreground", className)} {...props} />;
-}
-
-/**
- * Modal Cmd+K palette. Add <CommandDialog open={open} onOpenChange={setOpen}>
- * and bind a Cmd/Ctrl+K listener in your component to toggle it.
- */
-export function CommandDialog({
-  open,
-  onOpenChange,
-  children,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  children: React.ReactNode;
-}) {
-  React.useEffect(() => {
-    if (!open) return;
-    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onOpenChange(false); };
-    document.addEventListener("keydown", onEsc);
-    return () => document.removeEventListener("keydown", onEsc);
-  }, [open, onOpenChange]);
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-[15vh]" onClick={() => onOpenChange(false)}>
-      <div className="w-full max-w-lg rounded-lg border bg-popover text-popover-foreground shadow-lg" onClick={(e) => e.stopPropagation()}>
-        <Command>{children}</Command>
-      </div>
-    </div>
-  );
-}
-`;
 
 const CALENDAR = `import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -2850,9 +2704,9 @@ export function DatePicker({
 `;
 
 const COMBOBOX = `import * as React from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
@@ -2886,7 +2740,12 @@ export function Combobox({
   className?: string;
 }) {
   const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
   const current = options.find((o) => o.value === value);
+  const filtered = query
+    ? options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()))
+    : options;
+  React.useEffect(() => { if (!open) setQuery(""); }, [open]);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -2901,27 +2760,34 @@ export function Combobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[240px] p-0" align="start">
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
-              {options.map((opt) => (
-                <CommandItem
-                  key={opt.value}
-                  value={opt.label}
-                  onSelect={() => {
-                    onChange?.(opt.value);
-                    setOpen(false);
-                  }}
-                >
-                  <Check className={cn("mr-2 h-4 w-4", value === opt.value ? "opacity-100" : "opacity-0")} />
-                  {opt.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+        <div className="flex items-center border-b px-3">
+          <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={searchPlaceholder}
+            className="h-9 border-0 px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+        </div>
+        <div className="max-h-64 overflow-y-auto p-1" role="listbox">
+          {filtered.length === 0 ? (
+            <div className="px-2 py-6 text-center text-sm text-muted-foreground">{emptyText}</div>
+          ) : (
+            filtered.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                role="option"
+                aria-selected={value === opt.value}
+                onClick={() => { onChange?.(opt.value); setOpen(false); }}
+                className="flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+              >
+                <Check className={cn("mr-2 h-4 w-4", value === opt.value ? "opacity-100" : "opacity-0")} />
+                {opt.label}
+              </button>
+            ))
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );
@@ -3306,8 +3172,8 @@ const KIT: KitFile[] = [
   { path: "src/components/ui/stack.tsx", content: STACK, overwrite: true },
   { path: "src/components/ui/inline.tsx", content: INLINE, overwrite: true },
   { path: "src/components/ui/grid.tsx", content: GRID, overwrite: true },
-  // Phase 3 kit expansion — Command, Calendar, DatePicker, Combobox, Form, Drawer, Chart.
-  { path: "src/components/ui/command.tsx", content: COMMAND, overwrite: true },
+  // Phase 3 kit expansion — Calendar, DatePicker, Combobox, Form, Drawer, Chart.
+  // (Command palette intentionally omitted — see scaffold-kit note above.)
   { path: "src/components/ui/calendar.tsx", content: CALENDAR, overwrite: true },
   { path: "src/components/ui/date-picker.tsx", content: DATE_PICKER, overwrite: true },
   { path: "src/components/ui/combobox.tsx", content: COMBOBOX, overwrite: true },
