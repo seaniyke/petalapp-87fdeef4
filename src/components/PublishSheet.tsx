@@ -559,6 +559,134 @@ export function PublishSheet({
           </div>
         </div>
 
+        {/* Petal subdomain ( <slug>.buildwithpetal.com ) */}
+        <div className="mt-5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Petal subdomain</span>
+            {currentSlug && !editingSlug && (
+              <button
+                type="button"
+                onClick={startEditingSlug}
+                className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Change
+              </button>
+            )}
+          </div>
+
+          {!editingSlug && currentSlug && (
+            <div className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2.5">
+              <span className="truncate text-sm">
+                <span className="font-medium text-foreground">{currentSlug}</span>
+                <span className="text-muted-foreground">.{PETAL_ROOT_DOMAIN}</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary">
+                <CheckCircle2 className="h-3 w-3" />
+                Claimed
+              </span>
+            </div>
+          )}
+
+          {!editingSlug && !currentSlug && (
+            <button
+              type="button"
+              onClick={startEditingSlug}
+              className="flex w-full items-center justify-between rounded-xl border border-dashed border-border bg-card/50 px-3 py-2.5 text-left transition hover:bg-muted"
+            >
+              <span className="text-sm">
+                <span className="text-muted-foreground">Claim </span>
+                <span className="font-medium text-foreground">your-slug</span>
+                <span className="text-muted-foreground">.{PETAL_ROOT_DOMAIN}</span>
+              </span>
+              <span className="text-xs font-medium text-primary">Claim</span>
+            </button>
+          )}
+
+          {editingSlug && (
+            <div className="space-y-2">
+              <div className="flex items-stretch overflow-hidden rounded-xl border border-border bg-card focus-within:border-primary/60">
+                <input
+                  type="text"
+                  inputMode="url"
+                  autoFocus
+                  value={slugDraft}
+                  onChange={(e) =>
+                    setSlugDraft(
+                      e.target.value
+                        .toLowerCase()
+                        .replace(/[^a-z0-9-]/g, "")
+                        .slice(0, 40),
+                    )
+                  }
+                  placeholder="your-slug"
+                  className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground/60"
+                  aria-label="Petal subdomain slug"
+                />
+                <span className="flex shrink-0 items-center px-3 text-sm text-muted-foreground">
+                  .{PETAL_ROOT_DOMAIN}
+                </span>
+                <button
+                  type="button"
+                  onClick={cancelEditingSlug}
+                  disabled={slugClaiming}
+                  className="grid w-10 shrink-0 place-items-center border-l border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+                  aria-label="Cancel"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Inline status line */}
+              <div className="flex min-h-[1.25rem] items-center gap-1.5 px-1 text-xs">
+                {slugChecking && (
+                  <span className="inline-flex items-center gap-1 text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Checking…
+                  </span>
+                )}
+                {!slugChecking && slugCheck?.available && (
+                  <span className="inline-flex items-center gap-1 text-primary">
+                    <CheckCircle2 className="h-3 w-3" />
+                    {slugDraft === currentSlug
+                      ? "This is your current subdomain"
+                      : `${slugPreviewHostname} is available`}
+                  </span>
+                )}
+                {!slugChecking && slugCheck && !slugCheck.available && (
+                  <span className="inline-flex items-center gap-1 text-destructive">
+                    <AlertCircle className="h-3 w-3" />
+                    {slugCheck.reason ?? "Not available"}
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={saveSlug}
+                disabled={
+                  !slugCheck?.available ||
+                  slugClaiming ||
+                  slugDraft === currentSlug
+                }
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {slugClaiming ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Claiming…
+                  </>
+                ) : (
+                  <>
+                    <Globe className="h-4 w-4" />
+                    {currentSlug ? "Update subdomain" : "Claim subdomain"}
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Visibility */}
         <div className="mt-5 space-y-2">
           <span className="text-sm font-medium">Who can see this website</span>
