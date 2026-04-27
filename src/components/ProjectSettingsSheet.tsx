@@ -37,6 +37,9 @@ import {
 } from "@/lib/projects";
 import { DomainsSection } from "@/components/DomainsSection";
 import { ManagedBackendCard } from "@/components/ManagedBackendCard";
+import { LabsSection } from "@/components/LabsSection";
+import { IntegrationsSection } from "@/components/IntegrationsSection";
+import { useLabsFlag } from "@/hooks/use-labs-flags";
 import { toast } from "sonner";
 
 const MAX_LEN = 4000;
@@ -190,9 +193,21 @@ export function ProjectSettingsSheet({
             </Button>
           </div>
         </div>
+
+        {/* Integrations marketplace — gated by Labs flag */}
+        <IntegrationsSectionGated projectId={project.id} />
+
+        {/* Labs toggles */}
+        <LabsSection />
       </SheetContent>
     </Sheet>
   );
+}
+
+function IntegrationsSectionGated({ projectId }: { projectId: string }) {
+  const enabled = useLabsFlag("integrations_marketplace");
+  if (!enabled) return null;
+  return <IntegrationsSection projectId={projectId} />;
 }
 
 /* ---------------- Backend section ---------------- */

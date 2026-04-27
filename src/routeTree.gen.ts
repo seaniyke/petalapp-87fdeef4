@@ -18,6 +18,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as BillingReturnRouteImport } from './routes/billing.return'
+import { Route as ApiLabsRouteImport } from './routes/api/labs'
+import { Route as ApiIntegrationsRouteImport } from './routes/api/integrations'
 import { Route as ApiGenerateImageRouteImport } from './routes/api/generate-image'
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 import { Route as ApiDomainsRouteImport } from './routes/api/domains'
@@ -81,6 +83,16 @@ const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
 const BillingReturnRoute = BillingReturnRouteImport.update({
   id: '/billing/return',
   path: '/billing/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLabsRoute = ApiLabsRouteImport.update({
+  id: '/api/labs',
+  path: '/api/labs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIntegrationsRoute = ApiIntegrationsRouteImport.update({
+  id: '/api/integrations',
+  path: '/api/integrations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGenerateImageRoute = ApiGenerateImageRouteImport.update({
@@ -197,6 +209,8 @@ export interface FileRoutesByFullPath {
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
+  '/api/integrations': typeof ApiIntegrationsRoute
+  '/api/labs': typeof ApiLabsRoute
   '/billing/return': typeof BillingReturnRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
@@ -227,6 +241,8 @@ export interface FileRoutesByTo {
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
+  '/api/integrations': typeof ApiIntegrationsRoute
+  '/api/labs': typeof ApiLabsRoute
   '/billing/return': typeof BillingReturnRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
@@ -258,6 +274,8 @@ export interface FileRoutesById {
   '/api/domains': typeof ApiDomainsRoute
   '/api/generate': typeof ApiGenerateRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
+  '/api/integrations': typeof ApiIntegrationsRoute
+  '/api/labs': typeof ApiLabsRoute
   '/billing/return': typeof BillingReturnRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
@@ -290,6 +308,8 @@ export interface FileRouteTypes {
     | '/api/domains'
     | '/api/generate'
     | '/api/generate-image'
+    | '/api/integrations'
+    | '/api/labs'
     | '/billing/return'
     | '/email/unsubscribe'
     | '/p/$slug'
@@ -320,6 +340,8 @@ export interface FileRouteTypes {
     | '/api/domains'
     | '/api/generate'
     | '/api/generate-image'
+    | '/api/integrations'
+    | '/api/labs'
     | '/billing/return'
     | '/email/unsubscribe'
     | '/p/$slug'
@@ -350,6 +372,8 @@ export interface FileRouteTypes {
     | '/api/domains'
     | '/api/generate'
     | '/api/generate-image'
+    | '/api/integrations'
+    | '/api/labs'
     | '/billing/return'
     | '/email/unsubscribe'
     | '/p/$slug'
@@ -381,6 +405,8 @@ export interface RootRouteChildren {
   ApiDomainsRoute: typeof ApiDomainsRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
   ApiGenerateImageRoute: typeof ApiGenerateImageRoute
+  ApiIntegrationsRoute: typeof ApiIntegrationsRoute
+  ApiLabsRoute: typeof ApiLabsRoute
   BillingReturnRoute: typeof BillingReturnRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   PSlugRoute: typeof PSlugRoute
@@ -462,6 +488,20 @@ declare module '@tanstack/react-router' {
       path: '/billing/return'
       fullPath: '/billing/return'
       preLoaderRoute: typeof BillingReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/labs': {
+      id: '/api/labs'
+      path: '/api/labs'
+      fullPath: '/api/labs'
+      preLoaderRoute: typeof ApiLabsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations': {
+      id: '/api/integrations'
+      path: '/api/integrations'
+      fullPath: '/api/integrations'
+      preLoaderRoute: typeof ApiIntegrationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/generate-image': {
@@ -613,6 +653,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDomainsRoute: ApiDomainsRoute,
   ApiGenerateRoute: ApiGenerateRoute,
   ApiGenerateImageRoute: ApiGenerateImageRoute,
+  ApiIntegrationsRoute: ApiIntegrationsRoute,
+  ApiLabsRoute: ApiLabsRoute,
   BillingReturnRoute: BillingReturnRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   PSlugRoute: PSlugRoute,
