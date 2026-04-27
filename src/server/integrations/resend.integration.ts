@@ -132,12 +132,18 @@ const tpl = welcomeEmail({ name: "Ada", appName: "Acme" });
 await sendEmail({ to: "ada@example.com", ...tpl });
 \`\`\`
 
-The API key lives in \`process.env.RESEND_API_KEY\` and the default From
-address in \`process.env.RESEND_FROM\`. Both are injected by Petal — do not
-hardcode them in source files.
+The API key is read from \`process.env.RESEND_API_KEY\` and the default From
+address from \`process.env.RESEND_FROM_ADDRESS\`. Petal injects both into
+\`.env.production\` and \`.dev.vars\` automatically when you install the
+integration — do not hardcode them.
+
+> **Server runtime required.** \`process.env\` is only available in a server
+> context (Cloudflare Pages Functions, Workers, or local \`wrangler pages
+> dev\`). Call \`sendEmail()\` from a server route, never directly from a
+> React component, or the API key will be \`undefined\` at runtime.
 `,
     },
   ],
   postInstallMessage: () =>
-    "Resend is wired up. Use `import { sendEmail } from '@/integrations/resend/send'` from any server function. The API key stays server-side.",
+    "Resend is wired up. Petal injected RESEND_API_KEY + RESEND_FROM_ADDRESS into .env.production and .dev.vars. Call `sendEmail()` from a server route — `process.env` is undefined in the browser.",
 };
