@@ -288,8 +288,46 @@ function Builder() {
   // Subscribe to the live Cloudflare build for this project so we can fold
   // its status into the activity feed seamlessly with AI generation.
   const buildSnap = useBuildActivity(project?.latest_build_id ?? null);
-  const isDeploying = buildSnap?.status === "pending";
+  // 'pending' = queued, 'building' = Railway picked it up. Both keep the
+  // activity card in its "deploying" phase. Treating 'building' as inactive
+  // (the previous behavior, since it wasn't in the enum) was the bug that
+  // froze the spinner whenever Railway flipped the row mid-build.
+  const isDeploying = buildSnap?.status === "pending" || buildSnap?.status === "building";
   const isLive = buildSnap?.status === "ready";
+
+  // Long-wait escalation for the deploy phase. We escalate copy at 60s/90s
+  // and surface a friendly "deploy stalled" card at 150s so the user always
+  // has a way to retry or keep working — never a stranded spinner.
+  const [deployElapsed, setDeployElapsed] = useState(0);
+  useEffect(() => {
+    if (!isDeploying || !buildSnap) {
+      setDeployElapsed(0);
+      return;
+    }
+    const tick = () => setDeployElapsed(Math.floor((Date.now() - buildSnap.observedAt) / 1000));
+    tick();
+    const t = window.setInterval(tick, 1000);
+    return () => window.clearInterval(t);
+  }, [isDeploying, buildSnap?.observedAt]);
+
+  // Once we cross the 150s threshold, surface the friendly stalled card.
+  // The card lets the user Retry (re-trigger the build with the current
+  // files) or Keep editing (dismiss; if Railway eventually responds the
+  // status will still flip to ready in the background).
+  useEffect(() => {
+    if (!isDeploying || friendlyError) return;
+    if (deployElapsed < 150) return;
+    setFriendlyError({
+      title: "Publishing is taking longer than usual",
+      message:
+        "Your code is ready — the publishing service hasn't reported back yet. You can retry the deploy or keep editing while we wait.",
+      actionLabel: "Retry deploy",
+      actionKind: "retry",
+      technicalDetail: `Deploy elapsed ${deployElapsed}s with no callback`,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deployElapsed, isDeploying]);
+
 
   // Subscribe to `projects` row changes so when the build callback writes a
   // new `latest_build_id` (or any other field), the UI picks it up immediately
