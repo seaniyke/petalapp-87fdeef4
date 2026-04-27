@@ -31,6 +31,13 @@ The scaffold ALREADY EXISTS — these files will be auto-injected, do NOT emit t
 - "src/components/ui/scroll-area.tsx" — <ScrollArea>
 - "src/components/ui/table.tsx" — <Table>, <TableHeader>, <TableBody>, <TableFooter>, <TableRow>, <TableHead>, <TableCell>, <TableCaption>
 - "src/components/ui/sheet.tsx" — <Sheet>, <SheetTrigger asChild>, <SheetContent side="top|right|bottom|left">, <SheetHeader>, <SheetTitle>, <SheetDescription>, <SheetFooter>
+- "src/components/ui/drawer.tsx" — <Drawer open onOpenChange>, <DrawerTrigger asChild>, <DrawerClose asChild>, <DrawerContent>, <DrawerHeader>, <DrawerTitle>, <DrawerDescription>, <DrawerFooter>. Bottom-anchored mobile-first sheet with handle. Use for mobile detail panels and action sheets — pair with <Sheet> for desktop.
+- "src/components/ui/command.tsx" — <Command>, <CommandInput placeholder>, <CommandList>, <CommandEmpty>, <CommandGroup heading>, <CommandItem onSelect>, <CommandSeparator>, <CommandShortcut>, <CommandDialog open onOpenChange>. Use for any search/launcher UI. Wrap in CommandDialog and bind Cmd/Ctrl+K for a palette.
+- "src/components/ui/calendar.tsx" — <Calendar mode="single|range" selected onSelect disabled>. Pure month-grid picker. Use only when you need a raw calendar inline; for a field, use DatePicker instead.
+- "src/components/ui/date-picker.tsx" — <DatePicker value onChange placeholder disabled>. Drop-in date field (Button + Popover + Calendar). NEVER hand-roll <input type="date">.
+- "src/components/ui/combobox.tsx" — <Combobox options={[{label,value}]} value onChange placeholder searchPlaceholder emptyText>. Searchable single-select. Use whenever the option list is 5+ items — NEVER a styled <select> for that case.
+- "src/components/ui/form.tsx" — useForm({ defaults, validate, onSubmit }) returns { values, errors, touched, submitting, register, handleSubmit, setValue, reset }. Plus <Form>, <FormField name label description error>. Tiny dependency-free form helper; for arrays/async validation graduate to react-hook-form.
+- "src/components/ui/chart.tsx" — <LineChart data={[{x,y}]} color={1..5}>, <AreaChart>, <BarChart>, <ChartContainer>. Pure-SVG charts with semantic theming. Use these instead of inventing your own SVG bars/lines or pulling recharts.
 - "src/components/ui/toast.tsx" — exports { Toaster, toast } from sonner. Mount <Toaster /> once in App.tsx, then call toast.success("...") / toast.error("...") anywhere
 - "src/components/ui/theme-provider.tsx" — <ThemeProvider defaultTheme="system">. Wrap your app once in main.tsx. Provides useTheme() returning { theme, resolvedTheme, setTheme }.
 - "src/components/ui/theme-toggle.tsx" — <ThemeToggle />. Drop-in dropdown (Light / Dark / System) using lucide icons. Place it in your header.
