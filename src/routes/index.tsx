@@ -293,28 +293,36 @@ function Landing() {
         <div className="absolute inset-0 bg-aurora opacity-70" aria-hidden />
         <div className="absolute inset-0 bg-grain opacity-40" aria-hidden />
 
-        <div className="relative mx-auto max-w-5xl px-4 pt-12 pb-20 text-center sm:px-6 sm:pt-20 sm:pb-28 md:pt-28 md:pb-36">
-          <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-            Now in early access
-          </div>
+        <div className={`relative mx-auto max-w-5xl px-4 text-center sm:px-6 ${isAuthed ? "pt-10 pb-10 sm:pt-16 sm:pb-12 md:pt-20" : "pt-12 pb-20 sm:pt-20 sm:pb-28 md:pt-28 md:pb-36"}`}>
+          {isAuthed ? (
+            <h1 className="font-display text-3xl font-semibold leading-[1.1] tracking-tight text-balance sm:text-4xl md:text-5xl">
+              Let's build something{firstName ? `, ${firstName}` : ""}.
+            </h1>
+          ) : (
+            <>
+              <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                Now in early access
+              </div>
 
-          <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
-            Build real apps by{" "}
-            <span className="relative whitespace-nowrap">
-              <span className="relative z-10 italic">just chatting</span>
-              <span
-                className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50"
-                aria-hidden
-              />
-            </span>
-            .
-          </h1>
+              <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
+                Build real apps by{" "}
+                <span className="relative whitespace-nowrap">
+                  <span className="relative z-10 italic">just chatting</span>
+                  <span
+                    className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50"
+                    aria-hidden
+                  />
+                </span>
+                .
+              </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-balance text-base text-muted-foreground sm:text-lg md:text-xl">
-            Petal turns plain English into working web apps. Describe what you
-            want, watch the files appear, and share a live preview in seconds.
-          </p>
+              <p className="mx-auto mt-6 max-w-2xl text-balance text-base text-muted-foreground sm:text-lg md:text-xl">
+                Petal turns plain English into working web apps. Describe what you
+                want, watch the files appear, and share a live preview in seconds.
+              </p>
+            </>
+          )}
 
           {/* Prompt box — large chat-style composer */}
           <form
