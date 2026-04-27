@@ -121,33 +121,12 @@ async function persistSecrets(
   const entries = Object.entries(secretValues);
   if (entries.length === 0) return;
 
-  const key = getEncryptionKey();
-  // Use SQL pgp_sym_encrypt via an RPC-style raw query. The supabase JS
-  // client doesn't expose pgcrypto helpers, so we encrypt server-side and
-  // pass bytea hex strings through the standard insert path.
-  const rows = await Promise.all(
-    entries.map(async ([fieldId, value]) => {
-      const { data, error } = await supabaseAdmin.rpc(
-        "petal_encrypt_secret" as never,
-        { plaintext: value, passphrase: key } as never,
-      );
-      if (error) {
-        // Fallback: store base64 of plaintext if pgcrypto helper isn't
-        // installed. Not ideal but keeps install working in dev. The
-        // real encryption RPC is created by a follow-up migration.
-        return {
-          project_integration_id: projectIntegrationId,
-          field_id: fieldId,
-          ciphertext: Buffer.from(`b64:${value}`),
-        };
-      }
-      return {
-        project_integration_id: projectIntegrationId,
-        field_id: fieldId,
-        ciphertext: data as unknown as Uint8Array,
-      };
-    }),
-  );
+  const rows = entries.map(([fieldId, value]) => ({
+    project_integration_id: projectIntegrationId,
+    field_id: fieldId,
+    ciphertext: encryptSecret(value),
+  }));
+
   const { error } = await supabaseAdmin
     .from("project_integration_secrets")
     .insert(rows);
@@ -162,20 +141,12 @@ async function loadSecrets(
     .select("field_id, ciphertext")
     .eq("project_integration_id", projectIntegrationId);
   if (error || !data) return {};
-  const key = getEncryptionKey();
   const out: IntegrationCredentials = {};
   for (const row of data) {
     const ct = row.ciphertext as unknown as string;
-    if (typeof ct === "string" && ct.startsWith("\\x")) {
-      // bytea hex format — decrypt via RPC
-      const { data: pt } = await supabaseAdmin.rpc(
-        "petal_decrypt_secret" as never,
-        { ciphertext: ct, passphrase: key } as never,
-      );
-      if (pt) out[row.field_id] = pt as unknown as string;
-    } else if (typeof ct === "string" && ct.startsWith("b64:")) {
-      out[row.field_id] = ct.slice("b64:".length);
-    }
+    if (typeof ct !== "string") continue;
+    const pt = decryptSecret(ct);
+    if (pt !== null) out[row.field_id] = pt;
   }
   return out;
 }
