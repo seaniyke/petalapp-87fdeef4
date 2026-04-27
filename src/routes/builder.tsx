@@ -772,14 +772,18 @@ function Builder() {
         if (controller.signal.aborted) return;
 
         // ── Step 2a: chat / clarify — no build, just promote the warm
-        //            reply into a real assistant message and stop here.
+        //            reply (plus any clickable suggestion chips) into a
+        //            real assistant message and stop here.
         if (triage.intent !== "build") {
           const replyText = (triage.reply || partialPreamble).trim();
+          const suggestions = triage.meta?.suggestions ?? [];
           const assistantMsg: ChatMessage = {
             role: "assistant",
-            content: replyText.length > 0
-              ? replyText
-              : "Hi! What would you like to build?",
+            content:
+              replyText.length > 0
+                ? replyText
+                : "Hi! What would you like to build?",
+            ...(suggestions.length > 0 ? { suggestions } : {}),
           };
           setMessages((prev) => [...prev, assistantMsg]);
           setStreamingPreamble("");
