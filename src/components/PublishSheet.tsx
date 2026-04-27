@@ -2,23 +2,27 @@
  * PublishSheet — bottom sheet (mobile) / centered dialog (desktop) that
  * shows the project's published state, modeled on Lovable's Publish sheet.
  *
- * What it surfaces:
- *   - A "Published" / "Not published yet" header with the latest build status.
- *   - The website URL (custom domain if set, otherwise the Cloudflare Pages
- *     deployment URL), with copy + "Manage domains" shortcut.
- *   - Visibility row (Public / Private), driven by `projects.is_public` for
- *     now since that's the only public/private flag we have. Phase 2 will
- *     introduce a separate `published_visibility` column.
- *   - Primary CTA that adapts to build state:
- *       • "Up to date"        — latest build is ready
- *       • "Publishing…"       — build is pending
- *       • "Update"            — no successful build yet (or after a failure)
- *       • "Retry publish"     — last build failed
- *   - Secondary action: open project settings ("Edit settings").
+ * Phase 2 model: we now distinguish the *latest preview build* (always rebuilt
+ * on every prompt — what the in-builder preview shows) from the *published
+ * build* (`projects.published_build_id`, what visitors on the custom domain
+ * see). Hitting Publish/Update calls `/api/publish` which pins the current
+ * latest build as the published one. Visibility lives in
+ * `projects.published_visibility` (`public` | `private` | `unpublished`).
  *
- * Triggers `triggerBuild()` when the user taps Update / Retry — the same
- * code path the AI uses after a successful generation, so users can manually
- * push out a fresh deployment without prompting the AI again.
+ * Header status maps to:
+ *   - "Live"             — published build === latest build, ready
+ *   - "Update available" — latest preview newer than published build
+ *   - "Publishing…"      — a build is pending
+ *   - "Failed"           — latest build failed
+ *   - "Private"          — published_visibility = 'private'
+ *   - "Unpublished"      — published_visibility = 'unpublished'
+ *
+ * CTA states:
+ *   - "Publish"        — never published (no pinned build yet)
+ *   - "Update"         — pinned but newer build is ready
+ *   - "Up to date"     — pinned and current
+ *   - "Publishing…"    — build pending
+ *   - "Retry publish"  — last build failed
  */
 import { useEffect, useState } from "react";
 import {
@@ -37,10 +41,12 @@ import {
   AlertCircle,
   CheckCircle2,
   ExternalLink,
+  EyeOff,
 } from "lucide-react";
 import { triggerBuild } from "@/lib/builds";
+import { publishProject, type PublishVisibility } from "@/lib/publish";
 import { resolvePublishedUrl, type PublishedUrlResult } from "@/lib/published-url";
-import { updateProject, type ProjectRow } from "@/lib/projects";
+import { type ProjectRow } from "@/lib/projects";
 import { useBuildActivity } from "@/hooks/use-build-activity";
 import { toast } from "sonner";
 
