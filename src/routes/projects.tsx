@@ -169,7 +169,7 @@ function ProjectCard({ project, onDelete }: { project: ProjectRow; onDelete: () 
     <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
       <Link
         to="/builder"
-        search={{ id: project.id, prompt: undefined }}
+        search={{ id: project.id, prompt: undefined, mode: undefined }}
         className="flex flex-1 flex-col"
       >
         <div className="relative">
