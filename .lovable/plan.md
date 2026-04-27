@@ -67,12 +67,12 @@ This is where we close the gap with Lovable / Base44. Today every keystroke depl
 
 5. **Diff detection**: "Update available" surfaces when `latest_build_id !== published_build_id` and the latest build is `ready`.
 
-### Phase 3 — Polish (parity touches)
+### Phase 3 — Polish (parity touches) — shipped
 
-- **Visitor count** on the Publish sheet (we already have a Plausible integration helper — wire it up).
-- **First-publish onboarding**: if `published_build_id is null`, the dialog opens with a single "Publish" CTA + a short copy block ("Your app will be live at …"), matching Lovable's first-publish state.
-- **Unpublish** action in the visibility menu.
-- **Push-update toast** after a successful prompt: "Changes ready to publish — Update".
+- ✅ **Unpublish** action in the visibility section of the Publish sheet.
+- ✅ **First-publish onboarding** copy: "Not published yet" header + helper line until a build is pinned.
+- ✅ **Push-update toast** in `builder.tsx` after a successful build when the project is already published and the new preview is newer than the pinned build. One-shot per build id, with an "Update" action that opens the Publish sheet.
+- ⏭️ **Visitor count** intentionally deferred — the Plausible integration we ship is *for* the user's app (gets injected into their generated code), not a stats source for Petal's control plane. Wiring a fake count would mislead. Re-open when we have an actual analytics source pointed at Cloudflare Pages traffic.
 
 ---
 
