@@ -164,6 +164,7 @@ function Builder() {
   const [phases, setPhases] = useState<Phase[]>(defaultPhases);
   const [designCaption, setDesignCaption] = useState<string>("");
   const [filesWritten, setFilesWritten] = useState<number>(0);
+  const [lastBuildCredits, setLastBuildCredits] = useState<number | null>(null);
   const [latestPath, setLatestPath] = useState<string | undefined>(undefined);
   // Ordered, deduped list of every path Petal streams during the writing phase.
   // Drives the per-file progress list in BuildActivityCard.
@@ -607,9 +608,10 @@ function Builder() {
                 setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
               }
             },
-            onResult: (f, s) => {
+            onResult: (f, s, charged) => {
               resultFiles = f;
               resultSummary = s;
+              if (typeof charged === "number") setLastBuildCredits(charged);
             },
             onError: (m) => {
               streamError = m;

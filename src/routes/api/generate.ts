@@ -17,6 +17,7 @@ import { lookupBackendForGenerate } from "@/server/backend-connector.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, refundCredit } from "@/server/credits.server";
+import { priceBuild, BUILD_HOLD } from "@/server/credit-pricing.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -95,10 +96,13 @@ async function authorize(request: Request): Promise<string | Response> {
 type ParsedTool = {
   name: "write_project" | "patch_files" | null;
   args: string;
+  /** Token usage from the gateway (final SSE chunk usually carries it). */
+  usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
 };
 
 /** Parse a streamed OpenAI-style SSE body, emit summary deltas as they arrive,
- *  accumulate the tool-call arguments string, and return the parsed final args. */
+ *  accumulate the tool-call arguments string, and return the parsed final args
+ *  along with any `usage` payload the gateway emitted. */
 async function relayAndCollect(
   upstream: Response,
   controller: ReadableStreamDefaultController<Uint8Array>,
@@ -107,7 +111,7 @@ async function relayAndCollect(
   const reader = upstream.body!.getReader();
   const decoder = new TextDecoder();
   let buf = "";
-  const tool: ParsedTool = { name: null, args: "" };
+  const tool: ParsedTool = { name: null, args: "", usage: null };
   let summaryEmitted = ""; // running prefix of `summary` field already streamed
   let toolAnnounced = false;
   let designingPhaseSent = false;
@@ -133,6 +137,13 @@ async function relayAndCollect(
         json = JSON.parse(payload);
       } catch {
         continue;
+      }
+      // Capture token usage. The Lovable AI gateway emits a final SSE chunk
+      // with `usage: { prompt_tokens, completion_tokens, total_tokens }` and
+      // an empty `choices` array — that's where we read it.
+      const usage = (json as { usage?: typeof tool.usage }).usage;
+      if (usage && (usage.prompt_tokens || usage.completion_tokens)) {
+        tool.usage = usage;
       }
       const choice = (json as { choices?: Array<{ delta?: unknown }> })?.choices?.[0];
       const delta = (choice as { delta?: { tool_calls?: unknown[] } })?.delta;
@@ -244,12 +255,14 @@ export const Route = createFileRoute("/api/generate")({
           );
         }
 
-        // Charge ONE credit pre-flight. If the user is out, fail fast with
-        // 402 so the chat surfaces the friendly "out of credits" copy.
-        // If the generation fails after this point, we refund in the catch.
+        // Reserve a 1-credit HOLD pre-flight. This both verifies the user
+        // has at least 1 credit (so we 402 fast if they don't) and gives us
+        // a precise ledger row id to refund on failure. After the AI returns
+        // we true up the difference based on actual token usage.
         const charge = await spendCredit({
           userId,
-          reason: "ai_message",
+          amount: BUILD_HOLD,
+          reason: "ai_build_hold",
           projectId: body.projectId ?? null,
           metadata: { route: "/api/generate" },
         });
@@ -265,13 +278,14 @@ export const Route = createFileRoute("/api/generate")({
           }
           return new Response("Could not verify credit balance. Try again.", { status: 500 });
         }
+        const holdLedgerId = charge.ledgerId;
 
-        // Helper to refund the credit we just spent. Used on any failure path.
+        // Helper to refund the hold (used on any failure path).
         const refund = (note: string) =>
           refundCredit({
             userId,
-            reason: "ai_message",
-            projectId: body.projectId ?? null,
+            ledgerId: holdLedgerId,
+            reason: "ai_build_refund",
             metadata: { route: "/api/generate", failure: note },
           });
 
@@ -499,8 +513,41 @@ export const Route = createFileRoute("/api/generate")({
                 console.warn("[petal-image] resolver failed", e);
               }
 
+              // Post-flight true-up: compute the real cost from token usage
+              // and charge the difference (or refund if cheaper).
+              const priced = priceBuild(collected.usage);
+              let finalCharged = BUILD_HOLD;
+              const diff = Math.round((priced.amount - BUILD_HOLD) * 100) / 100;
+              if (diff > 0) {
+                const top = await spendCredit({
+                  userId,
+                  amount: diff,
+                  reason: "ai_build_topup",
+                  projectId: body.projectId ?? null,
+                  metadata: {
+                    route: "/api/generate",
+                    hold_ledger_id: holdLedgerId,
+                    prompt_tokens: priced.promptTokens,
+                    completion_tokens: priced.completionTokens,
+                    usage_missing: priced.usageMissing,
+                    clamped: priced.clamped,
+                    model,
+                  },
+                });
+                if (top.ok) {
+                  finalCharged = priced.amount;
+                } else {
+                  // Wallet went empty between hold and topup — log but do
+                  // not undo the build the user already received.
+                  console.warn("[credits] post-build topup failed", top);
+                }
+              }
+              // (We never refund below 1.00 because BUILD_FLOOR == 1.00.)
+
               controller.enqueue(
-                encoder.encode(sse({ type: "result", files: nextFiles, summary })),
+                encoder.encode(
+                  sse({ type: "result", files: nextFiles, summary, creditsCharged: finalCharged }),
+                ),
               );
             } catch (e) {
               const message = e instanceof Error ? e.message : "Generation failed.";

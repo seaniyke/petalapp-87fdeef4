@@ -13,11 +13,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
+import { spendCredit, refundCredit } from "@/server/credits.server";
 
 type Body = {
   messages: ChatMessage[];
   currentFiles: ProjectFile[];
   customInstructions?: string;
+  projectId?: string;
 };
 
 const DISCUSS_SYSTEM_PROMPT = `You are Petal, a friendly product collaborator helping the user think through changes to their small web app.
@@ -55,6 +57,7 @@ export const Route = createFileRoute("/api/discuss")({
       POST: async ({ request }) => {
         const authResult = await authorize(request);
         if (authResult instanceof Response) return authResult;
+        const userId = authResult;
 
         const apiKey = process.env.LOVABLE_API_KEY;
         if (!apiKey) return new Response("AI gateway is not configured.", { status: 500 });
@@ -70,6 +73,32 @@ export const Route = createFileRoute("/api/discuss")({
         if (messages.length === 0) {
           return new Response("messages must not be empty", { status: 400 });
         }
+
+        // Charge 1 credit for discuss messages. Refund on any downstream failure.
+        const charge = await spendCredit({
+          userId,
+          amount: 1.0,
+          reason: "ai_discuss",
+          projectId: body.projectId ?? null,
+          metadata: { route: "/api/discuss" },
+        });
+        if (!charge.ok) {
+          if (charge.reason === "insufficient_credits") {
+            return new Response(
+              "You're out of credits. Add credits in Settings → Plans & Credits to keep going.",
+              { status: 402 },
+            );
+          }
+          return new Response("Could not verify credit balance. Try again.", { status: 500 });
+        }
+        const discussLedgerId = charge.ledgerId;
+        const refundDiscuss = (note: string) =>
+          refundCredit({
+            userId,
+            ledgerId: discussLedgerId,
+            reason: "ai_discuss_refund",
+            metadata: { route: "/api/discuss", failure: note },
+          });
 
         // Compact file context: just the path list + first ~30 lines of each file,
         // capped to ~12KB. Discuss mode rarely needs full source.
@@ -140,6 +169,7 @@ export const Route = createFileRoute("/api/discuss")({
         });
 
         if (!upstream.ok) {
+          await refundDiscuss(`upstream_${upstream.status}`);
           let msg = `AI gateway error (${upstream.status})`;
           if (upstream.status === 429) msg = "Rate limit reached. Please wait a moment.";
           else if (upstream.status === 402)
@@ -160,6 +190,7 @@ export const Route = createFileRoute("/api/discuss")({
         };
         const reply = json.choices?.[0]?.message?.content?.trim() ?? "";
         if (!reply) {
+          await refundDiscuss("empty_reply");
           return new Response("Empty reply from AI.", { status: 502 });
         }
         return Response.json({ reply });

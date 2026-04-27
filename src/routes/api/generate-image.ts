@@ -131,9 +131,11 @@ export const Route = createFileRoute("/api/generate-image")({
 
         // 4. Authenticated builder calls: charge ONE credit pre-flight.
         //    On failure later we refund. Anonymous calls skip this entirely.
+        let imageLedgerId: string | null = null;
         if (userId) {
           const charge = await spendCredit({
             userId,
+            amount: 1.0,
             reason: "ai_image",
             projectId: body.projectId ?? null,
             metadata: { route: "/api/generate-image" },
@@ -153,16 +155,17 @@ export const Route = createFileRoute("/api/generate-image")({
               { status: 500, headers: { "Content-Type": "application/json" } },
             );
           }
+          imageLedgerId = charge.ledgerId;
         }
 
         // Helper: refund the credit we charged in step 4 (only meaningful
         // for authenticated callers). No-op for anonymous traffic.
         const refund = async (note: string) => {
-          if (!userId) return;
+          if (!userId || !imageLedgerId) return;
           await refundCredit({
             userId,
-            reason: "ai_image",
-            projectId: body.projectId ?? null,
+            ledgerId: imageLedgerId,
+            reason: "ai_image_refund",
             metadata: { route: "/api/generate-image", failure: note },
           });
         };
