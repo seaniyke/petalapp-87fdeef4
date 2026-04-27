@@ -376,6 +376,26 @@ function Builder() {
       setPhases((p) => completeThrough(p, "live"));
       // A successful build clears the auto-fix counter — next failure starts fresh.
       autoFixRef.current.attempts = 0;
+      // Phase 3 — push-update toast. If the project has been published before
+      // and this brand-new ready build is newer than the pinned published one,
+      // nudge the user to push the update. We key off the build id via
+      // `pushUpdateToastedBuildIdRef` so the toast only fires once per build.
+      const publishedId = project?.published_build_id ?? null;
+      if (
+        buildId &&
+        publishedId &&
+        publishedId !== buildId &&
+        pushUpdateToastedBuildIdRef.current !== buildId
+      ) {
+        pushUpdateToastedBuildIdRef.current = buildId;
+        toast("Changes ready to publish", {
+          description: "Push the latest preview live for your visitors.",
+          action: {
+            label: "Update",
+            onClick: () => setPublishOpen(true),
+          },
+        });
+      }
     } else if (buildSnap.status === "pending") {
       setPhases((p) => advanceTo(p, "deploying"));
     } else if (buildSnap.status === "failed") {
