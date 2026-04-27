@@ -91,9 +91,38 @@ export const Route = createFileRoute("/api/discuss")({
           ? `\n\nProject Knowledge — the owner has asked you to always honor these instructions:\n"""\n${knowledge}\n"""\n`
           : "";
 
+        // If the latest user turn carries image attachments, send it as a
+        // multimodal content array so Petal can actually look at the screenshot.
+        const lastUserIdx = (() => {
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === "user") return i;
+          }
+          return -1;
+        })();
+        const hasVisionTurn =
+          lastUserIdx >= 0 && (messages[lastUserIdx].attachments?.length ?? 0) > 0;
+
+        const visionAddendum = hasVisionTurn
+          ? "\n\nThe user attached one or more reference images with their latest message. Look at them and describe what you see, then propose how to translate it into changes for their app."
+          : "";
+
         const chatMessages = [
-          { role: "system", content: DISCUSS_SYSTEM_PROMPT + knowledgeBlock + filesContext },
-          ...messages.map((m) => ({ role: m.role, content: m.content })),
+          { role: "system", content: DISCUSS_SYSTEM_PROMPT + knowledgeBlock + visionAddendum + filesContext },
+          ...messages.map((m, i) => {
+            if (i === lastUserIdx && hasVisionTurn) {
+              return {
+                role: m.role,
+                content: [
+                  { type: "text", text: m.content },
+                  ...(m.attachments ?? []).map((a) => ({
+                    type: "image_url" as const,
+                    image_url: { url: a.dataUrl },
+                  })),
+                ],
+              };
+            }
+            return { role: m.role, content: m.content };
+          }),
         ];
 
         const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -103,7 +132,8 @@ export const Route = createFileRoute("/api/discuss")({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
+            // Vision needs a vision-capable model; otherwise stay on the fast default.
+            model: hasVisionTurn ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview",
             messages: chatMessages,
             stream: false,
           }),

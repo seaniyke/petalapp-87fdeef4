@@ -81,7 +81,7 @@ function PublicPreview() {
       }
       const fresh = await remixProjectBySlug(project.slug);
       toast.success("Remixed! Opening your copy…");
-      navigate({ to: "/builder", search: { id: fresh.id, prompt: undefined, mode: undefined } });
+      navigate({ to: "/builder", search: { id: fresh.id, prompt: undefined, mode: undefined, attachKey: undefined } });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't remix this project");
     } finally {

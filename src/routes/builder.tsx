@@ -28,7 +28,14 @@ import {
   Monitor,
   Settings as SettingsIcon,
   Globe,
+  Paperclip,
+  ImageIcon,
 } from "lucide-react";
+import {
+  encodeAttachments,
+  type ChatAttachment,
+  MAX_ATTACHMENTS_PER_MESSAGE,
+} from "@/lib/attachments";
 import { streamGenerate } from "@/lib/stream";
 import { requestDiscussion } from "@/lib/discuss";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
@@ -96,6 +103,8 @@ export const Route = createFileRoute("/builder")({
     prompt: typeof search.prompt === "string" ? search.prompt : undefined,
     id: typeof search.id === "string" ? search.id : undefined,
     mode: search.mode === "discuss" ? ("discuss" as const) : undefined,
+    /** sessionStorage key holding ChatAttachment[] stashed by the landing page. */
+    attachKey: typeof search.attachKey === "string" ? search.attachKey : undefined,
   }),
   head: () => ({
     meta: [
@@ -109,7 +118,7 @@ export const Route = createFileRoute("/builder")({
 type ViewMode = "preview" | "code";
 
 function Builder() {
-  const { prompt: initialPrompt, id: searchId, mode: initialMode } = Route.useSearch();
+  const { prompt: initialPrompt, id: searchId, mode: initialMode, attachKey } = Route.useSearch();
   const { user, isReady } = useAuthReady();
   const navigate = useNavigate();
 
@@ -196,10 +205,35 @@ function Builder() {
   };
   const [pickedElement, setPickedElement] = useState<PickedElement | null>(null);
   const [pickInstruction, setPickInstruction] = useState("");
+  // Composer attachments — encoded images that ride along with the next prompt.
+  // Cleared after each send. The `initialAttachments` ref holds attachments
+  // stashed by the landing page (via sessionStorage attachKey) until the
+  // first auto-send consumes them.
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
+  const initialAttachmentsRef = useRef<ChatAttachment[]>([]);
+  const composerFileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Pick up attachments stashed by the landing page (sessionStorage),
+  // exactly once per attachKey. Drop them from storage so a refresh
+  // doesn't re-attach them.
+  useEffect(() => {
+    if (!attachKey || typeof window === "undefined") return;
+    try {
+      const raw = sessionStorage.getItem(attachKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as ChatAttachment[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        initialAttachmentsRef.current = parsed.slice(0, MAX_ATTACHMENTS_PER_MESSAGE);
+      }
+      sessionStorage.removeItem(attachKey);
+    } catch {
+      /* ignore — stale or corrupt */
+    }
+  }, [attachKey]);
 
   // Subscribe to the live Cloudflare build for this project so we can fold
   // its status into the activity feed seamlessly with AI generation.
@@ -320,7 +354,7 @@ function Builder() {
       setProject(p);
       navigate({
         to: "/builder",
-        search: { id: p.id, prompt: initialPrompt, mode: initialMode },
+        search: { id: p.id, prompt: initialPrompt, mode: initialMode, attachKey: undefined },
         replace: true,
       });
       return p;
@@ -331,19 +365,41 @@ function Builder() {
   }, [isReady, user, project, navigate, initialPrompt]);
 
   const send = useCallback(
-    async (content: string, opts: { isRetry?: boolean } = {}) => {
+    async (content: string, opts: { isRetry?: boolean; attachments?: ChatAttachment[] } = {}) => {
       const text = content.trim();
       if (!text || busy) return;
       const proj = await ensureProject();
       if (!proj) return;
       setError(null);
       setFriendlyError(null);
-      const userMsg: ChatMessage = { role: "user", content: text };
+      // Attachments precedence: explicit opts > composer state > stashed initial.
+      const attachments =
+        opts.attachments ??
+        (pendingAttachments.length > 0
+          ? pendingAttachments
+          : initialAttachmentsRef.current.length > 0
+            ? initialAttachmentsRef.current
+            : undefined);
+      const userMsg: ChatMessage = {
+        role: "user",
+        content: text,
+        ...(attachments && attachments.length > 0
+          ? {
+              attachments: attachments.map((a) => ({
+                mimeType: a.mimeType,
+                dataUrl: a.dataUrl,
+                name: a.name,
+              })),
+            }
+          : {}),
+      };
       // On retry, the failing user message is already in `messages` — don't double-append.
       const nextMessages: ChatMessage[] = opts.isRetry ? messages : [...messages, userMsg];
       if (!opts.isRetry) setMessages(nextMessages);
       setLastUserPrompt(text);
       setInput("");
+      setPendingAttachments([]);
+      initialAttachmentsRef.current = [];
       setBusy(true);
 
       // Fresh activity feed for this run.
@@ -557,24 +613,45 @@ function Builder() {
         setStreamingAssistant("");
       }
     },
-    [busy, messages, files, ensureProject],
+    [busy, messages, files, ensureProject, pendingAttachments],
   );
 
   // Discuss mode: ask Petal a question without touching files. The reply is
   // appended as a normal assistant message and tagged so we can show an
   // "Apply this plan" button under it.
   const discuss = useCallback(
-    async (content: string) => {
+    async (content: string, opts: { attachments?: ChatAttachment[] } = {}) => {
       const text = content.trim();
       if (!text || busy || discussBusy) return;
       const proj = await ensureProject();
       if (!proj) return;
       setError(null);
       setFriendlyError(null);
-      const userMsg: ChatMessage = { role: "user", content: text };
+      const attachments =
+        opts.attachments ??
+        (pendingAttachments.length > 0
+          ? pendingAttachments
+          : initialAttachmentsRef.current.length > 0
+            ? initialAttachmentsRef.current
+            : undefined);
+      const userMsg: ChatMessage = {
+        role: "user",
+        content: text,
+        ...(attachments && attachments.length > 0
+          ? {
+              attachments: attachments.map((a) => ({
+                mimeType: a.mimeType,
+                dataUrl: a.dataUrl,
+                name: a.name,
+              })),
+            }
+          : {}),
+      };
       const nextMessages: ChatMessage[] = [...messages, userMsg];
       setMessages(nextMessages);
       setInput("");
+      setPendingAttachments([]);
+      initialAttachmentsRef.current = [];
       setDiscussBusy(true);
 
       try {
@@ -605,7 +682,7 @@ function Builder() {
         setDiscussBusy(false);
       }
     },
-    [busy, discussBusy, project, messages, files, ensureProject],
+    [busy, discussBusy, project, messages, files, ensureProject, pendingAttachments],
   );
 
   // Apply the most recent Discuss reply by switching to Build mode and asking
@@ -1135,6 +1212,19 @@ function Builder() {
                     ) : (
                       <div className="whitespace-pre-wrap">{m.content}</div>
                     )}
+                    {/* Thumbnails of any images attached to this user turn. */}
+                    {m.role === "user" && m.attachments && m.attachments.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {m.attachments.map((a, ai) => (
+                          <img
+                            key={ai}
+                            src={a.dataUrl}
+                            alt={a.name ?? `attachment ${ai + 1}`}
+                            className="h-16 w-16 rounded-md border border-border object-cover"
+                          />
+                        ))}
+                      </div>
+                    )}
                     {canRevert && (
                       <button
                         onClick={() => void prepareRevertToMessage(i)}
@@ -1295,42 +1385,109 @@ function Builder() {
                 </div>
               </div>
             )}
-            {/* Build / Discuss mode toggle (Base44/Lovable parity). */}
+            {/* Pending attachments — chips above the toolbar so the user
+                sees what they're about to send. */}
+            {pendingAttachments.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {pendingAttachments.map((a, ai) => (
+                  <span
+                    key={ai}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background py-0.5 pl-1 pr-2 text-[11px] text-muted-foreground"
+                  >
+                    <img
+                      src={a.dataUrl}
+                      alt=""
+                      className="h-5 w-5 rounded-full object-cover"
+                    />
+                    <span className="max-w-[110px] truncate">{a.name}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPendingAttachments((prev) => prev.filter((_, i) => i !== ai))
+                      }
+                      className="grid h-4 w-4 place-items-center rounded-full hover:bg-muted"
+                      aria-label={`Remove ${a.name}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <input
+              ref={composerFileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={async (e) => {
+                const files = Array.from(e.target.files ?? []);
+                e.target.value = "";
+                if (!files.length) return;
+                const remaining = MAX_ATTACHMENTS_PER_MESSAGE - pendingAttachments.length;
+                if (remaining <= 0) {
+                  toast.error(`Up to ${MAX_ATTACHMENTS_PER_MESSAGE} images per message.`);
+                  return;
+                }
+                try {
+                  const encoded = await encodeAttachments(files.slice(0, remaining));
+                  if (encoded.length > 0) {
+                    setPendingAttachments((prev) => [...prev, ...encoded]);
+                  }
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Couldn't read image");
+                }
+              }}
+            />
+            {/* Build / Discuss mode toggle + attach button. */}
             <div className="mb-2 flex items-center justify-between">
-              <div className="inline-flex items-center rounded-full border border-border bg-background p-0.5 text-[11px]">
+              <div className="inline-flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => setMode("build")}
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
-                    mode === "build"
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  title="Petal will write code and update your app"
+                  onClick={() => composerFileInputRef.current?.click()}
+                  className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  title="Attach a screenshot or photo"
+                  aria-label="Attach an image"
                 >
-                  <Hammer className="h-3 w-3" /> Build
+                  <ImageIcon className="h-3.5 w-3.5" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setMode("discuss")}
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
-                    mode === "discuss"
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  title="Chat about changes without touching your files"
-                >
-                  <MessageSquare className="h-3 w-3" /> Discuss
-                </button>
+                <div className="inline-flex items-center rounded-full border border-border bg-background p-0.5 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setMode("build")}
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
+                      mode === "build"
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    title="Petal will write code and update your app"
+                  >
+                    <Hammer className="h-3 w-3" /> Build
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode("discuss")}
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
+                      mode === "discuss"
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    title="Chat about changes without touching your files"
+                  >
+                    <MessageSquare className="h-3 w-3" /> Discuss
+                  </button>
+                </div>
               </div>
             </div>
             <div className="mb-2 flex items-center justify-between text-[10px] text-muted-foreground">
               <span>
                 {busy || discussBusy
                   ? "Petal is working — your next message will queue"
-                  : mode === "discuss"
-                    ? "Chat only · no file changes"
-                    : "Petal will edit files"}
+                  : pendingAttachments.length > 0
+                    ? `${pendingAttachments.length} image${pendingAttachments.length > 1 ? "s" : ""} attached`
+                    : mode === "discuss"
+                      ? "Chat only · no file changes"
+                      : "Petal will edit files"}
               </span>
               {project?.custom_instructions && (
                 <button
