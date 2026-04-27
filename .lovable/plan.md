@@ -1,75 +1,78 @@
-# Refresh persistence audit & fixes
+## What's wrong today
 
-## What I checked
+When the user types **"Hello"** in Build mode, Petal jumps straight into the build pipeline (Reading → Designing → Writing → Putting online). It treats every message as a build request, even greetings, questions, and clarifications. Competitors (Lovable, Bolt, v0, Base44) always say a few warm, intelligent sentences first — and only start building when the user has actually described something to build.
 
-I went through every place the app holds user-entered data or AI output, and tested each against the question: *"if the user hits Refresh right now, do they lose anything?"*
+Two root causes:
 
-### Already persistent (good — no changes needed)
+1. **Build mode has no conversational triage.** `/api/generate` is forced to call the `write_project` / `patch_files` tool on every turn (`tool_choice` is hard-coded to one of those functions). The model literally cannot reply with words.
+2. **Even when it does build, the warm preamble is buried.** The `plan` field already streams first, but in the chat it's hidden inside a "Plan" collapsible chip, and the activity card with its 6 phases dominates the screen the moment a build starts.
 
-| Area | How it survives refresh |
-|---|---|
-| Authentication / login session | Supabase stores the session in `localStorage` — refresh keeps you logged in. |
-| Project list | Loaded from the `projects` table on every visit. |
-| Project files (the app being built) | Stored in `project_files`; reloaded on builder mount. |
-| Chat history (your prompts + Petal's replies) | Stored in `messages` (with `plan` and `recap` JSON-encoded). Reloaded on builder mount. |
-| **Your prompt while Petal is mid-build** | Already saved to the DB *before* the stream starts, specifically so a refresh during a 30–60s build doesn't lose what you asked. |
-| Project Knowledge / custom instructions | Saved to `projects.custom_instructions` via the settings sheet. |
-| Backend connection (BYO Supabase) | Saved to `project_backends`. |
-| Theme (light/dark) and first-run tour | `localStorage`. |
-| Home-page prompt + attached images (when bouncing through /auth) | Already stashed in `sessionStorage` and rehydrated on return. |
+## What we'll change
 
-### Gaps I found (these DO get lost on refresh)
+### 1. New "Triage" step before building (the main fix)
 
-1. **Petal's in-flight reply.** If you refresh while Petal is streaming a Plan / writing files / writing a Recap, all the partial text you've already seen disappears. The user message is saved, but the half-finished assistant reply is purely in React state. After refresh you see your prompt with no reply under it, even though the build may still be running on the server.
+When the user sends a message in Build mode, we no longer go straight to `write_project`. Instead:
 
-2. **A failed build's partial reply.** When a build errors mid-stream, the code keeps the partial text in local state only (it's deliberately not written to the DB because the run failed). A refresh wipes it — the user sees their prompt with no context about what Petal had said before failing.
+```text
+user message
+   │
+   ▼
+[ tiny, fast triage call ]  ── classifies: chat | clarify | build
+   │
+   ├── chat     → warm reply, no build. ("Hi! I'm Petal…")
+   ├── clarify  → warm reply that asks ONE focused question, no build.
+   └── build    → 1–2 sentence warm acknowledgement streams first,
+                  THEN the build pipeline kicks in.
+```
 
-3. **Composer draft inside the builder.** What you've typed into the chat input on `/builder` is only in React state. Refresh = empty box. (The home-page composer at `/` already saves drafts; the builder composer doesn't.)
+The triage uses `google/gemini-3-flash-preview` (cheap, fast, ~300ms) with a tiny system prompt and a structured JSON response: `{ intent, reply, buildBrief? }`.
 
-4. **Queued messages.** Messages you typed while Petal was busy (the "your next message will queue" UI) live only in React state. Refresh loses the entire queue.
+- `intent: "chat"` — for greetings, thanks, questions about Petal itself, smalltalk. We just stream `reply` into the chat. Zero credits charged for these (they're conversational; competitors don't charge either).
+- `intent: "clarify"` — when the request is too vague to build well ("make it nice", "build something cool"). We stream `reply` which contains one warm follow-up question.
+- `intent: "build"` — we stream `reply` (1–2 sentences like *"Love it — an ecommerce site for handmade jewelry. I'll set up a clean storefront with a hero, product grid, and cart, and I'll keep it mobile-friendly. Building now…"*) and **then** kick off the existing `/api/generate` build flow with the original prompt.
 
-5. **Composer image attachments inside the builder.** Same as above — only in React state.
+### 2. Promote the warm preamble in the chat
 
-6. **Auth form email field.** If you mistype your password and the page reloads (or you accidentally refresh), you have to retype your email. Low priority but easy.
+The current "Plan" chip is too technical and collapsed by default. We'll:
 
-7. **Project Knowledge sheet draft.** If you start editing your custom instructions and refresh before clicking Save, the edits are lost. (The saved value is preserved, but unsaved edits aren't.)
+- Show the triage `reply` (or for builds, the streamed `plan`) as a **plain warm paragraph at the top of the assistant bubble**, not behind a "Plan" toggle.
+- Keep the "What changed" recap collapsible (that one is genuinely a detail).
+- Keep the activity card, but it now appears **after** the warm sentence, so the user always reads a human-feeling line before the build UI takes over.
 
-## What I'll change
+### 3. Tone & prompt changes
 
-### 1. Persist Petal's streaming reply to the DB live, not just at the end
+Update the Build system prompt's `plan` instructions so it sounds like a smart, friendly collaborator — not a status line. Examples we'll seed:
 
-Right now `streamingPlan / streamingAssistant / streamingRecap` only update React state. I'll add a debounced (every ~500ms) write to a new tiny table `message_drafts` (one row per project, holds the latest in-flight assistant chunks + the plan/recap). On builder mount, if there's a draft for the project, render it as a "still working…" bubble while we re-attach to the live stream — or, if the stream is already finished server-side, promote the draft into a proper message.
+- ✅ *"Love it — let's build a calm, modern storefront for your jewelry. I'll start with a hero, then a product grid, then a simple cart. Here we go."*
+- ❌ *"I'll create src/App.tsx with a hero component and a product grid component."*
 
-This single change fixes gaps **#1 and #2**.
+Same warmth in the new triage prompt and in Discuss mode.
 
-### 2. Save composer draft + queued messages + attachments to `sessionStorage`
+### 4. No-build messages don't trigger the build UI
 
-Per-project keys: `petal:builder:{projectId}:composer`, `petal:builder:{projectId}:queue`, `petal:builder:{projectId}:attachments`.
+Today, the moment `busy` is true, the activity card with all six phases mounts. We'll only mount the activity card when `intent === "build"`. For chat/clarify replies, the user sees a normal assistant bubble — same as Discuss mode — and the input stays free for them to keep talking.
 
-- Loaded on builder mount (after `searchId` is known).
-- Cleared automatically when the message is sent or the queue drains.
-- `sessionStorage` (not `localStorage`) so it stays scoped to the browser tab and never leaks between users.
+## Files we'll touch
 
-Fixes gaps **#3, #4, #5**.
+**New**
+- `src/routes/api/triage.ts` — the new fast classifier endpoint (`POST /api/triage` → `{ intent, reply, buildBrief? }`, streams `reply` as SSE).
+- `src/lib/triage.ts` — client helper that streams the triage response, mirrors the shape of `streamGenerate`.
 
-### 3. Remember last-typed email on the auth form
-
-Save to `localStorage` under `petal:auth:last-email` whenever the email field changes; prefill it on mount. Cleared on successful sign-in. Password is *never* stored.
-
-Fixes gap **#6**.
-
-### 4. Auto-save Project Knowledge drafts to `sessionStorage`
-
-Per-project key: `petal:knowledge:{projectId}:draft`. Restored when the sheet opens; cleared on Save. The sheet already shows a "dirty" indicator — this just means a refresh won't blow away unsaved edits.
-
-Fixes gap **#7**.
+**Edited**
+- `src/routes/builder.tsx` — new send flow: triage first, then conditionally build. Only mount `BuildActivityCard` when intent is `build`. Render the warm preamble as the headline of the streaming bubble.
+- `src/server/generate.server.ts` — soften and rewrite the `plan` field instructions so it sounds human (1–2 warm sentences directly addressing the user, never file paths).
+- `src/routes/api/discuss.ts` — minor tone tightening so chat/clarify and Discuss feel consistent.
 
 ## Technical notes
 
-- New table `message_drafts` with one row per `project_id` (PK on project_id, ON DELETE CASCADE from `projects`). Columns: `partial_content text`, `partial_plan text`, `partial_recap text`, `updated_at`. RLS: owner can read/write their own; admin can read.
-- Streaming write is debounced (~500ms) and uses an `upsert` so we don't hammer the DB. Cleared in the `finally` block of `send()` so successful and aborted runs both clean up.
-- `sessionStorage` writes are throttled and tab-scoped; they're capped at 200KB total per project to stay well under quota.
-- All keys are namespaced by project ID so switching between projects doesn't show stale drafts.
-- No changes to existing message storage format — the JSON-encoded `plan`/`recap` flow already works for refresh.
+- **Cost**: triage runs on the cheapest flash model and uses ~150 input tokens + ~80 output. Negligible. Chat-intent turns are NOT charged a build credit (matches competitor behavior). Build-intent turns charge as today.
+- **Latency**: triage adds ~300–500 ms before the build starts. To hide that, the warm preamble streams during those ms — so the user perceives an instant, intelligent reply rather than dead time.
+- **Backward compatibility**: existing in-flight build messages, drafts, and the `partial_plan` rehydration still work; the only new state is `streamingPreamble` (lives next to `streamingPlan`).
+- **Abort**: the abort controller in `builder.tsx` will be extended to cancel both the triage call and the downstream build call as a single unit.
+- **Discuss mode unchanged** — users who prefer the existing Discuss button still have it; this just makes Build mode itself smart enough to handle conversational turns.
 
-After these changes, every meaningful piece of state — your prompts, your edits in flight, Petal's streaming reply, queued messages, attached images, auth email, and knowledge drafts — will survive a browser refresh.
+## Out of scope
+
+- No changes to the build pipeline itself, the Cloudflare deploy flow, or pricing.
+- No changes to Discuss mode behavior beyond a small tone refresh.
+- No new tracking — we'll wire analytics in a follow-up if you want intent metrics.
