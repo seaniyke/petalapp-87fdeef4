@@ -1,15 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, GitFork, Star, Loader2, ArrowUpRight, Lock } from "lucide-react";
+import { Sparkles, GitFork, Star, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 import { SiteHeader } from "@/components/SiteHeader";
+import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import {
   listPublicProjects,
-  loadProjectFiles,
   setProjectFeatured,
   type ProjectRow,
 } from "@/lib/projects";
-import { buildPreviewDoc } from "@/lib/preview";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
 export const Route = createFileRoute("/gallery")({
