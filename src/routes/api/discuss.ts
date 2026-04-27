@@ -13,7 +13,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
-import { spendCredit, refundCredit } from "@/server/credits.server";
+import { spendCredit, checkCreditBalance } from "@/server/credits.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
 
 type Body = {
@@ -75,16 +75,11 @@ export const Route = createFileRoute("/api/discuss")({
           return new Response("messages must not be empty", { status: 400 });
         }
 
-        // Charge 1 credit for discuss messages. Refund on any downstream failure.
-        const charge = await spendCredit({
-          userId,
-          amount: 1.0,
-          reason: "ai_discuss",
-          projectId: body.projectId ?? null,
-          metadata: { route: "/api/discuss" },
-        });
-        if (!charge.ok) {
-          if (charge.reason === "insufficient_credits") {
+        // Pre-flight balance check ONLY — no hold. We charge the flat
+        // 1 credit for discuss AFTER the AI replies successfully.
+        const balance = await checkCreditBalance({ userId, amount: 1.0 });
+        if (!balance.ok) {
+          if (balance.reason === "insufficient_credits") {
             return new Response(
               "You're out of credits. Add credits in Settings → Plans & Credits to keep going.",
               { status: 402 },
@@ -92,14 +87,6 @@ export const Route = createFileRoute("/api/discuss")({
           }
           return new Response("Could not verify credit balance. Try again.", { status: 500 });
         }
-        const discussLedgerId = charge.ledgerId;
-        const refundDiscuss = (note: string) =>
-          refundCredit({
-            userId,
-            ledgerId: discussLedgerId,
-            reason: "ai_discuss_refund",
-            metadata: { route: "/api/discuss", failure: note },
-          });
 
         // Compact file context: just the path list + first ~30 lines of each file,
         // capped to ~12KB. Discuss mode rarely needs full source.
