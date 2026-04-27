@@ -180,6 +180,10 @@ function Builder() {
   // This mirrors what Lovable/Bolt/v0 do — the user sees Petal "talking" in real
   // time, not just a structured timeline. Cleared when the run completes.
   const [streamingAssistant, setStreamingAssistant] = useState<string>("");
+  // Structured streaming segments — render alongside the live summary so the
+  // user sees: Plan → Activity → Recap (Lovable / Bolt / v0 parity).
+  const [streamingPlan, setStreamingPlan] = useState<string>("");
+  const [streamingRecap, setStreamingRecap] = useState<string>("");
   // Preview device frame: phone | tablet | desktop. Affects only the wrapper
   // around WebContainerPreview / MobilePreviewFallback — they get the iframe
   // sized to a realistic device width so users can spot responsive issues.
