@@ -24,7 +24,7 @@
  *   - "Publishing…"    — build pending
  *   - "Retry publish"  — last build failed
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Drawer,
   DrawerContent,
@@ -43,6 +43,8 @@ import {
   ExternalLink,
   EyeOff,
   Users,
+  Pencil,
+  X,
 } from "lucide-react";
 import { triggerBuild } from "@/lib/builds";
 import { publishProject, type PublishVisibility } from "@/lib/publish";
@@ -54,7 +56,15 @@ import {
   type VisitorRange,
   type VisitorStatsResult,
 } from "@/lib/visitors";
+import {
+  PETAL_ROOT_DOMAIN,
+  checkSubdomain,
+  claimSubdomain as claimPetalSubdomain,
+  suggestSlugFromTitle,
+  type CheckResult,
+} from "@/lib/petal-subdomain";
 import { toast } from "sonner";
+
 
 type Props = {
   open: boolean;
