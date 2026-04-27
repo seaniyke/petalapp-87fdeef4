@@ -15,6 +15,7 @@ import {
 import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { lookupBackendForGenerate } from "@/server/backend-connector.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
+import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -415,6 +416,34 @@ export const Route = createFileRoute("/api/generate")({
                 return { ...f, content: STYLES_CSS };
               });
 
+              // Phase 4: resolve `petal-image://...` placeholders into real
+              // AI-generated images uploaded to the public petal-images
+              // bucket. Failures fall back to picsum so the build never
+              // breaks because of a flaky image call.
+              try {
+                const hasPlaceholders = nextFiles.some((f) =>
+                  f.content.includes("petal-image://"),
+                );
+                if (hasPlaceholders) {
+                  controller.enqueue(
+                    encoder.encode(sse({ type: "status", message: "Generating images…" })),
+                  );
+                  const imgResult = await resolvePetalImagePlaceholders(nextFiles);
+                  nextFiles = imgResult.files;
+                  if (imgResult.resolved > 0) {
+                    controller.enqueue(
+                      encoder.encode(
+                        sse({
+                          type: "status",
+                          message: `Generated ${imgResult.resolved} image${imgResult.resolved === 1 ? "" : "s"}.`,
+                        }),
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                console.warn("[petal-image] resolver failed", e);
+              }
 
               controller.enqueue(
                 encoder.encode(sse({ type: "result", files: nextFiles, summary })),
