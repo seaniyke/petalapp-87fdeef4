@@ -3889,4 +3889,7 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   // AI image placeholders (Phase 4)
   { path: "src/components/examples/kit-ai-image-hero.tsx", content: KIT_AI_IMAGE_HERO, overwrite: true },
   { path: "src/components/examples/kit-ai-image-gallery.tsx", content: KIT_AI_IMAGE_GALLERY, overwrite: true },
+
+  // Multi-page routing (Phase 5)
+  { path: "src/components/examples/kit-multi-page-app.tsx", content: KIT_MULTI_PAGE_APP, overwrite: true },
 ];
