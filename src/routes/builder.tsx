@@ -28,7 +28,6 @@ import {
   Paperclip,
   ImageIcon,
   Menu,
-  ChevronDown as ChevronDownIcon,
 } from "lucide-react";
 import {
   encodeAttachments,
