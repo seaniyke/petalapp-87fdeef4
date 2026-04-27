@@ -131,6 +131,46 @@ export function PublishSheet({
     buildStatus === "ready";
   const hasUrl = !!resolved.url;
 
+  // Fetch Cloudflare visitor counts when the sheet opens (and when the
+  // user flips the time range). Skipped for never-published projects since
+  // /api/visitors short-circuits to zero anyway. Aborts on close so a slow
+  // analytics call can't update closed-sheet state.
+  useEffect(() => {
+    if (!open) return;
+    if (!hasPublishedBuild) {
+      setVisitors(null);
+      return;
+    }
+    const ac = new AbortController();
+    setVisitorsLoading(true);
+    fetchProjectVisitors({
+      projectId: project.id,
+      range: visitorRange,
+      signal: ac.signal,
+    })
+      .then((stats) => {
+        if (!ac.signal.aborted) setVisitors(stats);
+      })
+      .catch((e) => {
+        if (ac.signal.aborted) return;
+        // Match the server's soft-fail shape so the UI logic is uniform.
+        setVisitors({
+          visitors: 0,
+          pageviews: 0,
+          range: visitorRange,
+          since: null,
+          until: null,
+          unavailable: true,
+          error: e instanceof Error ? e.message : "Unknown error",
+        });
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) setVisitorsLoading(false);
+      });
+    return () => ac.abort();
+  }, [open, project.id, hasPublishedBuild, visitorRange, project.published_build_id]);
+
+
   async function copyUrl() {
     if (!resolved.url) return;
     setCopying(true);
