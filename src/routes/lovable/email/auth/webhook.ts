@@ -141,8 +141,8 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
           run_id,
         })
 
-        const EmailTemplate = EMAIL_TEMPLATES[emailType]
-        if (!EmailTemplate) {
+        const emailSubject = EMAIL_SUBJECTS[emailType]
+        if (!emailSubject) {
           console.error('Unknown email type', { emailType, run_id })
           return Response.json(
             { error: `Unknown email type: ${emailType}` },
@@ -161,10 +161,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
           newEmail: payload.data.new_email,
         }
 
-        // Render React Email to HTML and plain text
-        const element = React.createElement(EmailTemplate, templateProps)
-        const html = await render(element)
-        const text = await render(element, { plainText: true })
+        const { html, text } = renderAuthEmail(emailType, templateProps)
 
         // Enqueue email for async processing by the dispatcher (process-email-queue).
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -197,7 +194,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
             to: payload.data.email,
             from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
             sender_domain: SENDER_DOMAIN,
-            subject: EMAIL_SUBJECTS[emailType] || 'Notification',
+            subject: emailSubject,
             html,
             text,
             purpose: 'transactional',
