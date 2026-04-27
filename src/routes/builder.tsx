@@ -70,6 +70,17 @@ import {
   truncateMessagesToCount,
   type ProjectRow,
 } from "@/lib/projects";
+import {
+  clearMessageDraft,
+  createDraftWriter,
+  loadMessageDraft,
+} from "@/lib/message-drafts";
+import {
+  builderDraftKeys,
+  clearDraft,
+  readDraft,
+  writeDraft,
+} from "@/lib/draft-storage";
 import { createVersion, listVersions } from "@/lib/versions";
 import { triggerBuild } from "@/lib/builds";
 import { supabase } from "@/integrations/supabase/client";
