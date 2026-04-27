@@ -473,6 +473,20 @@ function Builder() {
       initialAttachmentsRef.current = [];
       setBusy(true);
 
+      // Persist the user message to the DB *before* the stream starts. If the
+      // user refreshes mid-build (which can take 30–60s) we still want to show
+      // them what they just asked Petal — losing the prompt entirely is the
+      // single most disorienting failure mode here. The assistant reply is
+      // persisted later, after a successful stream.
+      if (!opts.isRetry) {
+        try {
+          await appendMessages(proj.id, [userMsg]);
+        } catch (persistErr) {
+          // Non-fatal: the message still lives in local state for this session.
+          console.warn("Could not persist user message early:", persistErr);
+        }
+      }
+
       // Fresh activity feed for this run.
       setPhases(defaultPhases());
       setDesignCaption("");
@@ -624,9 +638,9 @@ function Builder() {
         setPhases((p) => advanceTo(p, "deploying"));
 
         try {
-          const persistMsgs: ChatMessage[] = opts.isRetry
-            ? [assistantMsg]
-            : [userMsg, assistantMsg];
+          // The user message was already persisted up-front (see send() entry)
+          // so we only need to write the assistant reply now.
+          const persistMsgs: ChatMessage[] = [assistantMsg];
           await Promise.all([
             saveProjectFiles(proj.id, files2),
             appendMessages(proj.id, persistMsgs),
@@ -725,6 +739,17 @@ function Builder() {
       initialAttachmentsRef.current = [];
       setDiscussBusy(true);
 
+      // Persist the user prompt up-front so a refresh during the request
+      // doesn't lose what they asked. We'll write the assistant reply (and,
+      // on failure, roll the prompt back out of the DB) below.
+      let userMsgPersisted = false;
+      try {
+        await appendMessages(proj.id, [userMsg]);
+        userMsgPersisted = true;
+      } catch (persistErr) {
+        console.warn("Could not persist discuss prompt early:", persistErr);
+      }
+
       try {
         const reply = await requestDiscussion({
           messages: nextMessages,
@@ -737,10 +762,9 @@ function Builder() {
           setLastDiscussIndex(updated.length - 1);
           return updated;
         });
-        // Persist the conversation so it survives reloads — but don't write
-        // any project files (that's the whole point of Discuss).
+        // User message already saved above — only write the assistant reply.
         try {
-          await appendMessages(proj.id, [userMsg, assistantMsg]);
+          await appendMessages(proj.id, [assistantMsg]);
         } catch (persistErr) {
           console.error(persistErr);
         }
@@ -749,6 +773,15 @@ function Builder() {
         toast.error(msg);
         // Roll back the unanswered user message so the chat doesn't look stuck.
         setMessages((prev) => prev.slice(0, -1));
+        // Also drop the prompt from the DB so the next reload doesn't
+        // resurrect a question Petal never answered.
+        if (userMsgPersisted) {
+          try {
+            await truncateMessagesToCount(proj.id, messages.length);
+          } catch (truncErr) {
+            console.warn("Could not roll back discuss prompt:", truncErr);
+          }
+        }
       } finally {
         setDiscussBusy(false);
       }

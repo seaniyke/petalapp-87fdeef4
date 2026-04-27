@@ -56,6 +56,11 @@ const samplePrompts = [
   "A minimalist habit tracker",
 ];
 
+// Key for stashing the in-progress landing draft so a refresh — or a detour
+// through /auth — doesn't wipe what the user just typed. sessionStorage so
+// it doesn't linger across browser sessions; the user clearly wanted *now*.
+const DRAFT_KEY = "petal:landing:draft";
+
 function Landing() {
   const [prompt, setPrompt] = useState("");
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
@@ -65,6 +70,40 @@ function Landing() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
+
+  // Restore any draft the user had typed before refresh / auth redirect.
+  // Runs once on mount; attachments aren't restored (Files can't survive a
+  // reload) but the prompt + mode are by far the most painful losses.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { prompt?: string; mode?: "build" | "discuss" };
+      if (typeof parsed.prompt === "string" && parsed.prompt.length > 0) {
+        setPrompt(parsed.prompt);
+      }
+      if (parsed.mode === "discuss" || parsed.mode === "build") {
+        setMode(parsed.mode);
+      }
+    } catch {
+      /* ignore corrupt draft */
+    }
+  }, []);
+
+  // Persist the draft as the user types/changes mode. Cleared on submit().
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (prompt.trim().length === 0) {
+        sessionStorage.removeItem(DRAFT_KEY);
+      } else {
+        sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ prompt, mode }));
+      }
+    } catch {
+      /* quota or disabled — fine, just lose the draft */
+    }
+  }, [prompt, mode]);
 
   // Typewriter effect that cycles through samplePrompts. Pauses while the
   // textarea is focused or the user has typed anything, and respects
@@ -141,6 +180,14 @@ function Landing() {
     if (!trimmed) return;
     const params = new URLSearchParams({ prompt: trimmed });
     if (mode === "discuss") params.set("mode", "discuss");
+
+    // The draft is about to ride along on the URL — drop the local copy so
+    // a future visit to the landing page doesn't pre-fill an old prompt.
+    try {
+      sessionStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* ignore */
+    }
 
     // Stash any attached images in sessionStorage so they survive the redirect
     // (URL would blow past 32KB instantly with even one screenshot). The
