@@ -1445,6 +1445,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      reap_stalled_builds: { Args: never; Returns: undefined }
       refund_credit: {
         Args: {
           _ledger_id: string

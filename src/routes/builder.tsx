@@ -288,8 +288,46 @@ function Builder() {
   // Subscribe to the live Cloudflare build for this project so we can fold
   // its status into the activity feed seamlessly with AI generation.
   const buildSnap = useBuildActivity(project?.latest_build_id ?? null);
-  const isDeploying = buildSnap?.status === "pending";
+  // 'pending' = queued, 'building' = Railway picked it up. Both keep the
+  // activity card in its "deploying" phase. Treating 'building' as inactive
+  // (the previous behavior, since it wasn't in the enum) was the bug that
+  // froze the spinner whenever Railway flipped the row mid-build.
+  const isDeploying = buildSnap?.status === "pending" || buildSnap?.status === "building";
   const isLive = buildSnap?.status === "ready";
+
+  // Long-wait escalation for the deploy phase. We escalate copy at 60s/90s
+  // and surface a friendly "deploy stalled" card at 150s so the user always
+  // has a way to retry or keep working — never a stranded spinner.
+  const [deployElapsed, setDeployElapsed] = useState(0);
+  useEffect(() => {
+    if (!isDeploying || !buildSnap) {
+      setDeployElapsed(0);
+      return;
+    }
+    const tick = () => setDeployElapsed(Math.floor((Date.now() - buildSnap.observedAt) / 1000));
+    tick();
+    const t = window.setInterval(tick, 1000);
+    return () => window.clearInterval(t);
+  }, [isDeploying, buildSnap?.observedAt]);
+
+  // Once we cross the 150s threshold, surface the friendly stalled card.
+  // The card lets the user Retry (re-trigger the build with the current
+  // files) or Keep editing (dismiss; if Railway eventually responds the
+  // status will still flip to ready in the background).
+  useEffect(() => {
+    if (!isDeploying || friendlyError) return;
+    if (deployElapsed < 150) return;
+    setFriendlyError({
+      title: "Publishing is taking longer than usual",
+      message:
+        "Your code is ready — the publishing service hasn't reported back yet. You can retry the deploy or keep editing while we wait.",
+      actionLabel: "Retry deploy",
+      actionKind: "retry",
+      technicalDetail: `Deploy elapsed ${deployElapsed}s with no callback`,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deployElapsed, isDeploying]);
+
 
   // Subscribe to `projects` row changes so when the build callback writes a
   // new `latest_build_id` (or any other field), the UI picks it up immediately
@@ -396,7 +434,10 @@ function Builder() {
           },
         });
       }
-    } else if (buildSnap.status === "pending") {
+    } else if (buildSnap.status === "pending" || buildSnap.status === "building") {
+      // Both states keep the activity card on the deploying phase. Without
+      // the 'building' branch, the card would freeze the moment Railway
+      // started processing the job.
       setPhases((p) => advanceTo(p, "deploying"));
     } else if (buildSnap.status === "failed") {
       setPhases((p) => markFailed(p, "deploying"));
@@ -1045,6 +1086,25 @@ function Builder() {
     if (lastUserPrompt) void send(lastUserPrompt, { isRetry: true });
   }, [lastUserPrompt, send]);
 
+  /** Re-trigger a Cloudflare build for the current files. Used by the
+   *  "deploy stalled" friendly card so the user can recover from a silent
+   *  Railway hiccup without having to re-prompt the AI. */
+  const retryDeploy = useCallback(() => {
+    if (!project?.id) return;
+    setFriendlyError(null);
+    setPhases((p) => advanceTo(p, "deploying"));
+    setActivityVisible(true);
+    void triggerBuild(project.id)
+      .then(async () => {
+        const r = await getProject(project.id);
+        if (r) setProject(r);
+      })
+      .catch((err: unknown) => {
+        setFriendlyError(toFriendlyError(err));
+        setPhases((p) => markFailed(p, "deploying"));
+      });
+  }, [project?.id]);
+
   const askPetalToFix = useCallback(() => {
     setFriendlyError(null);
     // Feed the actual build error/log back into the next prompt so the AI
@@ -1539,8 +1599,18 @@ function Builder() {
                 writtenPaths={writtenPaths}
                 finalFileLines={finalFileLines}
                 fileChanges={fileChanges}
+                deployElapsedSec={deployElapsed}
                 onStop={busy ? stopGeneration : undefined}
-                onRetry={lastUserPrompt ? retry : undefined}
+                onRetry={
+                  // The "Publishing is taking longer" stall card retries the
+                  // deploy directly. Every other retryable error replays the
+                  // last user prompt through the AI.
+                  isDeploying && friendlyError?.title?.startsWith("Publishing is taking")
+                    ? retryDeploy
+                    : lastUserPrompt
+                      ? retry
+                      : undefined
+                }
                 onAskFix={askPetalToFix}
                 onDismissError={() => setFriendlyError(null)}
               />
