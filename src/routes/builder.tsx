@@ -1013,6 +1013,7 @@ function Builder() {
         setStreamingAssistant("");
         setStreamingPlan("");
         setStreamingRecap("");
+        setStreamingPreamble("");
         // Tear down the streaming-draft writer and wipe the row so the next
         // refresh doesn't resurrect a reply that's already been promoted into
         // the chat thread (or that failed and shouldn't reappear).
