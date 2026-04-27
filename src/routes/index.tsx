@@ -224,13 +224,13 @@ function Landing() {
         <div className="absolute inset-0 bg-aurora opacity-70" aria-hidden />
         <div className="absolute inset-0 bg-grain opacity-40" aria-hidden />
 
-        <div className="relative mx-auto max-w-5xl px-6 pt-20 pb-28 text-center md:pt-28 md:pb-36">
+        <div className="relative mx-auto max-w-5xl px-4 pt-12 pb-20 text-center sm:px-6 sm:pt-20 sm:pb-28 md:pt-28 md:pb-36">
           <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
             <span className="h-1.5 w-1.5 rounded-full bg-primary" />
             Now in early access
           </div>
 
-          <h1 className="mt-6 font-display text-5xl font-semibold leading-[1.05] tracking-tight text-balance md:text-7xl">
+          <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
             Build real apps by{" "}
             <span className="relative whitespace-nowrap">
               <span className="relative z-10 italic">just chatting</span>
@@ -242,7 +242,7 @@ function Landing() {
             .
           </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-balance text-lg text-muted-foreground md:text-xl">
+          <p className="mx-auto mt-6 max-w-2xl text-balance text-base text-muted-foreground sm:text-lg md:text-xl">
             Petal turns plain English into working web apps. Describe what you
             want, watch the files appear, and share a live preview in seconds.
           </p>
@@ -389,15 +389,15 @@ function Landing() {
             }}
           />
 
-          <div className="mt-10 flex items-center justify-center gap-3 text-xs text-muted-foreground">
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-mint" /> Live preview
             </span>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-lilac" /> Multi-file projects
             </span>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-sky" /> One-click share
             </span>
@@ -406,17 +406,17 @@ function Landing() {
       </section>
 
       {/* Showcase — rotating sample apps */}
-      <section id="showcase" className="relative -mt-16 px-6 pb-24">
+      <section id="showcase" className="relative -mt-8 px-4 pb-16 sm:-mt-16 sm:px-6 sm:pb-24">
         <SampleAppShowcase />
       </section>
 
       {/* Features */}
-      <section id="features" className="px-6 py-24">
+      <section id="features" className="px-4 py-16 sm:px-6 sm:py-24">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
             <p className="text-sm font-medium uppercase tracking-wider text-primary">Why Petal</p>
-            <h2 className="mt-2 font-display text-4xl md:text-5xl">A creative tool, not a code editor.</h2>
-            <p className="mt-4 text-lg text-muted-foreground">
+            <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">A creative tool, not a code editor.</h2>
+            <p className="mt-4 text-base text-muted-foreground sm:text-lg">
               Petal is built around a conversation. You describe, it makes. You
               refine, it iterates. The files are real, the preview is live, and
               the result is yours.
@@ -478,12 +478,12 @@ function Landing() {
       </section>
 
       {/* How it works */}
-      <section id="how" className="px-6 py-24">
+      <section id="how" className="px-4 py-16 sm:px-6 sm:py-24">
         <div className="mx-auto max-w-6xl">
-          <div className="grid gap-12 md:grid-cols-2 md:items-center">
+          <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-12">
             <div>
               <p className="text-sm font-medium uppercase tracking-wider text-primary">How it works</p>
-              <h2 className="mt-2 font-display text-4xl md:text-5xl">From idea to app in three little steps.</h2>
+              <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">From idea to app in three little steps.</h2>
               <ol className="mt-8 space-y-6">
                 {[
                   { n: "01", t: "Describe what you want", d: "A page, a tool, a tiny game — say it like you'd tell a friend." },
@@ -528,10 +528,10 @@ function Landing() {
       </section>
 
       {/* CTA */}
-      <section className="px-6 pb-24">
-        <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-border bg-card p-12 text-center shadow-[var(--shadow-soft)]">
+      <section className="px-4 pb-16 sm:px-6 sm:pb-24">
+        <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-border bg-card p-6 text-center shadow-[var(--shadow-soft)] sm:p-12">
           <div className="absolute" />
-          <h2 className="font-display text-4xl md:text-5xl">Your next app is one sentence away.</h2>
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl">Your next app is one sentence away.</h2>
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
             Open the builder, describe an idea, and watch it come to life.
           </p>
@@ -557,7 +557,7 @@ function Landing() {
       </section>
 
       <footer className="border-t border-border bg-card/40">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 py-8 text-sm text-muted-foreground md:flex-row">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted-foreground sm:px-6 md:flex-row">
           <div>© {new Date().getFullYear()} Petal. All rights reserved.</div>
           <div className="flex items-center gap-4">
             <a href="#" className="inline-flex items-center gap-1.5 hover:text-foreground">
