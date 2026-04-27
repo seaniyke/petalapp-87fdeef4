@@ -325,6 +325,18 @@ export const Route = createFileRoute("/api/generate")({
           ? `\n\nProject Knowledge — the owner has asked you to always honor these instructions:\n"""\n${knowledge}\n"""\n`
           : "";
 
+        // Project Memory — durable facts learned across previous turns. Loaded
+        // with the user's JWT so RLS enforces ownership. Empty when there's
+        // no memory yet, so new projects pay no prompt-size cost.
+        const reqAuth = request.headers.get("authorization");
+        const userJwt = reqAuth?.startsWith("Bearer ")
+          ? reqAuth.slice("Bearer ".length)
+          : "";
+        const memoryBlock =
+          body.projectId && userJwt
+            ? await loadProjectMemoryBlock(userJwt, body.projectId)
+            : "";
+
         const filesContext = isInitial
           ? ""
           : `\n\nCurrent project files:\n\n${currentFiles
