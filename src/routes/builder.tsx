@@ -101,6 +101,28 @@ const WebContainerPreview = lazy(() =>
 const MobilePreviewFallback = lazy(() =>
   import("@/components/MobilePreviewFallback").then((m) => ({ default: m.MobilePreviewFallback })),
 );
+const FirstRunTour = lazy(() =>
+  import("@/components/FirstRunTour").then((m) => ({ default: m.FirstRunTour })),
+);
+
+// Detect once on the client whether this browser can run a WebContainer.
+// Mirrors the same logic as the inner component but lets us route to the
+// deployed-iframe fallback BEFORE we even mount WebContainerPreview, so iOS
+// and other unsupported browsers see the same live preview that mobile gets.
+function useWebContainerSupported(): boolean {
+  const [supported, setSupported] = useState<boolean>(true);
+  useEffect(() => {
+    let cancelled = false;
+    void import("@/components/WebContainerPreview").then(({ detectUnsupportedBrowser }) => {
+      if (cancelled) return;
+      setSupported(detectUnsupportedBrowser() === null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return supported;
+}
 type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
 export const Route = createFileRoute("/builder")({
@@ -218,6 +240,11 @@ function Builder() {
   const initialAttachmentsRef = useRef<ChatAttachment[]>([]);
   const composerFileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+  const webContainerSupported = useWebContainerSupported();
+  // Use the deployed-build iframe fallback whenever WebContainers can't run
+  // here — narrow viewport (mobile) OR an unsupported browser (iOS Safari,
+  // Android non-Chromium, no SharedArrayBuffer, etc.).
+  const useDeployedFallback = isMobile || !webContainerSupported;
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -1035,6 +1062,10 @@ function Builder() {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
+      {/* First-run product tour. Self-gates on localStorage so it shows once per browser. */}
+      <Suspense fallback={null}>
+        <FirstRunTour />
+      </Suspense>
       {/* Top bar */}
       <header className="safe-top sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/80 px-3 backdrop-blur sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
@@ -1663,7 +1694,7 @@ function Builder() {
                           : "max-w-none"
                   }`}
                 >
-                  {isMobile ? (
+                  {useDeployedFallback ? (
                     <Suspense
                       fallback={
                         <div className="grid h-full place-items-center text-xs text-muted-foreground">

@@ -91,10 +91,31 @@ export async function mountProject(files: ProjectFile[]): Promise<void> {
  * inspected from the parent, so the script lives inside the running app and
  * communicates back via window.postMessage. It is dormant until the parent
  * sends `{ type: "petal:pick:enable" }`.
+ *
+ * Idempotency / SPA-navigation safety:
+ *   - The script tag carries `data-petal-picker-version="N"`. Bump
+ *     PICKER_VERSION any time we ship a behaviour change so old cached
+ *     copies don't win.
+ *   - On each load the script checks `window.__petalPickerVersion`. If a
+ *     newer version is present it tears down the previous handlers (stored
+ *     on `window.__petalPickerCleanup`) before re-installing. This keeps the
+ *     picker working after Vite full reloads or SPA navigations inside the
+ *     iframe — the document changes, but the picker just reattaches.
+ *   - The script always re-emits `petal:pick:ready` to the parent so the
+ *     parent can immediately re-push the current `pickActive` state.
  */
+const PICKER_VERSION = 2;
 const PICKER_SCRIPT = `(() => {
-  if (window.__petalPickerLoaded) return;
-  window.__petalPickerLoaded = true;
+  var VERSION = ${PICKER_VERSION};
+  // If a same-or-newer copy already attached its handlers in this document,
+  // there's nothing to do.
+  if (window.__petalPickerVersion && window.__petalPickerVersion >= VERSION && window.__petalPickerCleanup) {
+    parent.postMessage({ type: 'petal:pick:ready' }, '*');
+    return;
+  }
+  // Tear down any previous (older) picker installed on this document.
+  try { if (window.__petalPickerCleanup) window.__petalPickerCleanup(); } catch (_) {}
+  window.__petalPickerVersion = VERSION;
   let active = false;
   let outline = null;
   let label = null;
@@ -162,6 +183,12 @@ const PICKER_SCRIPT = `(() => {
       setActive(false);
     }
   }
+  function onMessage(e) {
+    const data = e.data;
+    if (!data || typeof data !== 'object') return;
+    if (data.type === 'petal:pick:enable') setActive(true);
+    if (data.type === 'petal:pick:disable') setActive(false);
+  }
   function setActive(v) {
     active = v;
     if (v) {
@@ -172,22 +199,33 @@ const PICKER_SCRIPT = `(() => {
       clear();
     }
   }
-  window.addEventListener('message', (e) => {
-    const data = e.data;
-    if (!data || typeof data !== 'object') return;
-    if (data.type === 'petal:pick:enable') setActive(true);
-    if (data.type === 'petal:pick:disable') setActive(false);
-  });
+  window.addEventListener('message', onMessage);
   document.addEventListener('mousemove', onMove, true);
   document.addEventListener('click', onClick, true);
   document.addEventListener('keydown', onKey, true);
+  // Expose a teardown hook so a future, newer version of this script can
+  // safely uninstall us before installing itself.
+  window.__petalPickerCleanup = function () {
+    try { window.removeEventListener('message', onMessage); } catch (_) {}
+    try { document.removeEventListener('mousemove', onMove, true); } catch (_) {}
+    try { document.removeEventListener('click', onClick, true); } catch (_) {}
+    try { document.removeEventListener('keydown', onKey, true); } catch (_) {}
+    if (outline && outline.parentNode) outline.parentNode.removeChild(outline);
+    if (label && label.parentNode) label.parentNode.removeChild(label);
+    document.documentElement.style.cursor = '';
+  };
   parent.postMessage({ type: 'petal:pick:ready' }, '*');
 })();`;
 
 /**
  * Ensure the picker script and a script tag in index.html exist in the
  * running container. Vite's HMR will pick up the change without a full
- * reload of the dev server. Idempotent.
+ * reload of the dev server. Idempotent — safe to call on every file change
+ * AND on every iframe `onLoad` event.
+ *
+ * The picker script in `public/__petal_picker.js` is rewritten unconditionally
+ * (cheap), and `index.html` is patched only if either the script tag is
+ * missing OR an older `data-petal-picker-version` is present.
  */
 export async function ensurePickerInstalled(currentIndexHtml: string | undefined): Promise<void> {
   const wc = await getContainer();
@@ -198,14 +236,22 @@ export async function ensurePickerInstalled(currentIndexHtml: string | undefined
     /* ignore */
   }
   await wc.fs.writeFile("public/__petal_picker.js", PICKER_SCRIPT);
-  // Patch index.html to include the script if not already present.
-  if (currentIndexHtml && !currentIndexHtml.includes("__petal_picker.js")) {
-    const tag = '<script src="/__petal_picker.js"></script>';
-    const next = currentIndexHtml.includes("</body>")
-      ? currentIndexHtml.replace("</body>", `  ${tag}\n  </body>`)
-      : `${currentIndexHtml}\n${tag}`;
-    await wc.fs.writeFile("index.html", next);
-  }
+  if (!currentIndexHtml) return;
+
+  const versionAttr = `data-petal-picker-version="${PICKER_VERSION}"`;
+  const tag = `<script src="/__petal_picker.js" ${versionAttr}></script>`;
+  const hasCurrentVersion = currentIndexHtml.includes(versionAttr);
+  if (hasCurrentVersion) return;
+
+  // Strip any older picker tags so we don't accumulate stale ones.
+  const stripped = currentIndexHtml.replace(
+    /\s*<script\s+src="\/__petal_picker\.js"[^>]*><\/script>/g,
+    "",
+  );
+  const next = stripped.includes("</body>")
+    ? stripped.replace("</body>", `  ${tag}\n  </body>`)
+    : `${stripped}\n${tag}`;
+  await wc.fs.writeFile("index.html", next);
 }
 
 /** Patch only changed files into a running container — no remount needed. */

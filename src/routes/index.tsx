@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SampleAppShowcase } from "@/components/SampleAppShowcase";
+import { StartIdeasPanel } from "@/components/StartIdeasPanel";
 import { useAuth } from "@/lib/auth";
 import {
   ArrowRight,
@@ -325,6 +326,21 @@ function Landing() {
             </div>
 
           </form>
+
+          <StartIdeasPanel
+            onPick={(p) => {
+              setPrompt(p);
+              // Defer focus until after React commits the new value so the
+              // textarea autosizes correctly and the cursor lands at the end.
+              requestAnimationFrame(() => {
+                const el = textareaRef.current;
+                if (!el) return;
+                el.focus();
+                el.setSelectionRange(p.length, p.length);
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+              });
+            }}
+          />
 
           <div className="mt-10 flex items-center justify-center gap-3 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
