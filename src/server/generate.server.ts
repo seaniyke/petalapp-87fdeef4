@@ -32,7 +32,7 @@ The scaffold ALREADY EXISTS — these files will be auto-injected, do NOT emit t
 - "src/components/ui/table.tsx" — <Table>, <TableHeader>, <TableBody>, <TableFooter>, <TableRow>, <TableHead>, <TableCell>, <TableCaption>
 - "src/components/ui/sheet.tsx" — <Sheet>, <SheetTrigger asChild>, <SheetContent side="top|right|bottom|left">, <SheetHeader>, <SheetTitle>, <SheetDescription>, <SheetFooter>
 - "src/components/ui/drawer.tsx" — <Drawer open onOpenChange>, <DrawerTrigger asChild>, <DrawerClose asChild>, <DrawerContent>, <DrawerHeader>, <DrawerTitle>, <DrawerDescription>, <DrawerFooter>. Bottom-anchored mobile-first sheet with handle. Use for mobile detail panels and action sheets — pair with <Sheet> for desktop.
-- "src/components/ui/command.tsx" — <Command>, <CommandInput placeholder>, <CommandList>, <CommandEmpty>, <CommandGroup heading>, <CommandItem onSelect>, <CommandSeparator>, <CommandShortcut>, <CommandDialog open onOpenChange>. Use for any search/launcher UI. Wrap in CommandDialog and bind Cmd/Ctrl+K for a palette.
+- (No command palette is shipped in the kit. Generated apps are consumer-facing — do NOT build Cmd+K palettes unless the user explicitly asks. If they do, compose <Dialog> + <Input> ad-hoc.)
 - "src/components/ui/calendar.tsx" — <Calendar mode="single|range" selected onSelect disabled>. Pure month-grid picker. Use only when you need a raw calendar inline; for a field, use DatePicker instead.
 - "src/components/ui/date-picker.tsx" — <DatePicker value onChange placeholder disabled>. Drop-in date field (Button + Popover + Calendar). NEVER hand-roll <input type="date">.
 - "src/components/ui/combobox.tsx" — <Combobox options={[{label,value}]} value onChange placeholder searchPlaceholder emptyText>. Searchable single-select. Use whenever the option list is 5+ items — NEVER a styled <select> for that case.
@@ -183,7 +183,7 @@ Each operation is one of:
 - { "op": "delete", "path": "..." }
 
 REUSE-FIRST PROTOCOL (most important rule):
-The kit at "@/components/ui/*" already provides: Button, Card, Input, Textarea, Label, Badge, Separator, Avatar, Alert, Skeleton, Switch, Tabs, Dialog, Select, Checkbox, RadioGroup, Slider, Progress, Tooltip, Popover, DropdownMenu, Accordion, ScrollArea, Table, Sheet, Drawer, Toast, Command (+ CommandDialog), Calendar, DatePicker, Combobox, Form (+ useForm), Chart (Line/Area/Bar), Router (re-exports react-router-dom: Router/Routes/Route/Link/NavLink/Outlet/Navigate/useNavigate/useParams/useLocation/useSearchParams).
+The kit at "@/components/ui/*" already provides: Button, Card, Input, Textarea, Label, Badge, Separator, Avatar, Alert, Skeleton, Switch, Tabs, Dialog, Select, Checkbox, RadioGroup, Slider, Progress, Tooltip, Popover, DropdownMenu, Accordion, ScrollArea, Table, Sheet, Drawer, Toast, Calendar, DatePicker, Combobox, Form (+ useForm), Chart (Line/Area/Bar), Router (re-exports react-router-dom: Router/Routes/Route/Link/NavLink/Outlet/Navigate/useNavigate/useParams/useLocation/useSearchParams).
 - Need a button? -> <Button>. NEVER raw <button> or styled <div onClick>.
 - Need a text field? -> <Input>/<Textarea>. NEVER raw <input>.
 - Need a card/panel? -> <Card>. NEVER a custom <div className="rounded-lg border p-4">.

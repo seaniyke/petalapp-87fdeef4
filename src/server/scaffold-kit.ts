@@ -3172,8 +3172,8 @@ const KIT: KitFile[] = [
   { path: "src/components/ui/stack.tsx", content: STACK, overwrite: true },
   { path: "src/components/ui/inline.tsx", content: INLINE, overwrite: true },
   { path: "src/components/ui/grid.tsx", content: GRID, overwrite: true },
-  // Phase 3 kit expansion — Command, Calendar, DatePicker, Combobox, Form, Drawer, Chart.
-  { path: "src/components/ui/command.tsx", content: COMMAND, overwrite: true },
+  // Phase 3 kit expansion — Calendar, DatePicker, Combobox, Form, Drawer, Chart.
+  // (Command palette intentionally omitted — see scaffold-kit note above.)
   { path: "src/components/ui/calendar.tsx", content: CALENDAR, overwrite: true },
   { path: "src/components/ui/date-picker.tsx", content: DATE_PICKER, overwrite: true },
   { path: "src/components/ui/combobox.tsx", content: COMBOBOX, overwrite: true },
