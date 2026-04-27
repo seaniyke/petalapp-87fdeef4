@@ -11,6 +11,9 @@ import {
   Plug,
   CheckCircle2,
   Unplug,
+  ExternalLink,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   Sheet,
