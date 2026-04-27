@@ -447,6 +447,27 @@ export type Database = {
         }
         Relationships: []
       }
+      labs_flags: {
+        Row: {
+          created_at: string
+          flags: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          flags?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          flags?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -777,6 +798,74 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      project_integration_secrets: {
+        Row: {
+          ciphertext: string
+          created_at: string
+          field_id: string
+          id: string
+          project_integration_id: string
+          updated_at: string
+        }
+        Insert: {
+          ciphertext: string
+          created_at?: string
+          field_id: string
+          id?: string
+          project_integration_id: string
+          updated_at?: string
+        }
+        Update: {
+          ciphertext?: string
+          created_at?: string
+          field_id?: string
+          id?: string
+          project_integration_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_integration_secrets_project_integration_id_fkey"
+            columns: ["project_integration_id"]
+            isOneToOne: false
+            referencedRelation: "project_integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_integrations: {
+        Row: {
+          file_manifest: Json
+          id: string
+          installed_at: string
+          integration_code: string
+          options: Json
+          project_id: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          file_manifest?: Json
+          id?: string
+          installed_at?: string
+          integration_code: string
+          options?: Json
+          project_id: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          file_manifest?: Json
+          id?: string
+          installed_at?: string
+          integration_code?: string
+          options?: Json
+          project_id?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
       }
       project_versions: {
         Row: {
