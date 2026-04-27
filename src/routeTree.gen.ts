@@ -36,6 +36,7 @@ import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
 import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
 import { Route as AdminBillingRouteImport } from './routes/admin.billing'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
 import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigger'
 import { Route as ApiBuildsCallbackRouteImport } from './routes/api/builds/callback'
@@ -185,6 +186,11 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHostLookupRoute = ApiPublicHostLookupRouteImport.update({
+  id: '/api/public/host-lookup',
+  path: '/api/public/host-lookup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPreviewProjectIdRoute = ApiPreviewProjectIdRouteImport.update({
   id: '/api/preview/$projectId',
   path: '/api/preview/$projectId',
@@ -288,6 +294,7 @@ export interface FileRoutesByFullPath {
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
+  '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/backend-slots': typeof ApiPublicCronBackendSlotsRoute
@@ -330,6 +337,7 @@ export interface FileRoutesByTo {
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
+  '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/backend-slots': typeof ApiPublicCronBackendSlotsRoute
@@ -373,6 +381,7 @@ export interface FileRoutesById {
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
+  '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/backend-slots': typeof ApiPublicCronBackendSlotsRoute
@@ -417,6 +426,7 @@ export interface FileRouteTypes {
     | '/api/builds/callback'
     | '/api/builds/trigger'
     | '/api/preview/$projectId'
+    | '/api/public/host-lookup'
     | '/lovable/email/suppression'
     | '/api/public/builds/callback'
     | '/api/public/cron/backend-slots'
@@ -459,6 +469,7 @@ export interface FileRouteTypes {
     | '/api/builds/callback'
     | '/api/builds/trigger'
     | '/api/preview/$projectId'
+    | '/api/public/host-lookup'
     | '/lovable/email/suppression'
     | '/api/public/builds/callback'
     | '/api/public/cron/backend-slots'
@@ -501,6 +512,7 @@ export interface FileRouteTypes {
     | '/api/builds/callback'
     | '/api/builds/trigger'
     | '/api/preview/$projectId'
+    | '/api/public/host-lookup'
     | '/lovable/email/suppression'
     | '/api/public/builds/callback'
     | '/api/public/cron/backend-slots'
@@ -544,6 +556,7 @@ export interface RootRouteChildren {
   ApiBuildsCallbackRoute: typeof ApiBuildsCallbackRoute
   ApiBuildsTriggerRoute: typeof ApiBuildsTriggerRoute
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
+  ApiPublicHostLookupRoute: typeof ApiPublicHostLookupRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
   ApiPublicCronBackendSlotsRoute: typeof ApiPublicCronBackendSlotsRoute
@@ -746,6 +759,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/host-lookup': {
+      id: '/api/public/host-lookup'
+      path: '/api/public/host-lookup'
+      fullPath: '/api/public/host-lookup'
+      preLoaderRoute: typeof ApiPublicHostLookupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/preview/$projectId': {
       id: '/api/preview/$projectId'
       path: '/api/preview/$projectId'
@@ -872,6 +892,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBuildsCallbackRoute: ApiBuildsCallbackRoute,
   ApiBuildsTriggerRoute: ApiBuildsTriggerRoute,
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
+  ApiPublicHostLookupRoute: ApiPublicHostLookupRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
   ApiPublicCronBackendSlotsRoute: ApiPublicCronBackendSlotsRoute,

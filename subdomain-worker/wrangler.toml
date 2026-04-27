@@ -1,0 +1,7 @@
+name = "petal-subdomain-router"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# Bound to *.buildwithpetal.com via the Cloudflare API at deploy time
+# (see scripts/deploy.mjs). Routes are defined in the dashboard / via API
+# rather than here so we can manage them from the Petal control plane.
