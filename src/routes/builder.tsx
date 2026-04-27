@@ -1626,19 +1626,48 @@ function Builder() {
             )}
             {/* Live, token-by-token reply while Petal works. Promoted to a real
                 message in `messages` once the run completes. */}
-            {busy && streamingAssistant && (
+            {busy && (streamingPlan || streamingAssistant || streamingRecap) && (
               <div className="mr-3 overflow-hidden wrap-anywhere rounded-2xl bg-butter/60 px-3.5 py-2.5 text-sm leading-relaxed sm:mr-6">
-                <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <span>petal</span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-primary">
-                    <Loader2 className="h-2.5 w-2.5 animate-spin" /> writing
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    {streamingRecap ? "wrapping up" : streamingAssistant ? "writing" : "planning"}
                   </span>
                 </div>
-                <Suspense
-                  fallback={<div className="whitespace-pre-wrap">{streamingAssistant}</div>}
-                >
-                  <MarkdownMessage content={streamingAssistant} />
-                </Suspense>
+                <div className="space-y-2.5">
+                  {streamingPlan && (
+                    <div className="rounded-lg border border-primary/15 bg-primary/5 px-2.5 py-1.5">
+                      <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-primary/80">
+                        <Wand2 className="h-2.5 w-2.5" /> Plan
+                      </div>
+                      <Suspense
+                        fallback={<div className="whitespace-pre-wrap text-[13px]">{streamingPlan}</div>}
+                      >
+                        <MarkdownMessage content={streamingPlan} />
+                      </Suspense>
+                    </div>
+                  )}
+                  {streamingAssistant && (
+                    <Suspense
+                      fallback={<div className="whitespace-pre-wrap">{streamingAssistant}</div>}
+                    >
+                      <MarkdownMessage content={streamingAssistant} />
+                    </Suspense>
+                  )}
+                  {streamingRecap && (
+                    <div className="rounded-lg border border-border/60 bg-card/50 px-2.5 py-1.5">
+                      <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <FileText className="h-2.5 w-2.5" /> What changed
+                      </div>
+                      <Suspense
+                        fallback={<div className="whitespace-pre-wrap text-[13px]">{streamingRecap}</div>}
+                      >
+                        <MarkdownMessage content={streamingRecap} />
+                      </Suspense>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             {activityVisible && (
