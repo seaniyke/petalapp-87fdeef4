@@ -36,6 +36,7 @@ import { Route as AdminBillingRouteImport } from './routes/admin.billing'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
 import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigger'
+import { Route as ApiBuildsCallbackRouteImport } from './routes/api/builds/callback'
 import { Route as ApiBillingVerifyRouteImport } from './routes/api/billing/verify'
 import { Route as ApiBillingInitializeRouteImport } from './routes/api/billing/initialize'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -182,6 +183,11 @@ const ApiBuildsTriggerRoute = ApiBuildsTriggerRouteImport.update({
   path: '/api/builds/trigger',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBuildsCallbackRoute = ApiBuildsCallbackRouteImport.update({
+  id: '/api/builds/callback',
+  path: '/api/builds/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiBillingVerifyRoute = ApiBillingVerifyRouteImport.update({
   id: '/api/billing/verify',
   path: '/api/billing/verify',
@@ -265,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
+  '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -304,6 +311,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
+  '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -344,6 +352,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
+  '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -385,6 +394,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/billing/initialize'
     | '/api/billing/verify'
+    | '/api/builds/callback'
     | '/api/builds/trigger'
     | '/api/preview/$projectId'
     | '/lovable/email/suppression'
@@ -424,6 +434,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/api/billing/initialize'
     | '/api/billing/verify'
+    | '/api/builds/callback'
     | '/api/builds/trigger'
     | '/api/preview/$projectId'
     | '/lovable/email/suppression'
@@ -463,6 +474,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/billing/initialize'
     | '/api/billing/verify'
+    | '/api/builds/callback'
     | '/api/builds/trigger'
     | '/api/preview/$projectId'
     | '/lovable/email/suppression'
@@ -503,6 +515,7 @@ export interface RootRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
   ApiBillingInitializeRoute: typeof ApiBillingInitializeRoute
   ApiBillingVerifyRoute: typeof ApiBillingVerifyRoute
+  ApiBuildsCallbackRoute: typeof ApiBuildsCallbackRoute
   ApiBuildsTriggerRoute: typeof ApiBuildsTriggerRoute
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -707,6 +720,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBuildsTriggerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/builds/callback': {
+      id: '/api/builds/callback'
+      path: '/api/builds/callback'
+      fullPath: '/api/builds/callback'
+      preLoaderRoute: typeof ApiBuildsCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/billing/verify': {
       id: '/api/billing/verify'
       path: '/api/billing/verify'
@@ -807,6 +827,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
   ApiBillingInitializeRoute: ApiBillingInitializeRoute,
   ApiBillingVerifyRoute: ApiBillingVerifyRoute,
+  ApiBuildsCallbackRoute: ApiBuildsCallbackRoute,
   ApiBuildsTriggerRoute: ApiBuildsTriggerRoute,
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
