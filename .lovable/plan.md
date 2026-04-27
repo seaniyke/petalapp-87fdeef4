@@ -1,128 +1,117 @@
-## What we're building
+# Integrations Marketplace + Labs Toggle
 
-A **second option** for connecting a backend to a Petal project. Today users only have "BYO Supabase" (paste URL + keys). We'll add **"Auto-provision (Managed by Petal)"** — Petal creates a real Supabase project for them under our paid Supabase org, wires it in, and bills the user a recurring monthly fee.
+## Goal
+Give Petal users a one-click way to add Stripe, Paystack, Resend, and analytics to a generated app. Petal injects keys + scaffold code + DB tables on demand. Ships behind a "Labs" toggle so existing flows stay untouched.
 
-BYO stays as the free option. Auto-provision is the paid one.
+## What you'll see as a user
+1. **Settings → Labs** — a new section with toggles for each experimental feature. Off by default for everyone.
+2. **Project Settings → Integrations** (visible only when Labs is on) — a marketplace grid of connector cards: Stripe, Paystack, Resend, PostHog, Plausible, OpenAI passthrough.
+3. **Per-card flow** — click "Add Stripe" → guided sheet asks for the keys (or starts OAuth where supported) → Petal writes the integration files into the project, runs any required DB migration on the project's managed backend, and posts a chat message recapping what changed.
+4. **Removal** — each installed integration shows "Installed" with a "Remove" button that deletes only the integration files (not user-modified ones).
 
----
+## Scope of first slice
+Six integrations, in this order of priority. If we run long, we ship the first three and the framework; the rest reuse the same pipeline.
 
-## How the money works (so this isn't a loss-leader)
+| Integration | Type | What gets scaffolded |
+|---|---|---|
+| Stripe | API key | server checkout fn, `stripe-webhook` route, `subscriptions`/`payments` table |
+| Paystack | API key | server initialize fn, `paystack-webhook` route, `transactions` table |
+| Resend | API key | `sendEmail()` helper, sample template, `email_log` table |
+| PostHog | Public key | `posthog-provider.tsx`, autocapture wired in root |
+| Plausible | Domain only | `<Plausible />` script tag, no key needed |
+| OpenAI passthrough | API key | server `chat()` helper that proxies to OpenAI |
 
-- Supabase charges **us** ~$10/month per Micro project on our Pro org, plus base fees and overages.
-- We charge the user **$15/month per provisioned backend** (configurable via `billing_addons`). Margin covers Supabase cost + Paystack fees + a little headroom.
-- Paystack doesn't have great recurring-card support across all our currencies, so we model "monthly" as a **renewable 30-day slot** — exactly like the existing `domain_slots` pattern. User pays again every 30 days; if they don't pay, we auto-pause their Supabase project (stops the meter on our side).
-
----
-
-## User flow
-
-1. In ProjectSettings → Backend, user sees two cards: **"Connect existing"** (today's flow) and **"Auto-provision (Petal-managed)"** (new, with "$15 / month" badge).
-2. Clicks Auto-provision → opens new `BuyBackendSlotDialog` (same shape as `BuyDomainSlotDialog`) → picks currency → goes to Paystack → returns to `/billing/return`.
-3. On successful payment, the verify endpoint:
-   - Creates a `backend_slot` row (30-day expiry).
-   - Kicks off Supabase project creation via the Management API.
-   - Updates `project_backends` row with `provider = 'managed_petal'`, `status = 'provisioning'` then `'ready'` once Supabase reports the project is ACTIVE_HEALTHY.
-4. UI polls status. Once `ready`, the next AI generation includes the existing `backendKit` files — same code path as BYO, the generated app doesn't know the difference.
-5. ~3 days before slot expiry, we email the user a renewal link. If they don't renew within 30 days, the Supabase project gets paused (we keep the data, stop the bill).
-
----
+PWA + push notifications ships as a **prompt-triggered template** in this same framework (not as a default). When a user prompts "make this installable" or "add push notifications", the AI calls into the same scaffold pipeline.
 
 ## Architecture
 
 ```text
-                 ┌─────────────────────────┐
-   user ──pay──▶ │ /api/billing/initialize │ ──▶ Paystack
-                 └─────────────────────────┘
-                              │
-                       webhook + verify
-                              ▼
-                 ┌─────────────────────────┐
-                 │  apply_paystack_         │
-                 │  backend_slot RPC        │  (new)
-                 │  - inserts backend_slots │
-                 │  - kicks provisioner     │
-                 └─────────────────────────┘
-                              │
-                              ▼
-                 ┌─────────────────────────┐
-                 │ supabase-mgmt.server.ts │  (new)
-                 │  POST /v1/projects      │
-                 │  poll status            │
-                 │  fetch anon key         │
-                 └─────────────────────────┘
-                              │
-                              ▼
-                 ┌─────────────────────────┐
-                 │   project_backends      │  (existing table)
-                 │   provider='managed_petal' │
-                 │   status='ready'        │
-                 └─────────────────────────┘
+src/
+  server/
+    integrations/
+      registry.server.ts      ← catalog: id, name, fields, files, migration
+      installer.server.ts     ← apply/remove + idempotency
+      stripe.integration.ts   ← per-integration definitions
+      paystack.integration.ts
+      resend.integration.ts
+      posthog.integration.ts
+      plausible.integration.ts
+      openai.integration.ts
+      pwa.integration.ts      ← scaffold-only (no UI card, prompt-triggered)
+  components/
+    IntegrationsSection.tsx   ← grid + install dialog
+    LabsSection.tsx           ← toggles
+  routes/
+    api/
+      integrations/
+        list.ts
+        install.ts            ← POST { projectId, integrationId, fields }
+        remove.ts
 ```
 
----
+DB additions:
+- `labs_flags` — per-user feature flags (one row per user, jsonb of enabled flags). RLS: user reads/writes own row.
+- `project_integrations` — installed integrations per project. RLS: only owner. Records integrationId, installed_at, version, encrypted credential refs.
+- Credentials stored in a new `project_integration_secrets` table (server-side only — never returned to client). Encryption uses pgcrypto with a server-side master key from `PETAL_INTEGRATION_SECRET_KEY`.
 
-## Database changes (one migration)
+## How the scaffold pipeline works
+Each integration is a static object:
+```ts
+{
+  id: "stripe",
+  name: "Stripe",
+  fields: [{ id: "secret_key", label: "Secret key", secret: true }, ...],
+  files: (creds, opts) => ProjectFile[],
+  migration?: (creds, opts) => string, // SQL for project's managed backend
+  envInjection: (creds) => Record<string, string>, // server-side only
+}
+```
+Installer flow:
+1. Validate fields (Zod).
+2. Encrypt + store creds in `project_integration_secrets`.
+3. Render files, merge into `project_files` (skip files the user has modified — diff against last install).
+4. If `migration` is present and project has a managed backend, apply it via the existing `supabase-mgmt.server.ts`.
+5. Inject env vars into the project's runtime config.
+6. Append a chat message: "Stripe installed. Added 3 files, 1 webhook, and a `subscriptions` table."
 
-1. **New table `backend_slots`** — mirrors `domain_slots`:
-   - `user_id`, `project_id`, `paystack_reference`, `amount_minor`, `currency_code`, `purchased_at`, `expires_at` (purchased_at + 30 days), `consumed_by_backend_id`, `status` ('active' | 'expired' | 'cancelled').
-   - RLS: user can SELECT their own.
+Removal is the inverse — delete files matching the registered manifest only.
 
-2. **Add `backend_slot` to `billing_addons` catalog** (data insert) with `code = 'managed_backend_monthly'`, `price_cents = 1500`, `duration_days = 30`.
+## PWA template (prompt-triggered, not default)
+- Lives in `pwa.integration.ts` but no UI card. The chat AI calls `installIntegration("pwa", ...)` when the user says "make this installable" / "add offline support" / "add push notifications".
+- Three depth levels passed as opts: `manifest`, `offline`, `push`.
+- Adds:
+  - `public/manifest.webmanifest` + icon set
+  - `<link rel="manifest">` injected into `index.html`
+  - Service worker (only at `offline` and above) registered behind the iframe/preview-host guard from the `pwa` knowledge file
+  - Install prompt component
+  - For push: VAPID key generation script in chat output, `push-subscribe.ts` server route, `web_push_subscriptions` table
+- Generated apps get a clear warning in chat that PWA features only activate on the published deployment, not in the in-app preview.
 
-3. **Extend `project_backends`**:
-   - `provider` already exists (`byo_supabase` today). Allow new value `managed_petal`.
-   - Add nullable `supabase_project_ref` (text), `provisioning_started_at`, `paused_at`.
-   - Add new status values: `'provisioning'`, `'paused'`, `'failed'`. Existing `'ready'` is reused.
+## Labs toggle
+- Per-user setting stored in `labs_flags`. Read on app load, written from a new `LabsSection.tsx` in the settings sheet.
+- Initial flags: `integrations_marketplace`, `pwa_template`. Both default off.
+- A small `useLabsFlag("integrations_marketplace")` hook gates the new UI surfaces.
+- Admins (existing `useIsAdmin`) see all flags forced on.
 
-4. **New RPC `apply_paystack_backend_slot`** — copy of `apply_paystack_domain_slot` but inserts into `backend_slots`, idempotent on `paystack_reference`.
+## Out of scope for this slice
+- Connecting Petal's own Lovable connector gateway for these (they're customer-owned keys, not workspace OAuth).
+- Per-end-user OAuth in generated apps (e.g. a generated app letting *its* users connect Google) — that's a future template.
+- Analytics dashboards inside Petal showing PostHog data — we only scaffold the SDK.
 
-5. **New RPC `expire_backend_slots`** — daily job: for each `backend_slots` row with `expires_at < now()` and no successor row, mark the linked `project_backends.status = 'paused'`. We don't delete; user can renew and we resume.
+## Risks and mitigations
+- **Credential leakage** — secrets never round-trip to the client; `install.ts` accepts them, encrypts, and discards. The integration card UI only ever sees `installed: true`.
+- **Stomping user edits** — installer keeps a manifest of last-installed file hashes. If a hash differs, prompt before overwriting.
+- **Migration failures** — managed-backend migrations run inside a transaction; failure rolls back and the install is marked failed (no orphaned files).
+- **PWA cache poisoning preview** — service worker registration is gated by the existing iframe/preview-host detection from the pwa knowledge file. Hard rule, no exceptions.
 
----
+## Order of work
+1. `labs_flags` table + `LabsSection.tsx` + `useLabsFlag` hook (smallest, unblocks everything else).
+2. `project_integrations` + `project_integration_secrets` tables + `registry.server.ts` skeleton.
+3. `installer.server.ts` + `/api/integrations/*` routes.
+4. `IntegrationsSection.tsx` UI behind the labs flag.
+5. Stripe, Paystack, Resend integration definitions (the "real" first three).
+6. PostHog, Plausible, OpenAI definitions.
+7. PWA template definition + AI prompt rules so the chat agent knows when to trigger it.
+8. End-to-end test on a sample project: install Stripe → trigger checkout → receive webhook.
 
-## New files
-
-- `src/server/supabase-mgmt.server.ts` — wrapper around the Supabase Management API (`https://api.supabase.com/v1/projects`). Methods: `createProject`, `getProjectStatus`, `pauseProject`, `restoreProject`, `getApiKeys`. Uses a new `SUPABASE_MGMT_PAT` secret (Personal Access Token from our Supabase org).
-- `src/server/managed-backend.server.ts` — orchestration: `provisionForProject(projectId, slotId)` does create → poll until ACTIVE_HEALTHY (with 5-min timeout) → fetch anon key → upsert `project_backends`. On failure, marks backend `failed` and logs the error so user can request a refund.
-- `src/routes/api/backend.ts` — add new actions:
-  - `?action=provision-status` (poll progress for the UI).
-  - `?action=cancel-managed` (user cancels future renewals).
-- `src/components/BuyBackendSlotDialog.tsx` — clone of `BuyDomainSlotDialog`, points at the new addon code.
-- `src/components/ManagedBackendCard.tsx` — shown inside the existing backend section of `ProjectSettingsSheet`. States: not-purchased / provisioning / ready / paused / failed. "Renew" button when within 7 days of expiry.
-
----
-
-## Files to modify
-
-- `src/routes/api/billing/initialize.ts` — already supports `purpose: 'addon'` with a `projectId`. The new addon code drops in with no code change. (Just verify project ownership, which it already does.)
-- `src/routes/api/billing/verify.ts` and `src/routes/api/public/paystack/webhook.ts` — branch on `tx.item_code` to call the new `apply_paystack_backend_slot` RPC (or a generic `tx.purpose === 'addon' && itemCode.startsWith('managed_backend_')` check), then enqueue provisioning.
-- `src/server/backend-connector.server.ts` — no change needed; `lookupBackendForGenerate` already returns `{url, anonKey}` from `project_backends` regardless of provider. The generator and `backendKit` work as-is.
-- `src/components/ProjectSettingsSheet.tsx` — add the new "Auto-provision" card alongside the existing BYO connector.
-- `supabase/config.toml` — no change.
-
----
-
-## Secrets needed
-
-We need to add **one** new secret:
-- `SUPABASE_MGMT_PAT` — a Personal Access Token from our Supabase organization, with project create/read/delete scopes. I'll request this via `add_secret` after you approve the plan. You generate it at https://supabase.com/dashboard/account/tokens.
-
-We also need to confirm: **which Supabase organization** (org slug) should new projects be created under? I'll ask during implementation — you'll either tell me the slug or we'll look it up from your account.
-
----
-
-## What we will NOT do in this iteration
-
-- **No Supabase OAuth.** Projects are created in *our* org, not the user's. (They never see Supabase, that's the point.)
-- **No live database admin UI.** User cannot run SQL or create tables from Petal yet — they get the connection wired in, and the AI writes migrations into `MIGRATION:` blocks the same way it does today for BYO.
-- **No auto-cancellation refunds.** If provisioning fails, we surface an error and a "contact support" button — no automatic Paystack refund yet.
-- **No proration.** A renewal is just a new 30-day slot starting from today.
-
----
-
-## Risk callouts
-
-1. **Supabase Management API rate limits** — creating projects is rate-limited (~60/hour per org). For launch volume that's fine; if we ever hit it we'll need a queue.
-2. **Provisioning latency** — a fresh Supabase project takes 60–180 seconds to become ACTIVE_HEALTHY. The UI will show a progress card and poll every 5 seconds.
-3. **Org-level cap** — Supabase Pro org has a soft cap (~10 projects free, then $10 each). At ~70 paying users we'll hit that and start paying per-project. The $15/mo price already accounts for this.
-4. **What happens if Petal goes away?** Data lock-in. We should document and ship a "download my Supabase project credentials" button so users always have an exit path. (Included in this plan as a small UI addition on the ManagedBackendCard.)
+Steps 1–4 unblock everything; we can ship a "Labs preview" with just Stripe + Resend if we need to cut scope.
