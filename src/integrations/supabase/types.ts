@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      backend_slots: {
+        Row: {
+          addon_code: string
+          amount_minor: number
+          consumed_by_backend_id: string | null
+          created_at: string
+          currency_code: string
+          environment: string
+          expires_at: string
+          id: string
+          paystack_reference: string
+          project_id: string
+          purchased_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          addon_code: string
+          amount_minor: number
+          consumed_by_backend_id?: string | null
+          created_at?: string
+          currency_code: string
+          environment?: string
+          expires_at: string
+          id?: string
+          paystack_reference: string
+          project_id: string
+          purchased_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          addon_code?: string
+          amount_minor?: number
+          consumed_by_backend_id?: string | null
+          created_at?: string
+          currency_code?: string
+          environment?: string
+          expires_at?: string
+          id?: string
+          paystack_reference?: string
+          project_id?: string
+          purchased_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       billing_addons: {
         Row: {
           code: string
@@ -552,10 +603,13 @@ export type Database = {
           error_message: string | null
           health_checked_at: string | null
           id: string
+          paused_at: string | null
           project_id: string
           provider: string
+          provisioning_started_at: string | null
           service_role_key: string | null
           status: string
+          supabase_project_ref: string | null
           supabase_url: string
         }
         Insert: {
@@ -564,10 +618,13 @@ export type Database = {
           error_message?: string | null
           health_checked_at?: string | null
           id?: string
+          paused_at?: string | null
           project_id: string
           provider?: string
+          provisioning_started_at?: string | null
           service_role_key?: string | null
           status?: string
+          supabase_project_ref?: string | null
           supabase_url: string
         }
         Update: {
@@ -576,10 +633,13 @@ export type Database = {
           error_message?: string | null
           health_checked_at?: string | null
           id?: string
+          paused_at?: string | null
           project_id?: string
           provider?: string
+          provisioning_started_at?: string | null
           service_role_key?: string | null
           status?: string
+          supabase_project_ref?: string | null
           supabase_url?: string
         }
         Relationships: [
@@ -1076,6 +1136,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      apply_paystack_backend_slot: {
+        Args: {
+          _addon_code: string
+          _amount_minor: number
+          _currency_code: string
+          _environment: string
+          _project_id: string
+          _reference: string
+          _user_id: string
+        }
+        Returns: string
+      }
       apply_paystack_domain_slot: {
         Args: {
           _addon_code: string
@@ -1129,6 +1201,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      expire_backend_slots: { Args: never; Returns: undefined }
       expire_domain_slots: { Args: never; Returns: undefined }
       expire_paystack_plans: { Args: never; Returns: undefined }
       expire_topup_lots: { Args: never; Returns: undefined }
