@@ -17,7 +17,6 @@ import {
   Wand2,
   Paperclip,
   Github,
-  Hammer,
   Camera,
   X,
 } from "lucide-react";
@@ -75,7 +74,7 @@ function Landing() {
   const [prompt, setPrompt] = useState("");
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
   const [isFocused, setIsFocused] = useState(false);
-  const [mode, setMode] = useState<"build" | "discuss">("build");
+  const [mode, setMode] = useState<ComposerMode>("build");
   const [attachments, setAttachments] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,11 +102,11 @@ function Landing() {
     try {
       const raw = sessionStorage.getItem(DRAFT_KEY);
       if (!raw) return;
-      const parsed = JSON.parse(raw) as { prompt?: string; mode?: "build" | "discuss" };
+      const parsed = JSON.parse(raw) as { prompt?: string; mode?: ComposerMode };
       if (typeof parsed.prompt === "string" && parsed.prompt.length > 0) {
         setPrompt(parsed.prompt);
       }
-      if (parsed.mode === "discuss" || parsed.mode === "build") {
+      if (parsed.mode === "discuss" || parsed.mode === "build" || parsed.mode === "coach") {
         setMode(parsed.mode);
       }
     } catch {
@@ -199,11 +198,12 @@ function Landing() {
     e.target.value = "";
   };
 
-  const submit = async () => {
-    const trimmed = prompt.trim();
+  const submit = async (overridePrompt?: string, opts?: { fromCoach?: boolean }) => {
+    const trimmed = (overridePrompt ?? prompt).trim();
     if (!trimmed) return;
     const params = new URLSearchParams({ prompt: trimmed });
     if (mode === "discuss") params.set("mode", "discuss");
+    if (opts?.fromCoach) params.set("source", "coach");
 
     // The draft is about to ride along on the URL — drop the local copy so
     // a future visit to the landing page doesn't pre-fill an old prompt.
@@ -236,6 +236,11 @@ function Landing() {
       return;
     }
     window.location.href = target;
+  };
+
+  const goToAuthForCoach = () => {
+    const target = `/?focus=composer`;
+    window.location.href = `/auth?mode=signup&redirect=${encodeURIComponent(target)}`;
   };
 
 
@@ -280,35 +285,54 @@ function Landing() {
             className="mx-auto mt-10 max-w-2xl"
           >
             <div className="group relative rounded-3xl border border-border bg-card/90 p-4 text-left shadow-[var(--shadow-glow)] backdrop-blur transition focus-within:border-primary focus-within:shadow-[var(--shadow-soft)]">
-              <textarea
-                ref={textareaRef}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onFocus={() => {
-                  setIsFocused(true);
-                  setAnimatedPlaceholder("");
-                }}
-                onBlur={() => setIsFocused(false)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    submit();
+              {mode === "coach" ? (
+                <IdeaCoach
+                  isAuthed={!!user}
+                  onRequireSignIn={goToAuthForCoach}
+                  onComplete={(p) => {
+                    // Hand the assembled prompt back to the real composer in
+                    // Build mode so the user can review/tweak before sending.
+                    setMode("build");
+                    setPrompt(p);
+                    requestAnimationFrame(() => {
+                      const el = textareaRef.current;
+                      if (!el) return;
+                      el.focus();
+                      el.setSelectionRange(p.length, p.length);
+                    });
+                  }}
+                />
+              ) : (
+                <textarea
+                  ref={textareaRef}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onFocus={() => {
+                    setIsFocused(true);
+                    setAnimatedPlaceholder("");
+                  }}
+                  onBlur={() => setIsFocused(false)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      submit();
+                    }
+                  }}
+                  rows={3}
+                  placeholder={
+                    isFocused || prompt
+                      ? mode === "discuss"
+                        ? "Ask Petal anything about your idea…"
+                        : "Describe an app you want to build…"
+                      : animatedPlaceholder
                   }
-                }}
-                rows={3}
-                placeholder={
-                  isFocused || prompt
-                    ? mode === "discuss"
-                      ? "Ask Petal anything about your idea…"
-                      : "Describe an app you want to build…"
-                    : animatedPlaceholder
-                }
-                className="block w-full resize-none bg-transparent px-2 pb-16 pt-1 text-base leading-relaxed outline-none placeholder:text-muted-foreground/80"
-                style={{ minHeight: "6rem" }}
-              />
+                  className="block w-full resize-none bg-transparent px-2 pb-16 pt-1 text-base leading-relaxed outline-none placeholder:text-muted-foreground/80"
+                  style={{ minHeight: "6rem" }}
+                />
+              )}
 
-              {/* Attachment chips */}
-              {attachments.length > 0 && (
+              {/* Attachment chips — only relevant for build/discuss */}
+              {mode !== "coach" && attachments.length > 0 && (
                 <div className="mb-2 flex flex-wrap gap-1.5 px-1">
                   {attachments.map((file, idx) => (
                     <span
@@ -342,57 +366,32 @@ function Landing() {
 
               {/* Bottom toolbar */}
               <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                    aria-label="Attach a photo or screenshot"
-                    title="Attach a photo or screenshot"
-                  >
-                    <Camera className="h-4 w-4" />
-                  </button>
+                <div className="flex items-center gap-1.5">
+                  {mode !== "coach" && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                      aria-label="Attach a photo or screenshot"
+                      title="Attach a photo or screenshot"
+                    >
+                      <Camera className="h-4 w-4" />
+                    </button>
+                  )}
 
-                  {/* Build / Discuss mode toggle */}
-                  <div className="ml-1 inline-flex items-center rounded-full border border-border bg-background/60 p-0.5 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => setMode("build")}
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
-                        mode === "build"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      aria-pressed={mode === "build"}
-                    >
-                      <Hammer className="h-3 w-3" />
-                      Build
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMode("discuss")}
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
-                        mode === "discuss"
-                          ? "bg-foreground text-background"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      aria-pressed={mode === "discuss"}
-                      title="Chat first — Petal won't change any files"
-                    >
-                      <MessageSquare className="h-3 w-3" />
-                      Discuss
-                    </button>
-                  </div>
+                  <ComposerModePicker value={mode} onChange={setMode} />
                 </div>
 
-                <button
-                  type="submit"
-                  aria-label={mode === "discuss" ? "Ask Petal" : "Build it"}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:brightness-105 disabled:opacity-50"
-                  disabled={!prompt.trim()}
-                >
-                  <ArrowUp className="h-4 w-4" />
-                </button>
+                {mode !== "coach" && (
+                  <button
+                    type="submit"
+                    aria-label={mode === "discuss" ? "Ask Petal" : "Build it"}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:brightness-105 disabled:opacity-50"
+                    disabled={!prompt.trim()}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -409,6 +408,14 @@ function Landing() {
                 el.focus();
                 el.setSelectionRange(p.length, p.length);
                 el.scrollIntoView({ behavior: "smooth", block: "center" });
+              });
+            }}
+            onSwitchToCoach={() => {
+              setMode("coach");
+              requestAnimationFrame(() => {
+                document
+                  .querySelector("form")
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
               });
             }}
           />
