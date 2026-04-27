@@ -34,6 +34,7 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
+import { Route as ApiPublicCronBackendSlotsRouteImport } from './routes/api/public/cron/backend-slots'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
 
 const ProjectsRoute = ProjectsRouteImport.update({
@@ -165,6 +166,12 @@ const ApiPublicPaystackWebhookRoute =
     path: '/api/public/paystack/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronBackendSlotsRoute =
+  ApiPublicCronBackendSlotsRouteImport.update({
+    id: '/api/public/cron/backend-slots',
+    path: '/api/public/cron/backend-slots',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicBuildsCallbackRoute = ApiPublicBuildsCallbackRouteImport.update({
   id: '/api/public/builds/callback',
   path: '/api/public/builds/callback',
@@ -192,6 +199,7 @@ export interface FileRoutesByFullPath {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/cron/backend-slots': typeof ApiPublicCronBackendSlotsRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -220,6 +228,7 @@ export interface FileRoutesByTo {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/cron/backend-slots': typeof ApiPublicCronBackendSlotsRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -249,6 +258,7 @@ export interface FileRoutesById {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/cron/backend-slots': typeof ApiPublicCronBackendSlotsRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/lovable/email/suppression'
     | '/api/public/builds/callback'
+    | '/api/public/cron/backend-slots'
     | '/api/public/paystack/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -307,6 +318,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/lovable/email/suppression'
     | '/api/public/builds/callback'
+    | '/api/public/cron/backend-slots'
     | '/api/public/paystack/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -335,6 +347,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/lovable/email/suppression'
     | '/api/public/builds/callback'
+    | '/api/public/cron/backend-slots'
     | '/api/public/paystack/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -364,6 +377,7 @@ export interface RootRouteChildren {
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
+  ApiPublicCronBackendSlotsRoute: typeof ApiPublicCronBackendSlotsRoute
   ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -549,6 +563,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaystackWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/backend-slots': {
+      id: '/api/public/cron/backend-slots'
+      path: '/api/public/cron/backend-slots'
+      fullPath: '/api/public/cron/backend-slots'
+      preLoaderRoute: typeof ApiPublicCronBackendSlotsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/builds/callback': {
       id: '/api/public/builds/callback'
       path: '/api/public/builds/callback'
@@ -580,6 +601,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
+  ApiPublicCronBackendSlotsRoute: ApiPublicCronBackendSlotsRoute,
   ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
