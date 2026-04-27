@@ -19,6 +19,10 @@ import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
 import { priceBuild, BUILD_FLOOR } from "@/server/credit-pricing.server";
+import {
+  loadProjectMemoryBlock,
+  updateProjectMemory,
+} from "@/server/project-memory.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
