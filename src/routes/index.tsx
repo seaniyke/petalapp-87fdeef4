@@ -21,7 +21,28 @@ import {
   Github,
   Camera,
   X,
+  Globe,
+  Lock,
+  Plus,
+  Sparkles,
 } from "lucide-react";
+
+type ProjectFilter = "all" | "recent" | "public";
+
+function formatRelativeTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  const diff = Date.now() - then;
+  const m = Math.round(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.round(h / 24);
+  if (d < 7) return `${d}d ago`;
+  const w = Math.round(d / 7);
+  if (w < 5) return `${w}w ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 type LandingSearch = { focus?: "composer" };
 
@@ -98,6 +119,7 @@ function Landing() {
 
   const [projects, setProjects] = useState<ProjectRow[] | null>(null);
   const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectFilter, setProjectFilter] = useState<ProjectFilter>("all");
   useEffect(() => {
     if (!isReady || !isAuthed) {
       setProjects(null);
@@ -489,20 +511,60 @@ function Landing() {
       {isAuthed ? (
         <section className="relative px-4 pb-24 sm:px-6">
           <div className="mx-auto max-w-6xl">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <h2 className="font-display text-2xl sm:text-3xl">My projects</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Pick up where you left off, or start something new above.
-                </p>
+            {/* Subtle divider — keeps the section visually separated from the
+                composer above without a hard rule. */}
+            <div className="mx-auto h-px max-w-xs bg-gradient-to-r from-transparent via-border to-transparent" />
+
+            {/* Header row — title + count, with a quiet "View all" affordance */}
+            <div className="mt-10 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+              <div className="flex items-center gap-3">
+                <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+                  My projects
+                </h2>
+                {projects && projects.length > 0 && (
+                  <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    {projects.length}
+                  </span>
+                )}
               </div>
-              <Link
-                to="/projects"
-                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-sm text-muted-foreground transition hover:text-foreground"
-              >
-                View all
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
+
+              {/* Filter chips — Lovable-style segmented pills */}
+              {projects && projects.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex items-center gap-1 rounded-full border border-border bg-card/60 p-1 text-xs">
+                    {(
+                      [
+                        { id: "all" as const, label: "All" },
+                        { id: "recent" as const, label: "Recent" },
+                        { id: "public" as const, label: "Public" },
+                      ]
+                    ).map((opt) => {
+                      const active = projectFilter === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setProjectFilter(opt.id)}
+                          className={`rounded-full px-3 py-1.5 font-medium transition ${
+                            active
+                              ? "bg-foreground text-background"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Link
+                    to="/projects"
+                    className="hidden h-8 items-center gap-1 rounded-full px-3 text-xs text-muted-foreground transition hover:text-foreground sm:inline-flex"
+                  >
+                    View all
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              )}
             </div>
 
             <div className="mt-6">
@@ -511,40 +573,109 @@ function Landing() {
                   {Array.from({ length: 6 }).map((_, i) => (
                     <div
                       key={i}
-                      className="h-44 animate-pulse rounded-2xl border border-border bg-card"
+                      className="h-56 animate-pulse rounded-3xl border border-border bg-card"
                     />
                   ))}
                 </div>
               ) : projects.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-border bg-card/60 p-10 text-center">
-                  <h3 className="font-display text-xl">No projects yet</h3>
+                <div className="relative overflow-hidden rounded-3xl border border-dashed border-border bg-card/40 p-12 text-center">
+                  <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-border bg-card">
+                    <Sparkles className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <h3 className="mt-5 font-display text-xl">Your workspace is empty</h3>
                   <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
                     Describe an app in the box above and Petal will build the
-                    files for you.
+                    files for you in seconds.
                   </p>
                 </div>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {projects.slice(0, 6).map((p) => (
-                    <Link
-                      key={p.id}
-                      to="/builder"
-                      search={{ id: p.id, prompt: undefined, mode: undefined, attachKey: undefined }}
-                      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]"
-                    >
-                      <ProjectThumbnail projectId={p.id} className="h-28" />
-                      <div className="flex flex-1 flex-col p-4">
-                        <h3 className="truncate font-semibold">{p.title}</h3>
-                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                          {p.summary ?? "No description yet."}
-                        </p>
-                        <div className="mt-auto pt-3 text-[11px] text-muted-foreground">
-                          Updated {new Date(p.updated_at).toLocaleDateString()}
-                        </div>
+                (() => {
+                  const filtered =
+                    projectFilter === "public"
+                      ? projects.filter((p) => p.is_public)
+                      : projects;
+                  const visible = filtered.slice(0, 6);
+                  if (visible.length === 0) {
+                    return (
+                      <div className="rounded-3xl border border-dashed border-border bg-card/40 p-10 text-center text-sm text-muted-foreground">
+                        Nothing here yet — try a different filter.
                       </div>
-                    </Link>
-                  ))}
-                </div>
+                    );
+                  }
+                  return (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {/* "Start something new" card — first slot, mirrors Lovable */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const el = textareaRef.current;
+                          if (el) {
+                            el.focus();
+                            el.scrollIntoView({ behavior: "smooth", block: "center" });
+                          }
+                        }}
+                        className="group flex h-full min-h-[14rem] flex-col items-start justify-between rounded-3xl border border-dashed border-border bg-card/30 p-5 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:bg-card"
+                      >
+                        <span className="grid h-10 w-10 place-items-center rounded-full border border-border bg-background text-muted-foreground transition group-hover:border-primary/60 group-hover:text-foreground">
+                          <Plus className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <div className="font-display text-lg font-semibold">
+                            New project
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Start from a single sentence.
+                          </p>
+                        </div>
+                      </button>
+
+                      {visible.map((p) => (
+                        <Link
+                          key={p.id}
+                          to="/builder"
+                          search={{
+                            id: p.id,
+                            prompt: undefined,
+                            mode: undefined,
+                            attachKey: undefined,
+                          }}
+                          className="group relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card/80 transition hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-[var(--shadow-soft)]"
+                        >
+                          <div className="relative">
+                            <ProjectThumbnail projectId={p.id} className="h-32" />
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
+                            <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground backdrop-blur">
+                              {p.is_public ? (
+                                <>
+                                  <Globe className="h-3 w-3" /> Public
+                                </>
+                              ) : (
+                                <>
+                                  <Lock className="h-3 w-3" /> Private
+                                </>
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex flex-1 flex-col p-5">
+                            <h3 className="truncate font-display text-base font-semibold tracking-tight">
+                              {p.title}
+                            </h3>
+                            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                              {p.summary ?? "No description yet."}
+                            </p>
+                            <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-3 text-[11px] text-muted-foreground">
+                              <span>Edited {formatRelativeTime(p.updated_at)}</span>
+                              <span className="inline-flex items-center gap-1 text-foreground/60 opacity-0 transition group-hover:opacity-100">
+                                Open
+                                <ArrowRight className="h-3 w-3" />
+                              </span>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  );
+                })()
               )}
             </div>
           </div>
