@@ -1177,14 +1177,14 @@ function Builder() {
         {/* Left: hamburger (mobile) + back/title (desktop) */}
         <div className="flex min-w-0 items-center gap-2">
           {/* Mobile: hamburger opens the actions sheet */}
-          <button
-            type="button"
-            onClick={() => setActionsOpen(true)}
-            className="grid h-9 w-9 place-items-center rounded-lg text-foreground transition hover:bg-muted md:hidden"
-            aria-label="Open menu"
+          {/* Mobile: back to projects (replaces the hamburger to avoid hiding nav). */}
+          <Link
+            to="/projects"
+            aria-label="Back to projects"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-foreground transition hover:bg-muted md:hidden"
           >
-            <Menu className="h-5 w-5" />
-          </button>
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
           {/* Desktop: back to projects + project chip */}
           <Link
             to="/projects"
