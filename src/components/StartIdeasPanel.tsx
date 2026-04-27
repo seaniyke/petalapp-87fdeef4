@@ -90,7 +90,7 @@ const ACCENT_BG: Record<StartIdea["accent"], string> = {
 
 export function StartIdeasPanel({ onPick }: { onPick: (prompt: string) => void }) {
   return (
-    <section aria-labelledby="start-ideas-heading" className="mx-auto mt-8 max-w-4xl">
+    <section aria-labelledby="start-ideas-heading" className="mx-auto mt-8 max-w-4xl md:px-0">
       <div className="mb-3 flex items-center justify-center gap-2">
         <Sparkles className="h-3.5 w-3.5 text-primary" />
         <h2
