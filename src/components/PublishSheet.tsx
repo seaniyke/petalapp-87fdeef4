@@ -254,32 +254,43 @@ export function PublishSheet({
         <div className="mt-2 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold tracking-tight">
-              {hasEverPublished ? "Published" : "Not published yet"}
+              {isUnpublished
+                ? "Not published yet"
+                : visibility === "private"
+                  ? "Published privately"
+                  : "Published"}
             </h2>
-            {hasEverPublished && resolved.source === "deployment" && (
-              <p className="text-xs text-muted-foreground">
-                Live on the Petal subdomain
-              </p>
+            {hasPublishedBuild && resolved.source === "deployment" && (
+              <p className="text-xs text-muted-foreground">Live on the Petal subdomain</p>
             )}
-            {hasEverPublished && resolved.source === "custom_domain" && (
+            {hasPublishedBuild && resolved.source === "custom_domain" && (
+              <p className="text-xs text-muted-foreground">Live on your custom domain</p>
+            )}
+            {isUnpublished && (
               <p className="text-xs text-muted-foreground">
-                Live on your custom domain
+                Publish when you're ready to share with the world.
               </p>
             )}
           </div>
-          {status === "pending" && (
+          {buildStatus === "pending" && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
               <Loader2 className="h-3 w-3 animate-spin" />
               Publishing
             </span>
           )}
-          {status === "failed" && (
+          {buildStatus === "failed" && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
               <AlertCircle className="h-3 w-3" />
               Failed
             </span>
           )}
-          {status === "ready" && hasEverPublished && (
+          {!publishing && buildStatus !== "pending" && buildStatus !== "failed" && updateAvailable && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+              <AlertCircle className="h-3 w-3" />
+              Update available
+            </span>
+          )}
+          {!publishing && buildStatus === "ready" && hasPublishedBuild && !updateAvailable && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
               <CheckCircle2 className="h-3 w-3" />
               Live
@@ -337,22 +348,33 @@ export function PublishSheet({
           <span className="text-sm font-medium">Who can see this website</span>
           <div className="grid grid-cols-2 gap-2">
             <VisibilityChoice
-              active={project.is_public}
+              active={visibility === "public"}
               icon={<Globe className="h-4 w-4" />}
               title="Public"
               subtitle="Anyone with the URL"
               busy={visibilityBusy}
-              onClick={() => !project.is_public && toggleVisibility(true)}
+              onClick={() => changeVisibility("public")}
             />
             <VisibilityChoice
-              active={!project.is_public}
+              active={visibility === "private"}
               icon={<Lock className="h-4 w-4" />}
               title="Private"
-              subtitle="Only you"
+              subtitle="Only your workspace"
               busy={visibilityBusy}
-              onClick={() => project.is_public && toggleVisibility(false)}
+              onClick={() => changeVisibility("private")}
             />
           </div>
+          {hasPublishedBuild && (
+            <button
+              type="button"
+              onClick={() => changeVisibility("unpublished")}
+              disabled={visibilityBusy}
+              className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive disabled:opacity-40"
+            >
+              <EyeOff className="h-3.5 w-3.5" />
+              Unpublish this site
+            </button>
+          )}
         </div>
 
         {/* Build error (only when relevant) */}
