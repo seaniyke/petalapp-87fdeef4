@@ -42,9 +42,16 @@ function AuthPage() {
   const { mode: initialMode, redirect } = Route.useSearch();
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
-  const [email, setEmail] = useState("");
+  // Prefill the email from a previous session so a refresh (or a typo retry)
+  // doesn't force the user to retype their address. Password is never stored.
+  const [email, setEmail] = useState(() => readLastAuthEmail());
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Persist the email field as it changes so a refresh keeps it.
+  useEffect(() => {
+    writeLastAuthEmail(email);
+  }, [email]);
 
   // Where to land after a successful auth. Defaults to /projects but honors
   // the ?redirect= param so users who landed here from the home-page composer
@@ -80,6 +87,9 @@ function AuthPage() {
         if (error) throw error;
         toast.success("Welcome back!");
       }
+      // Successful auth — drop the saved email so a shared device doesn't
+      // remember it. (Failed sign-ins keep it so the user can retry.)
+      clearLastAuthEmail();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Something went wrong";
       toast.error(msg);
