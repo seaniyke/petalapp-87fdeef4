@@ -1177,17 +1177,28 @@ function Builder() {
         <FirstRunTour />
       </Suspense>
       {/* Top bar */}
-      <header className="safe-top sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/80 px-3 backdrop-blur sm:px-4">
-        <div className="flex min-w-0 items-center gap-3">
+      <header className="safe-top sticky top-0 z-30 grid h-14 shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border bg-card/80 px-3 backdrop-blur sm:px-4">
+        {/* Left: hamburger (mobile) + back/title (desktop) */}
+        <div className="flex min-w-0 items-center gap-2">
+          {/* Mobile: hamburger opens the actions sheet */}
+          <button
+            type="button"
+            onClick={() => setActionsOpen(true)}
+            className="grid h-9 w-9 place-items-center rounded-lg text-foreground transition hover:bg-muted md:hidden"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          {/* Desktop: back to projects + project chip */}
           <Link
             to="/projects"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
+            className="hidden shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground hover:bg-muted md:inline-flex"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Projects</span>
+            <span>Projects</span>
           </Link>
-          <div className="hidden h-5 w-px bg-border sm:block" />
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="hidden h-5 w-px bg-border md:block" />
+          <div className="hidden min-w-0 items-center gap-2 md:flex">
             <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
               <Sparkles className="h-3.5 w-3.5" />
             </span>
@@ -1203,7 +1214,24 @@ function Builder() {
             </div>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+
+        {/* Center: project name (mobile only). Tap to open the actions sheet. */}
+        <button
+          type="button"
+          onClick={() => setActionsOpen(true)}
+          className="mx-auto inline-flex max-w-[60vw] items-center gap-1 rounded-lg px-2 py-1 text-foreground transition hover:bg-muted md:hidden"
+          aria-label="Project menu"
+        >
+          <span className="truncate font-display text-base font-semibold">
+            {project?.title ?? "Loading…"}
+          </span>
+          <ChevronDownIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </button>
+        {/* Spacer on desktop so the right column hugs the edge. */}
+        <div className="hidden md:block" />
+
+        {/* Right: view toggle + desktop toolbar */}
+        <div className="flex shrink-0 items-center gap-2 justify-self-end">
           <div className="flex items-center rounded-lg border border-border bg-background p-0.5 text-sm">
             <button
               onClick={() => setView("preview")}
@@ -1281,52 +1309,29 @@ function Builder() {
           >
             <Download className="h-3.5 w-3.5" /> Export
           </button>
-          {/* Mobile overflow menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted md:hidden"
-              aria-label="More actions"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem
-                onSelect={() => setPreviewKey((k) => k + 1)}
-                disabled={!files.length}
-              >
-                <RotateCw className="mr-2 h-3.5 w-3.5" /> Reload preview
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setPaletteOpen(true)}>
-                <CommandIcon className="mr-2 h-3.5 w-3.5" /> Commands
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void downloadProject()} disabled={!files.length}>
-                <Download className="mr-2 h-3.5 w-3.5" /> Export .zip
-              </DropdownMenuItem>
-              {project && (
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setSettingsScrollTo("domains");
-                    setSettingsOpen(true);
-                  }}
-                >
-                  <Globe className="mr-2 h-3.5 w-3.5" /> Domains
-                </DropdownMenuItem>
-              )}
-              {project && (
-                <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
-                  <SettingsIcon className="mr-2 h-3.5 w-3.5" /> Project settings
-                  {project.custom_instructions && (
-                    <span
-                      aria-hidden
-                      className="ml-auto h-1.5 w-1.5 rounded-full bg-primary"
-                    />
-                  )}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </header>
+
+      {/* Mobile builder menu + dependent dialogs */}
+      {project && (
+        <>
+          <BuilderActionsSheet
+            open={actionsOpen}
+            onOpenChange={setActionsOpen}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onOpenRename={() => setRenameOpen(true)}
+            onOpenBilling={() => setBillingOpen(true)}
+          />
+          <RenameProjectDialog
+            project={project}
+            open={renameOpen}
+            onOpenChange={setRenameOpen}
+            onChange={setProject}
+          />
+          <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
+        </>
+      )}
+
 
       {/* Mobile-only tab bar (Chat | Preview). Desktop uses the grid below. */}
       <div className="sticky top-[calc(env(safe-area-inset-top)+3.5rem)] z-20 flex shrink-0 items-center gap-1 border-b border-border bg-card/80 px-3 py-1.5 backdrop-blur md:hidden">
