@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, GitFork, Star, ArrowUpRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Sparkles, GitFork, Star, ArrowUpRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
@@ -153,7 +153,7 @@ function GalleryCard({
       params={{ slug: project.slug }}
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]"
     >
-      <Thumbnail projectId={project.id} />
+      <ProjectThumbnail projectId={project.id} className="h-40" />
 
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-3">
