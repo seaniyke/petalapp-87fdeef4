@@ -3631,6 +3631,10 @@ matching file below and adapt — do not invent layouts from scratch.
 - \`kit-validated-form.tsx\` — useForm + FormField + Combobox + DatePicker with inline validation
 - \`kit-sales-chart-card.tsx\` — revenue card with Tabs switching between Area / Line / Bar charts
 
+## AI image placeholders (Phase 4)
+- \`kit-ai-image-hero.tsx\` — full-bleed hero with an AI-generated background via \`petal-image://\`
+- \`kit-ai-image-gallery.tsx\` — three-card product gallery, each tile a unique AI-generated image
+
 ## Conventions
 
 - Every example uses semantic tokens only — no raw hex, no Tailwind colour names.
@@ -3714,4 +3718,8 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/kit-command-palette.tsx", content: KIT_COMMAND_PALETTE, overwrite: true },
   { path: "src/components/examples/kit-validated-form.tsx", content: KIT_VALIDATED_FORM, overwrite: true },
   { path: "src/components/examples/kit-sales-chart-card.tsx", content: KIT_SALES_CHART_CARD, overwrite: true },
+
+  // AI image placeholders (Phase 4)
+  { path: "src/components/examples/kit-ai-image-hero.tsx", content: KIT_AI_IMAGE_HERO, overwrite: true },
+  { path: "src/components/examples/kit-ai-image-gallery.tsx", content: KIT_AI_IMAGE_GALLERY, overwrite: true },
 ];
