@@ -44,8 +44,8 @@ const BackendRenewalReminderEmail = ({
     <Html lang="en" dir="ltr">
       <Head />
       <Preview>
-        Heads up — your managed backend for {projectTitle} renews in {daysLeft}{" "}
-        day{daysLeft === 1 ? "" : "s"}.
+        Heads up — your managed backend for {projectTitle} renews in{" "}
+        {String(daysLeft)} day{daysLeft === 1 ? "" : "s"}.
       </Preview>
       <Body style={main}>
         <Container style={container}>
