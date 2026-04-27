@@ -8,6 +8,7 @@ type Handlers = {
   onRecapDelta?: (delta: string) => void;
   onTool?: (name: "write_project" | "patch_files") => void;
   onPhase?: (phase: "thinking" | "designing" | "writing" | "polishing") => void;
+  onDesignVibe?: (vibe: string, rationale: string) => void;
   onFileProgress?: (written: number, latestPath?: string) => void;
   onResult?: (
     files: ProjectFile[],
