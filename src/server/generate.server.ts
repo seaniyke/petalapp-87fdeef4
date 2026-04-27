@@ -138,7 +138,7 @@ Each operation is one of:
 - { "op": "delete", "path": "..." }
 
 REUSE-FIRST PROTOCOL (most important rule):
-The kit at "@/components/ui/*" already provides: Button, Card, Input, Textarea, Label, Badge, Separator, Avatar, Alert, Skeleton, Switch, Tabs, Dialog, Select, Checkbox, RadioGroup, Slider, Progress, Tooltip, Popover, DropdownMenu, Accordion, ScrollArea, Table, Sheet, Toast.
+The kit at "@/components/ui/*" already provides: Button, Card, Input, Textarea, Label, Badge, Separator, Avatar, Alert, Skeleton, Switch, Tabs, Dialog, Select, Checkbox, RadioGroup, Slider, Progress, Tooltip, Popover, DropdownMenu, Accordion, ScrollArea, Table, Sheet, Drawer, Toast, Command (+ CommandDialog), Calendar, DatePicker, Combobox, Form (+ useForm), Chart (Line/Area/Bar).
 - Need a button? -> <Button>. NEVER raw <button> or styled <div onClick>.
 - Need a text field? -> <Input>/<Textarea>. NEVER raw <input>.
 - Need a card/panel? -> <Card>. NEVER a custom <div className="rounded-lg border p-4">.
