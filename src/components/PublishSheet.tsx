@@ -42,12 +42,18 @@ import {
   CheckCircle2,
   ExternalLink,
   EyeOff,
+  Users,
 } from "lucide-react";
 import { triggerBuild } from "@/lib/builds";
 import { publishProject, type PublishVisibility } from "@/lib/publish";
 import { resolvePublishedUrl, type PublishedUrlResult } from "@/lib/published-url";
 import { type ProjectRow } from "@/lib/projects";
 import { useBuildActivity } from "@/hooks/use-build-activity";
+import {
+  fetchProjectVisitors,
+  type VisitorRange,
+  type VisitorStatsResult,
+} from "@/lib/visitors";
 import { toast } from "sonner";
 
 type Props = {
