@@ -1687,7 +1687,7 @@ function Builder() {
                           : "max-w-none"
                   }`}
                 >
-                  {isMobile ? (
+                  {useDeployedFallback ? (
                     <Suspense
                       fallback={
                         <div className="grid h-full place-items-center text-xs text-muted-foreground">
