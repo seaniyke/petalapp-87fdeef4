@@ -191,21 +191,18 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
   }
 
   async function handleRemove(d: ProjectDomain) {
-    if (
-      !confirm(
-        `Remove ${d.hostname}? Your site will stop being served on this domain.`,
-      )
-    ) {
-      return;
-    }
+    setRemoving(true);
     try {
       await removeDomain(projectId, d.id);
       setDomains((prev) => prev.filter((x) => x.id !== d.id));
       // FK is ON DELETE SET NULL, so the slot is freed server-side; refresh.
       void refreshSlots();
       toast.success("Domain removed — slot freed for another domain");
+      setConfirmRemove(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't remove");
+    } finally {
+      setRemoving(false);
     }
   }
 
