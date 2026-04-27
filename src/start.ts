@@ -3,6 +3,7 @@ import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
 import {
   isReservedHost,
   proxyToPages,
+  renderUnpublishedPage,
   resolveHost,
 } from "@/server/host-routing.server";
 
@@ -61,6 +62,8 @@ const customDomainProxy = createMiddleware().server(async ({ next }) => {
   const target = await resolveHost(host);
   if (!target) return next(); // unknown domain → fall through to Petal app
 
+  if (target.kind === "unpublished") return renderUnpublishedPage("unpublished");
+  if (target.kind === "private") return renderUnpublishedPage("private");
   return proxyToPages(request, target.pagesUrl);
 });
 

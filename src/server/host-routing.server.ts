@@ -185,3 +185,54 @@ export async function proxyToPages(
     headers: respHeaders,
   });
 }
+
+/**
+ * Render a friendly placeholder when a custom domain is connected but the
+ * project isn't published (or is published privately). Visitors get a clean
+ * branded page instead of a confusing proxy error.
+ */
+export function renderUnpublishedPage(
+  kind: "unpublished" | "private",
+): Response {
+  const isPrivate = kind === "private";
+  const title = isPrivate ? "This site is private" : "This site isn't published yet";
+  const body = isPrivate
+    ? "The owner of this app has restricted access. Sign in with the owner's workspace to view it."
+    : "The owner is still working on this app. Check back soon, or get in touch with them for an update.";
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>${title}</title>
+<meta name="robots" content="noindex" />
+<style>
+  :root { color-scheme: light dark; }
+  html, body { height: 100%; margin: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #fafafa; color: #111; display: grid; place-items: center; padding: 2rem; }
+  @media (prefers-color-scheme: dark) { body { background: #0a0a0a; color: #f5f5f5; } }
+  main { max-width: 32rem; text-align: center; }
+  h1 { font-size: 1.5rem; margin: 0 0 0.5rem; letter-spacing: -0.01em; }
+  p { margin: 0; line-height: 1.55; opacity: 0.75; }
+  .badge { display: inline-block; padding: 0.25rem 0.625rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; background: rgba(0,0,0,0.06); margin-bottom: 1rem; }
+  @media (prefers-color-scheme: dark) { .badge { background: rgba(255,255,255,0.08); } }
+  .footer { margin-top: 2rem; font-size: 0.75rem; opacity: 0.5; }
+</style>
+</head>
+<body>
+  <main>
+    <span class="badge">${isPrivate ? "Private" : "Coming soon"}</span>
+    <h1>${title}</h1>
+    <p>${body}</p>
+    <div class="footer">Built with Petal</div>
+  </main>
+</body>
+</html>`;
+  return new Response(html, {
+    status: isPrivate ? 403 : 404,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
+}
