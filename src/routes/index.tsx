@@ -80,7 +80,45 @@ function Landing() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
+  const { user, isReady } = useAuth();
+  const isAuthed = !!user;
+  const firstName = useMemo(() => {
+    const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+    const fromMeta =
+      (typeof meta.full_name === "string" && meta.full_name) ||
+      (typeof meta.name === "string" && meta.name) ||
+      (typeof meta.first_name === "string" && meta.first_name) ||
+      "";
+    if (fromMeta) return String(fromMeta).trim().split(/\s+/)[0];
+    const email = user?.email ?? "";
+    const local = email.split("@")[0] ?? "";
+    if (!local) return "";
+    return local.charAt(0).toUpperCase() + local.slice(1);
+  }, [user]);
+
+  const [projects, setProjects] = useState<ProjectRow[] | null>(null);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  useEffect(() => {
+    if (!isReady || !isAuthed) {
+      setProjects(null);
+      return;
+    }
+    let cancelled = false;
+    setProjectsLoading(true);
+    listProjects()
+      .then((rows) => {
+        if (!cancelled) setProjects(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setProjects([]);
+      })
+      .finally(() => {
+        if (!cancelled) setProjectsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, isAuthed]);
 
   // When the user clicks "+ New project" on /projects we route them here with
   // ?focus=composer. Drop the cursor in the textarea and scroll it into view
