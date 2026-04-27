@@ -96,6 +96,8 @@ export const Route = createFileRoute("/builder")({
     prompt: typeof search.prompt === "string" ? search.prompt : undefined,
     id: typeof search.id === "string" ? search.id : undefined,
     mode: search.mode === "discuss" ? ("discuss" as const) : undefined,
+    /** sessionStorage key holding ChatAttachment[] stashed by the landing page. */
+    attachKey: typeof search.attachKey === "string" ? search.attachKey : undefined,
   }),
   head: () => ({
     meta: [
