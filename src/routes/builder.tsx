@@ -434,7 +434,10 @@ function Builder() {
           },
         });
       }
-    } else if (buildSnap.status === "pending") {
+    } else if (buildSnap.status === "pending" || buildSnap.status === "building") {
+      // Both states keep the activity card on the deploying phase. Without
+      // the 'building' branch, the card would freeze the moment Railway
+      // started processing the job.
       setPhases((p) => advanceTo(p, "deploying"));
     } else if (buildSnap.status === "failed") {
       setPhases((p) => markFailed(p, "deploying"));
