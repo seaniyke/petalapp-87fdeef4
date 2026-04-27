@@ -14,6 +14,9 @@ import {
   Wand2,
   Paperclip,
   Github,
+  Hammer,
+  Camera,
+  X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
