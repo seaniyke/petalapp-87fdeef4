@@ -76,18 +76,27 @@ async function cfFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 /**
- * Register a custom hostname. Cloudflare returns the TXT record needed for
- * ownership validation and starts SSL issuance automatically (HTTP-01 by
- * default; TXT method is more reliable for proxied/CNAME setups).
+ * Register a custom hostname.
+ *
+ * `sslMethod`:
+ *   - `"txt"` (default) — for user-owned domains the customer is CNAME'ing to
+ *     us. They must add a TXT record at their registrar; this works regardless
+ *     of whether DNS is fully pointed at us yet.
+ *   - `"http"` — for hostnames that already resolve to Cloudflare (e.g. our
+ *     own `*.buildwithpetal.com` wildcard). HTTP-01 validation completes in
+ *     seconds with zero user action — no per-subdomain DNS or TXT needed.
  */
-export async function createCustomHostname(hostname: string): Promise<CfHostname> {
+export async function createCustomHostname(
+  hostname: string,
+  opts: { sslMethod?: "txt" | "http" } = {},
+): Promise<CfHostname> {
   const { zoneId } = getEnv();
   return cfFetch<CfHostname>(`/zones/${zoneId}/custom_hostnames`, {
     method: "POST",
     body: JSON.stringify({
       hostname,
       ssl: {
-        method: "txt",
+        method: opts.sslMethod ?? "txt",
         type: "dv",
         settings: {
           min_tls_version: "1.2",

@@ -156,7 +156,11 @@ export async function claimSubdomain(args: {
   // surface that as a soft success so the caller can move on.
   let cf;
   try {
-    cf = await createCustomHostname(hostname);
+    // HTTP-01 validation: the `*.buildwithpetal.com` wildcard already points
+    // at Cloudflare's edge, so HTTP challenge completes in seconds without
+    // any per-subdomain DNS work. (TXT would require us to also create an
+    // `_acme-challenge.<slug>` record per claim.)
+    cf = await createCustomHostname(hostname, { sslMethod: "http" });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Cloudflare error";
     // 1414 = "custom hostname already exists in this zone".
