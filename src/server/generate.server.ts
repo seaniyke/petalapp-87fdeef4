@@ -297,6 +297,11 @@ export const PATCH_FILES_TOOL = {
     parameters: {
       type: "object",
       properties: {
+        plan: {
+          type: "string",
+          description:
+            "1-3 short sentences written FIRST explaining what you're about to change and why. Streamed before any ops.",
+        },
         summary: {
           type: "string",
           description: "Friendly 1-2 sentence summary of what was changed.",
@@ -318,8 +323,13 @@ export const PATCH_FILES_TOOL = {
             additionalProperties: false,
           },
         },
+        recap: {
+          type: "string",
+          description:
+            "Markdown bulleted recap of files touched and what each change does. Streamed AFTER ops.",
+        },
       },
-      required: ["summary", "ops"],
+      required: ["plan", "summary", "ops", "recap"],
       additionalProperties: false,
     },
   },
