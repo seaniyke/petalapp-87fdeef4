@@ -27,7 +27,6 @@ import {
   Monitor,
   Paperclip,
   ImageIcon,
-  Menu,
 } from "lucide-react";
 import {
   encodeAttachments,
