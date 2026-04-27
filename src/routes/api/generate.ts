@@ -337,10 +337,39 @@ export const Route = createFileRoute("/api/generate")({
         const userJwt = reqAuth?.startsWith("Bearer ")
           ? reqAuth.slice("Bearer ".length)
           : "";
-        const memoryBlock =
+        const memoryEntries =
           body.projectId && userJwt
-            ? await loadProjectMemoryBlock(userJwt, body.projectId)
-            : "";
+            ? await loadProjectMemory(userJwt, body.projectId)
+            : [];
+        const memoryBlock = renderMemoryBlock(memoryEntries);
+
+        // Layer 4 — Design Director Pass.
+        // On the very first build, pick a bold visual direction up-front so
+        // the model doesn't fall back to the generic AI aesthetic. On
+        // subsequent turns, the cached direction in project_memory is
+        // honored automatically (pickDesignDirection short-circuits to it).
+        // Patches skip the call entirely — the existing aesthetic wins.
+        const lastUserContent = (() => {
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === "user") {
+              const c = messages[i].content;
+              return typeof c === "string" ? c : "";
+            }
+          }
+          return "";
+        })();
+        const designDirection =
+          isInitial && userJwt
+            ? await pickDesignDirection({
+                jwt: userJwt,
+                projectId: body.projectId,
+                brief: lastUserContent,
+                memoryEntries,
+              })
+            : null;
+        const designBlock = designDirection
+          ? renderDesignDirectionBlock(designDirection)
+          : "";
 
         const filesContext = isInitial
           ? ""
