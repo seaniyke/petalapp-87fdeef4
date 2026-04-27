@@ -915,6 +915,9 @@ export type Database = {
           latest_build_id: string | null
           owner_id: string
           primary_domain_id: string | null
+          published_at: string | null
+          published_build_id: string | null
+          published_visibility: string
           remix_count: number
           remixed_from_id: string | null
           slug: string
@@ -931,6 +934,9 @@ export type Database = {
           latest_build_id?: string | null
           owner_id: string
           primary_domain_id?: string | null
+          published_at?: string | null
+          published_build_id?: string | null
+          published_visibility?: string
           remix_count?: number
           remixed_from_id?: string | null
           slug: string
@@ -947,6 +953,9 @@ export type Database = {
           latest_build_id?: string | null
           owner_id?: string
           primary_domain_id?: string | null
+          published_at?: string | null
+          published_build_id?: string | null
+          published_visibility?: string
           remix_count?: number
           remixed_from_id?: string | null
           slug?: string
