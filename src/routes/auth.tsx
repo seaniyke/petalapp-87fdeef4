@@ -53,6 +53,13 @@ function AuthPage() {
     }
   }, [loading, user, redirect]);
 
+  // Where to land after a successful auth. Defaults to /projects but honors
+  // the ?redirect= param so users who landed here from the home-page composer
+  // (with their prompt baked into /builder?prompt=...) end up building their
+  // app instead of staring at an empty projects list.
+  const postAuthPath = redirect ?? "/projects";
+  const postAuthUrl = window.location.origin + postAuthPath;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -61,7 +68,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin + "/projects" },
+          options: { emailRedirectTo: postAuthUrl },
         });
         if (error) throw error;
         toast.success("Check your email to confirm your account.");
@@ -82,7 +89,7 @@ function AuthPage() {
     setBusy(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + "/projects",
+        redirect_uri: postAuthUrl,
       });
       if (result.error) {
         toast.error(result.error.message ?? "Could not sign in with Google");
