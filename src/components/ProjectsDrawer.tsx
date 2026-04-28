@@ -136,7 +136,6 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
-              autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search projects"
