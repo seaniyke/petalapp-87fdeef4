@@ -542,3 +542,74 @@ function ConnectForm({
     </form>
   );
 }
+
+/* ---------------- Powered by Petal badge ---------------- */
+
+function PetalBadgeSection({
+  project,
+  onChange,
+}: {
+  project: ProjectRow;
+  onChange: (next: ProjectRow) => void;
+}) {
+  const { plan, loading: walletLoading } = useWallet();
+  const isPaidPlan = !!plan && plan.code !== "free";
+  const [saving, setSaving] = useState(false);
+  const hidden = !!project.hide_petal_badge;
+  // Effective: free-tier always shows badge regardless of flag.
+  const effectivelyShown = !(isPaidPlan && hidden);
+
+  async function toggle(nextHidden: boolean) {
+    if (!isPaidPlan) return;
+    setSaving(true);
+    try {
+      const next = await updateProject(project.id, {
+        hide_petal_badge: nextHidden,
+      });
+      onChange(next);
+      toast.success(nextHidden ? "Badge will be hidden on next build" : "Badge will show on next build");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't update");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-8 border-t border-border pt-6">
+      <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
+        <Sparkles className="h-4 w-4" /> Powered by Petal badge
+      </h3>
+      <p className="mb-3 text-xs text-muted-foreground">
+        A small floating badge appears in the bottom-right of your built app.
+        {isPaidPlan
+          ? " You can hide it anytime."
+          : " Upgrade to a paid plan to hide it on your deployed app."}
+      </p>
+
+      <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-3">
+        <div className="flex items-start gap-2">
+          {!isPaidPlan && (
+            <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          )}
+          <div className="text-sm">
+            <div className="font-medium">
+              {effectivelyShown ? "Showing on your app" : "Hidden on your app"}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {isPaidPlan
+                ? "Toggle to hide or show. Takes effect on the next build."
+                : "Free plan always shows the badge."}
+            </div>
+          </div>
+        </div>
+        <Switch
+          checked={!hidden}
+          disabled={!isPaidPlan || saving || walletLoading}
+          onCheckedChange={(checked) => toggle(!checked)}
+          aria-label="Show Powered by Petal badge"
+        />
+      </div>
+    </div>
+  );
+}
