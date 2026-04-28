@@ -326,6 +326,14 @@ function Builder() {
   // Pick up attachments stashed by the landing page (sessionStorage),
   // exactly once per attachKey. Drop them from storage so a refresh
   // doesn't re-attach them.
+  // Auto-resize the composer textarea as the user types (capped by max-h CSS).
+  useEffect(() => {
+    const el = composerTextareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, [input]);
+
   useEffect(() => {
     if (!attachKey || typeof window === "undefined") return;
     try {
