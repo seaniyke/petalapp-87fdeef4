@@ -719,10 +719,7 @@ export const Route = createFileRoute("/api/generate")({
               // obvious compile/import/JSX issues. If it flags anything,
               // emit a `verifier_warning` SSE event AND run the autofix
               // model one more time to recover. Skipped for trivial turns.
-              const changedPaths =
-                collected.name === "write_project"
-                  ? nextFiles.map((f) => f.path)
-                  : (parsed.ops ?? []).map((o) => o.path);
+              const changedPaths = earlyChangedPaths;
               if (shouldRunVerifier({ fileCount: nextFiles.length, changedPaths })) {
                 try {
                   const verdict = await runVerifier(nextFiles, changedPaths);
