@@ -1,0 +1,1 @@
+UPDATE billing_addons SET description = 'Petal provisions a dedicated managed backend for this project. Renews every 30 days.' WHERE code = 'managed_backend_monthly';
