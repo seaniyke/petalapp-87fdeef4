@@ -431,13 +431,29 @@ export const Route = createFileRoute("/api/generate")({
           }),
         ];
 
+        // Tier 3 — phase classifier. Tags the turn (implement/debug/refactor/
+        // plan/docs) so we can route mechanical work to a cheap model and
+        // hard reasoning to the strong one. Regex-only when unambiguous;
+        // sub-50ms AI fallback otherwise.
+        const phaseTag = await classifyPhase(lastUserContent);
+        const tier = modelTierForPhase(phaseTag.phase);
+
         // Smart model routing (Phase 4). Default to "smart". Vision turns
         // ALWAYS go to a vision-capable model regardless of preset.
         const preset: ModelPreset = body.model ?? "smart";
         const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
-        const model = hasVisionTurn
-          ? MODEL_VISION
-          : resolveModel(preset, lastUser, currentFiles.length);
+        let model: string;
+        if (hasVisionTurn) {
+          model = MODEL_VISION;
+        } else if (preset === "smart") {
+          // Phase tag overrides the keyword heuristic in smart mode.
+          model = tier === "smart" ? MODEL_BEST : MODEL_FAST;
+        } else {
+          model = resolveModel(preset, lastUser, currentFiles.length);
+        }
+        console.log(
+          `[phase-router] phase=${phaseTag.phase} (${phaseTag.confidence}/${phaseTag.source}) tier=${tier} → ${model}`,
+        );
 
         const upstream = await aiChatCompletions({
           feature: "generate",
