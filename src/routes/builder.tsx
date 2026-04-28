@@ -96,6 +96,10 @@ import { RenameProjectDialog } from "@/components/RenameProjectDialog";
 import { BillingSheet } from "@/components/BillingSheet";
 import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
+import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
+import { detectBackendIntentInTurn } from "@/lib/backend-intent";
+import { getProjectBackend } from "@/lib/projects";
+import { useWallet } from "@/hooks/use-wallet";
 import {
   DropdownMenu,
   DropdownMenuContent,
