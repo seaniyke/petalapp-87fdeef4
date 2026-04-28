@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -59,6 +60,11 @@ const UnsubscribeRoute = UnsubscribeRouteImport.update({
 const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GalleryRoute = GalleryRouteImport.update({
@@ -267,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
   '/gallery': typeof GalleryRoute
+  '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -310,6 +317,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
   '/gallery': typeof GalleryRoute
+  '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -354,6 +362,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
   '/gallery': typeof GalleryRoute
+  '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -399,6 +408,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/builder'
     | '/gallery'
+    | '/profile'
     | '/projects'
     | '/unsubscribe'
     | '/admin/billing'
@@ -442,6 +452,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/builder'
     | '/gallery'
+    | '/profile'
     | '/projects'
     | '/unsubscribe'
     | '/admin/billing'
@@ -485,6 +496,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/builder'
     | '/gallery'
+    | '/profile'
     | '/projects'
     | '/unsubscribe'
     | '/admin/billing'
@@ -529,6 +541,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BuilderRoute: typeof BuilderRoute
   GalleryRoute: typeof GalleryRoute
+  ProfileRoute: typeof ProfileRoute
   ProjectsRoute: typeof ProjectsRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   AdminBillingRoute: typeof AdminBillingRoute
@@ -582,6 +595,13 @@ declare module '@tanstack/react-router' {
       path: '/projects'
       fullPath: '/projects'
       preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/gallery': {
@@ -865,6 +885,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BuilderRoute: BuilderRoute,
   GalleryRoute: GalleryRoute,
+  ProfileRoute: ProfileRoute,
   ProjectsRoute: ProjectsRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   AdminBillingRoute: AdminBillingRoute,
