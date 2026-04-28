@@ -29,7 +29,7 @@ function ProfilePage() {
   useEffect(() => {
     if (!isReady) return;
     if (!user) {
-      navigate({ to: "/auth" });
+      navigate({ to: "/auth", search: { redirect: "/profile" } });
       return;
     }
     let cancelled = false;

@@ -7,6 +7,7 @@ import { ComposerModePicker, type ComposerMode } from "@/components/ComposerMode
 import { IdeaCoach } from "@/components/IdeaCoach";
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { listProjects, type ProjectRow } from "@/lib/projects";
 import {
   ArrowRight,
@@ -115,7 +116,7 @@ function Landing() {
       .select("display_name")
       .eq("id", user.id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data }: { data: { display_name: string | null } | null }) => {
         if (!cancelled) setProfileDisplayName(data?.display_name ?? null);
       });
     return () => {
