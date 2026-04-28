@@ -46,6 +46,36 @@ type Props = {
 // Module-level cache so re-mounts don't re-fetch the same prompt.
 const cache = new Map<string, PreflightEstimate>();
 
+function localEstimate(prompt: string): PreflightEstimate {
+  const len = prompt.trim().length;
+  const kind: PreflightKind = /\b(database|auth|signup|login|stripe|webhook|api|backend)\b/i.test(prompt)
+    ? "backend_change"
+    : /\b(image|illustration|photo|visual)\b/i.test(prompt)
+      ? "image_generation"
+      : /\b(refactor|rewrite|clean up)\b/i.test(prompt)
+        ? "refactor"
+        : len > 240 || /\b(feature|page|dashboard|admin)\b/i.test(prompt)
+          ? "feature"
+          : /\b(component|card|button|section|footer|header)\b/i.test(prompt)
+            ? "new_component"
+            : "ui_tweak";
+  const base =
+    kind === "backend_change" ? { sec: 35, cents: 6 } :
+    kind === "image_generation" ? { sec: 12, cents: 4 } :
+    kind === "refactor" ? { sec: 30, cents: 5 } :
+    kind === "feature" ? { sec: 45, cents: 8 } :
+    kind === "new_component" ? { sec: 18, cents: 3 } :
+    { sec: 8, cents: 1 };
+  const boost = Math.min(2, Math.floor(len / 200));
+  return {
+    kind,
+    estSeconds: base.sec + boost * 5,
+    estCents: base.cents + boost,
+    confidence: "low",
+    rationale: "Estimated locally because live estimate was unavailable.",
+  };
+}
+
 export function PreflightCostChip({ prompt, disabled, className }: Props) {
   const [estimate, setEstimate] = useState<PreflightEstimate | null>(null);
   const [loading, setLoading] = useState(false);
@@ -65,13 +95,20 @@ export function PreflightCostChip({ prompt, disabled, className }: Props) {
     const cached = cache.get(trimmed);
     if (cached) {
       setEstimate(cached);
+      setLoading(false);
       return;
     }
     lastRequest.current = trimmed;
     setLoading(true);
+    setEstimate(null);
     const timer = setTimeout(async () => {
       try {
-        const result = await estimateFn({ data: { prompt: trimmed } });
+        const result = await Promise.race([
+          estimateFn({ data: { prompt: trimmed } }),
+          new Promise<PreflightEstimate>((resolve) => {
+            window.setTimeout(() => resolve(localEstimate(trimmed)), 3500);
+          }),
+        ]);
         // Drop late responses if the prompt has changed
         if (lastRequest.current !== trimmed) return;
         cache.set(trimmed, result);
