@@ -1847,19 +1847,30 @@ function Builder() {
             mobileTab === "chat" ? "flex" : "hidden"
           }`}
         >
-          <div className="border-b border-border px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Conversation
+          <div className="flex items-center justify-between border-b-2 border-foreground/10 bg-sidebar px-4 py-3">
+            <div className="flex items-center gap-2">
+              <span className="grid h-5 w-5 place-items-center rounded-md bg-foreground text-background">
+                <MessageSquare className="h-3 w-3" />
+              </span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-foreground">
+                Conversation
+              </span>
+            </div>
+            {messages.length > 0 && (
+              <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+                {messages.length}
+              </span>
+            )}
           </div>
           <div className="flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-4">
             {bootstrapping && (
-              <div className="inline-flex items-center gap-2 rounded-2xl bg-card px-3.5 py-2.5 text-sm text-muted-foreground">
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 text-sm text-muted-foreground shadow-sm">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading project…
               </div>
             )}
             {!bootstrapping && messages.length === 0 && !busy && (
-              <div className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
-                Describe an app to start. Try "a calm pomodoro timer with stats" or "a recipe card
-                generator".
+              <div className="rounded-2xl border-2 border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
+                Describe an app to start. Try <span className="font-semibold text-foreground">"a calm pomodoro timer with stats"</span> or <span className="font-semibold text-foreground">"a recipe card generator"</span>.
               </div>
             )}
             {messages.map((m, i) => {
@@ -1871,12 +1882,14 @@ function Builder() {
               return (
                 <div key={i} className="group min-w-0">
                   <div
-                    className={`relative min-w-0 overflow-hidden wrap-anywhere rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed text-foreground ${
-                      isUser ? "ml-3 bg-card sm:ml-6" : "mr-3 bg-secondary sm:mr-6"
+                    className={`relative min-w-0 overflow-hidden wrap-anywhere rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed text-foreground shadow-sm ${
+                      isUser
+                        ? "ml-3 border border-border bg-card sm:ml-6"
+                        : "mr-3 border-l-2 border-foreground bg-secondary sm:mr-6"
                     }`}
                   >
-                    <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      <span>{isUser ? "you" : "petal"}</span>
+                    <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                      <span className={isUser ? "" : "text-foreground"}>{isUser ? "you" : "petal"}</span>
                       {m.role === "assistant" && i === lastDiscussIndex && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-foreground/70">
                           <MessageSquare className="h-2.5 w-2.5" /> discuss
