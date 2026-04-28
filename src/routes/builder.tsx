@@ -30,6 +30,7 @@ import {
   ImageIcon,
   Globe,
   FileText,
+  Shield,
 } from "lucide-react";
 import {
   encodeAttachments,
@@ -98,6 +99,7 @@ import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
 import { PreflightCostChip } from "@/components/PreflightCostChip";
+import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
 import { getProjectBackend } from "@/lib/projects";
 import { useWallet } from "@/hooks/use-wallet";
@@ -257,6 +259,7 @@ function Builder() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [shieldOpen, setShieldOpen] = useState(false);
   // Whether this project already has a backend (BYO or managed). When unknown
   // we treat as "not connected" but suppress the chip until we've checked.
   const [hasBackend, setHasBackend] = useState<boolean | null>(null);
@@ -1653,6 +1656,17 @@ function Builder() {
             </div>
           )}
           {project && (
+            <button
+              type="button"
+              onClick={() => setShieldOpen(true)}
+              className="hidden h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted md:grid"
+              title="Petal Shield — security audit"
+              aria-label="Open Petal Shield"
+            >
+              <Shield className="h-4 w-4" />
+            </button>
+          )}
+          {project && (
             <div className="hidden md:block">
               <SharePopover
                 project={project}
@@ -1725,6 +1739,12 @@ function Builder() {
             onChange={setProject}
           />
           <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
+          <PetalShieldSheet
+            open={shieldOpen}
+            onOpenChange={setShieldOpen}
+            files={files}
+            onSendFixPrompt={(p) => setInput(p)}
+          />
           <ProjectsDrawer
             open={projectsDrawerOpen}
             onOpenChange={setProjectsDrawerOpen}
