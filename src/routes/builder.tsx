@@ -733,7 +733,18 @@ function Builder() {
   const send = useCallback(
     async (
       content: string,
-      opts: { isRetry?: boolean; attachments?: ChatAttachment[]; forceBuild?: boolean } = {},
+      opts: {
+        isRetry?: boolean;
+        attachments?: ChatAttachment[];
+        forceBuild?: boolean;
+        /** Internal auto-fix run (Petal repairing its own failed build).
+         *  Suppresses the giant error-log prompt from the visible chat
+         *  thread (replaced with a small "Petal is fixing the build —
+         *  free" system note) and tells the server to skip the credit
+         *  charge. The AI still receives the full error log as a user
+         *  message so it can patch the actual cause. */
+        isAutoFix?: boolean;
+      } = {},
     ) => {
       const text = content.trim();
       if (!text || busy) return;
@@ -762,10 +773,30 @@ function Builder() {
             }
           : {}),
       };
-      // On retry, the failing user message is already in `messages` — don't double-append.
+      // What the AI sees: full conversation including the (possibly large)
+      // auto-fix prompt with the error log. What the user sees: either the
+      // normal user message OR a calm system note for auto-fix runs.
       const nextMessages: ChatMessage[] = opts.isRetry ? messages : [...messages, userMsg];
-      if (!opts.isRetry) setMessages(nextMessages);
-      setLastUserPrompt(text);
+      if (!opts.isRetry) {
+        if (opts.isAutoFix) {
+          // Replace the giant error-log prompt with a friendly system note
+          // in the visible thread. The AI still receives the full prompt
+          // via `nextMessages` above.
+          const note: ChatMessage = {
+            role: "system",
+            system: true,
+            content:
+              "🔧 Petal noticed a build error and is fixing it automatically. This fix is on us — no credits used.",
+          };
+          setMessages([...messages, note]);
+        } else {
+          setMessages(nextMessages);
+        }
+      }
+      // Don't overwrite lastUserPrompt during an auto-fix — the "Retry last
+      // prompt" affordance should still replay the user's real ask, not our
+      // internal error-log dump.
+      if (!opts.isAutoFix) setLastUserPrompt(text);
       setInput("");
       setPendingAttachments([]);
       initialAttachmentsRef.current = [];
@@ -775,8 +806,9 @@ function Builder() {
       // user refreshes mid-build (which can take 30–60s) we still want to show
       // them what they just asked Petal — losing the prompt entirely is the
       // single most disorienting failure mode here. The assistant reply is
-      // persisted later, after a successful stream.
-      if (!opts.isRetry) {
+      // persisted later, after a successful stream. Auto-fix runs are NOT
+      // persisted (they're transient internal turns).
+      if (!opts.isRetry && !opts.isAutoFix) {
         try {
           await appendMessages(proj.id, [userMsg]);
         } catch (persistErr) {
