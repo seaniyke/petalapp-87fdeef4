@@ -19,6 +19,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { aiChatCompletions } from "@/server/ai-provider.server";
 
 const MAX_KEYS = 30;
 const MAX_VALUE_LEN = 400;
