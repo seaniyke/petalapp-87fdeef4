@@ -2,10 +2,10 @@
  * One-off: trigger a fresh build for the Lumen project.
  */
 import { createClient } from "@supabase/supabase-js";
-import { applyScaffoldKit, STYLES_CSS } from "./src/server/scaffold-kit";
-import { syncViteAliasesWithTsconfig } from "./src/server/sync-vite-aliases.server";
-import { validateStylesCss } from "./src/server/validate-styles.server";
-import { postBuildToRailway } from "./src/server/builder.server";
+import { applyScaffoldKit, STYLES_CSS } from "../src/server/scaffold-kit.ts";
+import { syncViteAliasesWithTsconfig } from "../src/server/sync-vite-aliases.server.ts";
+import { validateStylesCss } from "../src/server/validate-styles.server.ts";
+import { postBuildToRailway } from "../src/server/builder.server.ts";
 
 const PROJECT_ID = "a2d24a98-d012-465b-8810-636235df2aea";
 
