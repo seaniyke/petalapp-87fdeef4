@@ -12,7 +12,6 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -30,14 +29,47 @@ import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  listAiProviderSettings,
-  setAiProviderSetting,
-  getAiCostSummary,
-  type AiFeatureRow,
-  type AiCostRow,
-} from "@/server/ai-provider.functions";
+import { supabase } from "@/integrations/supabase/client";
+import type {
+  AiFeatureRow,
+  AiCostRow,
+  SetProviderInput,
+} from "@/server/ai-provider-admin.server";
 import type { AiFeature } from "@/server/ai-provider.server";
+
+/**
+ * Call the admin API with the user's Supabase access token. We use a plain
+ * fetch (not `useServerFn`) because TanStack's `createServerFn` does NOT
+ * forward the Supabase bearer token — see `routes/api/admin/ai-providers.ts`.
+ */
+async function callAdminApi<T>(
+  action: "list" | "set" | "costs",
+  payload: Record<string, unknown> = {},
+): Promise<T> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error("Not signed in");
+
+  const res = await fetch("/api/admin/ai-providers", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  if (!res.ok) {
+    let msg = `Request failed (${res.status})`;
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) msg = body.error;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(msg);
+  }
+  return (await res.json()) as T;
+}
 
 export const Route = createFileRoute("/admin/ai-providers")({
   head: () => ({
@@ -115,9 +147,6 @@ function formatUsd(microUsd: number): string {
 
 function AiProvidersPage() {
   const { ready } = useAdminGuard("/admin/ai-providers");
-  const list = useServerFn(listAiProviderSettings);
-  const setOne = useServerFn(setAiProviderSetting);
-  const fetchCost = useServerFn(getAiCostSummary);
 
   const [rows, setRows] = useState<AiFeatureRow[] | null>(null);
   const [openrouterReady, setOpenrouterReady] = useState(true);
@@ -134,12 +163,15 @@ function AiProvidersPage() {
 
   const refresh = async () => {
     try {
-      const res = await list();
+      const res = await callAdminApi<{
+        rows: AiFeatureRow[];
+        openrouterKeyConfigured: boolean;
+      }>("list");
       setRows(res.rows);
       setOpenrouterReady(res.openrouterKeyConfigured);
     } catch (e) {
       console.error(e);
-      toast.error("Failed to load provider settings");
+      toast.error(e instanceof Error ? e.message : "Failed to load provider settings");
     } finally {
       setLoading(false);
     }
@@ -148,7 +180,12 @@ function AiProvidersPage() {
   const refreshCost = async () => {
     setCostLoading(true);
     try {
-      const res = await fetchCost({ data: { days: 7 } });
+      const res = await callAdminApi<{
+        rows: AiCostRow[];
+        totalCalls: number;
+        totalCostUsdMicro: number;
+        totalErrors: number;
+      }>("costs", { days: 7 });
       setCostRows(res.rows);
       setCostTotals({
         calls: res.totalCalls,
@@ -176,7 +213,8 @@ function AiProvidersPage() {
     setSavingFeature(feature);
     try {
       const provider = choice === "auto" ? null : choice;
-      await setOne({ data: { feature, provider } });
+      const input: SetProviderInput = { feature, provider };
+      await callAdminApi<{ ok: true }>("set", { input });
       toast.success(
         choice === "auto"
           ? `${FEATURE_DETAILS[feature].label}: cleared override`
@@ -198,14 +236,13 @@ function AiProvidersPage() {
   ) => {
     setSavingFeature(feature);
     try {
-      await setOne({
-        data: {
-          feature,
-          provider: rows?.find((r) => r.feature === feature)?.override ?? null,
-          model: model.trim() || null,
-          fallbackModel: fallbackModel.trim() || null,
-        },
-      });
+      const input: SetProviderInput = {
+        feature,
+        provider: rows?.find((r) => r.feature === feature)?.override ?? null,
+        model: model.trim() || null,
+        fallbackModel: fallbackModel.trim() || null,
+      };
+      await callAdminApi<{ ok: true }>("set", { input });
       toast.success(`${FEATURE_DETAILS[feature].label}: model saved`);
       await refresh();
     } catch (e) {

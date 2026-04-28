@@ -45,6 +45,7 @@ import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigge
 import { Route as ApiBuildsCallbackRouteImport } from './routes/api/builds/callback'
 import { Route as ApiBillingVerifyRouteImport } from './routes/api/billing/verify'
 import { Route as ApiBillingInitializeRouteImport } from './routes/api/billing/initialize'
+import { Route as ApiAdminAiProvidersRouteImport } from './routes/api/admin/ai-providers'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
@@ -235,6 +236,11 @@ const ApiBillingInitializeRoute = ApiBillingInitializeRouteImport.update({
   path: '/api/billing/initialize',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminAiProvidersRoute = ApiAdminAiProvidersRouteImport.update({
+  id: '/api/admin/ai-providers',
+  path: '/api/admin/ai-providers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailTransactionalSendRoute =
   LovableEmailTransactionalSendRouteImport.update({
     id: '/lovable/email/transactional/send',
@@ -317,6 +323,7 @@ export interface FileRoutesByFullPath {
   '/p/$slug': typeof PSlugRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -364,6 +371,7 @@ export interface FileRoutesByTo {
   '/p/$slug': typeof PSlugRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin': typeof AdminIndexRoute
+  '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -412,6 +420,7 @@ export interface FileRoutesById {
   '/p/$slug': typeof PSlugRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -461,6 +470,7 @@ export interface FileRouteTypes {
     | '/p/$slug'
     | '/share/$token'
     | '/admin/'
+    | '/api/admin/ai-providers'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/callback'
@@ -508,6 +518,7 @@ export interface FileRouteTypes {
     | '/p/$slug'
     | '/share/$token'
     | '/admin'
+    | '/api/admin/ai-providers'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/callback'
@@ -555,6 +566,7 @@ export interface FileRouteTypes {
     | '/p/$slug'
     | '/share/$token'
     | '/admin/'
+    | '/api/admin/ai-providers'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/callback'
@@ -603,6 +615,7 @@ export interface RootRouteChildren {
   PSlugRoute: typeof PSlugRoute
   ShareTokenRoute: typeof ShareTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  ApiAdminAiProvidersRoute: typeof ApiAdminAiProvidersRoute
   ApiBillingInitializeRoute: typeof ApiBillingInitializeRoute
   ApiBillingVerifyRoute: typeof ApiBillingVerifyRoute
   ApiBuildsCallbackRoute: typeof ApiBuildsCallbackRoute
@@ -875,6 +888,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBillingInitializeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/ai-providers': {
+      id: '/api/admin/ai-providers'
+      path: '/api/admin/ai-providers'
+      fullPath: '/api/admin/ai-providers'
+      preLoaderRoute: typeof ApiAdminAiProvidersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/transactional/send': {
       id: '/lovable/email/transactional/send'
       path: '/lovable/email/transactional/send'
@@ -971,6 +991,7 @@ const rootRouteChildren: RootRouteChildren = {
   PSlugRoute: PSlugRoute,
   ShareTokenRoute: ShareTokenRoute,
   AdminIndexRoute: AdminIndexRoute,
+  ApiAdminAiProvidersRoute: ApiAdminAiProvidersRoute,
   ApiBillingInitializeRoute: ApiBillingInitializeRoute,
   ApiBillingVerifyRoute: ApiBillingVerifyRoute,
   ApiBuildsCallbackRoute: ApiBuildsCallbackRoute,
