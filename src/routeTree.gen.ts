@@ -37,6 +37,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
 import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
 import { Route as AdminBillingRouteImport } from './routes/admin.billing'
+import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
@@ -194,6 +195,11 @@ const AdminBillingRoute = AdminBillingRouteImport.update({
   path: '/admin/billing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAiProvidersRoute = AdminAiProvidersRouteImport.update({
+  id: '/admin/ai-providers',
+  path: '/admin/ai-providers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
@@ -289,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/projects': typeof AdminProjectsRoute
@@ -335,6 +342,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/projects': typeof AdminProjectsRoute
@@ -382,6 +390,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/projects': typeof AdminProjectsRoute
@@ -430,6 +439,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/projects'
     | '/unsubscribe'
+    | '/admin/ai-providers'
     | '/admin/billing'
     | '/admin/ledgers'
     | '/admin/projects'
@@ -476,6 +486,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/projects'
     | '/unsubscribe'
+    | '/admin/ai-providers'
     | '/admin/billing'
     | '/admin/ledgers'
     | '/admin/projects'
@@ -522,6 +533,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/projects'
     | '/unsubscribe'
+    | '/admin/ai-providers'
     | '/admin/billing'
     | '/admin/ledgers'
     | '/admin/projects'
@@ -569,6 +581,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ProjectsRoute: typeof ProjectsRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
+  AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminBillingRoute: typeof AdminBillingRoute
   AdminLedgersRoute: typeof AdminLedgersRoute
   AdminProjectsRoute: typeof AdminProjectsRoute
@@ -806,6 +819,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBillingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/ai-providers': {
+      id: '/admin/ai-providers'
+      path: '/admin/ai-providers'
+      fullPath: '/admin/ai-providers'
+      preLoaderRoute: typeof AdminAiProvidersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/suppression': {
       id: '/lovable/email/suppression'
       path: '/lovable/email/suppression'
@@ -929,6 +949,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ProjectsRoute: ProjectsRoute,
   UnsubscribeRoute: UnsubscribeRoute,
+  AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminBillingRoute: AdminBillingRoute,
   AdminLedgersRoute: AdminLedgersRoute,
   AdminProjectsRoute: AdminProjectsRoute,
