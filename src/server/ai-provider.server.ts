@@ -2,36 +2,25 @@
  * AI provider abstraction.
  *
  * Every server-side AI call in Petal goes through `aiChatCompletions(...)`. The
- * helper picks a provider (Lovable AI by default, OpenRouter optional) and
- * forwards the request as an OpenAI-compatible chat completions call. The
- * caller gets back the raw `Response` so streaming code keeps working without
- * any change.
+ * helper picks a provider (Lovable AI by default, OpenRouter optional), picks a
+ * model (DB override → caller-supplied → default), forwards the request as an
+ * OpenAI-compatible chat completions call, and:
  *
- * Why this exists:
- *   - Lovable AI is convenient (key auto-provisioned, free monthly credits)
- *     but priced per token. For a heavy code-generation product like Petal,
- *     having a swappable second provider is cheap insurance.
- *   - OpenRouter is also OpenAI-compatible, gives access to Claude/DeepSeek/
- *     Llama/etc., and lets us route by feature (e.g. "code-gen on Claude,
- *     small chats on Gemini Flash").
+ *   1. Records a telemetry row in `ai_call_log` (best-effort, never blocks).
+ *   2. On a hard error (429/402/5xx) and only when the body has not yet been
+ *      consumed, retries ONCE with the configured fallback model on the same
+ *      provider. The retried response is what callers see.
  *
- * How to switch providers (runtime secrets):
- *   - AI_PROVIDER=openrouter            → all features go to OpenRouter
- *   - AI_PROVIDER_GENERATE=openrouter   → only `generate` feature
- *   - AI_PROVIDER_DISCUSS=lovable       → force one feature back to Lovable
- *   - (unset)                           → defaults to "lovable" everywhere
+ * The caller gets back the raw `Response` so streaming code keeps working
+ * without any change.
  *
- * Image generation is HARD-PINNED to Lovable AI because it relies on Gemini's
- * non-standard `message.images` response shape (nano-banana). OpenRouter's
- * image support is patchier and would silently break the feature.
+ * How to switch providers:
+ *   - Admin UI at /admin/ai-providers (per feature, with model picker).
+ *   - DB override (ai_provider_settings) wins over env.
+ *   - Env vars (AI_PROVIDER, AI_PROVIDER_GENERATE, etc.) still work.
  *
- * Honest caveats (read before flipping the switch):
- *   - Tool-calling shapes are mostly identical across providers but worth a
- *     smoke test per feature after switching (triage + structured outputs).
- *   - OpenRouter rate-limit / out-of-credit errors come back as 429/402 too,
- *     but the JSON body shape differs. We pass status through unchanged so
- *     existing toasts ("Rate limited", "Out of credits") still fire.
- *   - You manage OpenRouter billing + alerts yourself (their dashboard).
+ * Image gen is HARD-PINNED to Lovable AI — Gemini's `message.images` shape
+ * isn't portable to OpenRouter.
  */
 
 export type AiFeature =
@@ -50,55 +39,59 @@ type Provider = "lovable" | "openrouter";
 const LOVABLE_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-/**
- * Optional per-feature override env var name. We read these lazily so that
- * flipping a secret doesn't require a redeploy of any consumer code.
- */
 function featureOverrideEnv(feature: AiFeature): string {
   return `AI_PROVIDER_${feature.toUpperCase()}`;
 }
 
-/**
- * Per-feature DB overrides cached in-memory for `CACHE_TTL_MS` so we don't
- * round-trip to Postgres on every AI call. Cache is per-Worker-instance —
- * after an admin toggles a setting it propagates within ~30s globally.
- *
- * To force an immediate flush from admin code, call `invalidateProviderCache()`.
- */
-const CACHE_TTL_MS = 30_000;
-let cachedOverrides: Map<string, Provider> | null = null;
-let cacheLoadedAt = 0;
-let inflight: Promise<Map<string, Provider>> | null = null;
+// ---------------- DB override cache ----------------
 
-async function loadDbOverrides(): Promise<Map<string, Provider>> {
+type FeatureSettings = {
+  provider: Provider | null;
+  model: string | null;
+  fallback_model: string | null;
+};
+
+const CACHE_TTL_MS = 30_000;
+let cachedSettings: Map<string, FeatureSettings> | null = null;
+let cacheLoadedAt = 0;
+let inflight: Promise<Map<string, FeatureSettings>> | null = null;
+
+async function loadDbSettings(): Promise<Map<string, FeatureSettings>> {
   const now = Date.now();
-  if (cachedOverrides && now - cacheLoadedAt < CACHE_TTL_MS) {
-    return cachedOverrides;
+  if (cachedSettings && now - cacheLoadedAt < CACHE_TTL_MS) {
+    return cachedSettings;
   }
   if (inflight) return inflight;
 
   inflight = (async () => {
     try {
-      // Lazy import to avoid pulling the admin client into edge-cold-start path
-      // when the DB has no settings yet.
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data } = await supabaseAdmin
         .from("ai_provider_settings")
-        .select("feature, provider");
-      const map = new Map<string, Provider>();
-      for (const row of data ?? []) {
-        if (row.provider === "openrouter" || row.provider === "lovable") {
-          map.set(row.feature, row.provider);
-        }
+        .select("feature, provider, model, fallback_model");
+      const map = new Map<string, FeatureSettings>();
+      for (const row of (data ?? []) as Array<{
+        feature: string;
+        provider: string | null;
+        model: string | null;
+        fallback_model: string | null;
+      }>) {
+        map.set(row.feature, {
+          provider:
+            row.provider === "openrouter" || row.provider === "lovable"
+              ? row.provider
+              : null,
+          model: row.model || null,
+          fallback_model: row.fallback_model || null,
+        });
       }
-      cachedOverrides = map;
+      cachedSettings = map;
       cacheLoadedAt = Date.now();
       return map;
     } catch (err) {
-      // DB unreachable / table missing → fall back to env-only resolution.
-      console.warn("[ai-provider] failed to load DB overrides, using env only", err);
-      const map = new Map<string, Provider>();
-      cachedOverrides = map;
+      console.warn("[ai-provider] failed to load DB settings, env-only", err);
+      const map = new Map<string, FeatureSettings>();
+      cachedSettings = map;
       cacheLoadedAt = Date.now();
       return map;
     } finally {
@@ -108,42 +101,47 @@ async function loadDbOverrides(): Promise<Map<string, Provider>> {
   return inflight;
 }
 
-/** Force the next call to re-read the DB. Used by admin save handlers. */
 export function invalidateProviderCache(): void {
-  cachedOverrides = null;
+  cachedSettings = null;
   cacheLoadedAt = 0;
 }
 
+// ---------------- Resolution ----------------
+
 async function resolveProvider(feature: AiFeature): Promise<Provider> {
-  // Image gen MUST stay on Lovable AI — see file header.
   if (feature === "image") return "lovable";
 
-  // 1. DB override wins (set by admin via /admin/ai-providers).
-  const overrides = await loadDbOverrides();
-  const dbChoice = overrides.get(feature);
+  const settings = await loadDbSettings();
+  const dbChoice = settings.get(feature)?.provider;
   if (dbChoice) return dbChoice;
 
-  // 2. Env-var fallback (per-feature, then global, then "lovable").
   const envOverride = process.env[featureOverrideEnv(feature)]?.toLowerCase();
   const envGlobal = process.env.AI_PROVIDER?.toLowerCase();
   const choice = envOverride || envGlobal || "lovable";
   return choice === "openrouter" ? "openrouter" : "lovable";
 }
 
+async function resolveModelOverride(
+  feature: AiFeature,
+): Promise<{ model: string | null; fallback: string | null }> {
+  const settings = await loadDbSettings();
+  const s = settings.get(feature);
+  return {
+    model: s?.model ?? null,
+    fallback: s?.fallback_model ?? null,
+  };
+}
 
 /**
- * When we route to OpenRouter, the `model` string the caller passed (which is
- * tuned for Lovable AI's catalog) may not exist there 1:1. This map covers the
- * models we actually use today. Anything not in the map is forwarded as-is —
- * OpenRouter accepts most `provider/model` slugs unchanged.
+ * Lovable-AI model slugs sometimes don't exist verbatim on OpenRouter. This
+ * map covers our defaults; anything not listed forwards as-is (OpenRouter
+ * accepts most `provider/model` slugs unchanged).
  */
 const OPENROUTER_MODEL_MAP: Record<string, string> = {
-  // Gemini family — OpenRouter exposes Google's models under similar slugs.
   "google/gemini-3-flash-preview": "google/gemini-2.5-flash",
   "google/gemini-2.5-flash": "google/gemini-2.5-flash",
   "google/gemini-2.5-flash-lite": "google/gemini-2.5-flash-lite",
   "google/gemini-2.5-pro": "google/gemini-2.5-pro",
-  // OpenAI family — pass through; OpenRouter has these slugs.
   "openai/gpt-5": "openai/gpt-5",
   "openai/gpt-5-mini": "openai/gpt-5-mini",
   "openai/gpt-5-nano": "openai/gpt-5-nano",
@@ -154,43 +152,155 @@ function remapModelForOpenRouter(model: string | undefined): string | undefined 
   return OPENROUTER_MODEL_MAP[model] ?? model;
 }
 
-export interface AiCallOptions {
-  /** Which Petal feature is calling — used for per-feature provider routing. */
+// ---------------- Telemetry ----------------
+
+interface TelemetryArgs {
   feature: AiFeature;
-  /** OpenAI-compatible request body (messages, model, stream, tools, ...). */
+  provider: Provider;
+  model: string | null;
+  status: number;
+  latencyMs: number;
+  fallbackUsed: boolean;
+  errorMessage?: string | null;
+  // Optional — populated for non-streaming responses where we peek the body.
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  totalTokens?: number | null;
+  costUsdMicro?: number | null;
+}
+
+async function recordTelemetry(args: TelemetryArgs): Promise<void> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("ai_call_log").insert({
+      feature: args.feature,
+      provider: args.provider,
+      model: args.model,
+      status: args.status,
+      prompt_tokens: args.promptTokens ?? null,
+      completion_tokens: args.completionTokens ?? null,
+      total_tokens: args.totalTokens ?? null,
+      cost_usd_micro: args.costUsdMicro ?? null,
+      latency_ms: args.latencyMs,
+      fallback_used: args.fallbackUsed,
+      error_message: args.errorMessage ?? null,
+    });
+  } catch (err) {
+    // Never break the AI call because logging failed.
+    console.warn("[ai-provider] telemetry insert failed", err);
+  }
+}
+
+// ---------------- Public API ----------------
+
+export interface AiCallOptions {
+  feature: AiFeature;
   body: Record<string, unknown>;
-  /** Optional AbortSignal forwarded to fetch. */
   signal?: AbortSignal;
 }
 
 /**
  * Make an OpenAI-compatible chat completions call against the resolved provider.
  *
- * Returns the raw `Response`. The caller decides whether to stream
- * (`response.body.getReader()`) or `await response.json()`.
+ * Returns the raw `Response`. For non-2xx responses we attempt ONE fallback
+ * retry (same provider, fallback model from DB) before returning to the caller.
  *
- * Errors are NOT thrown for non-2xx — caller inspects `response.status` so it
- * can surface the existing 402/429 toasts.
+ * Telemetry is recorded for both attempts. Streaming callers see no behaviour
+ * change — we only inspect the response *status* before deciding to retry.
  */
 export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> {
   const provider = await resolveProvider(opts.feature);
+  const { model: dbModel, fallback } = await resolveModelOverride(opts.feature);
 
+  // DB model wins over caller-supplied model (operator overrides have priority).
+  const callerModel = (opts.body.model as string | undefined) ?? undefined;
+  const primaryModel = dbModel || callerModel || null;
+
+  const body =
+    primaryModel && primaryModel !== callerModel
+      ? { ...opts.body, model: primaryModel }
+      : opts.body;
+
+  const t0 = Date.now();
+  const primary = await dispatch(provider, body, opts.signal);
+  const latency = Date.now() - t0;
+
+  // Decide whether to retry on fallback model (same provider).
+  const shouldRetry =
+    !primary.ok &&
+    fallback &&
+    fallback !== primaryModel &&
+    (primary.status === 429 || primary.status === 402 || primary.status >= 500);
+
+  if (!shouldRetry) {
+    // Fire-and-forget telemetry; do NOT await — keep latency tight.
+    void recordTelemetry({
+      feature: opts.feature,
+      provider,
+      model: primaryModel,
+      status: primary.status,
+      latencyMs: latency,
+      fallbackUsed: false,
+      errorMessage: primary.ok ? null : `HTTP ${primary.status}`,
+    });
+    return primary;
+  }
+
+  // Drain the failed response so we can safely discard it.
+  try {
+    await primary.text();
+  } catch {
+    /* ignore */
+  }
+
+  void recordTelemetry({
+    feature: opts.feature,
+    provider,
+    model: primaryModel,
+    status: primary.status,
+    latencyMs: latency,
+    fallbackUsed: false,
+    errorMessage: `Primary failed HTTP ${primary.status}, retrying with fallback`,
+  });
+
+  const fallbackBody = { ...opts.body, model: fallback };
+  const t1 = Date.now();
+  const retried = await dispatch(provider, fallbackBody, opts.signal);
+  const retryLatency = Date.now() - t1;
+
+  void recordTelemetry({
+    feature: opts.feature,
+    provider,
+    model: fallback,
+    status: retried.status,
+    latencyMs: retryLatency,
+    fallbackUsed: true,
+    errorMessage: retried.ok ? null : `HTTP ${retried.status}`,
+  });
+
+  return retried;
+}
+
+async function dispatch(
+  provider: Provider,
+  body: Record<string, unknown>,
+  signal: AbortSignal | undefined,
+): Promise<Response> {
   let url: string;
   let apiKey: string | undefined;
-  let body = opts.body;
+  let outBody = body;
 
   if (provider === "openrouter") {
     url = OPENROUTER_URL;
     apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      // Fail loud rather than silently falling back — operators should notice.
       throw new Error(
-        "OPENROUTER_API_KEY is not configured. Either add the secret or set AI_PROVIDER back to 'lovable'.",
+        "OPENROUTER_API_KEY is not configured. Either add the secret or set the feature back to 'lovable'.",
       );
     }
-    const remapped = remapModelForOpenRouter(body.model as string | undefined);
-    if (remapped !== body.model) {
-      body = { ...body, model: remapped };
+    const remapped = remapModelForOpenRouter(outBody.model as string | undefined);
+    if (remapped !== outBody.model) {
+      outBody = { ...outBody, model: remapped };
     }
   } else {
     url = LOVABLE_URL;
@@ -205,7 +315,6 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     "Content-Type": "application/json",
   };
 
-  // OpenRouter politely asks for these to attribute traffic. Harmless if absent.
   if (provider === "openrouter") {
     headers["HTTP-Referer"] = process.env.OPENROUTER_REFERER || "https://buildwithpetal.com";
     headers["X-Title"] = "Petal";
@@ -214,17 +323,23 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   return fetch(url, {
     method: "POST",
     headers,
-    body: JSON.stringify(body),
-    signal: opts.signal,
+    body: JSON.stringify(outBody),
+    signal,
   });
 }
 
-/** Exposed for diagnostics / admin tooling. */
+/** Diagnostics: returns the resolved provider for a given feature. */
 export async function currentProviderFor(feature: AiFeature): Promise<Provider> {
   return resolveProvider(feature);
 }
 
-/** Exposed for the admin status page — read-only snapshot of all features. */
+/** Diagnostics: snapshot of the resolved model for a feature (DB-only). */
+export async function currentModelFor(
+  feature: AiFeature,
+): Promise<{ model: string | null; fallback: string | null }> {
+  return resolveModelOverride(feature);
+}
+
 export const ALL_AI_FEATURES: AiFeature[] = [
   "generate",
   "discuss",
