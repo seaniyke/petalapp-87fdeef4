@@ -682,6 +682,43 @@ export const Route = createFileRoute("/api/generate")({
                 );
               }
 
+              // Tier 2.6 — TRUE truncation recovery. If the local verifier
+              // flagged any file as truncated mid-stream, ask the SAME model
+              // to emit only the missing tail bytes. This beats asking
+              // flash-lite to "fix" a half-written component (it would
+              // hallucinate the rest).
+              if (localVerdict.issues.some((i) => i.kind === "truncation")) {
+                try {
+                  const contOut = await runContinuation({
+                    files: nextFiles,
+                    issues: localVerdict.issues,
+                    model,
+                  });
+                  nextFiles = contOut.files;
+                  if (contOut.result.completedFiles > 0) {
+                    console.log(
+                      `[continuation] completed ${contOut.result.completedFiles}:`,
+                      contOut.result.notes.join("; "),
+                    );
+                    controller.enqueue(
+                      encoder.encode(
+                        sse({
+                          type: "status",
+                          message: `Completed ${contOut.result.completedFiles} truncated file${contOut.result.completedFiles === 1 ? "" : "s"}.`,
+                        }),
+                      ),
+                    );
+                  } else if (contOut.result.notes.length) {
+                    console.warn(
+                      "[continuation] no files completed:",
+                      contOut.result.notes.join("; "),
+                    );
+                  }
+                } catch (e) {
+                  console.warn("[continuation] failed:", e);
+                }
+              }
+
               // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
               // pass that ONLY fixes obvious build-breakers. Gated so 90%
               // of turns never pay the cost — UNLESS local verifier failed.
