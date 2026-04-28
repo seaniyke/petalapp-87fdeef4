@@ -14,6 +14,8 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronRight,
+  Sparkles,
+  Lock,
 } from "lucide-react";
 import {
   Sheet,
