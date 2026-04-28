@@ -103,7 +103,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
     try {
       const c = await getManagedCredentials(projectId);
       const text = [
-        `# Petal-managed Supabase credentials for project ${projectId}`,
+        `# Petal Cloud backend credentials for project ${projectId}`,
         `# Generated ${new Date().toISOString()}`,
         ``,
         `SUPABASE_URL=${c.supabaseUrl}`,
