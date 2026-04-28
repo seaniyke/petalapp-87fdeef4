@@ -178,8 +178,12 @@ export const Route = createFileRoute("/api/builds/trigger")({
           );
         }
 
-        // 2f) Inject "Powered by Petal" badge into index.html. Shown by
-        //     default; paid-plan owners may opt out via project settings.
+        // 2f) Decide whether to ship the "Powered by Petal" badge. Free-plan
+        //     projects always get it; paid-plan owners may opt out via
+        //     project settings. Actual injection happens inside
+        //     postBuildToRailway so EVERY build pathway shows the badge by
+        //     default — even pathways that bypass this route.
+        let hideBadge = false;
         try {
           const { data: wallet } = await supabaseAdmin
             .from("user_wallets")
@@ -187,16 +191,14 @@ export const Route = createFileRoute("/api/builds/trigger")({
             .eq("user_id", userId)
             .maybeSingle();
           const isPaidPlan = !!wallet?.plan_code && wallet.plan_code !== "free";
-          const shouldHide = isPaidPlan && project.hide_petal_badge === true;
-          if (!shouldHide) {
-            withEnv = injectPetalBadge(withEnv);
-          }
+          hideBadge = isPaidPlan && project.hide_petal_badge === true;
         } catch (e) {
           console.warn(
             `[badge] could not determine plan for project=${projectId}:`,
             e instanceof Error ? e.message : String(e),
           );
-          withEnv = injectPetalBadge(withEnv);
+          // On error, default to showing the badge (safer for the free tier).
+          hideBadge = false;
         }
 
         // 3) Insert pending build row + bump latest_build_id BEFORE calling
@@ -220,7 +222,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
 
         // 4) Fire the build. If the network call fails, mark the row as failed.
         try {
-          await postBuildToRailway({ projectId, buildId: build.id, files: withEnv });
+          await postBuildToRailway({ projectId, buildId: build.id, files: withEnv, hideBadge });
         } catch (e) {
           const message = e instanceof Error ? e.message : "Failed to reach builder";
           console.error("postBuildToRailway failed", message);
