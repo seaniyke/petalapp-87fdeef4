@@ -200,7 +200,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
           <div className="flex-1 text-sm">
             <div className="font-medium">Provisioning failed</div>
             <div className="mt-0.5 text-xs text-muted-foreground">
-              {backend.errorMessage || "Something went wrong while creating your Supabase project."}
+              {backend.errorMessage || "Something went wrong while setting up your backend."}
             </div>
           </div>
         </div>
