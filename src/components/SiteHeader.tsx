@@ -34,6 +34,7 @@ export function SiteHeader() {
   const initial = (user?.email ?? "?")[0]?.toUpperCase() ?? "?";
 
   return (
+    <>
     <header
       className={`sticky top-0 z-50 w-full transition-[background-color,border-color,box-shadow] duration-200 ${
         scrolled
