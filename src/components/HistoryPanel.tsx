@@ -256,6 +256,14 @@ export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey }:
                           )}
                         </button>
                         <button
+                          onClick={() => setPartialVersion(v)}
+                          disabled={busyId === v.id}
+                          className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted"
+                          title="Pick specific files to revert"
+                        >
+                          <FileStack className="h-3.5 w-3.5" />
+                        </button>
+                        <button
                           onClick={() => void handleDelete(v)}
                           disabled={busyId === v.id}
                           className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
