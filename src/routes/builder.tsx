@@ -927,11 +927,14 @@ function Builder() {
 
         await streamGenerate(
           {
-            messages: nextMessages,
+            // Strip transient system notes ("Petal is auto-fixing…") before
+            // sending — they're UI-only, the AI shouldn't see them.
+            messages: nextMessages.filter((m) => m.role !== "system"),
             currentFiles: files,
             model: "smart",
             customInstructions: proj.custom_instructions ?? undefined,
             projectId: proj.id,
+            isAutoFix: opts.isAutoFix,
           },
           {
             onPhase: (phase: PhaseId) => {
