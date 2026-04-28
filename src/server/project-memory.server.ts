@@ -220,13 +220,9 @@ export async function updateProjectMemory(args: {
 
   let plan: MergePlan | null = null;
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const resp = await aiChatCompletions({
+      feature: "memory",
+      body: {
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: MEMORY_WRITER_SYSTEM },
@@ -234,7 +230,7 @@ export async function updateProjectMemory(args: {
         ],
         tools: [MERGE_TOOL],
         tool_choice: { type: "function", function: { name: "merge_memory" } },
-      }),
+      },
     });
     if (!resp.ok) {
       console.warn("[project-memory] writer http error", resp.status);
