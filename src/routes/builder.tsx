@@ -1448,41 +1448,47 @@ function Builder() {
       });
   }, [project?.id]);
 
-  const askPetalToFix = useCallback(() => {
-    setFriendlyError(null);
-    // Feed the actual build error/log back into the next prompt so the AI
-    // can patch the real cause (this is what Lovable, Bolt and Base44 do).
-    // The Railway callback already concatenates logs into error_message.
-    const rawLog = buildSnap?.errorMessage?.trim();
-    const tail = rawLog
-      ? rawLog.split("\n").slice(-60).join("\n").slice(-3500)
-      : "";
-    // When this is an auto-fix retry (Phase 2), nudge the AI to try a
-    // different angle than its previous attempt.
-    const attempt = autoFixRef.current.attempts;
-    const retryNote =
-      attempt > 1
-        ? "\n\nNote: this is your second attempt at fixing the same build. Your previous fix did not resolve the issue — re-read the error carefully and try a different approach."
+  const askPetalToFix = useCallback(
+    (opts: { isAuto?: boolean } = {}) => {
+      setFriendlyError(null);
+      // Feed the actual build error/log back into the next prompt so the AI
+      // can patch the real cause (this is what Lovable, Bolt and Base44 do).
+      // The Railway callback already concatenates logs into error_message.
+      const rawLog = buildSnap?.errorMessage?.trim();
+      const tail = rawLog
+        ? rawLog.split("\n").slice(-60).join("\n").slice(-3500)
         : "";
-    const prompt = tail
-      ? [
-          "The build just failed with this error from the bundler:",
-          "",
-          "```",
-          tail,
-          "```",
-          "",
-          "Please look at the relevant files in the project, identify the root cause, and fix it. Make the smallest change that will let the build succeed.",
-        ].join("\n") + retryNote
-      : "The build failed but no error log was captured. Please review the project files for obvious mistakes (missing imports, syntax errors, typos in package.json) and fix them." +
-        retryNote;
-    void send(prompt, { isRetry: false });
-  }, [send, buildSnap]);
+      // When this is an auto-fix retry (Phase 2), nudge the AI to try a
+      // different angle than its previous attempt.
+      const attempt = autoFixRef.current.attempts;
+      const retryNote =
+        attempt > 1
+          ? "\n\nNote: this is your second attempt at fixing the same build. Your previous fix did not resolve the issue — re-read the error carefully and try a different approach."
+          : "";
+      const prompt = tail
+        ? [
+            "The build just failed with this error from the bundler:",
+            "",
+            "```",
+            tail,
+            "```",
+            "",
+            "Please look at the relevant files in the project, identify the root cause, and fix it. Make the smallest change that will let the build succeed.",
+          ].join("\n") + retryNote
+        : "The build failed but no error log was captured. Please review the project files for obvious mistakes (missing imports, syntax errors, typos in package.json) and fix them." +
+          retryNote;
+      // Auto-fix runs are free and silent; manual ("Ask Petal to fix it")
+      // runs behave like any other build prompt (charged + visible).
+      void send(prompt, { isRetry: false, isAutoFix: opts.isAuto === true });
+    },
+    [send, buildSnap],
+  );
 
   // Keep the ref in sync so the build-failure effect (declared earlier in
-  // the component) can call into the latest closure.
+  // the component) can call into the latest closure. The effect always wants
+  // the auto-fix variant.
   useEffect(() => {
-    askPetalToFixRef.current = askPetalToFix;
+    askPetalToFixRef.current = () => askPetalToFix({ isAuto: true });
   }, [askPetalToFix]);
 
   async function downloadProject() {
