@@ -302,16 +302,6 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
             )}
             Download credentials
           </Button>
-          {backend.supabaseProjectRef && (
-            <a
-              href={`https://supabase.com/dashboard/project/${backend.supabaseProjectRef}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            >
-              <ExternalLink className="h-3 w-3" /> Open in Supabase
-            </a>
-          )}
           <Button
             size="sm"
             variant={renewSoon ? "default" : "outline"}
