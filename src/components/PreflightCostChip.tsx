@@ -54,7 +54,9 @@ const cache = new Map<string, PreflightEstimate>();
 
 function localEstimate(prompt: string): PreflightEstimate {
   const len = prompt.trim().length;
-  const kind: PreflightKind = /\b(database|auth|signup|login|stripe|webhook|api|backend)\b/i.test(prompt)
+  const kind: PreflightKind = /\b(database|auth|signup|login|stripe|webhook|api|backend)\b/i.test(
+    prompt,
+  )
     ? "backend_change"
     : /\b(image|illustration|photo|visual)\b/i.test(prompt)
       ? "image_generation"
@@ -66,12 +68,17 @@ function localEstimate(prompt: string): PreflightEstimate {
             ? "new_component"
             : "ui_tweak";
   const base =
-    kind === "backend_change" ? { sec: 35, cents: 6 } :
-    kind === "image_generation" ? { sec: 12, cents: 4 } :
-    kind === "refactor" ? { sec: 30, cents: 5 } :
-    kind === "feature" ? { sec: 45, cents: 8 } :
-    kind === "new_component" ? { sec: 18, cents: 3 } :
-    { sec: 8, cents: 1 };
+    kind === "backend_change"
+      ? { sec: 35, cents: 6 }
+      : kind === "image_generation"
+        ? { sec: 12, cents: 4 }
+        : kind === "refactor"
+          ? { sec: 30, cents: 5 }
+          : kind === "feature"
+            ? { sec: 45, cents: 8 }
+            : kind === "new_component"
+              ? { sec: 18, cents: 3 }
+              : { sec: 8, cents: 1 };
   const boost = Math.min(2, Math.floor(len / 200));
   return {
     kind,
