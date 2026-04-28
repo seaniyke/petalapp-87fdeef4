@@ -101,6 +101,7 @@ import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
 import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
+import { EnableEmailSuggestionChip } from "@/components/EnableEmailSuggestionChip";
 import { PreflightCostChip } from "@/components/PreflightCostChip";
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
@@ -108,6 +109,7 @@ import { SharePreviewDialog } from "@/components/SharePreviewDialog";
 import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
 import { detectDomainIntentInTurn } from "@/lib/domain-intent";
+import { detectEmailIntentInTurn } from "@/lib/email-intent";
 import { getProjectBackend } from "@/lib/projects";
 import { listDomains } from "@/lib/domains";
 import { useWallet } from "@/hooks/use-wallet";
@@ -259,7 +261,7 @@ function Builder() {
   // Project Knowledge sheet — also opens from the mobile overflow menu.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsScrollTo, setSettingsScrollTo] = useState<
-    "domains" | "backend" | "knowledge" | null
+    "domains" | "backend" | "knowledge" | "email" | null
   >(null);
   // Mobile builder menu (bottom sheet) + dependent dialogs.
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -280,6 +282,9 @@ function Builder() {
     () => new Set(),
   );
   const [dismissedDomainChips, setDismissedDomainChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedEmailChips, setDismissedEmailChips] = useState<Set<number>>(
     () => new Set(),
   );
   const { plan: currentPlan } = useWallet();
