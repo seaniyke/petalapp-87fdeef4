@@ -28,7 +28,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import petalLogo from "@/assets/petal-logo.png";
 import {
   fetchRuntimeWallet,
   fetchProjectUsage,
@@ -138,8 +137,8 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
               {/* Hero card */}
               <div className="rounded-2xl bg-muted/40 p-5">
                 <div className="flex items-start gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-coral via-primary to-primary p-1.5">
-                    <img src={petalLogo} alt="Petal" className="h-full w-full object-contain" />
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-coral via-primary to-primary text-2xl">
+                    ❤️
                   </div>
                   <div className="flex-1">
                     <h3 className="text-base font-semibold">Cloud + AI</h3>
