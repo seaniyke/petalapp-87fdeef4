@@ -15,13 +15,17 @@
  * touching API logic.
  */
 
+// Pricing tuned 2026-04-28: previous setup averaged ~6.8 credits/build with
+// frequent cap hits at 8.0. Target is ~3-4 credits/build with cap at 6.0.
+// Diff/patch output mode (see SYSTEM_PROMPT_PATCH) materially reduces
+// completion tokens, so we can lower COMPLETION_RATE without losing margin.
 export const BUILD_HOLD = 1.0; // pre-flight reservation
 export const BUILD_FLOOR = 1.0; // minimum charged after true-up
-export const BUILD_BASE = 1.0; // additive base before token weighting
-export const PROMPT_RATE = 0.05; // credits per 1k input tokens
-export const COMPLETION_RATE = 0.3; // credits per 1k output tokens
-export const BUILD_CAP = 8.0; // max credits per single build
-export const MISSING_USAGE_FALLBACK = 1.5; // when gateway omits usage data
+export const BUILD_BASE = 0.5; // additive base before token weighting
+export const PROMPT_RATE = 0.03; // credits per 1k input tokens
+export const COMPLETION_RATE = 0.15; // credits per 1k output tokens
+export const BUILD_CAP = 6.0; // max credits per single build
+export const MISSING_USAGE_FALLBACK = 1.0; // when gateway omits usage data
 
 export type GatewayUsage = {
   prompt_tokens?: number;
