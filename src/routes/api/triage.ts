@@ -318,19 +318,15 @@ export const Route = createFileRoute("/api/triage")({
           })),
         ];
 
-        const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        const upstream = await aiChatCompletions({
+          feature: "triage",
+          body: {
             model: "google/gemini-3-flash-preview",
             messages: chatMessages,
             stream: true,
             tools: [TRIAGE_TOOL],
             tool_choice: { type: "function", function: { name: "triage" } },
-          }),
+          },
         });
 
         if (!upstream.ok || !upstream.body) {
