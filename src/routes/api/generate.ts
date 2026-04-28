@@ -583,6 +583,58 @@ export const Route = createFileRoute("/api/generate")({
                 return { ...f, content: STYLES_CSS };
               });
 
+              // Tier 2 — stream-time autofixer (regex pass, <10ms total).
+              // Repairs known footguns BEFORE the build/image steps run.
+              const autofixOut = autofixFiles(nextFiles);
+              nextFiles = autofixOut.files;
+              if (autofixOut.report.fixedCount > 0) {
+                console.log(
+                  `[autofix] ${autofixOut.report.fixedCount} fix(es):`,
+                  autofixOut.report.notes.join("; "),
+                );
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "status",
+                      message: `Auto-corrected ${autofixOut.report.fixedCount} small issue${autofixOut.report.fixedCount === 1 ? "" : "s"}.`,
+                    }),
+                  ),
+                );
+              }
+
+              // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
+              // pass that ONLY fixes obvious build-breakers. Gated so 90%
+              // of turns never pay the cost.
+              const preflightKind = fallbackEstimate(lastUserContent).kind;
+              if (
+                shouldRunPostStreamAutofix({
+                  autofixCount: autofixOut.report.fixedCount,
+                  preflightKind,
+                  fileCount: nextFiles.length,
+                })
+              ) {
+                try {
+                  const fixOut = await runPostStreamAutofix(nextFiles);
+                  nextFiles = fixOut.files;
+                  if (fixOut.result.fixedFiles > 0) {
+                    console.log(
+                      `[post-stream-autofix] fixed ${fixOut.result.fixedFiles}:`,
+                      fixOut.result.notes.join("; "),
+                    );
+                    controller.enqueue(
+                      encoder.encode(
+                        sse({
+                          type: "status",
+                          message: `Polished ${fixOut.result.fixedFiles} file${fixOut.result.fixedFiles === 1 ? "" : "s"} for safety.`,
+                        }),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  console.warn("[post-stream-autofix] rejected:", e);
+                }
+              }
+
               // Phase 4: resolve `petal-image://...` placeholders into real
               // AI-generated images uploaded to the public petal-images
               // bucket. Failures fall back to picsum so the build never
