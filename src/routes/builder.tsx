@@ -2114,6 +2114,35 @@ function Builder() {
                               />
                             );
                           })()}
+                        {/* Email suggestion — same rules as backend/domain chips. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          !dismissedEmailChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectEmailIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            return (
+                              <EnableEmailSuggestionChip
+                                reason={intent.reason}
+                                onOpenEmail={() => {
+                                  setSettingsScrollTo("email");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={() =>
+                                  setDismissedEmailChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
                       </div>
                     ) : (
                       <div className="whitespace-pre-wrap">{m.content}</div>
