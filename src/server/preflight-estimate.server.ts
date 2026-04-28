@@ -129,7 +129,7 @@ export async function estimatePromptCost(prompt: string): Promise<PreflightEstim
           },
         ],
         tool_choice: { type: "function", function: { name: "classify_prompt" } },
-      }),
+      },
     });
 
     if (!res.ok) {
