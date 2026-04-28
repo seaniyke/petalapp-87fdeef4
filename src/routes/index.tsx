@@ -315,7 +315,7 @@ function Landing() {
         <div className="absolute inset-0 bg-aurora opacity-70" aria-hidden />
         <div className="absolute inset-0 bg-grain opacity-40" aria-hidden />
 
-        <div className={`relative mx-auto max-w-5xl px-5 text-center sm:px-6 ${isAuthed ? "pt-12 pb-12 sm:pt-20 sm:pb-16 md:pt-24" : "pt-12 pb-20 sm:pt-20 sm:pb-28 md:pt-28 md:pb-36"}`}>
+        <div className={`relative mx-auto max-w-5xl px-5 text-center sm:px-6 ${isAuthed ? "pt-24 pb-16 sm:pt-32 sm:pb-20 md:pt-40 md:pb-24" : "pt-12 pb-20 sm:pt-20 sm:pb-28 md:pt-28 md:pb-36"}`}>
           {isAuthed ? (
             <h1 className="font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
               Let's build something{firstName ? `, ${firstName}` : ""}.
@@ -516,7 +516,7 @@ function Landing() {
             <div className="mx-auto h-px max-w-xs bg-gradient-to-r from-transparent via-border to-transparent" />
 
             {/* Header row — title + count, with a quiet "View all" affordance */}
-            <div className="mt-14 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 sm:mt-16">
+            <div className="mt-24 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 sm:mt-28">
               <div className="flex items-center gap-3">
                 <h2 className="font-display text-[1.75rem] font-semibold tracking-tight sm:text-4xl">
                   My projects
