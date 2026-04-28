@@ -61,9 +61,10 @@ export function ComposerModePicker({
 }) {
   const active = OPTIONS.find((o) => o.value === value) ?? OPTIONS[0];
   const ActiveIcon = active.Icon;
+  const [open, setOpen] = useState(false);
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
