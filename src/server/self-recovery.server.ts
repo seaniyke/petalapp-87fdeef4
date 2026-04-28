@@ -209,10 +209,9 @@ export async function humanizeBuildError(args: {
     `Rewrite this for the user now.`;
 
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const resp = await aiChatCompletions({
+      feature: "recovery",
+      body: {
         model: HUMANIZE_MODEL,
         messages: [
           { role: "system", content: HUMANIZE_SYSTEM },
@@ -220,7 +219,7 @@ export async function humanizeBuildError(args: {
         ],
         tools: [HUMANIZE_TOOL],
         tool_choice: { type: "function", function: { name: "humanize_error" } },
-      }),
+      },
     });
     if (!resp.ok) return fallback;
     const json = (await resp.json()) as {
