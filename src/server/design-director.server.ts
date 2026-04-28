@@ -180,8 +180,7 @@ export async function pickDesignDirection(args: {
   const cached = readDirectionFromMemory(args.memoryEntries);
   if (cached) return cached;
 
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) return null;
+  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return null;
 
   const trimmedBrief = (args.brief ?? "").trim().slice(0, 1500);
   if (trimmedBrief.length < 4) return null;
