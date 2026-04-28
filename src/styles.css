@@ -197,3 +197,38 @@
   /* Tailwind v4 doesn't ship `overflow-wrap-anywhere` by default. */
   .wrap-anywhere { overflow-wrap: anywhere; word-break: break-word; }
 }
+
+/* ---------------------------------------------------------------------------
+ * Credits meter — premium polish.
+ * Subtle moving sheen on the filled portion gives the bar a sense of life
+ * without being noisy. Falls back to a static fill if the user prefers
+ * reduced motion.
+ * ------------------------------------------------------------------------- */
+@keyframes petal-meter-sheen {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(220%); }
+}
+
+.credits-meter-fill {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.credits-meter-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in oklab, white 55%, transparent) 50%,
+    transparent 80%
+  );
+  width: 40%;
+  animation: petal-meter-sheen 2.6s ease-in-out infinite;
+  mix-blend-mode: overlay;
+  opacity: 0.7;
+}
+@media (prefers-reduced-motion: reduce) {
+  .credits-meter-fill::after { animation: none; opacity: 0; }
+}

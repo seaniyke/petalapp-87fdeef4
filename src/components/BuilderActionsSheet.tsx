@@ -104,34 +104,71 @@ export function BuilderActionsSheet({
       <DrawerContent className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <DrawerTitle className="sr-only">Project menu</DrawerTitle>
 
-        {/* Credits card — bar fills with what you HAVE, so it visibly
-            shrinks as credits are spent (matches the Lovable model). */}
+        {/* Credits card — premium surface: layered gradient backdrop, hairline
+            ring, and a meter with gradient fill + animated sheen so credits
+            feel like a living resource rather than a static stat. */}
         <button
           type="button"
           onClick={() => {
             onOpenChange(false);
             onOpenBilling();
           }}
-          className="mt-2 w-full rounded-2xl bg-muted/60 p-4 text-left transition active:scale-[0.99]"
+          className={cn(
+            "group relative mt-2 w-full overflow-hidden rounded-2xl p-4 text-left",
+            "bg-gradient-to-br from-card to-muted/70",
+            "ring-1 ring-border/70",
+            "shadow-[0_1px_0_0_hsl(var(--background)/0.6)_inset,0_8px_24px_-12px_hsl(var(--foreground)/0.18)]",
+            "transition-all duration-200 active:scale-[0.99] hover:ring-border",
+          )}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-base font-semibold">Credits</span>
+          {/* Soft tinted glow that strengthens when the user is low — a quiet
+              ambient cue without a banner. */}
+          <span
+            aria-hidden="true"
+            className={cn(
+              "pointer-events-none absolute inset-0 opacity-60 transition-opacity duration-300",
+              isEmpty
+                ? "bg-[radial-gradient(120%_80%_at_0%_0%,color-mix(in_oklab,var(--destructive)_18%,transparent),transparent_60%)]"
+                : isLow
+                  ? "bg-[radial-gradient(120%_80%_at_0%_0%,color-mix(in_oklab,#f59e0b_22%,transparent),transparent_60%)]"
+                  : "bg-[radial-gradient(120%_80%_at_0%_0%,color-mix(in_oklab,var(--primary)_14%,transparent),transparent_60%)]",
+            )}
+          />
+
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-base font-semibold tracking-tight">Credits</span>
+              {(isLow || isEmpty) && !loading && wallet && (
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    isEmpty ? "bg-destructive" : "bg-amber-500",
+                    "animate-pulse",
+                  )}
+                />
+              )}
+            </div>
             <span className="flex items-center gap-1 text-sm">
               {loading || !wallet ? (
                 <span className="text-muted-foreground">—</span>
               ) : (
-                <span className={cn("font-medium tabular-nums", countTone)}>
-                  {formatCredits(remaining)} left
+                <span className={cn("font-semibold tabular-nums", countTone)}>
+                  {formatCredits(remaining)}
+                  <span className="ml-1 font-normal text-muted-foreground">left</span>
                 </span>
               )}
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
             </span>
           </div>
 
-          {/* Segmented bar: regular (primary) + top-up (accent). The track
-              is the empty/spent portion, so depletion is visually obvious. */}
+          {/* Meter — taller, inset track, gradient fill, animated sheen. */}
           <div
-            className="relative mt-3 flex h-2 w-full overflow-hidden rounded-full bg-foreground/10"
+            className={cn(
+              "relative mt-3.5 flex h-2.5 w-full overflow-hidden rounded-full",
+              "bg-foreground/[0.06] ring-1 ring-inset ring-foreground/[0.04]",
+              "shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]",
+            )}
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={Math.round(capacity)}
@@ -140,18 +177,25 @@ export function BuilderActionsSheet({
           >
             <div
               className={cn(
-                "h-full transition-[width] duration-500 ease-out",
+                "credits-meter-fill h-full transition-[width] duration-700 ease-out",
                 isEmpty
-                  ? "bg-destructive/70"
+                  ? "bg-gradient-to-r from-destructive/80 to-destructive"
                   : isLow
-                    ? "bg-amber-500"
-                    : "bg-primary",
+                    ? "bg-gradient-to-r from-amber-400 to-amber-500"
+                    : "bg-gradient-to-r from-primary to-[color-mix(in_oklab,var(--primary)_70%,white)]",
               )}
-              style={{ width: `${monthlyPct}%` }}
+              style={{
+                width: `${monthlyPct}%`,
+                boxShadow: isEmpty
+                  ? "0 0 0 0 transparent"
+                  : isLow
+                    ? "0 0 12px -2px color-mix(in oklab, #f59e0b 60%, transparent)"
+                    : "0 0 14px -2px color-mix(in oklab, var(--primary) 55%, transparent)",
+              }}
             />
             {topupPct > 0 && (
               <div
-                className="h-full bg-accent transition-[width] duration-500 ease-out"
+                className="credits-meter-fill h-full bg-gradient-to-r from-accent to-[color-mix(in_oklab,var(--accent)_75%,white)] transition-[width] duration-700 ease-out"
                 style={{ width: `${topupPct}%` }}
               />
             )}
@@ -160,7 +204,7 @@ export function BuilderActionsSheet({
           {plan?.code === "free" && (
             <p
               className={cn(
-                "mt-2 flex items-center gap-1.5 text-xs font-medium",
+                "relative mt-2.5 flex items-center gap-1.5 text-xs font-medium",
                 isLow || isEmpty ? "text-amber-600 dark:text-amber-400" : "text-primary",
               )}
             >
