@@ -159,23 +159,16 @@ export async function checkAndIncrementQuota(
     };
   }
 
-  // Increment via upsert
-  await supabaseAdmin.rpc("petal_email_increment_usage", {
-    p_project_id: projectId,
-    p_date: today,
-  }).then(
-    () => undefined,
-    async () => {
-      // Fallback if RPC not present yet — naive upsert
-      await supabaseAdmin.from("petal_email_usage").upsert(
-        {
-          project_id: projectId,
-          usage_date: today,
-          sent_count: dailyUsed + 1,
-        },
-        { onConflict: "project_id,usage_date" }
-      );
-    }
+  // Increment via upsert. Note: under heavy concurrency this is best-effort
+  // (read-then-write race window); acceptable for v1 since cap breaches by a
+  // few emails are not catastrophic and Resend itself caps total spend.
+  await supabaseAdmin.from("petal_email_usage").upsert(
+    {
+      project_id: projectId,
+      usage_date: today,
+      sent_count: dailyUsed + 1,
+    },
+    { onConflict: "project_id,usage_date" }
   );
 
   return {
