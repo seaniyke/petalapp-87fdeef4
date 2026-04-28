@@ -126,8 +126,8 @@ export function BuyBackendSlotDialog({ open, onOpenChange, projectId, isRenewal 
           </DialogTitle>
           <DialogDescription>
             {isRenewal
-              ? `Adds another ${days} days to your managed Supabase backend. We'll resume the project automatically if it was paused.`
-              : `Petal will create a Supabase project for you, wire it into your generated app, and keep it running for ${days} days. Renew anytime to keep it active.`}
+              ? `Adds another ${days} days to your Petal Cloud backend. We'll resume it automatically if it was paused.`
+              : `Petal Cloud will spin up a managed backend for you, wire it into your generated app, and keep it running for ${days} days. Renew anytime to keep it active.`}
           </DialogDescription>
         </DialogHeader>
 

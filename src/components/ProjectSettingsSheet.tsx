@@ -8,12 +8,8 @@ import {
   Database,
   Loader2,
   Save,
-  Plug,
   CheckCircle2,
   Unplug,
-  ExternalLink,
-  ChevronDown,
-  ChevronRight,
   Sparkles,
   Lock,
 } from "lucide-react";
@@ -26,13 +22,10 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   updateProject,
   getProjectBackend,
-  connectProjectBackend,
   disconnectProjectBackend,
   type ProjectRow,
   type ProjectBackend,
@@ -248,7 +241,7 @@ function IntegrationsSectionGated({ projectId }: { projectId: string }) {
 function BackendSection({ projectId }: { projectId: string }) {
   const [loading, setLoading] = useState(true);
   const [backend, setBackend] = useState<ProjectBackend>(null);
-  const [showForm, setShowForm] = useState(false);
+  
 
   useEffect(() => {
     let cancelled = false;
@@ -309,13 +302,10 @@ function BackendSection({ projectId }: { projectId: string }) {
           <div className="flex items-start gap-2">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
             <div className="flex-1 text-sm">
-              <div className="font-medium">Connected (your Supabase)</div>
+              <div className="font-medium">Backend connected</div>
               <div className="mt-0.5 text-xs text-muted-foreground">
-                Auth, database, and file storage are connected to{" "}
-                <code className="rounded bg-background px-1 py-0.5 text-[11px]">
-                  {new URL(backend!.supabaseUrl).hostname}
-                </code>
-                .
+                Auth, database and file storage are connected to an external backend
+                you control.
               </div>
             </div>
           </div>
@@ -339,209 +329,17 @@ function BackendSection({ projectId }: { projectId: string }) {
           onChanged={refresh}
         />
       ) : (
-        // Nothing connected — show both options
-        <div className="space-y-3">
-          <ManagedBackendCard
-            projectId={projectId}
-            backend={backend}
-            onChanged={refresh}
-          />
-          {showForm ? (
-            <ConnectForm
-              projectId={projectId}
-              onCancel={() => setShowForm(false)}
-              onConnected={(b) => {
-                setBackend(b);
-                setShowForm(false);
-              }}
-            />
-          ) : (
-            <div className="rounded-lg border border-dashed border-border p-3">
-              <p className="text-xs text-muted-foreground">
-                Already have a Supabase project? Connect it for free — Petal will inject a
-                pre-configured client into the generated app.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowForm(true)}
-                className="mt-3 inline-flex items-center gap-1.5"
-              >
-                <Plug className="h-3.5 w-3.5" />
-                Connect existing (free)
-              </Button>
-            </div>
-          )}
-        </div>
+        // Nothing connected — show Petal Cloud option only
+        <ManagedBackendCard
+          projectId={projectId}
+          backend={backend}
+          onChanged={refresh}
+        />
       )}
     </div>
   );
 }
 
-function ConnectForm({
-  projectId,
-  onCancel,
-  onConnected,
-}: {
-  projectId: string;
-  onCancel: () => void;
-  onConnected: (b: NonNullable<ProjectBackend>) => void;
-}) {
-  const [url, setUrl] = useState("");
-  const [anonKey, setAnonKey] = useState("");
-  const [serviceRoleKey, setServiceRoleKey] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
-  // Build a best-effort deep link to the user's Supabase API settings page
-  // once they've pasted a valid project URL. Falls back to the dashboard.
-  const apiSettingsUrl = (() => {
-    const m = url.trim().match(/^https:\/\/([a-z0-9-]+)\.supabase\.co\/?$/i);
-    return m
-      ? `https://supabase.com/dashboard/project/${m[1]}/settings/api`
-      : "https://supabase.com/dashboard/projects";
-  })();
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      const result = await connectProjectBackend({
-        projectId,
-        supabaseUrl: url.trim(),
-        anonKey: anonKey.trim(),
-        serviceRoleKey: serviceRoleKey.trim() || undefined,
-      });
-      toast.success("Backend connected");
-      onConnected(result);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't connect");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className="space-y-4 rounded-lg border border-border p-3">
-      {/* Step 1 */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-            1
-          </span>
-          <p className="text-xs font-medium">Open your Supabase API settings</p>
-        </div>
-        <a
-          href={apiSettingsUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-xs text-foreground transition hover:bg-muted"
-        >
-          <ExternalLink className="h-3 w-3" />
-          {url.trim() ? "Open this project's API settings" : "Open Supabase dashboard"}
-        </a>
-      </div>
-
-      {/* Step 2 */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-            2
-          </span>
-          <p className="text-xs font-medium">Paste the Project URL</p>
-        </div>
-        <Input
-          id="b-url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://xxx.supabase.co"
-          required
-          autoComplete="off"
-          className="text-sm"
-        />
-      </div>
-
-      {/* Step 3 */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-            3
-          </span>
-          <p className="text-xs font-medium">Paste the Public API key</p>
-        </div>
-        <Input
-          id="b-anon"
-          value={anonKey}
-          onChange={(e) => setAnonKey(e.target.value)}
-          placeholder="eyJhbGci…"
-          required
-          autoComplete="off"
-          className="font-mono text-xs"
-        />
-        <p className="text-[11px] text-muted-foreground">
-          Labelled <span className="font-medium">anon</span> /{" "}
-          <span className="font-medium">public</span> in Supabase. Safe to share.
-        </p>
-      </div>
-
-      {/* Advanced */}
-      <div>
-        <button
-          type="button"
-          onClick={() => setShowAdvanced((v) => !v)}
-          className="inline-flex items-center gap-1 text-[11px] text-muted-foreground transition hover:text-foreground"
-        >
-          {showAdvanced ? (
-            <ChevronDown className="h-3 w-3" />
-          ) : (
-            <ChevronRight className="h-3 w-3" />
-          )}
-          Advanced
-        </button>
-        {showAdvanced && (
-          <div className="mt-2 space-y-1">
-            <Label htmlFor="b-srk" className="text-xs">
-              Secret key{" "}
-              <span className="text-muted-foreground">(optional)</span>
-            </Label>
-            <Input
-              id="b-srk"
-              value={serviceRoleKey}
-              onChange={(e) => setServiceRoleKey(e.target.value)}
-              placeholder="eyJhbGci…"
-              type="password"
-              autoComplete="off"
-              className="font-mono text-xs"
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Used later for managed migrations. Leave blank if unsure.
-            </p>
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center justify-end gap-2 pt-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onCancel}
-          disabled={submitting}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" size="sm" disabled={submitting} className="inline-flex items-center gap-1.5">
-          {submitting ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Plug className="h-3.5 w-3.5" />
-          )}
-          Connect
-        </Button>
-      </div>
-    </form>
-  );
-}
 
 /* ---------------- Powered by Petal badge ---------------- */
 

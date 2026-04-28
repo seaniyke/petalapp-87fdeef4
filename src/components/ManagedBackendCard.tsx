@@ -20,7 +20,7 @@ import {
   PauseCircle,
   RefreshCw,
   Download,
-  ExternalLink,
+  
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -103,7 +103,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
     try {
       const c = await getManagedCredentials(projectId);
       const text = [
-        `# Petal-managed Supabase credentials for project ${projectId}`,
+        `# Petal Cloud backend credentials for project ${projectId}`,
         `# Generated ${new Date().toISOString()}`,
         ``,
         `SUPABASE_URL=${c.supabaseUrl}`,
@@ -140,10 +140,10 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
           <div className="flex items-start gap-2">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <div className="flex-1">
-              <p className="text-sm font-medium">Auto-provision a backend</p>
+              <p className="text-sm font-medium">Add Petal Cloud backend</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Don't have a Supabase project? Petal can spin one up for you and wire it in
-                automatically. Renews every 30 days.
+                Auth, database and file storage — fully managed by Petal. We provision and
+                wire it in automatically. Renews every 30 days.
               </p>
             </div>
           </div>
@@ -153,7 +153,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
             className="mt-3 inline-flex items-center gap-1.5"
           >
             <Sparkles className="h-3.5 w-3.5" />
-            Auto-provision (paid)
+            Enable Petal Cloud
           </Button>
         </div>
         <BuyBackendSlotDialog
@@ -200,7 +200,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
           <div className="flex-1 text-sm">
             <div className="font-medium">Provisioning failed</div>
             <div className="mt-0.5 text-xs text-muted-foreground">
-              {backend.errorMessage || "Something went wrong while creating your Supabase project."}
+              {backend.errorMessage || "Something went wrong while setting up your backend."}
             </div>
           </div>
         </div>
@@ -268,20 +268,13 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
           <div className="flex-1 text-sm">
             <div className="flex items-center gap-2">
-              <span className="font-medium">Managed backend ready</span>
+              <span className="font-medium">Petal Cloud connected</span>
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                Auto-provisioned
+                Managed
               </span>
             </div>
             <div className="mt-0.5 text-xs text-muted-foreground">
-              {backend.supabaseUrl ? (
-                <>
-                  Connected to{" "}
-                  <code className="rounded bg-background px-1 py-0.5 text-[11px]">
-                    {new URL(backend.supabaseUrl).hostname}
-                  </code>
-                </>
-              ) : null}
+              Auth, database and file storage are live and wired into your app.
             </div>
             {expiresAt && (
               <div
@@ -309,16 +302,6 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
             )}
             Download credentials
           </Button>
-          {backend.supabaseProjectRef && (
-            <a
-              href={`https://supabase.com/dashboard/project/${backend.supabaseProjectRef}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            >
-              <ExternalLink className="h-3 w-3" /> Open in Supabase
-            </a>
-          )}
           <Button
             size="sm"
             variant={renewSoon ? "default" : "outline"}
