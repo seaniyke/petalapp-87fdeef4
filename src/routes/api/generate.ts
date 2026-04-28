@@ -603,9 +603,11 @@ export const Route = createFileRoute("/api/generate")({
               }
 
               // Charge ONCE, after the build succeeds. Cost is computed from
-              // actual token usage. If the wallet emptied during the build,
-              // we still deliver the result (the user already received it)
-              // and log a warning — we don't claw back work the user has.
+              // the MAIN generate call's token usage only — `collected.usage`
+              // covers the patch_files / write_project completion, not the
+              // side calls (design-director, self-check, humanize-error).
+              // Those run on Petal's tab so users never get surprise-charged
+              // for our internal QA passes. Do NOT add their usage here.
               const priced = priceBuild(collected.usage);
               let finalCharged = 0;
               const charge = await spendCredit({
