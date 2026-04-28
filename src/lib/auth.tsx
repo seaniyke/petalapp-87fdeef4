@@ -15,26 +15,26 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isReady, setIsReady] = useState(false);
-  const restoredSession = useRef(false);
 
   useEffect(() => {
     let mounted = true;
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      if (restoredSession.current) setIsReady(true);
-    });
+    let subscription: { unsubscribe: () => void } | undefined;
 
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
-      restoredSession.current = true;
       setSession(data.session);
       setIsReady(true);
+
+      const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+        setSession(nextSession);
+        setIsReady(true);
+      });
+      subscription = sub.subscription;
     });
 
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
