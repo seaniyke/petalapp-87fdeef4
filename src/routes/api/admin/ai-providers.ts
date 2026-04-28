@@ -92,6 +92,15 @@ export const Route = createFileRoute("/api/admin/ai-providers")({
               const result = await getCostSummary(days);
               return Response.json(result);
             }
+            case "router-snapshot": {
+              const snap = await getRouterSnapshot();
+              return Response.json(snap);
+            }
+            case "router-config": {
+              const patch = (body.config ?? {}) as Partial<RouterConfig>;
+              const next = await setRouterConfig(userId, patch);
+              return Response.json({ ok: true, config: next });
+            }
             default:
               return Response.json({ error: "Unknown action" }, { status: 400 });
           }
