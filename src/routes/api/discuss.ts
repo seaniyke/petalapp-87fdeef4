@@ -61,8 +61,11 @@ export const Route = createFileRoute("/api/discuss")({
         if (authResult instanceof Response) return authResult;
         const userId = authResult;
 
-        const apiKey = process.env.LOVABLE_API_KEY;
-        if (!apiKey) return new Response("AI gateway is not configured.", { status: 500 });
+        // Provider key check is handled inside aiChatCompletions; we only verify
+        // here for the friendly early-fail path used by the existing UI.
+        if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) {
+          return new Response("AI gateway is not configured.", { status: 500 });
+        }
 
         let body: Body;
         try {
