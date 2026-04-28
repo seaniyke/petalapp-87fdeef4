@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_provider_settings: {
+        Row: {
+          feature: string
+          provider: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          feature: string
+          provider: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          feature?: string
+          provider?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       backend_slots: {
         Row: {
           addon_code: string
