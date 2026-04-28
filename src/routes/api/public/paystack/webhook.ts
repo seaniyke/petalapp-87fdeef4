@@ -11,6 +11,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyWebhookSignature } from "@/server/paystack.server";
 import { provisionForProject } from "@/server/managed-backend.server";
+import { registerDomain } from "@/server/cloudflare-registrar.server";
+import { createCustomHostname } from "@/server/cloudflare-saas.server";
 
 const MANAGED_BACKEND_ADDON = "managed_backend_monthly";
 
