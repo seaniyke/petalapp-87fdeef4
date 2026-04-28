@@ -1883,6 +1883,38 @@ function Builder() {
                             </CollapsibleSegment>
                           );
                         })()}
+                        {/* "You'll need a backend" inline suggestion. Only on
+                            the most recent assistant message, only when no
+                            backend exists yet, and only when the heuristic
+                            fires on either the user prompt or Petal's reply. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          hasBackend === false &&
+                          !dismissedBackendChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectBackendIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            return (
+                              <EnableBackendSuggestionChip
+                                projectId={project.id}
+                                isPaidPlan={isPaidPlan}
+                                reason={intent.reason}
+                                onUpgrade={() => setBillingOpen(true)}
+                                onDismiss={() =>
+                                  setDismissedBackendChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
                       </div>
                     ) : (
                       <div className="whitespace-pre-wrap">{m.content}</div>
