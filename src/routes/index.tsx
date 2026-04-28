@@ -307,7 +307,7 @@ function Landing() {
 
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <SiteHeader />
 
       {/* Hero */}
@@ -315,9 +315,9 @@ function Landing() {
         <div className="absolute inset-0 bg-aurora opacity-70" aria-hidden />
         <div className="absolute inset-0 bg-grain opacity-40" aria-hidden />
 
-        <div className={`relative mx-auto max-w-5xl px-4 text-center sm:px-6 ${isAuthed ? "pt-10 pb-10 sm:pt-16 sm:pb-12 md:pt-20" : "pt-12 pb-20 sm:pt-20 sm:pb-28 md:pt-28 md:pb-36"}`}>
+        <div className={`relative mx-auto max-w-5xl px-5 text-center sm:px-6 ${isAuthed ? "pt-12 pb-12 sm:pt-20 sm:pb-16 md:pt-24" : "pt-12 pb-20 sm:pt-20 sm:pb-28 md:pt-28 md:pb-36"}`}>
           {isAuthed ? (
-            <h1 className="font-display text-3xl font-semibold leading-[1.1] tracking-tight text-balance sm:text-4xl md:text-5xl">
+            <h1 className="font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
               Let's build something{firstName ? `, ${firstName}` : ""}.
             </h1>
           ) : (
@@ -509,20 +509,20 @@ function Landing() {
       </section>
 
       {isAuthed ? (
-        <section className="relative px-4 pb-24 sm:px-6">
+        <section className="relative px-5 pb-28 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             {/* Subtle divider — keeps the section visually separated from the
                 composer above without a hard rule. */}
             <div className="mx-auto h-px max-w-xs bg-gradient-to-r from-transparent via-border to-transparent" />
 
             {/* Header row — title + count, with a quiet "View all" affordance */}
-            <div className="mt-10 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+            <div className="mt-14 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 sm:mt-16">
               <div className="flex items-center gap-3">
-                <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+                <h2 className="font-display text-[1.75rem] font-semibold tracking-tight sm:text-4xl">
                   My projects
                 </h2>
                 {projects && projects.length > 0 && (
-                  <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  <span className="rounded-full border border-border bg-card px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                     {projects.length}
                   </span>
                 )}
@@ -567,13 +567,13 @@ function Landing() {
               )}
             </div>
 
-            <div className="mt-6">
+            <div className="mt-8">
               {projectsLoading || projects === null ? (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <div
                       key={i}
-                      className="h-56 animate-pulse rounded-3xl border border-border bg-card"
+                      className="h-64 animate-pulse rounded-3xl border border-border bg-card/60"
                     />
                   ))}
                 </div>
@@ -603,7 +603,7 @@ function Landing() {
                     );
                   }
                   return (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                       {/* "Start something new" card — first slot, mirrors Lovable */}
                       <button
                         type="button"
@@ -614,7 +614,7 @@ function Landing() {
                             el.scrollIntoView({ behavior: "smooth", block: "center" });
                           }
                         }}
-                        className="group flex h-full min-h-[14rem] flex-col items-start justify-between rounded-3xl border border-dashed border-border bg-card/30 p-5 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:bg-card"
+                        className="group flex h-full min-h-[16rem] flex-col items-start justify-between rounded-3xl border border-dashed border-border bg-card/30 p-5 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:bg-card"
                       >
                         <span className="grid h-10 w-10 place-items-center rounded-full border border-border bg-background text-muted-foreground transition group-hover:border-primary/60 group-hover:text-foreground">
                           <Plus className="h-4 w-4" />
@@ -642,7 +642,7 @@ function Landing() {
                           className="group relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card/80 transition hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-[var(--shadow-soft)]"
                         >
                           <div className="relative">
-                            <ProjectThumbnail projectId={p.id} className="h-32" />
+                            <ProjectThumbnail projectId={p.id} className="h-36 sm:h-40" />
                             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
                             <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground backdrop-blur">
                               {p.is_public ? (
