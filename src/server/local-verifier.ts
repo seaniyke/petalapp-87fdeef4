@@ -144,6 +144,59 @@ function braceBalance(src: string): { braces: number; parens: number; brackets: 
   return { braces, parens, brackets };
 }
 
+/**
+ * Find PascalCase JSX tag names that have no corresponding import or local
+ * declaration in the file. Catches the common failure mode where the model
+ * writes `<Container>` / `<Inline>` / `<Button>` etc. without an import,
+ * which compiles fine (TS treats them as `any`) but throws ReferenceError
+ * at runtime in the deployed bundle.
+ *
+ * Heuristic, not a full resolver — we only flag names that don't appear
+ * anywhere outside JSX as a defensible declaration site.
+ */
+function findUndefinedComponents(src: string, clean: string): string[] {
+  const tagRe = /<([A-Z][A-Za-z0-9_]*)\b/g;
+  const tags = new Set<string>();
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(clean))) tags.add(m[1]);
+  if (tags.size === 0) return [];
+
+  // Collect "declared" names from imports + local declarations.
+  const declared = new Set<string>();
+
+  // Imports: import X, {A, B as C}, * as NS from "..."
+  const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
+  while ((m = importRe.exec(src))) {
+    if (m[1]) declared.add(m[1]);
+    if (m[3]) declared.add(m[3]);
+    if (m[2]) {
+      for (const part of m[2].split(",")) {
+        const name = part.trim().split(/\s+as\s+/i).pop()?.trim();
+        if (name) declared.add(name);
+      }
+    }
+  }
+  // Plain `import "..."` and `import * as NS from "..."` (already handled above).
+
+  // Local declarations: const Foo = ..., function Foo(...), class Foo
+  const declRe = /(?:^|\n)\s*(?:export\s+)?(?:default\s+)?(?:const|let|var|function|class)\s+([A-Z][A-Za-z0-9_]*)/g;
+  while ((m = declRe.exec(src))) declared.add(m[1]);
+
+  // React intrinsics + namespace shortcuts that don't need imports.
+  const builtins = new Set(["Fragment", "StrictMode", "Suspense", "Profiler", "Children"]);
+
+  const missing: string[] = [];
+  for (const tag of tags) {
+    if (declared.has(tag)) continue;
+    if (builtins.has(tag)) continue;
+    // Namespaced tags like <Foo.Bar> never trigger here (we matched only the head).
+    // If a name is used as `Tag.X` (e.g. <RadioGroup.Item>), the JSX regex
+    // captures only `RadioGroup`, which still must be imported, so this is fine.
+    missing.push(tag);
+  }
+  return missing;
+}
+
 export function verifyFileLocal(path: string, content: string): LocalIssue[] {
   if (!SCANNABLE.test(path)) return [];
   const issues: LocalIssue[] = [];
@@ -182,6 +235,15 @@ export function verifyFileLocal(path: string, content: string): LocalIssue[] {
       // One JSX issue is enough signal — don't spam.
       break;
     }
+  }
+
+  const missing = findUndefinedComponents(content, clean);
+  if (missing.length > 0) {
+    issues.push({
+      path,
+      kind: "undefined",
+      detail: `undefined component(s): ${missing.slice(0, 6).join(", ")}${missing.length > 6 ? "…" : ""}`,
+    });
   }
 
   return issues;
