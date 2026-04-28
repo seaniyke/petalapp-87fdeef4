@@ -51,7 +51,14 @@ export const Route = createFileRoute("/api/billing/initialize")({
           // Top-up packs and project add-ons require an active paid plan.
           // We gate this server-side so a free-tier user can't bypass the
           // UI and POST directly to /api/billing/initialize.
-          if (parsed.purpose === "pack" || parsed.purpose === "addon") {
+          //
+          // Runtime top-ups ALSO require a paid plan (free users only get the
+          // monthly $10 free allowance — they can't buy more runtime).
+          if (
+            parsed.purpose === "pack" ||
+            parsed.purpose === "addon" ||
+            parsed.purpose === "runtime_topup"
+          ) {
             const { data: walletRow } = await supabaseAdmin
               .from("user_wallets")
               .select("plan_code")
@@ -61,7 +68,10 @@ export const Route = createFileRoute("/api/billing/initialize")({
             if (planCode === "free") {
               return new Response(
                 JSON.stringify({
-                  error: "Upgrade to a paid plan to buy credits.",
+                  error:
+                    parsed.purpose === "runtime_topup"
+                      ? "Upgrade to a paid plan to top up your Cloud + AI balance."
+                      : "Upgrade to a paid plan to buy credits.",
                   code: "upgrade_required",
                 }),
                 { status: 403, headers: { "Content-Type": "application/json" } },
@@ -85,7 +95,53 @@ export const Route = createFileRoute("/api/billing/initialize")({
             }
           }
 
-          const price = await resolvePrice(parsed.purpose, parsed.itemCode, parsed.currency);
+          // Resolve price. Runtime top-ups have a separate path because they
+          // can be either a fixed pack (custom_amount_minor unset) or a
+          // user-typed custom amount.
+          let price: { amountMinor: number; usdAmountCents: number };
+          if (parsed.purpose === "runtime_topup") {
+            if (parsed.customAmountMinor) {
+              // Custom amount: itemCode === "custom". Convert minor → USD cents.
+              const { data: cur_row } = await supabaseAdmin
+                .from("billing_currencies")
+                .select("usd_rate, is_active")
+                .eq("code", parsed.currency)
+                .maybeSingle();
+              if (!cur_row || !cur_row.is_active) {
+                return new Response("Currency not available", { status: 400 });
+              }
+              const rate = Number(cur_row.usd_rate);
+              if (rate <= 0) return new Response("Bad currency rate", { status: 500 });
+              const localMajor = parsed.customAmountMinor / 100; // assumes 2-decimal
+              const usdMajor = localMajor / rate;
+              price = {
+                amountMinor: parsed.customAmountMinor,
+                usdAmountCents: Math.max(50, Math.floor(usdMajor * 100)),
+              };
+            } else {
+              const { data: pack } = await supabaseAdmin
+                .from("runtime_topup_packs")
+                .select("amount_cents, currency_code, display_amount_minor, is_active")
+                .eq("code", parsed.itemCode)
+                .maybeSingle();
+              if (!pack || !pack.is_active) {
+                return new Response("Unknown runtime pack", { status: 400 });
+              }
+              if (pack.currency_code !== parsed.currency) {
+                return new Response(
+                  `This pack is priced in ${pack.currency_code}, not ${parsed.currency}`,
+                  { status: 400 },
+                );
+              }
+              price = {
+                amountMinor: Number(pack.display_amount_minor),
+                usdAmountCents: Number(pack.amount_cents),
+              };
+            }
+          } else {
+            price = await resolvePrice(parsed.purpose, parsed.itemCode, parsed.currency);
+          }
+
           const reference = `pt_${crypto.randomUUID().replace(/-/g, "")}`;
           const env = getEnvironment();
 
