@@ -16,6 +16,8 @@
  *   side so a misbehaving model can't keep the user spinning.
  */
 
+import { aiChatCompletions } from "@/server/ai-provider.server";
+
 export type CoachTurnInput = {
   /** Index of THIS turn (1-based). Server caps at MAX_TURNS. */
   turn: number;
