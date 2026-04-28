@@ -37,6 +37,7 @@ import { fallbackEstimate } from "@/server/preflight-estimate.server";
 import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-classifier.server";
 import { runVerifier, shouldRunVerifier } from "@/server/verifier.server";
 import { verifyFilesLocal } from "@/server/local-verifier";
+import { runContinuation } from "@/server/stream-continuation.server";
 import { pickBestModel } from "@/server/smart-router.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
