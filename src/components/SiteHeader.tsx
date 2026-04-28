@@ -1,10 +1,11 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LogOut, FolderOpen, User as UserIcon, Settings } from "lucide-react";
+import { LogOut, FolderOpen, User as UserIcon, Settings, Wallet } from "lucide-react";
 import petalLogo from "@/assets/petal-logo.png";
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { CreditBadge } from "@/components/CreditBadge";
+import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,7 @@ export function SiteHeader() {
   const { user, isReady, signOut } = useAuth();
   const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
+  const [cloudBalanceOpen, setCloudBalanceOpen] = useState(false);
 
   // Lift the header (heavier blur + hairline) once the user has scrolled.
   // This mirrors Lovable's quiet, premium header behaviour.
@@ -104,6 +106,9 @@ export function SiteHeader() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => navigate({ to: "/projects" })}>
                     <FolderOpen className="mr-2 h-4 w-4" /> My projects
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setCloudBalanceOpen(true)}>
+                    <Wallet className="mr-2 h-4 w-4" /> Cloud &amp; AI balance
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => navigate({ to: "/profile" })}>
                     <UserIcon className="mr-2 h-4 w-4" /> Profile
