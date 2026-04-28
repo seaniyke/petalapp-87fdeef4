@@ -208,10 +208,9 @@ export async function pickDesignDirection(args: {
 
   let direction: DesignDirection | null = null;
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const resp = await aiChatCompletions({
+      feature: "design",
+      body: {
         model: DIRECTOR_MODEL,
         messages: [
           { role: "system", content: DIRECTOR_SYSTEM },
@@ -219,7 +218,7 @@ export async function pickDesignDirection(args: {
         ],
         tools: [DIRECTOR_TOOL],
         tool_choice: { type: "function", function: { name: "set_design_direction" } },
-      }),
+      },
     });
     if (!resp.ok) {
       console.warn("[design-director] http error", resp.status);
