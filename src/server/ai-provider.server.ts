@@ -58,16 +58,78 @@ function featureOverrideEnv(feature: AiFeature): string {
   return `AI_PROVIDER_${feature.toUpperCase()}`;
 }
 
-function resolveProvider(feature: AiFeature): Provider {
+/**
+ * Per-feature DB overrides cached in-memory for `CACHE_TTL_MS` so we don't
+ * round-trip to Postgres on every AI call. Cache is per-Worker-instance —
+ * after an admin toggles a setting it propagates within ~30s globally.
+ *
+ * To force an immediate flush from admin code, call `invalidateProviderCache()`.
+ */
+const CACHE_TTL_MS = 30_000;
+let cachedOverrides: Map<string, Provider> | null = null;
+let cacheLoadedAt = 0;
+let inflight: Promise<Map<string, Provider>> | null = null;
+
+async function loadDbOverrides(): Promise<Map<string, Provider>> {
+  const now = Date.now();
+  if (cachedOverrides && now - cacheLoadedAt < CACHE_TTL_MS) {
+    return cachedOverrides;
+  }
+  if (inflight) return inflight;
+
+  inflight = (async () => {
+    try {
+      // Lazy import to avoid pulling the admin client into edge-cold-start path
+      // when the DB has no settings yet.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data } = await supabaseAdmin
+        .from("ai_provider_settings")
+        .select("feature, provider");
+      const map = new Map<string, Provider>();
+      for (const row of data ?? []) {
+        if (row.provider === "openrouter" || row.provider === "lovable") {
+          map.set(row.feature, row.provider);
+        }
+      }
+      cachedOverrides = map;
+      cacheLoadedAt = Date.now();
+      return map;
+    } catch (err) {
+      // DB unreachable / table missing → fall back to env-only resolution.
+      console.warn("[ai-provider] failed to load DB overrides, using env only", err);
+      const map = new Map<string, Provider>();
+      cachedOverrides = map;
+      cacheLoadedAt = Date.now();
+      return map;
+    } finally {
+      inflight = null;
+    }
+  })();
+  return inflight;
+}
+
+/** Force the next call to re-read the DB. Used by admin save handlers. */
+export function invalidateProviderCache(): void {
+  cachedOverrides = null;
+  cacheLoadedAt = 0;
+}
+
+async function resolveProvider(feature: AiFeature): Promise<Provider> {
   // Image gen MUST stay on Lovable AI — see file header.
   if (feature === "image") return "lovable";
 
-  const override = process.env[featureOverrideEnv(feature)]?.toLowerCase();
-  const global = process.env.AI_PROVIDER?.toLowerCase();
-  const choice = override || global || "lovable";
-  if (choice === "openrouter") return "openrouter";
-  return "lovable";
+  // 1. DB override wins (set by admin via /admin/ai-providers).
+  const overrides = await loadDbOverrides();
+  const dbChoice = overrides.get(feature);
+  if (dbChoice) return dbChoice;
+
+  // 2. Env-var fallback (per-feature, then global, then "lovable").
+  const envOverride = process.env[featureOverrideEnv(feature)]?.toLowerCase();
+  const envGlobal = process.env.AI_PROVIDER?.toLowerCase();
+  const choice = envOverride || envGlobal || "lovable";
+  return choice === "openrouter" ? "openrouter" : "lovable";
 }
+
 
 /**
  * When we route to OpenRouter, the `model` string the caller passed (which is
@@ -111,7 +173,7 @@ export interface AiCallOptions {
  * can surface the existing 402/429 toasts.
  */
 export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> {
-  const provider = resolveProvider(opts.feature);
+  const provider = await resolveProvider(opts.feature);
 
   let url: string;
   let apiKey: string | undefined;
@@ -158,6 +220,19 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
 }
 
 /** Exposed for diagnostics / admin tooling. */
-export function currentProviderFor(feature: AiFeature): Provider {
+export async function currentProviderFor(feature: AiFeature): Promise<Provider> {
   return resolveProvider(feature);
 }
+
+/** Exposed for the admin status page — read-only snapshot of all features. */
+export const ALL_AI_FEATURES: AiFeature[] = [
+  "generate",
+  "discuss",
+  "triage",
+  "coach",
+  "design",
+  "memory",
+  "recovery",
+  "preflight",
+  "image",
+];

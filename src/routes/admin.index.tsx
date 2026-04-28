@@ -10,6 +10,7 @@ import {
   Wallet,
   Globe,
   ArrowRight,
+  Cpu,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -204,6 +205,12 @@ function AdminIndexPage() {
             description="Recent credit ledger entries and Paystack transactions."
             icon={<Receipt className="h-5 w-5" />}
           />
+          <SectionCard
+            to="/admin/ai-providers"
+            title="AI Providers"
+            description="Route each AI feature to Lovable AI or OpenRouter to control cost."
+            icon={<Cpu className="h-5 w-5" />}
+          />
         </section>
       </main>
     </div>
@@ -255,7 +262,7 @@ function SectionCard({
   description,
   icon,
 }: {
-  to: "/admin/billing" | "/admin/users" | "/admin/projects" | "/admin/ledgers";
+  to: "/admin/billing" | "/admin/users" | "/admin/projects" | "/admin/ledgers" | "/admin/ai-providers";
   title: string;
   description: string;
   icon: React.ReactNode;
