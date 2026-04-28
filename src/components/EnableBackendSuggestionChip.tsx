@@ -37,6 +37,7 @@ export function EnableBackendSuggestionChip({
   projectId,
   isPaidPlan,
   reason,
+  onUpgrade,
   onDismiss,
 }: Props) {
   const [purchaseOpen, setPurchaseOpen] = useState(false);
