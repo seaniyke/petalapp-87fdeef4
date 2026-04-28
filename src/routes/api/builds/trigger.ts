@@ -178,6 +178,27 @@ export const Route = createFileRoute("/api/builds/trigger")({
           );
         }
 
+        // 2f) Inject "Powered by Petal" badge into index.html. Shown by
+        //     default; paid-plan owners may opt out via project settings.
+        try {
+          const { data: wallet } = await supabaseAdmin
+            .from("user_wallets")
+            .select("plan_code")
+            .eq("user_id", userId)
+            .maybeSingle();
+          const isPaidPlan = !!wallet?.plan_code && wallet.plan_code !== "free";
+          const shouldHide = isPaidPlan && project.hide_petal_badge === true;
+          if (!shouldHide) {
+            withEnv = injectPetalBadge(withEnv);
+          }
+        } catch (e) {
+          console.warn(
+            `[badge] could not determine plan for project=${projectId}:`,
+            e instanceof Error ? e.message : String(e),
+          );
+          withEnv = injectPetalBadge(withEnv);
+        }
+
         // 3) Insert pending build row + bump latest_build_id BEFORE calling
         //    Railway, so a fast callback never races ahead of our own write.
         const { data: build, error: insertErr } = await supabaseAdmin
