@@ -171,6 +171,7 @@ export function MobilePreviewFallback({
     return () => {
       cancelled = true;
       window.clearInterval(poll);
+      window.clearInterval(stuckTimer);
       document.removeEventListener("visibilitychange", onAlive);
       window.removeEventListener("online", onAlive);
       window.removeEventListener("focus", onAlive);
