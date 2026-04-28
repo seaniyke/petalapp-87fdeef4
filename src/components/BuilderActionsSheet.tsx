@@ -218,6 +218,28 @@ export function BuilderActionsSheet({
           )}
         </button>
 
+        {/* Quick "Buy credits" CTA — surfaces automatically when the wallet
+            drops to 10 or fewer credits so the user can top up in one tap
+            without hunting through Settings → Billing. */}
+        {!loading && wallet && remaining <= 10 && (
+          <button
+            type="button"
+            onClick={() => {
+              onOpenChange(false);
+              onOpenBilling();
+            }}
+            className={cn(
+              "mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-xl",
+              "bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground",
+              "shadow-[0_6px_20px_-8px_color-mix(in_oklab,var(--primary)_70%,transparent)]",
+              "ring-1 ring-primary/30 transition active:scale-[0.99] hover:brightness-105",
+            )}
+          >
+            <Sparkles className="h-4 w-4" />
+            {isEmpty ? "Buy credits to keep building" : "Buy more credits"}
+          </button>
+        )}
+
         {/* Actions */}
         <ul className="mt-3 divide-y divide-border/60 rounded-2xl bg-card">
           <ActionRow
