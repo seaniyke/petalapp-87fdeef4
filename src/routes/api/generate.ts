@@ -36,6 +36,7 @@ import { runPostStreamAutofix, shouldRunPostStreamAutofix } from "@/server/post-
 import { fallbackEstimate } from "@/server/preflight-estimate.server";
 import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-classifier.server";
 import { runVerifier, shouldRunVerifier } from "@/server/verifier.server";
+import { pickBestModel } from "@/server/smart-router.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
