@@ -60,7 +60,7 @@ async function assertAdmin(userId: string): Promise<void> {
 export const listAiProviderSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ rows: AiFeatureRow[]; openrouterKeyConfigured: boolean }> => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertAdmin(context.userId);
 
     const { data, error } = await supabaseAdmin
       .from("ai_provider_settings")
@@ -109,7 +109,7 @@ export const setAiProviderSetting = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertAdmin(context.userId);
 
     if (data.provider === null) {
       const { error } = await supabaseAdmin
