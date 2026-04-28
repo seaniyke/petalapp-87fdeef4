@@ -16,45 +16,57 @@ export type Database = {
     Tables: {
       ai_call_log: {
         Row: {
+          chosen_by: string | null
           completion_tokens: number | null
           cost_usd_micro: number | null
           created_at: string
           error_message: string | null
           fallback_used: boolean
           feature: string
+          had_attachments: boolean
           id: string
           latency_ms: number | null
           model: string | null
+          phase: string | null
+          prompt_chars: number | null
           prompt_tokens: number | null
           provider: string
           status: number
           total_tokens: number | null
         }
         Insert: {
+          chosen_by?: string | null
           completion_tokens?: number | null
           cost_usd_micro?: number | null
           created_at?: string
           error_message?: string | null
           fallback_used?: boolean
           feature: string
+          had_attachments?: boolean
           id?: string
           latency_ms?: number | null
           model?: string | null
+          phase?: string | null
+          prompt_chars?: number | null
           prompt_tokens?: number | null
           provider: string
           status: number
           total_tokens?: number | null
         }
         Update: {
+          chosen_by?: string | null
           completion_tokens?: number | null
           cost_usd_micro?: number | null
           created_at?: string
           error_message?: string | null
           fallback_used?: boolean
           feature?: string
+          had_attachments?: boolean
           id?: string
           latency_ms?: number | null
           model?: string | null
+          phase?: string | null
+          prompt_chars?: number | null
           prompt_tokens?: number | null
           provider?: string
           status?: number
@@ -86,6 +98,36 @@ export type Database = {
           provider?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ai_router_config: {
+        Row: {
+          enabled: boolean
+          exploration_pct: number
+          id: number
+          min_samples: number
+          updated_at: string
+          updated_by: string | null
+          window_hours: number
+        }
+        Insert: {
+          enabled?: boolean
+          exploration_pct?: number
+          id?: number
+          min_samples?: number
+          updated_at?: string
+          updated_by?: string | null
+          window_hours?: number
+        }
+        Update: {
+          enabled?: boolean
+          exploration_pct?: number
+          id?: number
+          min_samples?: number
+          updated_at?: string
+          updated_by?: string | null
+          window_hours?: number
         }
         Relationships: []
       }
