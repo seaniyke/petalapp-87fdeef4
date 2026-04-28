@@ -742,6 +742,138 @@ export type Database = {
           },
         ]
       }
+      petal_email_outbound: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          metadata: Json
+          project_id: string
+          recipient_email: string
+          resend_message_id: string | null
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json
+          project_id: string
+          recipient_email: string
+          resend_message_id?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json
+          project_id?: string
+          recipient_email?: string
+          resend_message_id?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Relationships: []
+      }
+      petal_email_subscriptions: {
+        Row: {
+          api_token_hash: string
+          api_token_prefix: string
+          created_at: string
+          current_period_end: string
+          current_period_start: string
+          custom_domain: string | null
+          custom_domain_verified: boolean
+          daily_cap: number
+          id: string
+          monthly_cap: number
+          paystack_reference: string | null
+          plan: string
+          project_id: string
+          reply_to: string | null
+          resend_domain_id: string | null
+          sender_email: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_token_hash: string
+          api_token_prefix: string
+          created_at?: string
+          current_period_end?: string
+          current_period_start?: string
+          custom_domain?: string | null
+          custom_domain_verified?: boolean
+          daily_cap?: number
+          id?: string
+          monthly_cap?: number
+          paystack_reference?: string | null
+          plan?: string
+          project_id: string
+          reply_to?: string | null
+          resend_domain_id?: string | null
+          sender_email?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_token_hash?: string
+          api_token_prefix?: string
+          created_at?: string
+          current_period_end?: string
+          current_period_start?: string
+          custom_domain?: string | null
+          custom_domain_verified?: boolean
+          daily_cap?: number
+          id?: string
+          monthly_cap?: number
+          paystack_reference?: string | null
+          plan?: string
+          project_id?: string
+          reply_to?: string | null
+          resend_domain_id?: string | null
+          sender_email?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      petal_email_usage: {
+        Row: {
+          created_at: string
+          failed_count: number
+          id: string
+          project_id: string
+          sent_count: number
+          updated_at: string
+          usage_date: string
+        }
+        Insert: {
+          created_at?: string
+          failed_count?: number
+          id?: string
+          project_id: string
+          sent_count?: number
+          updated_at?: string
+          usage_date?: string
+        }
+        Update: {
+          created_at?: string
+          failed_count?: number
+          id?: string
+          project_id?: string
+          sent_count?: number
+          updated_at?: string
+          usage_date?: string
+        }
+        Relationships: []
+      }
       preview_comments: {
         Row: {
           author_name: string | null
