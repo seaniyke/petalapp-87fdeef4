@@ -18,6 +18,11 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { generatePetalImage } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
+import { chargeRuntime } from "@/server/runtime-wallet.server";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+/** End-user runtime image generation cost in USD cents (2¢/image). */
+const RUNTIME_IMAGE_CENTS = 2;
 
 type Body = {
   prompt?: string;
@@ -158,7 +163,8 @@ export const Route = createFileRoute("/api/generate-image")({
             aspectRatio: body.aspectRatio,
           });
 
-          // Charge once, post-success. Anonymous callers pay nothing.
+          // Charge once, post-success. Anonymous callers (end-user apps) hit
+          // the project owner's runtime wallet instead of build credits.
           if (userId) {
             const charge = await spendCredit({
               userId,
@@ -169,6 +175,33 @@ export const Route = createFileRoute("/api/generate-image")({
             });
             if (!charge.ok) {
               console.warn("[credits] post-image charge failed", charge);
+            }
+          } else if (body.projectId) {
+            // Look up the project's owner so we can debit their runtime wallet.
+            const { data: proj } = await supabaseAdmin
+              .from("projects")
+              .select("owner_id, runtime_paused")
+              .eq("id", body.projectId)
+              .maybeSingle();
+            if (proj?.owner_id) {
+              if (proj.runtime_paused) {
+                return new Response(
+                  JSON.stringify({
+                    error: "This app's runtime is paused. The owner needs to top up.",
+                  }),
+                  { status: 402, headers: { "Content-Type": "application/json" } },
+                );
+              }
+              const charge = await chargeRuntime({
+                userId: proj.owner_id,
+                projectId: body.projectId,
+                meter: "image_gen",
+                cents: RUNTIME_IMAGE_CENTS,
+                metadata: { route: "/api/generate-image", anonymous: true },
+              });
+              if (!charge.ok) {
+                console.warn("[runtime-wallet] image_gen charge blocked", charge);
+              }
             }
           }
 

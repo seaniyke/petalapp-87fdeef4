@@ -95,6 +95,7 @@ import { PublishSheet } from "@/components/PublishSheet";
 import { RenameProjectDialog } from "@/components/RenameProjectDialog";
 import { BillingSheet } from "@/components/BillingSheet";
 import { ProjectsDrawer } from "@/components/ProjectsDrawer";
+import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1662,6 +1663,8 @@ function Builder() {
           </button>
         </div>
       </header>
+
+      <RuntimeLowBalanceBanner projectId={project?.id ?? null} />
 
       {/* Mobile builder menu + dependent dialogs */}
       {project && (
