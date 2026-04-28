@@ -82,11 +82,18 @@ export const Route = createRootRoute({
 // causing a visible flash on every refresh.
 const themeInitScript = `(function(){try{var k='petal:theme';var v=localStorage.getItem(k);var t=(v==='light'||v==='dark'||v==='system')?v:'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;if(d)r.classList.add('dark');r.style.colorScheme=d?'dark':'light';}catch(e){}})();`;
 
+// If a long-lived tab survives a deployment, Safari can keep old HTML that
+// points at CSS files the new deployment no longer has. The page then renders
+// as raw, unstyled HTML until the user refreshes. Catch failed stylesheet loads
+// early and do one automatic cache-busting reload.
+const stylesheetRecoveryScript = `(function(){var key='petal:reloaded-after-style-miss';function reload(){try{if(sessionStorage.getItem(key)==='1')return;sessionStorage.setItem(key,'1');}catch(e){}var u=new URL(location.href);u.searchParams.set('__petal_css_recover',Date.now().toString(36));location.replace(u.toString());}window.addEventListener('error',function(e){var t=e&&e.target;if(!t||t.tagName!=='LINK')return;var rel=(t.getAttribute('rel')||'').toLowerCase();var href=t.getAttribute('href')||'';if(rel.indexOf('stylesheet')!==-1&&(href.indexOf('/assets/')===0||href.indexOf(location.origin+'/assets/')===0))reload();},true);window.addEventListener('load',function(){setTimeout(function(){try{var sheets=[].slice.call(document.styleSheets||[]);var local=sheets.filter(function(s){return s.href&&new URL(s.href,location.href).origin===location.origin&&new URL(s.href,location.href).pathname.indexOf('/assets/')===0;});if(!local.length)reload();}catch(e){}},1200);});})();`;
+
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: stylesheetRecoveryScript }} />
         <HeadContent />
       </head>
       <body>
