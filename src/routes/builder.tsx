@@ -101,6 +101,8 @@ import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestio
 import { PreflightCostChip } from "@/components/PreflightCostChip";
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
+import { SharePreviewDialog } from "@/components/SharePreviewDialog";
+import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
 import { getProjectBackend } from "@/lib/projects";
 import { useWallet } from "@/hooks/use-wallet";
@@ -261,6 +263,8 @@ function Builder() {
   const [billingOpen, setBillingOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [shieldOpen, setShieldOpen] = useState(false);
+  const [sharePreviewOpen, setSharePreviewOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   // Whether this project already has a backend (BYO or managed). When unknown
   // we treat as "not connected" but suppress the chip until we've checked.
   const [hasBackend, setHasBackend] = useState<boolean | null>(null);
