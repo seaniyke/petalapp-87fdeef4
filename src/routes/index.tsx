@@ -237,7 +237,7 @@ function Landing() {
   // Lazy-fetch the community Public list the first time the user opens it.
   useEffect(() => {
     if (projectFilter !== "public") return;
-    if (communityPublic !== null || communityLoading) return;
+    if (communityPublic !== null) return;
     let cancelled = false;
     setCommunityLoading(true);
     listPublicProjects(60)
@@ -253,7 +253,7 @@ function Landing() {
     return () => {
       cancelled = true;
     };
-  }, [projectFilter, communityPublic, communityLoading]);
+  }, [projectFilter, communityPublic]);
 
   // When the user clicks "+ New project" on /projects we route them here with
   // ?focus=composer. Drop the cursor in the textarea and scroll it into view
