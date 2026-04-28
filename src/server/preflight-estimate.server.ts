@@ -76,19 +76,14 @@ export async function estimatePromptCost(prompt: string): Promise<PreflightEstim
     return { kind: "discussion", estSeconds: 0, estCents: 0, confidence: "high", rationale: "Empty prompt." };
   }
 
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) {
+  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) {
     return fallbackEstimate(trimmed);
   }
 
   try {
-    const res = await fetch(LOVABLE_AI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const res = await aiChatCompletions({
+      feature: "preflight",
+      body: {
         model: "google/gemini-2.5-flash-lite",
         messages: [
           {
