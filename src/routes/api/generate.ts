@@ -424,19 +424,15 @@ export const Route = createFileRoute("/api/generate")({
           ? MODEL_VISION
           : resolveModel(preset, lastUser, currentFiles.length);
 
-        const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        const upstream = await aiChatCompletions({
+          feature: "generate",
+          body: {
             model,
             messages: chatMessages,
             tools: [tool],
             tool_choice: { type: "function", function: { name: tool.function.name } },
             stream: true,
-          }),
+          },
         });
 
         if (!upstream.ok || !upstream.body) {
