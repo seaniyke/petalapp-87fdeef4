@@ -32,6 +32,7 @@ import {
   FileText,
   Shield,
   Link2,
+  Play,
 } from "lucide-react";
 import {
   encodeAttachments,
