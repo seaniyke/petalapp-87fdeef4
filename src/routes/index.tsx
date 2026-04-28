@@ -509,20 +509,20 @@ function Landing() {
       </section>
 
       {isAuthed ? (
-        <section className="relative px-4 pb-24 sm:px-6">
+        <section className="relative px-5 pb-28 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             {/* Subtle divider — keeps the section visually separated from the
                 composer above without a hard rule. */}
             <div className="mx-auto h-px max-w-xs bg-gradient-to-r from-transparent via-border to-transparent" />
 
             {/* Header row — title + count, with a quiet "View all" affordance */}
-            <div className="mt-10 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+            <div className="mt-14 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 sm:mt-16">
               <div className="flex items-center gap-3">
-                <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+                <h2 className="font-display text-[1.75rem] font-semibold tracking-tight sm:text-4xl">
                   My projects
                 </h2>
                 {projects && projects.length > 0 && (
-                  <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  <span className="rounded-full border border-border bg-card px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                     {projects.length}
                   </span>
                 )}
