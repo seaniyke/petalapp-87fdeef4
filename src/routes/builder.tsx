@@ -32,6 +32,7 @@ import {
   FileText,
   Shield,
   Link2,
+  Play,
 } from "lucide-react";
 import {
   encodeAttachments,
@@ -1626,22 +1627,46 @@ function Builder() {
 
         {/* Right: view toggle + desktop toolbar */}
         <div className="flex shrink-0 items-center gap-2 justify-self-end">
-          <div className="flex items-center rounded-lg border border-border bg-background p-0.5 text-sm">
+          {/* Mobile: single round Play/Chat toggle (Lovable-style) */}
+          <button
+            type="button"
+            onClick={() => {
+              if (mobileTab === "chat") {
+                setMobileTab("preview");
+                setPreviewHasUpdate(false);
+              } else {
+                setMobileTab("chat");
+              }
+            }}
+            aria-label={mobileTab === "chat" ? "Open preview" : "Back to chat"}
+            className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-background text-foreground shadow-sm transition hover:bg-muted active:scale-95 md:hidden"
+          >
+            {mobileTab === "chat" ? (
+              <Play className="h-4 w-4 translate-x-[1px] fill-foreground" />
+            ) : (
+              <MessageSquare className="h-4 w-4" />
+            )}
+            {mobileTab === "chat" && previewHasUpdate && (
+              <span aria-hidden className="absolute right-0 top-0 h-2 w-2 rounded-full bg-primary ring-2 ring-card" />
+            )}
+          </button>
+          {/* Desktop: Preview / Code segmented toggle */}
+          <div className="hidden items-center rounded-lg border border-border bg-background p-0.5 text-sm md:flex">
             <button
               onClick={() => setView("preview")}
-              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition sm:px-3 ${
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition ${
                 view === "preview" ? "bg-foreground text-background" : "text-muted-foreground"
               }`}
             >
-              <Eye className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Preview</span>
+              <Eye className="h-3.5 w-3.5" /> <span>Preview</span>
             </button>
             <button
               onClick={() => setView("code")}
-              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition sm:px-3 ${
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition ${
                 view === "code" ? "bg-foreground text-background" : "text-muted-foreground"
               }`}
             >
-              <Code2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Code</span>
+              <Code2 className="h-3.5 w-3.5" /> <span>Code</span>
             </button>
           </div>
           {/* Desktop toolbar */}
@@ -1761,38 +1786,7 @@ function Builder() {
       {/* Low-balance banner — pinned inside the sticky top stack so it never scrolls away. */}
       <RuntimeLowBalanceBanner projectId={project?.id ?? null} />
 
-      {/* Mobile-only tab bar (Chat | Preview). Desktop uses the grid below. */}
-      <div className="flex items-center gap-1 border-t border-border/60 bg-card px-3 py-2 md:hidden">
-        <button
-          onClick={() => setMobileTab("chat")}
-          className={`relative flex-1 rounded-lg px-3 py-2 text-[13px] font-semibold tracking-tight transition ${
-            mobileTab === "chat"
-              ? "bg-foreground text-background shadow-sm"
-              : "text-muted-foreground hover:bg-muted"
-          }`}
-        >
-          Chat
-        </button>
-        <button
-          onClick={() => {
-            setMobileTab("preview");
-            setPreviewHasUpdate(false);
-          }}
-          className={`relative flex-1 rounded-lg px-3 py-2 text-[13px] font-semibold tracking-tight transition ${
-            mobileTab === "preview"
-              ? "bg-foreground text-background shadow-sm"
-              : "text-muted-foreground hover:bg-muted"
-          }`}
-        >
-          Preview
-          {previewHasUpdate && mobileTab !== "preview" && (
-            <span
-              aria-hidden
-              className="absolute right-2 top-1.5 h-1.5 w-1.5 rounded-full bg-primary"
-            />
-          )}
-        </button>
-      </div>
+      {/* Mobile Chat/Preview toggle now lives as a single round button in the header (Lovable-style). */}
       </div>
 
       {/* Mobile builder menu + dependent dialogs */}
