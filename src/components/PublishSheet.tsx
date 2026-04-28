@@ -42,7 +42,8 @@ import {
   CheckCircle2,
   ExternalLink,
   EyeOff,
-  Users,
+  
+  BarChart3,
   Pencil,
   X,
 } from "lucide-react";
@@ -434,85 +435,57 @@ export function PublishSheet({
               </p>
             )}
           </div>
-          {buildStatus === "pending" && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Publishing
-            </span>
-          )}
-          {buildStatus === "failed" && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
-              <AlertCircle className="h-3 w-3" />
-              Failed
-            </span>
-          )}
-          {!publishing && buildStatus !== "pending" && buildStatus !== "failed" && updateAvailable && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-              <AlertCircle className="h-3 w-3" />
-              Update available
-            </span>
-          )}
-          {!publishing && buildStatus === "ready" && hasPublishedBuild && !updateAvailable && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-              <CheckCircle2 className="h-3 w-3" />
-              Live
-            </span>
-          )}
-        </div>
-
-        {/* Visitor count — only renders for published projects. */}
-        {hasPublishedBuild && (
-          <div className="mt-4 flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2.5">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-muted text-foreground/70">
-                <Users className="h-4 w-4" />
+          <div className="flex items-center gap-2">
+            {buildStatus === "pending" && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Publishing
               </span>
-              <div className="min-w-0">
-                <div className="text-sm font-medium">
-                  {visitorsLoading ? (
-                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Loading…
-                    </span>
-                  ) : visitors?.unavailable ? (
-                    <span className="text-muted-foreground">Visitors unavailable</span>
-                  ) : (
-                    <>
-                      <span className="tabular-nums">
-                        {(visitors?.visitors ?? 0).toLocaleString()}
-                      </span>{" "}
-                      <span className="text-muted-foreground">
-                        visitor{(visitors?.visitors ?? 0) === 1 ? "" : "s"}
-                      </span>
-                    </>
-                  )}
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  {visitors?.unavailable
-                    ? "Cloudflare analytics didn't respond — try again in a moment."
-                    : `${(visitors?.pageviews ?? 0).toLocaleString()} pageview${(visitors?.pageviews ?? 0) === 1 ? "" : "s"} · last ${visitorRange === "24h" ? "24 hours" : visitorRange === "7d" ? "7 days" : "30 days"}`}
-                </div>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-1 rounded-lg bg-muted p-0.5 text-[11px]">
-              {(["24h", "7d", "30d"] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setVisitorRange(r)}
-                  disabled={visitorsLoading}
-                  className={`rounded-md px-2 py-1 font-medium transition ${
-                    visitorRange === r
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  } disabled:opacity-50`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
+            )}
+            {buildStatus === "failed" && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
+                <AlertCircle className="h-3 w-3" />
+                Failed
+              </span>
+            )}
+            {!publishing && buildStatus !== "pending" && buildStatus !== "failed" && updateAvailable && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                <AlertCircle className="h-3 w-3" />
+                Update available
+              </span>
+            )}
+
+            {/* Inline visitor pill — quietly sits in the header so it never
+                competes with the publish status. Tap to cycle the range. */}
+            {hasPublishedBuild && (
+              <button
+                type="button"
+                onClick={() =>
+                  setVisitorRange((r) => (r === "24h" ? "7d" : r === "7d" ? "30d" : "24h"))
+                }
+                disabled={visitorsLoading}
+                title={`Visitors · last ${
+                  visitorRange === "24h" ? "24 hours" : visitorRange === "7d" ? "7 days" : "30 days"
+                } (tap to change)`}
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition hover:text-foreground disabled:opacity-60"
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+                {visitorsLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : visitors?.unavailable ? (
+                  <span>Visitors unavailable</span>
+                ) : (
+                  <span>
+                    <span className="tabular-nums font-medium text-foreground">
+                      {(visitors?.visitors ?? 0).toLocaleString()}
+                    </span>{" "}
+                    Visitor{(visitors?.visitors ?? 0) === 1 ? "" : "s"}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Website URL */}
         <div className="mt-5 space-y-2">
