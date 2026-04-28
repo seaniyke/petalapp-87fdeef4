@@ -848,26 +848,36 @@ export const Route = createFileRoute("/api/generate")({
               // side calls (design-director, self-check, humanize-error).
               // Those run on Petal's tab so users never get surprise-charged
               // for our internal QA passes. Do NOT add their usage here.
+              //
+              // AUTO-FIX runs are also on Petal's tab — the user did not ask
+              // for this turn, Petal is fixing its own broken build. We log
+              // the would-be amount for analytics but never debit the user.
               const priced = priceBuild(collected.usage);
               let finalCharged = 0;
-              const charge = await spendCredit({
-                userId,
-                amount: priced.amount,
-                reason: "ai_build_charge",
-                projectId: body.projectId ?? null,
-                metadata: {
-                  route: "/api/generate",
-                  prompt_tokens: priced.promptTokens,
-                  completion_tokens: priced.completionTokens,
-                  usage_missing: priced.usageMissing,
-                  clamped: priced.clamped,
-                  model,
-                },
-              });
-              if (charge.ok) {
-                finalCharged = priced.amount;
+              if (body.isAutoFix) {
+                console.log(
+                  `[credits] auto-fix run — skipping charge of ${priced.amount} (would-be)`,
+                );
               } else {
-                console.warn("[credits] post-build charge failed", charge);
+                const charge = await spendCredit({
+                  userId,
+                  amount: priced.amount,
+                  reason: "ai_build_charge",
+                  projectId: body.projectId ?? null,
+                  metadata: {
+                    route: "/api/generate",
+                    prompt_tokens: priced.promptTokens,
+                    completion_tokens: priced.completionTokens,
+                    usage_missing: priced.usageMissing,
+                    clamped: priced.clamped,
+                    model,
+                  },
+                });
+                if (charge.ok) {
+                  finalCharged = priced.amount;
+                } else {
+                  console.warn("[credits] post-build charge failed", charge);
+                }
               }
 
               controller.enqueue(
