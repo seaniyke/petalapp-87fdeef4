@@ -167,6 +167,11 @@ interface TelemetryArgs {
   completionTokens?: number | null;
   totalTokens?: number | null;
   costUsdMicro?: number | null;
+  // Tier 4 — router signals.
+  phase?: string | null;
+  promptChars?: number | null;
+  hadAttachments?: boolean | null;
+  chosenBy?: string | null;
 }
 
 async function recordTelemetry(args: TelemetryArgs): Promise<void> {
@@ -184,6 +189,10 @@ async function recordTelemetry(args: TelemetryArgs): Promise<void> {
       latency_ms: args.latencyMs,
       fallback_used: args.fallbackUsed,
       error_message: args.errorMessage ?? null,
+      phase: args.phase ?? null,
+      prompt_chars: args.promptChars ?? null,
+      had_attachments: args.hadAttachments ?? false,
+      chosen_by: args.chosenBy ?? null,
     });
   } catch (err) {
     // Never break the AI call because logging failed.
@@ -193,10 +202,22 @@ async function recordTelemetry(args: TelemetryArgs): Promise<void> {
 
 // ---------------- Public API ----------------
 
+export interface AiCallMeta {
+  /** Tier 3 phase tag (implement / debug / refactor / plan / docs). */
+  phase?: string | null;
+  /** Length of the user's latest prompt in characters. */
+  promptChars?: number | null;
+  /** True when the latest user turn carried image attachments. */
+  hadAttachments?: boolean | null;
+  /** Who picked the model: "smart_router" | "phase_router" | "default" | … */
+  chosenBy?: string | null;
+}
+
 export interface AiCallOptions {
   feature: AiFeature;
   body: Record<string, unknown>;
   signal?: AbortSignal;
+  meta?: AiCallMeta;
 }
 
 /**
@@ -242,6 +263,10 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       latencyMs: latency,
       fallbackUsed: false,
       errorMessage: primary.ok ? null : `HTTP ${primary.status}`,
+      phase: opts.meta?.phase ?? null,
+      promptChars: opts.meta?.promptChars ?? null,
+      hadAttachments: opts.meta?.hadAttachments ?? false,
+      chosenBy: opts.meta?.chosenBy ?? null,
     });
     return primary;
   }
@@ -261,6 +286,10 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     latencyMs: latency,
     fallbackUsed: false,
     errorMessage: `Primary failed HTTP ${primary.status}, retrying with fallback`,
+    phase: opts.meta?.phase ?? null,
+    promptChars: opts.meta?.promptChars ?? null,
+    hadAttachments: opts.meta?.hadAttachments ?? false,
+    chosenBy: opts.meta?.chosenBy ?? null,
   });
 
   const fallbackBody = { ...opts.body, model: fallback };
@@ -276,6 +305,10 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     latencyMs: retryLatency,
     fallbackUsed: true,
     errorMessage: retried.ok ? null : `HTTP ${retried.status}`,
+    phase: opts.meta?.phase ?? null,
+    promptChars: opts.meta?.promptChars ?? null,
+    hadAttachments: opts.meta?.hadAttachments ?? false,
+    chosenBy: opts.meta?.chosenBy ?? null,
   });
 
   return retried;

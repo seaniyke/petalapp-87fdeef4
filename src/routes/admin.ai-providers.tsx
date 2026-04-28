@@ -43,7 +43,7 @@ import type { AiFeature } from "@/server/ai-provider.server";
  * forward the Supabase bearer token — see `routes/api/admin/ai-providers.ts`.
  */
 async function callAdminApi<T>(
-  action: "list" | "set" | "costs",
+  action: "list" | "set" | "costs" | "router-snapshot" | "router-config",
   payload: Record<string, unknown> = {},
 ): Promise<T> {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -291,6 +291,9 @@ function AiProvidersPage() {
           loading={costLoading}
           onRefresh={refreshCost}
         />
+
+        {/* Tier 4 — Smart router */}
+        <SmartRouterCard />
 
         {/* OpenRouter status banner */}
         <Card
@@ -678,5 +681,152 @@ function ProviderBadge({ provider }: { provider: "lovable" | "openrouter" }) {
     >
       {isLovable ? "Lovable" : "OpenRouter"}
     </span>
+  );
+}
+
+type RouterModelStat = {
+  model: string;
+  calls: number;
+  errors: number;
+  successRate: number;
+  medianCostMicro: number;
+  p50LatencyMs: number;
+  score: number;
+  enoughData: boolean;
+};
+
+type RouterSnapshotResp = {
+  config: {
+    enabled: boolean;
+    explorationPct: number;
+    minSamples: number;
+    windowHours: number;
+  };
+  builtAt: number;
+  perFeaturePhase: Array<{ feature: string; phase: string; models: RouterModelStat[] }>;
+};
+
+function SmartRouterCard() {
+  const [snap, setSnap] = useState<RouterSnapshotResp | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await callAdminApi<RouterSnapshotResp>("router-snapshot");
+      setSnap(res);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const toggle = async () => {
+    if (!snap) return;
+    setSaving(true);
+    try {
+      await callAdminApi("router-config", {
+        config: { enabled: !snap.config.enabled },
+      });
+      toast.success(`Smart router ${!snap.config.enabled ? "enabled" : "disabled"}`);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="mb-6 border-border/60">
+      <CardContent className="p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              <h2 className="font-display text-lg font-semibold">Smart Router (Tier 4)</h2>
+              {snap && (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs ${
+                    snap.config.enabled
+                      ? "bg-emerald-500/10 text-emerald-600"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {snap.config.enabled ? "ON" : "OFF"}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Picks the best model per (feature, phase) from telemetry. ε-greedy
+              exploration: {snap?.config.explorationPct ?? 10}% • min samples:{" "}
+              {snap?.config.minSamples ?? 20} • window: {snap?.config.windowHours ?? 168}h
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+            <Button variant="outline" size="sm" onClick={toggle} disabled={saving || !snap}>
+              {snap?.config.enabled ? "Disable" : "Enable"}
+            </Button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="py-6 text-center text-sm text-muted-foreground">
+            <Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…
+          </div>
+        ) : !snap || snap.perFeaturePhase.length === 0 ? (
+          <p className="py-4 text-sm text-muted-foreground">
+            No telemetry yet. The router needs a few generations to start scoring models.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {snap.perFeaturePhase.map((row) => (
+              <div key={`${row.feature}|${row.phase}`} className="rounded-md border border-border/60 p-3">
+                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {row.feature} · {row.phase}
+                </div>
+                <div className="space-y-1.5">
+                  {row.models.map((m, i) => (
+                    <div
+                      key={m.model}
+                      className="flex items-center justify-between gap-2 text-xs"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        {i === 0 && m.enoughData && (
+                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                            BEST
+                          </span>
+                        )}
+                        {!m.enoughData && (
+                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                            sampling
+                          </span>
+                        )}
+                        <code className="truncate">{m.model}</code>
+                      </div>
+                      <div className="flex shrink-0 gap-3 text-muted-foreground">
+                        <span>{(m.successRate * 100).toFixed(0)}% ok</span>
+                        <span>{m.calls} calls</span>
+                        <span>{(m.p50LatencyMs / 1000).toFixed(1)}s</span>
+                        <span className="font-mono text-foreground">{m.score.toFixed(3)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -36,6 +36,7 @@ import { runPostStreamAutofix, shouldRunPostStreamAutofix } from "@/server/post-
 import { fallbackEstimate } from "@/server/preflight-estimate.server";
 import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-classifier.server";
 import { runVerifier, shouldRunVerifier } from "@/server/verifier.server";
+import { pickBestModel } from "@/server/smart-router.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -443,16 +444,43 @@ export const Route = createFileRoute("/api/generate")({
         const preset: ModelPreset = body.model ?? "smart";
         const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
         let model: string;
+        let chosenBy: string = "preset";
         if (hasVisionTurn) {
           model = MODEL_VISION;
+          chosenBy = "vision_pin";
         } else if (preset === "smart") {
           // Phase tag overrides the keyword heuristic in smart mode.
-          model = tier === "smart" ? MODEL_BEST : MODEL_FAST;
+          const phaseDefault = tier === "smart" ? MODEL_BEST : MODEL_FAST;
+          chosenBy = "phase_router";
+          // Tier 4 — telemetry-driven router. Picks the historically
+          // best-performing model from the candidate set for this
+          // (feature, phase). Falls back to the phase default when
+          // disabled or when no candidate has enough samples yet.
+          try {
+            const pick = await pickBestModel({
+              feature: "generate",
+              phase: phaseTag.phase,
+              candidates: [MODEL_FAST, MODEL_BEST],
+              defaultModel: phaseDefault,
+            });
+            model = pick.model;
+            if (pick.reason === "best_score" || pick.reason === "exploration") {
+              chosenBy = `smart_router:${pick.reason}`;
+            }
+            if (pick.stat) {
+              console.log(
+                `[smart-router] reason=${pick.reason} model=${pick.model} score=${pick.stat.score.toFixed(4)} succ=${(pick.stat.successRate * 100).toFixed(1)}% calls=${pick.stat.calls}`,
+              );
+            }
+          } catch (e) {
+            console.warn("[smart-router] pick failed:", e);
+            model = phaseDefault;
+          }
         } else {
           model = resolveModel(preset, lastUser, currentFiles.length);
         }
         console.log(
-          `[phase-router] phase=${phaseTag.phase} (${phaseTag.confidence}/${phaseTag.source}) tier=${tier} → ${model}`,
+          `[phase-router] phase=${phaseTag.phase} (${phaseTag.confidence}/${phaseTag.source}) tier=${tier} chosenBy=${chosenBy} → ${model}`,
         );
 
         const upstream = await aiChatCompletions({
@@ -463,6 +491,12 @@ export const Route = createFileRoute("/api/generate")({
             tools: [tool],
             tool_choice: { type: "function", function: { name: tool.function.name } },
             stream: true,
+          },
+          meta: {
+            phase: phaseTag.phase,
+            promptChars: lastUserContent.length,
+            hadAttachments: hasVisionTurn,
+            chosenBy,
           },
         });
 

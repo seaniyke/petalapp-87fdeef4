@@ -20,6 +20,11 @@ import {
   getCostSummary,
   type SetProviderInput,
 } from "@/server/ai-provider-admin.server";
+import {
+  getRouterSnapshot,
+  setRouterConfig,
+  type RouterConfig,
+} from "@/server/smart-router.server";
 import type { AiFeature } from "@/server/ai-provider.server";
 
 async function authorize(request: Request): Promise<string | Response> {
@@ -86,6 +91,15 @@ export const Route = createFileRoute("/api/admin/ai-providers")({
                 typeof body.days === "number" ? (body.days as number) : undefined;
               const result = await getCostSummary(days);
               return Response.json(result);
+            }
+            case "router-snapshot": {
+              const snap = await getRouterSnapshot();
+              return Response.json(snap);
+            }
+            case "router-config": {
+              const patch = (body.config ?? {}) as Partial<RouterConfig>;
+              const next = await setRouterConfig(userId, patch);
+              return Response.json({ ok: true, config: next });
             }
             default:
               return Response.json({ error: "Unknown action" }, { status: 400 });
