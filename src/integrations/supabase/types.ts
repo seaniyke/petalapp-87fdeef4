@@ -1332,6 +1332,7 @@ export type Database = {
           runtime_free_balance_cents: number
           runtime_free_reset_at: string
           runtime_topup_balance_cents: number
+          runtime_topup_qualified_at: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_status: string | null
@@ -1355,6 +1356,7 @@ export type Database = {
           runtime_free_balance_cents?: number
           runtime_free_reset_at?: string
           runtime_topup_balance_cents?: number
+          runtime_topup_qualified_at?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
@@ -1378,6 +1380,7 @@ export type Database = {
           runtime_free_balance_cents?: number
           runtime_free_reset_at?: string
           runtime_topup_balance_cents?: number
+          runtime_topup_qualified_at?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null

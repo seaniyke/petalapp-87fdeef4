@@ -143,7 +143,9 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
                   <div className="flex-1">
                     <h3 className="text-base font-semibold">Cloud + AI</h3>
                     <p className="text-xs text-muted-foreground">
-                      Monthly included usage resets {resetDateLabel}
+                      {wallet?.qualifiedForFreeGrant
+                        ? `Monthly included usage resets ${resetDateLabel}`
+                        : "Top up once to unlock $10/mo free Cloud credit"}
                     </p>
                   </div>
                 </div>

@@ -2,8 +2,9 @@
  * Client-side helpers for the runtime wallet ("Cloud + AI balance").
  *
  * The runtime wallet is denominated in USD cents and is SEPARATE from the
- * build-credit system in `billing.ts`. Each user gets a $10/month free
- * allowance plus an optional top-up balance funded via Paystack.
+ * build-credit system in `billing.ts`. Users start with $0 free balance.
+ * After their first paid top-up they qualify for the $10/month free Cloud
+ * gift (granted immediately on first top-up, then refilled on the 1st).
  */
 import { supabase } from "@/integrations/supabase/client";
 
@@ -12,7 +13,9 @@ export type RuntimeWallet = {
   topupBalanceCents: number;
   freeResetAt: string; // YYYY-MM-DD
   workspaceCapCents: number | null;
-  monthlyFreeGrantCents: number; // currently 1000 ($10)
+  monthlyFreeGrantCents: number; // currently 1000 ($10) once qualified
+  qualifiedForFreeGrant: boolean;
+  qualifiedAt: string | null;
 };
 
 export type RuntimeTopupPack = {
@@ -43,7 +46,7 @@ export async function fetchRuntimeWallet(userId: string): Promise<RuntimeWallet>
   const { data } = await supabase
     .from("user_wallets")
     .select(
-      "runtime_free_balance_cents, runtime_topup_balance_cents, runtime_free_reset_at, workspace_cap_cents",
+      "runtime_free_balance_cents, runtime_topup_balance_cents, runtime_free_reset_at, workspace_cap_cents, runtime_topup_qualified_at",
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -52,6 +55,9 @@ export async function fetchRuntimeWallet(userId: string): Promise<RuntimeWallet>
   nextReset.setUTCDate(1);
   nextReset.setUTCMonth(nextReset.getUTCMonth() + 1);
 
+  const qualifiedAt = (data as { runtime_topup_qualified_at?: string | null } | null)
+    ?.runtime_topup_qualified_at ?? null;
+
   return {
     freeBalanceCents: Number(data?.runtime_free_balance_cents ?? 0),
     topupBalanceCents: Number(data?.runtime_topup_balance_cents ?? 0),
@@ -59,6 +65,8 @@ export async function fetchRuntimeWallet(userId: string): Promise<RuntimeWallet>
     workspaceCapCents:
       data?.workspace_cap_cents == null ? null : Number(data.workspace_cap_cents),
     monthlyFreeGrantCents: MONTHLY_FREE_GRANT_CENTS,
+    qualifiedForFreeGrant: qualifiedAt !== null,
+    qualifiedAt,
   };
 }
 
