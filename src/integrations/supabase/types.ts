@@ -1493,6 +1493,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_paid_plan: { Args: { _user_id: string }; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string
