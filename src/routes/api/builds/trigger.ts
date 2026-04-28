@@ -80,7 +80,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
         // 1) Ownership check — read-only, fast, gives a clean error.
         const { data: project, error: projectErr } = await supabaseAdmin
           .from("projects")
-          .select("id, owner_id")
+          .select("id, owner_id, hide_petal_badge")
           .eq("id", projectId)
           .maybeSingle();
         if (projectErr) {
