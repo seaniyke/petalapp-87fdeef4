@@ -316,6 +316,7 @@ function Landing() {
     }
 
     const target = `/builder?${params.toString()}`;
+    if (!isReady) return;
     if (!user) {
       window.location.href = `/auth?mode=signup&redirect=${encodeURIComponent(target)}`;
       return;
@@ -338,8 +339,10 @@ function Landing() {
         <div className="absolute inset-0 bg-aurora opacity-70" aria-hidden />
         <div className="absolute inset-0 bg-grain opacity-40" aria-hidden />
 
-        <div className={`relative mx-auto max-w-5xl px-5 text-center sm:px-6 ${isAuthed ? "pt-24 pb-16 sm:pt-32 sm:pb-20 md:pt-40 md:pb-24" : "pt-12 pb-20 sm:pt-20 sm:pb-28 md:pt-28 md:pb-36"}`}>
-          {isAuthed ? (
+        <div className={`relative mx-auto max-w-5xl px-5 text-center sm:px-6 ${!isReady || isAuthed ? "pt-24 pb-16 sm:pt-32 sm:pb-20 md:pt-40 md:pb-24" : "pt-12 pb-20 sm:pt-20 sm:pb-28 md:pt-28 md:pb-36"}`}>
+          {!isReady ? (
+            <div className="mx-auto h-[7.5rem] max-w-2xl animate-pulse rounded-3xl bg-card/50" aria-hidden="true" />
+          ) : isAuthed ? (
             <h1 className="font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
               Let's build something{firstName ? `, ${firstName}` : ""}.
             </h1>
@@ -490,7 +493,7 @@ function Landing() {
 
           </form>
 
-          {!isAuthed && (
+          {isReady && !isAuthed && (
             <StartIdeasPanel
               onPick={(p) => {
                 setPrompt(p);
@@ -513,7 +516,7 @@ function Landing() {
             />
           )}
 
-          {!isAuthed && (
+          {isReady && !isAuthed && (
             <div className="mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-mint" /> Live preview
@@ -531,7 +534,7 @@ function Landing() {
         </div>
       </section>
 
-      {isAuthed ? (
+      {!isReady ? null : isAuthed ? (
         <section className="relative px-5 pb-28 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             {/* Subtle divider — keeps the section visually separated from the
@@ -834,7 +837,7 @@ function Landing() {
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
             Open the builder, describe an idea, and watch it come to life.
           </p>
-          {user ? (
+          {!isReady ? null : user ? (
             <Link
               to="/projects"
               className="mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-7 text-base font-medium text-primary-foreground transition hover:brightness-105"
