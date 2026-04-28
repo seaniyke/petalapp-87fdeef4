@@ -8,6 +8,7 @@
  * muted "½ credit/turn" suffix so pricing is honest at the moment of choice.
  */
 import { Hammer, MessageSquare, Sparkles, ChevronDown, Check } from "lucide-react";
+import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
