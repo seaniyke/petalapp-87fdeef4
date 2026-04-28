@@ -28,6 +28,8 @@ type Props = {
   projectId: string;
   isPaidPlan: boolean;
   reason?: string;
+  /** Optional: open the in-app billing sheet on "See plans". */
+  onUpgrade?: () => void;
   onDismiss: () => void;
 };
 
