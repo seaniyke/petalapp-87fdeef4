@@ -59,9 +59,13 @@ export function BillingSheet({ open, onOpenChange }: Props) {
     if (!open) return;
     Promise.all([fetchCreditPacks(), fetchCurrencies(), fetchPriceOverrides()])
       .then(([p, c, o]) => {
-        setPacks(p);
+        const sorted = [...p].sort((a, b) => a.price_cents - b.price_cents);
+        setPacks(sorted);
         setCurrencies(c);
         setOverrides(o);
+        // Default to the $10 Standard pack if available, else cheapest
+        const std = sorted.find((x) => x.price_cents === 1000) ?? sorted[0];
+        if (std) setSelectedPackCode((cur) => cur ?? std.code);
       })
       .catch((e: unknown) => console.warn("[BillingSheet] catalog fetch failed", e));
   }, [open]);
