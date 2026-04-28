@@ -49,6 +49,7 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
+import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/api/public/cron/runtime-backend-hour'
 import { Route as ApiPublicCronBackendSlotsRouteImport } from './routes/api/public/cron/backend-slots'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
 
@@ -256,6 +257,12 @@ const ApiPublicPaystackWebhookRoute =
     path: '/api/public/paystack/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronRuntimeBackendHourRoute =
+  ApiPublicCronRuntimeBackendHourRouteImport.update({
+    id: '/api/public/cron/runtime-backend-hour',
+    path: '/api/public/cron/runtime-backend-hour',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronBackendSlotsRoute =
   ApiPublicCronBackendSlotsRouteImport.update({
     id: '/api/public/cron/backend-slots',
@@ -305,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/backend-slots': typeof ApiPublicCronBackendSlotsRoute
+  '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -349,6 +357,7 @@ export interface FileRoutesByTo {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/backend-slots': typeof ApiPublicCronBackendSlotsRoute
+  '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -394,6 +403,7 @@ export interface FileRoutesById {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/backend-slots': typeof ApiPublicCronBackendSlotsRoute
+  '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -440,6 +450,7 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/api/public/builds/callback'
     | '/api/public/cron/backend-slots'
+    | '/api/public/cron/runtime-backend-hour'
     | '/api/public/paystack/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -484,6 +495,7 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/api/public/builds/callback'
     | '/api/public/cron/backend-slots'
+    | '/api/public/cron/runtime-backend-hour'
     | '/api/public/paystack/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -528,6 +540,7 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/api/public/builds/callback'
     | '/api/public/cron/backend-slots'
+    | '/api/public/cron/runtime-backend-hour'
     | '/api/public/paystack/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -573,6 +586,7 @@ export interface RootRouteChildren {
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
   ApiPublicCronBackendSlotsRoute: typeof ApiPublicCronBackendSlotsRoute
+  ApiPublicCronRuntimeBackendHourRoute: typeof ApiPublicCronRuntimeBackendHourRoute
   ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -863,6 +877,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaystackWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/runtime-backend-hour': {
+      id: '/api/public/cron/runtime-backend-hour'
+      path: '/api/public/cron/runtime-backend-hour'
+      fullPath: '/api/public/cron/runtime-backend-hour'
+      preLoaderRoute: typeof ApiPublicCronRuntimeBackendHourRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/backend-slots': {
       id: '/api/public/cron/backend-slots'
       path: '/api/public/cron/backend-slots'
@@ -917,6 +938,7 @@ const rootRouteChildren: RootRouteChildren = {
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
   ApiPublicCronBackendSlotsRoute: ApiPublicCronBackendSlotsRoute,
+  ApiPublicCronRuntimeBackendHourRoute: ApiPublicCronRuntimeBackendHourRoute,
   ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
