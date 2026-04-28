@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { History, Loader2, RotateCcw, Trash2, Pencil, Pin, Check, X } from "lucide-react";
+import { History, Loader2, RotateCcw, Trash2, Pencil, Pin, Check, X, FileStack } from "lucide-react";
+import { PartialRevertDialog } from "@/components/PartialRevertDialog";
 import {
   Sheet,
   SheetContent,
@@ -45,6 +46,7 @@ export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey }:
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [previewVersion, setPreviewVersion] = useState<VersionRow | null>(null);
+  const [partialVersion, setPartialVersion] = useState<VersionRow | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -254,6 +256,14 @@ export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey }:
                           )}
                         </button>
                         <button
+                          onClick={() => setPartialVersion(v)}
+                          disabled={busyId === v.id}
+                          className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted"
+                          title="Pick specific files to revert"
+                        >
+                          <FileStack className="h-3.5 w-3.5" />
+                        </button>
+                        <button
                           onClick={() => void handleDelete(v)}
                           disabled={busyId === v.id}
                           className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
@@ -282,6 +292,24 @@ export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey }:
         busy={busyId === previewVersion?.id}
         onConfirm={confirmRestore}
         confirmLabel="Restore this version"
+      />
+      <PartialRevertDialog
+        version={partialVersion}
+        currentFiles={currentFiles}
+        open={partialVersion !== null}
+        onOpenChange={(o) => {
+          if (!o) setPartialVersion(null);
+        }}
+        onApply={async (mergedFiles) => {
+          if (currentFiles.length) {
+            await createVersion(projectId, currentFiles, {
+              origin: "auto",
+              label: "Before partial revert",
+            });
+          }
+          await onRestore(mergedFiles);
+          await refresh();
+        }}
       />
     </Sheet>
   );

@@ -1,184 +1,81 @@
-# Runtime Wallet — Cloud + AI usage, like Lovable
+# Petal differentiation plan
 
-## What changes for the user
+You already have the table-stakes (chat builder, preview, publish, custom domains, managed backend, Cloud + AI wallet, Africa-friendly Paystack billing, build-credit subs). Here's where the top 5 — **Lovable, Bolt.new, v0.dev, Replit Agent, Cursor** — are weakest, and concrete features that turn those gaps into Petal's edge.
 
-Two clearly separated pockets:
+## Competitive gap summary
 
-1. **Build credits** (today) — pay subscription (Free/Pro/Business) for the AI that *writes your code*. No change.
-2. **Runtime wallet** (new) — pays for the things that cost money *after* code is written:
-   - Managed backend hours
-   - Image generation
-   - AI features inside the user's app (calls to Lovable AI gateway from generated code)
-   - Custom domain provisioning
-
-Every workspace gets a **free $10 monthly allowance** that resets on the 1st. When it runs out, the wallet falls back to a **top-up balance**. Free-plan users can use the allowance but can't top up. Pro/Business can top up.
-
-Per-project and workspace **spend caps** prevent runaway bills — once hit, runtime services pause until the user raises the cap or the next month rolls over.
-
-## UI
-
-A new **"Cloud & AI balance"** sheet (mirrors the screenshot you uploaded), opened from the account dropdown and from a new banner inside `/builder` when balance is low.
-
-```text
-┌──────────────────────────────────────────┐
-│ Cloud + AI                               │
-│ Monthly free resets 1 May 2026           │
-│                                          │
-│ [ Top up ]              $9.40            │
-│                         Top-up balance   │
-├──────────────────────────────────────────┤
-│ Cloud   ⓘ   $25 / $25  Free used         │
-│             $24.32     Top-ups used      │
-│                                          │
-│ AI      ⓘ   $1 / $1    Free used         │
-│             $8.64      Top-ups used      │
-├──────────────────────────────────────────┤
-│ Project breakdown                    ⌄  │
-│ • KeshPay      $4.20 this month          │
-│ • Petal        $1.10 this month          │
-│ Spend cap: ₦5,000/mo  [edit]             │
-└──────────────────────────────────────────┘
-```
-
-Top-up modal offers fixed packs (₦1,500 / ₦5,000 / ₦20,000) with a **"Custom amount"** option, paid through the existing Paystack flow.
-
-## Pricing internals (admin-tunable)
-
-Stored in `system_settings` so you can adjust without redeploying:
-
-| Meter | Default unit price | Charged when |
+| Pain that's loud in reviews | Who suffers from it | Petal's opening |
 |---|---|---|
-| Managed backend | $0.02 / hour | Hourly cron, only while project active |
-| Image generation | $0.02 / image | On `generate-image.ts` success |
-| App AI (gemini-flash) | $0.001 / 1K tokens in, $0.002 / 1K tokens out | On generated-app AI call |
-| App AI (gpt-5-mini) | $0.005 / 1K tokens in, $0.015 / 1K tokens out | On generated-app AI call |
-| Custom domain | $1.50 / month | On primary domain set |
+| "Fixing one thing breaks two others" — no safety net | Bolt, Lovable | **Auto-checkpoints + visual diff revert** |
+| Burning credits on retries / unclear cost per change | Bolt (2M token horror stories), Lovable | **Pre-flight cost estimate before each run** |
+| Insecure RLS, exposed webhooks, no signature checks | All five (DEV.to "12 security issues") | **One-click Security Audit + Petal Shield** |
+| "Tested 4 tools, only one was production-ready" | Across the board | **Production Readiness Score** |
+| No real mobile/native target — only PWA | Lovable, Bolt | **Capacitor wrap → real iOS/Android binary** |
+| Africa/EM payments, low-bandwidth previews, NGN/KES/ZAR | Nobody serves this well | **Already half-built — double down** |
+| No way to share a half-built app for feedback before publishing | All five | **Live preview share-links with comments** |
 
-Free monthly allowance: **$10 USD** per workspace, applied first before top-ups drain.
+## The 7 features to ship
 
-## How it slots into existing code
+### 1. Time Machine — auto-checkpoints with visual diff revert
+Every assistant turn auto-snapshots files. A timeline rail in the builder lets users scrub, hover to see a thumbnail of the preview at that point, and one-click revert *only the regressed file* instead of the whole project. Solves the #1 Bolt/Lovable complaint.
 
-- Petal already has `user_wallets`, `topup_lots`, `credit_ledger`, `paystack_transactions`, and a working Paystack webhook. The wallet is **additive**, not a rewrite — credits stay for build, USD cents are a new currency for runtime.
-- Existing `apply_paystack_topup` RPC stays for build-credit packs. New `apply_paystack_runtime_topup` RPC for runtime wallet.
+### 2. Pre-flight cost estimate
+Before sending a prompt, a small chip shows "~$0.04 / ~12s" based on intent classification (UI tweak vs. backend change vs. full feature). Inspired by user rage about credit burn. Cheap to build: one Lovable AI classification call before the real run.
 
----
+### 3. Petal Shield — automated security audit
+A panel that scans the generated project for: unprotected RLS, missing webhook signature checks, exposed service-role keys, public buckets, open signup + admin tables, missing rate-limits. Runs after every backend change. Shows a Shield Score (A–F) and offers one-click fixes. Directly attacks the DEV.to "12 issues" article that's blowing up.
 
-## Technical implementation
+### 4. Production Readiness Score
+A persistent badge in the header (`Prototype 62/100 → Production`). Combines: Shield Score + Lighthouse perf + accessibility + has-tests + has-error-boundary + custom domain + analytics wired. Click it to see the checklist. Turns "is my app actually ready?" into a measurable journey — no other builder has this.
 
-### 1. Schema (one migration)
+### 5. Live Preview Share — comments on the preview
+Generate a `petal.app/preview/{token}` link to share an in-progress project. Visitors can click any element and leave a sticky-note comment that lands back in the builder chat as "User feedback on Hero CTA: 'too small on mobile'." Founders ship faster when they don't have to schedule Loom calls. None of the top 5 have this.
 
-```sql
--- Per-workspace runtime wallet (separate from credit balance on user_wallets)
-ALTER TABLE public.user_wallets
-  ADD COLUMN runtime_free_balance_cents BIGINT NOT NULL DEFAULT 0,
-  ADD COLUMN runtime_topup_balance_cents BIGINT NOT NULL DEFAULT 0,
-  ADD COLUMN runtime_free_reset_at DATE NOT NULL DEFAULT (date_trunc('month', now())::date + INTERVAL '1 month')::date,
-  ADD COLUMN workspace_cap_cents BIGINT;  -- nullable = no cap
+### 6. Petal Mobile — one-click native wrap
+"Publish to App Store" button that wraps the build with Capacitor, generates icons/splash, and produces a downloadable `.ipa`/`.apk` (or hands off to EAS Build). Lovable and Bolt are stuck on PWA — even a basic version of this is a wedge in the "AI builder for mobile" search traffic.
 
--- Per-project caps (nullable = no cap)
-ALTER TABLE public.projects
-  ADD COLUMN spend_cap_cents BIGINT,
-  ADD COLUMN runtime_paused BOOLEAN NOT NULL DEFAULT false;
+### 7. Region Mode — EM-first defaults
+Toggle in project settings:
+- Optimize images < 50KB
+- Lazy-load below the fold by default
+- Detect slow connections and serve text-first version
+- Local payment methods auto-suggested by visitor IP (Paystack / Flutterwave / M-Pesa / Stripe)
+- Optional offline-first PWA shell
 
--- Append-only ledger of every runtime debit/credit
-CREATE TABLE public.runtime_ledger (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL,
-  project_id UUID,
-  meter TEXT NOT NULL,        -- 'backend_hour' | 'image_gen' | 'app_ai' | 'domain' | 'topup' | 'free_grant'
-  delta_cents BIGINT NOT NULL,  -- negative = debit
-  free_after_cents BIGINT NOT NULL,
-  topup_after_cents BIGINT NOT NULL,
-  metadata JSONB NOT NULL DEFAULT '{}',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-ALTER TABLE public.runtime_ledger ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "owners view ledger" ON public.runtime_ledger
-  FOR SELECT USING (auth.uid() = user_id OR has_role(auth.uid(), 'admin'));
+You're already the best-positioned platform for Africa/SE Asia — make it explicit.
 
--- Atomic charge function: free first, then top-up, respecting caps
-CREATE FUNCTION public.charge_runtime(
-  _user_id UUID, _project_id UUID, _meter TEXT,
-  _amount_cents BIGINT, _metadata JSONB DEFAULT '{}'
-) RETURNS TABLE(ok BOOLEAN, reason TEXT, free_after BIGINT, topup_after BIGINT)
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$ ... $$;
+## Bold UI/UX direction
 
--- Atomic credit (top-up / monthly grant)
-CREATE FUNCTION public.credit_runtime(
-  _user_id UUID, _meter TEXT, _amount_cents BIGINT, _metadata JSONB
-) RETURNS VOID ...;
+Lovable, Bolt, and Replit all converge on the same look: dark slate, rounded cards, neutral grays, blue accent. Generic SaaS. Petal should look unmistakably *itself* the moment you land on it.
 
--- Monthly reset trigger via pg_cron
-SELECT cron.schedule('runtime-monthly-reset', '0 0 1 * *', $$
-  SELECT public.runtime_apply_monthly_grant();
-$$);
-```
+**Aesthetic:** *Editorial brutalism with a warm tropical palette* — think Linear's precision crossed with Are.na's confidence and a sunset palette nobody else dares use.
 
-### 2. Server-side metering layer
+- **Color** — keep the coral primary, add a deep botanical green and a buttery cream as co-stars. No pure white, no cool grays. Backgrounds tinted warm (`oklch(0.98 0.015 80)` light / `oklch(0.18 0.02 25)` dark).
+- **Type** — pair a distinctive editorial display (e.g. *Fraunces* / *Tobias* / *PP Editorial New*) with a refined geometric body (*General Sans* / *Söhne*). Never Inter.
+- **Layout** — asymmetric grids, oversized numerals for stats, generous whitespace on marketing routes; controlled density inside the builder.
+- **Motion** — one signature page transition (a soft "petal unfurl" stagger on route change via Framer Motion), and a single delightful micro-interaction on the Send button. Resist the urge to animate everything.
+- **Builder chrome** — replace the standard 3-panel IDE clone with a **floating composer dock** that overlaps the preview (like a chat window over your live app), so the preview always feels like the hero, not a sidebar.
+- **Empty states** — illustrated, opinionated, and funny. Lovable's empty states are placeholder-grey rectangles. Yours should be memorable.
+- **Marketing site** — full-bleed hero with a real running app embedded (not a screenshot), oversized type, and a single bold CTA. Steal nothing from the v0/Lovable layout playbook.
 
-New file `src/server/runtime-wallet.server.ts` exporting:
+## Suggested order of attack
 
-- `chargeRuntime({ userId, projectId, meter, cents, metadata })` — calls `charge_runtime` RPC, returns `{ ok, reason }`. Returns `{ ok: false, reason: 'cap_exceeded' | 'insufficient_balance' }` when caller should pause.
-- `getRuntimeBalance(userId)` — returns `{ free, topup, freeResetAt, breakdown }`.
+1. **Time Machine** + **Pre-flight cost** — biggest pain relief, cheapest to build, immediate viral demos.
+2. **Petal Shield** — rides the security-FUD wave that's already trending against competitors.
+3. **Bold UI redesign** of marketing site + builder chrome — makes everything else feel new.
+4. **Live Preview Share with comments** — high-leverage growth loop (every shared link is an ad).
+5. **Production Readiness Score** — frames Petal as "the one that actually ships."
+6. **Region Mode** — locks in your EM moat.
+7. **Petal Mobile** — biggest engineering lift, save for last but tease early.
 
-Wire it into:
+## Technical notes
 
-- `src/server/managed-backend.server.ts` — new hourly cron at `/api/public/cron/runtime-meter` charges `$0.02 × active_projects` per workspace; pauses backend when `chargeRuntime` returns `cap_exceeded`.
-- `src/routes/api/generate-image.ts` — charge `$0.02` per successful image; refuse if balance can't cover.
-- `src/server/generate.server.ts` — for **user-app** AI calls (not the builder AI itself), meter token usage. Builder AI continues to draw from the existing credit system.
-- `src/server/petal-subdomain.server.ts` / `domains.ts` — charge `$1.50` when a custom domain is set primary.
+- **Time Machine:** you already write to `project_versions` — just auto-trigger on every assistant message and add a visual scrubber UI + a per-file diff/revert.
+- **Pre-flight estimator:** a single `gemini-2.5-flash-lite` classification call returning `{kind, est_seconds, est_cents}`; cache by prompt hash.
+- **Shield:** static analysis on `project_files` (regex + AST) for known bad patterns + a SQL probe that asks the project's backend for tables-without-RLS.
+- **Readiness Score:** server function aggregating 6–8 signals you already have in DB + a Lighthouse run on the latest preview build.
+- **Preview comments:** new `preview_comments` table keyed by build_id + DOM selector; the share page injects a tiny commenting widget into the iframe.
+- **Mobile wrap:** background job that runs `npx cap` against the built `dist/` and uses EAS Build (or your own Mac runner) for binaries. Gate behind paid plan.
+- **Region Mode:** project flag → injected `vite.config` defaults + a runtime helper that swaps payment SDKs based on `request.cf.country`.
 
-### 3. Top-ups via Paystack
-
-- Extend `src/routes/api/billing/initialize.ts` `purpose` enum with `"runtime_topup"` (custom amount) and reuse the existing Paystack init/verify code paths.
-- New row kind in `paystack_transactions` (already has `purpose` text col — no schema change).
-- Webhook handler in `src/routes/api/public/paystack/webhook.ts` calls new `apply_paystack_runtime_topup` RPC that calls `credit_runtime` and inserts a ledger entry.
-- Fixed packs stored in a small new table `runtime_topup_packs (code, label, amount_cents, currency_code)` so admin can edit without redeploys.
-
-### 4. Spend caps
-
-- Project-level cap UI in `ProjectSettingsSheet.tsx` (new "Spend cap" field).
-- Workspace-level cap UI in the new Cloud & AI balance sheet.
-- `charge_runtime` RPC enforces caps atomically — checks `SUM(month-to-date debits)` per project and per workspace before allowing the debit.
-- When a cap is hit: `runtime_paused` is flipped on the project; managed backend is paused; user gets an in-app banner + email (reuses existing email infra).
-- Warning email at **80%** of free allowance and at **80%** of cap (uses existing `email_send_log` system).
-
-### 5. UI (new + edits)
-
-**New files:**
-
-- `src/components/CloudBalanceSheet.tsx` — the screenshot-style sheet, with "Top up" button and project breakdown.
-- `src/components/RuntimeTopupModal.tsx` — pack picker + custom amount, Paystack flow.
-- `src/components/SpendCapEditor.tsx` — reusable cap input (Naira, with USD equiv).
-- `src/lib/runtime-wallet.ts` — client helpers (`getRuntimeBalance`, `initiateTopup`).
-
-**Edited files:**
-
-- `src/components/SiteHeader.tsx` — add "Cloud & AI balance" item to the user dropdown.
-- `src/components/CreditBadge.tsx` — keep as-is, but tooltip notes it's *build credits*.
-- `src/components/BillingSheet.tsx` — add a "Runtime usage" link/section pointing to the new sheet.
-- `src/routes/builder.tsx` — low-balance banner; cap-paused banner with "Raise cap" button.
-- `src/components/ProjectSettingsSheet.tsx` — spend cap field.
-- `src/routes/admin.billing.tsx` — admin view of runtime meter prices + per-workspace usage.
-
-### 6. Order of work
-
-1. Migration (schema + RPCs + cron).
-2. `runtime-wallet.server.ts` + RPC tests via `read_query`.
-3. Paystack `runtime_topup` purpose + webhook handler + RPC.
-4. Cloud & AI balance sheet + top-up modal.
-5. Wire metering into managed backend cron.
-6. Wire metering into `generate-image.ts` and user-app AI calls.
-7. Spend caps UI + enforcement + warning emails.
-8. Admin view + price knobs.
-
-Estimate: ~2–3 implementation passes, mostly because the metering integration touches several existing server modules.
-
----
-
-## Out of scope for v1 (call out so we don't scope-creep)
-
-- Per-seat or per-collaborator wallets (workspace-level only for now).
-- Auto-recharge ("top up another ₦5,000 when balance drops below ₦500"). Easy v2.
-- Refunds for failed image gens / failed backend hours — v1 just doesn't charge on failure.
-- Naira-native pricing (we store in USD cents internally, display in user's preferred currency using existing `billing_currencies.usd_rate`).
+Approve and I'll start with Time Machine + Pre-flight cost in the next turn.
