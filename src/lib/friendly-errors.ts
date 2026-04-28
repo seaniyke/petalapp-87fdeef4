@@ -139,20 +139,31 @@ export function toFriendlyError(raw: unknown): FriendlyError {
 /** Shown while Petal is auto-fixing a failed build (Phase 2).
  *  This is purely informational — there's no action button because Petal is
  *  already on it. After 2 attempts we fall back to `friendlyBuildFailure`
- *  with the manual "Ask Petal to fix it" button. */
+ *  with the manual "Ask Petal to fix it" button.
+ *
+ *  Auto-fix runs are FREE — the server skips the credit charge for these
+ *  turns (see `isAutoFix` in /api/generate). We say so explicitly here so
+ *  users don't worry about runaway costs. */
 export function autoFixingBuild(attempt: number): FriendlyError {
   return {
-    title: attempt === 1 ? "Petal spotted an error and is fixing it" : "Trying one more fix",
+    title:
+      attempt === 1
+        ? "Petal spotted a build error and is fixing it"
+        : "Petal is taking another shot at the fix",
     message:
       attempt === 1
-        ? "The build didn't compile. Petal is reading the error and patching the code — no action needed."
-        : "The first fix didn't quite work. Petal is taking another pass.",
+        ? "No action needed — Petal is reading the build log and patching the code. This fix is on us, no credits used."
+        : "The first attempt didn't fully resolve it. Petal is trying a different angle. Still free — no credits charged for auto-fixes.",
     actionLabel: "Working on it",
     actionKind: "dismiss",
   };
 }
 
-/** Friendly copy specifically for a failed Cloudflare Pages build.
+/** Friendly copy specifically for a failed Cloudflare Pages build, shown
+ *  AFTER the two free auto-fix attempts have been exhausted. At this
+ *  point the user has to opt in to a manual fix (which IS charged like a
+ *  normal build prompt) or open Discuss mode to investigate.
+ *
  *  We pass the raw log into the friendly error so the user can read it
  *  under "Show details" — and `askPetalToFix` in builder.tsx forwards the
  *  same log to the AI as the next prompt.
@@ -181,18 +192,18 @@ export function friendlyBuildFailure(rawLog: string | null | undefined): Friendl
     return {
       title: "A styling rule isn't quite right",
       message:
-        "There's a small problem in the app's stylesheet. Click below and Petal will fix it.",
-      actionLabel: "Ask Petal to fix it",
+        "Petal already tried two free fixes and the build is still failing on a stylesheet issue. Tap below to try one more targeted fix.",
+      actionLabel: "Try one more fix",
       actionKind: "ask-fix",
       technicalDetail: tail,
     };
   }
 
   return {
-    title: "Your app needs a small fix",
+    title: "Petal couldn't auto-fix this one",
     message:
-      "There's an error in the code Petal wrote. Click below and Petal will read the build log and fix it.",
-    actionLabel: "Ask Petal to fix it",
+      "Two free fix attempts didn't resolve the build. Tap below to try one more pass with the latest error log, or open Discuss mode to investigate together.",
+    actionLabel: "Try one more fix",
     actionKind: "ask-fix",
     technicalDetail: tail,
   };

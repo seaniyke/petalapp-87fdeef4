@@ -32,6 +32,10 @@ export async function streamGenerate(
     model?: "fast" | "smart" | "best";
     customInstructions?: string;
     projectId?: string;
+    /** When true, this run is a free internal auto-fix triggered by Petal
+     *  itself (after a failed build). The server skips credit charging and
+     *  the client suppresses the giant prompt from the chat thread. */
+    isAutoFix?: boolean;
   },
   handlers: Handlers,
   signal?: AbortSignal,

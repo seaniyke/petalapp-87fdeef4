@@ -733,7 +733,18 @@ function Builder() {
   const send = useCallback(
     async (
       content: string,
-      opts: { isRetry?: boolean; attachments?: ChatAttachment[]; forceBuild?: boolean } = {},
+      opts: {
+        isRetry?: boolean;
+        attachments?: ChatAttachment[];
+        forceBuild?: boolean;
+        /** Internal auto-fix run (Petal repairing its own failed build).
+         *  Suppresses the giant error-log prompt from the visible chat
+         *  thread (replaced with a small "Petal is fixing the build —
+         *  free" system note) and tells the server to skip the credit
+         *  charge. The AI still receives the full error log as a user
+         *  message so it can patch the actual cause. */
+        isAutoFix?: boolean;
+      } = {},
     ) => {
       const text = content.trim();
       if (!text || busy) return;
@@ -762,10 +773,30 @@ function Builder() {
             }
           : {}),
       };
-      // On retry, the failing user message is already in `messages` — don't double-append.
+      // What the AI sees: full conversation including the (possibly large)
+      // auto-fix prompt with the error log. What the user sees: either the
+      // normal user message OR a calm system note for auto-fix runs.
       const nextMessages: ChatMessage[] = opts.isRetry ? messages : [...messages, userMsg];
-      if (!opts.isRetry) setMessages(nextMessages);
-      setLastUserPrompt(text);
+      if (!opts.isRetry) {
+        if (opts.isAutoFix) {
+          // Replace the giant error-log prompt with a friendly system note
+          // in the visible thread. The AI still receives the full prompt
+          // via `nextMessages` above.
+          const note: ChatMessage = {
+            role: "system",
+            system: true,
+            content:
+              "🔧 Petal noticed a build error and is fixing it automatically. This fix is on us — no credits used.",
+          };
+          setMessages([...messages, note]);
+        } else {
+          setMessages(nextMessages);
+        }
+      }
+      // Don't overwrite lastUserPrompt during an auto-fix — the "Retry last
+      // prompt" affordance should still replay the user's real ask, not our
+      // internal error-log dump.
+      if (!opts.isAutoFix) setLastUserPrompt(text);
       setInput("");
       setPendingAttachments([]);
       initialAttachmentsRef.current = [];
@@ -775,8 +806,9 @@ function Builder() {
       // user refreshes mid-build (which can take 30–60s) we still want to show
       // them what they just asked Petal — losing the prompt entirely is the
       // single most disorienting failure mode here. The assistant reply is
-      // persisted later, after a successful stream.
-      if (!opts.isRetry) {
+      // persisted later, after a successful stream. Auto-fix runs are NOT
+      // persisted (they're transient internal turns).
+      if (!opts.isRetry && !opts.isAutoFix) {
         try {
           await appendMessages(proj.id, [userMsg]);
         } catch (persistErr) {
@@ -895,11 +927,14 @@ function Builder() {
 
         await streamGenerate(
           {
-            messages: nextMessages,
+            // Strip transient system notes ("Petal is auto-fixing…") before
+            // sending — they're UI-only, the AI shouldn't see them.
+            messages: nextMessages.filter((m) => m.role !== "system"),
             currentFiles: files,
             model: "smart",
             customInstructions: proj.custom_instructions ?? undefined,
             projectId: proj.id,
+            isAutoFix: opts.isAutoFix,
           },
           {
             onPhase: (phase: PhaseId) => {
@@ -1413,41 +1448,47 @@ function Builder() {
       });
   }, [project?.id]);
 
-  const askPetalToFix = useCallback(() => {
-    setFriendlyError(null);
-    // Feed the actual build error/log back into the next prompt so the AI
-    // can patch the real cause (this is what Lovable, Bolt and Base44 do).
-    // The Railway callback already concatenates logs into error_message.
-    const rawLog = buildSnap?.errorMessage?.trim();
-    const tail = rawLog
-      ? rawLog.split("\n").slice(-60).join("\n").slice(-3500)
-      : "";
-    // When this is an auto-fix retry (Phase 2), nudge the AI to try a
-    // different angle than its previous attempt.
-    const attempt = autoFixRef.current.attempts;
-    const retryNote =
-      attempt > 1
-        ? "\n\nNote: this is your second attempt at fixing the same build. Your previous fix did not resolve the issue — re-read the error carefully and try a different approach."
+  const askPetalToFix = useCallback(
+    (opts: { isAuto?: boolean } = {}) => {
+      setFriendlyError(null);
+      // Feed the actual build error/log back into the next prompt so the AI
+      // can patch the real cause (this is what Lovable, Bolt and Base44 do).
+      // The Railway callback already concatenates logs into error_message.
+      const rawLog = buildSnap?.errorMessage?.trim();
+      const tail = rawLog
+        ? rawLog.split("\n").slice(-60).join("\n").slice(-3500)
         : "";
-    const prompt = tail
-      ? [
-          "The build just failed with this error from the bundler:",
-          "",
-          "```",
-          tail,
-          "```",
-          "",
-          "Please look at the relevant files in the project, identify the root cause, and fix it. Make the smallest change that will let the build succeed.",
-        ].join("\n") + retryNote
-      : "The build failed but no error log was captured. Please review the project files for obvious mistakes (missing imports, syntax errors, typos in package.json) and fix them." +
-        retryNote;
-    void send(prompt, { isRetry: false });
-  }, [send, buildSnap]);
+      // When this is an auto-fix retry (Phase 2), nudge the AI to try a
+      // different angle than its previous attempt.
+      const attempt = autoFixRef.current.attempts;
+      const retryNote =
+        attempt > 1
+          ? "\n\nNote: this is your second attempt at fixing the same build. Your previous fix did not resolve the issue — re-read the error carefully and try a different approach."
+          : "";
+      const prompt = tail
+        ? [
+            "The build just failed with this error from the bundler:",
+            "",
+            "```",
+            tail,
+            "```",
+            "",
+            "Please look at the relevant files in the project, identify the root cause, and fix it. Make the smallest change that will let the build succeed.",
+          ].join("\n") + retryNote
+        : "The build failed but no error log was captured. Please review the project files for obvious mistakes (missing imports, syntax errors, typos in package.json) and fix them." +
+          retryNote;
+      // Auto-fix runs are free and silent; manual ("Ask Petal to fix it")
+      // runs behave like any other build prompt (charged + visible).
+      void send(prompt, { isRetry: false, isAutoFix: opts.isAuto === true });
+    },
+    [send, buildSnap],
+  );
 
   // Keep the ref in sync so the build-failure effect (declared earlier in
-  // the component) can call into the latest closure.
+  // the component) can call into the latest closure. The effect always wants
+  // the auto-fix variant.
   useEffect(() => {
-    askPetalToFixRef.current = askPetalToFix;
+    askPetalToFixRef.current = () => askPetalToFix({ isAuto: true });
   }, [askPetalToFix]);
 
   async function downloadProject() {
@@ -1877,6 +1918,18 @@ function Builder() {
               </div>
             )}
             {messages.map((m, i) => {
+              // System notes (e.g. "Petal is auto-fixing the build — free")
+              // render as a small centered chip, not a chat bubble — they're
+              // status updates, not part of the conversation.
+              if (m.role === "system" || m.system) {
+                return (
+                  <div key={i} className="my-1 flex justify-center">
+                    <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 py-1 text-[11px] text-muted-foreground">
+                      {m.content}
+                    </div>
+                  </div>
+                );
+              }
               const isUser = m.role === "user";
               // Only allow revert if Petal already replied to this user
               // message (so a snapshot exists) and we're not mid-generation.
@@ -2314,13 +2367,18 @@ function Builder() {
             />
             <div className="mb-2 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
               <span className="min-w-0 flex-1 truncate">
-                {busy || discussBusy
-                  ? "Petal is working — your next message will queue"
-                  : pendingAttachments.length > 0
-                    ? `${pendingAttachments.length} image${pendingAttachments.length > 1 ? "s" : ""} attached`
-                    : mode === "discuss"
-                      ? "Chat only · no file changes"
-                      : "Petal will edit files"}
+                {(() => {
+                  const isAutoFixing =
+                    busy && friendlyError?.actionLabel === "Working on it";
+                  if (isAutoFixing)
+                    return "Petal is fixing the build — free · keep typing if you'd like";
+                  if (busy || discussBusy)
+                    return "Petal is working — your next message will queue";
+                  if (pendingAttachments.length > 0)
+                    return `${pendingAttachments.length} image${pendingAttachments.length > 1 ? "s" : ""} attached`;
+                  if (mode === "discuss") return "Chat only · no file changes";
+                  return "Petal will edit files";
+                })()}
               </span>
               {mode === "build" && (
                 <PreflightCostChip prompt={input} disabled={busy || discussBusy} />
