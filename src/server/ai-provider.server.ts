@@ -263,6 +263,10 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       latencyMs: latency,
       fallbackUsed: false,
       errorMessage: primary.ok ? null : `HTTP ${primary.status}`,
+      phase: opts.meta?.phase ?? null,
+      promptChars: opts.meta?.promptChars ?? null,
+      hadAttachments: opts.meta?.hadAttachments ?? false,
+      chosenBy: opts.meta?.chosenBy ?? null,
     });
     return primary;
   }
