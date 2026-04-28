@@ -289,7 +289,7 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
             Already own a domain? Connecting it is free. Don't have one? Buy
-            one through Petal — $12/year, auto-renews.
+            one through Petal — starting from $12/year, auto-renews.
           </p>
         </div>
       ) : (
