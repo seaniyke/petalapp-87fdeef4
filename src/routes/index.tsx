@@ -188,6 +188,22 @@ function Landing() {
     return local.charAt(0).toUpperCase() + local.slice(1);
   }, [user, profileDisplayName, profileFetched]);
 
+  // Rotating two-word hero greeting. Picks once per mount so it feels fresh
+  // on each visit but doesn't flicker while the user is on the page.
+  const heroGreeting = useMemo(() => {
+    const greetings = [
+      "Got ideas?",
+      "Let's build,",
+      "Dream big,",
+      "Ship it,",
+      "What's next,",
+      "Hey there,",
+      "Ready when,",
+      "Make magic,",
+    ];
+    return greetings[Math.floor(Math.random() * greetings.length)];
+  }, []);
+
   const [projects, setProjects] = useState<ProjectRow[] | null>(null);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>("all");
@@ -423,7 +439,7 @@ function Landing() {
             <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
               {firstName ? (
                 <>
-                  Let's build,{" "}
+                  {heroGreeting}{" "}
                   <span className="relative whitespace-nowrap">
                     <span className="relative z-10 italic">{firstName}</span>
                     <span
@@ -434,7 +450,7 @@ function Landing() {
                   .
                 </>
               ) : (
-                "Let's build."
+                `${heroGreeting}.`
               )}
             </h1>
           ) : (
