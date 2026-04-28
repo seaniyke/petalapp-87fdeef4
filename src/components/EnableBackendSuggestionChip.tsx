@@ -105,13 +105,16 @@ export function EnableBackendSuggestionChip({
             >
               Maybe later
             </button>
-            <Link
-              to="/pricing"
-              onClick={() => setUpgradeOpen(false)}
+            <button
+              type="button"
+              onClick={() => {
+                setUpgradeOpen(false);
+                onUpgrade?.();
+              }}
               className="inline-flex h-9 items-center gap-1.5 rounded-full bg-foreground px-4 text-sm font-medium text-background shadow-sm transition hover:brightness-110"
             >
               <Sparkles className="h-3.5 w-3.5" /> See plans
-            </Link>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
