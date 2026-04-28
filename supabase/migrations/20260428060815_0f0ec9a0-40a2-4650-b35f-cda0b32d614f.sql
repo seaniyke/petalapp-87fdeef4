@@ -1,0 +1,1 @@
+ALTER TABLE public.projects ADD COLUMN hide_petal_badge boolean NOT NULL DEFAULT false;
