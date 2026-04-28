@@ -96,6 +96,10 @@ import { RenameProjectDialog } from "@/components/RenameProjectDialog";
 import { BillingSheet } from "@/components/BillingSheet";
 import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
+import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
+import { detectBackendIntentInTurn } from "@/lib/backend-intent";
+import { getProjectBackend } from "@/lib/projects";
+import { useWallet } from "@/hooks/use-wallet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -252,6 +256,16 @@ function Builder() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  // Whether this project already has a backend (BYO or managed). When unknown
+  // we treat as "not connected" but suppress the chip until we've checked.
+  const [hasBackend, setHasBackend] = useState<boolean | null>(null);
+  // Per-message dismissal of the "Add backend" inline suggestion. Keyed by
+  // assistant message index so dismissing once doesn't kill it forever.
+  const [dismissedBackendChips, setDismissedBackendChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const { plan: currentPlan } = useWallet();
+  const isPaidPlan = !!currentPlan && currentPlan.code !== "free";
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
   // Visual element edit (Phase 5): selected element from the preview iframe.
   type PickedElement = {
@@ -604,6 +618,32 @@ function Builder() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady, user, searchId]);
+
+  // Look up whether this project already has a backend connected. Done once
+  // per project; the chip only appears when this resolves to false.
+  useEffect(() => {
+    if (!project?.id) {
+      setHasBackend(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getProjectBackend(project.id);
+        if (!cancelled) setHasBackend(!!result);
+      } catch {
+        if (!cancelled) setHasBackend(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [project?.id]);
+
+  // Reset chip dismissals when switching projects.
+  useEffect(() => {
+    setDismissedBackendChips(new Set());
+  }, [project?.id]);
 
   // Mirror the composer text, queued messages, and pending attachments to
   // sessionStorage so a browser refresh inside /builder doesn't wipe them.
@@ -1843,6 +1883,38 @@ function Builder() {
                             </CollapsibleSegment>
                           );
                         })()}
+                        {/* "You'll need a backend" inline suggestion. Only on
+                            the most recent assistant message, only when no
+                            backend exists yet, and only when the heuristic
+                            fires on either the user prompt or Petal's reply. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          hasBackend === false &&
+                          !dismissedBackendChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectBackendIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            return (
+                              <EnableBackendSuggestionChip
+                                projectId={project.id}
+                                isPaidPlan={isPaidPlan}
+                                reason={intent.reason}
+                                onUpgrade={() => setBillingOpen(true)}
+                                onDismiss={() =>
+                                  setDismissedBackendChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
                       </div>
                     ) : (
                       <div className="whitespace-pre-wrap">{m.content}</div>
