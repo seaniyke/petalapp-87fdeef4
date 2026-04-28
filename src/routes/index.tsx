@@ -384,17 +384,20 @@ function Landing() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-aurora opacity-70" aria-hidden />
-        <div className="absolute inset-0 bg-grain opacity-40" aria-hidden />
+        {/* Aurora + grain extend below the hero content so the warm wash
+            covers more of the screen on mobile (echoing Lovable's full-bleed
+            gradient feel) instead of cutting off right under the composer. */}
+        <div className="absolute inset-x-0 top-0 bottom-[-12rem] bg-aurora opacity-80 sm:bottom-[-8rem]" aria-hidden />
+        <div className="absolute inset-x-0 top-0 bottom-[-12rem] bg-grain opacity-40 sm:bottom-[-8rem]" aria-hidden />
 
-        <div className={`relative mx-auto max-w-5xl px-5 text-center sm:px-6 ${!isReady || isAuthed ? "pt-24 pb-16 sm:pt-32 sm:pb-20 md:pt-40 md:pb-24" : "pt-12 pb-20 sm:pt-20 sm:pb-28 md:pt-28 md:pb-36"}`}>
+        <div className={`relative mx-auto max-w-5xl px-5 text-center sm:px-6 ${!isReady || isAuthed ? "pt-40 pb-16 sm:pt-44 sm:pb-20 md:pt-48 md:pb-24" : "pt-32 pb-20 sm:pt-36 sm:pb-28 md:pt-40 md:pb-36"}`}>
           {!isReady ? (
             <div className="mx-auto h-[7.5rem] max-w-2xl animate-pulse rounded-3xl bg-card/50" aria-hidden="true" />
           ) : isAuthed ? (
-            <h1 className="font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
+            <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
               {firstName ? (
                 <>
-                  Let's build something,{" "}
+                  Let's build,{" "}
                   <span className="relative whitespace-nowrap">
                     <span className="relative z-10 italic">{firstName}</span>
                     <span
@@ -405,7 +408,7 @@ function Landing() {
                   .
                 </>
               ) : (
-                "Let's build something."
+                "Let's build."
               )}
             </h1>
           ) : (
@@ -415,8 +418,8 @@ function Landing() {
                 Now in early access
               </div>
 
-              <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
-                Build real apps by{" "}
+              <h1 className="mt-6 font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
+                Build apps by{" "}
                 <span className="relative whitespace-nowrap">
                   <span className="relative z-10 italic">just chatting</span>
                   <span
@@ -427,9 +430,8 @@ function Landing() {
                 .
               </h1>
 
-              <p className="mx-auto mt-6 max-w-2xl text-balance text-base text-muted-foreground sm:text-lg md:text-xl">
-                Petal turns plain English into working web apps. Describe what you
-                want, watch the files appear, and share a live preview in seconds.
+              <p className="mx-auto mt-5 max-w-xl text-balance text-sm text-muted-foreground sm:text-lg md:text-xl">
+                Describe what you want. Watch it come to life.
               </p>
             </>
           )}
