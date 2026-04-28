@@ -138,6 +138,19 @@ export const Route = createFileRoute("/api/public/paystack/webhook")({
                 _environment: tx.environment,
               });
             }
+          } else if (tx.purpose === "domain_purchase") {
+            if (!tx.project_id) {
+              throw new Error("Domain purchase missing project_id");
+            }
+            // Fire-and-forget the actual registration so we ack the webhook
+            // quickly. The handler updates `purchased_domains.status` itself.
+            handleDomainPurchase({
+              reference: ref,
+              projectId: tx.project_id,
+              userId: tx.user_id,
+            }).catch((e) =>
+              console.error("[webhook] domain_purchase failed", e),
+            );
           } else {
             await supabaseAdmin.rpc("apply_paystack_plan_grant", {
               _user_id: tx.user_id,
