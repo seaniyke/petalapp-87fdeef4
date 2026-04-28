@@ -336,40 +336,12 @@ function BackendSection({ projectId }: { projectId: string }) {
           onChanged={refresh}
         />
       ) : (
-        // Nothing connected — show both options
-        <div className="space-y-3">
-          <ManagedBackendCard
-            projectId={projectId}
-            backend={backend}
-            onChanged={refresh}
-          />
-          {showForm ? (
-            <ConnectForm
-              projectId={projectId}
-              onCancel={() => setShowForm(false)}
-              onConnected={(b) => {
-                setBackend(b);
-                setShowForm(false);
-              }}
-            />
-          ) : (
-            <div className="rounded-lg border border-dashed border-border p-3">
-              <p className="text-xs text-muted-foreground">
-                Already have a Supabase project? Connect it for free — Petal will inject a
-                pre-configured client into the generated app.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowForm(true)}
-                className="mt-3 inline-flex items-center gap-1.5"
-              >
-                <Plug className="h-3.5 w-3.5" />
-                Connect existing (free)
-              </Button>
-            </div>
-          )}
-        </div>
+        // Nothing connected — show Petal Cloud option only
+        <ManagedBackendCard
+          projectId={projectId}
+          backend={backend}
+          onChanged={refresh}
+        />
       )}
     </div>
   );
