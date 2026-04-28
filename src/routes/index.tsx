@@ -103,7 +103,29 @@ function Landing() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, isReady } = useAuth();
   const isAuthed = !!user;
+  const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!user) {
+      setProfileDisplayName(null);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setProfileDisplayName(data?.display_name ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
   const firstName = useMemo(() => {
+    if (profileDisplayName && profileDisplayName.trim()) {
+      return profileDisplayName.trim().split(/\s+/)[0];
+    }
     const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
     const fromMeta =
       (typeof meta.full_name === "string" && meta.full_name) ||
@@ -115,7 +137,7 @@ function Landing() {
     const local = email.split("@")[0] ?? "";
     if (!local) return "";
     return local.charAt(0).toUpperCase() + local.slice(1);
-  }, [user]);
+  }, [user, profileDisplayName]);
 
   const [projects, setProjects] = useState<ProjectRow[] | null>(null);
   const [projectsLoading, setProjectsLoading] = useState(false);
