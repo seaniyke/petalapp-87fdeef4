@@ -96,6 +96,18 @@ export const Route = createFileRoute("/api/public/paystack/webhook")({
               _reference: ref,
               _environment: tx.environment,
             });
+          } else if (tx.purpose === "runtime_topup") {
+            await supabaseAdmin.rpc("apply_paystack_runtime_topup", {
+              _user_id: tx.user_id,
+              _reference: ref,
+              _amount_cents: tx.usd_amount_cents as never,
+              _metadata: {
+                item_code: tx.item_code,
+                currency_code: tx.currency_code,
+                amount_minor: tx.amount_minor,
+                environment: tx.environment,
+              } as never,
+            });
           } else if (tx.purpose === "addon") {
             if (!tx.project_id) {
               throw new Error("Add-on transaction missing project_id");
