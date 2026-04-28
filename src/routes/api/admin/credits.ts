@@ -87,16 +87,24 @@ export const Route = createFileRoute("/api/admin/credits")({
 
             // Attach wallet balances.
             const ids = matches.map((m) => m.id);
-            const { data: wallets } = ids.length
-              ? await supabaseAdmin
-                  .from("user_wallets")
-                  .select(
-                    "user_id, plan_code, monthly_credits_remaining, topup_credits_remaining",
-                  )
-                  .in("user_id", ids)
-              : { data: [] as never[] };
-            const walletMap = new Map<string, (typeof wallets)[number]>();
-            for (const w of wallets ?? []) walletMap.set(w.user_id, w);
+            type WalletRow = {
+              user_id: string;
+              plan_code: string | null;
+              monthly_credits_remaining: number | null;
+              topup_credits_remaining: number | null;
+            };
+            let wallets: WalletRow[] = [];
+            if (ids.length) {
+              const { data: w } = await supabaseAdmin
+                .from("user_wallets")
+                .select(
+                  "user_id, plan_code, monthly_credits_remaining, topup_credits_remaining",
+                )
+                .in("user_id", ids);
+              wallets = (w ?? []) as WalletRow[];
+            }
+            const walletMap = new Map<string, WalletRow>();
+            for (const w of wallets) walletMap.set(w.user_id, w);
 
             return Response.json({
               users: matches.map((m) => ({
