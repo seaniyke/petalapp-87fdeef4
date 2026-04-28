@@ -490,7 +490,6 @@ function Builder() {
       // Note: we used to surface a "Changes ready to publish" toast here, but
       // it fired on every refresh / build completion and was more noise than
       // signal. Users can publish from the header button when ready.
-      autoFixRef.current.handledBuildIds.clear();
     } else if (buildSnap.status === "pending" || buildSnap.status === "building") {
       // Both states keep the activity card on the deploying phase. Without
       // the 'building' branch, the card would freeze the moment Railway
