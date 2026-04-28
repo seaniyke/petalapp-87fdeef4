@@ -8,6 +8,7 @@
  * muted "½ credit/turn" suffix so pricing is honest at the moment of choice.
  */
 import { Hammer, MessageSquare, Sparkles, ChevronDown, Check } from "lucide-react";
+import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
@@ -60,9 +61,10 @@ export function ComposerModePicker({
 }) {
   const active = OPTIONS.find((o) => o.value === value) ?? OPTIONS[0];
   const ActiveIcon = active.Icon;
+  const [open, setOpen] = useState(false);
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -98,7 +100,7 @@ export function ComposerModePicker({
                   type="button"
                   role="menuitemradio"
                   aria-checked={isActive}
-                  onClick={() => onChange(opt.value)}
+                  onClick={() => { onChange(opt.value); setOpen(false); }}
                   className={cn(
                     "group flex w-full items-start gap-2.5 rounded-xl px-2 py-2 text-left transition",
                     "hover:bg-muted/70 focus:outline-none focus-visible:bg-muted",
