@@ -665,9 +665,31 @@ function Builder() {
     };
   }, [project?.id]);
 
+  // Look up whether this project already has a custom domain attached. Same
+  // pattern as hasBackend — chip only shows when this resolves to false.
+  useEffect(() => {
+    if (!project?.id) {
+      setHasDomain(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await listDomains(project.id);
+        if (!cancelled) setHasDomain(Array.isArray(list) && list.length > 0);
+      } catch {
+        if (!cancelled) setHasDomain(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [project?.id]);
+
   // Reset chip dismissals when switching projects.
   useEffect(() => {
     setDismissedBackendChips(new Set());
+    setDismissedDomainChips(new Set());
   }, [project?.id]);
 
   // Mirror the composer text, queued messages, and pending attachments to
