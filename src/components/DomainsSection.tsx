@@ -126,11 +126,8 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
   }, [projectId]);
 
   function openAddFlow() {
-    if (hasAvailableSlot) {
-      setShowAdd(true);
-    } else {
-      setShowBuySlot(true);
-    }
+    // Connecting an existing domain you already own is free.
+    setShowAdd(true);
   }
 
   // Realtime: flip status pills as the verification job runs
@@ -243,32 +240,16 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
         </div>
       )}
 
-      {hasPublishedBuild && !loading && (
+      {hasPublishedBuild && !loading && hasAvailableSlot && (
         <div className="mb-3 rounded-lg border border-border bg-muted/20 p-2.5 text-[11px]">
-          {hasAvailableSlot ? (
-            <p className="text-muted-foreground">
-              <span className="font-medium text-foreground">
-                {availableSlots.length} domain slot{availableSlots.length === 1 ? "" : "s"} available
-              </span>
-              {nextExpiry && (
-                <> · expires {nextExpiry.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</>
-              )}
-            </p>
-          ) : (
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-muted-foreground">
-                Custom domains require a slot — $12 for 12 months.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowBuySlot(true)}
-                className="h-7 px-2 text-[11px]"
-              >
-                Buy slot
-              </Button>
-            </div>
-          )}
+          <p className="text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {availableSlots.length} purchased domain{availableSlots.length === 1 ? "" : "s"} available
+            </span>
+            {nextExpiry && (
+              <> · renews {nextExpiry.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</>
+            )}
+          </p>
         </div>
       )}
 
@@ -286,15 +267,30 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
             instead of the default Petal subdomain. Petal issues a free SSL
             certificate automatically.
           </p>
-          <Button
-            size="sm"
-            disabled={!hasPublishedBuild}
-            onClick={openAddFlow}
-            className="mt-3 inline-flex items-center gap-1.5"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {hasAvailableSlot ? "Connect a domain" : "Buy a slot to connect a domain"}
-          </Button>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              disabled={!hasPublishedBuild}
+              onClick={openAddFlow}
+              className="inline-flex items-center gap-1.5"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Connect a domain
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!hasPublishedBuild}
+              onClick={() => setShowBuySlot(true)}
+              className="inline-flex items-center gap-1.5"
+            >
+              Buy a new domain
+            </Button>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Already own a domain? Connecting it is free. Don't have one? Buy
+            one through Petal — $12/year, auto-renews.
+          </p>
         </div>
       ) : (
         <ul className="space-y-2">
