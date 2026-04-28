@@ -1,0 +1,2 @@
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS is_starred BOOLEAN NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS idx_projects_owner_starred ON public.projects(owner_id, is_starred) WHERE is_starred = true;

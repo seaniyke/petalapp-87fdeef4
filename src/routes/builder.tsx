@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
+  Menu,
   Send,
   Loader2,
   FileCode2,
@@ -93,6 +94,7 @@ import { BuilderActionsSheet } from "@/components/BuilderActionsSheet";
 import { PublishSheet } from "@/components/PublishSheet";
 import { RenameProjectDialog } from "@/components/RenameProjectDialog";
 import { BillingSheet } from "@/components/BillingSheet";
+import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -245,6 +247,7 @@ function Builder() {
   >(null);
   // Mobile builder menu (bottom sheet) + dependent dialogs.
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [projectsDrawerOpen, setProjectsDrawerOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -1502,16 +1505,24 @@ function Builder() {
       <header className="safe-top sticky top-0 z-30 grid h-14 shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border bg-card/80 px-3 backdrop-blur sm:px-4">
         {/* Left: hamburger (mobile) + back/title (desktop) */}
         <div className="flex min-w-0 items-center gap-2">
-          {/* Mobile: hamburger opens the actions sheet */}
-          {/* Mobile: back to projects (replaces the hamburger to avoid hiding nav). */}
-          <Link
-            to="/projects"
-            aria-label="Back to projects"
+          {/* Mobile: hamburger opens the projects drawer */}
+          <button
+            type="button"
+            onClick={() => setProjectsDrawerOpen(true)}
+            aria-label="Open projects menu"
             className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-foreground transition hover:bg-muted md:hidden"
           >
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          {/* Desktop: back to projects + project chip */}
+            <Menu className="h-5 w-5" />
+          </button>
+          {/* Desktop: hamburger + back to projects */}
+          <button
+            type="button"
+            onClick={() => setProjectsDrawerOpen(true)}
+            aria-label="Open projects menu"
+            className="hidden h-9 w-9 shrink-0 place-items-center rounded-lg text-foreground transition hover:bg-muted md:grid"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
           <Link
             to="/projects"
             className="hidden shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground hover:bg-muted md:inline-flex"
@@ -1670,6 +1681,11 @@ function Builder() {
             onChange={setProject}
           />
           <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
+          <ProjectsDrawer
+            open={projectsDrawerOpen}
+            onOpenChange={setProjectsDrawerOpen}
+            currentProjectId={project?.id ?? null}
+          />
           <PublishSheet
             open={publishOpen}
             onOpenChange={setPublishOpen}

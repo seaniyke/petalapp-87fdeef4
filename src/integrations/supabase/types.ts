@@ -972,6 +972,7 @@ export type Database = {
           id: string
           is_featured: boolean
           is_public: boolean
+          is_starred: boolean
           latest_build_id: string | null
           owner_id: string
           primary_domain_id: string | null
@@ -993,6 +994,7 @@ export type Database = {
           id?: string
           is_featured?: boolean
           is_public?: boolean
+          is_starred?: boolean
           latest_build_id?: string | null
           owner_id: string
           primary_domain_id?: string | null
@@ -1014,6 +1016,7 @@ export type Database = {
           id?: string
           is_featured?: boolean
           is_public?: boolean
+          is_starred?: boolean
           latest_build_id?: string | null
           owner_id?: string
           primary_domain_id?: string | null
