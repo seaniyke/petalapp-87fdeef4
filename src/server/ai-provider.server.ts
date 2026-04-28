@@ -173,7 +173,7 @@ export interface AiCallOptions {
  * can surface the existing 402/429 toasts.
  */
 export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> {
-  const provider = resolveProvider(opts.feature);
+  const provider = await resolveProvider(opts.feature);
 
   let url: string;
   let apiKey: string | undefined;
