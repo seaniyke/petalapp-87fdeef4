@@ -739,7 +739,7 @@ export const Route = createFileRoute("/api/generate")({
                 })
               ) {
                 try {
-                  const fixOut = await runPostStreamAutofix(nextFiles);
+                  const fixOut = await runPostStreamAutofix(nextFiles, localVerdict.issues);
                   nextFiles = fixOut.files;
                   if (fixOut.result.fixedFiles > 0) {
                     console.log(
@@ -784,7 +784,7 @@ export const Route = createFileRoute("/api/generate")({
                     // Recovery loop: run the post-stream autofix model again
                     // (even if it ran above) to take a targeted fix pass.
                     try {
-                      const fixOut = await runPostStreamAutofix(nextFiles);
+                      const fixOut = await runPostStreamAutofix(nextFiles, verdict.issues);
                       nextFiles = fixOut.files;
                       if (fixOut.result.fixedFiles > 0) {
                         console.log(
