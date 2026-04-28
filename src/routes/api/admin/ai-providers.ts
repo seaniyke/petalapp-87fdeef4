@@ -20,6 +20,11 @@ import {
   getCostSummary,
   type SetProviderInput,
 } from "@/server/ai-provider-admin.server";
+import {
+  getRouterSnapshot,
+  setRouterConfig,
+  type RouterConfig,
+} from "@/server/smart-router.server";
 import type { AiFeature } from "@/server/ai-provider.server";
 
 async function authorize(request: Request): Promise<string | Response> {
