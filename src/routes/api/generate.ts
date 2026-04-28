@@ -30,6 +30,10 @@ import {
   renderDesignDirectionBlock,
 } from "@/server/design-director.server";
 import { runSelfCheck, humanizeBuildError } from "@/server/self-recovery.server";
+import { pickDynamicSnippets } from "@/server/dynamic-prompts.server";
+import { autofixFiles } from "@/server/stream-autofixer";
+import { runPostStreamAutofix, shouldRunPostStreamAutofix } from "@/server/post-stream-autofix.server";
+import { fallbackEstimate } from "@/server/preflight-estimate.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
