@@ -262,7 +262,7 @@ function SectionCard({
   description,
   icon,
 }: {
-  to: "/admin/billing" | "/admin/users" | "/admin/projects" | "/admin/ledgers";
+  to: "/admin/billing" | "/admin/users" | "/admin/projects" | "/admin/ledgers" | "/admin/ai-providers";
   title: string;
   description: string;
   icon: React.ReactNode;
