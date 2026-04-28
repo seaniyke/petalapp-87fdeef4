@@ -315,9 +315,9 @@ function Landing() {
         <div className="absolute inset-0 bg-aurora opacity-70" aria-hidden />
         <div className="absolute inset-0 bg-grain opacity-40" aria-hidden />
 
-        <div className={`relative mx-auto max-w-5xl px-4 text-center sm:px-6 ${isAuthed ? "pt-10 pb-10 sm:pt-16 sm:pb-12 md:pt-20" : "pt-12 pb-20 sm:pt-20 sm:pb-28 md:pt-28 md:pb-36"}`}>
+        <div className={`relative mx-auto max-w-5xl px-5 text-center sm:px-6 ${isAuthed ? "pt-12 pb-12 sm:pt-20 sm:pb-16 md:pt-24" : "pt-12 pb-20 sm:pt-20 sm:pb-28 md:pt-28 md:pb-36"}`}>
           {isAuthed ? (
-            <h1 className="font-display text-3xl font-semibold leading-[1.1] tracking-tight text-balance sm:text-4xl md:text-5xl">
+            <h1 className="font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
               Let's build something{firstName ? `, ${firstName}` : ""}.
             </h1>
           ) : (
