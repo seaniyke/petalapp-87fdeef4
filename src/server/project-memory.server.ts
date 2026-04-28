@@ -19,6 +19,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { aiChatCompletions } from "@/server/ai-provider.server";
 
 const MAX_KEYS = 30;
 const MAX_VALUE_LEN = 400;
@@ -196,8 +197,7 @@ export async function updateProjectMemory(args: {
   const trimmedUser = (userMessage ?? "").trim();
   if (trimmedUser.length < 4) return;
 
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) return;
+  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return;
 
   let existing: MemoryEntry[] = [];
   try {
@@ -220,13 +220,9 @@ export async function updateProjectMemory(args: {
 
   let plan: MergePlan | null = null;
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const resp = await aiChatCompletions({
+      feature: "memory",
+      body: {
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: MEMORY_WRITER_SYSTEM },
@@ -234,7 +230,7 @@ export async function updateProjectMemory(args: {
         ],
         tools: [MERGE_TOOL],
         tool_choice: { type: "function", function: { name: "merge_memory" } },
-      }),
+      },
     });
     if (!resp.ok) {
       console.warn("[project-memory] writer http error", resp.status);

@@ -15,6 +15,7 @@ import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
+import { aiChatCompletions } from "@/server/ai-provider.server";
 
 type Body = {
   messages: ChatMessage[];
@@ -60,8 +61,11 @@ export const Route = createFileRoute("/api/discuss")({
         if (authResult instanceof Response) return authResult;
         const userId = authResult;
 
-        const apiKey = process.env.LOVABLE_API_KEY;
-        if (!apiKey) return new Response("AI gateway is not configured.", { status: 500 });
+        // Provider key check is handled inside aiChatCompletions; we only verify
+        // here for the friendly early-fail path used by the existing UI.
+        if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) {
+          return new Response("AI gateway is not configured.", { status: 500 });
+        }
 
         let body: Body;
         try {
@@ -148,18 +152,14 @@ export const Route = createFileRoute("/api/discuss")({
           }),
         ];
 
-        const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        const upstream = await aiChatCompletions({
+          feature: "discuss",
+          body: {
             // Vision needs a vision-capable model; otherwise stay on the fast default.
             model: hasVisionTurn ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview",
             messages: chatMessages,
             stream: false,
-          }),
+          },
         });
 
         if (!upstream.ok) {

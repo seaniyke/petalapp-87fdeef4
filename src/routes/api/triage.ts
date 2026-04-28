@@ -38,6 +38,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { loadProjectMemoryBlock } from "@/server/project-memory.server";
+import { aiChatCompletions } from "@/server/ai-provider.server";
 
 type Body = {
   messages: ChatMessage[];
@@ -266,8 +267,9 @@ export const Route = createFileRoute("/api/triage")({
         const authResult = await authorize(request);
         if (authResult instanceof Response) return authResult;
 
-        const apiKey = process.env.LOVABLE_API_KEY;
-        if (!apiKey) return new Response("AI gateway is not configured.", { status: 500 });
+        if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) {
+          return new Response("AI gateway is not configured.", { status: 500 });
+        }
 
         let body: Body;
         try {
@@ -316,19 +318,15 @@ export const Route = createFileRoute("/api/triage")({
           })),
         ];
 
-        const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        const upstream = await aiChatCompletions({
+          feature: "triage",
+          body: {
             model: "google/gemini-3-flash-preview",
             messages: chatMessages,
             stream: true,
             tools: [TRIAGE_TOOL],
             tool_choice: { type: "function", function: { name: "triage" } },
-          }),
+          },
         });
 
         if (!upstream.ok || !upstream.body) {

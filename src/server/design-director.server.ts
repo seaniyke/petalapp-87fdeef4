@@ -24,6 +24,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { MemoryEntry } from "@/server/project-memory.server";
+import { aiChatCompletions } from "@/server/ai-provider.server";
 
 const DIRECTOR_MODEL = "google/gemini-3-flash-preview";
 
@@ -179,8 +180,7 @@ export async function pickDesignDirection(args: {
   const cached = readDirectionFromMemory(args.memoryEntries);
   if (cached) return cached;
 
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) return null;
+  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return null;
 
   const trimmedBrief = (args.brief ?? "").trim().slice(0, 1500);
   if (trimmedBrief.length < 4) return null;
@@ -208,10 +208,9 @@ export async function pickDesignDirection(args: {
 
   let direction: DesignDirection | null = null;
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const resp = await aiChatCompletions({
+      feature: "design",
+      body: {
         model: DIRECTOR_MODEL,
         messages: [
           { role: "system", content: DIRECTOR_SYSTEM },
@@ -219,7 +218,7 @@ export async function pickDesignDirection(args: {
         ],
         tools: [DIRECTOR_TOOL],
         tool_choice: { type: "function", function: { name: "set_design_direction" } },
-      }),
+      },
     });
     if (!resp.ok) {
       console.warn("[design-director] http error", resp.status);

@@ -11,7 +11,7 @@
  * Server-side helper. Wired through a createServerFn in
  * src/server/preflight-estimate.functions.ts so the client can import safely.
  */
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+import { aiChatCompletions } from "@/server/ai-provider.server";
 
 export type PreflightKind =
   | "ui_tweak"
@@ -76,19 +76,14 @@ export async function estimatePromptCost(prompt: string): Promise<PreflightEstim
     return { kind: "discussion", estSeconds: 0, estCents: 0, confidence: "high", rationale: "Empty prompt." };
   }
 
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) {
+  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) {
     return fallbackEstimate(trimmed);
   }
 
   try {
-    const res = await fetch(LOVABLE_AI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const res = await aiChatCompletions({
+      feature: "preflight",
+      body: {
         model: "google/gemini-2.5-flash-lite",
         messages: [
           {
@@ -134,7 +129,7 @@ export async function estimatePromptCost(prompt: string): Promise<PreflightEstim
           },
         ],
         tool_choice: { type: "function", function: { name: "classify_prompt" } },
-      }),
+      },
     });
 
     if (!res.ok) {

@@ -20,6 +20,8 @@
  * nothing extra. Cost is negligible vs. the main build.
  */
 
+import { aiChatCompletions } from "@/server/ai-provider.server";
+
 const SELF_CHECK_MODEL = "google/gemini-3-flash-preview";
 const HUMANIZE_MODEL = "google/gemini-3-flash-preview";
 
@@ -78,8 +80,7 @@ export async function runSelfCheck(args: {
   assistantSummary: string;
   filePaths: string[];
 }): Promise<SelfCheckVerdict | null> {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) return null;
+  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return null;
 
   const brief = (args.brief ?? "").trim().slice(0, 1500);
   if (brief.length < 4) return null;
@@ -95,10 +96,9 @@ export async function runSelfCheck(args: {
     `Return your honest verdict via the self_check tool now.`;
 
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const resp = await aiChatCompletions({
+      feature: "recovery",
+      body: {
         model: SELF_CHECK_MODEL,
         messages: [
           { role: "system", content: SELF_CHECK_SYSTEM },
@@ -106,7 +106,7 @@ export async function runSelfCheck(args: {
         ],
         tools: [SELF_CHECK_TOOL],
         tool_choice: { type: "function", function: { name: "self_check" } },
-      }),
+      },
     });
     if (!resp.ok) {
       console.warn("[self-check] http error", resp.status);
@@ -198,8 +198,7 @@ export async function humanizeBuildError(args: {
     suggestions: [],
   };
 
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) return fallback;
+  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return fallback;
 
   const raw = (args.rawMessage ?? "").trim().slice(0, 1500);
   if (!raw) return fallback;
@@ -210,10 +209,9 @@ export async function humanizeBuildError(args: {
     `Rewrite this for the user now.`;
 
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const resp = await aiChatCompletions({
+      feature: "recovery",
+      body: {
         model: HUMANIZE_MODEL,
         messages: [
           { role: "system", content: HUMANIZE_SYSTEM },
@@ -221,7 +219,7 @@ export async function humanizeBuildError(args: {
         ],
         tools: [HUMANIZE_TOOL],
         tool_choice: { type: "function", function: { name: "humanize_error" } },
-      }),
+      },
     });
     if (!resp.ok) return fallback;
     const json = (await resp.json()) as {

@@ -18,6 +18,7 @@ import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-c
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
+import { aiChatCompletions } from "@/server/ai-provider.server";
 import { priceBuild, BUILD_FLOOR } from "@/server/credit-pricing.server";
 import {
   loadProjectMemory,
@@ -252,8 +253,9 @@ export const Route = createFileRoute("/api/generate")({
         if (authResult instanceof Response) return authResult;
         const userId = authResult;
 
-        const apiKey = process.env.LOVABLE_API_KEY;
-        if (!apiKey) {
+        // Provider key check is handled inside aiChatCompletions; we only verify
+        // here so we can surface the existing friendly 500 if no provider is set.
+        if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) {
           return new Response("AI gateway is not configured.", { status: 500 });
         }
 
@@ -423,19 +425,15 @@ export const Route = createFileRoute("/api/generate")({
           ? MODEL_VISION
           : resolveModel(preset, lastUser, currentFiles.length);
 
-        const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        const upstream = await aiChatCompletions({
+          feature: "generate",
+          body: {
             model,
             messages: chatMessages,
             tools: [tool],
             tool_choice: { type: "function", function: { name: tool.function.name } },
             stream: true,
-          }),
+          },
         });
 
         if (!upstream.ok || !upstream.body) {
