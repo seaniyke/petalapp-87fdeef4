@@ -2367,13 +2367,18 @@ function Builder() {
             />
             <div className="mb-2 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
               <span className="min-w-0 flex-1 truncate">
-                {busy || discussBusy
-                  ? "Petal is working — your next message will queue"
-                  : pendingAttachments.length > 0
-                    ? `${pendingAttachments.length} image${pendingAttachments.length > 1 ? "s" : ""} attached`
-                    : mode === "discuss"
-                      ? "Chat only · no file changes"
-                      : "Petal will edit files"}
+                {(() => {
+                  const isAutoFixing =
+                    busy && friendlyError?.actionLabel === "Working on it";
+                  if (isAutoFixing)
+                    return "Petal is fixing the build — free · keep typing if you'd like";
+                  if (busy || discussBusy)
+                    return "Petal is working — your next message will queue";
+                  if (pendingAttachments.length > 0)
+                    return `${pendingAttachments.length} image${pendingAttachments.length > 1 ? "s" : ""} attached`;
+                  if (mode === "discuss") return "Chat only · no file changes";
+                  return "Petal will edit files";
+                })()}
               </span>
               {mode === "build" && (
                 <PreflightCostChip prompt={input} disabled={busy || discussBusy} />
