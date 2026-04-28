@@ -197,8 +197,7 @@ export async function updateProjectMemory(args: {
   const trimmedUser = (userMessage ?? "").trim();
   if (trimmedUser.length < 4) return;
 
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) return;
+  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return;
 
   let existing: MemoryEntry[] = [];
   try {
