@@ -273,9 +273,13 @@ function Builder() {
   // Whether this project already has a backend (BYO or managed). When unknown
   // we treat as "not connected" but suppress the chip until we've checked.
   const [hasBackend, setHasBackend] = useState<boolean | null>(null);
+  const [hasDomain, setHasDomain] = useState<boolean | null>(null);
   // Per-message dismissal of the "Add backend" inline suggestion. Keyed by
   // assistant message index so dismissing once doesn't kill it forever.
   const [dismissedBackendChips, setDismissedBackendChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedDomainChips, setDismissedDomainChips] = useState<Set<number>>(
     () => new Set(),
   );
   const { plan: currentPlan } = useWallet();
