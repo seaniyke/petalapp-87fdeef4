@@ -1134,7 +1134,8 @@ function Builder() {
           // Kick off a Cloudflare Pages build. Fire-and-forget — the activity
           // card subscribes to project_builds via useBuildActivity().
           void triggerBuild(proj.id)
-            .then(async () => {
+            .then(async (build) => {
+              startedBuildIdsRef.current.add(build.buildId);
               const r = await getProject(proj.id);
               if (r) setProject(r);
             })
@@ -1420,7 +1421,8 @@ function Builder() {
       setRevertPreview(null);
       toast.success("Reverted");
       void triggerBuild(project.id)
-        .then(async () => {
+        .then(async (build) => {
+          startedBuildIdsRef.current.add(build.buildId);
           const r = await getProject(project.id);
           if (r) setProject(r);
         })
@@ -1453,7 +1455,8 @@ function Builder() {
     setPhases((p) => advanceTo(p, "deploying"));
     setActivityVisible(true);
     void triggerBuild(project.id)
-      .then(async () => {
+      .then(async (build) => {
+        startedBuildIdsRef.current.add(build.buildId);
         const r = await getProject(project.id);
         if (r) setProject(r);
       })
@@ -1542,7 +1545,8 @@ function Builder() {
     ]);
     setHistoryKey((k) => k + 1);
     void triggerBuild(project.id)
-      .then(async () => {
+      .then(async (build) => {
+        startedBuildIdsRef.current.add(build.buildId);
         const r = await getProject(project.id);
         if (r) setProject(r);
       })
