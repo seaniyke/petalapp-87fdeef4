@@ -140,11 +140,14 @@ export const Route = createFileRoute("/api/admin/credits")({
             if (Math.abs(amount) > 100000) {
               return Response.json({ error: "Amount too large" }, { status: 400 });
             }
-            const { data, error } = await supabaseAdmin.rpc("admin_grant_credit", {
-              _target_user_id: target,
-              _amount: amount as never,
-              _note: note ?? undefined,
-            });
+            const { data, error } = await userScopedClient(adminToken).rpc(
+              "admin_grant_credit",
+              {
+                _target_user_id: target,
+                _amount: amount as never,
+                _note: note ?? undefined,
+              },
+            );
             if (error) {
               return Response.json({ error: error.message }, { status: 500 });
             }
