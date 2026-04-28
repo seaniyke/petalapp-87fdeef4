@@ -13,45 +13,55 @@
  */
 import type { ProjectFile } from "@/server/generate.server";
 
+// We use a <script> that injects the badge at runtime instead of inline HTML +
+// <style>. Why: Vite's HTML transform pipeline processes <style> tags inside
+// index.html (extracting them as CSS assets, sometimes dropping orphan ones
+// that aren't tied to a JS import). That stripped our styles entirely on
+// deployed builds, leaving an unstyled link nobody could see. A small inline
+// <script> bypasses that pipeline and runs after React mounts so the badge is
+// guaranteed present and styled on every route.
 const PETAL_BADGE_HTML = `
-<style id="petal-badge-style">
-  #petal-badge {
-    position: fixed;
-    right: 14px;
-    bottom: 14px;
-    z-index: 2147483646;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 10px 6px 8px;
-    border-radius: 999px;
-    background: rgba(17, 17, 17, 0.85);
-    color: #fff;
-    font: 500 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    text-decoration: none;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
-    backdrop-filter: saturate(140%) blur(6px);
-    -webkit-backdrop-filter: saturate(140%) blur(6px);
-    transition: transform .15s ease, opacity .15s ease;
-    opacity: .9;
+<script id="petal-badge-loader">
+(function(){
+  if (window.__petalBadgeMounted) return;
+  window.__petalBadgeMounted = true;
+  function mount(){
+    if (document.getElementById('petal-badge')) return;
+    var a = document.createElement('a');
+    a.id = 'petal-badge';
+    a.href = 'https://buildwithpetal.com?utm_source=petal_badge';
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.setAttribute('aria-label', 'Powered by Petal');
+    a.style.cssText = [
+      'position:fixed','right:14px','bottom:14px','z-index:2147483646',
+      'display:inline-flex','align-items:center','gap:6px',
+      'padding:6px 10px 6px 8px','border-radius:999px',
+      'background:rgba(17,17,17,0.85)','color:#fff',
+      'font:500 12px/1 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif',
+      'text-decoration:none',
+      'box-shadow:0 6px 18px rgba(0,0,0,0.18),0 0 0 1px rgba(255,255,255,0.06) inset',
+      '-webkit-backdrop-filter:saturate(140%) blur(6px)',
+      'backdrop-filter:saturate(140%) blur(6px)',
+      'opacity:0.92','transition:transform .15s ease, opacity .15s ease'
+    ].join(';') + ';';
+    var dot = document.createElement('span');
+    dot.setAttribute('aria-hidden','true');
+    dot.style.cssText = 'display:inline-block;width:14px;height:14px;border-radius:999px;background:linear-gradient(135deg,#ff6ea8,#ffb86c);box-shadow:0 0 0 2px rgba(255,255,255,0.12) inset;';
+    var label = document.createElement('span');
+    label.innerHTML = 'Powered by <strong style="font-weight:600">Petal</strong>';
+    a.appendChild(dot); a.appendChild(label);
+    a.addEventListener('mouseenter', function(){ a.style.opacity='1'; a.style.transform='translateY(-1px)'; });
+    a.addEventListener('mouseleave', function(){ a.style.opacity='0.92'; a.style.transform='none'; });
+    document.body.appendChild(a);
   }
-  #petal-badge:hover { opacity: 1; transform: translateY(-1px); }
-  #petal-badge .petal-dot {
-    display: inline-block;
-    width: 14px; height: 14px;
-    border-radius: 999px;
-    background: linear-gradient(135deg, #ff6ea8, #ffb86c);
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.12) inset;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(mount, 0); });
+  } else {
+    setTimeout(mount, 0);
   }
-  @media (prefers-color-scheme: light) {
-    #petal-badge { background: rgba(255,255,255,0.92); color: #111; box-shadow: 0 6px 18px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06) inset; }
-  }
-  @media print { #petal-badge { display: none !important; } }
-</style>
-<a id="petal-badge" href="https://buildwithpetal.com?utm_source=petal_badge" target="_blank" rel="noopener noreferrer" aria-label="Powered by Petal">
-  <span class="petal-dot" aria-hidden="true"></span>
-  <span>Powered by <strong style="font-weight:600">Petal</strong></span>
-</a>
+})();
+</script>
 `;
 
 export function injectPetalBadge(files: ProjectFile[]): ProjectFile[] {
