@@ -104,11 +104,43 @@ function Landing() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, isReady } = useAuth();
   const isAuthed = !!user;
-  const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
+  // Hydrate the profile display name synchronously from localStorage so a
+  // refresh doesn't briefly show the email-derived fallback before the async
+  // profile fetch resolves. We key by user id so switching accounts is safe.
+  const profileCacheKey = user ? `petal:profile-name:${user.id}` : null;
+  const [profileDisplayName, setProfileDisplayName] = useState<string | null>(() => {
+    if (typeof window === "undefined" || !profileCacheKey) return null;
+    try {
+      return window.localStorage.getItem(profileCacheKey);
+    } catch {
+      return null;
+    }
+  });
+  // Track whether we've finished the initial profile fetch for this user.
+  // Until then, suppress the email-derived fallback to avoid the flash.
+  const [profileFetched, setProfileFetched] = useState<boolean>(() => {
+    if (typeof window === "undefined" || !profileCacheKey) return false;
+    try {
+      return window.localStorage.getItem(profileCacheKey) !== null;
+    } catch {
+      return false;
+    }
+  });
   useEffect(() => {
     if (!user) {
       setProfileDisplayName(null);
+      setProfileFetched(false);
       return;
+    }
+    // Re-hydrate from cache when the user changes (e.g. account switch).
+    if (typeof window !== "undefined") {
+      try {
+        const cached = window.localStorage.getItem(`petal:profile-name:${user.id}`);
+        setProfileDisplayName(cached);
+        setProfileFetched(cached !== null);
+      } catch {
+        /* ignore */
+      }
     }
     let cancelled = false;
     supabase
@@ -117,7 +149,19 @@ function Landing() {
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }: { data: { display_name: string | null } | null }) => {
-        if (!cancelled) setProfileDisplayName(data?.display_name ?? null);
+        if (cancelled) return;
+        const name = data?.display_name ?? null;
+        setProfileDisplayName(name);
+        setProfileFetched(true);
+        if (typeof window !== "undefined") {
+          try {
+            const key = `petal:profile-name:${user.id}`;
+            if (name) window.localStorage.setItem(key, name);
+            else window.localStorage.removeItem(key);
+          } catch {
+            /* ignore */
+          }
+        }
       });
     return () => {
       cancelled = true;
@@ -127,6 +171,10 @@ function Landing() {
     if (profileDisplayName && profileDisplayName.trim()) {
       return profileDisplayName.trim().split(/\s+/)[0];
     }
+    // Don't fall back to email-derived name until the profile fetch completes,
+    // otherwise a user who set a custom display name sees their old email
+    // handle flash on every refresh.
+    if (!profileFetched) return "";
     const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
     const fromMeta =
       (typeof meta.full_name === "string" && meta.full_name) ||
@@ -138,7 +186,7 @@ function Landing() {
     const local = email.split("@")[0] ?? "";
     if (!local) return "";
     return local.charAt(0).toUpperCase() + local.slice(1);
-  }, [user, profileDisplayName]);
+  }, [user, profileDisplayName, profileFetched]);
 
   const [projects, setProjects] = useState<ProjectRow[] | null>(null);
   const [projectsLoading, setProjectsLoading] = useState(false);
