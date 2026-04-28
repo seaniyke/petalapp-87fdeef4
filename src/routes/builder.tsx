@@ -1681,6 +1681,11 @@ function Builder() {
             onChange={setProject}
           />
           <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
+          <ProjectsDrawer
+            open={projectsDrawerOpen}
+            onOpenChange={setProjectsDrawerOpen}
+            currentProjectId={project?.id ?? null}
+          />
           <PublishSheet
             open={publishOpen}
             onOpenChange={setPublishOpen}
