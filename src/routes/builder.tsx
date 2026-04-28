@@ -2517,8 +2517,8 @@ function Builder() {
             </div>
           ) : (
             <div className="grid min-h-0 flex-1 grid-cols-[140px_1fr] sm:grid-cols-[200px_1fr]">
-              <div className="min-h-0 overflow-y-auto border-r border-border bg-sidebar/40">
-                <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="min-h-0 overflow-y-auto border-r-2 border-foreground/10 bg-sidebar">
+                <div className="sticky top-0 z-10 border-b-2 border-foreground/10 bg-sidebar px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.18em] text-foreground">
                   Files
                 </div>
                 {files.length === 0 && (
@@ -2528,14 +2528,14 @@ function Builder() {
                   <button
                     key={f.path}
                     onClick={() => setActiveFile(f.path)}
-                    className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs ${
+                    className={`flex w-full items-center gap-2 border-l-2 px-3 py-1.5 text-left text-xs transition ${
                       activeFile === f.path
-                        ? "bg-card font-medium"
-                        : "text-muted-foreground hover:bg-card/60"
+                        ? "border-foreground bg-card font-semibold text-foreground"
+                        : "border-transparent text-muted-foreground hover:border-foreground/20 hover:bg-card/60 hover:text-foreground"
                     }`}
                   >
-                    <FileCode2 className="h-3.5 w-3.5" />
-                    {f.path}
+                    <FileCode2 className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{f.path}</span>
                   </button>
                 ))}
               </div>
