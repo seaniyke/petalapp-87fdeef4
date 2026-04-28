@@ -297,6 +297,7 @@ function Builder() {
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const initialAttachmentsRef = useRef<ChatAttachment[]>([]);
   const composerFileInputRef = useRef<HTMLInputElement>(null);
+  const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
   const webContainerSupported = useWebContainerSupported();
   // Use the deployed-build iframe fallback whenever WebContainers can't run
