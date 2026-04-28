@@ -31,6 +31,7 @@ import {
   Globe,
   FileText,
   Shield,
+  Link2,
 } from "lucide-react";
 import {
   encodeAttachments,
@@ -101,6 +102,8 @@ import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestio
 import { PreflightCostChip } from "@/components/PreflightCostChip";
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
+import { SharePreviewDialog } from "@/components/SharePreviewDialog";
+import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
 import { getProjectBackend } from "@/lib/projects";
 import { useWallet } from "@/hooks/use-wallet";
@@ -261,6 +264,8 @@ function Builder() {
   const [billingOpen, setBillingOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [shieldOpen, setShieldOpen] = useState(false);
+  const [sharePreviewOpen, setSharePreviewOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   // Whether this project already has a backend (BYO or managed). When unknown
   // we treat as "not connected" but suppress the chip until we've checked.
   const [hasBackend, setHasBackend] = useState<boolean | null>(null);
@@ -1667,6 +1672,28 @@ function Builder() {
               <Shield className="h-4 w-4" />
             </button>
           )}
+          {project && (
+            <button
+              type="button"
+              onClick={() => setSharePreviewOpen(true)}
+              className="hidden h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted md:grid"
+              title="Share preview & gather feedback"
+              aria-label="Share preview"
+            >
+              <Link2 className="h-4 w-4" />
+            </button>
+          )}
+          {project && (
+            <button
+              type="button"
+              onClick={() => setCommentsOpen(true)}
+              className="hidden h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted md:grid"
+              title="Visitor feedback"
+              aria-label="Open visitor feedback"
+            >
+              <MessageSquare className="h-4 w-4" />
+            </button>
+          )}
           {project && <ReadinessBadge files={files} project={project} />}
           {project && (
             <div className="hidden md:block">
@@ -1745,6 +1772,17 @@ function Builder() {
             open={shieldOpen}
             onOpenChange={setShieldOpen}
             files={files}
+            onSendFixPrompt={(p) => setInput(p)}
+          />
+          <SharePreviewDialog
+            open={sharePreviewOpen}
+            onOpenChange={setSharePreviewOpen}
+            projectId={project?.id ?? null}
+          />
+          <CommentsInboxSheet
+            open={commentsOpen}
+            onOpenChange={setCommentsOpen}
+            projectId={project?.id ?? null}
             onSendFixPrompt={(p) => setInput(p)}
           />
           <ProjectsDrawer

@@ -625,6 +625,110 @@ export type Database = {
           },
         ]
       }
+      preview_comments: {
+        Row: {
+          author_name: string | null
+          body: string
+          created_at: string
+          id: string
+          page_path: string
+          project_id: string
+          resolved_at: string | null
+          selector: string | null
+          share_id: string
+          status: string
+          viewport_width: number | null
+          x_pct: number | null
+          y_pct: number | null
+        }
+        Insert: {
+          author_name?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          page_path?: string
+          project_id: string
+          resolved_at?: string | null
+          selector?: string | null
+          share_id: string
+          status?: string
+          viewport_width?: number | null
+          x_pct?: number | null
+          y_pct?: number | null
+        }
+        Update: {
+          author_name?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          page_path?: string
+          project_id?: string
+          resolved_at?: string | null
+          selector?: string | null
+          share_id?: string
+          status?: string
+          viewport_width?: number | null
+          x_pct?: number | null
+          y_pct?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preview_comments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "preview_comments_share_id_fkey"
+            columns: ["share_id"]
+            isOneToOne: false
+            referencedRelation: "preview_shares"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      preview_shares: {
+        Row: {
+          allow_comments: boolean
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          project_id: string
+          revoked_at: string | null
+          token: string
+        }
+        Insert: {
+          allow_comments?: boolean
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          project_id: string
+          revoked_at?: string | null
+          token: string
+        }
+        Update: {
+          allow_comments?: boolean
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          project_id?: string
+          revoked_at?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preview_shares_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
