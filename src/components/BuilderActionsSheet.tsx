@@ -49,21 +49,35 @@ export function BuilderActionsSheet({
   const { wallet, plan, breakdown, loading } = useWallet();
   const { theme, setTheme } = useTheme();
 
-  // Compute a usage bar: credits remaining vs the plan's monthly allotment
-  // (or daily-free for free plan). Caps at 1 to avoid overflow when topup
-  // exceeds the base allotment.
-  const { used, total } = useMemo(() => {
-    if (!wallet || !plan) return { used: 0, total: 0 };
-    const allotment = plan.monthly_credits > 0
-      ? plan.monthly_credits
-      : plan.daily_free_credits;
-    if (allotment <= 0) return { used: 0, total: 0 };
-    const remaining = breakdown.total;
-    const usedAmt = Math.max(0, allotment - remaining);
-    return { used: usedAmt, total: allotment };
-  }, [wallet, plan, breakdown.total]);
-
-  const pct = total > 0 ? Math.min(100, Math.max(0, (used / total) * 100)) : 0;
+  // Build a segmented "remaining vs capacity" view so the bar visibly
+  // shrinks as the user spends. Capacity = the plan's monthly allotment
+  // (or daily-free pool for the Free plan) plus any purchased top-up,
+  // so the bar starts full at the beginning of a billing period and
+  // never shows >100% when a user tops up.
+  const { remaining, capacity, monthlyPct, topupPct, isLow, isEmpty } = useMemo(() => {
+    if (!wallet || !plan) {
+      return { remaining: 0, capacity: 0, monthlyPct: 0, topupPct: 0, isLow: false, isEmpty: false };
+    }
+    const baseAllotment =
+      plan.monthly_credits > 0 ? plan.monthly_credits : plan.daily_free_credits;
+    // Treat the monthly+daily pool together as the "regular" segment, and
+    // top-up credits as a distinct segment that extends the bar.
+    const regularRemaining = breakdown.monthly + breakdown.daily;
+    const topupRemaining = breakdown.topup;
+    const total = breakdown.total;
+    const cap = Math.max(baseAllotment, regularRemaining) + topupRemaining;
+    const mPct = cap > 0 ? Math.min(100, (regularRemaining / cap) * 100) : 0;
+    const tPct = cap > 0 ? Math.min(100 - mPct, (topupRemaining / cap) * 100) : 0;
+    const lowThreshold = Math.max(5, baseAllotment * 0.15);
+    return {
+      remaining: total,
+      capacity: cap,
+      monthlyPct: mPct,
+      topupPct: tPct,
+      isLow: total > 0 && total <= lowThreshold,
+      isEmpty: total <= 0,
+    };
+  }, [wallet, plan, breakdown.total, breakdown.monthly, breakdown.daily, breakdown.topup]);
 
   const themeLabel: Record<Theme, string> = {
     light: "Light",
@@ -77,12 +91,21 @@ export function BuilderActionsSheet({
     setTheme(next);
   }
 
+  // Color the count to telegraph state at a glance, while staying inside
+  // the project's existing token palette (no ad-hoc hex values).
+  const countTone = isEmpty
+    ? "text-destructive"
+    : isLow
+      ? "text-amber-600 dark:text-amber-400"
+      : "text-foreground";
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <DrawerTitle className="sr-only">Project menu</DrawerTitle>
 
-        {/* Credits card */}
+        {/* Credits card — bar fills with what you HAVE, so it visibly
+            shrinks as credits are spent (matches the Lovable model). */}
         <button
           type="button"
           onClick={() => {
@@ -93,23 +116,60 @@ export function BuilderActionsSheet({
         >
           <div className="flex items-center justify-between">
             <span className="text-base font-semibold">Credits</span>
-            <span className="flex items-center gap-1 text-sm text-muted-foreground">
-              {loading || !wallet
-                ? "—"
-                : `${formatCredits(breakdown.total)} left`}
-              <ChevronRight className="h-4 w-4" />
+            <span className="flex items-center gap-1 text-sm">
+              {loading || !wallet ? (
+                <span className="text-muted-foreground">—</span>
+              ) : (
+                <span className={cn("font-medium tabular-nums", countTone)}>
+                  {formatCredits(remaining)} left
+                </span>
+              )}
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </span>
           </div>
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-foreground/10">
+
+          {/* Segmented bar: regular (primary) + top-up (accent). The track
+              is the empty/spent portion, so depletion is visually obvious. */}
+          <div
+            className="relative mt-3 flex h-2 w-full overflow-hidden rounded-full bg-foreground/10"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={Math.round(capacity)}
+            aria-valuenow={Math.round(remaining)}
+            aria-label="Credits remaining"
+          >
             <div
-              className="h-full rounded-full bg-primary transition-[width] duration-300"
-              style={{ width: `${pct}%` }}
+              className={cn(
+                "h-full transition-[width] duration-500 ease-out",
+                isEmpty
+                  ? "bg-destructive/70"
+                  : isLow
+                    ? "bg-amber-500"
+                    : "bg-primary",
+              )}
+              style={{ width: `${monthlyPct}%` }}
             />
+            {topupPct > 0 && (
+              <div
+                className="h-full bg-accent transition-[width] duration-500 ease-out"
+                style={{ width: `${topupPct}%` }}
+              />
+            )}
           </div>
+
           {plan?.code === "free" && (
-            <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-primary">
+            <p
+              className={cn(
+                "mt-2 flex items-center gap-1.5 text-xs font-medium",
+                isLow || isEmpty ? "text-amber-600 dark:text-amber-400" : "text-primary",
+              )}
+            >
               <Sparkles className="h-3.5 w-3.5" />
-              Upgrade for more monthly credits
+              {isEmpty
+                ? "Out of credits — upgrade to keep building"
+                : isLow
+                  ? "Running low — upgrade for more monthly credits"
+                  : "Upgrade for more monthly credits"}
             </p>
           )}
         </button>
