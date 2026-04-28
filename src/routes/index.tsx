@@ -423,7 +423,7 @@ function Landing() {
             <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
               {firstName ? (
                 <>
-                  Let's build,{" "}
+                  {heroGreeting}{" "}
                   <span className="relative whitespace-nowrap">
                     <span className="relative z-10 italic">{firstName}</span>
                     <span
@@ -434,7 +434,7 @@ function Landing() {
                   .
                 </>
               ) : (
-                "Let's build."
+                `${heroGreeting}.`
               )}
             </h1>
           ) : (
