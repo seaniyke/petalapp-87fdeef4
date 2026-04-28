@@ -1,117 +1,184 @@
-# Making Petal genuinely intelligent
+# Runtime Wallet — Cloud + AI usage, like Lovable
 
-## Honest starting point
+## What changes for the user
 
-Last turn we shipped a triage layer (chat / clarify / build) with a warm preamble. That gives Petal a friendly **voice**, but voice is not intelligence. Today Petal still:
+Two clearly separated pockets:
 
-- Takes any "build" intent at face value — even if the request is contradictory, broken English, or missing the one piece of info that would make the result good.
-- Has no memory of who the user is, what they're building, or how they like things — every turn starts cold.
-- Doesn't push back, doesn't suggest, doesn't have a point of view on design.
-- Treats "make me a website for my barber shop" the same as "fix the navbar padding" — same pipeline, same prompts, same effort budget.
-- Can't recover gracefully from its own mistakes (failed builds, wrong assumption, misread intent).
+1. **Build credits** (today) — pay subscription (Free/Pro/Business) for the AI that *writes your code*. No change.
+2. **Runtime wallet** (new) — pays for the things that cost money *after* code is written:
+   - Managed backend hours
+   - Image generation
+   - AI features inside the user's app (calls to Lovable AI gateway from generated code)
+   - Custom domain provisioning
 
-A "preferred AI builder" is not one prompt — it's a system of small intelligences working together. Here is the plan to get there, broken into 5 honest layers.
+Every workspace gets a **free $10 monthly allowance** that resets on the 1st. When it runs out, the wallet falls back to a **top-up balance**. Free-plan users can use the allowance but can't top up. Pro/Business can top up.
+
+Per-project and workspace **spend caps** prevent runaway bills — once hit, runtime services pause until the user raises the cap or the next month rolls over.
+
+## UI
+
+A new **"Cloud & AI balance"** sheet (mirrors the screenshot you uploaded), opened from the account dropdown and from a new banner inside `/builder` when balance is low.
+
+```text
+┌──────────────────────────────────────────┐
+│ Cloud + AI                               │
+│ Monthly free resets 1 May 2026           │
+│                                          │
+│ [ Top up ]              $9.40            │
+│                         Top-up balance   │
+├──────────────────────────────────────────┤
+│ Cloud   ⓘ   $25 / $25  Free used         │
+│             $24.32     Top-ups used      │
+│                                          │
+│ AI      ⓘ   $1 / $1    Free used         │
+│             $8.64      Top-ups used      │
+├──────────────────────────────────────────┤
+│ Project breakdown                    ⌄  │
+│ • KeshPay      $4.20 this month          │
+│ • Petal        $1.10 this month          │
+│ Spend cap: ₦5,000/mo  [edit]             │
+└──────────────────────────────────────────┘
+```
+
+Top-up modal offers fixed packs (₦1,500 / ₦5,000 / ₦20,000) with a **"Custom amount"** option, paid through the existing Paystack flow.
+
+## Pricing internals (admin-tunable)
+
+Stored in `system_settings` so you can adjust without redeploying:
+
+| Meter | Default unit price | Charged when |
+|---|---|---|
+| Managed backend | $0.02 / hour | Hourly cron, only while project active |
+| Image generation | $0.02 / image | On `generate-image.ts` success |
+| App AI (gemini-flash) | $0.001 / 1K tokens in, $0.002 / 1K tokens out | On generated-app AI call |
+| App AI (gpt-5-mini) | $0.005 / 1K tokens in, $0.015 / 1K tokens out | On generated-app AI call |
+| Custom domain | $1.50 / month | On primary domain set |
+
+Free monthly allowance: **$10 USD** per workspace, applied first before top-ups drain.
+
+## How it slots into existing code
+
+- Petal already has `user_wallets`, `topup_lots`, `credit_ledger`, `paystack_transactions`, and a working Paystack webhook. The wallet is **additive**, not a rewrite — credits stay for build, USD cents are a new currency for runtime.
+- Existing `apply_paystack_topup` RPC stays for build-credit packs. New `apply_paystack_runtime_topup` RPC for runtime wallet.
 
 ---
 
-## Layer 1 — Real intent understanding (not just 3 buckets)
+## Technical implementation
 
-The current triage returns `chat | clarify | build`. That's too coarse. We extract a **structured intent** on every turn:
+### 1. Schema (one migration)
 
-```text
-{
-  mode: "chat" | "clarify" | "build" | "edit" | "fix" | "explain" | "redesign",
-  confidence: 0..1,
-  language: "en" | "fr" | "pidgin" | ...,   // detected, not assumed
-  audience_level: "non_technical" | "mixed" | "technical",
-  topic: "auth" | "layout" | "data" | "copy" | "branding" | ...,
-  scope: "tiny" | "small" | "medium" | "large",
-  brief: "<one-line normalized restatement of what they want>",
-  unknowns: ["<the single most important missing piece>", ...]
-}
+```sql
+-- Per-workspace runtime wallet (separate from credit balance on user_wallets)
+ALTER TABLE public.user_wallets
+  ADD COLUMN runtime_free_balance_cents BIGINT NOT NULL DEFAULT 0,
+  ADD COLUMN runtime_topup_balance_cents BIGINT NOT NULL DEFAULT 0,
+  ADD COLUMN runtime_free_reset_at DATE NOT NULL DEFAULT (date_trunc('month', now())::date + INTERVAL '1 month')::date,
+  ADD COLUMN workspace_cap_cents BIGINT;  -- nullable = no cap
+
+-- Per-project caps (nullable = no cap)
+ALTER TABLE public.projects
+  ADD COLUMN spend_cap_cents BIGINT,
+  ADD COLUMN runtime_paused BOOLEAN NOT NULL DEFAULT false;
+
+-- Append-only ledger of every runtime debit/credit
+CREATE TABLE public.runtime_ledger (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  project_id UUID,
+  meter TEXT NOT NULL,        -- 'backend_hour' | 'image_gen' | 'app_ai' | 'domain' | 'topup' | 'free_grant'
+  delta_cents BIGINT NOT NULL,  -- negative = debit
+  free_after_cents BIGINT NOT NULL,
+  topup_after_cents BIGINT NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE public.runtime_ledger ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owners view ledger" ON public.runtime_ledger
+  FOR SELECT USING (auth.uid() = user_id OR has_role(auth.uid(), 'admin'));
+
+-- Atomic charge function: free first, then top-up, respecting caps
+CREATE FUNCTION public.charge_runtime(
+  _user_id UUID, _project_id UUID, _meter TEXT,
+  _amount_cents BIGINT, _metadata JSONB DEFAULT '{}'
+) RETURNS TABLE(ok BOOLEAN, reason TEXT, free_after BIGINT, topup_after BIGINT)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$ ... $$;
+
+-- Atomic credit (top-up / monthly grant)
+CREATE FUNCTION public.credit_runtime(
+  _user_id UUID, _meter TEXT, _amount_cents BIGINT, _metadata JSONB
+) RETURNS VOID ...;
+
+-- Monthly reset trigger via pg_cron
+SELECT cron.schedule('runtime-monthly-reset', '0 0 1 * *', $$
+  SELECT public.runtime_apply_monthly_grant();
+$$);
 ```
 
-Why each field matters:
-- **mode `edit` vs `build` vs `fix`** lets us pick the right pipeline (a 2-line CSS tweak should not run the 6-phase build card).
-- **language** lets Petal reply in pidgin / French / broken English in the same register the user wrote in — not just "translate the same corporate sentence".
-- **audience_level** lets us hide jargon from a barber and lean in for a developer.
-- **scope** drives how much context we load and how long we let the model think (small = fast & cheap, large = reasoning model + more files in context).
-- **brief** is a normalized restatement we can show back ("Got it — a one-page site for your shop with hours, photos, and a WhatsApp button. Building now.") — this single line is what makes users *feel* understood.
-- **unknowns** drives the clarify question (only ask the ONE thing that would change the output).
+### 2. Server-side metering layer
 
-Implementation: extend `/api/triage` to return this structured object via tool-calling (not free-form JSON). Keep the streamed preamble.
+New file `src/server/runtime-wallet.server.ts` exporting:
 
-## Layer 2 — Ambiguity handling that doesn't annoy
+- `chargeRuntime({ userId, projectId, meter, cents, metadata })` — calls `charge_runtime` RPC, returns `{ ok, reason }`. Returns `{ ok: false, reason: 'cap_exceeded' | 'insufficient_balance' }` when caller should pause.
+- `getRuntimeBalance(userId)` — returns `{ free, topup, freeResetAt, breakdown }`.
 
-Today: if intent is `clarify`, we ask one question. That's fine but lifeless.
+Wire it into:
 
-Better: when confidence is low OR `unknowns` is non-empty, return **smart suggestion chips** alongside the question, generated from the brief:
+- `src/server/managed-backend.server.ts` — new hourly cron at `/api/public/cron/runtime-meter` charges `$0.02 × active_projects` per workspace; pauses backend when `chargeRuntime` returns `cap_exceeded`.
+- `src/routes/api/generate-image.ts` — charge `$0.02` per successful image; refuse if balance can't cover.
+- `src/server/generate.server.ts` — for **user-app** AI calls (not the builder AI itself), meter token usage. Builder AI continues to draw from the existing credit system.
+- `src/server/petal-subdomain.server.ts` / `domains.ts` — charge `$1.50` when a custom domain is set primary.
 
-> "Quick check — what's this for?
-> [ My barber shop ] [ A side project ] [ A client ] [ Other → tell me ]"
+### 3. Top-ups via Paystack
 
-The user clicks once and we proceed. Only fall back to typing when none fit. This is what makes Lovable's "Ask" mode feel fast vs. an interrogation.
+- Extend `src/routes/api/billing/initialize.ts` `purpose` enum with `"runtime_topup"` (custom amount) and reuse the existing Paystack init/verify code paths.
+- New row kind in `paystack_transactions` (already has `purpose` text col — no schema change).
+- Webhook handler in `src/routes/api/public/paystack/webhook.ts` calls new `apply_paystack_runtime_topup` RPC that calls `credit_runtime` and inserts a ledger entry.
+- Fixed packs stored in a small new table `runtime_topup_packs (code, label, amount_cents, currency_code)` so admin can edit without redeploys.
 
-Implementation: add an optional `suggestions: string[]` to the triage response. Render as chips in the chat bubble. Clicking a chip auto-sends as the next user turn.
+### 4. Spend caps
 
-## Layer 3 — Project memory (so it stops feeling cold)
+- Project-level cap UI in `ProjectSettingsSheet.tsx` (new "Spend cap" field).
+- Workspace-level cap UI in the new Cloud & AI balance sheet.
+- `charge_runtime` RPC enforces caps atomically — checks `SUM(month-to-date debits)` per project and per workspace before allowing the debit.
+- When a cap is hit: `runtime_paused` is flipped on the project; managed backend is paused; user gets an in-app banner + email (reuses existing email infra).
+- Warning email at **80%** of free allowance and at **80%** of cap (uses existing `email_send_log` system).
 
-Right now every turn rebuilds context from scratch. We add a tiny per-project memory stored in Lovable Cloud:
+### 5. UI (new + edits)
 
-```text
-project_memory(project_id, key, value, updated_at)
-```
+**New files:**
 
-We seed it from the very first build with things like:
-- `audience` — who the app is for (barber shop customers, students, …)
-- `tone` — playful / professional / minimal
-- `palette_intent` — "warm earthy", "clean monochrome", from their own words
-- `must_have` — running list of things they've said matter ("WhatsApp button", "booking", …)
-- `dont_do` — running list of things they've rejected ("no carousels", "stop using purple")
+- `src/components/CloudBalanceSheet.tsx` — the screenshot-style sheet, with "Top up" button and project breakdown.
+- `src/components/RuntimeTopupModal.tsx` — pack picker + custom amount, Paystack flow.
+- `src/components/SpendCapEditor.tsx` — reusable cap input (Naira, with USD equiv).
+- `src/lib/runtime-wallet.ts` — client helpers (`getRuntimeBalance`, `initiateTopup`).
 
-Every triage + build call loads this memory into the system prompt. After every turn, a tiny "memory writer" model decides whether to update it (it does NOT rewrite — only appends or tweaks). This is how Petal stops repeating mistakes you already corrected.
+**Edited files:**
 
-Implementation: new `project_memory` table + RLS, tiny `updateProjectMemory()` server fn called after each successful build, memory injected into both `/api/triage` and `/api/generate` system prompts.
+- `src/components/SiteHeader.tsx` — add "Cloud & AI balance" item to the user dropdown.
+- `src/components/CreditBadge.tsx` — keep as-is, but tooltip notes it's *build credits*.
+- `src/components/BillingSheet.tsx` — add a "Runtime usage" link/section pointing to the new sheet.
+- `src/routes/builder.tsx` — low-balance banner; cap-paused banner with "Raise cap" button.
+- `src/components/ProjectSettingsSheet.tsx` — spend cap field.
+- `src/routes/admin.billing.tsx` — admin view of runtime meter prices + per-workspace usage.
 
-## Layer 4 — Design taste (not just "use shadcn")
+### 6. Order of work
 
-The build prompt today says "use the kit". That keeps things consistent but not *good*. We add a lightweight **design director** pass before generation for any `build` or `redesign` mode at `medium`+ scope:
+1. Migration (schema + RPCs + cron).
+2. `runtime-wallet.server.ts` + RPC tests via `read_query`.
+3. Paystack `runtime_topup` purpose + webhook handler + RPC.
+4. Cloud & AI balance sheet + top-up modal.
+5. Wire metering into managed backend cron.
+6. Wire metering into `generate-image.ts` and user-app AI calls.
+7. Spend caps UI + enforcement + warning emails.
+8. Admin view + price knobs.
 
-- Picks a vibe (3-5 named presets: "warm-editorial", "clean-saas", "bold-consumer", "luxury-minimal", "playful-startup") based on brief + memory.
-- Picks 2-3 hero moves (e.g. "oversized serif headline + warm cream background + single product photo" vs "tight grid of cards + monochrome").
-- Returns a short style brief that gets prepended to the build prompt.
-
-This is the difference between "an app that works" and "an app the user shows their friend". It's also cheap — one extra fast-model call per real build, skipped for tiny edits.
-
-Implementation: new `pickDesignDirection()` server fn calling `google/gemini-3-flash-preview`, output appended to `SYSTEM_PROMPT_INITIAL` for new builds, skipped for patches.
-
-## Layer 5 — Self-recovery and honesty
-
-Petal currently fails silently or with a generic "build failed". Real intelligence is knowing when you're wrong:
-
-- After a build, run a **self-check** pass: read the generated `App.tsx`, score it against the brief ("does this actually do what was asked?"). If score is low, attempt one auto-correction patch before showing the result.
-- When a build fails (lint, type, runtime), surface a human sentence — "I tried to add the booking form but I used a date picker that doesn't exist in our kit. Fixing it now." — and auto-retry once.
-- When the user says "this isn't what I wanted", trigger a **diagnosis turn**: instead of jumping to a new build, ask one focused "what specifically?" with chips drawn from the diff between brief and result.
-
-Implementation: add `selfCheck()` step at the end of `runGenerate()`, add structured failure reasons to `BuildActivity`, route "isn't what I wanted" replies through triage with mode `fix` (already covered by Layer 1).
+Estimate: ~2–3 implementation passes, mostly because the metering integration touches several existing server modules.
 
 ---
 
-## Technical sequencing
+## Out of scope for v1 (call out so we don't scope-creep)
 
-I'd ship this in 4 deployable steps so you see value fast and we don't break what's working:
-
-1. **Structured intent + chips** (Layer 1 + 2). Replaces today's tiny triage. ~1 file changed, 1 new field on the SSE stream, chip rendering in the chat bubble.
-2. **Project memory** (Layer 3). New table + RLS migration, two new server fns, prompt injection.
-3. **Design director** (Layer 4). One new server fn, wired only into initial builds and explicit redesigns.
-4. **Self-check + recovery** (Layer 5). New post-build pass + better failure messaging.
-
-Each step is independently useful and reversible. After step 1 the product *already* feels meaningfully smarter; steps 2-4 compound it.
-
-## What I'm NOT promising
-
-- Petal won't suddenly match the best of Lovable on day one — they have years of compounding eval data we don't.
-- "Understands broken English in any manner" is a direction, not a switch. Layer 1's language detection + Layer 3's memory will make it dramatically better than today, but edge cases will remain and we'll need real user logs to keep tuning.
-- None of this fixes underlying build failures from the model — it only handles them more gracefully.
-
-If you approve, I'll start with **Step 1 (structured intent + suggestion chips)** because it's the single biggest jump in perceived intelligence per line of code, and you'll feel it in the very next message you send.
+- Per-seat or per-collaborator wallets (workspace-level only for now).
+- Auto-recharge ("top up another ₦5,000 when balance drops below ₦500"). Easy v2.
+- Refunds for failed image gens / failed backend hours — v1 just doesn't charge on failure.
+- Naira-native pricing (we store in USD cents internally, display in user's preferred currency using existing `billing_currencies.usd_rate`).

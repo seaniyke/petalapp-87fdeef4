@@ -981,7 +981,9 @@ export type Database = {
           published_visibility: string
           remix_count: number
           remixed_from_id: string | null
+          runtime_paused: boolean
           slug: string
+          spend_cap_cents: number | null
           subdomain: string | null
           summary: string | null
           title: string
@@ -1003,7 +1005,9 @@ export type Database = {
           published_visibility?: string
           remix_count?: number
           remixed_from_id?: string | null
+          runtime_paused?: boolean
           slug: string
+          spend_cap_cents?: number | null
           subdomain?: string | null
           summary?: string | null
           title?: string
@@ -1025,7 +1029,9 @@ export type Database = {
           published_visibility?: string
           remix_count?: number
           remixed_from_id?: string | null
+          runtime_paused?: boolean
           slug?: string
+          spend_cap_cents?: number | null
           subdomain?: string | null
           summary?: string | null
           title?: string
@@ -1054,6 +1060,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      runtime_ledger: {
+        Row: {
+          created_at: string
+          delta_cents: number
+          free_after_cents: number
+          id: string
+          metadata: Json
+          meter: string
+          project_id: string | null
+          topup_after_cents: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delta_cents: number
+          free_after_cents: number
+          id?: string
+          metadata?: Json
+          meter: string
+          project_id?: string | null
+          topup_after_cents: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delta_cents?: number
+          free_after_cents?: number
+          id?: string
+          metadata?: Json
+          meter?: string
+          project_id?: string | null
+          topup_after_cents?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      runtime_topup_packs: {
+        Row: {
+          amount_cents: number
+          code: string
+          created_at: string
+          currency_code: string
+          display_amount_minor: number
+          is_active: boolean
+          label: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          code: string
+          created_at?: string
+          currency_code: string
+          display_amount_minor: number
+          is_active?: boolean
+          label: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          code?: string
+          created_at?: string
+          currency_code?: string
+          display_amount_minor?: number
+          is_active?: boolean
+          label?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       stripe_events: {
         Row: {
@@ -1251,12 +1329,16 @@ export type Database = {
           pending_plan_code: string | null
           plan_code: string
           preferred_currency: string
+          runtime_free_balance_cents: number
+          runtime_free_reset_at: string
+          runtime_topup_balance_cents: number
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_status: string | null
           topup_credits_remaining: number
           updated_at: string
           user_id: string
+          workspace_cap_cents: number | null
         }
         Insert: {
           created_at?: string
@@ -1270,12 +1352,16 @@ export type Database = {
           pending_plan_code?: string | null
           plan_code?: string
           preferred_currency?: string
+          runtime_free_balance_cents?: number
+          runtime_free_reset_at?: string
+          runtime_topup_balance_cents?: number
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
           topup_credits_remaining?: number
           updated_at?: string
           user_id: string
+          workspace_cap_cents?: number | null
         }
         Update: {
           created_at?: string
@@ -1289,12 +1375,16 @@ export type Database = {
           pending_plan_code?: string | null
           plan_code?: string
           preferred_currency?: string
+          runtime_free_balance_cents?: number
+          runtime_free_reset_at?: string
+          runtime_topup_balance_cents?: number
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
           topup_credits_remaining?: number
           updated_at?: string
           user_id?: string
+          workspace_cap_cents?: number | null
         }
         Relationships: [
           {
@@ -1434,6 +1524,15 @@ export type Database = {
         Args: { _plan_code: string; _reference: string; _user_id: string }
         Returns: undefined
       }
+      apply_paystack_runtime_topup: {
+        Args: {
+          _amount_cents: number
+          _metadata?: Json
+          _reference: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       apply_paystack_topup: {
         Args: {
           _environment: string
@@ -1463,9 +1562,34 @@ export type Database = {
         }
         Returns: undefined
       }
+      charge_runtime: {
+        Args: {
+          _amount_cents: number
+          _metadata?: Json
+          _meter: string
+          _project_id: string
+          _user_id: string
+        }
+        Returns: {
+          free_after: number
+          ok: boolean
+          reason: string
+          topup_after: number
+        }[]
+      }
       check_credit_balance: {
         Args: { _amount: number; _user_id: string }
         Returns: boolean
+      }
+      credit_runtime: {
+        Args: {
+          _amount_cents: number
+          _bucket?: string
+          _metadata?: Json
+          _meter: string
+          _user_id: string
+        }
+        Returns: undefined
       }
       delete_email: {
         Args: { message_id: number; queue_name: string }
@@ -1528,6 +1652,7 @@ export type Database = {
         Args: { _files: Json; _project_id: string }
         Returns: undefined
       }
+      runtime_apply_monthly_grant: { Args: never; Returns: undefined }
       set_user_plan: {
         Args: {
           _current_period_end?: string
