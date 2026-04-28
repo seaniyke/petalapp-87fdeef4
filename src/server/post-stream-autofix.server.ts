@@ -100,9 +100,16 @@ function isProtected(p: string): boolean {
 }
 
 /** Run the model pass. Returns updated files + a small report. Failures are
- *  swallowed — we just return ran=false and the original files. */
+ *  swallowed — we just return ran=false and the original files.
+ *
+ *  `issues` (optional) is the list of structural problems the local verifier
+ *  already found. When present we pin them at the top of the user message as
+ *  an authoritative MUST-FIX list so the model patches the EXACT files that
+ *  are broken (not whatever else looks suspicious to it).
+ */
 export async function runPostStreamAutofix(
   files: ProjectFile[],
+  issues?: { path: string; kind: string; detail: string }[],
 ): Promise<{ files: ProjectFile[]; result: PostStreamFixResult }> {
   // Only ship the non-scaffold files to the model — keeps token cost down
   // and prevents the model from being tempted to touch protected code.
@@ -111,18 +118,34 @@ export async function runPostStreamAutofix(
     return { files, result: { ran: false, fixedFiles: 0, notes: [] } };
   }
 
+  // When the verifier flagged specific files, ALWAYS include them — even if
+  // they would otherwise blow the byte budget — and prioritise them first so
+  // they're never trimmed away.
+  const flaggedPaths = new Set((issues ?? []).map((i) => i.path));
+  candidates.sort((a, b) => {
+    const af = flaggedPaths.has(a.path) ? 0 : 1;
+    const bf = flaggedPaths.has(b.path) ? 0 : 1;
+    return af - bf;
+  });
+
   // Cap input — flash-lite has plenty of context but we don't need to burn it.
   const MAX_BYTES = 60_000;
   let used = 0;
   const trimmed: ProjectFile[] = [];
   for (const f of candidates) {
     const len = f.content.length;
-    if (used + len > MAX_BYTES) break;
+    if (used + len > MAX_BYTES && !flaggedPaths.has(f.path)) break;
     trimmed.push(f);
     used += len;
   }
 
-  const userPayload = trimmed
+  const issueBlock = issues && issues.length
+    ? `MUST-FIX list (from a deterministic local verifier — these are NOT optional):\n${issues
+        .map((i, idx) => `${idx + 1}. ${i.path} — ${i.kind}: ${i.detail}`)
+        .join("\n")}\n\nReturn one fix entry per listed path. Do not skip any.\n\n`
+    : "";
+
+  const userPayload = issueBlock + trimmed
     .map((f) => `--- ${f.path} ---\n${f.content}`)
     .join("\n\n");
 
