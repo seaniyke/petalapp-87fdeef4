@@ -2318,46 +2318,6 @@ function Builder() {
                 }
               }}
             />
-            {/* Build / Discuss mode toggle + attach button. */}
-            <div className="mb-2 flex items-center justify-between">
-              <div className="inline-flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => composerFileInputRef.current?.click()}
-                  className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                  title="Attach a screenshot or photo"
-                  aria-label="Attach an image"
-                >
-                  <ImageIcon className="h-3.5 w-3.5" />
-                </button>
-                <div className="inline-flex items-center rounded-full border-2 border-foreground/15 bg-background p-0.5 text-[11px] shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => setMode("build")}
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold transition ${
-                      mode === "build"
-                        ? "bg-foreground text-background shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    title="Petal will write code and update your app"
-                  >
-                    <Hammer className="h-3 w-3" /> Build
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMode("discuss")}
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold transition ${
-                      mode === "discuss"
-                        ? "bg-foreground text-background shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    title="Chat about changes without touching your files"
-                  >
-                    <MessageSquare className="h-3 w-3" /> Discuss
-                  </button>
-                </div>
-              </div>
-            </div>
             <div className="mb-2 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
               <span className="min-w-0 flex-1 truncate">
                 {busy || discussBusy
@@ -2382,12 +2342,14 @@ function Builder() {
                 </button>
               )}
             </div>
+            {/* Composer: textarea on top, integrated toolbar (attach + mode toggle on left, send on right) below. Auto-expands as user types. */}
             <div
-              className={`flex items-end gap-2 rounded-2xl border-2 bg-background p-2 shadow-sm transition focus-within:border-primary focus-within:shadow-md ${
+              className={`flex flex-col gap-2 rounded-2xl border-2 bg-background p-2 shadow-sm transition focus-within:border-primary focus-within:shadow-md ${
                 mode === "discuss" ? "border-foreground/25" : "border-border"
               }`}
             >
               <textarea
+                ref={composerTextareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -2405,28 +2367,67 @@ function Builder() {
                         ? "Ask for a change…"
                         : "Describe the app you want to build…"
                 }
-                rows={2}
-                className="max-h-40 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground"
+                rows={1}
+                className="max-h-[200px] min-h-[44px] w-full resize-none overflow-y-auto bg-transparent px-2 py-1.5 text-sm font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground"
                 disabled={bootstrapping}
               />
-              <button
-                type="submit"
-                disabled={bootstrapping || !input.trim()}
-                className="grid h-9 w-9 place-items-center rounded-xl bg-foreground text-background shadow-md transition hover:scale-105 hover:shadow-lg active:scale-95 disabled:opacity-30 disabled:shadow-none disabled:hover:scale-100"
-                title={
-                  busy || discussBusy
-                    ? "Add to queue"
-                    : mode === "discuss"
-                      ? "Send (chat only)"
-                      : "Send (build changes)"
-                }
-              >
-                {mode === "discuss" ? (
-                  <MessageSquare className="h-4 w-4" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </button>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => composerFileInputRef.current?.click()}
+                    className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    title="Attach a screenshot or photo"
+                    aria-label="Attach an image"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                  </button>
+                  <div className="inline-flex items-center rounded-full border border-border bg-muted/40 p-0.5 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setMode("build")}
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold transition ${
+                        mode === "build"
+                          ? "bg-foreground text-background shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      title="Petal will write code and update your app"
+                    >
+                      <Hammer className="h-3 w-3" /> Build
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode("discuss")}
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold transition ${
+                        mode === "discuss"
+                          ? "bg-foreground text-background shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      title="Chat about changes without touching your files"
+                    >
+                      <MessageSquare className="h-3 w-3" /> Discuss
+                    </button>
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={bootstrapping || !input.trim()}
+                  className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-background shadow-md transition hover:scale-105 hover:shadow-lg active:scale-95 disabled:opacity-30 disabled:shadow-none disabled:hover:scale-100"
+                  title={
+                    busy || discussBusy
+                      ? "Add to queue"
+                      : mode === "discuss"
+                        ? "Send (chat only)"
+                        : "Send (build changes)"
+                  }
+                >
+                  {mode === "discuss" ? (
+                    <MessageSquare className="h-4 w-4" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
             {/* Errors are shown inside <BuildActivityCard /> with friendly copy. */}
           </form>
