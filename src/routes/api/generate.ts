@@ -34,6 +34,8 @@ import { pickDynamicSnippets } from "@/server/dynamic-prompts.server";
 import { autofixFiles } from "@/server/stream-autofixer";
 import { runPostStreamAutofix, shouldRunPostStreamAutofix } from "@/server/post-stream-autofix.server";
 import { fallbackEstimate } from "@/server/preflight-estimate.server";
+import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-classifier.server";
+import { runVerifier, shouldRunVerifier } from "@/server/verifier.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -429,13 +431,29 @@ export const Route = createFileRoute("/api/generate")({
           }),
         ];
 
+        // Tier 3 — phase classifier. Tags the turn (implement/debug/refactor/
+        // plan/docs) so we can route mechanical work to a cheap model and
+        // hard reasoning to the strong one. Regex-only when unambiguous;
+        // sub-50ms AI fallback otherwise.
+        const phaseTag = await classifyPhase(lastUserContent);
+        const tier = modelTierForPhase(phaseTag.phase);
+
         // Smart model routing (Phase 4). Default to "smart". Vision turns
         // ALWAYS go to a vision-capable model regardless of preset.
         const preset: ModelPreset = body.model ?? "smart";
         const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
-        const model = hasVisionTurn
-          ? MODEL_VISION
-          : resolveModel(preset, lastUser, currentFiles.length);
+        let model: string;
+        if (hasVisionTurn) {
+          model = MODEL_VISION;
+        } else if (preset === "smart") {
+          // Phase tag overrides the keyword heuristic in smart mode.
+          model = tier === "smart" ? MODEL_BEST : MODEL_FAST;
+        } else {
+          model = resolveModel(preset, lastUser, currentFiles.length);
+        }
+        console.log(
+          `[phase-router] phase=${phaseTag.phase} (${phaseTag.confidence}/${phaseTag.source}) tier=${tier} → ${model}`,
+        );
 
         const upstream = await aiChatCompletions({
           feature: "generate",
@@ -632,6 +650,58 @@ export const Route = createFileRoute("/api/generate")({
                   }
                 } catch (e) {
                   console.warn("[post-stream-autofix] rejected:", e);
+                }
+              }
+
+              // Tier 3 — Replit-style verifier pass. Read-only scan for
+              // obvious compile/import/JSX issues. If it flags anything,
+              // emit a `verifier_warning` SSE event AND run the autofix
+              // model one more time to recover. Skipped for trivial turns.
+              const changedPaths =
+                collected.name === "write_project"
+                  ? nextFiles.map((f) => f.path)
+                  : (parsed.ops ?? []).map((o) => o.path);
+              if (shouldRunVerifier({ fileCount: nextFiles.length, changedPaths })) {
+                try {
+                  const verdict = await runVerifier(nextFiles, changedPaths);
+                  if (verdict.ran && !verdict.ok && verdict.issues.length > 0) {
+                    console.log(
+                      `[verifier] ${verdict.issues.length} issue(s):`,
+                      verdict.issues.map((i) => `${i.path} (${i.kind}): ${i.detail}`).join("; "),
+                    );
+                    controller.enqueue(
+                      encoder.encode(
+                        sse({
+                          type: "status",
+                          message: `Verifier flagged ${verdict.issues.length} issue${verdict.issues.length === 1 ? "" : "s"} — repairing…`,
+                        }),
+                      ),
+                    );
+                    // Recovery loop: run the post-stream autofix model again
+                    // (even if it ran above) to take a targeted fix pass.
+                    try {
+                      const fixOut = await runPostStreamAutofix(nextFiles);
+                      nextFiles = fixOut.files;
+                      if (fixOut.result.fixedFiles > 0) {
+                        console.log(
+                          `[verifier-recovery] fixed ${fixOut.result.fixedFiles}:`,
+                          fixOut.result.notes.join("; "),
+                        );
+                        controller.enqueue(
+                          encoder.encode(
+                            sse({
+                              type: "status",
+                              message: `Repaired ${fixOut.result.fixedFiles} file${fixOut.result.fixedFiles === 1 ? "" : "s"}.`,
+                            }),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      console.warn("[verifier-recovery] failed:", e);
+                    }
+                  }
+                } catch (e) {
+                  console.warn("[verifier] rejected:", e);
                 }
               }
 
