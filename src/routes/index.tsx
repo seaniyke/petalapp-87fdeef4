@@ -188,18 +188,16 @@ function Landing() {
     return local.charAt(0).toUpperCase() + local.slice(1);
   }, [user, profileDisplayName, profileFetched]);
 
-  // Rotating two-word hero greeting. Picks once per mount so it feels fresh
-  // on each visit but doesn't flicker while the user is on the page.
+  // Curated set of 5 hero greetings. Edit this list to change what shows up
+  // before the user's first name (e.g. "Dream big, Ikechukwu."). Picks one
+  // at random per page load so it feels fresh without flickering mid-session.
   const heroGreeting = useMemo(() => {
     const greetings = [
-      "Got ideas?",
-      "Let's build,",
       "Dream big,",
+      "Let's build,",
+      "Make magic,",
       "Ship it,",
       "What's next,",
-      "Hey there,",
-      "Ready when,",
-      "Make magic,",
     ];
     return greetings[Math.floor(Math.random() * greetings.length)];
   }, []);
