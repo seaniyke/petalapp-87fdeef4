@@ -151,5 +151,7 @@ export function SiteHeader() {
         </div>
       </div>
     </header>
+    <CloudBalanceSheet open={cloudBalanceOpen} onOpenChange={setCloudBalanceOpen} />
+    </>
   );
 }
