@@ -1,59 +1,117 @@
-## TL;DR
 
-Petal is **not** as broken as it feels. The published subdomain you sent (`https://lumen.buildwithpetal.com`) is serving correctly (HTTP 200, full HTML, app shell loads). The two most-recent generations in the database both built successfully (`ready` status, 14:39 + 14:42 UTC). What you're seeing as "no preview" is almost certainly the **in-IDE mobile preview** behavior on the 430px viewport — that path uses the deployed CDN iframe, not WebContainer.
+# Buy + auto-configure domains via Cloudflare Registrar
 
-That said, the audit did find **real bugs** worth fixing now, plus a few smaller polish items. Plan below.
+Goal: A non-technical user types `acme`, sees `acme.com` is available for $9.15/yr, pays in their local currency via Paystack, and 30 seconds later `https://acme.com` serves their published Petal app — with zero DNS touched by hand.
 
----
+Cloudflare Registrar is the right pick: we already use Cloudflare for SaaS for SSL/hosting, the same `CLOUDFLARE_API_TOKEN` works (just needs Registrar:Edit added), and registered domains land directly inside our Cloudflare account where we can auto-create the CNAME for them.
 
-## What I found
+## What changes for the user
 
-### Bug 1 — `looksTruncated` misses unclosed JSX opening tags  *(real, recent, caused the failed build you sent)*
+Today: Buy a $12 *slot* → type a domain you already own → copy A + TXT records into your registrar → wait → maybe it works.
 
-`src/server/local-verifier.ts` flags a file as truncated only when the last non-whitespace char is NOT one of `) } ] ; >`. The `>` exclusion means a file ending in `<Card className="...">\n` (the exact failure you hit) is treated as healthy and skipped.
+After this plan, two paths in **Project Settings → Domains**:
 
-The JSX balance check still catches it as a separate `jsx` issue, so the autofix model would fire — but the **truncation continuation pass** (Tier 2.6) won't, which is the only pass that can actually finish the file correctly. The autofix model gets asked to "fix obvious build-breakers" on a half-written component, which it can't really do.
+1. **"Buy a new domain"** (new, primary CTA) — search → pick → pay → done. SSL active in seconds. No DNS UI ever shown.
+2. **"Connect a domain I own"** (existing flow, kept as-is) — for users who already own a domain elsewhere.
 
-**Fix:** strengthen `looksTruncated` so a trailing `>` only counts as healthy when it closes a tag (`/>` or `</…>`). A bare opening `>` should be treated as truncation. Combined with the existing JSX/brace checks this gets the right behavior.
+```text
+┌─────────────────────────────────────────────┐
+│  Domains                                    │
+│  ─────────────────────────────              │
+│  [ Search: acme              ] 🔍           │
+│  ✓ acme.com         $9.15/yr   [Buy]        │
+│  ✓ acme.app        $14.00/yr   [Buy]        │
+│  ✗ acme.io         taken                    │
+│  ─────────────────────────────              │
+│  Already own a domain? Connect it →         │
+└─────────────────────────────────────────────┘
+```
 
-### Bug 2 — Preview misunderstanding (no code change, just clarification)
+## Architecture
 
-On a 430px viewport the builder route sets `useDeployedFallback = isMobile || !webContainerSupported`, so it renders `<MobilePreviewFallback>` instead of WebContainer. That component shows the **deployed CDN iframe** of the latest build. If the project has no `latest_build_id` yet, you see the "Your preview will appear here" empty state.
+```text
+User types "acme"
+     │
+     ▼
+POST /api/registrar?action=search   ─► CF GET /registrar/domain-search
+     │  (debounced, returns suggestions)
+     ▼
+User clicks "Buy acme.com"
+     │
+     ▼
+POST /api/registrar?action=quote    ─► CF POST /registrar/domain-check
+     │  (real-time price + availability, locks for ~60s)
+     ▼
+Create Paystack transaction         (price = CF cost × markup, in user's currency)
+     │
+     ▼
+Paystack webhook → /api/public/paystack/webhook
+     │
+     ▼
+register_domain() server fn:
+  1. CF POST /registrar/registrations          (charges our CF billing profile)
+  2. Poll status until "active" or "pending"
+  3. CF POST /zones (add zone for acme.com)    [auto on registration in same account]
+  4. CF POST /zones/{id}/dns_records           (CNAME @ → buildwithpetal.com)
+  5. createCustomHostname(acme.com, "http")    (HTTP-01 SSL — works instantly
+                                                because DNS already points to us)
+  6. Insert project_domains row, mark active
+     │
+     ▼
+Realtime push → DomainsSection flips to "Active ✓"
+```
 
-This is working as designed — but for the project you were testing with, the preview will only appear once the external builder posts back its callback. If a build silently fails or the callback never lands, you'll sit on the spinner forever.
+The slot system stays as-is for "connect a domain I own". Buy-a-domain is a separate purchase line item — user pays the registration fee + our markup once per year, and renewal is a separate flow (Phase 2).
 
-**Fix:** add a "build older than 5 min and still pending" timeout state to `MobilePreviewFallback` so users see "build seems stuck — retry?" instead of an infinite spinner. Cheap, fixes a real footgun.
+## Files to create / change
 
-### Bug 3 — `MobilePreviewFallback` polls every 5s forever, even when build is `ready`
+**New — server**
+- `src/server/cloudflare-registrar.server.ts` — typed wrappers for `domain-search`, `domain-check`, `registrations`, `domains` list, `zones` create, and `dns_records` create. Same `cfFetch` pattern as `cloudflare-saas.server.ts`.
+- `src/server/registrar-orchestrator.server.ts` — the post-payment pipeline (register → wait → add zone → add CNAME → create custom hostname → mark active). Idempotent and safe to retry.
+- `src/routes/api/registrar.ts` — `?action=search | quote | list-purchases`. All Bearer-auth + project-ownership checks like `/api/domains`.
 
-Same file. `setInterval(loadLatestBuild, 5_000)` runs unconditionally for the lifetime of the page. Once the build is `ready` we don't need to keep hammering the DB. Small efficiency fix — stop polling once `status === "ready"`.
+**New — client**
+- `src/components/BuyNewDomainDialog.tsx` — search box (debounced 400ms), result list with price + Buy button, currency picker (reuses `fetchCurrencies` / `convertPrice`), final confirm with WHOIS-required checkbox.
+- `src/lib/registrar.ts` — thin client wrapping `/api/registrar`.
 
-### Bug 4 — Tier 4 router exploration always picks `MODEL_FAST` for new candidates
+**Edited**
+- `src/routes/api/billing/initialize.ts` — new `purchaseKind: "domain_registration"` branch that takes `{ domainName, currency, returnUrl }` and stores the locked CF quote in transaction metadata.
+- `src/routes/api/public/paystack/webhook.ts` — on successful `domain_registration`, call `registerDomainPostPayment(metadata)`.
+- `src/components/DomainsSection.tsx` — add "Buy a new domain" button alongside "Connect existing", show a "Registered domains" subsection (renewal date, auto-renew toggle).
+- `supabase` migration — new `domain_registrations` table:
+  ```text
+  id, project_id, hostname, cloudflare_zone_id, cloudflare_registration_id,
+  registered_at, expires_at, auto_renew, last_paystack_ref,
+  cost_usd_cents, charged_amount_minor, charged_currency, status
+  ```
+  RLS: owners read their own; service role writes via webhook.
 
-In `src/routes/api/generate.ts` we pass `candidates: [MODEL_FAST, MODEL_BEST]` to the smart router. With `min_samples = 20` (default), neither candidate has enough data on a fresh table, so the router goes to `exploration` mode and picks `MODEL_FAST` ~10% of the time and falls back to `phaseDefault` the rest of the time. That's fine — but `chosenBy` is reported as `phase_router` for the no-data case and `smart_router:exploration` only on the rare exploration roll. It's confusing in logs and means we're not actually using the router yet on most turns.
+## Pricing & margin
 
-**Fix:** lower the default `min_samples` to 5 so the router starts using observed data sooner. Add a clearer log line distinguishing "router_no_data" from "phase_default".
+- CF charges at-cost (e.g. `.com` ≈ $9.15/yr). We add a flat markup (configurable in `app_config`, default **+$3 USD**) so $9.15 → $12.15 to the user.
+- Quote is locked at search time (CF's `domain-check` returns the exact price); we charge that exact USD amount through the same Paystack rails as slots, so multi-currency "just works".
+- Failed registrations after payment → automatic Paystack refund via the existing refund helper.
 
-### Sanity items (no fix needed, but worth noting)
+## Required setup (one-time, by you)
 
-- **`stream-autofixer.ts` rewriting `react-router-dom` → `@/components/ui/router`** is correct. The Petal app itself uses TanStack Start, but the apps it generates ship react-router-dom re-exported through `@/components/ui/router` (verified in `scaffold-kit.ts` line 3231 and `generate.server.ts` line 49). No bug.
-- **`dynamic-prompts.server.ts` "router" snippet** telling the model to put pages in `src/pages/` is also correct for generated apps. Not a bug.
-- **DB schema** for `ai_call_log` and `ai_router_config` is fully populated with all columns the smart-router writes/reads. Telemetry is recording.
-- **`https://lumen.buildwithpetal.com`** returns HTTP 200 with the published Lumina app shell. Subdomain routing is working.
+1. **Cloudflare dashboard** → Registrar → accept Domain Registration Agreement, add billing profile, set default registrant contact (name/address/email shown on WHOIS for new domains unless we override per-purchase).
+2. **API token** → edit `CLOUDFLARE_API_TOKEN` to add `Account → Registrar → Edit` and `Zone → Zone → Edit` + `Zone → DNS → Edit` permissions.
+3. No new secrets needed — same token, same account ID.
 
----
+## Beta limitations we handle
 
-## Plan
+- **Limited TLDs**: search response only returns supported TLDs. We surface "More extensions coming soon" under results so users aren't confused if `.dev` is missing.
+- **Cached search**: we always call `domain-check` on click before charging the user — never trust search cache for the buy step.
+- **Async registration**: orchestrator polls `GET /registrar/domains/{name}` every 3s up to 60s; if still pending, marks row `status=pending_registration` and a cron in `/api/public/cron/` finishes the DNS+SSL wiring once CF reports `active`.
 
-1. **Fix `looksTruncated` in `src/server/local-verifier.ts`** to require `/>` or `</…>` for a `>` ending to count as healthy. Add 2-3 unit tests in a comment block (no test runner change).
-2. **Add a stuck-build state to `src/components/MobilePreviewFallback.tsx`** — if status is `pending` for >5 min, show an actionable error card instead of a spinner.
-3. **Stop polling once `status === "ready"`** in `MobilePreviewFallback` (clear the interval inside the apply path).
-4. **Lower default `min_samples` to 5** in `src/server/smart-router.server.ts` and improve the `[smart-router]` log line. Update the migration's seeded row default value (separate migration, idempotent).
-5. **No changes** to `stream-autofixer.ts`, `dynamic-prompts.server.ts`, or the subdomain worker — they're correct.
+## Out of scope for Phase 1 (call out as Phase 2)
 
-## Out of scope
+- Auto-renewal billing (manual renewal works; auto-renew toggle stored but not yet enforced).
+- Transferring an existing domain *into* Cloudflare (different API surface).
+- Email-on-domain provisioning (separate plan — would tie into Lovable Email by auto-adding MX + SPF + DKIM to the new zone the moment user clicks "Add email").
 
-- I'm not touching the WebContainer rendering path; it works on desktop and is intentionally bypassed on mobile.
-- I'm not redesigning the post-stream autofix gating; the local-verifier hard-trigger is already wired and correct once Bug 1 is fixed.
+## Open questions to confirm before I build
 
-Approve and I'll ship 1-4 in one pass.
+1. **Markup**: flat +$3 USD per year, or percentage (e.g. +25%)?
+2. **WHOIS privacy**: enable by default for all purchases? (CF includes it free.)
+3. **Default registrant contact**: use a generic Petal contact, or require each user to fill their own at checkout? (Generic is faster UX; per-user is more correct legally.)
