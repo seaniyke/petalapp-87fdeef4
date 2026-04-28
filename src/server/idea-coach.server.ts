@@ -145,19 +145,15 @@ export async function coachTurn(input: CoachTurnInput): Promise<CoachTurnOutput>
     messages.push({ role: "user", content: input.userInput.trim() });
   }
 
-  const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+  const upstream = await aiChatCompletions({
+    feature: "coach",
+    body: {
       model: "google/gemini-3-flash-preview",
       messages,
       tools: [COACH_TOOL],
       tool_choice: { type: "function", function: { name: "coach_turn" } },
       stream: false,
-    }),
+    },
   });
 
   if (!upstream.ok) {
