@@ -267,8 +267,9 @@ export const Route = createFileRoute("/api/triage")({
         const authResult = await authorize(request);
         if (authResult instanceof Response) return authResult;
 
-        const apiKey = process.env.LOVABLE_API_KEY;
-        if (!apiKey) return new Response("AI gateway is not configured.", { status: 500 });
+        if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) {
+          return new Response("AI gateway is not configured.", { status: 500 });
+        }
 
         let body: Body;
         try {
