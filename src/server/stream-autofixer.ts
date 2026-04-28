@@ -176,6 +176,60 @@ function capPetalImages(content: string, report: AutofixReport): string {
   return out;
 }
 
+function normalizePath(path: string): string {
+  const out: string[] = [];
+  for (const part of path.split("/")) {
+    if (!part || part === ".") continue;
+    if (part === "..") out.pop();
+    else out.push(part);
+  }
+  return out.join("/");
+}
+
+function resolveImportPath(fromPath: string, spec: string, byPath: Map<string, ProjectFile>): string | null {
+  const base = spec.startsWith("@/")
+    ? `src/${spec.slice(2)}`
+    : spec.startsWith(".")
+      ? normalizePath(`${fromPath.split("/").slice(0, -1).join("/")}/${spec}`)
+      : null;
+  if (!base) return null;
+  const candidates = [base, `${base}.tsx`, `${base}.ts`, `${base}.jsx`, `${base}.js`, `${base}/index.tsx`, `${base}/index.ts`];
+  return candidates.find((p) => byPath.has(p)) ?? null;
+}
+
+function fixLazyNamedExports(files: ProjectFile[], report: AutofixReport): ProjectFile[] {
+  const byPath = new Map(files.map((f) => [f.path, f]));
+  const lazyRe = /const\s+([A-Z][A-Za-z0-9_]*)\s*=\s*lazy\(\s*\(\)\s*=>\s*import\(\s*["']([^"']+)["']\s*\)\s*\)/g;
+  const additions = new Map<string, Set<string>>();
+
+  for (const f of files) {
+    if (!/\.(tsx?|jsx?)$/.test(f.path) || !f.content.includes("lazy(")) continue;
+    let match: RegExpExecArray | null;
+    while ((match = lazyRe.exec(f.content))) {
+      const componentName = match[1];
+      const targetPath = resolveImportPath(f.path, match[2], byPath);
+      if (!targetPath) continue;
+      const target = byPath.get(targetPath);
+      if (!target || /\bexport\s+default\b/.test(target.content)) continue;
+      const hasNamedExport = new RegExp(`\\bexport\\s+(?:function|const|let|class)\\s+${componentName}\\b`).test(target.content) ||
+        new RegExp(`\\bexport\\s*\\{[^}]*\\b${componentName}\\b[^}]*\\}`).test(target.content);
+      if (!hasNamedExport) continue;
+      if (!additions.has(targetPath)) additions.set(targetPath, new Set());
+      additions.get(targetPath)!.add(componentName);
+    }
+  }
+
+  if (additions.size === 0) return files;
+  return files.map((f) => {
+    const names = additions.get(f.path);
+    if (!names?.size) return f;
+    const [name] = names;
+    report.fixedCount++;
+    report.notes.push(`React.lazy target ${f.path} default export added`);
+    return { ...f, content: `${f.content.trimEnd()}\n\nexport default ${name};\n` };
+  });
+}
+
 /** Apply autofixers to a single file. Returns the (possibly modified) file. */
 export function autofixFile(file: ProjectFile, report: AutofixReport): ProjectFile {
   // Only run on text files we'd ship to the build. Skip binaries, lockfiles.
@@ -195,6 +249,7 @@ export function autofixFile(file: ProjectFile, report: AutofixReport): ProjectFi
 /** Apply autofixers across the whole file set. Returns new files + report. */
 export function autofixFiles(files: ProjectFile[]): { files: ProjectFile[]; report: AutofixReport } {
   const report: AutofixReport = { fixedCount: 0, notes: [] };
-  const out = files.map((f) => autofixFile(f, report));
+  const lazyFixed = fixLazyNamedExports(files, report);
+  const out = lazyFixed.map((f) => autofixFile(f, report));
   return { files: out, report };
 }
