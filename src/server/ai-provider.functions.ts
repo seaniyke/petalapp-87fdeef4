@@ -43,7 +43,7 @@ function envChoiceFor(feature: AiFeature): Provider | null {
   return null;
 }
 
-async function assertAdmin(supabase: ReturnType<typeof supabaseAdmin.from> extends never ? never : any, userId: string): Promise<void> {
+async function assertAdmin(userId: string): Promise<void> {
   // Use the admin client with an explicit role check to avoid silent RLS fails.
   const { data, error } = await supabaseAdmin.rpc("has_role", {
     _user_id: userId,
