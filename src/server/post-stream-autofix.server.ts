@@ -45,6 +45,7 @@ ALLOWED FIXES:
 - Direct "react-router-dom" or "@supabase/supabase-js" imports → swap to "@/components/ui/router" or "@/integrations/backend/client"
 - Tailwind v3 directives (@tailwind base/components/utilities) inside src/styles.css → swap for @import "tailwindcss";
 - Invalid lucide-react icon names
+- React.lazy(() => import("...")) used with a target file that only has named exports. Fix by adding \`export default ComponentName;\` to the target file OR by replacing lazy imports with eager named imports.
 
 FORBIDDEN:
 - Refactoring working code
