@@ -96,10 +96,9 @@ export async function runSelfCheck(args: {
     `Return your honest verdict via the self_check tool now.`;
 
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const resp = await aiChatCompletions({
+      feature: "recovery",
+      body: {
         model: SELF_CHECK_MODEL,
         messages: [
           { role: "system", content: SELF_CHECK_SYSTEM },
@@ -107,7 +106,7 @@ export async function runSelfCheck(args: {
         ],
         tools: [SELF_CHECK_TOOL],
         tool_choice: { type: "function", function: { name: "self_check" } },
-      }),
+      },
     });
     if (!resp.ok) {
       console.warn("[self-check] http error", resp.status);
