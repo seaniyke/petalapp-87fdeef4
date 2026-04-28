@@ -248,7 +248,7 @@ function IntegrationsSectionGated({ projectId }: { projectId: string }) {
 function BackendSection({ projectId }: { projectId: string }) {
   const [loading, setLoading] = useState(true);
   const [backend, setBackend] = useState<ProjectBackend>(null);
-  const [showForm, setShowForm] = useState(false);
+  
 
   useEffect(() => {
     let cancelled = false;
