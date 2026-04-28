@@ -292,6 +292,9 @@ function AiProvidersPage() {
           onRefresh={refreshCost}
         />
 
+        {/* Tier 4 — Smart router */}
+        <SmartRouterCard />
+
         {/* OpenRouter status banner */}
         <Card
           className={`mb-6 border ${
