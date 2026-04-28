@@ -14,7 +14,6 @@
  */
 import { useState } from "react";
 import { Database, Lock, X, Sparkles } from "lucide-react";
-import { Link } from "@tanstack/react-router";
 import { BuyBackendSlotDialog } from "@/components/BuyBackendSlotDialog";
 import {
   Dialog,
