@@ -39,6 +39,7 @@ export function MobilePreviewFallback({
   const [build, setBuild] = useState<BuildRow | null>(null);
   const [latestReadyBuild, setLatestReadyBuild] = useState<BuildRow | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
+  const [pendingTooLong, setPendingTooLong] = useState(false);
 
   // Load the current latest build and a fallback ready build. We also poll the
   // latest row because realtime delivery can be delayed or unavailable on some
