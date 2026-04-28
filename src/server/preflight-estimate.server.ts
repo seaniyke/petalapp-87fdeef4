@@ -11,7 +11,7 @@
  * Server-side helper. Wired through a createServerFn in
  * src/server/preflight-estimate.functions.ts so the client can import safely.
  */
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+import { aiChatCompletions } from "@/server/ai-provider.server";
 
 export type PreflightKind =
   | "ui_tweak"
