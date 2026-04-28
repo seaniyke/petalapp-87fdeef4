@@ -256,6 +256,16 @@ function Builder() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  // Whether this project already has a backend (BYO or managed). When unknown
+  // we treat as "not connected" but suppress the chip until we've checked.
+  const [hasBackend, setHasBackend] = useState<boolean | null>(null);
+  // Per-message dismissal of the "Add backend" inline suggestion. Keyed by
+  // assistant message index so dismissing once doesn't kill it forever.
+  const [dismissedBackendChips, setDismissedBackendChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const { plan: currentPlan } = useWallet();
+  const isPaidPlan = !!currentPlan && currentPlan.code !== "free";
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
   // Visual element edit (Phase 5): selected element from the preview iframe.
   type PickedElement = {
