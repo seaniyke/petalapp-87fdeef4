@@ -837,7 +837,7 @@ function Landing() {
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
             Open the builder, describe an idea, and watch it come to life.
           </p>
-          {user ? (
+          {!isReady ? null : user ? (
             <Link
               to="/projects"
               className="mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-7 text-base font-medium text-primary-foreground transition hover:brightness-105"
