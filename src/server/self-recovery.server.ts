@@ -20,6 +20,8 @@
  * nothing extra. Cost is negligible vs. the main build.
  */
 
+import { aiChatCompletions } from "@/server/ai-provider.server";
+
 const SELF_CHECK_MODEL = "google/gemini-3-flash-preview";
 const HUMANIZE_MODEL = "google/gemini-3-flash-preview";
 
