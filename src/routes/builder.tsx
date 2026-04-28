@@ -98,6 +98,7 @@ import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
 import { PreflightCostChip } from "@/components/PreflightCostChip";
+import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
 import { getProjectBackend } from "@/lib/projects";
 import { useWallet } from "@/hooks/use-wallet";
@@ -257,6 +258,7 @@ function Builder() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [shieldOpen, setShieldOpen] = useState(false);
   // Whether this project already has a backend (BYO or managed). When unknown
   // we treat as "not connected" but suppress the chip until we've checked.
   const [hasBackend, setHasBackend] = useState<boolean | null>(null);
