@@ -61,9 +61,9 @@ export const Route = createFileRoute("/api/admin/credits")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const userIdOrResp = await authorize(request);
-        if (userIdOrResp instanceof Response) return userIdOrResp;
-        const adminId = userIdOrResp;
+        const authResult = await authorize(request);
+        if (authResult instanceof Response) return authResult;
+        const { userId: adminId, token: adminToken } = authResult;
         const denied = await assertAdmin(adminId);
         if (denied) return denied;
 
