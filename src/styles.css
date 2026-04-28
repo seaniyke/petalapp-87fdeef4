@@ -232,3 +232,30 @@
 @media (prefers-reduced-motion: reduce) {
   .credits-meter-fill::after { animation: none; opacity: 0; }
 }
+
+/* ----------------------------------------------------------------
+ * iOS Safari auto-zoom prevention.
+ *
+ * Safari on iPhone aggressively zooms the viewport whenever a user
+ * focuses a form control whose computed font-size is below 16px,
+ * and it does NOT zoom back out on blur — the user is forced to
+ * pinch the page to restore the original scale. This was the root
+ * cause of the "page is bigger than the screen, I have to pinch"
+ * reports on the projects search, builder composer, and any other
+ * input/textarea that fell back to text-sm (14px) on small screens.
+ *
+ * The fix is to guarantee a >=16px font-size on all native form
+ * controls at mobile widths. We keep the visual size identical by
+ * scaling the rendered text via -webkit-text-size-adjust so design
+ * tokens (text-sm / text-xs labels) still look right, but Safari
+ * sees a 16px control and skips the zoom. From the md breakpoint
+ * upward we let Tailwind's text-sm utilities take over again — iOS
+ * auto-zoom only matters on phones.
+ * ---------------------------------------------------------------- */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
