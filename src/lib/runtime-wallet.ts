@@ -2,8 +2,9 @@
  * Client-side helpers for the runtime wallet ("Cloud + AI balance").
  *
  * The runtime wallet is denominated in USD cents and is SEPARATE from the
- * build-credit system in `billing.ts`. Each user gets a $10/month free
- * allowance plus an optional top-up balance funded via Paystack.
+ * build-credit system in `billing.ts`. Users start with $0 free balance.
+ * After their first paid top-up they qualify for the $10/month free Cloud
+ * gift (granted immediately on first top-up, then refilled on the 1st).
  */
 import { supabase } from "@/integrations/supabase/client";
 
@@ -12,7 +13,9 @@ export type RuntimeWallet = {
   topupBalanceCents: number;
   freeResetAt: string; // YYYY-MM-DD
   workspaceCapCents: number | null;
-  monthlyFreeGrantCents: number; // currently 1000 ($10)
+  monthlyFreeGrantCents: number; // currently 1000 ($10) once qualified
+  qualifiedForFreeGrant: boolean;
+  qualifiedAt: string | null;
 };
 
 export type RuntimeTopupPack = {
