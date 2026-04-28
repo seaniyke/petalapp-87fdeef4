@@ -31,6 +31,7 @@ import {
   type ProjectBackend,
 } from "@/lib/projects";
 import { DomainsSection } from "@/components/DomainsSection";
+import { EmailSection } from "@/components/EmailSection";
 import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { LabsSection } from "@/components/LabsSection";
 import { IntegrationsSection } from "@/components/IntegrationsSection";
@@ -56,7 +57,7 @@ type Props = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   /** When set, scroll this section into view after the sheet opens. */
-  scrollTo?: "domains" | "backend" | "knowledge" | null;
+  scrollTo?: "domains" | "backend" | "knowledge" | "email" | null;
   onScrollHandled?: () => void;
 };
 
@@ -177,6 +178,11 @@ export function ProjectSettingsSheet({
         {/* Backend section */}
         <div id="settings-backend" className="scroll-mt-4">
           <BackendSection projectId={project.id} />
+        </div>
+
+        {/* Petal Email section */}
+        <div id="settings-email" className="scroll-mt-4">
+          <EmailSection projectId={project.id} />
         </div>
 
         <div id="settings-knowledge" className="mt-8 scroll-mt-4 border-t border-border pt-6">
