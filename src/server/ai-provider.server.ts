@@ -202,10 +202,22 @@ async function recordTelemetry(args: TelemetryArgs): Promise<void> {
 
 // ---------------- Public API ----------------
 
+export interface AiCallMeta {
+  /** Tier 3 phase tag (implement / debug / refactor / plan / docs). */
+  phase?: string | null;
+  /** Length of the user's latest prompt in characters. */
+  promptChars?: number | null;
+  /** True when the latest user turn carried image attachments. */
+  hadAttachments?: boolean | null;
+  /** Who picked the model: "smart_router" | "phase_router" | "default" | … */
+  chosenBy?: string | null;
+}
+
 export interface AiCallOptions {
   feature: AiFeature;
   body: Record<string, unknown>;
   signal?: AbortSignal;
+  meta?: AiCallMeta;
 }
 
 /**
