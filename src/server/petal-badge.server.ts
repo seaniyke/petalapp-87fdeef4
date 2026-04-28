@@ -67,7 +67,7 @@ const PETAL_BADGE_HTML = `
 export function injectPetalBadge(files: ProjectFile[]): ProjectFile[] {
   return files.map((f) => {
     if (f.path !== "index.html") return f;
-    if (f.content.includes('id="petal-badge"')) return f; // idempotent
+    if (f.content.includes('id="petal-badge-loader"') || f.content.includes('id="petal-badge"')) return f; // idempotent
     const closingBody = /<\/body>/i;
     if (closingBody.test(f.content)) {
       return { ...f, content: f.content.replace(closingBody, `${PETAL_BADGE_HTML}\n</body>`) };
