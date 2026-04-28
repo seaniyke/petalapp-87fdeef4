@@ -70,6 +70,17 @@ function ProfilePage() {
       toast.error(error.message);
       return;
     }
+    // Keep the home-page greeting cache in sync so a refresh shows the new
+    // name immediately (no flash of the previous email-derived value).
+    if (typeof window !== "undefined") {
+      try {
+        const key = `petal:profile-name:${user.id}`;
+        if (trimmedName) window.localStorage.setItem(key, trimmedName);
+        else window.localStorage.removeItem(key);
+      } catch {
+        /* ignore */
+      }
+    }
     toast.success("Profile updated");
   }
 
