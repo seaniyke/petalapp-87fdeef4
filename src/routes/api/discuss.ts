@@ -15,6 +15,7 @@ import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
+import { aiChatCompletions } from "@/server/ai-provider.server";
 
 type Body = {
   messages: ChatMessage[];
