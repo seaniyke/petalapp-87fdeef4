@@ -1749,6 +1749,43 @@ function Builder() {
         </div>
       </header>
 
+      {/* Low-balance banner — pinned inside the sticky top stack so it never scrolls away. */}
+      <RuntimeLowBalanceBanner projectId={project?.id ?? null} />
+
+      {/* Mobile-only tab bar (Chat | Preview). Desktop uses the grid below. */}
+      <div className="flex items-center gap-1 border-t border-border/60 bg-card px-3 py-2 md:hidden">
+        <button
+          onClick={() => setMobileTab("chat")}
+          className={`relative flex-1 rounded-lg px-3 py-2 text-[13px] font-semibold tracking-tight transition ${
+            mobileTab === "chat"
+              ? "bg-foreground text-background shadow-sm"
+              : "text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          Chat
+        </button>
+        <button
+          onClick={() => {
+            setMobileTab("preview");
+            setPreviewHasUpdate(false);
+          }}
+          className={`relative flex-1 rounded-lg px-3 py-2 text-[13px] font-semibold tracking-tight transition ${
+            mobileTab === "preview"
+              ? "bg-foreground text-background shadow-sm"
+              : "text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          Preview
+          {previewHasUpdate && mobileTab !== "preview" && (
+            <span
+              aria-hidden
+              className="absolute right-2 top-1.5 h-1.5 w-1.5 rounded-full bg-primary"
+            />
+          )}
+        </button>
+      </div>
+      </div>
+
       {/* Mobile builder menu + dependent dialogs */}
       {project && (
         <>
@@ -1802,40 +1839,6 @@ function Builder() {
           />
         </>
       )}
-
-
-      {/* Mobile-only tab bar (Chat | Preview). Desktop uses the grid below. */}
-      <div className="sticky top-[calc(env(safe-area-inset-top)+3.5rem)] z-20 flex shrink-0 items-center gap-1 border-b border-border bg-card/80 px-3 py-1.5 backdrop-blur md:hidden">
-        <button
-          onClick={() => setMobileTab("chat")}
-          className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-            mobileTab === "chat"
-              ? "bg-foreground text-background"
-              : "text-muted-foreground hover:bg-muted"
-          }`}
-        >
-          Chat
-        </button>
-        <button
-          onClick={() => {
-            setMobileTab("preview");
-            setPreviewHasUpdate(false);
-          }}
-          className={`relative flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-            mobileTab === "preview"
-              ? "bg-foreground text-background"
-              : "text-muted-foreground hover:bg-muted"
-          }`}
-        >
-          Preview
-          {previewHasUpdate && mobileTab !== "preview" && (
-            <span
-              aria-hidden
-              className="absolute right-2 top-1.5 h-1.5 w-1.5 rounded-full bg-primary"
-            />
-          )}
-        </button>
-      </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[360px_1fr]">
         {/* Chat */}
