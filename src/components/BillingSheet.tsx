@@ -260,42 +260,103 @@ export function BillingSheet({ open, onOpenChange }: Props) {
                   above to unlock one-time credit purchases.
                 </p>
               </div>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-3">
-                {packs.map((pack) => {
-                  const conv = activeCurrency
-                    ? convertPrice({
-                        itemKind: "pack",
-                        itemCode: pack.code,
-                        usdCents: pack.price_cents,
-                        currency,
-                        currencies,
-                        overrides,
-                      })
-                    : null;
-                  const busy = busyKey === `pack:${pack.code}`;
-                  return (
-                    <div key={pack.code} className="rounded-lg border border-border/60 p-3">
-                      <p className="text-sm font-medium">{pack.credits} credits</p>
-                      <p className="mt-1 text-base font-semibold tabular-nums">
-                        {conv && activeCurrency
-                          ? formatMoney(conv.amountMinor, activeCurrency)
-                          : `$${(pack.price_cents / 100).toFixed(0)}`}
+            ) : (() => {
+              const selected =
+                packs.find((p) => p.code === selectedPackCode) ?? packs[0] ?? null;
+              const selConv = selected && activeCurrency
+                ? convertPrice({
+                    itemKind: "pack",
+                    itemCode: selected.code,
+                    usdCents: selected.price_cents,
+                    currency,
+                    currencies,
+                    overrides,
+                  })
+                : null;
+              const busy = selected ? busyKey === `pack:${selected.code}` : false;
+              const perCredit = selected
+                ? (selected.price_cents / 100 / Number(selected.credits))
+                : 0;
+              return (
+                <div className="space-y-3">
+                  <Select
+                    value={selected?.code ?? undefined}
+                    onValueChange={(v) => setSelectedPackCode(v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose a top-up amount" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {packs.map((pack) => {
+                        const conv = activeCurrency
+                          ? convertPrice({
+                              itemKind: "pack",
+                              itemCode: pack.code,
+                              usdCents: pack.price_cents,
+                              currency,
+                              currencies,
+                              overrides,
+                            })
+                          : null;
+                        const priceLabel =
+                          conv && activeCurrency
+                            ? formatMoney(conv.amountMinor, activeCurrency)
+                            : `$${(pack.price_cents / 100).toFixed(pack.price_cents % 100 ? 2 : 0)}`;
+                        return (
+                          <SelectItem key={pack.code} value={pack.code}>
+                            <span className="flex w-full items-center justify-between gap-4">
+                              <span className="font-medium">{priceLabel}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {Number(pack.credits)} credits
+                              </span>
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+
+                  {selected && (
+                    <div className="rounded-lg border border-border/60 p-3">
+                      <div className="flex items-baseline justify-between">
+                        <p className="text-sm font-medium">
+                          {Number(selected.credits)} credits
+                        </p>
+                        <p className="text-lg font-semibold tabular-nums">
+                          {selConv && activeCurrency
+                            ? formatMoney(selConv.amountMinor, activeCurrency)
+                            : `$${(selected.price_cents / 100).toFixed(selected.price_cents % 100 ? 2 : 0)}`}
+                        </p>
+                      </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        ≈ ${perCredit.toFixed(3)} per credit
+                        {selConv?.source === "override" && (
+                          <span className="ml-1 text-emerald-600 dark:text-emerald-400">
+                            · local price
+                          </span>
+                        )}
                       </p>
                       <Button
                         size="sm"
-                        variant="outline"
                         disabled={!user || busy}
-                        className="mt-2 w-full"
-                        onClick={() => startCheckout("pack", pack.code)}
+                        className="mt-3 w-full"
+                        onClick={() => startCheckout("pack", selected.code)}
                       >
-                        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buy"}
+                        {busy ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          `Top up ${
+                            selConv && activeCurrency
+                              ? formatMoney(selConv.amountMinor, activeCurrency)
+                              : `$${(selected.price_cents / 100).toFixed(selected.price_cents % 100 ? 2 : 0)}`
+                          }`
+                        )}
                       </Button>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  )}
+                </div>
+              );
+            })()}
           </section>
         </div>
       </SheetContent>
