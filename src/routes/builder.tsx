@@ -2274,8 +2274,8 @@ function Builder() {
                 </div>
               </div>
             </div>
-            <div className="mb-2 flex items-center justify-between text-[10px] text-muted-foreground">
-              <span>
+            <div className="mb-2 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+              <span className="min-w-0 flex-1 truncate">
                 {busy || discussBusy
                   ? "Petal is working — your next message will queue"
                   : pendingAttachments.length > 0
@@ -2284,6 +2284,9 @@ function Builder() {
                       ? "Chat only · no file changes"
                       : "Petal will edit files"}
               </span>
+              {mode === "build" && (
+                <PreflightCostChip prompt={input} disabled={busy || discussBusy} />
+              )}
               {project?.custom_instructions && (
                 <button
                   type="button"
