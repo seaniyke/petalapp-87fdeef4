@@ -191,12 +191,6 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
     return new Response(error.message, { status: 400 });
   }
 
-  // 3) Consume the slot.
-  await supabaseAdmin
-    .from("domain_slots")
-    .update({ consumed_by_domain_id: data.id })
-    .eq("id", slot.id);
-
   return Response.json(data);
 }
 
