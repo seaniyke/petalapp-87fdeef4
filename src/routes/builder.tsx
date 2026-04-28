@@ -1912,6 +1912,18 @@ function Builder() {
               </div>
             )}
             {messages.map((m, i) => {
+              // System notes (e.g. "Petal is auto-fixing the build — free")
+              // render as a small centered chip, not a chat bubble — they're
+              // status updates, not part of the conversation.
+              if (m.role === "system" || m.system) {
+                return (
+                  <div key={i} className="my-1 flex justify-center">
+                    <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 py-1 text-[11px] text-muted-foreground">
+                      {m.content}
+                    </div>
+                  </div>
+                );
+              }
               const isUser = m.role === "user";
               // Only allow revert if Petal already replied to this user
               // message (so a snapshot exists) and we're not mid-generation.
