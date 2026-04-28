@@ -1671,6 +1671,28 @@ function Builder() {
               <Shield className="h-4 w-4" />
             </button>
           )}
+          {project && (
+            <button
+              type="button"
+              onClick={() => setSharePreviewOpen(true)}
+              className="hidden h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted md:grid"
+              title="Share preview & gather feedback"
+              aria-label="Share preview"
+            >
+              <Link2 className="h-4 w-4" />
+            </button>
+          )}
+          {project && (
+            <button
+              type="button"
+              onClick={() => setCommentsOpen(true)}
+              className="hidden h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted md:grid"
+              title="Visitor feedback"
+              aria-label="Open visitor feedback"
+            >
+              <MessageSquare className="h-4 w-4" />
+            </button>
+          )}
           {project && <ReadinessBadge files={files} project={project} />}
           {project && (
             <div className="hidden md:block">
