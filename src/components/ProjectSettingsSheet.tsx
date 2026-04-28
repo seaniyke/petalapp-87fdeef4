@@ -42,6 +42,8 @@ import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { LabsSection } from "@/components/LabsSection";
 import { IntegrationsSection } from "@/components/IntegrationsSection";
 import { useLabsFlag } from "@/hooks/use-labs-flags";
+import { useWallet } from "@/hooks/use-wallet";
+import { Switch } from "@/components/ui/switch";
 import { builderDraftKeys, clearDraft, readDraft, writeDraft } from "@/lib/draft-storage";
 import { toast } from "sonner";
 
