@@ -13,7 +13,7 @@
 
 export interface LocalIssue {
   path: string;
-  kind: "truncation" | "jsx" | "braces";
+  kind: "truncation" | "jsx" | "braces" | "undefined";
   detail: string;
 }
 
