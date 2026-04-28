@@ -100,6 +100,7 @@ import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
 import { PreflightCostChip } from "@/components/PreflightCostChip";
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
+import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
 import { getProjectBackend } from "@/lib/projects";
 import { useWallet } from "@/hooks/use-wallet";
@@ -1666,6 +1667,7 @@ function Builder() {
               <Shield className="h-4 w-4" />
             </button>
           )}
+          {project && <ReadinessBadge files={files} project={project} />}
           {project && (
             <div className="hidden md:block">
               <SharePopover
