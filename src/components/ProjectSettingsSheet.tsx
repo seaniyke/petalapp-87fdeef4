@@ -8,12 +8,8 @@ import {
   Database,
   Loader2,
   Save,
-  Plug,
   CheckCircle2,
   Unplug,
-  ExternalLink,
-  ChevronDown,
-  ChevronRight,
   Sparkles,
   Lock,
 } from "lucide-react";
@@ -26,13 +22,10 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   updateProject,
   getProjectBackend,
-  connectProjectBackend,
   disconnectProjectBackend,
   type ProjectRow,
   type ProjectBackend,
