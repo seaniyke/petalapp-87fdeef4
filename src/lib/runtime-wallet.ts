@@ -46,7 +46,7 @@ export async function fetchRuntimeWallet(userId: string): Promise<RuntimeWallet>
   const { data } = await supabase
     .from("user_wallets")
     .select(
-      "runtime_free_balance_cents, runtime_topup_balance_cents, runtime_free_reset_at, workspace_cap_cents",
+      "runtime_free_balance_cents, runtime_topup_balance_cents, runtime_free_reset_at, workspace_cap_cents, runtime_topup_qualified_at",
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -55,6 +55,9 @@ export async function fetchRuntimeWallet(userId: string): Promise<RuntimeWallet>
   nextReset.setUTCDate(1);
   nextReset.setUTCMonth(nextReset.getUTCMonth() + 1);
 
+  const qualifiedAt = (data as { runtime_topup_qualified_at?: string | null } | null)
+    ?.runtime_topup_qualified_at ?? null;
+
   return {
     freeBalanceCents: Number(data?.runtime_free_balance_cents ?? 0),
     topupBalanceCents: Number(data?.runtime_topup_balance_cents ?? 0),
@@ -62,6 +65,8 @@ export async function fetchRuntimeWallet(userId: string): Promise<RuntimeWallet>
     workspaceCapCents:
       data?.workspace_cap_cents == null ? null : Number(data.workspace_cap_cents),
     monthlyFreeGrantCents: MONTHLY_FREE_GRANT_CENTS,
+    qualifiedForFreeGrant: qualifiedAt !== null,
+    qualifiedAt,
   };
 }
 
