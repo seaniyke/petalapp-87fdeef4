@@ -380,7 +380,7 @@ export type ChatAttachmentRef = {
 };
 
 export type ChatMessage = {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
   content: string;
   /** Optional structured narrative that powers the Plan / Recap segments
    *  in the chat bubble. Falls back gracefully to plain `content` if absent. */
@@ -392,6 +392,10 @@ export type ChatMessage = {
    *  chip sends its label as the user's next turn. Used most often on
    *  "clarify" turns so users don't have to type a full answer. */
   suggestions?: string[];
+  /** Marks an internal system note (e.g. "Petal is auto-fixing a build
+   *  error — free"). Rendered as a small inline notice, never sent to the
+   *  AI as part of the conversation. */
+  system?: boolean;
 };
 
 export type FileOp =
