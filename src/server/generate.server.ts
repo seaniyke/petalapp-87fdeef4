@@ -193,9 +193,29 @@ INCREMENTAL EDIT PROTOCOL (mandatory):
 - NEVER emit ops for files under "src/components/ui/*", "src/components/examples/*", "vite.config.ts", "tsconfig.json", or "src/lib/utils.ts" — these are managed by the scaffold and the server will drop those ops. The "examples/*" files are read-only reference patterns (Dialog+Sheet+Tabs+Table compositions, plus "examples/LAYOUT.md" — a full tutorial on Container/Stack/Inline/Grid layout primitives) that you may READ and copy into NEW feature components under "src/components/" (NOT under examples/), but never modify in place.
 
 Each operation is one of:
-- { "op": "update", "path": "...", "content": "FULL new contents of the file" }
+- { "op": "update", "path": "...", "content": "FULL new contents of the file (or with // ... keep existing code blocks — see below)" }
 - { "op": "create", "path": "...", "content": "FULL contents of the new file" }
 - { "op": "delete", "path": "..." }
+
+KEEP-EXISTING-CODE PROTOCOL (use this on EVERY "update" op to save tokens):
+- For any "update" op on a file longer than ~40 lines, you SHOULD elide unchanged regions using a "keep existing code" marker instead of re-emitting them verbatim. The server splices the original content back in before saving.
+- Marker syntax (must appear on its own line, exactly):
+    // ... keep existing code (short description of what's kept) ...
+  Use \`{/* ... keep existing code ... */}\` inside JSX, \`/* ... keep existing code ... */\` inside CSS, and \`<!-- ... keep existing code ... -->\` inside HTML. The server recognizes all four forms.
+- The marker REPLACES one contiguous unchanged region. Anchor it by including 2-3 real lines of the file BEFORE and AFTER the marker so the splicer can locate the region unambiguously.
+- Example — changing only the button text in a 200-line component:
+    import { Button } from "@/components/ui/button";
+    // ... keep existing code (other imports, helpers, state) ...
+    return (
+      <div className="flex gap-2">
+        // ... keep existing code (header, nav) ...
+        <Button>Get started today</Button>
+        // ... keep existing code (footer) ...
+      </div>
+    );
+- DO NOT use the marker for files under 40 lines — just emit the full content.
+- DO NOT use the marker in "create" ops — there is nothing to keep.
+- If you are unsure whether a region can be safely kept, emit it in full instead of using the marker.
 
 REUSE-FIRST PROTOCOL (most important rule):
 The kit at "@/components/ui/*" already provides: Button, Card, Input, Textarea, Label, Badge, Separator, Avatar, Alert, Skeleton, Switch, Tabs, Dialog, Select, Checkbox, RadioGroup, Slider, Progress, Tooltip, Popover, DropdownMenu, Accordion, ScrollArea, Table, Sheet, Drawer, Toast, Calendar, DatePicker, Combobox, Form (+ useForm), Chart (Line/Area/Bar), Router (re-exports react-router-dom: Router/Routes/Route/Link/NavLink/Outlet/Navigate/useNavigate/useParams/useLocation/useSearchParams).
