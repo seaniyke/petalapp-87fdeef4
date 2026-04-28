@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { History, Loader2, RotateCcw, Trash2, Pencil, Pin, Check, X } from "lucide-react";
+import { History, Loader2, RotateCcw, Trash2, Pencil, Pin, Check, X, FileStack } from "lucide-react";
+import { PartialRevertDialog } from "@/components/PartialRevertDialog";
 import {
   Sheet,
   SheetContent,
