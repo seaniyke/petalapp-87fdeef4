@@ -392,7 +392,21 @@ function Landing() {
             <div className="mx-auto h-[7.5rem] max-w-2xl animate-pulse rounded-3xl bg-card/50" aria-hidden="true" />
           ) : isAuthed ? (
             <h1 className="font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
-              Let's build something{firstName ? `, ${firstName}` : ""}.
+              {firstName ? (
+                <>
+                  Let's build something,{" "}
+                  <span className="relative whitespace-nowrap">
+                    <span className="relative z-10 italic">{firstName}</span>
+                    <span
+                      className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50"
+                      aria-hidden
+                    />
+                  </span>
+                  .
+                </>
+              ) : (
+                "Let's build something."
+              )}
             </h1>
           ) : (
             <>
