@@ -10,6 +10,7 @@ import {
   Wallet,
   Globe,
   ArrowRight,
+  Cpu,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
