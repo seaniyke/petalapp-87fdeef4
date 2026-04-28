@@ -210,6 +210,26 @@ export function MobilePreviewFallback({
   }
 
   if (status === "pending") {
+    if (pendingTooLong) {
+      return (
+        <div className="flex h-full w-full items-center justify-center bg-aurora p-6">
+          <div className="max-w-md rounded-2xl border border-amber-500/40 bg-card/90 p-5 text-left shadow-sm backdrop-blur">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500/10 text-amber-600">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-display text-base leading-tight">Build seems stuck</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Your build has been pending for over 5 minutes — the builder may have
+                  dropped this job. Send another message to retry, or check back in a bit.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <EmptyState
         title="Building your live preview…"
