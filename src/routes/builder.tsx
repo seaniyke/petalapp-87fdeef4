@@ -1786,38 +1786,7 @@ function Builder() {
       {/* Low-balance banner — pinned inside the sticky top stack so it never scrolls away. */}
       <RuntimeLowBalanceBanner projectId={project?.id ?? null} />
 
-      {/* Mobile-only tab bar (Chat | Preview). Desktop uses the grid below. */}
-      <div className="flex items-center gap-1 border-t border-border/60 bg-card px-3 py-2 md:hidden">
-        <button
-          onClick={() => setMobileTab("chat")}
-          className={`relative flex-1 rounded-lg px-3 py-2 text-[13px] font-semibold tracking-tight transition ${
-            mobileTab === "chat"
-              ? "bg-foreground text-background shadow-sm"
-              : "text-muted-foreground hover:bg-muted"
-          }`}
-        >
-          Chat
-        </button>
-        <button
-          onClick={() => {
-            setMobileTab("preview");
-            setPreviewHasUpdate(false);
-          }}
-          className={`relative flex-1 rounded-lg px-3 py-2 text-[13px] font-semibold tracking-tight transition ${
-            mobileTab === "preview"
-              ? "bg-foreground text-background shadow-sm"
-              : "text-muted-foreground hover:bg-muted"
-          }`}
-        >
-          Preview
-          {previewHasUpdate && mobileTab !== "preview" && (
-            <span
-              aria-hidden
-              className="absolute right-2 top-1.5 h-1.5 w-1.5 rounded-full bg-primary"
-            />
-          )}
-        </button>
-      </div>
+      {/* Mobile Chat/Preview toggle now lives as a single round button in the header (Lovable-style). */}
       </div>
 
       {/* Mobile builder menu + dependent dialogs */}
