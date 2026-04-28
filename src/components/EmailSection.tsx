@@ -104,10 +104,6 @@ export function EmailSection({ projectId }: { projectId: string }) {
         <Skeleton className="h-24 w-full rounded-lg" />
       ) : !status?.enabled ? (
         <div className="rounded-lg border border-border bg-muted/30 p-4">
-          <div className="mb-3 grid grid-cols-2 gap-3 text-xs">
-            <Stat label="Free" value="100/day · 3,000/mo" />
-            <Stat label="Pro" value="$25/mo · 50,000 emails" />
-          </div>
           <p className="mb-3 text-xs text-muted-foreground">
             Sender: <code className="rounded bg-background px-1.5 py-0.5">noreply@buildwithpetal.com</code>
           </p>
