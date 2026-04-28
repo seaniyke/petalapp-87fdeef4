@@ -46,6 +46,7 @@ export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey }:
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [previewVersion, setPreviewVersion] = useState<VersionRow | null>(null);
+  const [partialVersion, setPartialVersion] = useState<VersionRow | null>(null);
 
   async function refresh() {
     setLoading(true);
