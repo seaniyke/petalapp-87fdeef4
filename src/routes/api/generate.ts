@@ -34,6 +34,8 @@ import { pickDynamicSnippets } from "@/server/dynamic-prompts.server";
 import { autofixFiles } from "@/server/stream-autofixer";
 import { runPostStreamAutofix, shouldRunPostStreamAutofix } from "@/server/post-stream-autofix.server";
 import { fallbackEstimate } from "@/server/preflight-estimate.server";
+import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-classifier.server";
+import { runVerifier, shouldRunVerifier } from "@/server/verifier.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
