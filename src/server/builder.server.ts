@@ -64,16 +64,24 @@ export async function postBuildToRailway(args: {
   projectId: string;
   buildId: string;
   files: ProjectFile[];
+  /**
+   * Skip the "Powered by Petal" badge injection. Defaults to false so EVERY
+   * build pathway shows the badge unless the caller explicitly opts out
+   * (e.g. paid-plan project that has hidden the badge in settings).
+   */
+  hideBadge?: boolean;
 }): Promise<void> {
   const builderUrl = process.env.BUILDER_URL;
   const sharedSecret = process.env.BUILDER_SHARED_SECRET;
   if (!builderUrl) throw new Error("BUILDER_URL is not configured");
   if (!sharedSecret) throw new Error("BUILDER_SHARED_SECRET is not configured");
 
+  const filesToShip = args.hideBadge ? args.files : injectPetalBadge(args.files);
+
   const body = JSON.stringify({
     projectId: args.projectId,
     buildId: args.buildId,
-    files: args.files,
+    files: filesToShip,
   });
   const { timestamp, signature } = signRequest(sharedSecret, body);
 
