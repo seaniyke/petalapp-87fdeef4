@@ -1655,6 +1655,17 @@ function Builder() {
             </div>
           )}
           {project && (
+            <button
+              type="button"
+              onClick={() => setShieldOpen(true)}
+              className="hidden h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted md:grid"
+              title="Petal Shield — security audit"
+              aria-label="Open Petal Shield"
+            >
+              <Shield className="h-4 w-4" />
+            </button>
+          )}
+          {project && (
             <div className="hidden md:block">
               <SharePopover
                 project={project}
