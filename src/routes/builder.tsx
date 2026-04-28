@@ -94,6 +94,7 @@ import { BuilderActionsSheet } from "@/components/BuilderActionsSheet";
 import { PublishSheet } from "@/components/PublishSheet";
 import { RenameProjectDialog } from "@/components/RenameProjectDialog";
 import { BillingSheet } from "@/components/BillingSheet";
+import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import {
   DropdownMenu,
   DropdownMenuContent,
