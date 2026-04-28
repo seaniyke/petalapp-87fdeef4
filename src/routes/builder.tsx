@@ -2078,6 +2078,37 @@ function Builder() {
                               />
                             );
                           })()}
+                        {/* Domain suggestion — same rules as backend chip. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          hasDomain === false &&
+                          !dismissedDomainChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectDomainIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            return (
+                              <AddDomainSuggestionChip
+                                projectId={project.id}
+                                reason={intent.reason}
+                                onOpenDomains={() => {
+                                  setSettingsScrollTo("domains");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={() =>
+                                  setDismissedDomainChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
                       </div>
                     ) : (
                       <div className="whitespace-pre-wrap">{m.content}</div>
