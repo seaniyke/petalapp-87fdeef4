@@ -1847,19 +1847,30 @@ function Builder() {
             mobileTab === "chat" ? "flex" : "hidden"
           }`}
         >
-          <div className="border-b border-border px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Conversation
+          <div className="flex items-center justify-between border-b-2 border-foreground/10 bg-sidebar px-4 py-3">
+            <div className="flex items-center gap-2">
+              <span className="grid h-5 w-5 place-items-center rounded-md bg-foreground text-background">
+                <MessageSquare className="h-3 w-3" />
+              </span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-foreground">
+                Conversation
+              </span>
+            </div>
+            {messages.length > 0 && (
+              <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+                {messages.length}
+              </span>
+            )}
           </div>
           <div className="flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-4">
             {bootstrapping && (
-              <div className="inline-flex items-center gap-2 rounded-2xl bg-card px-3.5 py-2.5 text-sm text-muted-foreground">
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 text-sm text-muted-foreground shadow-sm">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading project…
               </div>
             )}
             {!bootstrapping && messages.length === 0 && !busy && (
-              <div className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
-                Describe an app to start. Try "a calm pomodoro timer with stats" or "a recipe card
-                generator".
+              <div className="rounded-2xl border-2 border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
+                Describe an app to start. Try <span className="font-semibold text-foreground">"a calm pomodoro timer with stats"</span> or <span className="font-semibold text-foreground">"a recipe card generator"</span>.
               </div>
             )}
             {messages.map((m, i) => {
@@ -1871,12 +1882,14 @@ function Builder() {
               return (
                 <div key={i} className="group min-w-0">
                   <div
-                    className={`relative min-w-0 overflow-hidden wrap-anywhere rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed text-foreground ${
-                      isUser ? "ml-3 bg-card sm:ml-6" : "mr-3 bg-secondary sm:mr-6"
+                    className={`relative min-w-0 overflow-hidden wrap-anywhere rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed text-foreground shadow-sm ${
+                      isUser
+                        ? "ml-3 border border-border bg-card sm:ml-6"
+                        : "mr-3 border-l-2 border-foreground bg-secondary sm:mr-6"
                     }`}
                   >
-                    <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      <span>{isUser ? "you" : "petal"}</span>
+                    <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                      <span className={isUser ? "" : "text-foreground"}>{isUser ? "you" : "petal"}</span>
                       {m.role === "assistant" && i === lastDiscussIndex && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-foreground/70">
                           <MessageSquare className="h-2.5 w-2.5" /> discuss
@@ -2308,13 +2321,13 @@ function Builder() {
                 >
                   <ImageIcon className="h-3.5 w-3.5" />
                 </button>
-                <div className="inline-flex items-center rounded-full border border-border bg-background p-0.5 text-[11px]">
+                <div className="inline-flex items-center rounded-full border-2 border-foreground/15 bg-background p-0.5 text-[11px] shadow-sm">
                   <button
                     type="button"
                     onClick={() => setMode("build")}
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold transition ${
                       mode === "build"
-                        ? "bg-foreground text-background"
+                        ? "bg-foreground text-background shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                     title="Petal will write code and update your app"
@@ -2324,9 +2337,9 @@ function Builder() {
                   <button
                     type="button"
                     onClick={() => setMode("discuss")}
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold transition ${
                       mode === "discuss"
-                        ? "bg-foreground text-background"
+                        ? "bg-foreground text-background shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                     title="Chat about changes without touching your files"
@@ -2361,8 +2374,8 @@ function Builder() {
               )}
             </div>
             <div
-              className={`flex items-end gap-2 rounded-2xl border bg-background p-2 focus-within:border-primary ${
-                mode === "discuss" ? "border-foreground/20" : "border-border"
+              className={`flex items-end gap-2 rounded-2xl border-2 bg-background p-2 shadow-sm transition focus-within:border-primary focus-within:shadow-md ${
+                mode === "discuss" ? "border-foreground/25" : "border-border"
               }`}
             >
               <textarea
@@ -2384,13 +2397,13 @@ function Builder() {
                         : "Describe the app you want to build…"
                 }
                 rows={2}
-                className="max-h-40 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
+                className="max-h-40 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground"
                 disabled={bootstrapping}
               />
               <button
                 type="submit"
                 disabled={bootstrapping || !input.trim()}
-                className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground transition hover:brightness-105 disabled:opacity-40"
+                className="grid h-9 w-9 place-items-center rounded-xl bg-foreground text-background shadow-md transition hover:scale-105 hover:shadow-lg active:scale-95 disabled:opacity-30 disabled:shadow-none disabled:hover:scale-100"
                 title={
                   busy || discussBusy
                     ? "Add to queue"
@@ -2504,8 +2517,8 @@ function Builder() {
             </div>
           ) : (
             <div className="grid min-h-0 flex-1 grid-cols-[140px_1fr] sm:grid-cols-[200px_1fr]">
-              <div className="min-h-0 overflow-y-auto border-r border-border bg-sidebar/40">
-                <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="min-h-0 overflow-y-auto border-r-2 border-foreground/10 bg-sidebar">
+                <div className="sticky top-0 z-10 border-b-2 border-foreground/10 bg-sidebar px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.18em] text-foreground">
                   Files
                 </div>
                 {files.length === 0 && (
@@ -2515,14 +2528,14 @@ function Builder() {
                   <button
                     key={f.path}
                     onClick={() => setActiveFile(f.path)}
-                    className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs ${
+                    className={`flex w-full items-center gap-2 border-l-2 px-3 py-1.5 text-left text-xs transition ${
                       activeFile === f.path
-                        ? "bg-card font-medium"
-                        : "text-muted-foreground hover:bg-card/60"
+                        ? "border-foreground bg-card font-semibold text-foreground"
+                        : "border-transparent text-muted-foreground hover:border-foreground/20 hover:bg-card/60 hover:text-foreground"
                     }`}
                   >
-                    <FileCode2 className="h-3.5 w-3.5" />
-                    {f.path}
+                    <FileCode2 className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{f.path}</span>
                   </button>
                 ))}
               </div>
