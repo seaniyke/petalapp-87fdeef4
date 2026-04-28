@@ -220,6 +220,19 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
 }
 
 /** Exposed for diagnostics / admin tooling. */
-export function currentProviderFor(feature: AiFeature): Provider {
+export async function currentProviderFor(feature: AiFeature): Promise<Provider> {
   return resolveProvider(feature);
 }
+
+/** Exposed for the admin status page — read-only snapshot of all features. */
+export const ALL_AI_FEATURES: AiFeature[] = [
+  "generate",
+  "discuss",
+  "triage",
+  "coach",
+  "design",
+  "memory",
+  "recovery",
+  "preflight",
+  "image",
+];
