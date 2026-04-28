@@ -240,32 +240,16 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
         </div>
       )}
 
-      {hasPublishedBuild && !loading && (
+      {hasPublishedBuild && !loading && hasAvailableSlot && (
         <div className="mb-3 rounded-lg border border-border bg-muted/20 p-2.5 text-[11px]">
-          {hasAvailableSlot ? (
-            <p className="text-muted-foreground">
-              <span className="font-medium text-foreground">
-                {availableSlots.length} domain slot{availableSlots.length === 1 ? "" : "s"} available
-              </span>
-              {nextExpiry && (
-                <> · expires {nextExpiry.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</>
-              )}
-            </p>
-          ) : (
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-muted-foreground">
-                Custom domains require a slot — $12 for 12 months.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowBuySlot(true)}
-                className="h-7 px-2 text-[11px]"
-              >
-                Buy slot
-              </Button>
-            </div>
-          )}
+          <p className="text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {availableSlots.length} purchased domain{availableSlots.length === 1 ? "" : "s"} available
+            </span>
+            {nextExpiry && (
+              <> · renews {nextExpiry.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</>
+            )}
+          </p>
         </div>
       )}
 
