@@ -293,6 +293,24 @@ export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey }:
         onConfirm={confirmRestore}
         confirmLabel="Restore this version"
       />
+      <PartialRevertDialog
+        version={partialVersion}
+        currentFiles={currentFiles}
+        open={partialVersion !== null}
+        onOpenChange={(o) => {
+          if (!o) setPartialVersion(null);
+        }}
+        onApply={async (mergedFiles) => {
+          if (currentFiles.length) {
+            await createVersion(projectId, currentFiles, {
+              origin: "auto",
+              label: "Before partial revert",
+            });
+          }
+          await onRestore(mergedFiles);
+          await refresh();
+        }}
+      />
     </Sheet>
   );
 }
