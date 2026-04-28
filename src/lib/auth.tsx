@@ -20,17 +20,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
     let subscription: { unsubscribe: () => void } | undefined;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      setIsReady(true);
-
-      const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-        setSession(nextSession);
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!mounted) return;
+        setSession(data.session);
         setIsReady(true);
+
+        const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+          setSession(nextSession);
+          setIsReady(true);
+        });
+        subscription = sub.subscription;
+      })
+      .catch(() => {
+        if (mounted) setIsReady(true);
       });
-      subscription = sub.subscription;
-    });
 
     return () => {
       mounted = false;
