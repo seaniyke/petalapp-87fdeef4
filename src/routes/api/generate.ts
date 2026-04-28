@@ -36,6 +36,7 @@ import { runPostStreamAutofix, shouldRunPostStreamAutofix } from "@/server/post-
 import { fallbackEstimate } from "@/server/preflight-estimate.server";
 import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-classifier.server";
 import { runVerifier, shouldRunVerifier } from "@/server/verifier.server";
+import { verifyFilesLocal } from "@/server/local-verifier";
 import { pickBestModel } from "@/server/smart-router.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
@@ -654,11 +655,38 @@ export const Route = createFileRoute("/api/generate")({
                 );
               }
 
+              // Tier 2.5 — DETERMINISTIC local verifier (no model call).
+              // Catches truncated streams + unbalanced JSX/braces that the
+              // model verifier sometimes misses. If it fires, we HARD-TRIGGER
+              // the post-stream autofix model (no gating).
+              const earlyChangedPaths =
+                collected.name === "write_project"
+                  ? nextFiles.map((f) => f.path)
+                  : (parsed.ops ?? []).map((o) => o.path);
+              const localVerdict = verifyFilesLocal(nextFiles, earlyChangedPaths);
+              if (!localVerdict.ok) {
+                console.warn(
+                  `[local-verifier] ${localVerdict.issues.length} issue(s):`,
+                  localVerdict.issues
+                    .map((i) => `${i.path} (${i.kind}): ${i.detail}`)
+                    .join("; "),
+                );
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "status",
+                      message: `Detected ${localVerdict.issues.length} structural issue${localVerdict.issues.length === 1 ? "" : "s"} — repairing…`,
+                    }),
+                  ),
+                );
+              }
+
               // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
               // pass that ONLY fixes obvious build-breakers. Gated so 90%
-              // of turns never pay the cost.
+              // of turns never pay the cost — UNLESS local verifier failed.
               const preflightKind = fallbackEstimate(lastUserContent).kind;
               if (
+                !localVerdict.ok ||
                 shouldRunPostStreamAutofix({
                   autofixCount: autofixOut.report.fixedCount,
                   preflightKind,
@@ -691,10 +719,7 @@ export const Route = createFileRoute("/api/generate")({
               // obvious compile/import/JSX issues. If it flags anything,
               // emit a `verifier_warning` SSE event AND run the autofix
               // model one more time to recover. Skipped for trivial turns.
-              const changedPaths =
-                collected.name === "write_project"
-                  ? nextFiles.map((f) => f.path)
-                  : (parsed.ops ?? []).map((o) => o.path);
+              const changedPaths = earlyChangedPaths;
               if (shouldRunVerifier({ fileCount: nextFiles.length, changedPaths })) {
                 try {
                   const verdict = await runVerifier(nextFiles, changedPaths);
