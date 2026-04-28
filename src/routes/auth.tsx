@@ -116,6 +116,19 @@ function AuthPage() {
     }
   }
 
+  // While the session is being restored from storage — or when we already
+  // have a user and are about to redirect — render a quiet placeholder
+  // instead of the sign-in form. Otherwise the form flashes for a frame
+  // before the effect above bounces the user to /projects.
+  if (loading || user) {
+    return (
+      <div className="relative min-h-screen overflow-hidden bg-background">
+        <div className="absolute inset-0 bg-aurora opacity-70" aria-hidden />
+        <div className="absolute inset-0 bg-grain opacity-40" aria-hidden />
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
       <div className="absolute inset-0 bg-aurora opacity-70" aria-hidden />
