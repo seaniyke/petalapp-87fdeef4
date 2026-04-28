@@ -227,7 +227,7 @@ If you find yourself styling a primitive HTML element to look like a UI control,
 
 Hard rules:
 - DO NOT include unchanged files. Only emit operations for files you actually create, modify, or delete.
-- For "update" and "create", "content" MUST be the COMPLETE file contents (not a diff, not a snippet).
+- For "update", "content" should be the file's new contents — either fully expanded OR using "// ... keep existing code ..." markers (see protocol above) to elide unchanged regions. For "create", always emit the COMPLETE file contents (no markers).
 - DO NOT modify files under "src/components/ui/*" — that's the canonical UI kit. If you need a component the kit doesn't have, create a NEW file under "src/components/" (not under ui/).
 - DO NOT modify "vite.config.ts", "tsconfig.json", or "src/lib/utils.ts" unless absolutely necessary.
 - MUST use Tailwind utility classes. NEVER inline \`style={{}}\` (except dynamic values) or custom CSS classes.
