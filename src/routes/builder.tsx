@@ -30,6 +30,7 @@ import {
   ImageIcon,
   Globe,
   FileText,
+  Shield,
 } from "lucide-react";
 import {
   encodeAttachments,
