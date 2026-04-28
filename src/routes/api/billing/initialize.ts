@@ -46,6 +46,27 @@ export const Route = createFileRoute("/api/billing/initialize")({
         }
 
         try {
+          // Top-up packs and project add-ons require an active paid plan.
+          // We gate this server-side so a free-tier user can't bypass the
+          // UI and POST directly to /api/billing/initialize.
+          if (parsed.purpose === "pack" || parsed.purpose === "addon") {
+            const { data: walletRow } = await supabaseAdmin
+              .from("user_wallets")
+              .select("plan_code")
+              .eq("user_id", userData.user.id)
+              .maybeSingle();
+            const planCode = walletRow?.plan_code ?? "free";
+            if (planCode === "free") {
+              return new Response(
+                JSON.stringify({
+                  error: "Upgrade to a paid plan to buy credits.",
+                  code: "upgrade_required",
+                }),
+                { status: 403, headers: { "Content-Type": "application/json" } },
+              );
+            }
+          }
+
           // Add-on purchases must be tied to a project the caller owns.
           if (parsed.purpose === "addon") {
             if (!parsed.projectId) {
