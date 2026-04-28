@@ -100,13 +100,16 @@ import { BillingSheet } from "@/components/BillingSheet";
 import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
+import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
 import { PreflightCostChip } from "@/components/PreflightCostChip";
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { SharePreviewDialog } from "@/components/SharePreviewDialog";
 import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
+import { detectDomainIntentInTurn } from "@/lib/domain-intent";
 import { getProjectBackend } from "@/lib/projects";
+import { listDomains } from "@/lib/domains";
 import { useWallet } from "@/hooks/use-wallet";
 import {
   DropdownMenu,
@@ -270,9 +273,13 @@ function Builder() {
   // Whether this project already has a backend (BYO or managed). When unknown
   // we treat as "not connected" but suppress the chip until we've checked.
   const [hasBackend, setHasBackend] = useState<boolean | null>(null);
+  const [hasDomain, setHasDomain] = useState<boolean | null>(null);
   // Per-message dismissal of the "Add backend" inline suggestion. Keyed by
   // assistant message index so dismissing once doesn't kill it forever.
   const [dismissedBackendChips, setDismissedBackendChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedDomainChips, setDismissedDomainChips] = useState<Set<number>>(
     () => new Set(),
   );
   const { plan: currentPlan } = useWallet();
@@ -658,9 +665,31 @@ function Builder() {
     };
   }, [project?.id]);
 
+  // Look up whether this project already has a custom domain attached. Same
+  // pattern as hasBackend — chip only shows when this resolves to false.
+  useEffect(() => {
+    if (!project?.id) {
+      setHasDomain(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await listDomains(project.id);
+        if (!cancelled) setHasDomain(Array.isArray(list) && list.length > 0);
+      } catch {
+        if (!cancelled) setHasDomain(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [project?.id]);
+
   // Reset chip dismissals when switching projects.
   useEffect(() => {
     setDismissedBackendChips(new Set());
+    setDismissedDomainChips(new Set());
   }, [project?.id]);
 
   // Mirror the composer text, queued messages, and pending attachments to
@@ -2041,6 +2070,37 @@ function Builder() {
                                 onUpgrade={() => setBillingOpen(true)}
                                 onDismiss={() =>
                                   setDismissedBackendChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
+                        {/* Domain suggestion — same rules as backend chip. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          hasDomain === false &&
+                          !dismissedDomainChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectDomainIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            return (
+                              <AddDomainSuggestionChip
+                                projectId={project.id}
+                                reason={intent.reason}
+                                onOpenDomains={() => {
+                                  setSettingsScrollTo("domains");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={() =>
+                                  setDismissedDomainChips((prev) => {
                                     const next = new Set(prev);
                                     next.add(i);
                                     return next;
