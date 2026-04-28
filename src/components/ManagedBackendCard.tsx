@@ -140,10 +140,10 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
           <div className="flex items-start gap-2">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <div className="flex-1">
-              <p className="text-sm font-medium">Auto-provision a backend</p>
+              <p className="text-sm font-medium">Add Petal Cloud backend</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Don't have a Supabase project? Petal can spin one up for you and wire it in
-                automatically. Renews every 30 days.
+                Auth, database and file storage — fully managed by Petal. We provision and
+                wire it in automatically. Renews every 30 days.
               </p>
             </div>
           </div>
@@ -153,7 +153,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
             className="mt-3 inline-flex items-center gap-1.5"
           >
             <Sparkles className="h-3.5 w-3.5" />
-            Auto-provision (paid)
+            Enable Petal Cloud
           </Button>
         </div>
         <BuyBackendSlotDialog
