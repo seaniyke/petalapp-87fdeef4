@@ -366,6 +366,3 @@ function ProviderBadge({ provider }: { provider: "lovable" | "openrouter" }) {
     </span>
   );
 }
-
-// Suppress unused import warning — Button reserved for future use.
-void Button;
