@@ -402,8 +402,16 @@ export const Route = createFileRoute("/api/generate")({
           ? "\n\nThe user attached one or more reference images with their latest message. Treat them as design references — match the layout, color palette, typography style, spacing, and overall mood as closely as the kit components allow. Describe in your summary which parts you matched and which you adapted."
           : "";
 
+        // Tier 2 — dynamic system-prompt snippets. Append reinforcement
+        // blocks for topics the user mentioned (charts, forms, auth, etc.)
+        // — raises success rate without bloating every prompt.
+        const dynamic = pickDynamicSnippets({
+          messages,
+          hasBackend: Boolean(backend),
+        });
+
         const chatMessages = [
-          { role: "system", content: baseSystem + backendBlock + integrationsBlock + knowledgeBlock + memoryBlock + designBlock + visionAddendum + filesContext },
+          { role: "system", content: baseSystem + backendBlock + integrationsBlock + knowledgeBlock + memoryBlock + designBlock + dynamic.text + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {
