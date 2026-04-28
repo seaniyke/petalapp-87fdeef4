@@ -36,6 +36,12 @@ function formatSeconds(s: number): string {
   return `~${Math.round(s / 60)}m`;
 }
 
+function makeTimeout(ms: number): Promise<PreflightEstimate> {
+  return new Promise((_, reject) => {
+    window.setTimeout(() => reject(new Error("estimate timed out")), ms);
+  });
+}
+
 type Props = {
   prompt: string;
   /** Don't fire while the user is busy generating. */
@@ -105,9 +111,7 @@ export function PreflightCostChip({ prompt, disabled, className }: Props) {
       try {
         const result = await Promise.race([
           estimateFn({ data: { prompt: trimmed } }),
-          new Promise<PreflightEstimate>((resolve) => {
-            window.setTimeout(() => resolve(localEstimate(trimmed)), 3500);
-          }),
+          makeTimeout(3500),
         ]);
         // Drop late responses if the prompt has changed
         if (lastRequest.current !== trimmed) return;
@@ -115,7 +119,9 @@ export function PreflightCostChip({ prompt, disabled, className }: Props) {
         setEstimate(result);
       } catch (e) {
         console.warn("[preflight] estimate failed", e);
-        setEstimate(null);
+        const fallback = localEstimate(trimmed);
+        cache.set(trimmed, fallback);
+        setEstimate(fallback);
       } finally {
         if (lastRequest.current === trimmed) setLoading(false);
       }
