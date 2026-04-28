@@ -224,6 +224,9 @@ export function ProjectSettingsSheet({
           </div>
         </div>
 
+        {/* Powered by Petal badge toggle */}
+        <PetalBadgeSection project={project} onChange={onChange} />
+
         {/* Integrations marketplace — gated by Labs flag */}
         <IntegrationsSectionGated projectId={project.id} />
 
