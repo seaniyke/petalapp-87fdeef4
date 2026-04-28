@@ -177,6 +177,17 @@ export async function deleteProject(id: string) {
   if (error) throw error;
 }
 
+export async function setProjectStarred(id: string, is_starred: boolean): Promise<ProjectRow> {
+  const { data, error } = await supabase
+    .from("projects")
+    .update({ is_starred } as never)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function updateProject(
   id: string,
   patch: Partial<Pick<ProjectRow, "title" | "summary" | "is_public" | "custom_instructions" | "slug" | "hide_petal_badge">>
