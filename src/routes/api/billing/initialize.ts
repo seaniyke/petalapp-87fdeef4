@@ -16,11 +16,13 @@ import { resolvePrice } from "@/server/billing-pricing.server";
 const SUPPORTED_CURRENCIES = ["NGN", "GHS", "KES", "ZAR", "USD"] as const;
 
 const Body = z.object({
-  purpose: z.enum(["plan", "pack", "addon"]),
+  purpose: z.enum(["plan", "pack", "addon", "runtime_topup"]),
   itemCode: z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/),
   currency: z.enum(SUPPORTED_CURRENCIES),
   returnUrl: z.string().url().max(500),
   projectId: z.string().uuid().optional(),
+  // For runtime_topup with custom amount: amount in display-currency minor units (e.g. kobo)
+  customAmountMinor: z.number().int().positive().max(100_000_000).optional(),
 });
 
 export const Route = createFileRoute("/api/billing/initialize")({
