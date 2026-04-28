@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function SiteHeader() {
-  const { user, signOut } = useAuth();
+  const { user, isReady, signOut } = useAuth();
   const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
 
@@ -73,7 +73,14 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {user ? (
+          {!isReady ? (
+            // Neutral placeholder while the session restores from storage.
+            // Prevents a flash of the signed-out CTAs on refresh.
+            <div
+              aria-hidden="true"
+              className="h-9 w-24 rounded-full bg-muted/40 animate-pulse"
+            />
+          ) : user ? (
             <>
               <Link
                 to="/projects"
