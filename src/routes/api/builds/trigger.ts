@@ -29,6 +29,7 @@ import { postBuildToRailway } from "@/server/builder.server";
 import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { syncViteAliasesWithTsconfig } from "@/server/sync-vite-aliases.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
+import { autofixFiles } from "@/server/stream-autofixer";
 import {
   buildIntegrationEnvFiles,
   mergeFilesIntoPayload,
@@ -143,7 +144,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
         //     stylesheet to take the whole deploy down — the user can keep
         //     iterating on the rest of the app, and Petal can fix the CSS on
         //     the next turn.
-        const buildFiles = aliasFixed.map((f) => {
+        const styleSafeFiles = aliasFixed.map((f) => {
           if (f.path !== "src/styles.css") return f;
           const result = validateStylesCss(f.content);
           if (result.ok) return f;
@@ -153,7 +154,17 @@ export const Route = createFileRoute("/api/builds/trigger")({
           return { ...f, content: STYLES_CSS };
         });
 
-        // 2e) Inject env files for installed integrations. This loads each
+        // 2e) Runtime-crash guard: fix deterministic React footguns that pass
+        //     `vite build` but blank the deployed app, especially React.lazy
+        //     targeting named-only page exports (React error #306).
+        const { files: buildFiles, report: buildAutofix } = autofixFiles(styleSafeFiles);
+        if (buildAutofix.fixedCount > 0) {
+          console.warn(
+            `[build-autofix] project=${projectId} ${buildAutofix.fixedCount} fix(es): ${buildAutofix.notes.join("; ")}`,
+          );
+        }
+
+        // 2f) Inject env files for installed integrations. This loads each
         //     integration's public options + decrypted secrets and renders
         //     `.env.production` (Vite-consumed at build time) and `.dev.vars`
         //     (Cloudflare convention for Pages/Workers runtime + local dev).

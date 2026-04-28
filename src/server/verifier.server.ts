@@ -53,6 +53,7 @@ LOOK FOR:
 - Missing braces / parens / semicolons that prevent parsing
 - Adjacent JSX elements not wrapped in a fragment in a return
 - Obvious type errors (calling a non-function, accessing .map on a non-array literal, etc.)
+- React.lazy(() => import("...")) pointing at files that only export named components, which renders undefined and crashes React.
 - Tailwind v3 directives in styles.css (@tailwind base/components/utilities)
 
 DO NOT FLAG:
