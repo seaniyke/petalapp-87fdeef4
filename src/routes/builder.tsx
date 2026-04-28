@@ -1553,7 +1553,8 @@ function Builder() {
         <FirstRunTour />
       </Suspense>
       {/* Top bar */}
-      <header className="safe-top sticky top-0 z-30 grid h-14 shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border bg-card/80 px-3 backdrop-blur sm:px-4">
+      <div className="safe-top sticky top-0 z-30 shrink-0 border-b border-border bg-card shadow-[0_1px_0_0_oklch(0.91_0.018_70),0_8px_24px_-16px_oklch(0.2_0.04_30/0.12)]">
+      <header className="grid h-14 grid-cols-[auto_1fr_auto] items-center gap-2 px-3 sm:px-4">
         {/* Left: hamburger (mobile) + back/title (desktop) */}
         <div className="flex min-w-0 items-center gap-2">
           {/* Mobile: hamburger opens the projects drawer */}
