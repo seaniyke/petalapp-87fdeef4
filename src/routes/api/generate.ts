@@ -54,6 +54,10 @@ type Body = {
   customInstructions?: string;
   /** Required to look up the project's attached backend (BYO Supabase). */
   projectId?: string;
+  /** When true, this run is a free internal auto-fix triggered by Petal
+   *  itself after a failed build. Skip credit charging — the user did not
+   *  ask for this turn, Petal is fixing its own mistake. */
+  isAutoFix?: boolean;
 };
 
 const MODEL_FAST = "google/gemini-3-flash-preview";
