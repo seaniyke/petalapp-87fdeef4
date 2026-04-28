@@ -1,37 +1,53 @@
 /**
- * Detect when a chat turn implies the user wants email functionality
- * (transactional or notification emails — NOT auth emails which are handled
- * by the backend integration).
+ * Lightweight email-intent detector. Mirrors domain-intent.ts. Runs client-side
+ * over the latest user message + assistant reply so we can show an inline
+ * "Enable Petal Email?" suggestion chip in the chat. False positives are fine
+ * — the chip is dismissible.
  *
- * Mirrors the pattern used by domain-intent.ts and the backend chip.
+ * Excludes signals that are clearly about authentication emails (password
+ * reset, verification, magic link) since those are handled by the backend.
  */
 
-const STRONG_SIGNALS = [
-  /\bsend (an? )?email/i,
-  /\bemail (the )?(user|customer|client|me|admin|recipient)/i,
-  /\b(contact|booking|order|signup|welcome) (form )?(email|notification|confirm)/i,
-  /\bnotify (by|via) email/i,
-  /\b(mailgun|sendgrid|postmark|mandrill|ses)\b/i,
+const STRONG_SIGNALS: RegExp[] = [
+  /\bsend (an? |the )?email\b/i,
+  /\bemail (the |a )?(user|customer|client|admin|recipient|me|them|user's)\b/i,
+  /\b(contact|booking|order|signup|welcome|reservation|inquiry) (form )?(email|notification|confirm(ation)?)/i,
+  /\bnotify (the )?(user|customer|admin|me) (by|via) email\b/i,
+  /\b(mailgun|sendgrid|postmark|mandrill|aws ses|amazon ses|brevo|sendinblue)\b/i,
   /\bnewsletter\b/i,
   /\btransactional emails?\b/i,
-  /\bmagic link\b/i,
-  /\bemail receipt\b/i,
+  /\bemail receipts?\b/i,
+  /\bemail (notification|confirmation|reminder|digest|report)s?\b/i,
   /\bsmtp\b/i,
-  /\bresend\b/i,
+  /\bemail (api|service|provider)\b/i,
+  /\b(petal email|resend)\b/i,
+  /\bcontact form (and )?email\b/i,
 ];
 
-const WEAK_SIGNALS = [/\bemails?\b/i, /\binbox\b/i, /\bnotification\b/i];
+const MIN_LENGTH = 8;
 
-interface ChatTurn {
-  user?: string;
-  assistant?: string;
+export type EmailIntent = {
+  detected: boolean;
+  reason?: string;
+};
+
+export function detectEmailIntent(text: string | null | undefined): EmailIntent {
+  if (!text) return { detected: false };
+  const t = text.trim();
+  if (t.length < MIN_LENGTH) return { detected: false };
+
+  for (const re of STRONG_SIGNALS) {
+    const m = t.match(re);
+    if (m) return { detected: true, reason: m[0].toLowerCase() };
+  }
+  return { detected: false };
 }
 
-export function detectEmailIntentInTurn(turn: ChatTurn): boolean {
-  const text = `${turn.user ?? ""}\n${turn.assistant ?? ""}`;
-  if (!text.trim()) return false;
-  if (STRONG_SIGNALS.some((re) => re.test(text))) return true;
-  // Require two weak signals to avoid false positives on the word "email".
-  const weakHits = WEAK_SIGNALS.filter((re) => re.test(text)).length;
-  return weakHits >= 2;
+export function detectEmailIntentInTurn(
+  userText: string | null | undefined,
+  assistantText: string | null | undefined,
+): EmailIntent {
+  const a = detectEmailIntent(userText);
+  if (a.detected) return a;
+  return detectEmailIntent(assistantText);
 }
