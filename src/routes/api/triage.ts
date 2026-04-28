@@ -38,6 +38,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { loadProjectMemoryBlock } from "@/server/project-memory.server";
+import { aiChatCompletions } from "@/server/ai-provider.server";
 
 type Body = {
   messages: ChatMessage[];
