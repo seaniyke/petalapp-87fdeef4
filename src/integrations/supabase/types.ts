@@ -14,21 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_call_log: {
+        Row: {
+          completion_tokens: number | null
+          cost_usd_micro: number | null
+          created_at: string
+          error_message: string | null
+          fallback_used: boolean
+          feature: string
+          id: string
+          latency_ms: number | null
+          model: string | null
+          prompt_tokens: number | null
+          provider: string
+          status: number
+          total_tokens: number | null
+        }
+        Insert: {
+          completion_tokens?: number | null
+          cost_usd_micro?: number | null
+          created_at?: string
+          error_message?: string | null
+          fallback_used?: boolean
+          feature: string
+          id?: string
+          latency_ms?: number | null
+          model?: string | null
+          prompt_tokens?: number | null
+          provider: string
+          status: number
+          total_tokens?: number | null
+        }
+        Update: {
+          completion_tokens?: number | null
+          cost_usd_micro?: number | null
+          created_at?: string
+          error_message?: string | null
+          fallback_used?: boolean
+          feature?: string
+          id?: string
+          latency_ms?: number | null
+          model?: string | null
+          prompt_tokens?: number | null
+          provider?: string
+          status?: number
+          total_tokens?: number | null
+        }
+        Relationships: []
+      }
       ai_provider_settings: {
         Row: {
+          fallback_model: string | null
           feature: string
+          model: string | null
           provider: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          fallback_model?: string | null
           feature: string
+          model?: string | null
           provider: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          fallback_model?: string | null
           feature?: string
+          model?: string | null
           provider?: string
           updated_at?: string
           updated_by?: string | null
