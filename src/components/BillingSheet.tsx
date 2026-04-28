@@ -53,6 +53,7 @@ export function BillingSheet({ open, onOpenChange }: Props) {
   const [overrides, setOverrides] = useState<PriceOverride[]>([]);
   const [currency, setCurrency] = useState<string>("USD");
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [selectedPackCode, setSelectedPackCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
