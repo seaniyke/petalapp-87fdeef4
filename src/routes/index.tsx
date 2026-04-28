@@ -191,6 +191,11 @@ function Landing() {
   const [projects, setProjects] = useState<ProjectRow[] | null>(null);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>("all");
+  // Community-wide public projects, lazy-loaded the first time the user
+  // clicks the "Public" filter chip. Separate state from `projects` so
+  // switching back to All/Recent doesn't lose their own list.
+  const [communityPublic, setCommunityPublic] = useState<ProjectRow[] | null>(null);
+  const [communityLoading, setCommunityLoading] = useState(false);
   useEffect(() => {
     if (!isReady || !isAuthed) {
       setProjects(null);
@@ -212,6 +217,27 @@ function Landing() {
       cancelled = true;
     };
   }, [isReady, isAuthed]);
+
+  // Lazy-fetch the community Public list the first time the user opens it.
+  useEffect(() => {
+    if (projectFilter !== "public") return;
+    if (communityPublic !== null || communityLoading) return;
+    let cancelled = false;
+    setCommunityLoading(true);
+    listPublicProjects(60)
+      .then((rows) => {
+        if (!cancelled) setCommunityPublic(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setCommunityPublic([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCommunityLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectFilter, communityPublic, communityLoading]);
 
   // When the user clicks "+ New project" on /projects we route them here with
   // ?focus=composer. Drop the cursor in the textarea and scroll it into view
