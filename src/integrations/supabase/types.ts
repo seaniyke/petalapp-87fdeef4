@@ -1282,6 +1282,81 @@ export type Database = {
           },
         ]
       }
+      purchased_domains: {
+        Row: {
+          auto_renew: boolean
+          charged_cents: number
+          charged_minor: number
+          connected_domain_id: string | null
+          created_at: string
+          currency_code: string
+          error_message: string | null
+          expires_at: string | null
+          hostname: string
+          id: string
+          paystack_reference: string | null
+          project_id: string
+          registered_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          wholesale_cost_cents: number
+        }
+        Insert: {
+          auto_renew?: boolean
+          charged_cents: number
+          charged_minor: number
+          connected_domain_id?: string | null
+          created_at?: string
+          currency_code: string
+          error_message?: string | null
+          expires_at?: string | null
+          hostname: string
+          id?: string
+          paystack_reference?: string | null
+          project_id: string
+          registered_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          wholesale_cost_cents: number
+        }
+        Update: {
+          auto_renew?: boolean
+          charged_cents?: number
+          charged_minor?: number
+          connected_domain_id?: string | null
+          created_at?: string
+          currency_code?: string
+          error_message?: string | null
+          expires_at?: string | null
+          hostname?: string
+          id?: string
+          paystack_reference?: string | null
+          project_id?: string
+          registered_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          wholesale_cost_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchased_domains_connected_domain_id_fkey"
+            columns: ["connected_domain_id"]
+            isOneToOne: false
+            referencedRelation: "project_domains"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchased_domains_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       runtime_ledger: {
         Row: {
           created_at: string
