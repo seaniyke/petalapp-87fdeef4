@@ -286,6 +286,10 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     latencyMs: latency,
     fallbackUsed: false,
     errorMessage: `Primary failed HTTP ${primary.status}, retrying with fallback`,
+    phase: opts.meta?.phase ?? null,
+    promptChars: opts.meta?.promptChars ?? null,
+    hadAttachments: opts.meta?.hadAttachments ?? false,
+    chosenBy: opts.meta?.chosenBy ?? null,
   });
 
   const fallbackBody = { ...opts.body, model: fallback };
@@ -301,6 +305,10 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     latencyMs: retryLatency,
     fallbackUsed: true,
     errorMessage: retried.ok ? null : `HTTP ${retried.status}`,
+    phase: opts.meta?.phase ?? null,
+    promptChars: opts.meta?.promptChars ?? null,
+    hadAttachments: opts.meta?.hadAttachments ?? false,
+    chosenBy: opts.meta?.chosenBy ?? null,
   });
 
   return retried;
