@@ -12,7 +12,6 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -30,14 +29,47 @@ import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  listAiProviderSettings,
-  setAiProviderSetting,
-  getAiCostSummary,
-  type AiFeatureRow,
-  type AiCostRow,
-} from "@/server/ai-provider.functions";
+import { supabase } from "@/integrations/supabase/client";
+import type {
+  AiFeatureRow,
+  AiCostRow,
+  SetProviderInput,
+} from "@/server/ai-provider-admin.server";
 import type { AiFeature } from "@/server/ai-provider.server";
+
+/**
+ * Call the admin API with the user's Supabase access token. We use a plain
+ * fetch (not `useServerFn`) because TanStack's `createServerFn` does NOT
+ * forward the Supabase bearer token — see `routes/api/admin/ai-providers.ts`.
+ */
+async function callAdminApi<T>(
+  action: "list" | "set" | "costs",
+  payload: Record<string, unknown> = {},
+): Promise<T> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error("Not signed in");
+
+  const res = await fetch("/api/admin/ai-providers", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  if (!res.ok) {
+    let msg = `Request failed (${res.status})`;
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) msg = body.error;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(msg);
+  }
+  return (await res.json()) as T;
+}
 
 export const Route = createFileRoute("/admin/ai-providers")({
   head: () => ({
