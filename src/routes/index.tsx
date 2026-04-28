@@ -8,7 +8,7 @@ import { IdeaCoach } from "@/components/IdeaCoach";
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { listProjects, type ProjectRow } from "@/lib/projects";
+import { listProjects, listPublicProjects, type ProjectRow } from "@/lib/projects";
 import {
   ArrowRight,
   ArrowUp,
@@ -191,6 +191,11 @@ function Landing() {
   const [projects, setProjects] = useState<ProjectRow[] | null>(null);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>("all");
+  // Community-wide public projects, lazy-loaded the first time the user
+  // clicks the "Public" filter chip. Separate state from `projects` so
+  // switching back to All/Recent doesn't lose their own list.
+  const [communityPublic, setCommunityPublic] = useState<ProjectRow[] | null>(null);
+  const [communityLoading, setCommunityLoading] = useState(false);
   useEffect(() => {
     if (!isReady || !isAuthed) {
       setProjects(null);
@@ -212,6 +217,27 @@ function Landing() {
       cancelled = true;
     };
   }, [isReady, isAuthed]);
+
+  // Lazy-fetch the community Public list the first time the user opens it.
+  useEffect(() => {
+    if (projectFilter !== "public") return;
+    if (communityPublic !== null || communityLoading) return;
+    let cancelled = false;
+    setCommunityLoading(true);
+    listPublicProjects(60)
+      .then((rows) => {
+        if (!cancelled) setCommunityPublic(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setCommunityPublic([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCommunityLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectFilter, communityPublic, communityLoading]);
 
   // When the user clicks "+ New project" on /projects we route them here with
   // ?focus=composer. Drop the cursor in the textarea and scroll it into view
@@ -609,17 +635,23 @@ function Landing() {
             <div className="mt-24 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 sm:mt-28">
               <div className="flex items-center gap-3">
                 <h2 className="font-display text-[1.75rem] font-semibold tracking-tight sm:text-4xl">
-                  My projects
+                  {projectFilter === "public" ? "Public projects" : "My projects"}
                 </h2>
-                {projects && projects.length > 0 && (
-                  <span className="rounded-full border border-border bg-card px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                    {projects.length}
-                  </span>
-                )}
+                {projectFilter === "public"
+                  ? communityPublic && communityPublic.length > 0 && (
+                      <span className="rounded-full border border-border bg-card px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                        {communityPublic.length}
+                      </span>
+                    )
+                  : projects && projects.length > 0 && (
+                      <span className="rounded-full border border-border bg-card px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                        {projects.length}
+                      </span>
+                    )}
               </div>
 
               {/* Filter chips — Lovable-style segmented pills */}
-              {projects && projects.length > 0 && (
+              {((projects && projects.length > 0) || projectFilter === "public") && (
                 <div className="flex items-center gap-2">
                   <div className="inline-flex items-center gap-1 rounded-full border border-border bg-card/60 p-1 text-xs">
                     {(
@@ -658,7 +690,59 @@ function Landing() {
             </div>
 
             <div className="mt-8">
-              {projectsLoading || projects === null ? (
+              {projectFilter === "public" ? (
+                // Community discovery: every public project across Petal,
+                // linked through to the read-only /p/$slug page (since the
+                // current user doesn't own them).
+                communityLoading || communityPublic === null ? (
+                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-64 animate-pulse rounded-3xl border border-border bg-card/60"
+                      />
+                    ))}
+                  </div>
+                ) : communityPublic.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-border bg-card/40 p-10 text-center text-sm text-muted-foreground">
+                    No public projects yet — be the first to share one.
+                  </div>
+                ) : (
+                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    {communityPublic.slice(0, 9).map((p) => (
+                      <Link
+                        key={p.id}
+                        to="/p/$slug"
+                        params={{ slug: p.slug }}
+                        className="group relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card/80 transition hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-[var(--shadow-soft)]"
+                      >
+                        <div className="relative">
+                          <ProjectThumbnail projectId={p.id} className="h-36 sm:h-40" />
+                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
+                          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground backdrop-blur">
+                            <Globe className="h-3 w-3" /> Public
+                          </span>
+                        </div>
+                        <div className="flex flex-1 flex-col p-5">
+                          <h3 className="truncate font-display text-base font-semibold tracking-tight">
+                            {p.title}
+                          </h3>
+                          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                            {p.summary ?? "No description yet."}
+                          </p>
+                          <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-3 text-[11px] text-muted-foreground">
+                            <span>Updated {formatRelativeTime(p.updated_at)}</span>
+                            <span className="inline-flex items-center gap-1 text-foreground/60 opacity-0 transition group-hover:opacity-100">
+                              View
+                              <ArrowRight className="h-3 w-3" />
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )
+              ) : projectsLoading || projects === null ? (
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <div
@@ -680,18 +764,7 @@ function Landing() {
                 </div>
               ) : (
                 (() => {
-                  const filtered =
-                    projectFilter === "public"
-                      ? projects.filter((p) => p.is_public)
-                      : projects;
-                  const visible = filtered.slice(0, 6);
-                  if (visible.length === 0) {
-                    return (
-                      <div className="rounded-3xl border border-dashed border-border bg-card/40 p-10 text-center text-sm text-muted-foreground">
-                        Nothing here yet — try a different filter.
-                      </div>
-                    );
-                  }
+                  const visible = projects.slice(0, 6);
                   return (
                     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                       {/* "Start something new" card — first slot, mirrors Lovable */}

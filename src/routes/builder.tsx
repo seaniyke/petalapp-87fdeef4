@@ -1608,6 +1608,7 @@ function Builder() {
                   setSettingsScrollTo("domains");
                   setSettingsOpen(true);
                 }}
+                onUpgrade={() => setBillingOpen(true)}
               />
             </div>
           )}
