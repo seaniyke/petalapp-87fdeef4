@@ -1663,6 +1663,8 @@ function Builder() {
         </div>
       </header>
 
+      <RuntimeLowBalanceBanner projectId={project?.id ?? null} />
+
       {/* Mobile builder menu + dependent dialogs */}
       {project && (
         <>
