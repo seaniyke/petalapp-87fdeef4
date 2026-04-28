@@ -427,13 +427,28 @@ export type StreamEvent =
     }
   | { type: "error"; message: string; suggestions?: string[] };
 
-/** Apply a list of file operations to a current set of files. */
+/** Apply a list of file operations to a current set of files.
+ *  "update" ops may use "// ... keep existing code ..." markers — we expand
+ *  those against the file's previous content before saving. */
 export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
+  // Lazy import to avoid pulling the expander into client bundles via barrel.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { expandKeepMarkers } = require("./keep-existing-expander") as typeof import("./keep-existing-expander");
   const map = new Map(current.map((f) => [f.path, f.content]));
   for (const op of ops) {
     if (op.op === "delete") {
       map.delete(op.path);
+    } else if (op.op === "update") {
+      const prev = map.get(op.path) ?? "";
+      const { content, expanded, failed } = expandKeepMarkers(prev, op.content);
+      if (expanded > 0 || failed > 0) {
+        console.log(
+          `[keep-existing] ${op.path}: expanded=${expanded} failed=${failed}`,
+        );
+      }
+      map.set(op.path, content);
     } else {
+      // create — never run the expander (no original to splice from).
       map.set(op.path, op.content);
     }
   }
