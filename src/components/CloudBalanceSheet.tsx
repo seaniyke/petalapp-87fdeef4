@@ -40,6 +40,7 @@ import {
   type RuntimeUsageSplit,
 } from "@/lib/runtime-wallet";
 import { RuntimeTopupModal } from "@/components/RuntimeTopupModal";
+import petalLogo from "@/assets/petal-logo.png";
 
 type Props = {
   open: boolean;
@@ -110,9 +111,13 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
 
   // Free allowance is split notionally: we treat the $10 as one bucket,
   // but display "Cloud $X / $X" + "AI $Y / $Y" by attributing usage by meter.
-  // Until we wire active meters, both halves are just "$0 / $10" of the shared pool.
+  // Until the user qualifies (first top-up) the free grant is LOCKED — we must
+  // show $0 used of the cap, not "fully used".
   const monthlyGrant = wallet?.monthlyFreeGrantCents ?? 1000;
-  const freeUsedCents = Math.max(0, monthlyGrant - (wallet?.freeBalanceCents ?? monthlyGrant));
+  const qualified = wallet?.qualifiedForFreeGrant ?? false;
+  const freeUsedCents = qualified
+    ? Math.max(0, monthlyGrant - (wallet?.freeBalanceCents ?? monthlyGrant))
+    : 0;
 
   return (
     <>
@@ -137,8 +142,8 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
               {/* Hero card */}
               <div className="rounded-2xl bg-muted/40 p-5">
                 <div className="flex items-start gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-coral via-primary to-primary text-2xl">
-                    ❤️
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-coral/30 to-primary/20 p-1.5">
+                    <img src={petalLogo} alt="Petal" className="h-full w-full object-contain" />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-base font-semibold">Cloud + AI</h3>
