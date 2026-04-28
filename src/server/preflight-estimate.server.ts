@@ -42,7 +42,7 @@ const KIND_BASELINES: Record<PreflightKind, { sec: number; cents: number }> = {
   discussion: { sec: 5, cents: 0 },
 };
 
-function fallbackEstimate(prompt: string): PreflightEstimate {
+export function fallbackEstimate(prompt: string): PreflightEstimate {
   // Heuristic when AI is unreachable
   const len = prompt.trim().length;
   let kind: PreflightKind = "ui_tweak";
