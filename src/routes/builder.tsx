@@ -308,14 +308,20 @@ function Builder() {
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  // Phase 2 (auto-fix): when a build fails, Petal automatically reads the log
-  // and sends a fix prompt — capped at 2 attempts per build id so we never
-  // get stuck in a loop. After the cap we fall back to the manual
-  // "Ask Petal to fix it" button (friendlyBuildFailure).
+  // Phase 2 (auto-fix): only failures from builds this browser session
+  // explicitly started are eligible. Old failed builds loaded from the DB must
+  // never auto-run on page open, and retries are capped across the whole fix
+  // chain (not reset for every new failed build id).
   const MAX_AUTO_FIX_ATTEMPTS = 2;
-  const autoFixRef = useRef<{ buildId: string | null; attempts: number }>({
-    buildId: null,
+  const startedBuildIdsRef = useRef<Set<string>>(new Set());
+  const autoFixRef = useRef<{
+    projectId: string | null;
+    attempts: number;
+    handledBuildIds: Set<string>;
+  }>({
+    projectId: null,
     attempts: 0,
+    handledBuildIds: new Set(),
   });
   // Stable handle to the latest askPetalToFix so the failure effect (declared
   // before send/askPetalToFix) can call it without stale-closure issues.
@@ -469,16 +475,18 @@ function Builder() {
     if (!buildSnap) return;
     const buildId = project?.latest_build_id ?? null;
 
-    // New build id → reset the attempt counter so a brand-new failure gets
-    // its own pair of auto-fix attempts.
-    if (autoFixRef.current.buildId !== buildId) {
-      autoFixRef.current = { buildId, attempts: 0 };
+    if (autoFixRef.current.projectId !== project?.id) {
+      autoFixRef.current = {
+        projectId: project?.id ?? null,
+        attempts: 0,
+        handledBuildIds: new Set(),
+      };
     }
 
     if (buildSnap.status === "ready") {
       setPhases((p) => completeThrough(p, "live"));
-      // A successful build clears the auto-fix counter — next failure starts fresh.
       autoFixRef.current.attempts = 0;
+      autoFixRef.current.handledBuildIds.clear();
       // Phase 3 — push-update toast. If the project has been published before
       // and this brand-new ready build is newer than the pinned published one,
       // nudge the user to push the update. We key off the build id via
@@ -506,11 +514,16 @@ function Builder() {
       setPhases((p) => advanceTo(p, "deploying"));
     } else if (buildSnap.status === "failed") {
       setPhases((p) => markFailed(p, "deploying"));
+      const shouldAutoFix =
+        !!buildId &&
+        startedBuildIdsRef.current.has(buildId) &&
+        !autoFixRef.current.handledBuildIds.has(buildId);
       const used = autoFixRef.current.attempts;
-      if (used < MAX_AUTO_FIX_ATTEMPTS && !busy) {
+      if (shouldAutoFix && used < MAX_AUTO_FIX_ATTEMPTS && !busy) {
         // Auto-fix path: bump the counter, show a calm "fixing it" panel,
         // and fire the same prompt the manual button would.
         autoFixRef.current.attempts = used + 1;
+        autoFixRef.current.handledBuildIds.add(buildId);
         setFriendlyError(autoFixingBuild(used + 1));
         setActivityVisible(true);
         // Defer to next tick so React commits the state above before send()
@@ -520,7 +533,9 @@ function Builder() {
         }, 50);
         return () => clearTimeout(t);
       }
-      // Manual fallback after we've burned both auto-attempts.
+      if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
+      // Manual fallback after we've burned both auto-attempts, or when the
+      // failed build was already present when the user opened the project.
       setFriendlyError(friendlyBuildFailure(buildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1119,7 +1134,8 @@ function Builder() {
           // Kick off a Cloudflare Pages build. Fire-and-forget — the activity
           // card subscribes to project_builds via useBuildActivity().
           void triggerBuild(proj.id)
-            .then(async () => {
+            .then(async (build) => {
+              startedBuildIdsRef.current.add(build.buildId);
               const r = await getProject(proj.id);
               if (r) setProject(r);
             })
@@ -1405,7 +1421,8 @@ function Builder() {
       setRevertPreview(null);
       toast.success("Reverted");
       void triggerBuild(project.id)
-        .then(async () => {
+        .then(async (build) => {
+          startedBuildIdsRef.current.add(build.buildId);
           const r = await getProject(project.id);
           if (r) setProject(r);
         })
@@ -1438,7 +1455,8 @@ function Builder() {
     setPhases((p) => advanceTo(p, "deploying"));
     setActivityVisible(true);
     void triggerBuild(project.id)
-      .then(async () => {
+      .then(async (build) => {
+        startedBuildIdsRef.current.add(build.buildId);
         const r = await getProject(project.id);
         if (r) setProject(r);
       })
@@ -1527,7 +1545,8 @@ function Builder() {
     ]);
     setHistoryKey((k) => k + 1);
     void triggerBuild(project.id)
-      .then(async () => {
+      .then(async (build) => {
+        startedBuildIdsRef.current.add(build.buildId);
         const r = await getProject(project.id);
         if (r) setProject(r);
       })
