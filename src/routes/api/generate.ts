@@ -653,6 +653,58 @@ export const Route = createFileRoute("/api/generate")({
                 }
               }
 
+              // Tier 3 — Replit-style verifier pass. Read-only scan for
+              // obvious compile/import/JSX issues. If it flags anything,
+              // emit a `verifier_warning` SSE event AND run the autofix
+              // model one more time to recover. Skipped for trivial turns.
+              const changedPaths =
+                collected.name === "write_project"
+                  ? nextFiles.map((f) => f.path)
+                  : (parsed.ops ?? []).map((o) => o.path);
+              if (shouldRunVerifier({ fileCount: nextFiles.length, changedPaths })) {
+                try {
+                  const verdict = await runVerifier(nextFiles, changedPaths);
+                  if (verdict.ran && !verdict.ok && verdict.issues.length > 0) {
+                    console.log(
+                      `[verifier] ${verdict.issues.length} issue(s):`,
+                      verdict.issues.map((i) => `${i.path} (${i.kind}): ${i.detail}`).join("; "),
+                    );
+                    controller.enqueue(
+                      encoder.encode(
+                        sse({
+                          type: "status",
+                          message: `Verifier flagged ${verdict.issues.length} issue${verdict.issues.length === 1 ? "" : "s"} — repairing…`,
+                        }),
+                      ),
+                    );
+                    // Recovery loop: run the post-stream autofix model again
+                    // (even if it ran above) to take a targeted fix pass.
+                    try {
+                      const fixOut = await runPostStreamAutofix(nextFiles);
+                      nextFiles = fixOut.files;
+                      if (fixOut.result.fixedFiles > 0) {
+                        console.log(
+                          `[verifier-recovery] fixed ${fixOut.result.fixedFiles}:`,
+                          fixOut.result.notes.join("; "),
+                        );
+                        controller.enqueue(
+                          encoder.encode(
+                            sse({
+                              type: "status",
+                              message: `Repaired ${fixOut.result.fixedFiles} file${fixOut.result.fixedFiles === 1 ? "" : "s"}.`,
+                            }),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      console.warn("[verifier-recovery] failed:", e);
+                    }
+                  }
+                } catch (e) {
+                  console.warn("[verifier] rejected:", e);
+                }
+              }
+
               // Phase 4: resolve `petal-image://...` placeholders into real
               // AI-generated images uploaded to the public petal-images
               // bucket. Failures fall back to picsum so the build never
