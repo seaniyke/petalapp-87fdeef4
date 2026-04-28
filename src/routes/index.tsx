@@ -573,7 +573,7 @@ function Landing() {
                   {Array.from({ length: 6 }).map((_, i) => (
                     <div
                       key={i}
-                      className="h-56 animate-pulse rounded-3xl border border-border bg-card"
+                      className="h-64 animate-pulse rounded-3xl border border-border bg-card/60"
                     />
                   ))}
                 </div>
@@ -614,7 +614,7 @@ function Landing() {
                             el.scrollIntoView({ behavior: "smooth", block: "center" });
                           }
                         }}
-                        className="group flex h-full min-h-[14rem] flex-col items-start justify-between rounded-3xl border border-dashed border-border bg-card/30 p-5 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:bg-card"
+                        className="group flex h-full min-h-[16rem] flex-col items-start justify-between rounded-3xl border border-dashed border-border bg-card/30 p-5 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:bg-card"
                       >
                         <span className="grid h-10 w-10 place-items-center rounded-full border border-border bg-background text-muted-foreground transition group-hover:border-primary/60 group-hover:text-foreground">
                           <Plus className="h-4 w-4" />
@@ -642,7 +642,7 @@ function Landing() {
                           className="group relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card/80 transition hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-[var(--shadow-soft)]"
                         >
                           <div className="relative">
-                            <ProjectThumbnail projectId={p.id} className="h-32" />
+                            <ProjectThumbnail projectId={p.id} className="h-36 sm:h-40" />
                             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
                             <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground backdrop-blur">
                               {p.is_public ? (
