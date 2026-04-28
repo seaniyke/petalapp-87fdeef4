@@ -30,6 +30,10 @@ import {
   renderDesignDirectionBlock,
 } from "@/server/design-director.server";
 import { runSelfCheck, humanizeBuildError } from "@/server/self-recovery.server";
+import { pickDynamicSnippets } from "@/server/dynamic-prompts.server";
+import { autofixFiles } from "@/server/stream-autofixer";
+import { runPostStreamAutofix, shouldRunPostStreamAutofix } from "@/server/post-stream-autofix.server";
+import { fallbackEstimate } from "@/server/preflight-estimate.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -398,8 +402,16 @@ export const Route = createFileRoute("/api/generate")({
           ? "\n\nThe user attached one or more reference images with their latest message. Treat them as design references — match the layout, color palette, typography style, spacing, and overall mood as closely as the kit components allow. Describe in your summary which parts you matched and which you adapted."
           : "";
 
+        // Tier 2 — dynamic system-prompt snippets. Append reinforcement
+        // blocks for topics the user mentioned (charts, forms, auth, etc.)
+        // — raises success rate without bloating every prompt.
+        const dynamic = pickDynamicSnippets({
+          messages,
+          hasBackend: Boolean(backend),
+        });
+
         const chatMessages = [
-          { role: "system", content: baseSystem + backendBlock + integrationsBlock + knowledgeBlock + memoryBlock + designBlock + visionAddendum + filesContext },
+          { role: "system", content: baseSystem + backendBlock + integrationsBlock + knowledgeBlock + memoryBlock + designBlock + dynamic.text + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {
@@ -570,6 +582,58 @@ export const Route = createFileRoute("/api/generate")({
                 );
                 return { ...f, content: STYLES_CSS };
               });
+
+              // Tier 2 — stream-time autofixer (regex pass, <10ms total).
+              // Repairs known footguns BEFORE the build/image steps run.
+              const autofixOut = autofixFiles(nextFiles);
+              nextFiles = autofixOut.files;
+              if (autofixOut.report.fixedCount > 0) {
+                console.log(
+                  `[autofix] ${autofixOut.report.fixedCount} fix(es):`,
+                  autofixOut.report.notes.join("; "),
+                );
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "status",
+                      message: `Auto-corrected ${autofixOut.report.fixedCount} small issue${autofixOut.report.fixedCount === 1 ? "" : "s"}.`,
+                    }),
+                  ),
+                );
+              }
+
+              // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
+              // pass that ONLY fixes obvious build-breakers. Gated so 90%
+              // of turns never pay the cost.
+              const preflightKind = fallbackEstimate(lastUserContent).kind;
+              if (
+                shouldRunPostStreamAutofix({
+                  autofixCount: autofixOut.report.fixedCount,
+                  preflightKind,
+                  fileCount: nextFiles.length,
+                })
+              ) {
+                try {
+                  const fixOut = await runPostStreamAutofix(nextFiles);
+                  nextFiles = fixOut.files;
+                  if (fixOut.result.fixedFiles > 0) {
+                    console.log(
+                      `[post-stream-autofix] fixed ${fixOut.result.fixedFiles}:`,
+                      fixOut.result.notes.join("; "),
+                    );
+                    controller.enqueue(
+                      encoder.encode(
+                        sse({
+                          type: "status",
+                          message: `Polished ${fixOut.result.fixedFiles} file${fixOut.result.fixedFiles === 1 ? "" : "s"} for safety.`,
+                        }),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  console.warn("[post-stream-autofix] rejected:", e);
+                }
+              }
 
               // Phase 4: resolve `petal-image://...` placeholders into real
               // AI-generated images uploaded to the public petal-images
