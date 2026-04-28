@@ -101,6 +101,7 @@ import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
 import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
+import { EnableEmailSuggestionChip } from "@/components/EnableEmailSuggestionChip";
 import { PreflightCostChip } from "@/components/PreflightCostChip";
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
@@ -108,6 +109,7 @@ import { SharePreviewDialog } from "@/components/SharePreviewDialog";
 import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
 import { detectDomainIntentInTurn } from "@/lib/domain-intent";
+import { detectEmailIntentInTurn } from "@/lib/email-intent";
 import { getProjectBackend } from "@/lib/projects";
 import { listDomains } from "@/lib/domains";
 import { useWallet } from "@/hooks/use-wallet";
@@ -259,7 +261,7 @@ function Builder() {
   // Project Knowledge sheet — also opens from the mobile overflow menu.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsScrollTo, setSettingsScrollTo] = useState<
-    "domains" | "backend" | "knowledge" | null
+    "domains" | "backend" | "knowledge" | "email" | null
   >(null);
   // Mobile builder menu (bottom sheet) + dependent dialogs.
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -280,6 +282,9 @@ function Builder() {
     () => new Set(),
   );
   const [dismissedDomainChips, setDismissedDomainChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedEmailChips, setDismissedEmailChips] = useState<Set<number>>(
     () => new Set(),
   );
   const { plan: currentPlan } = useWallet();
@@ -2101,6 +2106,35 @@ function Builder() {
                                 }}
                                 onDismiss={() =>
                                   setDismissedDomainChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
+                        {/* Email suggestion — same rules as backend/domain chips. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          !dismissedEmailChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectEmailIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            return (
+                              <EnableEmailSuggestionChip
+                                reason={intent.reason}
+                                onOpenEmail={() => {
+                                  setSettingsScrollTo("email");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={() =>
+                                  setDismissedEmailChips((prev) => {
                                     const next = new Set(prev);
                                     next.add(i);
                                     return next;
