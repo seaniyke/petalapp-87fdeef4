@@ -309,13 +309,10 @@ function BackendSection({ projectId }: { projectId: string }) {
           <div className="flex items-start gap-2">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
             <div className="flex-1 text-sm">
-              <div className="font-medium">Connected (your Supabase)</div>
+              <div className="font-medium">Backend connected</div>
               <div className="mt-0.5 text-xs text-muted-foreground">
-                Auth, database, and file storage are connected to{" "}
-                <code className="rounded bg-background px-1 py-0.5 text-[11px]">
-                  {new URL(backend!.supabaseUrl).hostname}
-                </code>
-                .
+                Auth, database and file storage are connected to an external backend
+                you control.
               </div>
             </div>
           </div>
