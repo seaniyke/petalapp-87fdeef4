@@ -100,13 +100,16 @@ import { BillingSheet } from "@/components/BillingSheet";
 import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
+import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
 import { PreflightCostChip } from "@/components/PreflightCostChip";
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { SharePreviewDialog } from "@/components/SharePreviewDialog";
 import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
+import { detectDomainIntentInTurn } from "@/lib/domain-intent";
 import { getProjectBackend } from "@/lib/projects";
+import { listDomains } from "@/lib/domains";
 import { useWallet } from "@/hooks/use-wallet";
 import {
   DropdownMenu,
