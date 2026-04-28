@@ -1320,11 +1320,16 @@ export {
   NavLink,
   Outlet,
   Navigate,
+  RouterProvider,
+  createBrowserRouter,
+  createRoutesFromElements,
   useNavigate,
   useParams,
   useLocation,
   useSearchParams,
 } from "react-router-dom";
+
+export type { RouteObject } from "react-router-dom";
 `;
 
 const CONTAINER = `import * as React from "react";
