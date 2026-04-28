@@ -1648,6 +1648,10 @@ export type Database = {
         Args: { _amount: number; _reason?: string; _user_id: string }
         Returns: string
       }
+      admin_grant_credit: {
+        Args: { _amount: number; _note?: string; _target_user_id: string }
+        Returns: string
+      }
       admin_grant_credits: {
         Args: {
           _amount: number
