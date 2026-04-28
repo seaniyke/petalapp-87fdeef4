@@ -1727,6 +1727,12 @@ function Builder() {
             onChange={setProject}
           />
           <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
+          <PetalShieldSheet
+            open={shieldOpen}
+            onOpenChange={setShieldOpen}
+            files={files}
+            onSendFixPrompt={(p) => setInput(p)}
+          />
           <ProjectsDrawer
             open={projectsDrawerOpen}
             onOpenChange={setProjectsDrawerOpen}
