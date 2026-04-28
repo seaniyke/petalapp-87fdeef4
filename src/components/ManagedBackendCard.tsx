@@ -268,20 +268,13 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
           <div className="flex-1 text-sm">
             <div className="flex items-center gap-2">
-              <span className="font-medium">Managed backend ready</span>
+              <span className="font-medium">Petal Cloud connected</span>
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                Auto-provisioned
+                Managed
               </span>
             </div>
             <div className="mt-0.5 text-xs text-muted-foreground">
-              {backend.supabaseUrl ? (
-                <>
-                  Connected to{" "}
-                  <code className="rounded bg-background px-1 py-0.5 text-[11px]">
-                    {new URL(backend.supabaseUrl).hostname}
-                  </code>
-                </>
-              ) : null}
+              Auth, database and file storage are live and wired into your app.
             </div>
             {expiresAt && (
               <div
