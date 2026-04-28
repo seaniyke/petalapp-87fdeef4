@@ -158,6 +158,7 @@ MULTI-PAGE ROUTING (use \`@/components/ui/router\` whenever the app has more tha
 - Use \`useNavigate()\` for programmatic navigation after form submit / async actions. Use \`<Navigate to="..." replace />\` for declarative redirects.
 - Single-page tools (one calculator, one timer, one chat) do NOT need a router. Heuristic: if you'd write more than one screen-level page, add the router.
 - See \`src/components/examples/kit-multi-page-app.tsx\` for the canonical pattern.
+- PAGE EXPORTS — when wiring pages into the router, prefer **plain named exports** and import them eagerly: \`import { HomePage } from "@/pages/HomePage"\`. Do NOT use \`React.lazy(() => import("@/pages/HomePage"))\` UNLESS that page also has \`export default HomePage\`. \`React.lazy\` reads \`module.default\` only — pointing it at a named-only export resolves to \`undefined\` and crashes the app at render time with React error #306 ("Element type is invalid"). Either use eager named imports (preferred — these apps are small) OR add \`export default PageName\` alongside the named export before using \`lazy()\`.
 
 BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the project):
 - ALWAYS go through \`@/integrations/backend/*\`. NEVER call \`createClient(...)\` yourself, NEVER \`import ... from "@supabase/supabase-js"\`, NEVER hardcode URLs or keys.
