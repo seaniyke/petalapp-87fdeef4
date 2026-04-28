@@ -135,30 +135,11 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
   const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
   if (ownerErr) return ownerErr;
 
-  // 1) Require an unused, unexpired domain slot for this project.
-  const { data: slot, error: slotErr } = await supabaseAdmin
-    .from("domain_slots")
-    .select("id")
-    .eq("project_id", parsed.data.projectId)
-    .is("consumed_by_domain_id", null)
-    .gt("expires_at", new Date().toISOString())
-    .order("expires_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (slotErr) return new Response(slotErr.message, { status: 500 });
-  if (!slot) {
-    return new Response(
-      JSON.stringify({
-        error: "payment_required",
-        code: "no_domain_slot",
-        message:
-          "Connecting a custom domain requires a domain slot. Slots are $12 and last 12 months.",
-      }),
-      { status: 402, headers: { "Content-Type": "application/json" } },
-    );
-  }
+  // Connecting a domain the user already owns is free — no slot required.
+  // (Paid `domain_slots` are now reserved for domains *purchased* through
+  // Petal via the Cloudflare registrar integration.)
 
-  // 2) Register with Cloudflare for SaaS.
+  // 1) Register with Cloudflare for SaaS.
   let cf;
   try {
     cf = await createCustomHostname(parsed.data.hostname);
@@ -209,12 +190,6 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
     }
     return new Response(error.message, { status: 400 });
   }
-
-  // 3) Consume the slot.
-  await supabaseAdmin
-    .from("domain_slots")
-    .update({ consumed_by_domain_id: data.id })
-    .eq("id", slot.id);
 
   return Response.json(data);
 }
