@@ -1667,6 +1667,7 @@ function Builder() {
               <Shield className="h-4 w-4" />
             </button>
           )}
+          {project && <ReadinessBadge files={files} project={project} />}
           {project && (
             <div className="hidden md:block">
               <SharePopover
