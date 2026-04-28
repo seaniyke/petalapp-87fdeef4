@@ -18,6 +18,11 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { generatePetalImage } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
+import { chargeRuntime } from "@/server/runtime-wallet.server";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+/** End-user runtime image generation cost in USD cents (2¢/image). */
+const RUNTIME_IMAGE_CENTS = 2;
 
 type Body = {
   prompt?: string;
