@@ -100,7 +100,7 @@ export function ComposerModePicker({
                   type="button"
                   role="menuitemradio"
                   aria-checked={isActive}
-                  onClick={() => onChange(opt.value)}
+                  onClick={() => { onChange(opt.value); setOpen(false); }}
                   className={cn(
                     "group flex w-full items-start gap-2.5 rounded-xl px-2 py-2 text-left transition",
                     "hover:bg-muted/70 focus:outline-none focus-visible:bg-muted",
