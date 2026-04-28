@@ -61,7 +61,7 @@ Use <Table>/<TableHeader>/<TableBody>/<TableRow>/<TableHead>/<TableCell> from "@
   router: {
     triggers: /\b(multi-?page|pages?|route|navigation|nav bar|menu link|landing.*about|home.*pricing|several screens)\b/i,
     body: `\n\n[Reinforcement — Routing]
-Multi-page apps MUST use "@/components/ui/router" (re-exports react-router-dom). Wire <Router><Routes><Route element={<Layout />}><Route path="/" element={<Home />} />…</Route></Routes></Router> in src/App.tsx, put pages in src/pages/<Name>.tsx. NEVER import from "react-router-dom" directly. NEVER use useState for "current page". NEVER use <a href="/x"> for in-app links — use <Link to="/x">.`,
+Multi-page apps MUST use "@/components/ui/router" (re-exports react-router-dom, including Router/Routes/Route and RouterProvider/createBrowserRouter/RouteObject). Prefer <Router><Routes><Route element={<Layout />}><Route path="/" element={<Home />} />…</Route></Routes></Router> in src/App.tsx, put pages in src/pages/<Name>.tsx. NEVER import from "react-router-dom" directly. NEVER use useState for "current page". NEVER use <a href="/x"> for in-app links — use <Link to="/x">.`,
   },
   auth: {
     triggers: /\b(auth|login|sign ?up|sign ?in|password|otp|magic link|user account|protected route)\b/i,
