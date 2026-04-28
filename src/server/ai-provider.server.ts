@@ -167,6 +167,11 @@ interface TelemetryArgs {
   completionTokens?: number | null;
   totalTokens?: number | null;
   costUsdMicro?: number | null;
+  // Tier 4 — router signals.
+  phase?: string | null;
+  promptChars?: number | null;
+  hadAttachments?: boolean | null;
+  chosenBy?: string | null;
 }
 
 async function recordTelemetry(args: TelemetryArgs): Promise<void> {
@@ -184,6 +189,10 @@ async function recordTelemetry(args: TelemetryArgs): Promise<void> {
       latency_ms: args.latencyMs,
       fallback_used: args.fallbackUsed,
       error_message: args.errorMessage ?? null,
+      phase: args.phase ?? null,
+      prompt_chars: args.promptChars ?? null,
+      had_attachments: args.hadAttachments ?? false,
+      chosen_by: args.chosenBy ?? null,
     });
   } catch (err) {
     // Never break the AI call because logging failed.
