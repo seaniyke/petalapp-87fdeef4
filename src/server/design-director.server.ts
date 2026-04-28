@@ -24,6 +24,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { MemoryEntry } from "@/server/project-memory.server";
+import { aiChatCompletions } from "@/server/ai-provider.server";
 
 const DIRECTOR_MODEL = "google/gemini-3-flash-preview";
 
