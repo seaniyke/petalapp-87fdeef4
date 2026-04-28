@@ -13,7 +13,7 @@
 
 export interface LocalIssue {
   path: string;
-  kind: "truncation" | "jsx" | "braces" | "undefined";
+  kind: "truncation" | "jsx" | "braces" | "undefined" | "lazy-export";
   detail: string;
 }
 
@@ -197,6 +197,54 @@ function findUndefinedComponents(src: string, clean: string): string[] {
   return missing;
 }
 
+function normalizePath(path: string): string {
+  const out: string[] = [];
+  for (const part of path.split("/")) {
+    if (!part || part === ".") continue;
+    if (part === "..") out.pop();
+    else out.push(part);
+  }
+  return out.join("/");
+}
+
+function resolveImportPath(fromPath: string, spec: string, byPath: Map<string, string>): string | null {
+  const base = spec.startsWith("@/")
+    ? `src/${spec.slice(2)}`
+    : spec.startsWith(".")
+      ? normalizePath(`${fromPath.split("/").slice(0, -1).join("/")}/${spec}`)
+      : null;
+  if (!base) return null;
+  const candidates = [base, `${base}.tsx`, `${base}.ts`, `${base}.jsx`, `${base}.js`, `${base}/index.tsx`, `${base}/index.ts`];
+  return candidates.find((p) => byPath.has(p)) ?? null;
+}
+
+function findLazyNamedExportIssues(files: { path: string; content: string }[], changedPaths: Set<string>): LocalIssue[] {
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const issues: LocalIssue[] = [];
+  const lazyRe = /const\s+([A-Z][A-Za-z0-9_]*)\s*=\s*lazy\(\s*\(\)\s*=>\s*import\(\s*["']([^"']+)["']\s*\)\s*\)/g;
+
+  for (const f of files) {
+    if (!changedPaths.has(f.path) || !/\.(tsx?|jsx?)$/.test(f.path) || !f.content.includes("lazy(")) continue;
+    let m: RegExpExecArray | null;
+    while ((m = lazyRe.exec(f.content))) {
+      const componentName = m[1];
+      const targetPath = resolveImportPath(f.path, m[2], byPath);
+      if (!targetPath) continue;
+      const target = byPath.get(targetPath) ?? "";
+      if (/\bexport\s+default\b/.test(target)) continue;
+      const named = new RegExp(`\\bexport\\s+(?:function|const|let|class)\\s+${componentName}\\b`).test(target) ||
+        new RegExp(`\\bexport\\s*\\{[^}]*\\b${componentName}\\b[^}]*\\}`).test(target);
+      if (!named) continue;
+      issues.push({
+        path: targetPath,
+        kind: "lazy-export",
+        detail: `${f.path} lazy-loads ${componentName}, but ${targetPath} has no default export`,
+      });
+    }
+  }
+  return issues;
+}
+
 export function verifyFileLocal(path: string, content: string): LocalIssue[] {
   if (!SCANNABLE.test(path)) return [];
   const issues: LocalIssue[] = [];
@@ -261,5 +309,6 @@ export function verifyFilesLocal(
     if (f.path.startsWith("src/integrations/")) continue;
     issues.push(...verifyFileLocal(f.path, f.content));
   }
+  issues.push(...findLazyNamedExportIssues(files, changed));
   return { ok: issues.length === 0, issues };
 }
