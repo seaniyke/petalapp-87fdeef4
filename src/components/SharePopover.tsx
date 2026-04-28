@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Globe, Copy, Check, Loader2, Lock, ArrowRight } from "lucide-react";
+import { Globe, Copy, Check, Loader2, Lock, ArrowRight, Sparkles } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { updateProject, type ProjectRow } from "@/lib/projects";
+import { useWallet } from "@/hooks/use-wallet";
 import { toast } from "sonner";
 
 type Props = {
@@ -10,11 +11,17 @@ type Props = {
   onChange: (next: ProjectRow) => void;
   /** Open the project settings sheet on the Domains section. */
   onConnectDomain?: () => void;
+  /** Open the billing sheet so the user can upgrade. */
+  onUpgrade?: () => void;
 };
 
-export function SharePopover({ project, onChange, onConnectDomain }: Props) {
+export function SharePopover({ project, onChange, onConnectDomain, onUpgrade }: Props) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { wallet } = useWallet();
+  // Only Pro/Business users can make a project private. The DB enforces this
+  // too — the toggle is gated client-side just to keep the UX honest.
+  const isPaid = !!wallet && wallet.plan_code !== "free";
 
   const shareUrl =
     typeof window !== "undefined"
@@ -22,6 +29,11 @@ export function SharePopover({ project, onChange, onConnectDomain }: Props) {
       : `/p/${project.slug}`;
 
   async function toggle(next: boolean) {
+    // Free users can switch to public freely, but cannot switch back to private.
+    if (!next && !isPaid) {
+      toast.error("Upgrade to Pro to make projects private.");
+      return;
+    }
     setBusy(true);
     try {
       const updated = await updateProject(project.id, { is_public: next });
@@ -76,10 +88,31 @@ export function SharePopover({ project, onChange, onConnectDomain }: Props) {
             <Switch
               checked={project.is_public}
               onCheckedChange={toggle}
-              disabled={busy}
+              // Free users on a public project can't toggle off — DB blocks it
+              // and the in-toggle handler also short-circuits with a toast.
+              disabled={busy || (project.is_public && !isPaid)}
             />
           </div>
         </div>
+
+        {/* Free-tier nudge: explain WHY the toggle is locked. */}
+        {project.is_public && !isPaid && (
+          <button
+            type="button"
+            onClick={() => onUpgrade?.()}
+            className="flex w-full items-start gap-2 border-b border-border bg-primary/5 px-4 py-3 text-left text-xs transition hover:bg-primary/10"
+          >
+            <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+            <span className="flex-1">
+              <span className="font-medium text-foreground">Upgrade to make this private.</span>{" "}
+              <span className="text-muted-foreground">
+                Free projects are public so others can discover and remix them.
+              </span>
+            </span>
+            <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+          </button>
+        )}
+
         <div className="space-y-2 p-4">
           <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Share link
