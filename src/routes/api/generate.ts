@@ -655,11 +655,38 @@ export const Route = createFileRoute("/api/generate")({
                 );
               }
 
+              // Tier 2.5 — DETERMINISTIC local verifier (no model call).
+              // Catches truncated streams + unbalanced JSX/braces that the
+              // model verifier sometimes misses. If it fires, we HARD-TRIGGER
+              // the post-stream autofix model (no gating).
+              const earlyChangedPaths =
+                collected.name === "write_project"
+                  ? nextFiles.map((f) => f.path)
+                  : (parsed.ops ?? []).map((o) => o.path);
+              const localVerdict = verifyFilesLocal(nextFiles, earlyChangedPaths);
+              if (!localVerdict.ok) {
+                console.warn(
+                  `[local-verifier] ${localVerdict.issues.length} issue(s):`,
+                  localVerdict.issues
+                    .map((i) => `${i.path} (${i.kind}): ${i.detail}`)
+                    .join("; "),
+                );
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "status",
+                      message: `Detected ${localVerdict.issues.length} structural issue${localVerdict.issues.length === 1 ? "" : "s"} — repairing…`,
+                    }),
+                  ),
+                );
+              }
+
               // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
               // pass that ONLY fixes obvious build-breakers. Gated so 90%
-              // of turns never pay the cost.
+              // of turns never pay the cost — UNLESS local verifier failed.
               const preflightKind = fallbackEstimate(lastUserContent).kind;
               if (
+                !localVerdict.ok ||
                 shouldRunPostStreamAutofix({
                   autofixCount: autofixOut.report.fixedCount,
                   preflightKind,
