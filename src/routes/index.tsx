@@ -567,9 +567,9 @@ function Landing() {
               )}
             </div>
 
-            <div className="mt-6">
+            <div className="mt-8">
               {projectsLoading || projects === null ? (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <div
                       key={i}
@@ -603,7 +603,7 @@ function Landing() {
                     );
                   }
                   return (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                       {/* "Start something new" card — first slot, mirrors Lovable */}
                       <button
                         type="button"
