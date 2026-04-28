@@ -466,13 +466,20 @@ export const Route = createFileRoute("/api/generate")({
               defaultModel: phaseDefault,
             });
             model = pick.model;
+            // Make telemetry honest: distinguish "smart router actively
+            // chose this" from "smart router had no data and fell back to
+            // the phase default".
             if (pick.reason === "best_score" || pick.reason === "exploration") {
               chosenBy = `smart_router:${pick.reason}`;
+            } else if (pick.reason === "no_data") {
+              chosenBy = "phase_router:no_router_data";
             }
             if (pick.stat) {
               console.log(
                 `[smart-router] reason=${pick.reason} model=${pick.model} score=${pick.stat.score.toFixed(4)} succ=${(pick.stat.successRate * 100).toFixed(1)}% calls=${pick.stat.calls}`,
               );
+            } else {
+              console.log(`[smart-router] reason=${pick.reason} model=${pick.model} (no stat)`);
             }
           } catch (e) {
             console.warn("[smart-router] pick failed:", e);
