@@ -43,7 +43,7 @@ import type { AiFeature } from "@/server/ai-provider.server";
  * forward the Supabase bearer token — see `routes/api/admin/ai-providers.ts`.
  */
 async function callAdminApi<T>(
-  action: "list" | "set" | "costs",
+  action: "list" | "set" | "costs" | "router-snapshot" | "router-config",
   payload: Record<string, unknown> = {},
 ): Promise<T> {
   const { data: sessionData } = await supabase.auth.getSession();
