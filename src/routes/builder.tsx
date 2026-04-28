@@ -247,6 +247,7 @@ function Builder() {
   >(null);
   // Mobile builder menu (bottom sheet) + dependent dialogs.
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [projectsDrawerOpen, setProjectsDrawerOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
