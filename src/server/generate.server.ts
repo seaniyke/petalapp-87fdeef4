@@ -433,9 +433,6 @@ export type StreamEvent =
  *  "update" ops may use "// ... keep existing code ..." markers — we expand
  *  those against the file's previous content before saving. */
 export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
-  // Lazy import to avoid pulling the expander into client bundles via barrel.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { expandKeepMarkers } = require("./keep-existing-expander") as typeof import("./keep-existing-expander");
   const map = new Map(current.map((f) => [f.path, f.content]));
   for (const op of ops) {
     if (op.op === "delete") {
