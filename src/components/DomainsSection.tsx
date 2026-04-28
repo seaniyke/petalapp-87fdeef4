@@ -267,15 +267,30 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
             instead of the default Petal subdomain. Petal issues a free SSL
             certificate automatically.
           </p>
-          <Button
-            size="sm"
-            disabled={!hasPublishedBuild}
-            onClick={openAddFlow}
-            className="mt-3 inline-flex items-center gap-1.5"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {hasAvailableSlot ? "Connect a domain" : "Buy a slot to connect a domain"}
-          </Button>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              disabled={!hasPublishedBuild}
+              onClick={openAddFlow}
+              className="inline-flex items-center gap-1.5"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Connect a domain
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!hasPublishedBuild}
+              onClick={() => setShowBuySlot(true)}
+              className="inline-flex items-center gap-1.5"
+            >
+              Buy a new domain
+            </Button>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Already own a domain? Connecting it is free. Don't have one? Buy
+            one through Petal — $12/year, auto-renews.
+          </p>
         </div>
       ) : (
         <ul className="space-y-2">
