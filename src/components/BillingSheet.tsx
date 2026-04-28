@@ -223,46 +223,67 @@ export function BillingSheet({ open, onOpenChange }: Props) {
           <Separator />
 
           <section>
-            <div className="mb-3">
-              <h3 className="text-sm font-semibold">Top-up packs</h3>
-              <p className="text-xs text-muted-foreground">
-                One-time credits. Expire 12 months after purchase.
-              </p>
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold">Top-up packs</h3>
+                <p className="text-xs text-muted-foreground">
+                  One-time credits. Expire 12 months after purchase.
+                </p>
+              </div>
+              {currentPlanCode === "free" && (
+                <Badge variant="secondary" className="shrink-0">Paid plans only</Badge>
+              )}
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {packs.map((pack) => {
-                const conv = activeCurrency
-                  ? convertPrice({
-                      itemKind: "pack",
-                      itemCode: pack.code,
-                      usdCents: pack.price_cents,
-                      currency,
-                      currencies,
-                      overrides,
-                    })
-                  : null;
-                const busy = busyKey === `pack:${pack.code}`;
-                return (
-                  <div key={pack.code} className="rounded-lg border border-border/60 p-3">
-                    <p className="text-sm font-medium">{pack.credits} credits</p>
-                    <p className="mt-1 text-base font-semibold tabular-nums">
-                      {conv && activeCurrency
-                        ? formatMoney(conv.amountMinor, activeCurrency)
-                        : `$${(pack.price_cents / 100).toFixed(0)}`}
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={!user || busy}
-                      className="mt-2 w-full"
-                      onClick={() => startCheckout("pack", pack.code)}
-                    >
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buy"}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
+
+            {currentPlanCode === "free" ? (
+              // Free users can't top up — show a clear upgrade prompt that
+              // points them at the plan picker above.
+              <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center">
+                <Sparkles className="mx-auto h-5 w-5 text-primary" />
+                <p className="mt-2 text-sm font-medium">
+                  Upgrade to buy top-up credits
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Top-up packs are available on Pro and Business plans. Pick a plan
+                  above to unlock one-time credit purchases.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-3">
+                {packs.map((pack) => {
+                  const conv = activeCurrency
+                    ? convertPrice({
+                        itemKind: "pack",
+                        itemCode: pack.code,
+                        usdCents: pack.price_cents,
+                        currency,
+                        currencies,
+                        overrides,
+                      })
+                    : null;
+                  const busy = busyKey === `pack:${pack.code}`;
+                  return (
+                    <div key={pack.code} className="rounded-lg border border-border/60 p-3">
+                      <p className="text-sm font-medium">{pack.credits} credits</p>
+                      <p className="mt-1 text-base font-semibold tabular-nums">
+                        {conv && activeCurrency
+                          ? formatMoney(conv.amountMinor, activeCurrency)
+                          : `$${(pack.price_cents / 100).toFixed(0)}`}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!user || busy}
+                        className="mt-2 w-full"
+                        onClick={() => startCheckout("pack", pack.code)}
+                      >
+                        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buy"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         </div>
       </SheetContent>
