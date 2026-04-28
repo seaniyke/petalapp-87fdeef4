@@ -2374,8 +2374,8 @@ function Builder() {
               )}
             </div>
             <div
-              className={`flex items-end gap-2 rounded-2xl border bg-background p-2 focus-within:border-primary ${
-                mode === "discuss" ? "border-foreground/20" : "border-border"
+              className={`flex items-end gap-2 rounded-2xl border-2 bg-background p-2 shadow-sm transition focus-within:border-primary focus-within:shadow-md ${
+                mode === "discuss" ? "border-foreground/25" : "border-border"
               }`}
             >
               <textarea
@@ -2397,13 +2397,13 @@ function Builder() {
                         : "Describe the app you want to build…"
                 }
                 rows={2}
-                className="max-h-40 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
+                className="max-h-40 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground"
                 disabled={bootstrapping}
               />
               <button
                 type="submit"
                 disabled={bootstrapping || !input.trim()}
-                className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground transition hover:brightness-105 disabled:opacity-40"
+                className="grid h-9 w-9 place-items-center rounded-xl bg-foreground text-background shadow-md transition hover:scale-105 hover:shadow-lg active:scale-95 disabled:opacity-30 disabled:shadow-none disabled:hover:scale-100"
                 title={
                   busy || discussBusy
                     ? "Add to queue"
