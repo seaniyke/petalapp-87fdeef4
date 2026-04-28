@@ -1774,6 +1774,17 @@ function Builder() {
             files={files}
             onSendFixPrompt={(p) => setInput(p)}
           />
+          <SharePreviewDialog
+            open={sharePreviewOpen}
+            onOpenChange={setSharePreviewOpen}
+            projectId={project?.id ?? null}
+          />
+          <CommentsInboxSheet
+            open={commentsOpen}
+            onOpenChange={setCommentsOpen}
+            projectId={project?.id ?? null}
+            onSendFixPrompt={(p) => setInput(p)}
+          />
           <ProjectsDrawer
             open={projectsDrawerOpen}
             onOpenChange={setProjectsDrawerOpen}
