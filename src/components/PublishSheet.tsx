@@ -43,6 +43,7 @@ import {
   ExternalLink,
   EyeOff,
   Users,
+  BarChart3,
   Pencil,
   X,
 } from "lucide-react";
