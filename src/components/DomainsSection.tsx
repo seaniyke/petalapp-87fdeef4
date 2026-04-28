@@ -126,11 +126,8 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
   }, [projectId]);
 
   function openAddFlow() {
-    if (hasAvailableSlot) {
-      setShowAdd(true);
-    } else {
-      setShowBuySlot(true);
-    }
+    // Connecting an existing domain you already own is free.
+    setShowAdd(true);
   }
 
   // Realtime: flip status pills as the verification job runs
