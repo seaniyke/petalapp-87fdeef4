@@ -619,6 +619,32 @@ function Builder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady, user, searchId]);
 
+  // Look up whether this project already has a backend connected. Done once
+  // per project; the chip only appears when this resolves to false.
+  useEffect(() => {
+    if (!project?.id) {
+      setHasBackend(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getProjectBackend(project.id);
+        if (!cancelled) setHasBackend(!!result);
+      } catch {
+        if (!cancelled) setHasBackend(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [project?.id]);
+
+  // Reset chip dismissals when switching projects.
+  useEffect(() => {
+    setDismissedBackendChips(new Set());
+  }, [project?.id]);
+
   // Mirror the composer text, queued messages, and pending attachments to
   // sessionStorage so a browser refresh inside /builder doesn't wipe them.
   // Per-project, per-tab. Cleared automatically when the values empty out.
