@@ -65,7 +65,7 @@ let inflight: Promise<RouterSnapshot> | null = null;
 const DEFAULT_CONFIG: RouterConfig = {
   enabled: true,
   explorationPct: 10,
-  minSamples: 20,
+  minSamples: 5,
   windowHours: 168,
 };
 

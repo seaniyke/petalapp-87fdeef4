@@ -110,8 +110,21 @@ function looksTruncated(src: string): boolean {
   const trimmed = src.trimEnd();
   if (trimmed.length === 0) return false;
   const last = trimmed[trimmed.length - 1];
-  // Healthy file endings: closing brace, paren, bracket, semicolon, or JSX close.
-  if ([")", "}", "]", ";", ">"].includes(last)) return false;
+  // Healthy file endings: closing brace, paren, bracket, semicolon.
+  if ([")", "}", "]", ";"].includes(last)) return false;
+  // A trailing `>` is only healthy when it closes a tag — `/>` (self-close)
+  // or `</…>` (closing tag). A bare opening `<Card …>` ends in `>` too, and
+  // those are exactly the truncation cases we need to catch (real-world
+  // failure: file ended at `<Card className="...">\n` with no closer).
+  if (last === ">") {
+    // Look at the tail after stripping trailing whitespace.
+    if (trimmed.endsWith("/>")) return false;
+    // Find the last `<` and check if this is a closing tag `</foo>`.
+    const lastOpen = trimmed.lastIndexOf("<");
+    if (lastOpen >= 0 && trimmed[lastOpen + 1] === "/") return false;
+    // Otherwise: opening tag with no closer in sight → truncated.
+    return true;
+  }
   // Allow trailing comma (rare but valid in some configs) — but flag everything else.
   return true;
 }

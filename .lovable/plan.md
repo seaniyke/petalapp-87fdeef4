@@ -1,95 +1,59 @@
-# Petal AI: Honest Review + Smart OpenRouter Routing + Reliability Upgrades
+## TL;DR
 
-## Part 1 — Are we doing the right things? Honest answer
+Petal is **not** as broken as it feels. The published subdomain you sent (`https://lumen.buildwithpetal.com`) is serving correctly (HTTP 200, full HTML, app shell loads). The two most-recent generations in the database both built successfully (`ready` status, 14:39 + 14:42 UTC). What you're seeing as "no preview" is almost certainly the **in-IDE mobile preview** behavior on the 430px viewport — that path uses the deployed CDN iframe, not WebContainer.
 
-**Yes, the foundation is right. But we stopped one step short of where the leaders actually win.**
+That said, the audit did find **real bugs** worth fixing now, plus a few smaller polish items. Plan below.
 
-What we got right (the boring-but-critical stuff):
-- Provider abstraction at a single chokepoint (`aiChatCompletions`) — exactly how Vercel AI SDK and Bolt structure it.
-- Per-feature routing (generate/discuss/triage/coach/design/memory/recovery/preflight) — this is the *correct* granularity. Most teams route globally and overpay.
-- DB-backed admin toggles with a 30s cache — operationally sane, no redeploys.
-- Image gen hard-pinned to Lovable AI — correct call (Gemini's `message.images` shape is non-portable).
+---
 
-Where we're behind the frontier (and what they actually do):
+## What I found
 
-| Builder | Their winning move | Where we are |
-|---|---|---|
-| **Bolt v2** | Two-tier model strategy: Sonnet 4.6 for everyday work, Opus 4.6 only for hard tasks. Auto-escalates. | We have one model per feature, no escalation. |
-| **v0** | Three layers around the model: dynamic system prompt (version-pinned framework knowledge), "LLM Suspense" (stream-time find/replace for bad imports), deterministic autofixers (AST-level repairs). Claims double-digit success-rate gains. | We have prompts and self-recovery, but no stream-time correction and no deterministic autofixer. Self-recovery only triggers post-failure. |
-| **Replit Agent 4** | Multi-agent: planner → executor → verifier in parallel threads. | Our generate is single-pass. |
-| **Cursor / Aider** | Phase-aware routing (implement = cheap model, debug = strong model, plan = reasoning model). | We route by *feature*, not by *phase within a feature*. |
+### Bug 1 — `looksTruncated` misses unclosed JSX opening tags  *(real, recent, caused the failed build you sent)*
 
-**Bottom line: our plumbing is professional. Our intelligence layer is one generation behind.** The good news — fixing it is incremental, not a rewrite.
+`src/server/local-verifier.ts` flags a file as truncated only when the last non-whitespace char is NOT one of `) } ] ; >`. The `>` exclusion means a file ending in `<Card className="...">\n` (the exact failure you hit) is treated as healthy and skipped.
 
-## Part 2 — The OpenRouter question, answered properly
+The JSX balance check still catches it as a separate `jsx` issue, so the autofix model would fire — but the **truncation continuation pass** (Tier 2.6) won't, which is the only pass that can actually finish the file correctly. The autofix model gets asked to "fix obvious build-breakers" on a half-written component, which it can't really do.
 
-You asked which model for easy vs hard. Here is the data-backed answer (synthesized from coderouter.io benchmarks April 2026, OpenRouter pricing, and the Sonnet/DeepSeek/GPT-5 production comparisons):
+**Fix:** strengthen `looksTruncated` so a trailing `>` only counts as healthy when it closes a tag (`/>` or `</…>`). A bare opening `>` should be treated as truncation. Combined with the existing JSX/brace checks this gets the right behavior.
 
-**The real cost-quality landscape on OpenRouter (per 1M tokens, blended):**
+### Bug 2 — Preview misunderstanding (no code change, just clarification)
 
-| Tier | Model | Cost | Best for |
-|---|---|---|---|
-| Cheap | `deepseek/deepseek-chat-v3` | ~$0.32 | Implementation from clear specs, tests, docstrings, simple refactors |
-| Cheap | `google/gemini-2.5-flash-lite` | ~$0.20 | Triage, classification, intent detection, summarisation |
-| Cheap | `anthropic/claude-haiku-4.5` | ~$1.50 | Memory ops, short rewrites, polish passes |
-| Mid | `anthropic/claude-sonnet-4.5` | ~$6.60 | Code generation, complex refactors, debugging, tool-use agents |
-| Mid | `openai/gpt-5-mini` | ~$2.00 | Solid all-rounder, good tool-call reliability |
-| Heavy | `openai/gpt-5` | ~$5.00 | Architecture, hard reasoning, ambiguous specs |
-| Reasoning | `deepseek/deepseek-r1` | ~$1.50 | Deep debugging, planning (no tool calls — pure reasoning) |
+On a 430px viewport the builder route sets `useDeployedFallback = isMobile || !webContainerSupported`, so it renders `<MobilePreviewFallback>` instead of WebContainer. That component shows the **deployed CDN iframe** of the latest build. If the project has no `latest_build_id` yet, you see the "Your preview will appear here" empty state.
 
-**Critical caveats from the research:**
-- DeepSeek V3 is ~20× cheaper than Sonnet but produces **3% malformed tool-calls** vs Sonnet's 0.5%. For agentic tool-use features (triage, coach), this gap eats your savings via retries.
-- DeepSeek R1 and other "thinking" models **cannot emit tool_calls** — only use them for non-agentic reasoning.
-- Sonnet 4.5 / GPT-5 wins on: complex refactors, debugging root cause vs proximate cause, architecture decisions.
-- DeepSeek V3 wins on: implementation, tests, docstrings, mechanical refactors.
+This is working as designed — but for the project you were testing with, the preview will only appear once the external builder posts back its callback. If a build silently fails or the callback never lands, you'll sit on the spinner forever.
 
-**Recommended Petal feature → model map (the smart default):**
+**Fix:** add a "build older than 5 min and still pending" timeout state to `MobilePreviewFallback` so users see "build seems stuck — retry?" instead of an infinite spinner. Cheap, fixes a real footgun.
 
-| Feature | Lovable AI today | Recommended OpenRouter | Why |
-|---|---|---|---|
-| `generate` (code gen) | Gemini 2.5 Pro | `anthropic/claude-sonnet-4.5` | Industry consensus #1 for code gen + tool reliability |
-| `discuss` (chat) | Gemini Flash | `deepseek/deepseek-chat-v3` | 20× cheaper, indistinguishable for chat |
-| `triage` (tool-call routing) | Gemini Flash | `openai/gpt-5-mini` | Tool-call reliability matters more than cost here |
-| `coach` (idea coaching) | Gemini Flash | `deepseek/deepseek-chat-v3` | Conversational, no high stakes |
-| `design` (design director) | Gemini 2.5 Pro | `anthropic/claude-sonnet-4.5` | Design reasoning quality matters |
-| `memory` (project memory ops) | Gemini Flash Lite | `google/gemini-2.5-flash-lite` | Pure summarisation |
-| `recovery` (self-heal) | Gemini 2.5 Pro | `anthropic/claude-sonnet-4.5` | Debug = needs strong reasoning |
-| `preflight` (estimate) | Gemini Flash Lite | `google/gemini-2.5-flash-lite` | Fast classification |
+### Bug 3 — `MobilePreviewFallback` polls every 5s forever, even when build is `ready`
 
-## Part 3 — What I'd actually build, in priority order
+Same file. `setInterval(loadLatestBuild, 5_000)` runs unconditionally for the lifetime of the page. Once the build is `ready` we don't need to keep hammering the DB. Small efficiency fix — stop polling once `status === "ready"`.
 
-### Tier 1: Finish the OpenRouter story (small, high-value, do first)
+### Bug 4 — Tier 4 router exploration always picks `MODEL_FAST` for new candidates
 
-1. **Per-feature model picker in the admin console.** Right now admin only chooses provider, not model. Add a model dropdown next to each provider toggle, with sensible defaults from the table above. Stored in the existing `ai_provider_settings` table (add a `model` column).
-2. **Cost dashboard widget.** Pull OpenRouter's `/api/v1/generation` endpoint after each call (it returns native_token_cost) and roll up a 7-day cost-by-feature view on `/admin/ai-providers`. This is the single most useful thing for deciding what to flip.
-3. **Auto-fallback chain.** If primary returns 429/402/5xx, fall back to a configured secondary (e.g., Sonnet → GPT-5-mini → Lovable Gemini Pro). One retry, logged. Prevents OpenRouter outages from breaking Petal.
-4. **Tool-call validation guard.** Before sending a parsed tool_call to executors, validate args against the JSON schema. If invalid, retry once with stronger model. This is what makes DeepSeek viable for cheap features without losing reliability.
+In `src/routes/api/generate.ts` we pass `candidates: [MODEL_FAST, MODEL_BEST]` to the smart router. With `min_samples = 20` (default), neither candidate has enough data on a fresh table, so the router goes to `exploration` mode and picks `MODEL_FAST` ~10% of the time and falls back to `phaseDefault` the rest of the time. That's fine — but `chosenBy` is reported as `phase_router` for the no-data case and `smart_router:exploration` only on the rare exploration roll. It's confusing in logs and means we're not actually using the router yet on most turns.
 
-### Tier 2: Steal v0's reliability tricks (medium effort, big win on success rate)
+**Fix:** lower the default `min_samples` to 5 so the router starts using observed data sooner. Add a clearer log line distinguishing "router_no_data" from "phase_default".
 
-5. **Dynamic system prompt for code-gen.** Currently we send a static prompt. Inject version-pinned snippets (TanStack Start v1 patterns, Tailwind v4 syntax, Supabase client shape) only when the request mentions them. Detect via embedding match or keyword. Saves tokens AND raises success rate.
-6. **Stream-time autofixer ("LLM Suspense" lite).** While generate streams, run a regex/AST pass on each completed code block: fix common bad imports (e.g., `react-router-dom` → `@tanstack/react-router`), strip pages/ folder mentions, repair lucide-react icon names to nearest valid match. Runs in <100ms post-block, no extra model call.
-7. **Post-stream autofix model.** When a generation finishes, run a tiny fast model (Haiku 4.5 or Gemini Flash Lite) over it with the prompt "find and fix obvious build-breakers only — no rewrites." Gated to only run when our existing preflight detects risky output.
+### Sanity items (no fix needed, but worth noting)
 
-### Tier 3: Phase-aware routing inside `generate` (advanced)
+- **`stream-autofixer.ts` rewriting `react-router-dom` → `@/components/ui/router`** is correct. The Petal app itself uses TanStack Start, but the apps it generates ship react-router-dom re-exported through `@/components/ui/router` (verified in `scaffold-kit.ts` line 3231 and `generate.server.ts` line 49). No bug.
+- **`dynamic-prompts.server.ts` "router" snippet** telling the model to put pages in `src/pages/` is also correct for generated apps. Not a bug.
+- **DB schema** for `ai_call_log` and `ai_router_config` is fully populated with all columns the smart-router writes/reads. Telemetry is recording.
+- **`https://lumen.buildwithpetal.com`** returns HTTP 200 with the published Lumina app shell. Subdomain routing is working.
 
-8. **Phase classifier.** Before generate fires, a tiny <50ms call (or regex heuristic) tags the request: `implement | debug | refactor | plan | docs`. Route to the right model from the matrix. Implement-phase → DeepSeek V3 (cheap). Debug/plan → Sonnet. Saves ~60-70% on the 80% of requests that are mechanical.
-9. **Optional Replit-style verifier pass.** After generate, send the diff to a verifier prompt ("does this compile, are imports valid, are there obvious type errors?") on a cheap model. If verifier flags issues, loop back to recovery. We have recovery — we just don't trigger it proactively.
+---
 
-### Tier 4: Long-game (do after Tiers 1-3 prove out)
+## Plan
 
-10. Telemetry-driven router: log every call's success/failure/cost, train a logistic-regression-grade router that picks the model per-request. This is what CodeRouter and Bolt do internally.
+1. **Fix `looksTruncated` in `src/server/local-verifier.ts`** to require `/>` or `</…>` for a `>` ending to count as healthy. Add 2-3 unit tests in a comment block (no test runner change).
+2. **Add a stuck-build state to `src/components/MobilePreviewFallback.tsx`** — if status is `pending` for >5 min, show an actionable error card instead of a spinner.
+3. **Stop polling once `status === "ready"`** in `MobilePreviewFallback` (clear the interval inside the apply path).
+4. **Lower default `min_samples` to 5** in `src/server/smart-router.server.ts` and improve the `[smart-router]` log line. Update the migration's seeded row default value (separate migration, idempotent).
+5. **No changes** to `stream-autofixer.ts`, `dynamic-prompts.server.ts`, or the subdomain worker — they're correct.
 
-## Technical notes
+## Out of scope
 
-- `OPENROUTER_MODEL_MAP` in `ai-provider.server.ts` currently maps Gemini → Gemini and passes GPT-5 through. We need to expand it (or replace it) so each feature can request a *different* model than its Lovable AI default — which is what step 1 enables via DB.
-- Adding a `model` column to `ai_provider_settings` is a single migration: `alter table ai_provider_settings add column model text`.
-- The OpenRouter generation cost endpoint is free to call and returns the exact $ — perfect for the dashboard.
-- Stream-time autofixer should be implemented as a Transform stream wrapping the existing fetch response in `aiChatCompletions` — single integration point.
-- Phase classifier can start as a regex over the user message + last-N tool calls (Cursor does this with ~30 rules). No ML needed for v1.
+- I'm not touching the WebContainer rendering path; it works on desktop and is intentionally bypassed on mobile.
+- I'm not redesigning the post-stream autofix gating; the local-verifier hard-trigger is already wired and correct once Bug 1 is fixed.
 
-## What I'd recommend you greenlight first
-
-**Tier 1 only.** That gets you: model-level admin control, real cost visibility, and a safety net — which is the rest of "operating it well." It also unlocks the rest: once you can see per-feature cost, you'll *know* which features deserve the v0-style reliability investment in Tier 2.
-
-Approve and I'll ship Tier 1.
+Approve and I'll ship 1-4 in one pass.

@@ -39,6 +39,7 @@ export function MobilePreviewFallback({
   const [build, setBuild] = useState<BuildRow | null>(null);
   const [latestReadyBuild, setLatestReadyBuild] = useState<BuildRow | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
+  const [pendingTooLong, setPendingTooLong] = useState(false);
 
   // Load the current latest build and a fallback ready build. We also poll the
   // latest row because realtime delivery can be delayed or unavailable on some
@@ -95,9 +96,36 @@ export function MobilePreviewFallback({
     void loadLatestBuild();
     void loadLatestReadyBuild();
 
+    // Poll until we land on `ready` or `failed`. Once terminal, stop.
     const poll = window.setInterval(() => {
-      void loadLatestBuild();
+      // Reading the latest build state via closure is fine — applyBuild
+      // updates `build`, and on the next interval tick we'll see the
+      // newest value (React state is mutable from the interval's POV).
+      setBuild((prev) => {
+        if (prev?.status === "ready" || prev?.status === "failed") {
+          window.clearInterval(poll);
+          return prev;
+        }
+        void loadLatestBuild();
+        return prev;
+      });
     }, 5_000);
+
+    // Stuck-build detector. If the build has been pending > 5 min, surface
+    // an actionable error instead of an infinite spinner. We rely on
+    // `created_at` so a freshly-created build still gets the full 5 min.
+    const stuckTimer = window.setInterval(() => {
+      setBuild((prev) => {
+        if (!prev || prev.status !== "pending") {
+          setPendingTooLong(false);
+          return prev;
+        }
+        const createdAt = prev.created_at ? Date.parse(prev.created_at) : Date.now();
+        const ageMs = Date.now() - createdAt;
+        setPendingTooLong(ageMs > 5 * 60 * 1000);
+        return prev;
+      });
+    }, 10_000);
 
     const channel = supabase
       .channel(`build:${latestBuildId}:${Date.now()}-${Math.random().toString(36).slice(2)}`)
@@ -143,6 +171,7 @@ export function MobilePreviewFallback({
     return () => {
       cancelled = true;
       window.clearInterval(poll);
+      window.clearInterval(stuckTimer);
       document.removeEventListener("visibilitychange", onAlive);
       window.removeEventListener("online", onAlive);
       window.removeEventListener("focus", onAlive);
@@ -181,6 +210,26 @@ export function MobilePreviewFallback({
   }
 
   if (status === "pending") {
+    if (pendingTooLong) {
+      return (
+        <div className="flex h-full w-full items-center justify-center bg-aurora p-6">
+          <div className="max-w-md rounded-2xl border border-amber-500/40 bg-card/90 p-5 text-left shadow-sm backdrop-blur">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500/10 text-amber-600">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-display text-base leading-tight">Build seems stuck</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Your build has been pending for over 5 minutes — the builder may have
+                  dropped this job. Send another message to retry, or check back in a bit.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <EmptyState
         title="Building your live preview…"
