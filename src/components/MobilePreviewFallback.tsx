@@ -96,9 +96,36 @@ export function MobilePreviewFallback({
     void loadLatestBuild();
     void loadLatestReadyBuild();
 
+    // Poll until we land on `ready` or `failed`. Once terminal, stop.
     const poll = window.setInterval(() => {
-      void loadLatestBuild();
+      // Reading the latest build state via closure is fine — applyBuild
+      // updates `build`, and on the next interval tick we'll see the
+      // newest value (React state is mutable from the interval's POV).
+      setBuild((prev) => {
+        if (prev?.status === "ready" || prev?.status === "failed") {
+          window.clearInterval(poll);
+          return prev;
+        }
+        void loadLatestBuild();
+        return prev;
+      });
     }, 5_000);
+
+    // Stuck-build detector. If the build has been pending > 5 min, surface
+    // an actionable error instead of an infinite spinner. We rely on
+    // `created_at` so a freshly-created build still gets the full 5 min.
+    const stuckTimer = window.setInterval(() => {
+      setBuild((prev) => {
+        if (!prev || prev.status !== "pending") {
+          setPendingTooLong(false);
+          return prev;
+        }
+        const createdAt = prev.created_at ? Date.parse(prev.created_at) : Date.now();
+        const ageMs = Date.now() - createdAt;
+        setPendingTooLong(ageMs > 5 * 60 * 1000);
+        return prev;
+      });
+    }, 10_000);
 
     const channel = supabase
       .channel(`build:${latestBuildId}:${Date.now()}-${Math.random().toString(36).slice(2)}`)
