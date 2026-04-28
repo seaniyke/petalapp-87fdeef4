@@ -11,7 +11,9 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-async function authorize(request: Request): Promise<string | Response> {
+async function authorize(
+  request: Request,
+): Promise<{ userId: string; token: string } | Response> {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
@@ -29,7 +31,7 @@ async function authorize(request: Request): Promise<string | Response> {
   if (error || !data?.claims?.sub) {
     return new Response("Unauthorized", { status: 401 });
   }
-  return data.claims.sub;
+  return { userId: data.claims.sub, token };
 }
 
 async function assertAdmin(userId: string): Promise<Response | null> {
@@ -42,15 +44,26 @@ async function assertAdmin(userId: string): Promise<Response | null> {
   return null;
 }
 
+/** A Supabase client scoped to the calling user's JWT, so `auth.uid()` inside
+ *  SECURITY DEFINER RPCs resolves to the admin's id (not NULL). */
+function userScopedClient(token: string) {
+  const SUPABASE_URL = process.env.SUPABASE_URL!;
+  const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY!;
+  return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const Route = createFileRoute("/api/admin/credits")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const userIdOrResp = await authorize(request);
-        if (userIdOrResp instanceof Response) return userIdOrResp;
-        const adminId = userIdOrResp;
+        const authResult = await authorize(request);
+        if (authResult instanceof Response) return authResult;
+        const { userId: adminId, token: adminToken } = authResult;
         const denied = await assertAdmin(adminId);
         if (denied) return denied;
 
@@ -127,11 +140,14 @@ export const Route = createFileRoute("/api/admin/credits")({
             if (Math.abs(amount) > 100000) {
               return Response.json({ error: "Amount too large" }, { status: 400 });
             }
-            const { data, error } = await supabaseAdmin.rpc("admin_grant_credit", {
-              _target_user_id: target,
-              _amount: amount as never,
-              _note: note ?? undefined,
-            });
+            const { data, error } = await userScopedClient(adminToken).rpc(
+              "admin_grant_credit",
+              {
+                _target_user_id: target,
+                _amount: amount as never,
+                _note: note ?? undefined,
+              },
+            );
             if (error) {
               return Response.json({ error: error.message }, { status: 500 });
             }
