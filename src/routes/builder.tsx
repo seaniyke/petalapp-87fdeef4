@@ -2321,13 +2321,13 @@ function Builder() {
                 >
                   <ImageIcon className="h-3.5 w-3.5" />
                 </button>
-                <div className="inline-flex items-center rounded-full border border-border bg-background p-0.5 text-[11px]">
+                <div className="inline-flex items-center rounded-full border-2 border-foreground/15 bg-background p-0.5 text-[11px] shadow-sm">
                   <button
                     type="button"
                     onClick={() => setMode("build")}
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold transition ${
                       mode === "build"
-                        ? "bg-foreground text-background"
+                        ? "bg-foreground text-background shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                     title="Petal will write code and update your app"
@@ -2337,9 +2337,9 @@ function Builder() {
                   <button
                     type="button"
                     onClick={() => setMode("discuss")}
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold transition ${
                       mode === "discuss"
-                        ? "bg-foreground text-background"
+                        ? "bg-foreground text-background shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                     title="Chat about changes without touching your files"
