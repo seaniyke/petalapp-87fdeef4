@@ -80,8 +80,7 @@ export async function runSelfCheck(args: {
   assistantSummary: string;
   filePaths: string[];
 }): Promise<SelfCheckVerdict | null> {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) return null;
+  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return null;
 
   const brief = (args.brief ?? "").trim().slice(0, 1500);
   if (brief.length < 4) return null;
