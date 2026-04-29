@@ -7,21 +7,19 @@
  * Cheap and dismissible — false positives are fine.
  */
 
+// Only fire on explicit, unambiguous intent. We deliberately avoid matching
+// bare domain mentions like "reactjs.org" — those almost always refer to a
+// third-party site, not something the user wants to connect or buy.
 const STRONG_SIGNALS = [
   /\bcustom domain\b/i,
   /\bown domain\b/i,
-  /\bmy domain\b/i,
-  /\b(?:buy|purchase|register|get) (?:a |an )?domain\b/i,
-  /\bdomain name\b/i,
-  /\b(?:connect|add|hook up|point|link) (?:a |my |the )?(?:custom )?domain\b/i,
+  /\bmy (?:own )?domain\b/i,
+  /\b(?:buy|purchase|register) (?:a |an |my )?(?:custom |new )?domain\b/i,
+  /\b(?:connect|hook up|point|link) (?:a |my |the )?(?:custom )?domain\b/i,
   /\b(?:use|set up|setup) (?:a |my )?(?:custom )?domain\b/i,
-  /\b(?:godaddy|namecheap|porkbun|squarespace|google ?domains|cloudflare registrar)\b/i,
-  /\b[a-z0-9-]+\.(?:com|net|org|io|app|dev|co|xyz|me|ai|so|store|shop|tech|site|online|info|biz)\b/i,
   /\bDNS (?:records?|setup|config(?:uration)?)\b/i,
-  /\b(?:CNAME|A record|nameservers?)\b/i,
+  /\bnameservers?\b/i,
   /\bpoint (?:my )?domain (?:to|at)\b/i,
-  /\bsubdomain\b/i,
-  /\b(?:www\.)?[a-z0-9-]+\.(?:com|net|org|io|app|dev|co)\s*(?:to|→|->)/i,
 ];
 
 const MIN_LENGTH = 8;
