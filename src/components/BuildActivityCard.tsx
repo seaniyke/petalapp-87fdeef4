@@ -41,6 +41,7 @@ export type TimelineEntry = {
     | "local_verifier"
     | "continuation"
     | "esbuild_parse"
+    | "file_budget"
     | "post_stream_autofix"
     | "image_resolve";
   outcome: "ok" | "fixed" | "skipped" | "failed";
@@ -54,6 +55,7 @@ const TIMELINE_LABELS: Record<TimelineEntry["step"], string> = {
   local_verifier: "Local verifier",
   continuation: "Stream continuation",
   esbuild_parse: "Compiler check",
+  file_budget: "File-size guard",
   post_stream_autofix: "Polish pass",
   image_resolve: "Image generation",
 };
@@ -63,6 +65,7 @@ const TIMELINE_ICONS: Record<TimelineEntry["step"], LucideIcon> = {
   local_verifier: ShieldCheck,
   continuation: FileEdit,
   esbuild_parse: ShieldCheck,
+  file_budget: ShieldCheck,
   post_stream_autofix: Wrench,
   image_resolve: ImageIcon,
 };

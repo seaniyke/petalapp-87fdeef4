@@ -28,12 +28,18 @@ type Handlers = {
       | "local_verifier"
       | "continuation"
       | "esbuild_parse"
+      | "file_budget"
       | "post_stream_autofix"
       | "image_resolve";
     outcome: "ok" | "fixed" | "skipped" | "failed";
     message: string;
     count?: number;
     ts: number;
+  }) => void;
+  onContinuationHandoff?: (handoff: {
+    reason: "oversize_files" | "incomplete_turn" | "large_changeset";
+    message: string;
+    suggestedPrompt: string;
   }) => void;
   onError?: (message: string, suggestions?: string[]) => void;
 };
@@ -151,6 +157,13 @@ export async function streamGenerate(
               message: evt.message,
               count: evt.count,
               ts: evt.ts,
+            });
+            break;
+          case "continuation_handoff":
+            handlers.onContinuationHandoff?.({
+              reason: evt.reason,
+              message: evt.message,
+              suggestedPrompt: evt.suggestedPrompt,
             });
             break;
           case "error":

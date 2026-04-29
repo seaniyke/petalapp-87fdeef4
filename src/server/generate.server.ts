@@ -408,6 +408,21 @@ export type StreamEvent =
       /** Server timestamp when this step finished. */
       ts: number;
     }
+  | {
+      /**
+       * Layer-B "Continue building" handoff. Emitted at most once per turn,
+       * AFTER all repair tiers run, when we deliberately stopped early at
+       * a safe boundary (oversize files reverted, continuation pass
+       * couldn't finish, or the changeset was unusually large). The client
+       * renders an inline chip under the assistant message that pre-fills
+       * the composer with `suggestedPrompt` so the user can continue with
+       * one click.
+       */
+      type: "continuation_handoff";
+      reason: "oversize_files" | "incomplete_turn" | "large_changeset";
+      message: string;
+      suggestedPrompt: string;
+    }
   | { type: "error"; message: string; suggestions?: string[] };
 
 /** Apply a list of file operations to a current set of files.
