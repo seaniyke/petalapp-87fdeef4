@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.grant_first_paid_plan_runtime_credit(uuid, text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.grant_first_paid_plan_runtime_credit(uuid, text, text) TO service_role;
