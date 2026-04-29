@@ -4,11 +4,18 @@
  * Confirms a transaction with Paystack and applies credits/plan if it
  * succeeded. Used by the return page so users see a result instantly even
  * if the webhook hasn't fired yet. Idempotent — safe to call repeatedly.
+ *
+ * Security:
+ *   - Requires the caller to be the user that owns the tx.
+ *   - Re-asserts amount, currency, and environment against Paystack's
+ *     authoritative response before granting anything.
+ *   - Conditional UPDATE on status='pending' so concurrent webhook + return
+ *     callers can't double-write the row.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { verifyTransaction } from "@/server/paystack.server";
+import { verifyTransaction, getEnvironment } from "@/server/paystack.server";
 
 const Query = z.object({
   reference: z.string().min(4).max(128).regex(/^[a-zA-Z0-9_-]+$/),
@@ -45,7 +52,14 @@ export const Route = createFileRoute("/api/billing/verify")({
 
         // Already done — return what we have.
         if (tx.status === "success") {
-          return Response.json({ status: "success", purpose: tx.purpose, item_code: tx.item_code });
+          return Response.json({
+            status: "success",
+            purpose: tx.purpose,
+            item_code: tx.item_code,
+          });
+        }
+        if (tx.status === "failed" || tx.status === "abandoned") {
+          return Response.json({ status: tx.status });
         }
 
         try {
@@ -53,7 +67,46 @@ export const Route = createFileRoute("/api/billing/verify")({
           if (!data) {
             return Response.json({ status: tx.status });
           }
+
           if (data.status === "success") {
+            // --- Authoritative cross-checks before granting anything ---
+            const currentEnv = getEnvironment();
+            if (tx.environment !== currentEnv) {
+              console.error(
+                "[paystack verify] env mismatch",
+                { ref: q.reference, txEnv: tx.environment, currentEnv },
+              );
+              await supabaseAdmin
+                .from("paystack_transactions")
+                .update({ status: "failed" })
+                .eq("reference", q.reference)
+                .eq("status", "pending");
+              return new Response(
+                JSON.stringify({ error: "Environment mismatch — payment rejected." }),
+                { status: 400, headers: { "Content-Type": "application/json" } },
+              );
+            }
+            if (
+              Number(data.amount) !== Number(tx.amount_minor) ||
+              String(data.currency).toUpperCase() !==
+                String(tx.currency_code).toUpperCase()
+            ) {
+              console.error("[paystack verify] amount/currency mismatch", {
+                ref: q.reference,
+                expected: { amt: tx.amount_minor, cur: tx.currency_code },
+                got: { amt: data.amount, cur: data.currency },
+              });
+              await supabaseAdmin
+                .from("paystack_transactions")
+                .update({ status: "failed" })
+                .eq("reference", q.reference)
+                .eq("status", "pending");
+              return new Response(
+                JSON.stringify({ error: "Payment details mismatch — rejected." }),
+                { status: 400, headers: { "Content-Type": "application/json" } },
+              );
+            }
+
             if (tx.purpose === "pack") {
               await supabaseAdmin.rpc("apply_paystack_topup", {
                 _user_id: tx.user_id,
@@ -61,12 +114,22 @@ export const Route = createFileRoute("/api/billing/verify")({
                 _reference: q.reference,
                 _environment: tx.environment,
               });
+            } else if (tx.purpose === "runtime_topup") {
+              await supabaseAdmin.rpc("apply_paystack_runtime_topup", {
+                _user_id: tx.user_id,
+                _reference: q.reference,
+                _amount_cents: tx.usd_amount_cents as never,
+                _metadata: {
+                  item_code: tx.item_code,
+                  currency_code: tx.currency_code,
+                  amount_minor: tx.amount_minor,
+                  environment: tx.environment,
+                } as never,
+              });
             } else if (tx.purpose === "addon") {
               if (!tx.project_id) {
                 throw new Error("Add-on transaction missing project_id");
               }
-              // Backend slots have been retired — backend is now funded from
-              // Cloud balance. Only the $7/yr domain slot still flows here.
               await supabaseAdmin.rpc("apply_paystack_domain_slot", {
                 _user_id: tx.user_id,
                 _project_id: tx.project_id,
@@ -76,13 +139,27 @@ export const Route = createFileRoute("/api/billing/verify")({
                 _currency_code: tx.currency_code,
                 _environment: tx.environment,
               });
-            } else {
+            } else if (tx.purpose === "domain_purchase") {
+              // Domain registration is a slow, side-effecting job kicked off
+              // by the webhook. From verify's side we just confirm payment;
+              // the webhook (or our background worker) handles registration.
+              // We still flip status → success so the return page stops
+              // polling.
+            } else if (tx.purpose === "plan") {
               await supabaseAdmin.rpc("apply_paystack_plan_grant", {
                 _user_id: tx.user_id,
                 _plan_code: tx.item_code,
                 _reference: q.reference,
               });
+            } else {
+              console.error("[paystack verify] unknown purpose", tx.purpose);
+              return new Response(
+                JSON.stringify({ error: "Unknown transaction purpose" }),
+                { status: 500, headers: { "Content-Type": "application/json" } },
+              );
             }
+
+            // Conditional update so a concurrent webhook can't race us.
             await supabaseAdmin
               .from("paystack_transactions")
               .update({
@@ -91,14 +168,20 @@ export const Route = createFileRoute("/api/billing/verify")({
                 channel: data.channel,
                 paid_at: data.paid_at,
               })
-              .eq("reference", q.reference);
-            return Response.json({ status: "success", purpose: tx.purpose, item_code: tx.item_code });
+              .eq("reference", q.reference)
+              .eq("status", "pending");
+            return Response.json({
+              status: "success",
+              purpose: tx.purpose,
+              item_code: tx.item_code,
+            });
           }
           if (data.status === "failed" || data.status === "abandoned") {
             await supabaseAdmin
               .from("paystack_transactions")
               .update({ status: data.status })
-              .eq("reference", q.reference);
+              .eq("reference", q.reference)
+              .eq("status", "pending");
           }
           return Response.json({ status: data.status });
         } catch (err) {

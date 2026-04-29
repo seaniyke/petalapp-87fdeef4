@@ -114,9 +114,20 @@ export const Route = createFileRoute("/api/billing/initialize")({
               if (rate <= 0) return new Response("Bad currency rate", { status: 500 });
               const localMajor = parsed.customAmountMinor / 100; // assumes 2-decimal
               const usdMajor = localMajor / rate;
+              const usdCents = Math.floor(usdMajor * 100);
+              // Enforce a sane minimum so we don't pay Paystack fees on a
+              // sub-dollar charge. $1 USD floor.
+              if (usdCents < 100) {
+                return new Response(
+                  JSON.stringify({
+                    error: "Minimum top-up is $1.00 USD equivalent.",
+                  }),
+                  { status: 400, headers: { "Content-Type": "application/json" } },
+                );
+              }
               price = {
                 amountMinor: parsed.customAmountMinor,
-                usdAmountCents: Math.max(50, Math.floor(usdMajor * 100)),
+                usdAmountCents: usdCents,
               };
             } else {
               const { data: pack } = await supabaseAdmin
@@ -162,19 +173,30 @@ export const Route = createFileRoute("/api/billing/initialize")({
             });
           if (insertErr) throw new Error(insertErr.message);
 
-          const init = await initializeTransaction({
-            email: userData.user.email,
-            amountMinor: price.amountMinor,
-            currency: parsed.currency,
-            reference,
-            callbackUrl: parsed.returnUrl,
-            metadata: {
-              user_id: userData.user.id,
-              purpose: parsed.purpose,
-              item_code: parsed.itemCode,
-              project_id: parsed.projectId ?? null,
-            },
-          });
+          let init;
+          try {
+            init = await initializeTransaction({
+              email: userData.user.email,
+              amountMinor: price.amountMinor,
+              currency: parsed.currency,
+              reference,
+              callbackUrl: parsed.returnUrl,
+              metadata: {
+                user_id: userData.user.id,
+                purpose: parsed.purpose,
+                item_code: parsed.itemCode,
+                project_id: parsed.projectId ?? null,
+              },
+            });
+          } catch (e) {
+            // Roll back the orphan pending row so the user can retry cleanly
+            // and we don't accumulate dead pending transactions.
+            await supabaseAdmin
+              .from("paystack_transactions")
+              .delete()
+              .eq("reference", reference);
+            throw e;
+          }
 
           // Remember preferred currency.
           await supabaseAdmin
