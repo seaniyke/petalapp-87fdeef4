@@ -431,11 +431,12 @@ function OverridesPanel() {
           <div className="grid gap-4 md:grid-cols-5">
             <div className="space-y-2">
               <Label>Kind</Label>
-              <Select value={newKind} onValueChange={(v) => setNewKind(v as "plan" | "pack")}>
+              <Select value={newKind} onValueChange={(v) => setNewKind(v as "plan" | "pack" | "addon")}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="plan">Plan</SelectItem>
                   <SelectItem value="pack">Credit pack</SelectItem>
+                  <SelectItem value="addon">Add-on</SelectItem>
                 </SelectContent>
               </Select>
             </div>
