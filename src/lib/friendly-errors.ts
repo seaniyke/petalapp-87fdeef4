@@ -111,6 +111,74 @@ const PATTERNS: Array<{
       technicalDetail: raw,
     }),
   },
+  {
+    // ESBuild syntax-truncation failures. Our telemetry shows these are the
+    // single most common build-failure shape right now ("Unterminated string
+    // literal", "Unterminated regular expression", "Unexpected end of file").
+    // Cause: the model stopped streaming mid-file. The fix is the same in
+    // every case — re-run the turn with a "split big files, finish closures"
+    // nudge. The retry button on this card maps to that nudge in builder.tsx.
+    test: /Unterminated (?:string|regular expression|template)|Unexpected end of file/i,
+    build: (raw) => ({
+      title: "Petal's reply got cut off",
+      message:
+        "The AI ran out of room mid-file. Tap below and Petal will retry with smaller, safer chunks — no extra credits.",
+      actionLabel: "Retry safely",
+      actionKind: "retry",
+      technicalDetail: raw,
+    }),
+  },
+  {
+    // Vite/Rollup local-file resolution failure: the AI imported "./Foo" or
+    // "@/components/Foo" but never created Foo. We can fix this with a single
+    // targeted patch — the retry button routes to askPetalToFix(log) in
+    // builder.tsx for this category.
+    test: /Could not (?:resolve|load)\s+["']?(\.{1,2}\/|@\/)/i,
+    build: (raw) => {
+      const m = raw.match(/Could not (?:resolve|load)\s+["']?([^"'\s)]+)/i);
+      const file = m?.[1] ?? "a missing file";
+      return {
+        title: "One file went missing",
+        message: `Petal referenced \`${file}\` but didn't create it. Tap below and Petal will add it in one targeted fix.`,
+        actionLabel: "Add the missing file",
+        actionKind: "ask-fix",
+        technicalDetail: raw,
+      };
+    },
+  },
+  {
+    // Unresolved npm package — the AI imported something like "date-fns"
+    // without it being in package.json. We can't auto-install, so the fix is
+    // to swap for a built-in alternative (Date / Intl / lucide / our scaffold
+    // utilities). askPetalToFix routes this to the model with the package
+    // name explicitly called out.
+    test: /Rollup failed to resolve import\s+["']([^"']+)["']/i,
+    build: (raw) => {
+      const m = raw.match(/Rollup failed to resolve import\s+["']([^"']+)["']/i);
+      const pkg = m?.[1] ?? "an external package";
+      return {
+        title: "That feature needs a package Petal didn't include",
+        message: `\`${pkg}\` isn't in the project. Tap below and Petal will swap it for a built-in alternative.`,
+        actionLabel: "Use a built-in alternative",
+        actionKind: "ask-fix",
+        technicalDetail: raw,
+      };
+    },
+  },
+  {
+    // Tailwind v4 / styles.css validation. Already surfaced via friendlyBuildFailure
+    // for build-time, but if the same shape arrives via the generate path
+    // (e.g. local-verifier flagged it), give a matching message here.
+    test: /Invalid declaration|Cannot apply unknown utility|@tailwindcss\/vite/i,
+    build: (raw) => ({
+      title: "A styling rule isn't quite right",
+      message:
+        "Petal wrote a CSS rule the build doesn't accept. Tap below and Petal will rewrite it with safe defaults.",
+      actionLabel: "Fix the styles",
+      actionKind: "ask-fix",
+      technicalDetail: raw,
+    }),
+  },
 ];
 
 const GENERIC: FriendlyError = {
