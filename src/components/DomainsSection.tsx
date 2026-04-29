@@ -60,6 +60,7 @@ import {
   removeDomain,
   listDomainSlots,
   PETAL_DOMAIN_CNAME_TARGET,
+  PETAL_DOMAIN_A_RECORD,
   DomainSlotRequiredError,
   type ProjectDomain,
   type DomainSlot,
@@ -165,13 +166,19 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
     });
   }
 
-  async function handleVerify(d: ProjectDomain) {
+  async function handleVerify(d: ProjectDomain): Promise<ProjectDomain | null> {
     try {
       const next = await verifyDomain(projectId, d.id);
       upsertLocal(next);
-      toast.success("Re-checking DNS…");
+      toast.success(
+        next.status === "active"
+          ? "Domain is active"
+          : "DNS checked — still waiting for propagation",
+      );
+      return next;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't check status");
+      return null;
     }
   }
 
@@ -335,7 +342,8 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
         onClose={() => setRecordsFor(null)}
         onVerify={async () => {
           if (!recordsFor) return;
-          await handleVerify(recordsFor);
+          const next = await handleVerify(recordsFor);
+          if (next) setRecordsFor(next);
         }}
       />
 
