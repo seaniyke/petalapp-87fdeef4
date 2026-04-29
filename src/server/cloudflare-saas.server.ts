@@ -15,6 +15,7 @@ export type CfHostname = {
   hostname: string;
   status: "active" | "pending" | "active_redeploying" | "moved" | "pending_deletion" | "pending_blocked" | "pending_migration" | "pending_provisioned" | "test_pending" | "test_active" | "test_active_apex" | "test_blocked" | "test_failed" | "provisioned" | "blocked";
   ssl: {
+    method?: "txt" | "http" | "email";
     status:
       | "initializing"
       | "pending_validation"
@@ -79,12 +80,11 @@ async function cfFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
  * Register a custom hostname.
  *
  * `sslMethod`:
- *   - `"txt"` (default) — for user-owned domains the customer is CNAME'ing to
- *     us. They must add a TXT record at their registrar; this works regardless
- *     of whether DNS is fully pointed at us yet.
- *   - `"http"` — for hostnames that already resolve to Cloudflare (e.g. our
- *     own `*.buildwithpetal.com` wildcard). HTTP-01 validation completes in
- *     seconds with zero user action — no per-subdomain DNS or TXT needed.
+ *   - `"http"` (default) — correct Cloudflare for SaaS flow for normal
+ *     customer hostnames. Once the A/CNAME points at Petal, Cloudflare serves
+ *     the DCV token automatically and issues SSL without user-managed TXT.
+ *   - `"txt"` — reserved for wildcard/pre-validation flows where HTTP DCV is
+ *     not possible.
  */
 export async function createCustomHostname(
   hostname: string,
@@ -96,7 +96,31 @@ export async function createCustomHostname(
     body: JSON.stringify({
       hostname,
       ssl: {
-        method: opts.sslMethod ?? "txt",
+        method: opts.sslMethod ?? "http",
+        type: "dv",
+        settings: {
+          min_tls_version: "1.2",
+        },
+      },
+    }),
+  });
+}
+
+/**
+ * Ask Cloudflare to re-run validation. Sending the same SSL config via PATCH
+ * resets Cloudflare's validation backoff; it can also move older TXT-based
+ * hostnames onto automatic HTTP DCV for non-wildcard domains.
+ */
+export async function recheckCustomHostname(
+  id: string,
+  opts: { sslMethod?: "txt" | "http" } = {},
+): Promise<CfHostname> {
+  const { zoneId } = getEnv();
+  return cfFetch<CfHostname>(`/zones/${zoneId}/custom_hostnames/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      ssl: {
+        method: opts.sslMethod ?? "http",
         type: "dv",
         settings: {
           min_tls_version: "1.2",
