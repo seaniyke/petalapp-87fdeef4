@@ -1,95 +1,106 @@
+## Goal
 
-# How Lovable & v0 Stay Reliable — and What Petal Should Copy
+Stop forcing every user through a $10 Cloud top-up before they can use backend / email / domains. Instead:
 
-## What the research actually says
+1. Free users hitting any paid capability (backend, email, custom domain) are routed to **Upgrade plan** — not to a top-up screen.
+2. The first time a user upgrades to a paid plan, they get a **one-time $5 runtime grant** (covers both Cloud usage and AI usage — same wallet).
+3. Existing low-balance alerts and grace-period logic stay exactly as they are.
+4. Paid users with $0 runtime balance still get alerted and can top up — that path stays alive, it's just no longer the gate for first-time access.
 
-There is no secret. v0 and Bolt published exactly how they do it, and we already do most of it. Here's the honest comparison.
+This removes the worst current UX cliff (a brand-new user being asked to put down $10 before they can do anything backend-related) without eroding monetization — they still have to pay for the plan.
 
-**v0 (Vercel, Jan 2026 post "How we made v0 an effective coding agent"):**
-1. **Dynamic system prompt** — inject library-specific knowledge (current AI SDK version, lucide icon list) so the model never hallucinates outdated APIs. No web search at gen-time.
-2. **"LLM Suspense"** — a streaming find-and-replace layer that fixes imports, swaps missing icons, normalizes URLs *while tokens are still streaming*. User never sees the broken state. ~100 ms per fix.
-3. **Autofixers (post-stream)** — deterministic AST fixes + a tiny fine-tuned repair model. ~250 ms.
-4. They state: **raw LLM output is broken ~10% of the time. The pipeline closes most of that gap.**
+---
 
-**Bolt:** WebContainer (browser-hosted Node) is the moat — instant feedback, no deploy round-trip. Their generation reliability is **almost entirely Claude Sonnet** plus a strict system prompt. They don't have an exotic pipeline. They route to one strong model and let WebContainer hide latency.
+## Scope of changes
 
-**Lovable:** Heavy investment in dynamic context (knowledge files, project memory) and very specific prompt rules. Same shape as v0 but less public detail.
+### A. Database / SQL (one new migration)
 
-## What Petal already has (you've built more than you think)
+1. Add a column `runtime_first_plan_grant_at TIMESTAMPTZ` on `user_wallets` so the one-time grant is idempotent across re-subscribes / plan switches.
+2. New SQL function `grant_first_paid_plan_runtime_credit(_user_id, _plan_code, _reference)`:
+   - No-op if `plan_code = 'free'`.
+   - No-op if `runtime_first_plan_grant_at IS NOT NULL` (already granted once, ever).
+   - Otherwise: set `runtime_topup_qualified_at = now()` (so they qualify for the existing monthly $5 reset), set `runtime_first_plan_grant_at = now()`, and **add 500¢ ($5) to `runtime_free_balance_cents`** (capped — don't add if already > 500).
+   - Insert a `credit_ledger` / runtime ledger row tagged `reason='first_plan_grant'` with the paystack reference for audit.
+3. Update `apply_paystack_plan_grant` to call the new function at the end (so paying for any paid plan triggers it once, ever).
 
-`src/server/pipeline/` holds the same shape as v0:
-- `tier-local-verify.ts` — heuristic verifier
-- `tier-esbuild.ts` — esbuild parse pass (= v0's deterministic AST check)
-- `tier-continuation.ts` — re-prompts the same model to finish truncated files (= more aggressive than v0)
-- `post-stream-autofix.server.ts` — model-driven autofix (= v0's repair model)
-- `stream-autofixer.ts` — streaming-time fixes (= LLM Suspense)
-- `smart-router.server.ts` — quality-weighted model selection (= more than v0 publishes)
+Why a separate function: keeps the grant logic auditable and reusable by admin tools. Why qualify them: the existing monthly $5 free reset only fires for `runtime_topup_qualified_at IS NOT NULL` wallets — paying for a plan should count as "qualified" so they keep getting the monthly $5 going forward.
 
-This is genuinely a v0-class pipeline. The reliability gap is **not** missing infrastructure.
+### B. Backend gate (`src/routes/api/backend.ts`)
 
-## What the database says is actually broken
+`handleEnableManaged` currently rejects with `topup_required` whenever `runtime_topup_balance_cents < $10`. Replace that gate with a **plan gate**:
 
-Last 7 days of `ai_call_outcomes`:
+- Read `plan_code` from `user_wallets`.
+- If `plan_code === 'free'` → return 402 with `code: 'plan_upgrade_required'`, `requiredPlan: 'pro'`, and a message ("Backends are included with paid plans.").
+- If paid plan:
+  - If `runtime_topup_balance_cents + runtime_free_balance_cents > 0` → allow activation.
+  - If both are $0 → return 402 with `code: 'balance_empty'` (existing path) so they top up. This shouldn't happen right after upgrade thanks to the $5 grant, but covers the edge case where they spent it all.
+- Drop `PROVISIONING_FLOOR_CENTS = 1000` entirely. The $10 floor is gone.
 
-```text
-model                         total  build_ready  verifier_pass  avg_autofix
-google/gemini-2.5-pro            12        100%            33%         0.33
-google/gemini-3-flash-preview     4        100%            25%         0.00
-```
+Mirror the same logic in the SQL helper `can_enable_managed_backend()` so server-side enforcement matches.
 
-Top verifier issues: `missing-export (49)`, `jsx (42)`, `undefined (22)`, `braces (14)`, `truncation (13)`, `unterminated-string (11)`.
+### C. Client gating UI
 
-Last 3 days of `ai_call_log` for `feature='generate'`: **69 successes, zero errors recorded.**
+Three suggestion-chip flows + their dialogs need to learn the new rule. The pattern is identical for each: if `plan.code === 'free'`, the primary CTA opens `BillingSheet` (upgrade), not the top-up modal.
 
-**Two findings:**
-1. Every recorded generation succeeds at build time. The pipeline *is* closing the gap.
-2. But the user keeps seeing "Petal got a bit confused." That string only fires from `friendly-errors.ts` GENERIC fallback — which means the failure happens in a path that **never reaches `recordAiOutcome` and never logs an HTTP error**. It's a silent client-side or pre-pipeline failure.
+1. **`EnableBackendSuggestionChip` / `EnableBackendFromCloudDialog`**
+   - Take `isPaidPlan` from `useWallet()` (already available — the prop exists, just unused).
+   - Free plan: chip CTA reads "Upgrade to add backend" and opens `BillingSheet`.
+   - Paid plan: existing flow (open dialog, provision from balance).
+   - Inside `EnableBackendFromCloudDialog`, remove the "$10 minimum" copy and the `setTopupOpen` fallback for first-time users; only show top-up UI when a paid user genuinely has $0.
 
-This is the real bug. Adding more retries won't help if the failure is bypassing the pipeline entirely.
+2. **`AddDomainSuggestionChip` / `BuyDomainSlotDialog`**
+   - Free plan: hide "Buy" button (or replace with "Upgrade to buy"), keep "Connect" disabled with an upgrade tooltip.
+   - Inside `BuyDomainSlotDialog`, if free plan: render an upgrade CTA instead of the Paystack init form.
 
-## The plan — three workstreams, in priority order
+3. **`EnableEmailSuggestionChip`** (and the email section inside `ProjectSettingsSheet`)
+   - Free plan: chip CTA reads "Upgrade to send email" and opens `BillingSheet`.
+   - Paid plan: existing behavior.
 
-### Workstream 1 (CRITICAL — root cause): Make every failure observable
+4. **Server settings / project settings sheet** — wherever an "Enable email" / "Connect domain" / "Add backend" button lives in `ProjectSettingsSheet.tsx`, mirror the same paid-plan check.
 
-The "confused" toast fires when `toFriendlyError()` gets a string that matches no known pattern. We have **no telemetry** on what those strings actually are. Until we know, every "fix" is a guess.
+### D. Verify route (`src/routes/api/billing/verify.ts`)
 
-- Add a `pipeline_failures` table. On every GENERIC fallback in `friendly-errors.ts`, POST the raw error + last 500 chars of the assistant stream + tool name attempted + project_id to a new `/api/public/track-failure` route.
-- In `src/routes/api/generate.ts`, wrap the SSE stream in a try/catch that always emits a structured `error` event and always calls `recordAiOutcome` (currently it's only called on the happy path — confirmed by reading `ai-outcomes.server.ts`).
-- Add a new admin page `/admin/failures` showing the last 100 unmatched errors, grouped by signature.
+Already calls `apply_paystack_plan_grant` for `purpose === 'plan'`. Once that SQL function is updated to include the one-time runtime grant, the verify route needs no JS changes — the grant happens atomically inside the RPC. Webhook (`/api/public/paystack/webhook.ts`) needs the same audit (it also calls `apply_paystack_plan_grant`).
 
-**Outcome:** within 24 hours of shipping, we'll have a ranked list of the actual failure modes. Right now we are guessing.
+### E. Copy & comms
 
-### Workstream 2 (HIGH — copy v0's two highest-leverage tactics)
+- Update upgrade success toast / billing-return page: "Welcome to {plan}. We've added $5 of runtime credit so you can spin up backends, email, and domains right away."
+- Update `EnableBackendFromCloudDialog` body copy: drop "$10 minimum" — replace with "Backends are included with your plan. You'll spend ~$0.02/hr from your runtime balance while it's running."
+- Update memory files (`mem://feature/cloud-activation-per-project.md` and `mem://feature/cloud-ai-billing-model.md`) to reflect the new rules: plan-gated, not balance-gated; $5 one-time on first paid plan + monthly $5 thereafter.
 
-**a) "LLM Suspense" for the lucide-react problem.** v0 calls this out specifically. We don't do it. Build `src/server/lucide-resolver.server.ts`:
-- At server start, read the actual export list from `node_modules/lucide-react/dist/esm/icons`.
-- In `stream-autofixer.ts`, intercept `import { X } from "lucide-react"` during streaming. If `X` doesn't exist, rewrite to `import { ClosestMatch as X } from "lucide-react"` using a precomputed embedding map (or just Levenshtein — 1500 names, fast enough).
-- This single fix will eliminate a chunk of the `missing-export` errors (49 in the last 7 days).
+### F. Out of scope (intentionally not changing)
 
-**b) Deterministic missing-import autofix.** Today, when a file imports `./Hero` but `Hero.tsx` doesn't exist, we hand it back to the user as "Add the missing file." v0 fixes this automatically with a single small targeted call. Add a `tier-missing-imports.ts` between esbuild and post-stream-autofix:
-- Parse all `import "./X"` and `import "@/X"` references.
-- For each unresolved local import, fire a *scoped* call to `gemini-2.5-flash` with only the parent file as context: "create a minimal stub at this path that satisfies the import." Cap at 3 calls per turn.
+- Top-up flow itself — paid users with $0 balance keep using it.
+- Monthly $5 free reset — keep as-is for qualified wallets.
+- Low-balance banners and grace-period cron — keep as-is.
+- Build-credit pricing (per-message credits) — separate system, untouched.
 
-### Workstream 3 (MEDIUM — close the truncation problem at its source)
+---
 
-Telemetry shows truncation (13) + unterminated-string (11) + braces (14) = 38 events. `tier-continuation.ts` already handles these but only when the verifier catches them. v0's lesson: **prevent, don't repair.**
+## Technical details
 
-- Hard-enforce the 180-line file budget in the tool schema itself (currently it's a prose rule the model ignores). Add a server-side reject + auto-split: if any incoming file is >180 lines, refuse the tool call and respond with an instruction to split that specific file. One round-trip beats a continuation pass.
-- Increase `max_tokens` per file write to the model's hard ceiling, not our default. We're sometimes capping below what the file needs.
-- For initial generations only, switch the default model to `gemini-2.5-pro` (33% verifier-pass beats flash's 25% in our own data — though the sample is tiny).
+**Why $5 lives in `runtime_free_balance_cents` and not a new column**: it's the same wallet the rest of the runtime system already drains in the right order (free → top-up). No new spend logic needed.
 
-### Workstream 4 (LOWER — what we should NOT do)
+**Why `runtime_first_plan_grant_at` is separate from `runtime_topup_qualified_at`**: a user could in theory pay for a top-up first, then later upgrade to a plan. We still want to give them the one-time $5 plan-upgrade gift exactly once. Tracking the two events independently keeps that clean.
 
-You asked if competitors use "third-party software." They don't. Bolt uses Anthropic's API. v0 uses their own fine-tunes + standard frontier models. **There is no off-the-shelf reliability product to buy.** Anyone selling one is selling a wrapper around the same techniques we already have.
+**Idempotency**: the new RPC checks both `runtime_first_plan_grant_at` and the existence of a ledger row keyed by the paystack reference, so a verify+webhook race can't double-credit.
 
-You also asked if they "build for longer before asking the user to continue." Partially yes — Bolt's WebContainer means the build cycle is sub-second, so they can iterate 3–4 times silently before showing the user anything. We can't replicate that without WebContainer (a 6-month project). But we can **silently retry once on tool-call failure** before surfacing any error — something we're not doing today.
+**No regression for current paid users**: the migration backfills `runtime_first_plan_grant_at = now()` for any wallet where `plan_code != 'free'`. They don't get a retroactive $5 (avoids surprise grants), but they're correctly marked as "already received" so a future plan switch doesn't trigger it.
 
-## Why this order
+**Security**: gate is enforced server-side in `/api/backend.ts` and in `can_enable_managed_backend()`. Client UI changes are UX only; a free user calling the API directly still gets 402.
 
-1. We can't fix what we can't see. Workstream 1 is one day of work and will retire 80% of the guessing.
-2. Lucide + missing-imports is the highest-impact concrete bug confirmed by our own data.
-3. The truncation work matters but only after we know the post-W1 telemetry doesn't reveal something more urgent.
+---
 
-## Decision needed
+## Acceptance check
 
-Approve this and I'll start with Workstream 1 — purely additive (new table, new route, new admin page, two callsite tweaks). No regression risk to the generation pipeline. Within a day we'll have the data to choose between Workstream 2 and Workstream 3 for what to ship next.
+- New free user clicks "Add backend" → sees upgrade prompt, not a top-up screen.
+- User upgrades to Pro → wallet shows $5 runtime balance immediately, can enable backend in one click without topping up.
+- Existing paid user with balance > $0 → no behavior change.
+- Existing paid user with balance = $0 → still sees top-up prompt (unchanged).
+- User downgrades and re-upgrades → does NOT get a second $5 grant.
+
+---
+
+## Open question
+
+For domain **slot purchases** (`addon` purpose, paid via Paystack on top of the plan): do you want free users blocked entirely (must upgrade first), or do you want to allow paid-plan users to buy extra domain slots? The plan above assumes: free → must upgrade; paid → can buy slots as today. Confirm if that matches.
