@@ -146,6 +146,57 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
     }
   }
 
+  if (!isPaidPlan) {
+    return (
+      <>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="max-w-[calc(100vw-1.5rem)] sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Buy a new domain
+              </DialogTitle>
+              <DialogDescription>
+                Custom domains are included with paid plans.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
+              <p className="font-medium text-foreground">
+                Upgrade to buy a domain.
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Paid plans include $5 of runtime credit so you can connect a
+                backend, send email, and ship your domain right away.
+              </p>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  onOpenChange(false);
+                  setBillingOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5"
+              >
+                <Sparkles className="h-3.5 w-3.5" /> Upgrade plan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
+      </>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[calc(100vw-1.5rem)] sm:max-w-lg">
@@ -306,3 +357,4 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
     </Dialog>
   );
 }
+
