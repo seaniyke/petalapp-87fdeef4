@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as GalleryRouteImport } from './routes/gallery'
@@ -62,6 +63,11 @@ import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
   path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsRoute = ProjectsRouteImport.update({
@@ -317,6 +323,7 @@ export interface FileRoutesByFullPath {
   '/gallery': typeof GalleryRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -368,6 +375,7 @@ export interface FileRoutesByTo {
   '/gallery': typeof GalleryRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -420,6 +428,7 @@ export interface FileRoutesById {
   '/gallery': typeof GalleryRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -473,6 +482,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/profile'
     | '/projects'
+    | '/reset-password'
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
@@ -524,6 +534,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/profile'
     | '/projects'
+    | '/reset-password'
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
@@ -575,6 +586,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/profile'
     | '/projects'
+    | '/reset-password'
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
@@ -627,6 +639,7 @@ export interface RootRouteChildren {
   GalleryRoute: typeof GalleryRoute
   ProfileRoute: typeof ProfileRoute
   ProjectsRoute: typeof ProjectsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminBillingRoute: typeof AdminBillingRoute
@@ -679,6 +692,13 @@ declare module '@tanstack/react-router' {
       path: '/unsubscribe'
       fullPath: '/unsubscribe'
       preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects': {
@@ -1027,6 +1047,7 @@ const rootRouteChildren: RootRouteChildren = {
   GalleryRoute: GalleryRoute,
   ProfileRoute: ProfileRoute,
   ProjectsRoute: ProjectsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminBillingRoute: AdminBillingRoute,
