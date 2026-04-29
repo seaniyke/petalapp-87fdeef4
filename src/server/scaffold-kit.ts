@@ -3505,6 +3505,8 @@ const KIT: KitFile[] = [
   { path: "src/components/ui/card.tsx", content: CARD, overwrite: true },
   { path: "src/components/ui/input.tsx", content: INPUT, overwrite: true },
   { path: "src/components/ui/input-otp.tsx", content: INPUT_OTP, overwrite: true },
+  { path: "src/components/ui/pagination.tsx", content: PAGINATION, overwrite: true },
+  { path: "src/components/ui/alert-dialog.tsx", content: ALERT_DIALOG, overwrite: true },
   { path: "src/components/ui/textarea.tsx", content: TEXTAREA, overwrite: true },
   { path: "src/components/ui/label.tsx", content: LABEL, overwrite: true },
   { path: "src/components/ui/badge.tsx", content: BADGE, overwrite: true },
