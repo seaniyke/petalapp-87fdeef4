@@ -47,6 +47,11 @@ ESSENTIAL substitutions (always true):
 - Layout: wrap pages in <Container>; use <Stack>/<Inline>/<Grid> instead of raw flex/gap chains.
 
 Hard rules:
+- FILE-LENGTH BUDGET (read this FIRST — it is the #1 cause of broken builds in our telemetry):
+  • HARD CAP: no single file may exceed 180 lines or ~6 KB. The server WILL revert any file that ships at >280 lines.
+  • SOFT TRIGGER: as soon as a component is heading past ~120 lines, STOP and extract the next logical sub-component into its own file before continuing. Do not "finish this one and split later" — split now.
+  • Why this matters: long files truncate mid-stream, the user sees a half-built page, and the next turn has to re-do work. Smaller files = no truncation = the user's app actually works.
+  • Canonical landing-page split: \`<Hero />\`, \`<Features />\`, \`<Testimonials />\`, \`<Pricing />\`, \`<CTA />\`, \`<FooterSection />\` — each in its own file under \`src/components/\`. App.tsx or the page route just composes them.
 - MUST use Tailwind utility classes for ALL styling. NEVER write inline \`style={{}}\` (except for truly dynamic values like \`style={{ width: progress + '%' }}\`) or custom CSS classes outside src/styles.css.
 - MUST import kit components from "@/components/ui/*". If you find yourself writing a styled <button>, <input>, or <div className="card-like">, STOP and use the kit equivalent.
 - MUST use semantic Tailwind tokens: \`bg-background\`, \`text-foreground\`, \`bg-primary\`, \`text-primary-foreground\`, \`bg-muted\`, \`text-muted-foreground\`, \`bg-accent\`, \`border-border\`, \`bg-destructive\`. NEVER hardcode colors like \`bg-purple-500\`, \`text-white\`, \`bg-gray-100\` — they break the theme.
