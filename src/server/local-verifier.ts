@@ -417,6 +417,120 @@ export function verifyFileLocal(path: string, content: string): LocalIssue[] {
   return issues;
 }
 
+/**
+ * Walk every emitted .ts/.tsx file and collect its bare imports. For each
+ * one, decide whether it can possibly resolve at build time:
+ *   - relative `./Foo` or alias `@/Foo`  →  must exist in the file map
+ *     (changed OR scaffold OR pre-existing).
+ *   - bare `pkg` or `@scope/pkg`         →  must be in package.json deps.
+ * Anything that fails resolves to a `missing-sibling` or `missing-dep` issue.
+ *
+ * Whitelisted: `react`, `react-dom`, scaffold-managed namespaces (`@/components/ui/*`,
+ * `@/integrations/backend/*`, `@/lib/utils`) — those always exist in the kit.
+ */
+function findUnresolvedImports(
+  files: { path: string; content: string }[],
+  changedPaths: Set<string>,
+): LocalIssue[] {
+  const issues: LocalIssue[] = [];
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+
+  // Build the dep whitelist from the AI-emitted package.json (or the
+  // scaffold's, if the AI didn't emit one).
+  const deps = new Set<string>([
+    "react",
+    "react-dom",
+    "react/jsx-runtime",
+    "react/jsx-dev-runtime",
+  ]);
+  const pkgRaw = byPath.get("package.json");
+  if (pkgRaw) {
+    try {
+      const pkg = JSON.parse(pkgRaw) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      for (const k of Object.keys(pkg.dependencies ?? {})) deps.add(k);
+      for (const k of Object.keys(pkg.devDependencies ?? {})) deps.add(k);
+    } catch {
+      /* malformed package.json — handled elsewhere */
+    }
+  }
+
+  // Scaffold prefixes that always resolve via the kit even when no file map
+  // entry exists yet (the kit injects them post-AI).
+  const SCAFFOLD_PREFIXES = [
+    "@/components/ui/",
+    "@/integrations/backend/",
+    "@/integrations/lovable/",
+    "@/lib/utils",
+    "@/lib/router",
+    "@/styles.css",
+  ];
+  function isScaffoldAlias(spec: string): boolean {
+    return SCAFFOLD_PREFIXES.some((p) => spec === p || spec.startsWith(p));
+  }
+
+  // Bare specifier → npm package name (handles scoped: `@scope/pkg` and
+  // sub-paths: `pkg/sub/path` → `pkg`, `@scope/pkg/sub` → `@scope/pkg`).
+  function pkgRoot(spec: string): string {
+    if (spec.startsWith("@")) return spec.split("/").slice(0, 2).join("/");
+    return spec.split("/")[0];
+  }
+
+  // Single regex catches both `import … from "x"` and bare side-effect
+  // imports `import "x"`. Skip type-only imports — they don't trigger Rollup.
+  const importRe = /import\s+(?!type\b)(?:[^"';]+?\s+from\s+)?["']([^"']+)["']/g;
+  // Also catch dynamic imports + CJS-style requires the model occasionally
+  // emits inside server functions.
+  const dynRe = /(?:^|[^.\w])import\(\s*["']([^"']+)["']\s*\)/g;
+
+  const seen = new Set<string>();
+  for (const f of files) {
+    if (!changedPaths.has(f.path)) continue;
+    if (!/\.(tsx?|jsx?)$/.test(f.path)) continue;
+    if (f.path.startsWith("src/components/ui/")) continue;
+    if (f.path.startsWith("src/integrations/")) continue;
+
+    const specs: string[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = importRe.exec(f.content))) specs.push(m[1]);
+    while ((m = dynRe.exec(f.content))) specs.push(m[1]);
+
+    for (const spec of specs) {
+      // Already-emitted issue for this file/spec? Skip noise.
+      const dedupeKey = `${f.path}|${spec}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+
+      // Relative or alias import → resolve against the file map.
+      if (spec.startsWith(".") || spec.startsWith("@/")) {
+        if (isScaffoldAlias(spec)) continue;
+        const resolved = resolveImportPath(f.path, spec, byPath);
+        if (!resolved) {
+          issues.push({
+            path: f.path,
+            kind: "missing-sibling",
+            detail: `import "${spec}" — referenced file does not exist`,
+          });
+        }
+        continue;
+      }
+
+      // Bare specifier → npm package.
+      const root = pkgRoot(spec);
+      if (!deps.has(root)) {
+        issues.push({
+          path: f.path,
+          kind: "missing-dep",
+          detail: `import "${spec}" — package "${root}" is not in package.json`,
+        });
+      }
+    }
+  }
+  return issues;
+}
+
 export function verifyFilesLocal(
   files: { path: string; content: string }[],
   changedPaths: string[],
@@ -430,5 +544,6 @@ export function verifyFilesLocal(
     issues.push(...verifyFileLocal(f.path, f.content));
   }
   issues.push(...findLazyNamedExportIssues(files, changed));
+  issues.push(...findUnresolvedImports(files, changed));
   return { ok: issues.length === 0, issues };
 }
