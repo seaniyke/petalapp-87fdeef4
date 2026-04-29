@@ -229,7 +229,11 @@ async function handleVerify(userId: string, body: unknown): Promise<Response> {
 
   let cf;
   try {
-    cf = await getCustomHostname(cfId);
+    const current = await getCustomHostname(cfId);
+    cf =
+      current.ssl?.status === "active"
+        ? current
+        : await recheckCustomHostname(cfId, { sslMethod: "http" });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Cloudflare error";
     return new Response(`Couldn't reach Cloudflare: ${msg}`, { status: 502 });
@@ -249,6 +253,10 @@ async function handleVerify(userId: string, body: unknown): Promise<Response> {
     patch.verification_txt_name = txts[0].name;
     patch.verification_txt_value = txts[0].value;
     patch.verification_records = txts;
+  } else if (cf.ssl?.method === "http") {
+    patch.verification_txt_name = `_cf-http-validation.${cf.hostname}`;
+    patch.verification_txt_value = "Automatic HTTP validation — no TXT record required";
+    patch.verification_records = [];
   }
 
   const { data, error } = await supabaseAdmin
