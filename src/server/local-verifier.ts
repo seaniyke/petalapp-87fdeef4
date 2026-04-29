@@ -693,5 +693,6 @@ export function verifyFilesLocal(
   }
   issues.push(...findLazyNamedExportIssues(files, changed));
   issues.push(...findUnresolvedImports(files, changed));
+  issues.push(...findMissingNamedExports(files, changed));
   return { ok: issues.length === 0, issues };
 }
