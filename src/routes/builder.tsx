@@ -674,7 +674,7 @@ function Builder() {
   // On failure: auto-trigger the fix loop (Phase 2) up to MAX_AUTO_FIX_ATTEMPTS
   // before surfacing the manual "Ask Petal to fix it" button.
   useEffect(() => {
-    if (!buildSnap) return;
+    if (!effectiveBuildSnap) return;
     const buildId = project?.latest_build_id ?? null;
 
     if (autoFixRef.current.projectId !== project?.id) {
@@ -685,19 +685,19 @@ function Builder() {
       };
     }
 
-    if (buildSnap.status === "ready") {
+    if (effectiveBuildSnap.status === "ready") {
       setPhases((p) => completeThrough(p, "live"));
       autoFixRef.current.attempts = 0;
       autoFixRef.current.handledBuildIds.clear();
       // Note: we used to surface a "Changes ready to publish" toast here, but
       // it fired on every refresh / build completion and was more noise than
       // signal. Users can publish from the header button when ready.
-    } else if (buildSnap.status === "pending" || buildSnap.status === "building") {
+    } else if (effectiveBuildSnap.status === "pending" || effectiveBuildSnap.status === "building") {
       // Both states keep the activity card on the deploying phase. Without
       // the 'building' branch, the card would freeze the moment Railway
       // started processing the job.
       setPhases((p) => advanceTo(p, "deploying"));
-    } else if (buildSnap.status === "failed") {
+    } else if (effectiveBuildSnap.status === "failed") {
       setPhases((p) => markFailed(p, "deploying"));
       const shouldAutoFix =
         !!buildId &&
@@ -725,10 +725,10 @@ function Builder() {
       if (busy) return;
       // Manual fallback after we've burned both auto-attempts, or when the
       // failed build was already present when the user opened the project.
-      setFriendlyError(friendlyBuildFailure(buildSnap.errorMessage));
+      setFriendlyError(friendlyBuildFailure(effectiveBuildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildSnap?.status, buildSnap?.errorMessage, project?.latest_build_id, project?.published_build_id, busy]);
+  }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, project?.latest_build_id, project?.published_build_id, busy]);
 
   // Auto-hide the success card a little after the app goes live so the chat
   // returns to a calm state. The card itself also self-collapses.
