@@ -26,8 +26,17 @@ function pagesProjectName(projectId: string): string {
 
 const PETAL_ROOT = "buildwithpetal.com";
 
+/** Site meta the worker injects into served HTML so each Petal app gets a
+ *  proper title/favicon/social card without the user having to wire it up. */
+type SiteMeta = {
+  title: string | null;
+  description: string | null;
+  iconUrl: string | null;
+  ogImageUrl: string | null;
+};
+
 type Result =
-  | { kind: "proxy"; target: string; projectId: string }
+  | { kind: "proxy"; target: string; projectId: string; meta: SiteMeta }
   | { kind: "unpublished" | "private"; projectId: string }
   | { kind: "unknown" };
 
