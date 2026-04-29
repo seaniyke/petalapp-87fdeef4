@@ -380,6 +380,32 @@ export type StreamEvent =
       gaps: string[];
       suggestions: string[];
     }
+  | {
+      /**
+       * Real-time build-pipeline timeline entry. Each entry represents one
+       * post-stream step the server ran (regex autofixer, local verifier,
+       * continuation, post-stream autofix, image resolution, etc.).
+       *
+       * Distinct from `status` (which drives the single evolving headline) —
+       * timeline entries are appended to a list the user can expand.
+       */
+      type: "timeline";
+      /** Stable id of the step. Used for icon + grouping on the client. */
+      step:
+        | "stream_autofix"
+        | "local_verifier"
+        | "continuation"
+        | "post_stream_autofix"
+        | "image_resolve";
+      /** "ok" = ran clean, "fixed" = ran and changed something, "skipped" = gated off. */
+      outcome: "ok" | "fixed" | "skipped" | "failed";
+      /** ≤80 char human-readable description shown on the row. */
+      message: string;
+      /** Optional count to show as a badge (files fixed, issues found, etc.). */
+      count?: number;
+      /** Server timestamp when this step finished. */
+      ts: number;
+    }
   | { type: "error"; message: string; suggestions?: string[] };
 
 /** Apply a list of file operations to a current set of files.
