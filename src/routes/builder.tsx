@@ -2084,11 +2084,11 @@ function Builder() {
               title="Publish"
             >
               <Globe className="h-3.5 w-3.5" />
-              {buildSnap?.status === "pending"
+              {effectiveBuildSnap?.status === "pending" || effectiveBuildSnap?.status === "building"
                 ? "Publishing…"
-                : buildSnap?.status === "failed"
+                : effectiveBuildSnap?.status === "failed"
                   ? "Retry publish"
-                  : project.latest_build_id && buildSnap?.status === "ready"
+                  : project.latest_build_id && effectiveBuildSnap?.status === "ready"
                     ? "Published"
                     : "Publish"}
             </button>
