@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
   cancelSecretRequest,
+  createSecretRequestFromChat,
   fulfillSecretRequest,
 } from "@/server/secrets/requests.functions";
 import { Button } from "@/components/ui/button";
@@ -16,12 +17,14 @@ import { Input } from "@/components/ui/input";
 import { Lock, ExternalLink, CheckCircle2 } from "lucide-react";
 
 export function SecretRequestCard(props: {
-  /** Pre-resolved request id when the server already created the row, else null. */
+  /** When omitted, the card auto-creates a pending request using projectId. */
   requestId?: string | null;
+  projectId?: string | null;
   name: string;
   instructions?: string;
   link?: string;
 }) {
+  const [resolvedId, setResolvedId] = useState<string | null>(props.requestId ?? null);
   const [value, setValue] = useState("");
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
