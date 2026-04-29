@@ -216,8 +216,8 @@ export function RuntimeTopupModal({
         <DialogHeader>
           <DialogTitle>Top up Cloud + AI balance</DialogTitle>
           <DialogDescription>
-            Add funds in Naira via Paystack. Top-ups never expire and are only spent after your
-            free monthly allowance.
+            Add funds in Naira via Paystack. Top-ups never expire. After your first top-up
+            you also get $5/mo of free Cloud credit.
           </DialogDescription>
         </DialogHeader>
 
