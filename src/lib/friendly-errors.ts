@@ -9,6 +9,8 @@
  *  - When unsure, fall back to a gentle generic message.
  */
 
+import { reportPipelineFailure, type FailureReportContext } from "./report-failure";
+
 export type FriendlyError = {
   /** Short headline shown next to the warning icon. */
   title: string;
