@@ -386,6 +386,11 @@ function Builder() {
   // first auto-send consumes them.
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const initialAttachmentsRef = useRef<ChatAttachment[]>([]);
+  // "Deep think" toggle — when on, Petal uses the strongest model + extended
+  // reasoning effort. Costs more credits and is slower, but produces better
+  // results on hard refactors / multi-file features. One-shot: auto-resets
+  // after the next send so users don't accidentally pay for it forever.
+  const [deepThink, setDeepThink] = useState(false);
   const composerFileInputRef = useRef<HTMLInputElement>(null);
   const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
@@ -951,6 +956,9 @@ function Builder() {
       setInput("");
       setPendingAttachments([]);
       initialAttachmentsRef.current = [];
+      // Deep-think is one-shot per send so users don't accidentally pay for
+      // the strongest model on every subsequent turn. They can re-toggle.
+      if (deepThink && !opts.isAutoFix) setDeepThink(false);
       setBusy(true);
       // Clear any stale "couldn't auto-fix" / build-failure card the moment
       // Petal starts working again. It's confusing to show a give-up card
@@ -1088,7 +1096,7 @@ function Builder() {
             // sending — they're UI-only, the AI shouldn't see them.
             messages: nextMessages.filter((m) => m.role !== "system"),
             currentFiles: files,
-            model: "smart",
+            model: opts.isAutoFix ? "smart" : deepThink ? "deep" : "smart",
             customInstructions: proj.custom_instructions ?? undefined,
             projectId: proj.id,
             isAutoFix: opts.isAutoFix,
@@ -3060,6 +3068,23 @@ function Builder() {
                       <MessageSquare className="h-3 w-3" /> Discuss
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setDeepThink((v) => !v)}
+                    aria-pressed={deepThink}
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                      deepThink
+                        ? "border-foreground bg-foreground text-background shadow-sm"
+                        : "border-border bg-muted/40 text-muted-foreground hover:text-foreground"
+                    }`}
+                    title={
+                      deepThink
+                        ? "Deep think on — Petal will use the strongest model with extended reasoning. Slower and costs more."
+                        : "Turn on Deep think — uses the strongest model with extended reasoning for hard refactors. One-shot."
+                    }
+                  >
+                    <Sparkles className="h-3 w-3" /> Deep
+                  </button>
                 </div>
                 <button
                   type="submit"

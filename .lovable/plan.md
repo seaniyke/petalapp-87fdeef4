@@ -1,113 +1,93 @@
-# Intent Detection Gap Audit — Petal vs the Field
+## Builder audit — Petal vs the top 5 AI app builders
 
-## What we ship today
+Benchmarked against **Lovable, Bolt.new, v0 (Vercel), Replit Agent, Base44** (with Cursor as a code-fidelity reference). I read every relevant file under `src/server/`, `src/routes/api/generate.ts`, `src/routes/api/discuss.ts`, the WebContainer preview, and the builder UI. Petal is already strong on several axes — but four areas are clearly behind the field, and that's what this plan ships.
 
-| Intent | Detector | Chip | Status |
-|---|---|---|---|
-| Backend (auth/db/storage) | ✅ | ✅ | Live |
-| Email | ✅ | ✅ | Live |
-| Custom domain | ✅ | ✅ | Live |
-| Payments | ✅ | ✅ | Just shipped |
+### What Petal already does well (do not touch)
 
-That's 4 of ~10 places where Petal *should* be smart. The rest get scaffolded as broken stubs or skipped entirely.
+- **Multi-tier safety pipeline**: triage → design director → smart-router model pick → stream-time autofixer → local verifier → continuation-on-truncation → post-stream autofix → Replit-style verifier → image resolver → self-check → memory writer. This is genuinely state-of-the-art; Lovable/Bolt do not publicly run this many gates.
+- **Smart router with telemetry** (`src/server/smart-router.server.ts`) picks model per (feature, phase) from historical success — Base44/Lovable expose this as a manual dropdown only.
+- **Project memory**, **design director**, **prerequisite gating** (10 categories of intent detection), **integration auto-suggest** with secret requests — at par or ahead.
+- **Phase classifier + per-phase model tier**, **petal-image://** placeholder pipeline, **build → auto-fix loop** (2 free attempts on Petal's tab) — solid.
 
-## What competitors trigger that we don't
+### Gaps vs competitors (ranked by impact on "power of the AI")
 
-From scanning Lovable, Bolt, v0, Replit, Base44, plus the third-party "Lovable SEO" auto-fixer that exists *because* Lovable misses this:
 
-- **SEO** — Lovable is famously not SEO-ready out of the box. A whole side-business (lovable-seo.com) exists to fix it. Mentioning "rank on Google", "meta tags", "share preview", "OG image" should trigger an SEO setup chip.
-- **Analytics** — Bolt and Replit auto-suggest Plausible/PostHog when users say "track visits". We have `plausible.integration.ts` sitting unused.
-- **AI features in the user's app** — Replit and v0 detect "add a chatbot / summarize / generate text" and offer their AI gateway. We have Lovable AI but no detector that says "use the gateway, don't ask for an OpenAI key."
-- **File uploads / images** — currently folded into the generic backend chip. Deserves its own surfacing because the answer is "Cloud storage bucket", not "Cloud + auth + DB."
-- **Realtime** ("live chat", "presence", "collaborative cursor") — Cloud has it, Petal never mentions it.
-- **Cron / scheduled jobs** — "send weekly digest", "remind me", "reset every Monday" needs `pg_cron`. No detector.
-- **Maps / geolocation** — "store locator", "delivery zone", "nearby". Needs Mapbox/Google Maps key. No detector.
-- **Push notifications** — PWA + web push. No detector.
-- **PWA / install to home screen** — common ask, easy win. No detector.
-- **Social auth** — "let users sign in with Google" works through backend chip but doesn't tell them they need to also configure the OAuth provider. Sub-detector under backend.
+| #   | Capability                                                                                    | Petal today                                                                                                                                                                           | Top competitors                                                                                             | Gap                                                                                                        |
+| --- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 1   | **Agentic tool-loop** (multi-turn: read → think → write → verify → write again, autonomously) | Single tool call per turn (`write_project` or `patch_files`), then deterministic verifier passes                                                                                      | Replit Agent + Bolt + Cursor run a real ReAct loop with `read_file`, `search`, `write`, `run_command` tools | **Big** — limits power on multi-step refactors                                                             |
+| 2   | **Visual edit ↔ source mapping**                                                              | Element picker exists in `webcontainer.ts` and posts `data-source-file` / `data-source-line` to chat — but the kit never **emits** those attributes, so the metadata is always `null` | Lovable, v0, Bolt all support click-to-edit with file pinpointing                                           | **Big** — picker is shipped but blind                                                                      |
+| 3   | **Console / runtime error → "Fix with AI" loop**                                              | Build failures auto-fix; in-preview runtime errors are NOT surfaced as a fix button                                                                                                   | Bolt and Lovable both watch the iframe console and offer a one-click fix                                    | **Medium**                                                                                                 |
+| 4   | **Reasoning model toggle**                                                                    | `pickSmartModel` picks pro for heavy keywords; no explicit "deep think" / extended-reasoning option exposed                                                                           | Replit Agent and Cursor expose an explicit "high effort" mode                                               | **Medium**                                                                                                 |
+| 5   | **Inline diff preview before apply**                                                          | Patches apply directly; revert is per-message after the fact                                                                                                                          | v0 and Cursor show a diff + "accept/reject" before writing                                                  | **Small** (Petal's instant-apply is intentional, but a "preview changes" toggle would help on big patches) |
+| 6   | **Long-context / repo search tool**                                                           | Full file context is dumped into every prompt                                                                                                                                         | Bolt/Replit give the agent a `search_files` tool so it can pull only what it needs                          | **Small now, big once apps get >40 files**                                                                 |
 
-## The 6 to ship now (ranked by user impact)
 
-I'm not building all 10. Six are clear wins; the others can wait.
+### What we ship in this plan
 
-### 1. SEO intent (highest impact — competitors weaponize our gap)
+Six focused upgrades, ordered by leverage. Each is independently shippable and testable.
 
-`src/lib/seo-intent.ts` — triggers on: "rank on Google", "SEO", "meta tags", "OG image", "share preview", "sitemap", "robots.txt", "Google indexing", "search engine".
+#### 1. Source-mapped visual editor (Pass A)
 
-Chip CTA: "Make this page shareable & searchable" → opens a new `SeoSetupSheet` (separate task, scoped here just to detector + chip).
+The picker already round-trips `data-source-file` / `data-source-line` to the chat composer — but no JSX emits them. Add a Vite plugin to the in-browser preview that injects `data-source-file="src/pages/Home.tsx"` / `data-source-line="42"` onto every JSX opener. When a user picks an element and types "make this red", Petal now gets `Source file: src/pages/Home.tsx:42` and can patch the **exact** node — not guess.
 
-### 2. Analytics intent
+- Add `vite-plugin-petal-source` (tiny Babel/SWC visitor or runtime esbuild transform) injected in `scaffold-kit.ts`.
+- Strip the attribute in production builds (only injected when `import.meta.env.DEV`).
+- Keep the picker UI exactly as it is.
 
-`src/lib/analytics-intent.ts` — triggers on: "track visitors", "page views", "analytics", "Plausible", "PostHog", "Google Analytics", "conversion", "funnel".
+#### 2. Console-to-fix bridge
 
-Chip CTA: "Add visitor analytics" → enables our existing Plausible integration.
+WebContainerPreview already proxies the iframe's console. Add a postMessage channel for `window.onerror` / `unhandledrejection`, surface a non-blocking toast in the builder ("React error in `Home.tsx` — fix with AI"), and pre-fill an autofix prompt with the stack frame + file. Reuse the existing `isAutoFix` free-charge path.
 
-### 3. AI-feature intent (in the user's app, not Petal itself)
+- New file: `src/lib/runtime-error-bridge.ts` (injected the same way the picker is).
+- Builder shows a small banner above the composer with one button: **Fix this**.
+- Free fix attempt counter shared with the build-failure auto-fix budget.
 
-`src/lib/ai-feature-intent.ts` — triggers on: "add a chatbot", "AI assistant", "summarize", "generate text/image", "translate", "ask AI", "OpenAI", "Claude", "Gemini" *when* paired with verbs like "add/integrate/build".
+#### 3. Agentic tool loop for "deep" turns
 
-Chip CTA: "Wire this through Lovable AI — no key needed" → scaffolds a server function using our gateway. Critical: prevents the AI from asking the user for an OpenAI key when we have a free gateway.
+Today `/api/generate` makes ONE model call and trusts whatever comes out. For non-trivial turns (phase = `feature` / `refactor`, or files > 12), upgrade to a bounded ReAct loop with three tools: `read_file(path)`, `search_files(query)`, and `patch_files(ops)`. Cap at 6 tool calls per turn, hard timeout at 90s, falls back to today's single-shot path if the loop errors.
 
-### 4. File-upload intent (split from backend chip)
+- New file: `src/server/agent-loop.server.ts`.
+- Routed by phase classifier — keep the fast single-shot path for `ui_tweak` / `new_component`.
+- Stream tool calls as `{type:"tool_call", name, args}` SSE events so the UI can show "Reading `Header.tsx`…" in the activity card.
+- Existing verifier/autofix tiers run unchanged after the loop.
 
-`src/lib/storage-intent.ts` — triggers on: "upload image/photo/video/file/PDF", "user avatar", "profile picture", "attach file", "S3", "bucket".
+#### 4. Reasoning effort surfacing
 
-Chip CTA: same Cloud activation but with "+ storage bucket" copy so the user knows what's being turned on.
+Add a third option to the existing model preset dropdown: **Fast / Smart / Deep think**. "Deep think" passes `reasoning: { effort: "high" }` to gpt-5 / gemini-2.5-pro, lets users opt into the highest-quality output for hard refactors.
 
-### 5. Realtime intent
+- One field added to `Body.model` type (`"fast" | "smart" | "best" | "deep"`).
+- `aiChatCompletions` already passes the body through; extend `resolveModel` and add the reasoning flag.
 
-`src/lib/realtime-intent.ts` — triggers on: "live chat", "real-time", "realtime", "presence", "online users", "collaborative", "live updates", "websocket", "pusher", "ably".
+#### 5. Inline diff preview for big patches
 
-Chip CTA: "Enable realtime" → toggles Cloud's realtime publication on the relevant table.
+When a `patch_files` op set touches >3 files OR rewrites a file >100 lines, hold the apply step and emit a `pending_diff` SSE event. UI renders a sheet listing changed files with accept-all / reject buttons. Auto-applies after 8 seconds if the user does nothing (so small power-users aren't slowed down).
 
-### 6. Cron / scheduled jobs intent
+- Build on top of existing `applyOps` — gate it behind a feature flag in `labs-flags`.
 
-`src/lib/cron-intent.ts` — triggers on: "every day/week/month", "daily/weekly/nightly", "scheduled", "cron", "reminder email", "digest", "auto-send", "background job".
+#### 6. Repo-search tool (foundation for #3)
 
-Chip CTA: "Schedule this job" → scaffolds a `pg_cron` entry hitting an API route.
+Add `searchProjectFiles({ projectId, query, kind })` server function that does a fast ripgrep-equivalent over the project's files (already loaded into memory in the request). Used by #3's loop, also surfaceable in Discuss mode so Petal can answer "where is the cart total computed?" by citing files.
 
-## Deferred (not now, but document)
+### Out of scope (acknowledged, not shipped here)
 
-- Maps / geolocation — needs paid Mapbox/Google key; better as a future paid integration.
-- Push notifications — Service Worker complexity; punt.
-- PWA install — small surface area, low ask volume so far.
-- Social auth sub-chip — works through backend chip already; refine later.
+- **Branching / git checkpoints**: project_versions already gives revert. A full "branch this build" is a bigger UX shift — separate plan.
+- **Multi-modal chat (video / Figma import)**: Petal handles image attachments. Figma import is its own ingest pipeline.
+- **Background long-running agents** (Replit's "Agent runs while you sleep"): worth doing once #3 is stable; would build on the same loop primitive.
 
-## Implementation pattern (identical for all 6)
+### Technical notes
 
-Each detector + chip follows the existing `email-intent.ts` / `EnableEmailSuggestionChip.tsx` pattern. Per intent:
+- **Files added**: `src/server/agent-loop.server.ts`, `src/server/repo-search.server.ts`, `src/lib/runtime-error-bridge.ts`, a Vite plugin file under `scaffold-kit` for source attributes, a small `RuntimeErrorBanner.tsx` in components.
+- **Files edited**: `src/routes/api/generate.ts` (route deep turns to the agent loop), `src/server/scaffold-kit.ts` (inject the new dev-only plugin and runtime-error script), `src/components/WebContainerPreview.tsx` (forward error postMessages), `src/routes/builder.tsx` (banner + diff sheet + Deep model option), `src/server/generate.server.ts` (extend tool list).
+- **Telemetry**: every new path logs to the existing smart-router stats so we can A/B agent-loop vs single-shot on real traffic.
+- **Backwards compatibility**: every gate is feature-flagged; existing turns still hit the proven single-shot path until we confirm wins.
 
-1. `src/lib/<name>-intent.ts` — same shape as existing detectors (regex list, MIN_LENGTH, `detect…InTurn`).
-2. `src/components/Enable<Name>SuggestionChip.tsx` — same two-mode pattern (default + `needsBackendFirst` for the four that require Cloud: Analytics, AI feature, Storage, Realtime, Cron).
-3. Wire into `src/routes/builder.tsx` — add to the chip block alongside the existing four, with the same dedupe rule (don't double-show with backend chip).
-4. Add a state slot: `dismissed<Name>Chips` Set keyed by message index.
-5. Extend `settingsScrollTo` union with the new section keys.
-6. Update `src/server/generate.server.ts` PREREQUISITE GATING block — add the new categories so Petal's plan/summary mentions them before scaffolding broken code.
+### Order of work (single PR per item, in this order)
 
-## Order of work
+1. Source-mapped picker (highest UX win, smallest risk)
+2. Reasoning effort toggle (1 file, 30 min)
+3. Console-to-fix bridge
+4. Repo-search server function
+5. Agent loop (uses #4)
+6. Inline diff preview (labs flag)
 
-```text
-Pass A (detectors + chips, no settings UI yet)
-  1. SEO intent + chip → opens existing project settings (placeholder)
-  2. Analytics intent + chip → reuses Plausible installer
-  3. AI-feature intent + chip → scaffolds gateway server fn
-  4. Storage intent + chip → reuses Cloud activation
-  5. Realtime intent + chip → reuses Cloud activation
-  6. Cron intent + chip → reuses Cloud activation
-
-Pass B (system prompt)
-  7. Update PREREQUISITE GATING in generate.server.ts to cover all 10 intents
-
-Pass C (deferred — needs design)
-  - SeoSetupSheet (real settings panel for OG/meta/sitemap)
-  - Storage bucket picker UI
-  - Cron job manager UI
-```
-
-Pass A + B is the scope of the next implementation message. Pass C is its own follow-up because each needs a real settings panel, not just a chip.
-
-## Why this matters now (we're live)
-
-Every day Petal scaffolds an SEO-broken site, asks the user for an OpenAI key we don't need, or builds a "live chat" with no realtime, is a day a competitor's blog post writes itself ("Lovable can't even do X"). The chips are cheap insurance — they cost nothing when intent isn't detected, and they save a wasted prompt cycle when it is.
-
-Approve and I'll ship Pass A + B in the next message.
+Approve and I'll ship #1 + #2 first so you have something visible immediately, then move down the list.

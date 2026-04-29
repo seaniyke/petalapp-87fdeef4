@@ -17,6 +17,7 @@
 import type { ProjectFile } from "./generate.server";
 import { backendKit, BACKEND_DEPS } from "./backend-kit";
 import { EXAMPLES_PACK } from "./examples-pack";
+import { PETAL_SOURCE_PLUGIN } from "./petal-source-plugin";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
@@ -25,6 +26,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import petalSourcePlugin from "./petal-source-plugin.mjs";
 
 // Resolve "@/..." imports the same way the tsconfig "paths" alias does.
 // Vite/Rollup do NOT read tsconfig paths on their own, so without this every
@@ -32,7 +34,10 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  // \`petalSourcePlugin\` tags JSX with data-source-file/line in DEV ONLY so
+  // the in-iframe element picker can report the exact file + line for each
+  // click. It no-ops during production builds.
+  plugins: [petalSourcePlugin(), react(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
@@ -3142,6 +3147,7 @@ export function BarChart({ data, color = 1, xAxis = true, className, ...props }:
  */
 const KIT: KitFile[] = [
   { path: "vite.config.ts", content: VITE_CONFIG, overwrite: true },
+  { path: "petal-source-plugin.mjs", content: PETAL_SOURCE_PLUGIN, overwrite: true },
   { path: "tsconfig.json", content: TSCONFIG, overwrite: true },
   { path: "src/styles.css", content: STYLES_CSS, overwrite: false /* AI may extend tokens */ },
   { path: "src/lib/utils.ts", content: UTILS_TS, overwrite: true },

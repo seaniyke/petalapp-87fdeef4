@@ -29,7 +29,7 @@ export async function streamGenerate(
   body: {
     messages: ChatMessage[];
     currentFiles: ProjectFile[];
-    model?: "fast" | "smart" | "best";
+    model?: "fast" | "smart" | "best" | "deep";
     customInstructions?: string;
     projectId?: string;
     /** When true, this run is a free internal auto-fix triggered by Petal
