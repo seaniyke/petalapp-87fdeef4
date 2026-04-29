@@ -213,7 +213,6 @@ function AdminIndexPage() {
                     <li key={s.user_id} className="flex items-center justify-between text-sm">
                       <Link
                         to="/admin/users"
-                        search={{ user: s.user_id }}
                         className="truncate text-foreground hover:underline"
                       >
                         {s.email ?? s.user_id.slice(0, 8)}
