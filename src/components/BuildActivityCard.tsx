@@ -344,21 +344,35 @@ export function BuildActivityCard({
         </div>
       </div>
       {stepsOpen && (
-        <ol className="space-y-1.5 border-t border-border/50 px-3 py-2.5">
-          {phases.map((p) => (
-            <PhaseRow
-              key={p.id}
-              phase={p}
-              designCaption={p.id === "designing" ? designCaption : undefined}
-              filesWritten={p.id === "writing" ? filesWritten : undefined}
-              latestPath={p.id === "writing" ? latestPath : undefined}
-              writtenPaths={p.id === "writing" ? writtenPaths : undefined}
-              completedPaths={p.id === "writing" ? completedPaths : undefined}
-              finalFileLines={p.id === "writing" ? finalFileLines : undefined}
-              fileChanges={p.id === "writing" ? fileChanges : undefined}
-            />
-          ))}
-        </ol>
+        <div className="border-t border-border/50">
+          <ol className="space-y-1.5 px-3 py-2.5">
+            {phases.map((p) => (
+              <PhaseRow
+                key={p.id}
+                phase={p}
+                designCaption={p.id === "designing" ? designCaption : undefined}
+                filesWritten={p.id === "writing" ? filesWritten : undefined}
+                latestPath={p.id === "writing" ? latestPath : undefined}
+                writtenPaths={p.id === "writing" ? writtenPaths : undefined}
+                completedPaths={p.id === "writing" ? completedPaths : undefined}
+                finalFileLines={p.id === "writing" ? finalFileLines : undefined}
+                fileChanges={p.id === "writing" ? fileChanges : undefined}
+              />
+            ))}
+          </ol>
+          {timelineEvents && timelineEvents.length > 0 && (
+            <div className="border-t border-border/40 px-3 py-2.5">
+              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                Build pipeline
+              </div>
+              <ol className="space-y-1">
+                {timelineEvents.map((e, i) => (
+                  <TimelineRow key={`${e.step}-${e.ts}-${i}`} entry={e} />
+                ))}
+              </ol>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
