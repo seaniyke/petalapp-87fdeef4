@@ -106,7 +106,7 @@ function placeholder(kind) {
   });
 }
 
-async function proxy(request, target) {
+async function proxy(request, target, projectId) {
   const incoming = new URL(request.url);
   const upstreamUrl = new URL(incoming.pathname + incoming.search, target);
 
@@ -137,11 +137,47 @@ async function proxy(request, target) {
     respHeaders.set(key, value);
   });
 
-  return new Response(upstream.body, {
+  const response = new Response(upstream.body, {
     status: upstream.status,
     statusText: upstream.statusText,
     headers: respHeaders,
   });
+
+  // Inject the page-view tracker into HTML responses only.
+  const ct = (respHeaders.get("content-type") || "").toLowerCase();
+  if (projectId && ct.includes("text/html") && upstream.status >= 200 && upstream.status < 300) {
+    return new HTMLRewriter()
+      .on("head", new TrackerInjector(projectId))
+      .transform(response);
+  }
+  return response;
+}
+
+/**
+ * HTMLRewriter handler that appends a small tracking beacon at the end of
+ * <head>. The beacon computes a daily-rotating, IP-less visitor hash in the
+ * browser and POSTs it to the control plane. `keepalive` lets the request
+ * survive page unload.
+ */
+class TrackerInjector {
+  constructor(projectId) {
+    this.projectId = projectId;
+  }
+  element(el) {
+    const pid = JSON.stringify(this.projectId);
+    const endpoint = JSON.stringify(`${CONTROL_PLANE}/api/public/track`);
+    const script = `<script>(function(){try{
+var p=${pid};var e=${endpoint};
+var d=new Date().toISOString().slice(0,10);
+var s=(navigator.userAgent||"")+"|"+(navigator.language||"")+"|"+screen.width+"x"+screen.height+"|"+d+"|"+p;
+var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}
+var v="v"+(h>>>0).toString(36);
+var b=JSON.stringify({project_id:p,path:location.pathname,referrer:document.referrer||"",visitor_hash:v});
+if(navigator.sendBeacon){navigator.sendBeacon(e,new Blob([b],{type:"application/json"}));}
+else{fetch(e,{method:"POST",headers:{"Content-Type":"application/json"},body:b,keepalive:true}).catch(function(){});}
+}catch(_){}})();</script>`;
+    el.append(script, { html: true });
+  }
 }
 
 export default {
@@ -149,8 +185,6 @@ export default {
     const url = new URL(request.url);
     const host = url.host.toLowerCase();
 
-    // Defensive: never handle Petal-owned hosts. Custom hostnames and Petal
-    // subdomains are routed through the control-plane lookup below.
     if (
       host === `www.${PETAL_ROOT}` ||
       host === `fallback.${PETAL_ROOT}` ||
@@ -160,7 +194,7 @@ export default {
     }
 
     const result = await lookup(host);
-    if (result.kind === "proxy") return proxy(request, result.target);
+    if (result.kind === "proxy") return proxy(request, result.target, result.projectId);
     return placeholder(result.kind);
   },
 };
