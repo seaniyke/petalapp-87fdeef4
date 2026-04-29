@@ -22,10 +22,47 @@ import {
   Loader2,
   Check,
   Circle,
+  ShieldCheck,
+  Image as ImageIcon,
+  MinusCircle,
+  AlertCircle,
   type LucideIcon,
 } from "lucide-react";
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
 import type { FriendlyError } from "@/lib/friendly-errors";
+
+/**
+ * One entry in the real-time build pipeline timeline.
+ * Mirrors the `timeline` SSE event shape emitted by /api/generate.
+ */
+export type TimelineEntry = {
+  step:
+    | "stream_autofix"
+    | "local_verifier"
+    | "continuation"
+    | "post_stream_autofix"
+    | "image_resolve";
+  outcome: "ok" | "fixed" | "skipped" | "failed";
+  message: string;
+  count?: number;
+  ts: number;
+};
+
+const TIMELINE_LABELS: Record<TimelineEntry["step"], string> = {
+  stream_autofix: "Quick autofix",
+  local_verifier: "Local verifier",
+  continuation: "Stream continuation",
+  post_stream_autofix: "Polish pass",
+  image_resolve: "Image generation",
+};
+
+const TIMELINE_ICONS: Record<TimelineEntry["step"], LucideIcon> = {
+  stream_autofix: Wand2,
+  local_verifier: ShieldCheck,
+  continuation: FileEdit,
+  post_stream_autofix: Wrench,
+  image_resolve: ImageIcon,
+};
 
 // Lovable-style: clean monoline icons per phase instead of emoji.
 const PHASE_ICONS: Record<PhaseId, LucideIcon> = {
@@ -70,6 +107,9 @@ type Props = {
    *  copy ("Almost there", "Taking longer", "Still working") so the user
    *  always sees movement rather than a frozen "Putting your app online…". */
   deployElapsedSec?: number;
+  /** Live pipeline timeline — server pushes one entry per recovery / verifier
+   *  / autofix / image step. Rendered inside the expanded steps panel. */
+  timelineEvents?: TimelineEntry[];
   onStop?: () => void;
   onRetry?: () => void;
   onAskFix?: () => void;
@@ -89,6 +129,7 @@ export function BuildActivityCard({
   finalFileLines,
   fileChanges,
   deployElapsedSec,
+  timelineEvents,
   onStop,
   onRetry,
   onAskFix,
@@ -303,21 +344,35 @@ export function BuildActivityCard({
         </div>
       </div>
       {stepsOpen && (
-        <ol className="space-y-1.5 border-t border-border/50 px-3 py-2.5">
-          {phases.map((p) => (
-            <PhaseRow
-              key={p.id}
-              phase={p}
-              designCaption={p.id === "designing" ? designCaption : undefined}
-              filesWritten={p.id === "writing" ? filesWritten : undefined}
-              latestPath={p.id === "writing" ? latestPath : undefined}
-              writtenPaths={p.id === "writing" ? writtenPaths : undefined}
-              completedPaths={p.id === "writing" ? completedPaths : undefined}
-              finalFileLines={p.id === "writing" ? finalFileLines : undefined}
-              fileChanges={p.id === "writing" ? fileChanges : undefined}
-            />
-          ))}
-        </ol>
+        <div className="border-t border-border/50">
+          <ol className="space-y-1.5 px-3 py-2.5">
+            {phases.map((p) => (
+              <PhaseRow
+                key={p.id}
+                phase={p}
+                designCaption={p.id === "designing" ? designCaption : undefined}
+                filesWritten={p.id === "writing" ? filesWritten : undefined}
+                latestPath={p.id === "writing" ? latestPath : undefined}
+                writtenPaths={p.id === "writing" ? writtenPaths : undefined}
+                completedPaths={p.id === "writing" ? completedPaths : undefined}
+                finalFileLines={p.id === "writing" ? finalFileLines : undefined}
+                fileChanges={p.id === "writing" ? fileChanges : undefined}
+              />
+            ))}
+          </ol>
+          {timelineEvents && timelineEvents.length > 0 && (
+            <div className="border-t border-border/40 px-3 py-2.5">
+              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                Build pipeline
+              </div>
+              <ol className="space-y-1">
+                {timelineEvents.map((e, i) => (
+                  <TimelineRow key={`${e.step}-${e.ts}-${i}`} entry={e} />
+                ))}
+              </ol>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -486,5 +541,54 @@ function ChangeBadge({ kind }: { kind: "added" | "modified" | "unchanged" | "del
     >
       {label}
     </span>
+  );
+}
+
+/**
+ * One row in the build-pipeline timeline. Shows the step name, what it did,
+ * and a per-outcome icon (✓ ok, ✦ fixed, ⊘ skipped, ! failed).
+ */
+function TimelineRow({ entry }: { entry: TimelineEntry }) {
+  const Icon = TIMELINE_ICONS[entry.step];
+  const label = TIMELINE_LABELS[entry.step];
+
+  // Outcome → tone + status glyph. Skipped is intentionally muted so users
+  // see "we considered this and it wasn't needed", not as a problem.
+  const tone =
+    entry.outcome === "failed"
+      ? "text-destructive"
+      : entry.outcome === "fixed"
+        ? "text-foreground"
+        : entry.outcome === "skipped"
+          ? "text-muted-foreground/60"
+          : "text-emerald-600 dark:text-emerald-500";
+
+  const StatusIcon =
+    entry.outcome === "failed"
+      ? AlertCircle
+      : entry.outcome === "skipped"
+        ? MinusCircle
+        : entry.outcome === "fixed"
+          ? Sparkles
+          : Check;
+
+  return (
+    <li className="flex items-start gap-2 text-[12px] leading-snug">
+      <span className={`mt-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center ${tone}`} aria-hidden>
+        <StatusIcon className="h-3 w-3" />
+      </span>
+      <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-muted-foreground">
+        <Icon className="h-3 w-3 opacity-70" aria-hidden />
+        {label}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground/90">
+        {entry.message}
+      </span>
+      {typeof entry.count === "number" && entry.count > 0 && entry.outcome !== "ok" && (
+        <span className="shrink-0 rounded-sm bg-muted px-1 py-px font-mono text-[10px] tabular-nums text-foreground/70">
+          {entry.count}
+        </span>
+      )}
+    </li>
   );
 }

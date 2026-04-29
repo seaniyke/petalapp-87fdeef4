@@ -63,7 +63,7 @@ import {
   toFriendlyError,
   type FriendlyError,
 } from "@/lib/friendly-errors";
-import { BuildActivityCard } from "@/components/BuildActivityCard";
+import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivityCard";
 import { NextStepsCard } from "@/components/NextStepsCard";
 
 
@@ -259,6 +259,10 @@ function Builder() {
       { kind: "added" | "modified" | "unchanged" | "deleted"; addedLines: number; removedLines: number }
     >
   >({});
+  // Real-time pipeline timeline: ordered log of every recovery / verifier /
+  // autofix / image step the server ran for the in-flight (or last) turn.
+  // Drives the expanded "Build steps" panel inside BuildActivityCard.
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEntry[]>([]);
   // Live, token-by-token assistant reply rendered in the chat thread while busy.
   // This mirrors what Lovable/Bolt/v0 do — the user sees Petal "talking" in real
   // time, not just a structured timeline. Cleared when the run completes.
@@ -1128,6 +1132,7 @@ function Builder() {
       setCompletedPaths(new Set());
       setFinalFileLines({});
       setFileChanges({});
+      setTimelineEvents([]);
       setStreamingAssistant("");
       setStreamingPlan("");
       setStreamingRecap("");
@@ -1298,6 +1303,13 @@ function Builder() {
                 resultSuggestions = v.suggestions;
               }
               resultVerdict = v.verdict;
+            },
+            onTimeline: (entry) => {
+              // Append every pipeline step to the live timeline. Cap at 30
+              // entries so a runaway server can't bloat React state.
+              setTimelineEvents((prev) =>
+                prev.length >= 30 ? prev : [...prev, entry],
+              );
             },
 
             onError: (m, sugg) => {
@@ -3004,6 +3016,7 @@ function Builder() {
                 writtenPaths={writtenPaths}
                 completedPaths={completedPaths}
                 finalFileLines={finalFileLines}
+                timelineEvents={timelineEvents}
                 fileChanges={fileChanges}
                 deployElapsedSec={deployElapsed}
                 onStop={busy ? stopGeneration : undefined}
