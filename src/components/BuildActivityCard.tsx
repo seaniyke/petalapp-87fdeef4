@@ -42,6 +42,7 @@ export type TimelineEntry = {
     | "npm_preflight"
     | "continuation"
     | "esbuild_parse"
+    | "render_risk"
     | "file_budget"
     | "post_stream_autofix"
     | "image_resolve";
@@ -57,6 +58,7 @@ const TIMELINE_LABELS: Record<TimelineEntry["step"], string> = {
   npm_preflight: "Package check",
   continuation: "Stream continuation",
   esbuild_parse: "Compiler check",
+  render_risk: "Render-risk check",
   file_budget: "File-size guard",
   post_stream_autofix: "Polish pass",
   image_resolve: "Image generation",
@@ -68,6 +70,7 @@ const TIMELINE_ICONS: Record<TimelineEntry["step"], LucideIcon> = {
   npm_preflight: ShieldCheck,
   continuation: FileEdit,
   esbuild_parse: ShieldCheck,
+  render_risk: ShieldCheck,
   file_budget: ShieldCheck,
   post_stream_autofix: Wrench,
   image_resolve: ImageIcon,

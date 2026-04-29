@@ -24,7 +24,8 @@ export interface LocalIssue {
     | "missing-sibling"
     | "missing-export"
     | "parse"
-    | "oversize";
+    | "oversize"
+    | "render-risk";
   detail: string;
 }
 
