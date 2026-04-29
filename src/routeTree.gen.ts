@@ -36,6 +36,7 @@ import { Route as ApiCoachRouteImport } from './routes/api/coach'
 import { Route as ApiBackendRouteImport } from './routes/api/backend'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
+import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
 import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
 import { Route as AdminBillingRouteImport } from './routes/admin.billing'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
@@ -195,6 +196,11 @@ const AdminProjectsRoute = AdminProjectsRouteImport.update({
   path: '/admin/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPipelineRoute = AdminPipelineRouteImport.update({
+  id: '/admin/pipeline',
+  path: '/admin/pipeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminLedgersRoute = AdminLedgersRouteImport.update({
   id: '/admin/ledgers',
   path: '/admin/ledgers',
@@ -328,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/ledgers': typeof AdminLedgersRoute
+  '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/backend': typeof ApiBackendRoute
@@ -380,6 +387,7 @@ export interface FileRoutesByTo {
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/ledgers': typeof AdminLedgersRoute
+  '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/backend': typeof ApiBackendRoute
@@ -433,6 +441,7 @@ export interface FileRoutesById {
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/ledgers': typeof AdminLedgersRoute
+  '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/backend': typeof ApiBackendRoute
@@ -487,6 +496,7 @@ export interface FileRouteTypes {
     | '/admin/ai-providers'
     | '/admin/billing'
     | '/admin/ledgers'
+    | '/admin/pipeline'
     | '/admin/projects'
     | '/admin/users'
     | '/api/backend'
@@ -539,6 +549,7 @@ export interface FileRouteTypes {
     | '/admin/ai-providers'
     | '/admin/billing'
     | '/admin/ledgers'
+    | '/admin/pipeline'
     | '/admin/projects'
     | '/admin/users'
     | '/api/backend'
@@ -591,6 +602,7 @@ export interface FileRouteTypes {
     | '/admin/ai-providers'
     | '/admin/billing'
     | '/admin/ledgers'
+    | '/admin/pipeline'
     | '/admin/projects'
     | '/admin/users'
     | '/api/backend'
@@ -644,6 +656,7 @@ export interface RootRouteChildren {
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminBillingRoute: typeof AdminBillingRoute
   AdminLedgersRoute: typeof AdminLedgersRoute
+  AdminPipelineRoute: typeof AdminPipelineRoute
   AdminProjectsRoute: typeof AdminProjectsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ApiBackendRoute: typeof ApiBackendRoute
@@ -876,6 +889,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/pipeline': {
+      id: '/admin/pipeline'
+      path: '/admin/pipeline'
+      fullPath: '/admin/pipeline'
+      preLoaderRoute: typeof AdminPipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/ledgers': {
       id: '/admin/ledgers'
       path: '/admin/ledgers'
@@ -1052,6 +1072,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminBillingRoute: AdminBillingRoute,
   AdminLedgersRoute: AdminLedgersRoute,
+  AdminPipelineRoute: AdminPipelineRoute,
   AdminProjectsRoute: AdminProjectsRoute,
   AdminUsersRoute: AdminUsersRoute,
   ApiBackendRoute: ApiBackendRoute,

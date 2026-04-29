@@ -12,6 +12,7 @@ import {
   TrendingUp,
   TrendingDown,
   Activity,
+  Gauge,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
@@ -339,6 +340,12 @@ function AdminIndexPage() {
             description="Route each AI feature to Lovable AI or OpenRouter to control cost."
             icon={<Cpu className="h-5 w-5" />}
           />
+          <SectionCard
+            to="/admin/pipeline"
+            title="Pipeline telemetry"
+            description="Per-tier outcomes, latency p50/p95, top hallucinated packages and handoff reasons."
+            icon={<Gauge className="h-5 w-5" />}
+          />
         </section>
       </main>
     </div>
@@ -396,7 +403,7 @@ function SectionCard({
   description,
   icon,
 }: {
-  to: "/admin/billing" | "/admin/users" | "/admin/projects" | "/admin/ledgers" | "/admin/ai-providers";
+  to: "/admin/billing" | "/admin/users" | "/admin/projects" | "/admin/ledgers" | "/admin/ai-providers" | "/admin/pipeline";
   title: string;
   description: string;
   icon: React.ReactNode;
