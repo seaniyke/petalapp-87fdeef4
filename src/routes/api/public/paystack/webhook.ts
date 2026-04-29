@@ -10,8 +10,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyWebhookSignature, getEnvironment } from "@/server/paystack.server";
-import { registerDomain } from "@/server/cloudflare-registrar.server";
-import { createCustomHostname } from "@/server/cloudflare-saas.server";
+import { startDomainRegistration } from "@/server/domain-purchase.server";
 import {
   sendBillingEmail,
   billingItemLabel,
@@ -243,13 +242,10 @@ export const Route = createFileRoute("/api/public/paystack/webhook")({
             if (!tx.project_id) {
               throw new Error("Domain purchase missing project_id");
             }
-            // Fire-and-forget the actual registration so we ack the webhook
-            // quickly. The handler updates `purchased_domains.status` itself.
-            handleDomainPurchase({
-              reference: ref,
-              projectId: tx.project_id,
-              userId: tx.user_id,
-            }).catch((e) =>
+            // Fire-and-forget — kick off Cloudflare's async registration
+            // workflow. Polling continues from /api/registrar/poll (and
+            // any future cron). We ack the webhook quickly either way.
+            startDomainRegistration({ reference: ref }).catch((e) =>
               console.error("[webhook] domain_purchase failed", e),
             );
           } else if (tx.purpose === "plan") {
