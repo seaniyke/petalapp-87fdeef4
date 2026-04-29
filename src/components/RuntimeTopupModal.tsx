@@ -33,6 +33,7 @@ import {
   type RuntimeTopupPack,
 } from "@/lib/runtime-wallet";
 import { useWallet } from "@/hooks/use-wallet";
+import { BillingSheet } from "@/components/BillingSheet";
 
 type Props = {
   open: boolean;
