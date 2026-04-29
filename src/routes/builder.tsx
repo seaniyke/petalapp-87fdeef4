@@ -1068,7 +1068,8 @@ function Builder() {
           };
           setMessages([...messages, note]);
         } else {
-          setMessages(nextMessages);
+          // Visible thread always shows the user's real text, never the folded prompt.
+          setMessages([...messages, userMsg]);
         }
       }
       // Don't overwrite lastUserPrompt during an auto-fix / auto-continue —
