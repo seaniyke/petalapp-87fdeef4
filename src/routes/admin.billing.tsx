@@ -98,6 +98,7 @@ function AdminBillingPage() {
           <TabsList>
             <TabsTrigger value="plans">Plans</TabsTrigger>
             <TabsTrigger value="packs">Credit packs</TabsTrigger>
+            <TabsTrigger value="addons">Add-ons</TabsTrigger>
             <TabsTrigger value="currencies">Currencies & rates</TabsTrigger>
             <TabsTrigger value="overrides">Price overrides</TabsTrigger>
           </TabsList>
@@ -106,6 +107,9 @@ function AdminBillingPage() {
           </TabsContent>
           <TabsContent value="packs">
             <CreditPacksPanel />
+          </TabsContent>
+          <TabsContent value="addons">
+            <AddonsPanel />
           </TabsContent>
           <TabsContent value="currencies">
             <CurrenciesPanel />
@@ -285,12 +289,13 @@ const CURRENCY_DECIMALS: Record<string, number> = {
 function OverridesPanel() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [packs, setPacks] = useState<CreditPack[]>([]);
+  const [addons, setAddons] = useState<Array<{ code: string; name: string; price_cents: number }>>([]);
   const [currencies, setCurrencies] = useState<BillingCurrency[]>([]);
   const [overrides, setOverrides] = useState<PriceOverride[]>([]);
   const [loading, setLoading] = useState(true);
 
   // New override form
-  const [newKind, setNewKind] = useState<"plan" | "pack">("plan");
+  const [newKind, setNewKind] = useState<"plan" | "pack" | "addon">("plan");
   const [newItem, setNewItem] = useState<string>("");
   const [newCurrency, setNewCurrency] = useState<string>("");
   const [newAmountMajor, setNewAmountMajor] = useState<string>("");
@@ -299,16 +304,21 @@ function OverridesPanel() {
   async function load() {
     setLoading(true);
     try {
-      const [p, c, cur, ovs] = await Promise.all([
+      const [p, c, cur, ovs, addonRes] = await Promise.all([
         fetchPlans(),
         fetchCreditPacks(),
         fetchCurrencies(),
         fetchPriceOverrides(),
+        supabase
+          .from("billing_addons")
+          .select("code, name, price_cents")
+          .order("sort_order", { ascending: true }),
       ]);
       setPlans(p);
       setPacks(c);
       setCurrencies(cur);
       setOverrides(ovs);
+      setAddons((addonRes.data ?? []) as Array<{ code: string; name: string; price_cents: number }>);
       if (!newItem && p.length > 0) setNewItem(p[0].code);
       if (!newCurrency && cur.length > 0) setNewCurrency(cur[0].code);
     } catch (e) {
@@ -327,11 +337,17 @@ function OverridesPanel() {
   useEffect(() => {
     if (newKind === "plan" && plans.length > 0) setNewItem(plans[0].code);
     if (newKind === "pack" && packs.length > 0) setNewItem(packs[0].code);
-  }, [newKind, plans, packs]);
+    if (newKind === "addon" && addons.length > 0) setNewItem(addons[0].code);
+  }, [newKind, plans, packs, addons]);
 
   const itemOptions = useMemo(
-    () => (newKind === "plan" ? plans.map((p) => ({ code: p.code, name: p.name })) : packs.map((p) => ({ code: p.code, name: p.name }))),
-    [newKind, plans, packs],
+    () =>
+      newKind === "plan"
+        ? plans.map((p) => ({ code: p.code, name: p.name }))
+        : newKind === "pack"
+          ? packs.map((p) => ({ code: p.code, name: p.name }))
+          : addons.map((p) => ({ code: p.code, name: p.name })),
+    [newKind, plans, packs, addons],
   );
 
   async function addOverride() {
@@ -387,14 +403,16 @@ function OverridesPanel() {
   function nameFor(kind: "plan" | "pack" | "addon", code: string): string {
     if (kind === "plan") return plans.find((p) => p.code === code)?.name ?? code;
     if (kind === "pack") return packs.find((p) => p.code === code)?.name ?? code;
-    return code;
+    return addons.find((a) => a.code === code)?.name ?? code;
   }
 
   function usdPriceFor(kind: "plan" | "pack" | "addon", code: string): string {
-    if (kind === "addon") return "—";
-    const cents = kind === "plan"
-      ? plans.find((p) => p.code === code)?.price_cents
-      : packs.find((p) => p.code === code)?.price_cents;
+    const cents =
+      kind === "plan"
+        ? plans.find((p) => p.code === code)?.price_cents
+        : kind === "pack"
+          ? packs.find((p) => p.code === code)?.price_cents
+          : addons.find((a) => a.code === code)?.price_cents;
     if (cents == null) return "—";
     return `$${(cents / 100).toFixed(2)}`;
   }
@@ -413,11 +431,12 @@ function OverridesPanel() {
           <div className="grid gap-4 md:grid-cols-5">
             <div className="space-y-2">
               <Label>Kind</Label>
-              <Select value={newKind} onValueChange={(v) => setNewKind(v as "plan" | "pack")}>
+              <Select value={newKind} onValueChange={(v) => setNewKind(v as "plan" | "pack" | "addon")}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="plan">Plan</SelectItem>
                   <SelectItem value="pack">Credit pack</SelectItem>
+                  <SelectItem value="addon">Add-on</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1114,4 +1133,261 @@ function emptyPack(): CreditPackRow {
     is_active: true,
     sort_order: 0,
   };
+}
+
+/* -------------------------------- Add-ons --------------------------------- */
+
+type AddonRow = {
+  code: string;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  duration_days: number;
+  is_active: boolean;
+  sort_order: number;
+};
+
+function emptyAddon(): AddonRow {
+  return {
+    code: "",
+    name: "",
+    description: "",
+    price_cents: 0,
+    duration_days: 30,
+    is_active: true,
+    sort_order: 0,
+  };
+}
+
+function AddonsPanel() {
+  const [rows, setRows] = useState<AddonRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingCode, setSavingCode] = useState<string | null>(null);
+  const [deletingCode, setDeletingCode] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState<AddonRow>(emptyAddon());
+
+  async function load() {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("billing_addons")
+        .select("code, name, description, price_cents, duration_days, is_active, sort_order")
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      setRows((data ?? []) as AddonRow[]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load add-ons");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  function update(code: string, patch: Partial<AddonRow>) {
+    setRows((prev) => prev.map((r) => (r.code === code ? { ...r, ...patch } : r)));
+  }
+
+  async function save(row: AddonRow) {
+    setSavingCode(row.code);
+    try {
+      const { error } = await supabase
+        .from("billing_addons")
+        .update({
+          name: row.name,
+          description: row.description,
+          price_cents: row.price_cents,
+          duration_days: row.duration_days,
+          is_active: row.is_active,
+          sort_order: row.sort_order,
+        })
+        .eq("code", row.code);
+      if (error) throw error;
+      toast.success(`${row.code} saved`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingCode(null);
+    }
+  }
+
+  async function remove(row: AddonRow) {
+    if (!confirm(`Delete add-on "${row.code}"? This cannot be undone.`)) return;
+    setDeletingCode(row.code);
+    try {
+      const { error } = await supabase.from("billing_addons").delete().eq("code", row.code);
+      if (error) throw error;
+      toast.success(`${row.code} deleted`);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeletingCode(null);
+    }
+  }
+
+  async function create() {
+    if (!draft.code.trim() || !draft.name.trim()) {
+      toast.error("Code and name are required");
+      return;
+    }
+    setCreating(true);
+    try {
+      const { error } = await supabase.from("billing_addons").insert({
+        code: draft.code.trim(),
+        name: draft.name.trim(),
+        description: draft.description || null,
+        price_cents: draft.price_cents,
+        duration_days: draft.duration_days,
+        is_active: draft.is_active,
+        sort_order: draft.sort_order,
+      });
+      if (error) throw error;
+      toast.success("Add-on created");
+      setDraft(emptyAddon());
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Create failed");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Add-ons</CardTitle>
+          <CardDescription>
+            One-time purchases like managed backend (cloud) renewals and custom domain slots. USD price is the
+            base; per-currency prices follow exchange rates and price overrides.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center py-8 text-sm text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Price (USD)</TableHead>
+                  <TableHead>Duration (days)</TableHead>
+                  <TableHead>Active</TableHead>
+                  <TableHead>Sort</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r) => (
+                  <TableRow key={r.code}>
+                    <TableCell className="font-mono text-sm font-medium">{r.code}</TableCell>
+                    <TableCell><Input value={r.name} onChange={(e) => update(r.code, { name: e.target.value })} /></TableCell>
+                    <TableCell>
+                      <Input
+                        value={r.description ?? ""}
+                        onChange={(e) => update(r.code, { description: e.target.value })}
+                      />
+                    </TableCell>
+                    <TableCell className="w-32">
+                      <Input
+                        type="number" step="0.01" min="0"
+                        value={(r.price_cents / 100).toFixed(2)}
+                        onChange={(e) => update(r.code, { price_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+                      />
+                    </TableCell>
+                    <TableCell className="w-28">
+                      <Input
+                        type="number" min="1"
+                        value={r.duration_days}
+                        onChange={(e) => update(r.code, { duration_days: parseInt(e.target.value, 10) || 1 })}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Switch checked={r.is_active} onCheckedChange={(v) => update(r.code, { is_active: v })} />
+                    </TableCell>
+                    <TableCell className="w-20">
+                      <Input
+                        type="number"
+                        value={r.sort_order}
+                        onChange={(e) => update(r.code, { sort_order: parseInt(e.target.value, 10) || 0 })}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right space-x-1">
+                      <Button size="sm" onClick={() => save(r)} disabled={savingCode === r.code}>
+                        {savingCode === r.code ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Save className="mr-1.5 h-3.5 w-3.5" /> Save</>}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => remove(r)} disabled={deletingCode === r.code} className="text-destructive hover:text-destructive">
+                        {deletingCode === r.code ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Add a new add-on</CardTitle>
+          <CardDescription>
+            Code is unique and referenced by checkout flows. Existing codes used by the app include
+            <code className="mx-1">managed_backend_monthly</code> and <code className="mx-1">domain_slot</code>.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="space-y-1.5">
+              <Label>Code</Label>
+              <Input value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value })} placeholder="e.g. extra_storage" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Name</Label>
+              <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="e.g. Extra storage (30 days)" />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Description</Label>
+              <Input value={draft.description ?? ""} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Price (USD)</Label>
+              <Input
+                type="number" step="0.01" min="0"
+                value={(draft.price_cents / 100).toString()}
+                onChange={(e) => setDraft({ ...draft, price_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Duration (days)</Label>
+              <Input
+                type="number" min="1"
+                value={draft.duration_days}
+                onChange={(e) => setDraft({ ...draft, duration_days: parseInt(e.target.value, 10) || 1 })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Sort order</Label>
+              <Input
+                type="number"
+                value={draft.sort_order}
+                onChange={(e) => setDraft({ ...draft, sort_order: parseInt(e.target.value, 10) || 0 })}
+              />
+            </div>
+            <div className="md:col-span-4">
+              <Button onClick={create} disabled={creating}>
+                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="mr-1.5 h-4 w-4" /> Create add-on</>}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
