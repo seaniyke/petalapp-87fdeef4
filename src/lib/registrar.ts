@@ -8,6 +8,9 @@ export type DomainSearchResult = {
   available: boolean;
   /** What the user pays in USD cents (wholesale × 1.25). null if unavailable. */
   priceCents: number | null;
+  tier: "standard" | "premium" | null;
+  /** Why the domain isn't registrable. null if available. */
+  reason: string | null;
 };
 
 async function authedFetch(path: string, body: unknown): Promise<Response> {
@@ -45,6 +48,21 @@ export async function purchaseDomain(args: {
     throw new Error(text || `Couldn't start checkout (${resp.status})`);
   }
   return (await resp.json()) as { authorizationUrl: string; reference: string };
+}
+
+/** Ask the server to poll Cloudflare for any in-flight registrations on this
+ *  project. Used by the post-payment return page so the UI updates promptly. */
+export async function pollDomainRegistrations(
+  projectId: string,
+): Promise<{ updates: Array<{ id: string; hostname: string; status: string }> }> {
+  const resp = await authedFetch("/api/registrar/poll", { projectId });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    throw new Error(text || `Poll failed (${resp.status})`);
+  }
+  return (await resp.json()) as {
+    updates: Array<{ id: string; hostname: string; status: string }>;
+  };
 }
 
 /** Pretty-print USD cents as $X.XX. */
