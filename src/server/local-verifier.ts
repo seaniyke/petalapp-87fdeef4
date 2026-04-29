@@ -21,7 +21,8 @@ export interface LocalIssue {
     | "lazy-export"
     | "unterminated-string"
     | "missing-dep"
-    | "missing-sibling";
+    | "missing-sibling"
+    | "parse";
   detail: string;
 }
 

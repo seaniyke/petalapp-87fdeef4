@@ -1,56 +1,128 @@
-## You're right — I had this completely wrong
+## Goal
 
-I was telling Petal AI to recommend **"Lovable Cloud"** to your users. That's a competitor's brand bleeding into your product. Petal has **its own cloud services** (Petal Cloud) and **its own AI gateway** (Petal AI Gateway), and your users should never see the word "Lovable" in any AI response.
+Add a real **bundle-grade syntax/parse check** to the build pipeline using `esbuild-wasm` (already installed). Today the local verifier counts braces and JSX tags heuristically — strong, but not semantic. esbuild is the same parser Vite uses to ship the bundle, so if it parses cleanly here, it will parse cleanly in the deployed app. This is the single biggest jump in "the build is green when we say it's green."
 
-Two real leaks made it into prompts that go to your end-users' AI:
+This is **quality-only** — no new UI, no new feature surface. It plugs into the existing pipeline as a new tier between the local verifier and the post-stream autofix.
 
-1. **Discuss-mode prompt** (`src/routes/api/discuss.ts`) — written by me last turn — says "Lovable Cloud" 5+ times.
-2. **Build-mode prompt** (`src/server/generate.server.ts`) — says "Lovable AI Gateway" twice (lines 108, 213).
+## Where it fits in the pipeline
 
-Everywhere else, "Lovable" only appears in code comments (not sent to the AI) — those are safe to leave.
+Current order in `src/routes/api/generate.ts`:
 
-## The fix
+```text
+stream → styles.css validator → regex autofixer (Tier 2) →
+  local verifier (Tier 2.5) → continuation (Tier 2.6) →
+  post-stream autofix (Tier 2) → image resolution → self-check
+```
 
-### 1. `src/routes/api/discuss.ts` — Discuss-mode system prompt
+New order:
 
-Replace every "Lovable Cloud" → **"Petal Cloud"**, and tighten the brand rules so the model can never substitute Lovable, Supabase, Firebase, or any other third-party name.
+```text
+… → local verifier (Tier 2.5) → continuation (Tier 2.6) →
+  esbuild parse (Tier 2.7 — NEW) → post-stream autofix → …
+```
 
-The capabilities section becomes:
+The esbuild pass runs **after** continuation (so we don't flag files we know are mid-repair) and **before** the autofix gate (so its findings can open the gate just like the local verifier does today).
 
-- **Petal Cloud** — Petal's managed backend (user accounts with email + Google sign-in, Postgres database, file storage, serverless functions). One click to enable inside Petal. The user does NOT install Supabase, Firebase, or any third-party backend.
-- **Petal AI Gateway** — call modern AI models without bringing an API key.
-- Custom domains, publishing, SEO, analytics, email, payments — all native Petal features.
+## Technical design
 
-Brand rules become hard prohibitions:
+### 1. New file: `src/server/esbuild-verifier.server.ts`
 
-- ALWAYS call the backend **"Petal Cloud"** or just **"the backend"**. NEVER say "Lovable", "Lovable Cloud", "Supabase", "Firebase", or any other vendor name.
-- NEVER tell the user to "install" a backend or sign up for another platform. The correct phrasing is "I'll turn on **Petal Cloud** for you" (or "Petal Cloud is already on, we're good to go").
-- NEVER mention dashboards, project refs, API keys, or any internal plumbing.
+Worker-safe wrapper around `esbuild-wasm`. Exposes:
 
-The live status block becomes:
+```ts
+export type EsbuildIssue = {
+  path: string;
+  line: number;
+  column: number;
+  message: string;
+  // "parse" = syntax error, "resolve" = bare import esbuild can't see (we ignore these — own resolver above)
+  kind: "parse";
+};
 
-- Backend attached → "**Petal Cloud is ON for this project** … never mention Lovable, Supabase, Firebase, project refs, dashboards, or API keys."
-- Backend not attached → "**Petal Cloud is NOT yet on for this project** … I'll turn on Petal Cloud for you, one click inside Petal, no third-party account needed."
+export type EsbuildVerdict = { ok: boolean; issues: EsbuildIssue[] };
 
-### 2. `src/server/generate.server.ts` — Build-mode system prompt
+export async function verifyFilesEsbuild(
+  files: { path: string; content: string }[],
+  changedPaths: string[],
+): Promise<EsbuildVerdict>;
+```
 
-Two surgical edits:
+Implementation notes:
+- Initialize esbuild-wasm **lazily and once** per Worker instance (`initialize({ wasmURL })` cached in a module-level promise). Worker cold start cost is ~80ms; subsequent calls are sub-millisecond per file.
+- For each changed `.ts/.tsx/.jsx/.js` file, call `transform(content, { loader, sourcefile: path })`.
+- We only care about **parse errors**, not bundling. No plugins, no resolve, no minify. This sidesteps the "esbuild can't find `@/components/ui/button`" noise (we already cover that in `findUnresolvedImports`).
+- Skip the same paths the local verifier skips: `src/components/ui/*`, `src/integrations/*`, `src/components/examples/*`.
+- Catch and downgrade: if esbuild itself throws (e.g. wasm init failure on a cold worker), log and return `{ ok: true, issues: [] }` so a transient infra hiccup never breaks a build that would otherwise pass.
 
-- Line 108: "Lovable AI Gateway" → **"Petal AI Gateway"**
-- Line 213: "Lovable AI Gateway" → **"Petal AI Gateway"**
+### 2. Wire into `src/routes/api/generate.ts`
 
-### 3. Sweep for any remaining brand leaks in AI-bound text
+Insert immediately after the existing continuation block (around line 875), before the autofix gate (line 891):
 
-After the edits, run a final `rg "Lovable"` scoped to prompt strings (excluding code comments and import paths) to confirm zero leaks before handing back to you.
+```ts
+// Tier 2.7 — esbuild parse pass. Authoritative syntax check using the
+// same parser Vite ships with. If this passes, the bundle will parse.
+const esbuildVerdict = await verifyFilesEsbuild(nextFiles, earlyChangedPaths);
+controller.enqueue(encoder.encode(sse({
+  type: "timeline",
+  step: "esbuild_parse",
+  outcome: esbuildVerdict.ok ? "ok" : "failed",
+  message: esbuildVerdict.ok
+    ? `Parsed ${earlyChangedPaths.length} file${earlyChangedPaths.length === 1 ? "" : "s"} cleanly`
+    : `Found ${esbuildVerdict.issues.length} syntax issue${esbuildVerdict.issues.length === 1 ? "" : "s"}`,
+  count: esbuildVerdict.ok ? earlyChangedPaths.length : esbuildVerdict.issues.length,
+  ts: Date.now(),
+})));
+```
 
-## What I'm NOT changing
+Then update the autofix gate one line below to also open on esbuild failure, and pass esbuild's structured issues into the autofix call so the model has line/column context:
 
-- Code comments that mention "Lovable" for developer context (not sent to the AI) — left alone, they're internal documentation.
-- Import paths and package names like `@/integrations/supabase/*` — those are real file paths, the AI never sees them as brand text.
-- Petal's *own* internal docs / billing copy aimed at *you* (the workspace owner) — out of scope here; this plan is strictly about what end-users' AI says back to them.
+```ts
+const autofixGateOpen =
+  !localVerdict.ok ||
+  !esbuildVerdict.ok ||
+  autofixOut.report.fixedCount >= 2;
 
-## Why this happened
+const combinedIssues = [
+  ...localVerdict.issues,
+  ...esbuildVerdict.issues.map((i) => ({
+    path: i.path,
+    kind: "parse" as const,
+    detail: `${i.message} (line ${i.line}:${i.column})`,
+  })),
+];
 
-The original Discuss prompt had no awareness of Petal's native capabilities at all, so the model fell back on its training data and recommended Supabase. When I patched it, I reflexively used "Lovable Cloud" wording from internal docs instead of **Petal Cloud**, which is your actual product. That was the wrong instinct and I should have caught it. This plan corrects it everywhere it touches end-user output.
+if (autofixGateOpen) {
+  const fixOut = await runPostStreamAutofix(nextFiles, combinedIssues);
+  …
+}
+```
 
-Approve and I'll apply all three edits in one pass and verify the sweep is clean.
+### 3. Extend `LocalIssue` kind union
+
+In `src/server/local-verifier.ts`, add `"parse"` to the `kind` union so the autofix prompt template (which already prints `kind: detail`) renders esbuild errors without a type cast workaround.
+
+### 4. Surface in the build timeline
+
+The `BuildActivityCard` already renders any `step` it receives — no changes needed. The new `esbuild_parse` step appears between `local_verifier` and `post_stream_autofix` automatically.
+
+## Out of scope (explicitly NOT this turn)
+
+- Full **typecheck** (`tsc --noEmit`). Worth doing later, but tsc-on-Worker is a much bigger investment (no native binary, programmatic API is heavy, multi-second cost). esbuild parse covers ~80% of what users hit.
+- Hard server-side enforcement of the 180-line cap.
+- Runtime smoke check / preview boot loop.
+
+These three are the remaining items from the readiness audit. We can plan #2 next once #1 is shipped and we have telemetry on how many turns it catches.
+
+## Files to edit
+
+- **new** `src/server/esbuild-verifier.server.ts` — esbuild-wasm wrapper, lazy init, per-file `transform`.
+- **edit** `src/server/local-verifier.ts` — add `"parse"` to `LocalIssue["kind"]`.
+- **edit** `src/routes/api/generate.ts` — insert Tier 2.7 block, update autofix gate + issue payload.
+
+No DB changes. No new env vars. No new dependencies (esbuild-wasm is already in `package.json`).
+
+## Success criteria
+
+- A turn where the model emits a file with a real syntax error (e.g. missing `)`) is now flagged by `esbuild_parse` in the timeline, the autofix gate opens, and the repaired file parses cleanly on the next pass.
+- A clean turn shows `esbuild_parse: Parsed N files cleanly` and adds <100ms warm / <250ms cold to total turn time.
+- Zero false positives on scaffold-managed files (UI kit, examples, integrations) — they're skipped by path filter.

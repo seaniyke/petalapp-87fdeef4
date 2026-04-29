@@ -44,6 +44,7 @@ import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-cla
 // verifier and its recovery pass was unconditionally skipped by the
 // Phase D one-round autofix cap, so it only added latency + tokens.
 import { verifyFilesLocal } from "@/server/local-verifier";
+import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import { runContinuation } from "@/server/stream-continuation.server";
 import { pickBestModel } from "@/server/smart-router.server";
 import { recordAiOutcome } from "@/server/ai-outcomes.server";
@@ -874,6 +875,35 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 }
               }
 
+              // Tier 2.7 — esbuild parse pass (NEW). The same parser Vite
+              // uses to ship the bundle. If a file passes here, it WILL
+              // parse in production. Catches semantic syntax errors the
+              // heuristic local verifier can miss (mismatched generics,
+              // misplaced `await`, invalid JSX expression children, etc.).
+              const esbuildVerdict = await verifyFilesEsbuild(nextFiles, earlyChangedPaths);
+              if (!esbuildVerdict.ok) {
+                console.warn(
+                  `[esbuild-verifier] ${esbuildVerdict.issues.length} parse error(s):`,
+                  esbuildVerdict.issues
+                    .map((i) => `${i.path}:${i.line}:${i.column} ${i.message}`)
+                    .join("; "),
+                );
+              }
+              controller.enqueue(
+                encoder.encode(
+                  sse({
+                    type: "timeline",
+                    step: "esbuild_parse",
+                    outcome: esbuildVerdict.ok ? "ok" : "failed",
+                    message: esbuildVerdict.ok
+                      ? `Parsed ${earlyChangedPaths.length} file${earlyChangedPaths.length === 1 ? "" : "s"} cleanly`
+                      : `Found ${esbuildVerdict.issues.length} syntax issue${esbuildVerdict.issues.length === 1 ? "" : "s"}`,
+                    count: esbuildVerdict.ok ? earlyChangedPaths.length : esbuildVerdict.issues.length,
+                    ts: Date.now(),
+                  }),
+                ),
+              );
+
               // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
               // pass that ONLY fixes obvious build-breakers.
               //
@@ -888,10 +918,19 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // the local verifier's checks and its recovery pass was always
               // skipped by the Phase D one-round cap. One autofix call max
               // per turn is now structural, not just runtime-enforced.
-              const autofixGateOpen = !localVerdict.ok || autofixOut.report.fixedCount >= 2;
+              const autofixGateOpen =
+                !localVerdict.ok || !esbuildVerdict.ok || autofixOut.report.fixedCount >= 2;
+              const combinedAutofixIssues = [
+                ...localVerdict.issues,
+                ...esbuildVerdict.issues.map((i) => ({
+                  path: i.path,
+                  kind: "parse" as const,
+                  detail: `${i.message} (line ${i.line}:${i.column})`,
+                })),
+              ];
               if (autofixGateOpen) {
                 try {
-                  const fixOut = await runPostStreamAutofix(nextFiles, localVerdict.issues);
+                  const fixOut = await runPostStreamAutofix(nextFiles, combinedAutofixIssues);
                   nextFiles = fixOut.files;
                   if (fixOut.result.fixedFiles > 0) {
                     console.log(
