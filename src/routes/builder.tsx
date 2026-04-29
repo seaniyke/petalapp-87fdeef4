@@ -1722,11 +1722,13 @@ function Builder() {
    *  Railway hiccup without having to re-prompt the AI. */
   const retryDeploy = useCallback(() => {
     if (!project?.id) return;
+    supersedeBuildId(project.latest_build_id);
     setFriendlyError(null);
     setPhases((p) => advanceTo(p, "deploying"));
     setActivityVisible(true);
     void triggerBuild(project.id)
       .then(async (build) => {
+        restoreBuildId(build.buildId);
         startedBuildIdsRef.current.add(build.buildId);
         const r = await getProject(project.id);
         if (r) setProject(r);
@@ -1735,7 +1737,7 @@ function Builder() {
         setFriendlyError(toFriendlyError(err));
         setPhases((p) => markFailed(p, "deploying"));
       });
-  }, [project?.id]);
+  }, [project?.id, project?.latest_build_id, supersedeBuildId, restoreBuildId]);
 
   const askPetalToFix = useCallback(
     (opts: { isAuto?: boolean } = {}) => {
@@ -1743,7 +1745,7 @@ function Builder() {
       // Feed the actual build error/log back into the next prompt so the AI
       // can patch the real cause (this is what Lovable, Bolt and Base44 do).
       // The Railway callback already concatenates logs into error_message.
-      const rawLog = buildSnap?.errorMessage?.trim();
+      const rawLog = effectiveBuildSnap?.errorMessage?.trim();
       const tail = rawLog
         ? rawLog.split("\n").slice(-60).join("\n").slice(-3500)
         : "";
@@ -1770,7 +1772,7 @@ function Builder() {
       // runs behave like any other build prompt (charged + visible).
       void send(prompt, { isRetry: false, isAutoFix: opts.isAuto === true });
     },
-    [send, buildSnap],
+    [send, effectiveBuildSnap],
   );
 
   // Keep the ref in sync so the build-failure effect (declared earlier in
