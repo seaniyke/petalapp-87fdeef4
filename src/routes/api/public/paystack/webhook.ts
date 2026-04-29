@@ -92,21 +92,49 @@ export const Route = createFileRoute("/api/public/paystack/webhook")({
 
         if (payload.event !== "charge.success" || payload.data?.status !== "success") {
           // Record terminal failure states on the transaction, but don't grant.
-          if (payload.event === "charge.failed") {
+          const reason: "failed" | "abandoned" | null =
+            payload.event === "charge.failed"
+              ? "failed"
+              : payload.event === "charge.abandoned"
+                ? "abandoned"
+                : null;
+          if (reason) {
             await supabaseAdmin
               .from("paystack_transactions")
-              .update({ status: "failed" })
+              .update({ status: reason })
               .eq("reference", ref)
               .eq("status", "pending");
-          } else if (payload.event === "charge.abandoned") {
-            await supabaseAdmin
+
+            const { data: failedTx } = await supabaseAdmin
               .from("paystack_transactions")
-              .update({ status: "abandoned" })
+              .select("user_id, purpose, item_code, amount_minor, currency_code, usd_amount_cents")
               .eq("reference", ref)
-              .eq("status", "pending");
+              .maybeSingle();
+            if (failedTx?.user_id) {
+              void sendBillingEmail({
+                origin: new URL(request.url).origin,
+                templateName: "payment-failed",
+                idempotencyKey: `billing-failed-${ref}`,
+                userId: failedTx.user_id,
+                templateData: {
+                  itemLabel: billingItemLabel({
+                    purpose: failedTx.purpose,
+                    itemCode: failedTx.item_code,
+                    usdAmountCents: failedTx.usd_amount_cents,
+                  }),
+                  amountDisplay: formatMinorAmount(
+                    Number(failedTx.amount_minor),
+                    String(failedTx.currency_code),
+                  ),
+                  reference: ref,
+                  reason,
+                },
+              });
+            }
           }
           return new Response("ok", { status: 200 });
         }
+
 
         const { data: tx } = await supabaseAdmin
           .from("paystack_transactions")
