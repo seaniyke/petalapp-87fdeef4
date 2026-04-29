@@ -26,6 +26,8 @@ type Props = {
   filesWritten?: number;
   /** Ordered list of every file path written so far (deduped). */
   writtenPaths?: string[];
+  /** Paths whose stream-time `"content"` string finished — drives per-file ✓. */
+  completedPaths?: Set<string>;
   /** After completion, final line counts keyed by path — drives the "X lines" badge. */
   finalFileLines?: Record<string, number>;
   /**
@@ -56,6 +58,7 @@ export function BuildActivityCard({
   latestPath,
   filesWritten,
   writtenPaths,
+  completedPaths,
   finalFileLines,
   fileChanges,
   deployElapsedSec,
