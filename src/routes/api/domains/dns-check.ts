@@ -4,7 +4,7 @@
  * Queries authoritative public resolvers (Cloudflare DoH + Google DoH) for
  * the records we need to be live before Cloudflare for SaaS can finish
  * verification + SSL issuance:
- *   - The routing record (CNAME → fallback.buildwithpetal.com OR A → 185.158.133.1)
+ *   - The routing record (CNAME/ALIAS → fallback.buildwithpetal.com)
  *   - Any explicit TXT validation records Cloudflare returns for wildcard or
  *     pre-validation flows. Normal hostnames use automatic HTTP DCV, so no TXT
  *     record should be required.
@@ -25,7 +25,6 @@ import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   PETAL_DOMAIN_CNAME_TARGET as PETAL_DOMAIN_CNAME_TARGET_FALLBACK,
-  PETAL_DOMAIN_A_RECORD as PETAL_DOMAIN_A_RECORD_FALLBACK,
 } from "@/lib/domains";
 
 const Input = z.object({
@@ -93,7 +92,7 @@ function normHost(s: string): string {
 
 type CheckRecord = {
   kind: "routing" | "txt";
-  type: "A" | "CNAME" | "TXT";
+  type: "A" | "ALIAS" | "CNAME" | "TXT";
   host: string;
   expected: string;
   found: string[];
@@ -102,58 +101,38 @@ type CheckRecord = {
 };
 
 async function checkRouting(hostname: string): Promise<CheckRecord> {
-  // Try CNAME first (subdomains and apex flattening), then A (apex).
+  // Petal Cloudflare for SaaS routing must target the SaaS hostname. For apex
+  // domains, registrars such as Namecheap expose this as ALIAS/ANAME and then
+  // flatten it to A records publicly, so a raw A lookup alone is not enough.
   const labels = hostname.split(".");
   const isApex = labels.length === 2;
+  const wanted = normHost(PETAL_DOMAIN_CNAME_TARGET_FALLBACK);
 
   if (isApex) {
-    const aRecords = await doh(hostname, TYPE_A);
-    const wantedA = normHost(PETAL_DOMAIN_A_RECORD_FALLBACK);
-    if (aRecords.length === 0) {
-      // Fall through to also check CNAME — some registrars do CNAME flattening at apex.
-      const cnames = await doh(hostname, TYPE_CNAME);
-      if (cnames.length > 0) {
-        const wantedCname = normHost(PETAL_DOMAIN_CNAME_TARGET_FALLBACK);
-        const ok = cnames.some((c) => normHost(c) === wantedCname);
-        return {
-          kind: "routing",
-          type: "CNAME",
-          host: hostname,
-          expected: PETAL_DOMAIN_CNAME_TARGET_FALLBACK,
-          found: cnames.map(normHost),
-          status: ok ? "ok" : "wrong",
-          hint: ok
-            ? null
-            : "Apex CNAME points somewhere else. Update it at your registrar.",
-        };
-      }
-      return {
-        kind: "routing",
-        type: "A",
-        host: hostname,
-        expected: PETAL_DOMAIN_A_RECORD_FALLBACK,
-        found: [],
-        status: "missing",
-        hint: "No A record found. Add it at your registrar (Host: @).",
-      };
-    }
-    const ok = aRecords.some((a) => normHost(a) === wantedA);
+    const [cnames, aRecords, targetARecords] = await Promise.all([
+      doh(hostname, TYPE_CNAME),
+      doh(hostname, TYPE_A),
+      doh(PETAL_DOMAIN_CNAME_TARGET_FALLBACK, TYPE_A),
+    ]);
+    const targetAs = new Set(targetARecords.map(normHost));
+    const ok =
+      cnames.some((c) => normHost(c) === wanted) ||
+      (targetAs.size > 0 && aRecords.some((a) => targetAs.has(normHost(a))));
     return {
       kind: "routing",
-      type: "A",
+      type: "ALIAS",
       host: hostname,
-      expected: PETAL_DOMAIN_A_RECORD_FALLBACK,
-      found: aRecords,
+      expected: PETAL_DOMAIN_CNAME_TARGET_FALLBACK,
+      found: cnames.length > 0 ? cnames.map(normHost) : aRecords,
       status: ok ? "ok" : "wrong",
       hint: ok
         ? null
-        : `A record points to ${aRecords.join(", ")} — change it to ${PETAL_DOMAIN_A_RECORD_FALLBACK}.`,
+        : `Remove the A record and add an ALIAS/ANAME record for @ pointing to ${PETAL_DOMAIN_CNAME_TARGET_FALLBACK}.`,
     };
   }
 
   // Subdomain → CNAME.
   const cnames = await doh(hostname, TYPE_CNAME);
-  const wanted = normHost(PETAL_DOMAIN_CNAME_TARGET_FALLBACK);
   if (cnames.length === 0) {
     return {
       kind: "routing",

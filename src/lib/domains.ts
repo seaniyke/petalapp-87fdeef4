@@ -52,12 +52,15 @@ export class DomainSlotRequiredError extends Error {
 }
 
 /**
- * The CNAME target customers point their domain at. Cloudflare for SaaS uses
- * our fallback hostname as the CNAME target (Free plan model).
+ * The SaaS routing target customers point their domain at. Subdomains should
+ * use CNAME. Apex/root domains should use an ALIAS/ANAME record when the
+ * registrar supports it (Namecheap does), because pointing an apex A record at
+ * Lovable's generic IP bypasses Petal's Cloudflare for SaaS hostname routing.
  */
 export const PETAL_DOMAIN_CNAME_TARGET = "fallback.buildwithpetal.com";
+export const PETAL_DOMAIN_APEX_ALIAS_TARGET = PETAL_DOMAIN_CNAME_TARGET;
 
-/** @deprecated Kept for back-compat — prefer PETAL_DOMAIN_CNAME_TARGET. */
+/** @deprecated Do not use for Petal SaaS domains — prefer PETAL_DOMAIN_APEX_ALIAS_TARGET. */
 export const PETAL_DOMAIN_A_RECORD = "185.158.133.1";
 
 type Action = "list" | "add" | "verify" | "set-primary" | "remove";
@@ -111,7 +114,7 @@ export const removeDomain = (projectId: string, domainId: string) =>
 
 export type DnsCheckRecord = {
   kind: "routing" | "txt";
-  type: "A" | "CNAME" | "TXT";
+  type: "A" | "ALIAS" | "CNAME" | "TXT";
   host: string;
   expected: string;
   found: string[];
