@@ -50,6 +50,7 @@ import { runRenderRiskTier } from "@/server/pipeline/tier-render-risk";
 import { runRlsSanityTier } from "@/server/pipeline/tier-rls-sanity";
 import { TurnRecorder } from "@/server/pipeline-telemetry.server";
 import { stripHallucinatedImports } from "@/server/strip-hallucinated-imports.server";
+import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import {
   checkFileBudgets,
   enforceFileBudgets,
@@ -321,6 +322,103 @@ async function relayAndCollect(
     }
   }
   return tool;
+}
+
+type ParsedProjectPayload = {
+  parsed: {
+    plan?: string;
+    summary?: string;
+    recap?: string;
+    files?: ProjectFile[];
+    ops?: FileOp[];
+  };
+  summary: string;
+  plan?: string;
+  recap?: string;
+};
+
+function parseCollectedProject(collected: ParsedTool, isInitial: boolean): ParsedProjectPayload {
+  if (!collected.name || !collected.args) {
+    throw new Error("AI did not return a project. Try rephrasing.");
+  }
+  if (collected.name === "write_project" && !isInitial) {
+    throw new Error("AI tried to rewrite the whole project. Edits must be incremental patches.");
+  }
+  if (collected.name === "patch_files" && isInitial) {
+    throw new Error("AI tried to patch an empty project. Initial generation must create files.");
+  }
+
+  let parsed: ParsedProjectPayload["parsed"];
+  try {
+    parsed = JSON.parse(collected.args) as ParsedProjectPayload["parsed"];
+  } catch (e) {
+    console.error("Failed to parse tool args", e, collected.args.slice(0, 500));
+    throw new Error("AI returned invalid project data.");
+  }
+
+  if (collected.name === "write_project" && !parsed.files?.length) {
+    throw new Error("AI returned no files.");
+  }
+  if (collected.name === "patch_files" && !Array.isArray(parsed.ops)) {
+    throw new Error("AI returned no ops.");
+  }
+
+  return {
+    parsed,
+    summary: parsed.summary?.trim() || "Updated the project.",
+    plan: parsed.plan?.trim() || undefined,
+    recap: parsed.recap?.trim() || undefined,
+  };
+}
+
+function addStructuredRetryInstruction<T extends Array<{ role: string; content: unknown }>>(
+  messages: T,
+  args: { isInitial: boolean; problem: string },
+): T {
+  const requiredTool = args.isInitial ? "write_project" : "patch_files";
+  const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field; keep files short and split large UI into components.`;
+  return messages.map((m, i) =>
+    i === 0 && typeof m.content === "string"
+      ? { ...m, content: `${m.content}${retryBlock}` }
+      : m,
+  ) as T;
+}
+
+async function runFinalParseGuard(
+  files: ProjectFile[],
+  changedPaths: string[],
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+): Promise<ProjectFile[]> {
+  const finalVerdict = await verifyFilesEsbuild(files, changedPaths);
+  if (finalVerdict.ok) return files;
+
+  console.warn(
+    `[final-parse-guard] ${finalVerdict.issues.length} issue(s) after autofix:`,
+    finalVerdict.issues.map((i) => `${i.path}:${i.line}:${i.column} ${i.message}`).join("; "),
+  );
+  controller.enqueue(
+    encoder.encode(sse({ type: "status", message: "Repairing one last syntax issue…" })),
+  );
+
+  const fixOut = await runPostStreamAutofix(
+    files,
+    finalVerdict.issues.map((i) => ({
+      path: i.path,
+      kind: "parse",
+      detail: `${i.message} (line ${i.line}:${i.column})`,
+    })),
+  );
+  const repaired = fixOut.files;
+  const repairedVerdict = await verifyFilesEsbuild(repaired, changedPaths);
+  if (!repairedVerdict.ok) {
+    const detail = repairedVerdict.issues
+      .slice(0, 3)
+      .map((i) => `${i.path}:${i.line}:${i.column} ${i.message}`)
+      .join("; ");
+    throw new Error(`Final syntax check failed after repair: ${detail}`);
+  }
+  return repaired;
 }
 
 async function handleGenerateRequest(request: Request): Promise<Response> {
@@ -648,47 +746,44 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   ),
                 );
               }
-              const collected = await relayAndCollect(upstream, controller, encoder);
+              let collected = await relayAndCollect(upstream, controller, encoder);
               controller.enqueue(encoder.encode(sse({ type: "phase", phase: "polishing" })));
               controller.enqueue(
                 encoder.encode(sse({ type: "status", message: "Applying changes…" })),
               );
 
-              if (!collected.name || !collected.args) {
-                throw new Error("AI did not return a project. Try rephrasing.");
-              }
-
-              // INVARIANT: write_project is only allowed when the project is
-              // empty (turn 1). Every subsequent turn MUST go through patch_files
-              // so we keep an auditable diff history and never blow away user work.
-              if (collected.name === "write_project" && !isInitial) {
-                throw new Error(
-                  "AI tried to rewrite the whole project. Edits must be incremental patches.",
-                );
-              }
-              if (collected.name === "patch_files" && isInitial) {
-                throw new Error(
-                  "AI tried to patch an empty project. Initial generation must create files.",
-                );
-              }
-
-              let parsed: {
-                plan?: string;
-                summary?: string;
-                recap?: string;
-                files?: ProjectFile[];
-                ops?: FileOp[];
-              };
+              let payload: ParsedProjectPayload;
               try {
-                parsed = JSON.parse(collected.args);
+                payload = parseCollectedProject(collected, isInitial);
               } catch (e) {
-                console.error("Failed to parse tool args", e, collected.args.slice(0, 500));
-                throw new Error("AI returned invalid project data.");
+                controller.enqueue(
+                  encoder.encode(sse({ type: "status", message: "Retrying the response safely…" })),
+                );
+                const retry = await aiChatCompletions({
+                  feature: "generate",
+                  body: {
+                    model: MODEL_BEST,
+                    messages: addStructuredRetryInstruction(chatMessages, {
+                      isInitial,
+                      problem: e instanceof Error ? e.message : "invalid structured response",
+                    }),
+                    tools: [tool],
+                    tool_choice: { type: "function", function: { name: tool.function.name } },
+                    stream: true,
+                  },
+                  meta: {
+                    phase: phaseTag.phase,
+                    promptChars: lastUserContent.length,
+                    hadAttachments: hasVisionTurn,
+                    chosenBy: "structured_retry",
+                  },
+                });
+                if (!retry.ok || !retry.body) throw e;
+                collected = await relayAndCollect(retry, controller, encoder);
+                payload = parseCollectedProject(collected, isInitial);
               }
 
-              const summary = parsed.summary?.trim() || "Updated the project.";
-              const plan = parsed.plan?.trim() || undefined;
-              const recap = parsed.recap?.trim() || undefined;
+              const { parsed, summary, plan, recap } = payload;
               let nextFiles: ProjectFile[];
               if (collected.name === "write_project") {
                 if (!parsed.files?.length) throw new Error("AI returned no files.");
@@ -1258,6 +1353,13 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   ),
                 );
               }
+
+              nextFiles = await runFinalParseGuard(
+                nextFiles,
+                earlyChangedPaths,
+                controller,
+                encoder,
+              );
 
               // Charge ONCE, after the build succeeds. Cost is computed from
               // the MAIN generate call's token usage only — `collected.usage`
