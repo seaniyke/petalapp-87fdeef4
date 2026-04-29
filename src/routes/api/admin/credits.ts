@@ -563,6 +563,132 @@ export const Route = createFileRoute("/api/admin/credits")({
             });
           }
 
+          if (body.action === "pipeline_stats") {
+            const sinceHours = Math.max(1, Math.min(24 * 30, Number(body.since_hours ?? 24) | 0));
+            const since = new Date(Date.now() - sinceHours * 3_600_000).toISOString();
+
+            const { data: events, error: evErr } = await supabaseAdmin
+              .from("pipeline_tier_events")
+              .select("turn_id, project_id, message_id, model, tier, tier_order, outcome, duration_ms, issue_count, details, created_at")
+              .gte("created_at", since)
+              .order("created_at", { ascending: false })
+              .limit(5000);
+            if (evErr) return Response.json({ error: evErr.message }, { status: 500 });
+
+            const rows = events ?? [];
+
+            // Per-tier aggregates
+            type TierAgg = {
+              tier: string;
+              total: number;
+              ok: number;
+              failed: number;
+              fixed: number;
+              warned: number;
+              skipped: number;
+              durations: number[];
+              issues: number;
+            };
+            const byTier = new Map<string, TierAgg>();
+            const turns = new Set<string>();
+            const halluCounts = new Map<string, number>();
+            const handoffReasons = new Map<string, number>();
+
+            for (const r of rows) {
+              const row = r as {
+                tier: string;
+                outcome: string;
+                duration_ms: number;
+                issue_count: number;
+                turn_id: string;
+                details: Record<string, unknown> | null;
+              };
+              turns.add(row.turn_id);
+              let agg = byTier.get(row.tier);
+              if (!agg) {
+                agg = { tier: row.tier, total: 0, ok: 0, failed: 0, fixed: 0, warned: 0, skipped: 0, durations: [], issues: 0 };
+                byTier.set(row.tier, agg);
+              }
+              agg.total += 1;
+              agg.durations.push(Number(row.duration_ms || 0));
+              agg.issues += Number(row.issue_count || 0);
+              const o = row.outcome as keyof TierAgg;
+              if (o === "ok" || o === "failed" || o === "fixed" || o === "warned" || o === "skipped") {
+                (agg[o] as number) += 1;
+              }
+              const det = row.details ?? {};
+              const hallu = (det as { hallucinated_packages?: unknown }).hallucinated_packages;
+              if (Array.isArray(hallu)) {
+                for (const pkg of hallu) {
+                  if (typeof pkg === "string") halluCounts.set(pkg, (halluCounts.get(pkg) ?? 0) + 1);
+                }
+              }
+              const handoff = (det as { handoff_reason?: unknown }).handoff_reason;
+              if (typeof handoff === "string") {
+                handoffReasons.set(handoff, (handoffReasons.get(handoff) ?? 0) + 1);
+              }
+            }
+
+            const pct = (n: number) => Math.round(n);
+            const percentile = (arr: number[], p: number): number => {
+              if (!arr.length) return 0;
+              const sorted = [...arr].sort((a, b) => a - b);
+              const idx = Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length));
+              return sorted[idx];
+            };
+
+            const tierStats = Array.from(byTier.values())
+              .sort((a, b) => a.tier.localeCompare(b.tier))
+              .map((a) => ({
+                tier: a.tier,
+                total: a.total,
+                ok: a.ok,
+                failed: a.failed,
+                fixed: a.fixed,
+                warned: a.warned,
+                skipped: a.skipped,
+                ok_pct: a.total ? pct((a.ok / a.total) * 100) : 0,
+                failed_pct: a.total ? pct((a.failed / a.total) * 100) : 0,
+                p50_ms: percentile(a.durations, 50),
+                p95_ms: percentile(a.durations, 95),
+                avg_issues: a.total ? +(a.issues / a.total).toFixed(2) : 0,
+              }));
+
+            const topHallu = Array.from(halluCounts.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 10)
+              .map(([pkg, count]) => ({ package: pkg, count }));
+
+            const handoffs = Array.from(handoffReasons.entries())
+              .sort((a, b) => b[1] - a[1])
+              .map(([reason, count]) => ({ reason, count }));
+
+            const recent = rows.slice(0, 50).map((r) => {
+              const row = r as Record<string, unknown>;
+              return {
+                turn_id: row.turn_id,
+                tier: row.tier,
+                outcome: row.outcome,
+                duration_ms: row.duration_ms,
+                issue_count: row.issue_count,
+                model: row.model,
+                project_id: row.project_id,
+                created_at: row.created_at,
+                details: row.details,
+              };
+            });
+
+            return Response.json({
+              since_hours: sinceHours,
+              total_events: rows.length,
+              total_turns: turns.size,
+              tier_stats: tierStats,
+              top_hallucinated: topHallu,
+              handoff_reasons: handoffs,
+              recent_events: recent,
+            });
+          }
+
           return Response.json({ error: "Unknown action" }, { status: 400 });
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Server error";
