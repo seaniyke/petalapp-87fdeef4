@@ -659,7 +659,9 @@ function DnsRecordsDialog({
   // For apex domains we recommend `@`. For subdomains, the leftmost label.
   const labels = domain.hostname.split(".");
   const isApex = labels.length === 2; // crude but matches common .com/.net cases
-  const cnameHost = isApex ? "@" : labels[0];
+  const routingHost = isApex ? "@" : labels[0];
+  const routingRecordType = isApex ? "A" : "CNAME";
+  const routingRecordValue = isApex ? PETAL_DOMAIN_A_RECORD : PETAL_DOMAIN_CNAME_TARGET;
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -667,17 +669,17 @@ function DnsRecordsDialog({
         <DialogHeader>
           <DialogTitle className="break-all">DNS records for {domain.hostname}</DialogTitle>
           <DialogDescription>
-            Add these two records at your domain registrar (GoDaddy, Namecheap,
+            Add these records at your domain registrar (GoDaddy, Namecheap,
             Cloudflare, etc.). DNS changes can take a few minutes — sometimes up
-            to 72 hours. SSL is issued automatically once both records are live.
+            to 72 hours. SSL is issued automatically once they are live.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <RecordCard
-            type="CNAME"
-            host={cnameHost}
-            value={PETAL_DOMAIN_CNAME_TARGET}
+            type={routingRecordType}
+            host={routingHost}
+            value={routingRecordValue}
             note="Points your domain at Petal."
           />
           <RecordCard
@@ -703,7 +705,7 @@ function DnsRecordsDialog({
             ) : (
               <RefreshCw className="h-3.5 w-3.5" />
             )}
-            Check status
+            {checking ? "Checking…" : "Check status"}
           </Button>
         </DialogFooter>
       </DialogContent>
