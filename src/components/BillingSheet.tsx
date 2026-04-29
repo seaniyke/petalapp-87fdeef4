@@ -626,14 +626,11 @@ function TopupPicker({
                 : fmtUsd(selected.price_cents)}
             </p>
           </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            ≈ ${perCredit.toFixed(3)} per credit
-            {selConv?.source === "override" && (
-              <span className="ml-1 text-emerald-600 dark:text-emerald-400">
-                · local price
-              </span>
-            )}
-          </p>
+          {selConv?.source === "override" && (
+            <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+              · local price
+            </p>
+          )}
           <Button
             size="sm"
             disabled={disabled || busy}
