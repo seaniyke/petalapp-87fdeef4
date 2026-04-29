@@ -155,45 +155,58 @@ export function RuntimeTopupModal({
   // ---------- Free-plan gate ----------
   if (open && !walletLoading && isFree) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[calc(100vw-1.5rem)] sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Lock className="h-4 w-4" />
-              Top-ups require Pro
-            </DialogTitle>
-            <DialogDescription>
-              The Cloud + AI balance is a paid feature. Upgrade to Pro to add funds and unlock
-              managed backend, custom domains and higher AI limits.
-            </DialogDescription>
-          </DialogHeader>
+      <>
+        <Dialog open={open && !billingOpen} onOpenChange={onOpenChange}>
+          <DialogContent className="max-w-[calc(100vw-1.5rem)] sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                Top-ups require Pro
+              </DialogTitle>
+              <DialogDescription>
+                The Cloud + AI balance is a paid feature. Upgrade to Pro to add funds and unlock
+                managed backend, custom domains and higher AI limits.
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
-            <p className="font-medium text-foreground">You're on the Free plan.</p>
-            <p className="mt-1 text-muted-foreground">
-              Free includes daily build credits but doesn't support paid top-ups. Once on Pro you
-              can add any amount in Naira and use it across Cloud and AI.
-            </p>
-          </div>
+            <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
+              <p className="font-medium text-foreground">You're on the Free plan.</p>
+              <p className="mt-1 text-muted-foreground">
+                Free includes daily build credits but doesn't support paid top-ups. Once on Pro you
+                can add any amount in Naira and use it across Cloud and AI.
+              </p>
+            </div>
 
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-              Maybe later
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                onOpenChange(false);
-                onUpgrade?.();
-              }}
-              className="inline-flex items-center gap-1.5"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Upgrade to Pro
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter className="gap-2 sm:gap-2">
+              <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
+                Maybe later
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (onUpgrade) {
+                    onOpenChange(false);
+                    onUpgrade();
+                  } else {
+                    setBillingOpen(true);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Upgrade to Pro
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <BillingSheet
+          open={billingOpen}
+          onOpenChange={(v) => {
+            setBillingOpen(v);
+            if (!v) onOpenChange(false);
+          }}
+        />
+      </>
     );
   }
 
