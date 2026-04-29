@@ -60,6 +60,7 @@ import {
   removeDomain,
   listDomainSlots,
   PETAL_DOMAIN_CNAME_TARGET,
+  PETAL_DOMAIN_A_RECORD,
   DomainSlotRequiredError,
   type ProjectDomain,
   type DomainSlot,
@@ -165,13 +166,19 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
     });
   }
 
-  async function handleVerify(d: ProjectDomain) {
+  async function handleVerify(d: ProjectDomain): Promise<ProjectDomain | null> {
     try {
       const next = await verifyDomain(projectId, d.id);
       upsertLocal(next);
-      toast.success("Re-checking DNS…");
+      toast.success(
+        next.status === "active"
+          ? "Domain is active"
+          : "DNS checked — still waiting for propagation",
+      );
+      return next;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't check status");
+      return null;
     }
   }
 
@@ -335,7 +342,8 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
         onClose={() => setRecordsFor(null)}
         onVerify={async () => {
           if (!recordsFor) return;
-          await handleVerify(recordsFor);
+          const next = await handleVerify(recordsFor);
+          if (next) setRecordsFor(next);
         }}
       />
 
@@ -651,7 +659,9 @@ function DnsRecordsDialog({
   // For apex domains we recommend `@`. For subdomains, the leftmost label.
   const labels = domain.hostname.split(".");
   const isApex = labels.length === 2; // crude but matches common .com/.net cases
-  const cnameHost = isApex ? "@" : labels[0];
+  const routingHost = isApex ? "@" : labels[0];
+  const routingRecordType = isApex ? "A" : "CNAME";
+  const routingRecordValue = isApex ? PETAL_DOMAIN_A_RECORD : PETAL_DOMAIN_CNAME_TARGET;
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -659,17 +669,17 @@ function DnsRecordsDialog({
         <DialogHeader>
           <DialogTitle className="break-all">DNS records for {domain.hostname}</DialogTitle>
           <DialogDescription>
-            Add these two records at your domain registrar (GoDaddy, Namecheap,
+            Add these records at your domain registrar (GoDaddy, Namecheap,
             Cloudflare, etc.). DNS changes can take a few minutes — sometimes up
-            to 72 hours. SSL is issued automatically once both records are live.
+            to 72 hours. SSL is issued automatically once they are live.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <RecordCard
-            type="CNAME"
-            host={cnameHost}
-            value={PETAL_DOMAIN_CNAME_TARGET}
+            type={routingRecordType}
+            host={routingHost}
+            value={routingRecordValue}
             note="Points your domain at Petal."
           />
           <RecordCard
@@ -695,7 +705,7 @@ function DnsRecordsDialog({
             ) : (
               <RefreshCw className="h-3.5 w-3.5" />
             )}
-            Check status
+            {checking ? "Checking…" : "Check status"}
           </Button>
         </DialogFooter>
       </DialogContent>
