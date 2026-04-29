@@ -2676,13 +2676,16 @@ function Builder() {
                     )}
                   </div>
                   {m.role === "assistant" && i === lastDiscussIndex && !busy && !discussBusy && (
-                    <div className="mr-3 mt-1.5 flex justify-end sm:mr-6">
+                    <div className="mr-3 mt-3 flex flex-col items-stretch gap-1.5 sm:mr-6">
                       <button
                         onClick={applyDiscussedPlan}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition hover:brightness-105"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:brightness-105 active:scale-[0.99]"
                       >
-                        <Wand2 className="h-3 w-3" /> Apply this plan
+                        <Wand2 className="h-4 w-4" /> Apply this plan
                       </button>
+                      <p className="text-center text-[11px] text-muted-foreground">
+                        or just reply <span className="font-mono">go</span> to apply
+                      </p>
                     </div>
                   )}
                 </div>
