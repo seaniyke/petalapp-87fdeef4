@@ -917,6 +917,9 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                       "[continuation] no files completed:",
                       contOut.result.notes.join("; "),
                     );
+                    // Continuation pass ran but couldn't finish — strongest
+                    // signal we hit the model's output ceiling. Hand off.
+                    if (!handoffReason) handoffReason = "incomplete_turn";
                   }
                   controller.enqueue(
                     encoder.encode(
@@ -993,13 +996,21 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // skipped by the Phase D one-round cap. One autofix call max
               // per turn is now structural, not just runtime-enforced.
               const autofixGateOpen =
-                !localVerdict.ok || !esbuildVerdict.ok || autofixOut.report.fixedCount >= 2;
+                !localVerdict.ok ||
+                !esbuildVerdict.ok ||
+                budgetWarnings.length > 0 ||
+                autofixOut.report.fixedCount >= 2;
               const combinedAutofixIssues = [
                 ...localVerdict.issues,
                 ...esbuildVerdict.issues.map((i) => ({
                   path: i.path,
                   kind: "parse" as const,
                   detail: `${i.message} (line ${i.line}:${i.column})`,
+                })),
+                ...budgetWarnings.map((w) => ({
+                  path: w.path,
+                  kind: "oversize" as const,
+                  detail: w.detail,
                 })),
               ];
               if (autofixGateOpen) {
