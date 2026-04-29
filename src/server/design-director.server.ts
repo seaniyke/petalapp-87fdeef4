@@ -208,6 +208,12 @@ export async function pickDesignDirection(args: {
 
   let direction: DesignDirection | null = null;
   try {
+    // HARD TIMEOUT (8s). The director is a NICE-TO-HAVE pre-stream pass.
+    // If the gateway / preview model is slow or hangs, we MUST NOT block the
+    // whole build — that causes the worker to hit its CPU/wall budget and
+    // return an empty response (status 0 in CF logs → "Something went wrong"
+    // in the UI). On timeout we fall through to null and the build proceeds
+    // with the model's default taste.
     const resp = await aiChatCompletions({
       feature: "design",
       body: {
@@ -219,6 +225,7 @@ export async function pickDesignDirection(args: {
         tools: [DIRECTOR_TOOL],
         tool_choice: { type: "function", function: { name: "set_design_direction" } },
       },
+      signal: AbortSignal.timeout(8000),
     });
     if (!resp.ok) {
       console.warn("[design-director] http error", resp.status);
