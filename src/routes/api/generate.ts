@@ -1427,6 +1427,9 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 filesWritten: 0,
               });
             } finally {
+              // Phase 6 — flush per-tier telemetry in a single insert.
+              // Idempotent and never throws; safe in finally.
+              void recorder.flush();
               controller.close();
             }
           },
