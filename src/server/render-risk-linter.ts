@@ -462,10 +462,17 @@ function findUndeclaredJsxIdentifiers(src: string, clean: string): string[] {
   //
   // We additionally allow imports + globals so that idents only
   // referenced via JSX (e.g. an icon used once) don't trip the rule.
-  const allTokens = new Set<string>();
+  // Count token occurrences. The JSX `{ident}` itself contributes 1
+  // occurrence, so an identifier that ONLY appears once must be the
+  // typo'd reference itself (no declaration, no other use). Anything
+  // appearing 2+ times has at least one other site (declaration,
+  // import, prop, helper call) and is treated as known.
+  const tokenCount = new Map<string, number>();
   const tokenRe = /\b([A-Za-z_$][\w$]*)\b/g;
   let m: RegExpExecArray | null;
-  while ((m = tokenRe.exec(clean))) allTokens.add(m[1]);
+  while ((m = tokenRe.exec(clean))) {
+    tokenCount.set(m[1], (tokenCount.get(m[1]) ?? 0) + 1);
+  }
 
   // Also include names from imports (in case the file is mostly JSX).
   const importRe =
