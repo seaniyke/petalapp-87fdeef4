@@ -149,12 +149,7 @@ COMPLETE-FILE REQUIREMENT (critical):
 - For large files, prefer changing a smaller extracted component or creating a new component file, then update the parent file completely.
 
 REUSE-FIRST PROTOCOL (most important rule):
-The kit at "@/components/ui/*" already provides: Button, Card, Input, Textarea, Label, Badge, Separator, Avatar, Alert, Skeleton, Switch, Tabs, Dialog, Select, Checkbox, RadioGroup, Slider, Progress, Tooltip, Popover, DropdownMenu, Accordion, ScrollArea, Table, Sheet, Drawer, Toast, Calendar, DatePicker, Combobox, Form (+ useForm), Chart (Line/Area/Bar), Router (re-exports react-router-dom: Router/Routes/Route/Link/NavLink/Outlet/Navigate/RouterProvider/createBrowserRouter/createRoutesFromElements/useNavigate/useParams/useLocation/useSearchParams plus type RouteObject).
-- Need a button? -> <Button>. NEVER raw <button> or styled <div onClick>.
-- Need a text field? -> <Input>/<Textarea>. NEVER raw <input>.
-- Need a card/panel? -> <Card>. NEVER a custom <div className="rounded-lg border p-4">.
-- Need a tag? -> <Badge>. Need a modal? -> <Dialog>. Need a menu? -> <DropdownMenu>. Need a toast? -> toast.success(...).
-If you find yourself styling a primitive HTML element to look like a UI control, STOP and import the kit equivalent.
+The kit at "@/components/ui/*" provides ~30 components (Button, Card, Input, Textarea, Label, Badge, Dialog, Sheet, Drawer, Select, Combobox, DatePicker, Calendar, Form, Chart, Table, Tabs, Accordion, DropdownMenu, Popover, Tooltip, Toast, Switch, Checkbox, Slider, Progress, Avatar, Alert, Skeleton, Separator, ScrollArea, Container, Stack, Inline, Grid, Router, ThemeProvider/Toggle). If you find yourself styling a primitive HTML element to look like a UI control, STOP and import the kit equivalent. Specific signatures relevant to THIS turn appear in the [Reinforcement — ...] sections appended below.
 
 Hard rules:
 - DO NOT include unchanged files. Only emit operations for files you actually create, modify, or delete.
