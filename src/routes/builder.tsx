@@ -1449,6 +1449,16 @@ function Builder() {
   // Either dispatch the prompt now (if Petal is free) or queue it. The queue
   // remembers the mode the user picked when they typed it, so a discuss-mode
   // queued message stays a discussion even if mode changes later.
+  // Short affirmations a user types when Petal has just proposed a plan in
+  // Discuss mode (e.g. "go", "yes please", "do it"). When detected, we treat
+  // the message as an Apply, not as another round of discussion — otherwise
+  // Petal answers "great, here's the plan again…" and the user gets stuck.
+  const APPLY_AFFIRMATIONS = useMemo(
+    () =>
+      /^(go|go!|yes|yep|yeah|yes please|please|ok|okay|sure|do it|let'?s go|let'?s do it|ship it|build it|apply|apply it|apply this plan|approved|proceed|sounds good|👍|✅)\.?\!?$/i,
+    [],
+  );
+
   const submitPrompt = useCallback(
     (text: string) => {
       const trimmed = text.trim();
@@ -1461,10 +1471,23 @@ function Builder() {
         setInput("");
         return;
       }
+      // Discuss-mode shortcut: if Petal just proposed a plan and the user
+      // replies with a short "go"/"yes"/"do it", apply the plan instead of
+      // looping in discussion. This matches how Petal phrases its plans
+      // ("Reply *go* and I'll make these changes").
+      if (
+        mode === "discuss" &&
+        lastDiscussIndex != null &&
+        APPLY_AFFIRMATIONS.test(trimmed)
+      ) {
+        setInput("");
+        applyDiscussedPlan();
+        return;
+      }
       if (mode === "discuss") void discuss(trimmed);
       else void send(trimmed);
     },
-    [bootstrapping, busy, discussBusy, mode, discuss, send],
+    [bootstrapping, busy, discussBusy, mode, discuss, send, lastDiscussIndex, APPLY_AFFIRMATIONS, applyDiscussedPlan],
   );
 
   // Auto-dequeue the next prompt as soon as Petal frees up.
