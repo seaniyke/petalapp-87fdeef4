@@ -176,21 +176,37 @@ function findOptionalDestructuredProps(clean: string): {
   const props: OptionalProp[] = [];
   const bodyByOwner = new Map<string, string>();
 
-  // Match either `function Name({...}: { ... }) { body }` OR
-  // `const Name = ({...}: { ... }) => { body }` / `=> (`.
-  const re =
-    /(?:function\s+([A-Z][A-Za-z0-9_]*)\s*\(\s*\{([^}]*)\}\s*:\s*\{([^}]*)\}\s*\)|const\s+([A-Z][A-Za-z0-9_]*)\s*=\s*(?:React\.)?(?:memo\(\s*)?\(\s*\{([^}]*)\}\s*:\s*\{([^}]*)\}\s*\)\s*=>)/g;
+  // Find every component opener: `function Name(` or `const Name = (`
+  // (also `const Name = React.memo((`). Then balance-parse `(...)` to
+  // get the full parameter list — this lets us handle nested `{...}` in
+  // type annotations like `{ items?: { id: string }[] }`.
+  const openerRe =
+    /(?:function\s+([A-Z][A-Za-z0-9_]*)\s*\(|const\s+([A-Z][A-Za-z0-9_]*)\s*=\s*(?:React\.)?(?:memo\(\s*)?\()/g;
 
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(clean))) {
-    const ownerName = m[1] ?? m[4] ?? "anonymous";
-    const destructure = (m[2] ?? m[5] ?? "").trim();
-    const typeBlock = (m[3] ?? m[6] ?? "").trim();
-    if (!destructure || !typeBlock) continue;
+  let opener: RegExpExecArray | null;
+  while ((opener = openerRe.exec(clean))) {
+    const ownerName = opener[1] ?? opener[2] ?? "anonymous";
+    const parenStart = opener.index + opener[0].length - 1; // position of `(`
+    const parenEnd = findMatchingParen(clean, parenStart);
+    if (parenEnd < 0) continue;
+    const params = clean.slice(parenStart + 1, parenEnd);
+
+    // We only handle the case of a single destructured param:
+    // `{...}: {...}` — that's the dominant pattern in our codebase.
+    const destruct = extractFirstBraceBlock(params);
+    if (!destruct) continue;
+    const afterDestruct = params.slice(destruct.end + 1);
+    const colonMatch = /^\s*:\s*/.exec(afterDestruct);
+    if (!colonMatch) continue;
+    const typeStart = destruct.end + 1 + colonMatch[0].length;
+    const typeBlock = extractFirstBraceBlock(params.slice(typeStart));
+    if (!typeBlock) continue;
+    const destructureContent = destruct.content;
+    const typeContent = typeBlock.content;
 
     // Parse type block into the set of optional prop names.
     const optionalSet = new Set<string>();
-    for (const segment of splitTypeFields(typeBlock)) {
+    for (const segment of splitTypeFields(typeContent)) {
       const seg = segment.trim();
       if (!seg) continue;
       const optMark = /^([A-Za-z_$][\w$]*)\s*\?\s*:/.exec(seg);
@@ -212,18 +228,15 @@ function findOptionalDestructuredProps(clean: string): {
     const safeNames = new Set<string>();
     const aliases = new Map<string, string>();
     const declaredNames = new Set<string>();
-    for (const part of splitDestructure(destructure)) {
+    for (const part of splitDestructure(destructureContent)) {
       const piece = part.trim();
       if (!piece) continue;
-      // `name = expr` → safe regardless of optionality.
       const def = /^([A-Za-z_$][\w$]*)\s*=/.exec(piece);
       if (def) {
         safeNames.add(def[1]);
         declaredNames.add(def[1]);
         continue;
       }
-      // `name: alias` → track alias as the name we'll see in body. Also
-      // accept `name: alias = default`.
       const renameDef =
         /^([A-Za-z_$][\w$]*)\s*:\s*([A-Za-z_$][\w$]*)\s*=/.exec(piece);
       if (renameDef) {
@@ -242,12 +255,15 @@ function findOptionalDestructuredProps(clean: string): {
       if (bare) declaredNames.add(bare[1]);
     }
 
-    // Find the function body span.
-    const bodyStart = findFunctionBodyStart(clean, m.index + m[0].length);
-    if (bodyStart < 0) continue;
-    const bodyEnd = findMatchingBrace(clean, bodyStart);
+    // Find the function body span (after `)` then optional `=>` then `{`).
+    let bodyHead = parenEnd + 1;
+    while (bodyHead < clean.length && /\s/.test(clean[bodyHead])) bodyHead++;
+    if (clean.slice(bodyHead, bodyHead + 2) === "=>") bodyHead += 2;
+    while (bodyHead < clean.length && /\s/.test(clean[bodyHead])) bodyHead++;
+    if (clean[bodyHead] !== "{") continue;
+    const bodyEnd = findMatchingBrace(clean, bodyHead);
     if (bodyEnd < 0) continue;
-    const body = clean.slice(bodyStart + 1, bodyEnd);
+    const body = clean.slice(bodyHead + 1, bodyEnd);
     bodyByOwner.set(ownerName, body);
 
     for (const optName of optionalSet) {
@@ -259,6 +275,28 @@ function findOptionalDestructuredProps(clean: string): {
   }
 
   return { props, bodyByOwner };
+}
+
+function findMatchingParen(src: string, openIndex: number): number {
+  let depth = 1;
+  for (let i = openIndex + 1; i < src.length; i++) {
+    if (src[i] === "(") depth++;
+    else if (src[i] === ")") {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/** Find the first `{...}` block in `src` and return its content + end pos. */
+function extractFirstBraceBlock(src: string): { content: string; end: number } | null {
+  let i = 0;
+  while (i < src.length && /\s/.test(src[i])) i++;
+  if (src[i] !== "{") return null;
+  const end = findMatchingBrace(src, i);
+  if (end < 0) return null;
+  return { content: src.slice(i + 1, end), end };
 }
 
 /** Split a type-block body on `;` or `,` while respecting nested generics/braces. */
