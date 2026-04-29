@@ -185,9 +185,26 @@ export const Route = createFileRoute("/builder")({
 type ViewMode = "preview" | "code";
 
 function Builder() {
-  const { prompt: initialPrompt, id: searchId, mode: initialMode, attachKey } = Route.useSearch();
+  const { prompt: initialPrompt, id: searchId, mode: initialMode, attachKey, topup } = Route.useSearch();
   const { user, isReady } = useAuthReady();
   const navigate = useNavigate();
+
+  // Show a confirmation toast when returning from a successful Paystack top-up,
+  // then strip the ?topup=success param from the URL while keeping the project id.
+  useEffect(() => {
+    if (topup !== "success") return;
+    toast.success("Top-up successful 🎉", {
+      description: "Your balance will appear in a few seconds.",
+    });
+    navigate({
+      to: "/builder",
+      search: (prev) => {
+        const { topup: _omit, ...rest } = prev;
+        return rest;
+      },
+      replace: true,
+    });
+  }, [topup, navigate]);
 
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
