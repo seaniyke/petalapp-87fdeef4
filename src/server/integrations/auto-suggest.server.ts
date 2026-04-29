@@ -39,50 +39,12 @@ export function suggestIntegrations(_args: {
   // directly from prompts and uses SecretRequestCard for any keys it needs.
   // Kept as a no-op so existing call sites remain stable.
   return [];
-  // eslint-disable-next-line no-unreachable
-  const recentText = _args.messages
-    .filter((m) => m.role === "user")
-    .slice(-2)
-    .map((m) => (typeof m.content === "string" ? m.content : ""))
-    .join(" ")
-    .toLowerCase();
-
-  if (!recentText.trim()) return [];
-
-  const haystackTokens = new Set(tokenize(recentText).filter((t) => !STOP.has(t)));
-  const out: IntegrationSuggestion[] = [];
-
-  for (const integ of INTEGRATIONS) {
-    if (args.installedCodes.has(integ.code)) continue;
-    const triggers = integ.triggers ?? [];
-    if (triggers.length === 0) continue;
-
-    let bestPhrase: string | null = null;
-    for (const phrase of triggers) {
-      const p = phrase.toLowerCase();
-      if (recentText.includes(p)) {
-        bestPhrase = phrase;
-        break;
-      }
-      // Token-level fallback for multi-word triggers.
-      const phraseTokens = tokenize(p).filter((t) => !STOP.has(t));
-      if (phraseTokens.length > 0 && phraseTokens.every((t) => haystackTokens.has(t))) {
-        bestPhrase = phrase;
-        break;
-      }
-    }
-    if (!bestPhrase) continue;
-
-    out.push({
-      code: integ.code,
-      name: integ.name,
-      category: integ.category,
-      reason: `User asked about "${bestPhrase}" — ${integ.name} handles this securely.`,
-    });
-  }
-  // Cap to 2 to keep the prompt small.
-  return out.slice(0, 2);
 }
+
+// Internal helpers retained in case we revive scoring later.
+void tokenize;
+void STOP;
+void INTEGRATIONS;
 
 /** Look up which integrations are already installed on a project. */
 export async function loadInstalledCodes(projectId: string): Promise<Set<string>> {
