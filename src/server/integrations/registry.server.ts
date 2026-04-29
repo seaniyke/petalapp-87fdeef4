@@ -12,11 +12,17 @@
 import type { IntegrationDefinition } from "./types";
 import { resendIntegration } from "./resend.integration";
 import { plausibleIntegration } from "./plausible.integration";
+import { stripeIntegration } from "./stripe.integration";
+import { paystackIntegration } from "./paystack.integration";
+import { flutterwaveIntegration } from "./flutterwave.integration";
 
 export const INTEGRATIONS: IntegrationDefinition[] = [
   resendIntegration,
   plausibleIntegration,
-  // TODO follow-up: stripe, paystack, posthog, openai, pwa
+  stripeIntegration,
+  paystackIntegration,
+  flutterwaveIntegration,
+  // TODO follow-up: posthog, openai, pwa
 ];
 
 export function getIntegration(code: string): IntegrationDefinition | null {
