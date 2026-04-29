@@ -74,6 +74,71 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_call_outcomes: {
+        Row: {
+          ai_call_id: string
+          autofix_count: number
+          build_id: string | null
+          build_status: string | null
+          created_at: string
+          feature: string
+          files_written: number | null
+          id: string
+          local_verifier_errors: Json
+          local_verifier_pass: boolean | null
+          message_id: string | null
+          model: string | null
+          project_id: string | null
+          provider: string
+          updated_at: string
+          user_followup_was_fix: boolean | null
+        }
+        Insert: {
+          ai_call_id: string
+          autofix_count?: number
+          build_id?: string | null
+          build_status?: string | null
+          created_at?: string
+          feature: string
+          files_written?: number | null
+          id?: string
+          local_verifier_errors?: Json
+          local_verifier_pass?: boolean | null
+          message_id?: string | null
+          model?: string | null
+          project_id?: string | null
+          provider: string
+          updated_at?: string
+          user_followup_was_fix?: boolean | null
+        }
+        Update: {
+          ai_call_id?: string
+          autofix_count?: number
+          build_id?: string | null
+          build_status?: string | null
+          created_at?: string
+          feature?: string
+          files_written?: number | null
+          id?: string
+          local_verifier_errors?: Json
+          local_verifier_pass?: boolean | null
+          message_id?: string | null
+          model?: string | null
+          project_id?: string | null
+          provider?: string
+          updated_at?: string
+          user_followup_was_fix?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_call_outcomes_ai_call_id_fkey"
+            columns: ["ai_call_id"]
+            isOneToOne: false
+            referencedRelation: "ai_call_log"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_provider_settings: {
         Row: {
           fallback_model: string | null
@@ -1905,6 +1970,20 @@ export type Database = {
       }
     }
     Views: {
+      ai_model_quality: {
+        Row: {
+          avg_autofixes: number | null
+          build_success_rate: number | null
+          feature: string | null
+          followup_fix_rate: number | null
+          last_seen_at: string | null
+          model: string | null
+          provider: string | null
+          samples: number | null
+          verifier_pass_rate: number | null
+        }
+        Relationships: []
+      }
       v_build_costs: {
         Row: {
           entries: number | null

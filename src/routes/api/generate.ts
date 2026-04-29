@@ -44,6 +44,7 @@ import { runVerifier, shouldRunVerifier } from "@/server/verifier.server";
 import { verifyFilesLocal } from "@/server/local-verifier";
 import { runContinuation } from "@/server/stream-continuation.server";
 import { pickBestModel } from "@/server/smart-router.server";
+import { recordAiOutcome } from "@/server/ai-outcomes.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -919,6 +920,25 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 ),
               );
 
+              // Phase B — record outcome telemetry. Pairs this generation
+              // with its local-verifier verdict + autofix count so the smart
+              // router can learn which models ship working code. Best-effort.
+              void recordAiOutcome({
+                feature: "generate",
+                provider: "lovable",
+                model,
+                projectId: body.projectId ?? null,
+                localVerifierPass: localVerdict.ok,
+                localVerifierErrors: localVerdict.issues.map((i) => ({
+                  path: i.path,
+                  kind: i.kind,
+                  detail: i.detail,
+                })),
+                autofixCount: autofixOut.report.fixedCount,
+                buildStatus: "ready",
+                filesWritten: nextFiles.length,
+              });
+
               // Layer 5 — Self-check. Awaited (not fire-and-forget) so the
               // verdict reaches the client BEFORE the stream closes. Bounded
               // to a single fast model call; on any failure we emit nothing
@@ -977,6 +997,20 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   }),
                 ),
               );
+
+              // Phase B — record the failed outcome so the smart router
+              // sees this model produced a broken build for this turn.
+              void recordAiOutcome({
+                feature: "generate",
+                provider: "lovable",
+                model: typeof model === "string" ? model : null,
+                projectId: body.projectId ?? null,
+                localVerifierPass: false,
+                localVerifierErrors: [{ path: "<pipeline>", kind: "exception", detail: raw }],
+                autofixCount: 0,
+                buildStatus: "failed",
+                filesWritten: 0,
+              });
             } finally {
               controller.close();
             }
