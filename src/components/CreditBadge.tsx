@@ -56,7 +56,7 @@ export function CreditBadge() {
           <ul className="space-y-1.5 text-xs">
             <li className="flex items-center justify-between">
               <span className="text-muted-foreground">Daily free</span>
-              <span className="tabular-nums">{breakdown.daily}</span>
+              <span className="tabular-nums">{formatCredits(breakdown.daily)}</span>
             </li>
             {breakdown.monthly > 0 && (
               <li className="flex items-center justify-between">
