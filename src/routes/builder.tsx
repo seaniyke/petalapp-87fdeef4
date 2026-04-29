@@ -526,7 +526,10 @@ function Builder() {
   // files) or Keep editing (dismiss; if Railway eventually responds the
   // status will still flip to ready in the background).
   useEffect(() => {
-    if (!isDeploying || friendlyError) return;
+    // Never stack a stale deploy warning on top of an active AI repair/build.
+    // The current turn supersedes the old deploy; if it still matters after
+    // Petal finishes, the non-superseded build watcher can surface it then.
+    if (!isDeploying || friendlyError || busy) return;
     if (deployElapsed < 150) return;
     setFriendlyError({
       title: "Publishing is taking longer than usual",
@@ -537,7 +540,7 @@ function Builder() {
       technicalDetail: `Deploy elapsed ${deployElapsed}s with no callback`,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deployElapsed, isDeploying]);
+  }, [deployElapsed, isDeploying, busy]);
 
 
   // Subscribe to `projects` row changes so when the build callback writes a
