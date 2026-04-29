@@ -75,8 +75,6 @@ export function EnableBackendFromCloudDialog({
 
   const enoughBalance = balanceCents >= PROVISIONING_FLOOR_CENTS;
   const shortfallCents = Math.max(0, PROVISIONING_FLOOR_CENTS - balanceCents);
-  // Approx monthly cost at $0.02/hr × 24 × 30 ≈ $14.40
-  const monthlyEstimateCents = HOURLY_RATE_CENTS * 24 * 30;
 
   async function handleEnable() {
     setSubmitting(true);
@@ -108,9 +106,7 @@ export function EnableBackendFromCloudDialog({
               Enable managed backend
             </DialogTitle>
             <DialogDescription>
-              Petal Cloud will provision a database, auth and storage for this project
-              and wire it in automatically. Costs are billed hourly from your Cloud
-              balance — no separate fee.
+              Database, auth and storage — billed hourly from your Cloud balance.
             </DialogDescription>
           </DialogHeader>
 
@@ -119,7 +115,7 @@ export function EnableBackendFromCloudDialog({
               <Loader2 className="h-4 w-4 animate-spin" /> Checking your balance…
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Balance card */}
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <div className="flex items-baseline justify-between">
@@ -134,40 +130,16 @@ export function EnableBackendFromCloudDialog({
                     {formatUsdCents(balanceCents)}
                   </span>
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Backend costs ~{formatUsdCents(HOURLY_RATE_CENTS)}/hr (≈
-                  {formatUsdCents(monthlyEstimateCents)}/mo).
-                </p>
               </div>
 
               {!enoughBalance && (
-                <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                    <div className="flex-1 text-xs leading-relaxed">
-                      <p className="font-medium text-foreground">
-                        Top up {formatUsdCents(shortfallCents)} more to enable
-                      </p>
-                      <p className="mt-0.5 text-muted-foreground">
-                        We require at least{" "}
-                        {formatUsdCents(PROVISIONING_FLOOR_CENTS)} in your Cloud
-                        balance to provision a backend. After that, hourly usage drains
-                        from the same balance.
-                      </p>
-                    </div>
-                  </div>
+                <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <p className="font-medium text-foreground">
+                    Top up {formatUsdCents(shortfallCents)} more to enable.
+                  </p>
                 </div>
               )}
-
-              <ul className="space-y-1.5 text-xs text-muted-foreground">
-                <Bullet>Postgres database with Row Level Security</Bullet>
-                <Bullet>Email + password and OAuth authentication</Bullet>
-                <Bullet>File storage and edge functions, deployed automatically</Bullet>
-                <Bullet>
-                  48-hour grace period if your Cloud balance hits $0 — your data is
-                  preserved.
-                </Bullet>
-              </ul>
             </div>
           )}
 
@@ -226,14 +198,5 @@ export function EnableBackendFromCloudDialog({
         }}
       />
     </>
-  );
-}
-
-function Bullet({ children }: { children: React.ReactNode }) {
-  return (
-    <li className="flex items-start gap-2">
-      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-      <span>{children}</span>
-    </li>
   );
 }
