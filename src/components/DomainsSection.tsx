@@ -842,9 +842,8 @@ function RecordCard({
   note: string;
 }) {
   // Some registrars want the full FQDN; others auto-append the zone and want
-  // only the leftmost label. Show both so users can pick what their registrar
-  // accepts. e.g. host="_acme-challenge.dev54.dev" + zone="dev54.dev" →
-  // shortHost="_acme-challenge"; host="@" stays "@".
+  // only the leftmost label. Derive the short label so we can show it as the
+  // primary host (most registrars want this) with the FQDN as a fallback.
   const shortHost = (() => {
     if (!zone) return null;
     if (host === "@") return null;
@@ -856,46 +855,45 @@ function RecordCard({
     return null;
   })();
 
+  // Promote the short host as primary when available — that's what most
+  // registrars expect. Show the FQDN as a secondary "full name" reference.
+  const primaryHost = shortHost ?? host;
+  const primaryHostLabel = shortHost ? "Host (short)" : "Host";
+
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-3">
-      <div className="flex items-center justify-between gap-2">
+      {/* Header: type pill on its own row, note below — avoids awkward wrap */}
+      <div className="flex items-center gap-2">
         <span className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
           {type}
         </span>
-        <span className="text-right text-[11px] text-muted-foreground">{note}</span>
+        <span className="text-[11px] leading-snug text-muted-foreground">{note}</span>
       </div>
-      <div className="mt-2 grid grid-cols-[auto_1fr_auto] items-center gap-2 text-xs">
-        <span className="text-muted-foreground">Host</span>
+
+      {/* Fields: consistent label/value/copy grid */}
+      <div className="mt-3 grid grid-cols-[5rem_1fr_auto] items-center gap-x-2 gap-y-1.5 text-xs">
+        <span className="text-[11px] text-muted-foreground">{primaryHostLabel}</span>
         <code className="break-all rounded bg-background px-2 py-1 font-mono text-[11px]">
-          {host}
+          {primaryHost}
         </code>
-        <CopyButton value={host} label="host" />
+        <CopyButton value={primaryHost} label="host" />
 
         {shortHost && (
           <>
-            <span className="text-muted-foreground">
-              Or just
-              <br />
-              <span className="text-[10px] uppercase tracking-wider opacity-70">short</span>
-            </span>
-            <code className="break-all rounded bg-background px-2 py-1 font-mono text-[11px]">
-              {shortHost}
+            <span className="text-[11px] text-muted-foreground">Full name</span>
+            <code className="break-all rounded bg-background px-2 py-1 font-mono text-[11px] text-muted-foreground">
+              {host}
             </code>
-            <CopyButton value={shortHost} label="short host" />
+            <CopyButton value={host} label="full host" />
           </>
         )}
 
-        <span className="text-muted-foreground">Value</span>
+        <span className="text-[11px] text-muted-foreground">Value</span>
         <code className="break-all rounded bg-background px-2 py-1 font-mono text-[11px]">
           {value}
         </code>
         <CopyButton value={value} label="value" />
       </div>
-      {shortHost && (
-        <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
-          Tip: if your registrar auto-fills <code className="rounded bg-background px-1">.{zone}</code> at the end, use the short host instead — otherwise it becomes <code className="rounded bg-background px-1">{host}.{zone}</code>.
-        </p>
-      )}
     </div>
   );
 }
