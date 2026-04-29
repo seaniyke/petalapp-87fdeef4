@@ -2237,6 +2237,16 @@ function Builder() {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
               </div>
             )}
+            {/* Live "service enabled" announcement — typewriter into a small
+                centered chip, matching the system-note style used elsewhere. */}
+            {streamingService && (
+              <div className="my-1 flex justify-center">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] text-foreground">
+                  {streamingService}
+                  <span className="ml-0.5 inline-block h-2 w-[2px] animate-pulse bg-foreground/70" />
+                </div>
+              </div>
+            )}
             {/* Bridge state: busy but no streamed content yet. Without this
                 the chat goes blank for ~300ms after send while triage warms
                 up — which feels like a freeze. */}
