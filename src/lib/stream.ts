@@ -22,6 +22,18 @@ type Handlers = {
     gaps: string[];
     suggestions: string[];
   }) => void;
+  onTimeline?: (entry: {
+    step:
+      | "stream_autofix"
+      | "local_verifier"
+      | "continuation"
+      | "post_stream_autofix"
+      | "image_resolve";
+    outcome: "ok" | "fixed" | "skipped" | "failed";
+    message: string;
+    count?: number;
+    ts: number;
+  }) => void;
   onError?: (message: string, suggestions?: string[]) => void;
 };
 
@@ -129,6 +141,15 @@ export async function streamGenerate(
               verdict: evt.verdict,
               gaps: evt.gaps,
               suggestions: evt.suggestions,
+            });
+            break;
+          case "timeline":
+            handlers.onTimeline?.({
+              step: evt.step,
+              outcome: evt.outcome,
+              message: evt.message,
+              count: evt.count,
+              ts: evt.ts,
             });
             break;
           case "error":
