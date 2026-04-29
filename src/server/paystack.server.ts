@@ -86,7 +86,7 @@ type VerifyResponse = {
   data?: VerifiedTransaction;
 };
 
-export async function verifyTransaction(reference: string): Promise<VerifyResponse["data"]> {
+export async function verifyTransaction(reference: string): Promise<VerifiedTransaction | undefined> {
   const res = await fetch(
     `${PAYSTACK_API}/transaction/verify/${encodeURIComponent(reference)}`,
     {
