@@ -789,6 +789,20 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   ),
                 );
               }
+              controller.enqueue(
+                encoder.encode(
+                  sse({
+                    type: "timeline",
+                    step: "local_verifier",
+                    outcome: localVerdict.ok ? "ok" : "failed",
+                    message: localVerdict.ok
+                      ? `Verified ${earlyChangedPaths.length} changed file${earlyChangedPaths.length === 1 ? "" : "s"} — looks healthy`
+                      : `Found ${localVerdict.issues.length} structural issue${localVerdict.issues.length === 1 ? "" : "s"}`,
+                    count: localVerdict.ok ? earlyChangedPaths.length : localVerdict.issues.length,
+                    ts: Date.now(),
+                  }),
+                ),
+              );
 
               // Tier 2.6 — TRUE truncation recovery. If the local verifier
               // flagged any file as truncated mid-stream, ask the SAME model
