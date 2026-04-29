@@ -323,6 +323,66 @@ async function relayAndCollect(
   return tool;
 }
 
+type ParsedProjectPayload = {
+  parsed: {
+    plan?: string;
+    summary?: string;
+    recap?: string;
+    files?: ProjectFile[];
+    ops?: FileOp[];
+  };
+  summary: string;
+  plan?: string;
+  recap?: string;
+};
+
+function parseCollectedProject(collected: ParsedTool, isInitial: boolean): ParsedProjectPayload {
+  if (!collected.name || !collected.args) {
+    throw new Error("AI did not return a project. Try rephrasing.");
+  }
+  if (collected.name === "write_project" && !isInitial) {
+    throw new Error("AI tried to rewrite the whole project. Edits must be incremental patches.");
+  }
+  if (collected.name === "patch_files" && isInitial) {
+    throw new Error("AI tried to patch an empty project. Initial generation must create files.");
+  }
+
+  let parsed: ParsedProjectPayload["parsed"];
+  try {
+    parsed = JSON.parse(collected.args) as ParsedProjectPayload["parsed"];
+  } catch (e) {
+    console.error("Failed to parse tool args", e, collected.args.slice(0, 500));
+    throw new Error("AI returned invalid project data.");
+  }
+
+  if (collected.name === "write_project" && !parsed.files?.length) {
+    throw new Error("AI returned no files.");
+  }
+  if (collected.name === "patch_files" && !Array.isArray(parsed.ops)) {
+    throw new Error("AI returned no ops.");
+  }
+
+  return {
+    parsed,
+    summary: parsed.summary?.trim() || "Updated the project.",
+    plan: parsed.plan?.trim() || undefined,
+    recap: parsed.recap?.trim() || undefined,
+  };
+}
+
+function addStructuredRetryInstruction<T extends Array<{ role: string; content: unknown }>>(
+  messages: T,
+  args: { isInitial: boolean; problem: string },
+): T {
+  const requiredTool = args.isInitial ? "write_project" : "patch_files";
+  const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field; keep files short and split large UI into components.`;
+  return messages.map((m, i) =>
+    i === 0 && typeof m.content === "string"
+      ? { ...m, content: `${m.content}${retryBlock}` }
+      : m,
+  ) as T;
+}
+
 async function handleGenerateRequest(request: Request): Promise<Response> {
   const authResult = await authorize(request);
   if (authResult instanceof Response) return authResult;
