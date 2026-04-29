@@ -26,16 +26,19 @@ import {
   _resetNpmExistenceCache,
 } from "../npm-existence.server";
 import { lintRenderRisks } from "../render-risk-linter";
+import { lintRlsSanity } from "../rls-sanity-linter";
 import { FIXTURES } from "./pipeline.fixtures";
 
 type Result = { name: string; ok: boolean; reason?: string };
 
 function runFixture(fixture: (typeof FIXTURES)[number]): Result {
   const verdict = verifyFilesLocal(fixture.files, fixture.changedPaths);
-  // Combine local-verifier issues with render-risk linter issues so the
-  // harness exercises the full Tier 2.5 + 2.8 surface in one assertion.
+  // Combine local-verifier issues with render-risk + RLS-sanity linter
+  // issues so the harness exercises the full Tier 2.5 + 2.8 + 2.9 surface
+  // in one assertion.
   const renderRiskIssues = lintRenderRisks(fixture.files, fixture.changedPaths);
-  const allIssues = [...verdict.issues, ...renderRiskIssues];
+  const rlsSanityIssues = lintRlsSanity(fixture.files, fixture.changedPaths);
+  const allIssues = [...verdict.issues, ...renderRiskIssues, ...rlsSanityIssues];
 
   // Verifier check: every expected substring must appear in at least one issue.
   for (const needle of fixture.expectIssueIncludes) {

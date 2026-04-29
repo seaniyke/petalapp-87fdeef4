@@ -334,4 +334,48 @@ export const FIXTURES: PipelineFixture[] = [
     changedPaths: ["src/App.tsx"],
     expectIssueIncludes: ["titel"],
   },
+  {
+    name: "clean — Phase 5b RLS healthy (table + RLS + policy, must NOT fire)",
+    files: [
+      { path: "package.json", content: PACKAGE_JSON },
+      { path: "index.html", content: INDEX_HTML },
+      { path: "supabase/migrations/0001_init.sql", content: RLS_HEALTHY_MIGRATION },
+      { path: "src/App.tsx", content: RLS_HEALTHY_PAGE },
+    ],
+    changedPaths: ["src/App.tsx"],
+    expectIssueIncludes: [],
+  },
+  {
+    name: "Phase 5b — RLS M1 catches missing table",
+    files: [
+      { path: "package.json", content: PACKAGE_JSON },
+      { path: "index.html", content: INDEX_HTML },
+      { path: "supabase/migrations/0001_init.sql", content: RLS_HEALTHY_MIGRATION },
+      { path: "src/App.tsx", content: RLS_MISSING_TABLE_PAGE },
+    ],
+    changedPaths: ["src/App.tsx"],
+    expectIssueIncludes: ["note"],
+  },
+  {
+    name: "Phase 5b — RLS M2 catches table with no ENABLE ROW LEVEL SECURITY",
+    files: [
+      { path: "package.json", content: PACKAGE_JSON },
+      { path: "index.html", content: INDEX_HTML },
+      { path: "supabase/migrations/0001_init.sql", content: RLS_NO_RLS_MIGRATION },
+      { path: "src/App.tsx", content: RLS_NO_RLS_PAGE },
+    ],
+    changedPaths: ["src/App.tsx"],
+    expectIssueIncludes: ["tasks"],
+  },
+  {
+    name: "Phase 5b — RLS M3 catches RLS-enabled table with no policy",
+    files: [
+      { path: "package.json", content: PACKAGE_JSON },
+      { path: "index.html", content: INDEX_HTML },
+      { path: "supabase/migrations/0001_init.sql", content: RLS_NO_POLICY_MIGRATION },
+      { path: "src/App.tsx", content: RLS_NO_POLICY_PAGE },
+    ],
+    changedPaths: ["src/App.tsx"],
+    expectIssueIncludes: ["posts"],
+  },
 ];
