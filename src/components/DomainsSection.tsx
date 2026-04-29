@@ -15,6 +15,7 @@ import {
   Plus,
   Copy,
   Check,
+  CheckCircle2,
   MoreHorizontal,
   Star,
   Trash2,
