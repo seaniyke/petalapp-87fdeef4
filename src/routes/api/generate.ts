@@ -49,8 +49,10 @@ import { pickBestModel } from "@/server/smart-router.server";
  *  - "fast"  : cheapest + quickest, good for trivial edits
  *  - "smart" : default — flash for small turns, pro for big refactors
  *  - "best"  : always use the strongest model
+ *  - "deep"  : strongest model + extended reasoning ("think harder"). Slower
+ *              and more expensive — for hard refactors / multi-file features.
  */
-type ModelPreset = "fast" | "smart" | "best";
+type ModelPreset = "fast" | "smart" | "best" | "deep";
 
 type Body = {
   messages: ChatMessage[];
@@ -95,6 +97,7 @@ function pickSmartModel(latestPrompt: string, fileCount: number): string {
 function resolveModel(preset: ModelPreset, latestPrompt: string, fileCount: number): string {
   if (preset === "fast") return MODEL_FAST;
   if (preset === "best") return MODEL_BEST;
+  if (preset === "deep") return MODEL_BEST;
   return pickSmartModel(latestPrompt, fileCount);
 }
 
