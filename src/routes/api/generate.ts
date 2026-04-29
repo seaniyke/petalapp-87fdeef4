@@ -803,6 +803,15 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
               // pass that ONLY fixes obvious build-breakers. Gated so 90%
               // of turns never pay the cost — UNLESS local verifier failed.
+              //
+              // Phase D step 10: HARD CAP autofix at ONE round per turn.
+              // Previously Tier 2 + Tier 3 verifier-recovery could both fire
+              // back-to-back, doubling latency for the user with diminishing
+              // returns (the second pass rarely caught what the first missed).
+              // We track whether the model already ran and skip the second
+              // call entirely; the verifier still runs (read-only) so we
+              // record the verdict for telemetry.
+              let autofixModelRan = false;
               const preflightKind = fallbackEstimate(lastUserContent).kind;
               if (
                 !localVerdict.ok ||
@@ -815,6 +824,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 try {
                   const fixOut = await runPostStreamAutofix(nextFiles, localVerdict.issues);
                   nextFiles = fixOut.files;
+                  autofixModelRan = true;
                   if (fixOut.result.fixedFiles > 0) {
                     console.log(
                       `[post-stream-autofix] fixed ${fixOut.result.fixedFiles}:`,
@@ -836,8 +846,8 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
 
               // Tier 3 — Replit-style verifier pass. Read-only scan for
               // obvious compile/import/JSX issues. If it flags anything,
-              // emit a `verifier_warning` SSE event AND run the autofix
-              // model one more time to recover. Skipped for trivial turns.
+              // emit a `verifier_warning` SSE event AND (only when Tier 2
+              // didn't already fire) run the autofix model to recover.
               const changedPaths = earlyChangedPaths;
               if (shouldRunVerifier({ fileCount: nextFiles.length, changedPaths })) {
                 try {
@@ -847,35 +857,43 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                       `[verifier] ${verdict.issues.length} issue(s):`,
                       verdict.issues.map((i) => `${i.path} (${i.kind}): ${i.detail}`).join("; "),
                     );
-                    controller.enqueue(
-                      encoder.encode(
-                        sse({
-                          type: "status",
-                          message: `Verifier flagged ${verdict.issues.length} issue${verdict.issues.length === 1 ? "" : "s"} — repairing…`,
-                        }),
-                      ),
-                    );
-                    // Recovery loop: run the post-stream autofix model again
-                    // (even if it ran above) to take a targeted fix pass.
-                    try {
-                      const fixOut = await runPostStreamAutofix(nextFiles, verdict.issues);
-                      nextFiles = fixOut.files;
-                      if (fixOut.result.fixedFiles > 0) {
-                        console.log(
-                          `[verifier-recovery] fixed ${fixOut.result.fixedFiles}:`,
-                          fixOut.result.notes.join("; "),
-                        );
-                        controller.enqueue(
-                          encoder.encode(
-                            sse({
-                              type: "status",
-                              message: `Repaired ${fixOut.result.fixedFiles} file${fixOut.result.fixedFiles === 1 ? "" : "s"}.`,
-                            }),
-                          ),
-                        );
+                    if (autofixModelRan) {
+                      // Phase D step 10: cap at one round. The second pass
+                      // historically caught <5% of cases the first missed
+                      // and added 3-8s of latency. Skip it.
+                      console.log(
+                        "[verifier-recovery] skipped — autofix already ran this turn (Phase D cap).",
+                      );
+                    } else {
+                      controller.enqueue(
+                        encoder.encode(
+                          sse({
+                            type: "status",
+                            message: `Verifier flagged ${verdict.issues.length} issue${verdict.issues.length === 1 ? "" : "s"} — repairing…`,
+                          }),
+                        ),
+                      );
+                      try {
+                        const fixOut = await runPostStreamAutofix(nextFiles, verdict.issues);
+                        nextFiles = fixOut.files;
+                        autofixModelRan = true;
+                        if (fixOut.result.fixedFiles > 0) {
+                          console.log(
+                            `[verifier-recovery] fixed ${fixOut.result.fixedFiles}:`,
+                            fixOut.result.notes.join("; "),
+                          );
+                          controller.enqueue(
+                            encoder.encode(
+                              sse({
+                                type: "status",
+                                message: `Repaired ${fixOut.result.fixedFiles} file${fixOut.result.fixedFiles === 1 ? "" : "s"}.`,
+                              }),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        console.warn("[verifier-recovery] failed:", e);
                       }
-                    } catch (e) {
-                      console.warn("[verifier-recovery] failed:", e);
                     }
                   }
                 } catch (e) {
