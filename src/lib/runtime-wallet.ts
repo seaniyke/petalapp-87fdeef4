@@ -3,7 +3,7 @@
  *
  * The runtime wallet is denominated in USD cents and is SEPARATE from the
  * build-credit system in `billing.ts`. Users start with $0 free balance.
- * After their first paid top-up they qualify for the $10/month free Cloud
+ * After their first paid top-up they qualify for the $5/month free Cloud
  * gift (granted immediately on first top-up, then refilled on the 1st).
  */
 import { supabase } from "@/integrations/supabase/client";
