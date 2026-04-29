@@ -37,6 +37,9 @@ import {
   formatUsdCents,
   type DomainSearchResult,
 } from "@/lib/registrar";
+import { useWallet } from "@/hooks/use-wallet";
+import { BillingSheet } from "@/components/BillingSheet";
+import { Sparkles } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -45,6 +48,10 @@ type Props = {
 };
 
 export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
+  const { plan } = useWallet();
+  const isPaidPlan = !!plan && plan.code !== "free";
+  const [billingOpen, setBillingOpen] = useState(false);
+
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<DomainSearchResult[] | null>(null);
@@ -137,6 +144,57 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
       toast.error(err instanceof Error ? err.message : "Couldn't start checkout");
       setSubmitting(false);
     }
+  }
+
+  if (!isPaidPlan) {
+    return (
+      <>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="max-w-[calc(100vw-1.5rem)] sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Buy a new domain
+              </DialogTitle>
+              <DialogDescription>
+                Custom domains are included with paid plans.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
+              <p className="font-medium text-foreground">
+                Upgrade to buy a domain.
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Paid plans include $5 of runtime credit so you can connect a
+                backend, send email, and ship your domain right away.
+              </p>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  onOpenChange(false);
+                  setBillingOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5"
+              >
+                <Sparkles className="h-3.5 w-3.5" /> Upgrade plan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
+      </>
+    );
   }
 
   return (
@@ -299,3 +357,4 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
     </Dialog>
   );
 }
+

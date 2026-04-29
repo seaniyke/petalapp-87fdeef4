@@ -2072,6 +2072,7 @@ export type Database = {
           pending_plan_code: string | null
           plan_code: string
           preferred_currency: string
+          runtime_first_plan_grant_at: string | null
           runtime_free_balance_cents: number
           runtime_free_reset_at: string
           runtime_topup_balance_cents: number
@@ -2096,6 +2097,7 @@ export type Database = {
           pending_plan_code?: string | null
           plan_code?: string
           preferred_currency?: string
+          runtime_first_plan_grant_at?: string | null
           runtime_free_balance_cents?: number
           runtime_free_reset_at?: string
           runtime_topup_balance_cents?: number
@@ -2120,6 +2122,7 @@ export type Database = {
           pending_plan_code?: string | null
           plan_code?: string
           preferred_currency?: string
+          runtime_first_plan_grant_at?: string | null
           runtime_free_balance_cents?: number
           runtime_free_reset_at?: string
           runtime_topup_balance_cents?: number
@@ -2389,6 +2392,10 @@ export type Database = {
           _reason: string
           _user_id: string
         }
+        Returns: undefined
+      }
+      grant_first_paid_plan_runtime_credit: {
+        Args: { _plan_code: string; _reference: string; _user_id: string }
         Returns: undefined
       }
       has_role: {

@@ -140,7 +140,7 @@ function BillingReturn() {
           <h1 className="text-2xl font-semibold">Payment received</h1>
           <p className="mt-2 text-muted-foreground">
             {state.purpose === "plan"
-              ? "Your plan is active and credits are in your wallet."
+              ? "Your plan is active. We've added $5 of runtime credit so you can spin up backends, email, and domains right away."
               : "Your credits have been added to your wallet."}
           </p>
         </>
