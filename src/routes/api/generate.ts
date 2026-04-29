@@ -871,6 +871,20 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 controller.enqueue(encoder.encode(sse(ev)));
               }
 
+              // Tier 2.8 — render-risk linter (Phase 5).
+              // Soft-warn only: feeds findings into combinedAutofixIssues so
+              // the post-stream autofix model fixes them when the gate is
+              // already open for other reasons. Does NOT independently open
+              // the gate — false positives must never wedge a clean turn.
+              const renderRiskOut = runRenderRiskTier({
+                files: nextFiles,
+                earlyChangedPaths,
+              });
+              const renderRiskIssues = renderRiskOut.issues;
+              for (const ev of renderRiskOut.emit) {
+                controller.enqueue(encoder.encode(sse(ev)));
+              }
+
               // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
               // pass that ONLY fixes obvious build-breakers.
               //
@@ -902,6 +916,9 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   kind: "oversize" as const,
                   detail: w.detail,
                 })),
+                // Render-risk issues come along for the ride when the gate
+                // is already open; they don't open it on their own.
+                ...renderRiskIssues,
               ];
               if (autofixGateOpen) {
                 try {
