@@ -150,6 +150,73 @@ const PACKAGE_JSON = `{
 `;
 const INDEX_HTML = `<!doctype html><html><body><div id="root"></div></body></html>`;
 
+// =============================================================================
+// Phase 5b — RLS sanity fixtures (Tier 2.9)
+// =============================================================================
+
+// Healthy: table created, RLS enabled, policy exists. Must NOT fire.
+const RLS_HEALTHY_MIGRATION = `
+CREATE TABLE public.notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  body text
+);
+ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner_select" ON public.notes
+  FOR SELECT USING (auth.uid() = user_id);
+`;
+const RLS_HEALTHY_PAGE = `import { supabase } from "@/integrations/supabase/client";
+
+export default function Notes() {
+  const load = async () => {
+    const { data } = await supabase.from("notes").select("*");
+    return data;
+  };
+  return <button onClick={load}>Load</button>;
+}
+`;
+
+// M1: page references a table that no migration creates.
+const RLS_MISSING_TABLE_PAGE = `import { supabase } from "@/integrations/supabase/client";
+
+export default function Page() {
+  const load = async () => supabase.from("note").select("*"); // typo: "note" vs "notes"
+  return <button onClick={load}>Load</button>;
+}
+`;
+
+// M2: table created, no RLS enabled.
+const RLS_NO_RLS_MIGRATION = `
+CREATE TABLE public.tasks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text
+);
+`;
+const RLS_NO_RLS_PAGE = `import { supabase } from "@/integrations/supabase/client";
+
+export default function Tasks() {
+  const load = async () => supabase.from("tasks").select("*");
+  return <button onClick={load}>Load</button>;
+}
+`;
+
+// M3: RLS enabled but no CREATE POLICY anywhere.
+const RLS_NO_POLICY_MIGRATION = `
+CREATE TABLE public.posts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  body text
+);
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+`;
+const RLS_NO_POLICY_PAGE = `import { supabase } from "@/integrations/supabase/client";
+
+export default function Posts() {
+  const load = async () => supabase.from("posts").select("*");
+  return <button onClick={load}>Load</button>;
+}
+`;
+
+
 export const FIXTURES: PipelineFixture[] = [
   {
     name: "clean turn — verifier passes, no budget hit",
