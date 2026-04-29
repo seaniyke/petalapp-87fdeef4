@@ -77,10 +77,27 @@ export async function runLocalVerifyTier(args: RunArgs): Promise<LocalVerifyTier
 
   const emit: LocalVerifyTierOutput["emit"] = [];
 
+  // Honest message — break the count into structural vs unknown imports so
+  // a single missing-dep doesn't read as a "structural issue". Truncation +
+  // braces + JSX + parse + undefined are real structural problems; the rest
+  // (missing-dep, missing-sibling, missing-export, oversize, render-risk,
+  // rls-sanity, lazy-export) are softer signals.
+  const STRUCTURAL = new Set(["truncation", "braces", "jsx", "parse", "undefined", "unterminated-string"]);
+  const structuralCount = verdict.issues.filter((i) => STRUCTURAL.has(i.kind)).length;
+  const importCount = verdict.issues.filter((i) => i.kind === "missing-dep" || i.kind === "missing-sibling").length;
+  const otherCount = verdict.issues.length - structuralCount - importCount;
+
   if (!verdict.ok) {
+    const parts: string[] = [];
+    if (structuralCount > 0)
+      parts.push(`${structuralCount} structural`);
+    if (importCount > 0)
+      parts.push(`${importCount} unresolved import${importCount === 1 ? "" : "s"}`);
+    if (otherCount > 0)
+      parts.push(`${otherCount} soft warning${otherCount === 1 ? "" : "s"}`);
     emit.push({
       type: "status",
-      message: `Detected ${verdict.issues.length} structural issue${verdict.issues.length === 1 ? "" : "s"} — repairing…`,
+      message: `Detected ${parts.join(" + ")} — repairing…`,
     });
   }
 
@@ -90,7 +107,15 @@ export async function runLocalVerifyTier(args: RunArgs): Promise<LocalVerifyTier
     outcome: verdict.ok ? "ok" : "failed",
     message: verdict.ok
       ? `Verified ${earlyChangedPaths.length} changed file${earlyChangedPaths.length === 1 ? "" : "s"} — looks healthy`
-      : `Found ${verdict.issues.length} structural issue${verdict.issues.length === 1 ? "" : "s"}`,
+      : (() => {
+          const parts: string[] = [];
+          if (structuralCount > 0)
+            parts.push(`${structuralCount} structural`);
+          if (importCount > 0)
+            parts.push(`${importCount} import${importCount === 1 ? "" : "s"}`);
+          if (otherCount > 0) parts.push(`${otherCount} other`);
+          return `Found ${parts.join(", ")}`;
+        })(),
     count: verdict.ok ? earlyChangedPaths.length : verdict.issues.length,
     ts: Date.now(),
   });
