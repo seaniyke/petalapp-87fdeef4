@@ -4,7 +4,7 @@
  * UX mirrors what every major builder (Lovable, Vercel/v0, Bolt) ships:
  *   - empty state explains what a custom domain does
  *   - add a hostname → backend stores the request and returns DNS records
- *   - DNS records modal shows A + TXT to copy into the user's registrar
+ *   - DNS records modal shows routing + TXT records to copy into the user's registrar
  *   - row list shows status pill, primary badge, and a ⋯ menu
  *   - realtime subscription so status flips appear without refresh
  */
@@ -727,7 +727,11 @@ function DnsRecordsDialog({
             host={routingHost}
             value={routingRecordValue}
             zone={domain.hostname}
-            note="Routes traffic to Petal — required before SSL can be issued."
+            note={
+              isApex
+                ? "Namecheap: use ALIAS/ANAME for @. Do not use an A record here."
+                : "Routes traffic to Petal — required before SSL can be issued."
+            }
           />
           {(() => {
             const multi = txtRecords.length > 1;
@@ -768,9 +772,9 @@ function DnsRecordsDialog({
                 </li>
               )}
               <li>
-                {txtRecords.length > 0 ? "Both routing and the TXT records above" : "The routing record above"} must be live. Verify with{" "}
+                {txtRecords.length > 0 ? "Both routing and the TXT records above" : "The routing record above"} must be live. Verify public DNS with{" "}
                 <a
-                  href={`https://dnschecker.org/#${routingRecordType}/${domain.hostname}`}
+                  href={`https://dnschecker.org/#${isApex ? "A" : routingRecordType}/${domain.hostname}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline underline-offset-2"
