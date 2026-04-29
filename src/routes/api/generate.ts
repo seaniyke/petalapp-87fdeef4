@@ -834,6 +834,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
 
               // Tier 2 — stream-time autofixer (regex pass, <10ms total).
               // Repairs known footguns BEFORE the build/image steps run.
+              const autofixT0 = Date.now();
               const autofixOut = autofixFiles(nextFiles);
               nextFiles = autofixOut.files;
               if (autofixOut.report.fixedCount > 0) {
@@ -850,6 +851,13 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   ),
                 );
               }
+              recorder.record({
+                tier: "stream_autofix",
+                outcome: autofixOut.report.fixedCount > 0 ? "fixed" : "ok",
+                duration_ms: Date.now() - autofixT0,
+                issue_count: autofixOut.report.fixedCount,
+                details: { notes: autofixOut.report.notes.slice(0, 8) },
+              });
               controller.enqueue(
                 encoder.encode(
                   sse({
@@ -868,6 +876,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
 
               // Tier 2.5 + 2.45 — local verifier and npm pre-flight
               // (extracted to src/server/pipeline/tier-local-verify.ts).
+              const localT0 = Date.now();
               const localOut = await runLocalVerifyTier({
                 nextFiles,
                 currentFiles,
@@ -879,6 +888,21 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               for (const ev of localOut.emit) {
                 controller.enqueue(encoder.encode(sse(ev)));
               }
+              recorder.record({
+                tier: "local_verify",
+                outcome: localVerdict.ok ? "ok" : "failed",
+                duration_ms: Date.now() - localT0,
+                issue_count: localVerdict.issues.length,
+                details: {
+                  preflight_dropped: localOut.preflightDropped,
+                  preflight_hallucinated: localOut.preflightHallucinated,
+                  changed_paths: earlyChangedPaths.length,
+                  issue_kinds: localVerdict.issues.reduce<Record<string, number>>(
+                    (acc, i) => ((acc[i.kind] = (acc[i.kind] ?? 0) + 1), acc),
+                    {},
+                  ),
+                },
+              });
 
               // Tier 2.46 — deterministic strip of npm-confirmed-hallucinated
               // imports. We do this BEFORE continuation/esbuild so the parse
@@ -890,11 +914,22 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 handoffDetected.hallucinatedPackages = [
                   ...localOut.preflightHallucinated,
                 ];
+                const stripT0 = Date.now();
                 const stripOut = stripHallucinatedImports(
                   nextFiles,
                   localOut.preflightHallucinated,
                   earlyChangedPaths,
                 );
+                recorder.record({
+                  tier: "hallu_strip",
+                  outcome: stripOut.filesChanged > 0 ? "fixed" : "skipped",
+                  duration_ms: Date.now() - stripT0,
+                  issue_count: stripOut.importsRemoved,
+                  details: {
+                    files_changed: stripOut.filesChanged,
+                    hallucinated: localOut.preflightHallucinated,
+                  },
+                });
                 if (stripOut.filesChanged > 0) {
                   nextFiles = stripOut.files;
                   console.log(
