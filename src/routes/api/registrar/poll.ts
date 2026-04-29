@@ -2,20 +2,21 @@
  * POST /api/registrar/poll — owner-triggered poll for domain registrations
  * that are still in flight.
  *
- * Body: { projectId: string }
+ * Body shape (one of):
+ *   { projectId: string }  → poll all in-flight rows for the project
+ *   { reference: string }  → poll a single purchase by paystack reference
  *
- * Auth: caller must be the project owner. Polls all of the project's
- * `purchased_domains` rows that are in `registering` or `polling` and
- * reports back their latest status. Safe to spam from the UI.
+ * Auth: caller must be the project owner. Safe to spam from the UI.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { pollDomainRegistration } from "@/server/domain-purchase.server";
 
-const Body = z.object({
-  projectId: z.string().uuid(),
-});
+const Body = z.union([
+  z.object({ projectId: z.string().uuid() }),
+  z.object({ reference: z.string().min(1).max(128) }),
+]);
 
 export const Route = createFileRoute("/api/registrar/poll")({
   server: {
@@ -41,25 +42,39 @@ export const Route = createFileRoute("/api/registrar/poll")({
           return new Response(msg, { status: 400 });
         }
 
-        const { data: proj } = await supabaseAdmin
-          .from("projects")
-          .select("id, owner_id")
-          .eq("id", parsed.projectId)
-          .maybeSingle();
-        if (!proj) return new Response("Project not found", { status: 404 });
-        if (proj.owner_id !== userId) {
-          return new Response("Forbidden", { status: 403 });
+        // Resolve target rows + verify ownership.
+        let rows: Array<{ id: string; hostname: string; status: string; project_id: string }> = [];
+        if ("reference" in parsed) {
+          const { data: row } = await supabaseAdmin
+            .from("purchased_domains")
+            .select("id, hostname, status, project_id, user_id")
+            .eq("paystack_reference", parsed.reference)
+            .maybeSingle();
+          if (!row) return new Response("Not found", { status: 404 });
+          if ((row as { user_id: string }).user_id !== userId) {
+            return new Response("Forbidden", { status: 403 });
+          }
+          rows = [row as typeof rows[number]];
+        } else {
+          const { data: proj } = await supabaseAdmin
+            .from("projects")
+            .select("id, owner_id")
+            .eq("id", parsed.projectId)
+            .maybeSingle();
+          if (!proj) return new Response("Project not found", { status: 404 });
+          if (proj.owner_id !== userId) {
+            return new Response("Forbidden", { status: 403 });
+          }
+          const { data: list } = await supabaseAdmin
+            .from("purchased_domains")
+            .select("id, hostname, status, project_id")
+            .eq("project_id", parsed.projectId)
+            .in("status", ["registering", "polling"]);
+          rows = (list ?? []) as typeof rows;
         }
 
-        const { data: rows } = await supabaseAdmin
-          .from("purchased_domains")
-          .select("id, hostname, status")
-          .eq("project_id", parsed.projectId)
-          .in("status", ["registering", "polling"]);
-
         const updates: Array<{ id: string; hostname: string; status: string }> = [];
-        for (const r of rows ?? []) {
-          const row = r as { id: string; hostname: string; status: string };
+        for (const row of rows) {
           try {
             const { status } = await pollDomainRegistration({ rowId: row.id });
             updates.push({ id: row.id, hostname: row.hostname, status });
