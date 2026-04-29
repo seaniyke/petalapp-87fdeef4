@@ -541,6 +541,13 @@ export function verifyFilesLocal(
     if (!changed.has(f.path)) continue;
     if (f.path.startsWith("src/components/ui/")) continue;
     if (f.path.startsWith("src/integrations/")) continue;
+    // Reference snippets shipped by the scaffold (examples-pack). They are
+    // intentionally partial — generic identifiers like <Row>/<T>/<Step>, no
+    // closing tags on purpose — so the AI can read them as patterns. They
+    // are never imported by the app and never compiled. Verifying them
+    // produces dozens of phantom "truncation"/"jsx" issues every turn,
+    // which then triggers a continuation pass that corrupts real files.
+    if (f.path.startsWith("src/components/examples/")) continue;
     issues.push(...verifyFileLocal(f.path, f.content));
   }
   issues.push(...findLazyNamedExportIssues(files, changed));
