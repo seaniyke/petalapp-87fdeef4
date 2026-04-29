@@ -44,6 +44,7 @@ import { runVerifier, shouldRunVerifier } from "@/server/verifier.server";
 import { verifyFilesLocal } from "@/server/local-verifier";
 import { runContinuation } from "@/server/stream-continuation.server";
 import { pickBestModel } from "@/server/smart-router.server";
+import { recordAiOutcome } from "@/server/ai-outcomes.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
