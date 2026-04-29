@@ -51,6 +51,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { emitServiceEnabled } from "@/lib/service-events";
 import {
   listDomains,
   addDomain,
