@@ -287,6 +287,7 @@ export function BuildActivityCard({
               filesWritten={p.id === "writing" ? filesWritten : undefined}
               latestPath={p.id === "writing" ? latestPath : undefined}
               writtenPaths={p.id === "writing" ? writtenPaths : undefined}
+              completedPaths={p.id === "writing" ? completedPaths : undefined}
               finalFileLines={p.id === "writing" ? finalFileLines : undefined}
               fileChanges={p.id === "writing" ? fileChanges : undefined}
             />
@@ -303,6 +304,7 @@ function PhaseRow({
   filesWritten,
   latestPath,
   writtenPaths,
+  completedPaths,
   finalFileLines,
   fileChanges,
 }: {
@@ -311,6 +313,7 @@ function PhaseRow({
   filesWritten?: number;
   latestPath?: string;
   writtenPaths?: string[];
+  completedPaths?: Set<string>;
   finalFileLines?: Record<string, number>;
   fileChanges?: Record<
     string,
