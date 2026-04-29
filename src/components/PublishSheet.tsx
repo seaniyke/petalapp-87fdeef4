@@ -46,7 +46,9 @@ import {
   BarChart3,
   Pencil,
   X,
+  Search,
 } from "lucide-react";
+import { WebsiteInfoSheet } from "@/components/WebsiteInfoSheet";
 import { triggerBuild } from "@/lib/builds";
 import { publishProject, type PublishVisibility } from "@/lib/publish";
 import { resolvePublishedUrl, type PublishedUrlResult } from "@/lib/published-url";
@@ -96,6 +98,7 @@ export function PublishSheet({
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [visibilityBusy, setVisibilityBusy] = useState(false);
+  const [websiteInfoOpen, setWebsiteInfoOpen] = useState(false);
   // Visitor analytics — Cloudflare Pages traffic for the project's site.
   // We fetch on open and when the user flips the range, never poll.
   const [visitorRange, setVisitorRange] = useState<VisitorRange>("7d");
@@ -409,6 +412,7 @@ export function PublishSheet({
         : "bg-primary text-primary-foreground hover:bg-primary/90";
 
   return (
+    <>
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <DrawerTitle className="sr-only">Publish</DrawerTitle>
@@ -725,6 +729,27 @@ export function PublishSheet({
           )}
         </div>
 
+        {/* Website info — title / description / favicon / social image used
+            by the subdomain worker to render <head> tags on the published
+            site. Defaults to the project's build-time title/summary and the
+            Petal logo until the user customises any of it. */}
+        <button
+          type="button"
+          onClick={() => setWebsiteInfoOpen(true)}
+          className="mt-5 flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left transition hover:bg-muted"
+        >
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <Search className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">Website info</span>
+            <span className="block truncate text-xs text-muted-foreground">
+              {(project.site_title?.trim() || project.title) ?? "Add a title and description"}
+            </span>
+          </span>
+          <Pencil className="h-4 w-4 text-muted-foreground" />
+        </button>
+
         {/* Build error (only when relevant) */}
         {buildStatus === "failed" && buildError && (
           <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
@@ -773,6 +798,13 @@ export function PublishSheet({
         </div>
       </DrawerContent>
     </Drawer>
+    <WebsiteInfoSheet
+      open={websiteInfoOpen}
+      onOpenChange={setWebsiteInfoOpen}
+      project={project}
+      onChange={onChange}
+    />
+    </>
   );
 }
 

@@ -106,7 +106,7 @@ function placeholder(kind) {
   });
 }
 
-async function proxy(request, target, projectId) {
+async function proxy(request, target, projectId, meta) {
   const incoming = new URL(request.url);
   const upstreamUrl = new URL(incoming.pathname + incoming.search, target);
 
@@ -143,12 +143,25 @@ async function proxy(request, target, projectId) {
     headers: respHeaders,
   });
 
-  // Inject the page-view tracker into HTML responses only.
+  // Inject the page-view tracker AND site meta (favicon/title/description/og)
+  // into HTML responses only. We inject meta even when the project hasn't
+  // customized anything so every Petal app ships with the Petal logo as its
+  // favicon by default.
   const ct = (respHeaders.get("content-type") || "").toLowerCase();
   if (projectId && ct.includes("text/html") && upstream.status >= 200 && upstream.status < 300) {
-    return new HTMLRewriter()
+    const rewriter = new HTMLRewriter()
       .on("head", new TrackerInjector(projectId))
-      .transform(response);
+      .on("head", new SiteMetaInjector(meta || {}));
+    // We also drop any pre-existing <title>/<link rel="icon">/og tags so our
+    // overrides actually win — generated apps usually ship with their own
+    // generic ones.
+    const stripper = new MetaStripper();
+    rewriter.on("title", stripper);
+    rewriter.on("link[rel*='icon' i]", stripper);
+    rewriter.on("meta[name='description' i]", stripper);
+    rewriter.on("meta[property^='og:' i]", stripper);
+    rewriter.on("meta[name^='twitter:' i]", stripper);
+    return rewriter.transform(response);
   }
   return response;
 }
@@ -180,6 +193,57 @@ else{fetch(e,{method:"POST",headers:{"Content-Type":"application/json"},body:b,k
   }
 }
 
+/** Removes matched elements (used to strip the generated app's default
+ *  <title>, favicon and OG tags so our injected ones win). */
+class MetaStripper {
+  element(el) {
+    el.remove();
+  }
+}
+
+function escapeAttr(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+function escapeHtml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** Injects favicon + title + description + Open Graph / Twitter card tags
+ *  at the start of <head>. Defaults the favicon to the Petal logo so every
+ *  generated app gets the Petal flower in browser tabs until the owner
+ *  uploads their own. */
+class SiteMetaInjector {
+  constructor(meta) {
+    this.meta = meta;
+  }
+  element(el) {
+    const m = this.meta || {};
+    const iconUrl = m.iconUrl || `${CONTROL_PLANE}/petal-logo.png`;
+    const parts = [];
+    parts.push(`<link rel="icon" href="${escapeAttr(iconUrl)}" />`);
+    parts.push(`<link rel="apple-touch-icon" href="${escapeAttr(iconUrl)}" />`);
+    if (m.title) {
+      parts.push(`<title>${escapeHtml(m.title)}</title>`);
+      parts.push(`<meta property="og:title" content="${escapeAttr(m.title)}" />`);
+      parts.push(`<meta name="twitter:title" content="${escapeAttr(m.title)}" />`);
+    }
+    if (m.description) {
+      parts.push(`<meta name="description" content="${escapeAttr(m.description)}" />`);
+      parts.push(`<meta property="og:description" content="${escapeAttr(m.description)}" />`);
+      parts.push(`<meta name="twitter:description" content="${escapeAttr(m.description)}" />`);
+    }
+    const ogImage = m.ogImageUrl || iconUrl;
+    parts.push(`<meta property="og:image" content="${escapeAttr(ogImage)}" />`);
+    parts.push(`<meta name="twitter:image" content="${escapeAttr(ogImage)}" />`);
+    parts.push(`<meta name="twitter:card" content="${m.ogImageUrl ? "summary_large_image" : "summary"}" />`);
+    el.prepend(parts.join(""), { html: true });
+  }
+}
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
@@ -194,7 +258,7 @@ export default {
     }
 
     const result = await lookup(host);
-    if (result.kind === "proxy") return proxy(request, result.target, result.projectId);
+    if (result.kind === "proxy") return proxy(request, result.target, result.projectId, result.meta);
     return placeholder(result.kind);
   },
 };
