@@ -383,6 +383,43 @@ function addStructuredRetryInstruction<T extends Array<{ role: string; content: 
   ) as T;
 }
 
+async function runFinalParseGuard(
+  files: ProjectFile[],
+  changedPaths: string[],
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+): Promise<ProjectFile[]> {
+  const finalVerdict = await verifyFilesEsbuild(files, changedPaths);
+  if (finalVerdict.ok) return files;
+
+  console.warn(
+    `[final-parse-guard] ${finalVerdict.issues.length} issue(s) after autofix:`,
+    finalVerdict.issues.map((i) => `${i.path}:${i.line}:${i.column} ${i.message}`).join("; "),
+  );
+  controller.enqueue(
+    encoder.encode(sse({ type: "status", message: "Repairing one last syntax issue…" })),
+  );
+
+  const fixOut = await runPostStreamAutofix(
+    files,
+    finalVerdict.issues.map((i) => ({
+      path: i.path,
+      kind: "parse",
+      detail: `${i.message} (line ${i.line}:${i.column})`,
+    })),
+  );
+  const repaired = fixOut.files;
+  const repairedVerdict = await verifyFilesEsbuild(repaired, changedPaths);
+  if (!repairedVerdict.ok) {
+    const detail = repairedVerdict.issues
+      .slice(0, 3)
+      .map((i) => `${i.path}:${i.line}:${i.column} ${i.message}`)
+      .join("; ");
+    throw new Error(`Final syntax check failed after repair: ${detail}`);
+  }
+  return repaired;
+}
+
 async function handleGenerateRequest(request: Request): Promise<Response> {
   const authResult = await authorize(request);
   if (authResult instanceof Response) return authResult;
