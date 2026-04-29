@@ -699,6 +699,15 @@ function Builder() {
       setPhases((p) => completeThrough(p, "live"));
       autoFixRef.current.attempts = 0;
       autoFixRef.current.handledBuildIds.clear();
+      // The build succeeded — any FriendlyError still on screen is stale
+      // (a generation-time hiccup that nonetheless produced a working app,
+      // a stalled-deploy warning that just resolved, or an auto-fix card
+      // that completed). Showing "Petal got a bit confused" next to a
+      // green "READY — what's next?" panel is contradictory UX.
+      // We deliberately keep build-failure-shaped errors out of this clear
+      // by only running it when status is "ready" — failed builds take the
+      // else-if branch below and never reach here.
+      setFriendlyError(null);
       // Note: we used to surface a "Changes ready to publish" toast here, but
       // it fired on every refresh / build completion and was more noise than
       // signal. Users can publish from the header button when ready.
