@@ -42,6 +42,7 @@ import {
 import { streamGenerate } from "@/lib/stream";
 import { streamTriage } from "@/lib/triage";
 import { requestDiscussion } from "@/lib/discuss";
+import { onServiceEnabled } from "@/lib/service-events";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useBuildActivity } from "@/hooks/use-build-activity";
