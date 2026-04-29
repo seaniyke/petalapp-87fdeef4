@@ -644,6 +644,10 @@ function Builder() {
         return () => clearTimeout(t);
       }
       if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
+      // Don't surface the "couldn't auto-fix" card while Petal is actively
+      // working — a run is in flight (manual or auto) and may still resolve
+      // the issue. Only show the manual fallback once Petal is idle.
+      if (busy) return;
       // Manual fallback after we've burned both auto-attempts, or when the
       // failed build was already present when the user opened the project.
       setFriendlyError(friendlyBuildFailure(buildSnap.errorMessage));
@@ -948,6 +952,12 @@ function Builder() {
       setPendingAttachments([]);
       initialAttachmentsRef.current = [];
       setBusy(true);
+      // Clear any stale "couldn't auto-fix" / build-failure card the moment
+      // Petal starts working again. It's confusing to show a give-up card
+      // next to an active "Petal is working" indicator.
+      setFriendlyError((prev) =>
+        prev && (prev.title?.includes("auto-fix") || prev.title?.includes("Build")) ? null : prev,
+      );
 
       // Persist the user message to the DB *before* the stream starts. If the
       // user refreshes mid-build (which can take 30–60s) we still want to show
