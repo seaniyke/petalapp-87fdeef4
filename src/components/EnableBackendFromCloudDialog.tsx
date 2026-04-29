@@ -158,7 +158,9 @@ export function EnableBackendFromCloudDialog({
                 <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <p className="font-medium text-foreground">
-                    Top up {formatUsdCents(shortfallCents)} more to enable.
+                    {qualified
+                      ? "Your Cloud balance is $0. Top up to enable Cloud on this project."
+                      : `Top up ${formatUsdCents(shortfallCents)} more to enable.`}
                   </p>
                 </div>
               )}
