@@ -37,7 +37,9 @@ function escapeHtml(value: string) {
 function renderAuthEmail(type: string, props: Record<string, string | undefined>) {
   const title = EMAIL_SUBJECTS[type] || 'Notification'
   const url = props.confirmationUrl || props.siteUrl || `https://${ROOT_DOMAIN}`
-  const token = props.token ? `<div style="font-size:28px;font-weight:600;letter-spacing:0.2em;background:#ffffff;border:1px solid #f1e6db;border-radius:12px;padding:18px 24px;text-align:center;margin:0 0 28px;">${escapeHtml(props.token)}</div>` : ''
+  // Only show the token for flows where the code itself is the verification mechanism
+  const showToken = type === 'reauthentication'
+  const token = showToken && props.token ? `<div style="font-size:28px;font-weight:600;letter-spacing:0.2em;background:#ffffff;border:1px solid #f1e6db;border-radius:12px;padding:18px 24px;text-align:center;margin:0 0 28px;">${escapeHtml(props.token)}</div>` : ''
   const introByType: Record<string, string> = {
     signup: `Welcome to ${SITE_NAME}. Please confirm ${props.recipient || 'your email'} to activate your account.`,
     invite: `You've been invited to join ${SITE_NAME}. Accept the invitation to create your account.`,
