@@ -438,6 +438,7 @@ export type StreamEvent =
   | { type: "phase"; phase: "thinking" | "designing" | "writing" | "polishing" }
   | { type: "design_vibe"; vibe: string; rationale: string }
   | { type: "file_progress"; written: number; latestPath?: string }
+  | { type: "file_complete"; path: string; bytes: number; index: number }
   | {
       type: "result";
       files: ProjectFile[];
