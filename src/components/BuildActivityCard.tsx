@@ -212,30 +212,32 @@ export function BuildActivityCard({
   // Calm, one-line update that swaps as the phase advances. Tap to expand
   // for the full step-by-step timeline.
   return (
-    <div className="mr-6 overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur transition-all">
-      <div className="flex items-center gap-2.5 px-3.5 py-2.5">
+    <div className="mr-6 overflow-hidden transition-all">
+      <div className="flex items-center gap-2 py-1">
         {/* Emoji crossfades when the phase changes. The `key` triggers a
             remount so the `animate-fade-in` keyframe replays each time. */}
         <span
           key={`emoji-${currentPhase?.id ?? "init"}`}
-          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center text-[14px] animate-fade-in ${
-            isActive ? "animate-pulse motion-reduce:animate-none" : ""
-          }`}
+          className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-[13px] animate-fade-in"
           aria-hidden
         >
           {currentPhase?.emoji ?? "🌸"}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2 text-sm leading-snug text-foreground">
-            {/* Phase label crossfades on change via key-based remount. */}
+          <div className="flex items-baseline gap-2 text-[13px] leading-snug">
+            {/* Phase label crossfades on change via key-based remount. While
+                active it shimmers — no spinner, no badge, just a calm sheen
+                across the text so the user knows it's running. */}
             <span
               key={`label-${currentPhase?.id ?? "init"}`}
-              className="truncate font-medium animate-fade-in motion-reduce:animate-none"
+              className={`truncate font-medium animate-fade-in motion-reduce:animate-none ${
+                isActive ? "petal-shimmer" : "text-foreground"
+              }`}
             >
               {currentPhase?.label ?? "Working…"}
             </span>
             {elapsed > 0 && (
-              <span className="shrink-0 font-mono text-[11px] font-normal text-muted-foreground tabular-nums">
+              <span className="shrink-0 font-mono text-[10.5px] font-normal text-muted-foreground/80 tabular-nums">
                 {elapsed}s
               </span>
             )}
@@ -246,7 +248,7 @@ export function BuildActivityCard({
           {subCaption && (
             <div
               key={`cap-${subCaption}`}
-              className="mt-0.5 truncate text-xs text-muted-foreground animate-fade-in motion-reduce:animate-none"
+              className="mt-0.5 truncate text-[11.5px] text-muted-foreground/80 animate-fade-in motion-reduce:animate-none"
             >
               {subCaption}
             </div>
@@ -257,7 +259,7 @@ export function BuildActivityCard({
             <button
               type="button"
               onClick={onStop}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:text-foreground"
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:text-foreground"
             >
               <Square className="h-2.5 w-2.5 fill-current" /> Stop
             </button>
@@ -265,15 +267,15 @@ export function BuildActivityCard({
           <button
             type="button"
             onClick={() => setStepsOpen((s) => !s)}
-            className="grid h-6 w-6 place-items-center rounded text-muted-foreground transition hover:text-foreground"
+            className="grid h-5 w-5 place-items-center rounded text-muted-foreground/70 transition hover:text-foreground"
             aria-label={stepsOpen ? "Hide steps" : "Show steps"}
           >
-            {stepsOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {stepsOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
         </div>
       </div>
       {stepsOpen && (
-        <ol className="space-y-1 border-t border-border/60 bg-aurora/20 px-3.5 py-2.5">
+        <ol className="mt-1 space-y-1 border-l border-border/60 pl-3">
           {phases.map((p) => (
             <PhaseRow
               key={p.id}
