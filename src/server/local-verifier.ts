@@ -22,7 +22,8 @@ export interface LocalIssue {
     | "unterminated-string"
     | "missing-dep"
     | "missing-sibling"
-    | "parse";
+    | "parse"
+    | "oversize";
   detail: string;
 }
 
