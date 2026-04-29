@@ -37,10 +37,12 @@ import {
 import { runSelfCheck, humanizeBuildError } from "@/server/self-recovery.server";
 import { pickDynamicSnippets } from "@/server/dynamic-prompts.server";
 import { autofixFiles } from "@/server/stream-autofixer";
-import { runPostStreamAutofix, shouldRunPostStreamAutofix } from "@/server/post-stream-autofix.server";
+import { runPostStreamAutofix } from "@/server/post-stream-autofix.server";
 import { fallbackEstimate } from "@/server/preflight-estimate.server";
 import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-classifier.server";
-import { runVerifier, shouldRunVerifier } from "@/server/verifier.server";
+// Tier 3 model verifier removed: it duplicated the deterministic local
+// verifier and its recovery pass was unconditionally skipped by the
+// Phase D one-round autofix cap, so it only added latency + tokens.
 import { verifyFilesLocal } from "@/server/local-verifier";
 import { runContinuation } from "@/server/stream-continuation.server";
 import { pickBestModel } from "@/server/smart-router.server";
