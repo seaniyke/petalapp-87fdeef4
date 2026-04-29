@@ -1,56 +1,56 @@
-## Goal
+## You're right — I had this completely wrong
 
-Cut the one layer in Petal's recovery stack that's costing more than it returns (Tier 3 model verifier) and tighten the autofix gate so we don't spend a model call on healthy turns.
+I was telling Petal AI to recommend **"Lovable Cloud"** to your users. That's a competitor's brand bleeding into your product. Petal has **its own cloud services** (Petal Cloud) and **its own AI gateway** (Petal AI Gateway), and your users should never see the word "Lovable" in any AI response.
 
-## Why
+Two real leaks made it into prompts that go to your end-users' AI:
 
-From the audit:
-- **`verifier.server.ts` (Tier 3)** runs a `gemini-2.5-flash-lite` call to look for "obvious build-breakers" — but the deterministic `local-verifier.ts` ran 100 lines earlier and already caught them for free. Worse, when it does flag something, the Phase D one-round cap (`autofixModelRan` check) **explicitly skips its recovery pass** because Tier 2 already ran. So it pays full cost (~1.5s + tokens) on every non-trivial turn for near-zero incremental value.
-- **`shouldRunPostStreamAutofix` gate is too loose** — fires on any 6+ file turn or any "feature"/"refactor" preflight kind. Telemetry pattern: returns empty fix list most of the time on these turns. The `!localVerdict.ok` clause already guarantees it runs when actually needed.
+1. **Discuss-mode prompt** (`src/routes/api/discuss.ts`) — written by me last turn — says "Lovable Cloud" 5+ times.
+2. **Build-mode prompt** (`src/server/generate.server.ts`) — says "Lovable AI Gateway" twice (lines 108, 213).
 
-The other three layers (`local-verifier`, `post-stream-autofix`, `self-recovery`) stay as-is — they're load-bearing.
+Everywhere else, "Lovable" only appears in code comments (not sent to the AI) — those are safe to leave.
 
-## Changes
+## The fix
 
-### 1. `src/routes/api/generate.ts`
+### 1. `src/routes/api/discuss.ts` — Discuss-mode system prompt
 
-- Remove the `runVerifier` / `shouldRunVerifier` import (line 43).
-- Delete the entire Tier 3 verifier block (~lines 864–919): the `shouldRunVerifier` call, the `runVerifier` call, the `verifier_warning` SSE emission, and the now-dead "verifier-recovery" autofix re-run.
-- Remove the `autofixModelRan` tracking variable and the `preflightKind` lookup that only fed the loose gate.
-- Replace the autofix gate condition with the tightened version:
-  ```ts
-  if (!localVerdict.ok || autofixOut.report.fixedCount >= 2) { … }
-  ```
+Replace every "Lovable Cloud" → **"Petal Cloud"**, and tighten the brand rules so the model can never substitute Lovable, Supabase, Firebase, or any other third-party name.
 
-### 2. `src/server/verifier.server.ts`
+The capabilities section becomes:
 
-- Delete the file. No other code imports it after the generate.ts edit (verified via ripgrep — only `generate.ts` references `runVerifier`/`shouldRunVerifier`).
+- **Petal Cloud** — Petal's managed backend (user accounts with email + Google sign-in, Postgres database, file storage, serverless functions). One click to enable inside Petal. The user does NOT install Supabase, Firebase, or any third-party backend.
+- **Petal AI Gateway** — call modern AI models without bringing an API key.
+- Custom domains, publishing, SEO, analytics, email, payments — all native Petal features.
 
-### 3. `src/server/post-stream-autofix.server.ts`
+Brand rules become hard prohibitions:
 
-- Leave the file alone. `shouldRunPostStreamAutofix` becomes unused but it's a pure function — keep it exported for now (cheap, and useful if we ever want to re-enable a softer gate). Optionally remove if you want zero dead code; I'll leave it unless you say otherwise.
+- ALWAYS call the backend **"Petal Cloud"** or just **"the backend"**. NEVER say "Lovable", "Lovable Cloud", "Supabase", "Firebase", or any other vendor name.
+- NEVER tell the user to "install" a backend or sign up for another platform. The correct phrasing is "I'll turn on **Petal Cloud** for you" (or "Petal Cloud is already on, we're good to go").
+- NEVER mention dashboards, project refs, API keys, or any internal plumbing.
 
-### 4. Verification after edit
+The live status block becomes:
 
-- Re-grep for any straggler imports of `verifier.server` or `shouldRunVerifier` and confirm none remain.
-- Confirm `generate.ts` still typechecks: the removed block didn't expose any variables used downstream (`autofixModelRan` was only read inside the deleted block; `changedPaths`/`earlyChangedPaths` are still used by other code paths — keep those).
+- Backend attached → "**Petal Cloud is ON for this project** … never mention Lovable, Supabase, Firebase, project refs, dashboards, or API keys."
+- Backend not attached → "**Petal Cloud is NOT yet on for this project** … I'll turn on Petal Cloud for you, one click inside Petal, no third-party account needed."
 
-## Recovery pipeline after the change
+### 2. `src/server/generate.server.ts` — Build-mode system prompt
 
-```text
-stream ends
-  → regex autofixer (stream-autofixer.ts)
-  → local verifier (deterministic, free)        ← source of truth
-  → continuation pass (if truncation flagged)   ← same model, finishes the file
-  → post-stream autofix model (only if local verifier failed
-                               OR regex autofixer caught ≥2)
-  → image placeholder resolution
-  → build
-  → self-check (on success) / humanize-error (on failure)
-```
+Two surgical edits:
 
-One model recovery call max per turn. No duplicate scanning. Same correctness, lower latency, fewer tokens.
+- Line 108: "Lovable AI Gateway" → **"Petal AI Gateway"**
+- Line 213: "Lovable AI Gateway" → **"Petal AI Gateway"**
 
-## Risk
+### 3. Sweep for any remaining brand leaks in AI-bound text
 
-Low. The Tier 3 layer's recovery was already neutered by the Phase D cap, so deleting it removes work that wasn't producing fixes. The tightened gate matches what `!localVerdict.ok` already enforces in practice.
+After the edits, run a final `rg "Lovable"` scoped to prompt strings (excluding code comments and import paths) to confirm zero leaks before handing back to you.
+
+## What I'm NOT changing
+
+- Code comments that mention "Lovable" for developer context (not sent to the AI) — left alone, they're internal documentation.
+- Import paths and package names like `@/integrations/supabase/*` — those are real file paths, the AI never sees them as brand text.
+- Petal's *own* internal docs / billing copy aimed at *you* (the workspace owner) — out of scope here; this plan is strictly about what end-users' AI says back to them.
+
+## Why this happened
+
+The original Discuss prompt had no awareness of Petal's native capabilities at all, so the model fell back on its training data and recommended Supabase. When I patched it, I reflexively used "Lovable Cloud" wording from internal docs instead of **Petal Cloud**, which is your actual product. That was the wrong instinct and I should have caught it. This plan corrects it everywhere it touches end-user output.
+
+Approve and I'll apply all three edits in one pass and verify the sweep is clean.
