@@ -1258,6 +1258,7 @@ export type Database = {
           ssl_status: string | null
           status: string
           updated_at: string
+          verification_records: Json
           verification_txt_name: string
           verification_txt_value: string
         }
@@ -1273,6 +1274,7 @@ export type Database = {
           ssl_status?: string | null
           status?: string
           updated_at?: string
+          verification_records?: Json
           verification_txt_name: string
           verification_txt_value: string
         }
@@ -1288,6 +1290,7 @@ export type Database = {
           ssl_status?: string | null
           status?: string
           updated_at?: string
+          verification_records?: Json
           verification_txt_name?: string
           verification_txt_value?: string
         }
