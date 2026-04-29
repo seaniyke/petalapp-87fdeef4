@@ -259,3 +259,37 @@
     font-size: 16px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Petal "current action" shimmer — single-line, prose-feeling status used in
+ * the builder thread (e.g. "Reading domain-intent.ts"). Mimics the calm,
+ * inline activity log used by Lovable: a subtle horizontal sheen sweeps the
+ * text instead of any spinner or chip.
+ * ------------------------------------------------------------------------- */
+@keyframes petal-text-shimmer {
+  0%   { background-position: -180% 0; }
+  100% { background-position: 280% 0; }
+}
+.petal-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    color-mix(in oklab, var(--foreground) 55%, transparent) 0%,
+    color-mix(in oklab, var(--foreground) 55%, transparent) 38%,
+    var(--foreground) 50%,
+    color-mix(in oklab, var(--foreground) 55%, transparent) 62%,
+    color-mix(in oklab, var(--foreground) 55%, transparent) 100%
+  );
+  background-size: 220% 100%;
+  background-position: -120% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: petal-text-shimmer 2.4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .petal-shimmer {
+    animation: none;
+    color: color-mix(in oklab, var(--foreground) 70%, transparent);
+    -webkit-text-fill-color: currentColor;
+  }
+}
