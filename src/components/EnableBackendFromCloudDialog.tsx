@@ -53,6 +53,8 @@ export function EnableBackendFromCloudDialog({
   const [submitting, setSubmitting] = useState(false);
   const [topupOpen, setTopupOpen] = useState(false);
   const [balanceCents, setBalanceCents] = useState<number>(0);
+  const [totalBalanceCents, setTotalBalanceCents] = useState<number>(0);
+  const [qualified, setQualified] = useState<boolean>(false);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -62,9 +64,15 @@ export function EnableBackendFromCloudDialog({
       .then((w) => {
         if (cancelled) return;
         setBalanceCents(w.topupBalanceCents);
+        setTotalBalanceCents(w.topupBalanceCents + w.freeBalanceCents);
+        setQualified(w.qualifiedForFreeGrant);
       })
       .catch(() => {
-        if (!cancelled) setBalanceCents(0);
+        if (!cancelled) {
+          setBalanceCents(0);
+          setTotalBalanceCents(0);
+          setQualified(false);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -74,8 +82,15 @@ export function EnableBackendFromCloudDialog({
     };
   }, [open, user]);
 
-  const enoughBalance = balanceCents >= PROVISIONING_FLOOR_CENTS;
-  const shortfallCents = Math.max(0, PROVISIONING_FLOOR_CENTS - balanceCents);
+  // Qualified users (already topped up before) only need a positive balance to
+  // enable Cloud on additional projects. First-time users still need to clear
+  // the $10 top-up floor.
+  const enoughBalance = qualified
+    ? totalBalanceCents > 0
+    : balanceCents >= PROVISIONING_FLOOR_CENTS;
+  const shortfallCents = qualified
+    ? 0
+    : Math.max(0, PROVISIONING_FLOOR_CENTS - balanceCents);
 
   async function handleEnable() {
     setSubmitting(true);
@@ -143,7 +158,9 @@ export function EnableBackendFromCloudDialog({
                 <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <p className="font-medium text-foreground">
-                    Top up {formatUsdCents(shortfallCents)} more to enable.
+                    {qualified
+                      ? "Your Cloud balance is $0. Top up to enable Cloud on this project."
+                      : `Top up ${formatUsdCents(shortfallCents)} more to enable.`}
                   </p>
                 </div>
               )}
