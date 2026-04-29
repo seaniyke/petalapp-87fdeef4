@@ -48,6 +48,7 @@ import { runContinuationTier } from "@/server/pipeline/tier-continuation";
 import { runEsbuildTier } from "@/server/pipeline/tier-esbuild";
 import { runRenderRiskTier } from "@/server/pipeline/tier-render-risk";
 import { runRlsSanityTier } from "@/server/pipeline/tier-rls-sanity";
+import { TurnRecorder } from "@/server/pipeline-telemetry.server";
 import { stripHallucinatedImports } from "@/server/strip-hallucinated-imports.server";
 import {
   checkFileBudgets,
