@@ -3016,6 +3016,7 @@ function Builder() {
                 writtenPaths={writtenPaths}
                 completedPaths={completedPaths}
                 finalFileLines={finalFileLines}
+                timelineEvents={timelineEvents}
                 fileChanges={fileChanges}
                 deployElapsedSec={deployElapsed}
                 onStop={busy ? stopGeneration : undefined}
