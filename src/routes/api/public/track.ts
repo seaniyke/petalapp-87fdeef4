@@ -62,10 +62,10 @@ export const Route = createFileRoute("/api/public/track")({
         const { error } = await supabaseAdmin.rpc("record_page_view", {
           _project_id: project_id,
           _path: path ?? "/",
-          _referrer: referrer ?? null,
-          _country: country,
-          _user_agent: userAgent,
-          _visitor_hash: visitor_hash ?? null,
+          _referrer: referrer ?? "",
+          _country: country ?? "",
+          _user_agent: userAgent ?? "",
+          _visitor_hash: visitor_hash ?? "",
         });
         if (error) {
           // Don't leak details to anonymous callers.

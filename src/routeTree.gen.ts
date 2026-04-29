@@ -43,6 +43,7 @@ import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-provider
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiRegistrarSearchRouteImport } from './routes/api/registrar/search'
 import { Route as ApiRegistrarPurchaseRouteImport } from './routes/api/registrar/purchase'
+import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
 import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
 import { Route as ApiDomainsDnsCheckRouteImport } from './routes/api/domains/dns-check'
@@ -232,6 +233,11 @@ const ApiRegistrarPurchaseRoute = ApiRegistrarPurchaseRouteImport.update({
   path: '/api/registrar/purchase',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTrackRoute = ApiPublicTrackRouteImport.update({
+  id: '/api/public/track',
+  path: '/api/public/track',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHostLookupRoute = ApiPublicHostLookupRouteImport.update({
   id: '/api/public/host-lookup',
   path: '/api/public/host-lookup',
@@ -369,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
+  '/api/public/track': typeof ApiPublicTrackRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -423,6 +430,7 @@ export interface FileRoutesByTo {
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
+  '/api/public/track': typeof ApiPublicTrackRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -478,6 +486,7 @@ export interface FileRoutesById {
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
+  '/api/public/track': typeof ApiPublicTrackRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -534,6 +543,7 @@ export interface FileRouteTypes {
     | '/api/domains/dns-check'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
+    | '/api/public/track'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
@@ -588,6 +598,7 @@ export interface FileRouteTypes {
     | '/api/domains/dns-check'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
+    | '/api/public/track'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
@@ -642,6 +653,7 @@ export interface FileRouteTypes {
     | '/api/domains/dns-check'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
+    | '/api/public/track'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
@@ -696,6 +708,7 @@ export interface RootRouteChildren {
   ApiBuildsTriggerRoute: typeof ApiBuildsTriggerRoute
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
   ApiPublicHostLookupRoute: typeof ApiPublicHostLookupRoute
+  ApiPublicTrackRoute: typeof ApiPublicTrackRoute
   ApiRegistrarPurchaseRoute: typeof ApiRegistrarPurchaseRoute
   ApiRegistrarSearchRoute: typeof ApiRegistrarSearchRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -950,6 +963,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRegistrarPurchaseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/track': {
+      id: '/api/public/track'
+      path: '/api/public/track'
+      fullPath: '/api/public/track'
+      preLoaderRoute: typeof ApiPublicTrackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/host-lookup': {
       id: '/api/public/host-lookup'
       path: '/api/public/host-lookup'
@@ -1131,6 +1151,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBuildsTriggerRoute: ApiBuildsTriggerRoute,
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
   ApiPublicHostLookupRoute: ApiPublicHostLookupRoute,
+  ApiPublicTrackRoute: ApiPublicTrackRoute,
   ApiRegistrarPurchaseRoute: ApiRegistrarPurchaseRoute,
   ApiRegistrarSearchRoute: ApiRegistrarSearchRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
