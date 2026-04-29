@@ -22,6 +22,7 @@ import {
   suggestIntegrations,
 } from "@/server/integrations/auto-suggest.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
+import { renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
 
 type Body = {
   messages: ChatMessage[];
@@ -171,8 +172,10 @@ export const Route = createFileRoute("/api/discuss")({
           ? "\n\nThe user attached one or more reference images with their latest message. Look at them and describe what you see, then propose how to translate it into changes for their app."
           : "";
 
+        const dateBlock = renderCurrentDateBlock();
+
         const chatMessages = [
-          { role: "system", content: DISCUSS_SYSTEM_PROMPT + backendBlock + integrationsBlock + suggestionsBlock + knowledgeBlock + visionAddendum + filesContext },
+          { role: "system", content: DISCUSS_SYSTEM_PROMPT + dateBlock + backendBlock + integrationsBlock + suggestionsBlock + knowledgeBlock + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {
