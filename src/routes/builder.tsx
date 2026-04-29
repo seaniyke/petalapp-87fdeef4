@@ -42,6 +42,7 @@ import {
 import { streamGenerate } from "@/lib/stream";
 import { streamTriage } from "@/lib/triage";
 import { requestDiscussion } from "@/lib/discuss";
+import { onServiceEnabled } from "@/lib/service-events";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useBuildActivity } from "@/hooks/use-build-activity";
@@ -223,6 +224,10 @@ function Builder() {
   // human "Got it, here's what I'll do" reply that competitors (Lovable,
   // Bolt, v0) say before showing any phase indicators. Comes from /api/triage.
   const [streamingPreamble, setStreamingPreamble] = useState<string>("");
+  // Live "service enabled" announcement — typed character-by-character into a
+  // dedicated chat bubble so users feel the activation. Persisted as a system
+  // note once the typing finishes.
+  const [streamingService, setStreamingService] = useState<string>("");
   // Whether the current send() turn is actually going to build (vs. just
   // chat or ask a clarifying question). Drives whether the activity card
   // and build pipeline UI render at all.
@@ -478,6 +483,44 @@ function Builder() {
       window.removeEventListener("online", onVisible);
       void supabase.removeChannel(channel);
     };
+  }, [project?.id]);
+
+  // Listen for service activations (Petal Email, managed backend, custom
+  // domain, …) fired from anywhere in the app. Stream a friendly assistant
+  // announcement into the active chat so the activation feels like part of
+  // the build, not a silent toast that vanishes.
+  useEffect(() => {
+    return onServiceEnabled((detail) => {
+      if (!project?.id || detail.projectId !== project.id) return;
+      const fullText =
+        `✨ ${detail.label} is enabled` +
+        (detail.summary ? ` — ${detail.summary}` : ".");
+      // Cancel any in-flight service typing so back-to-back activations
+      // don't collide on the same bubble.
+      let cancelled = false;
+      setStreamingService("");
+      let i = 0;
+      const tick = () => {
+        if (cancelled) return;
+        i = Math.min(fullText.length, i + 2);
+        setStreamingService(fullText.slice(0, i));
+        if (i < fullText.length) {
+          setTimeout(tick, 18);
+        } else {
+          // Promote the streamed text into a real system note and persist.
+          const note: ChatMessage = { role: "system", system: true, content: fullText };
+          setMessages((prev) => [...prev, note]);
+          setStreamingService("");
+          void appendMessages(project.id, [note]).catch(() => {
+            // Persistence is best-effort — the in-memory message still shows.
+          });
+        }
+      };
+      tick();
+      return () => {
+        cancelled = true;
+      };
+    });
   }, [project?.id]);
 
   // Reflect Cloudflare build state into the phase timeline + friendly errors.
@@ -2192,6 +2235,16 @@ function Builder() {
             {discussBusy && (
               <div className="mr-3 inline-flex items-center gap-2 rounded-2xl bg-secondary px-3.5 py-2.5 text-sm text-muted-foreground sm:mr-6">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
+              </div>
+            )}
+            {/* Live "service enabled" announcement — typewriter into a small
+                centered chip, matching the system-note style used elsewhere. */}
+            {streamingService && (
+              <div className="my-1 flex justify-center">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] text-foreground">
+                  {streamingService}
+                  <span className="ml-0.5 inline-block h-2 w-[2px] animate-pulse bg-foreground/70" />
+                </div>
               </div>
             )}
             {/* Bridge state: busy but no streamed content yet. Without this

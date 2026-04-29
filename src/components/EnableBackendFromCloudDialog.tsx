@@ -29,6 +29,7 @@ import { useAuth } from "@/lib/auth";
 import { fetchRuntimeWallet, formatUsdCents } from "@/lib/runtime-wallet";
 import { enableManagedBackend } from "@/lib/projects";
 import { RuntimeTopupModal } from "@/components/RuntimeTopupModal";
+import { emitServiceEnabled } from "@/lib/service-events";
 
 const PROVISIONING_FLOOR_CENTS = 1000; // keep in sync with /api/backend
 const HOURLY_RATE_CENTS = 2; // keep in sync with cron/runtime-backend-hour
@@ -81,6 +82,12 @@ export function EnableBackendFromCloudDialog({
     try {
       await enableManagedBackend(projectId);
       toast.success("Setting up your backend…");
+      emitServiceEnabled({
+        projectId,
+        service: "backend",
+        label: "Managed backend",
+        summary: "Provisioning your database, auth, and storage. Drains from your Cloud balance hourly — top up anytime.",
+      });
       onOpenChange(false);
       onEnabled?.();
     } catch (e) {
