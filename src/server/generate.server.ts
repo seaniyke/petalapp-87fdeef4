@@ -351,9 +351,17 @@ export type ChatMessage = {
    *  inline chip under the assistant message that pre-fills the composer
    *  with `suggestedPrompt` so the user can continue with one click. */
   handoff?: {
-    reason: "oversize_files" | "incomplete_turn" | "large_changeset";
+    reason:
+      | "oversize_files"
+      | "incomplete_turn"
+      | "large_changeset"
+      | "unrecoverable_turn";
     message: string;
     suggestedPrompt: string;
+    detected?: {
+      hallucinatedPackages?: string[];
+      truncatedPaths?: string[];
+    };
   };
   /** Marks an internal system note (e.g. "Petal is auto-fixing a build
    *  error — free"). Rendered as a small inline notice, never sent to the
@@ -437,9 +445,20 @@ export type StreamEvent =
        * one click.
        */
       type: "continuation_handoff";
-      reason: "oversize_files" | "incomplete_turn" | "large_changeset";
+      reason:
+        | "oversize_files"
+        | "incomplete_turn"
+        | "large_changeset"
+        | "unrecoverable_turn";
       message: string;
       suggestedPrompt: string;
+      /** Optional structured detail of what tripped the handoff. Used by the
+       *  client to render specifics (hallucinated package names, truncated
+       *  file paths) so the user knows *what* to continue fixing. */
+      detected?: {
+        hallucinatedPackages?: string[];
+        truncatedPaths?: string[];
+      };
     }
   | { type: "error"; message: string; suggestions?: string[] };
 

@@ -40,9 +40,17 @@ type Handlers = {
     ts: number;
   }) => void;
   onContinuationHandoff?: (handoff: {
-    reason: "oversize_files" | "incomplete_turn" | "large_changeset";
+    reason:
+      | "oversize_files"
+      | "incomplete_turn"
+      | "large_changeset"
+      | "unrecoverable_turn";
     message: string;
     suggestedPrompt: string;
+    detected?: {
+      hallucinatedPackages?: string[];
+      truncatedPaths?: string[];
+    };
   }) => void;
   onError?: (message: string, suggestions?: string[]) => void;
 };
@@ -167,6 +175,7 @@ export async function streamGenerate(
               reason: evt.reason,
               message: evt.message,
               suggestedPrompt: evt.suggestedPrompt,
+              detected: evt.detected,
             });
             break;
           case "error":
