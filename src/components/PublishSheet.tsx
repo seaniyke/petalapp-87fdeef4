@@ -98,6 +98,7 @@ export function PublishSheet({
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [visibilityBusy, setVisibilityBusy] = useState(false);
+  const [websiteInfoOpen, setWebsiteInfoOpen] = useState(false);
   // Visitor analytics — Cloudflare Pages traffic for the project's site.
   // We fetch on open and when the user flips the range, never poll.
   const [visitorRange, setVisitorRange] = useState<VisitorRange>("7d");
