@@ -24,6 +24,9 @@ import {
   restoreForProject,
 } from "@/server/managed-backend.server";
 
+/** Cloud-balance floor required to enable (or re-enable) a managed backend. */
+const PROVISIONING_FLOOR_CENTS = 1000; // $10
+
 const SUPABASE_URL_RE = /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i;
 
 const ConnectInput = z.object({
@@ -90,18 +93,16 @@ async function handleStatus(userId: string, body: unknown): Promise<Response> {
   if (error) return new Response(error.message, { status: 500 });
   if (!data) return Response.json(null);
 
-  // For managed backends, also include the most recent slot's expiry so the
-  // UI can show a renewal countdown.
-  let slot: { expires_at: string; status: string } | null = null;
+  // For managed backends, surface the project's grace window (if any) so
+  // the UI can show a "top up to keep your backend live" warning.
+  let graceUntil: string | null = null;
   if (data.provider === "managed_petal") {
-    const { data: slotRow } = await supabaseAdmin
-      .from("backend_slots")
-      .select("expires_at, status")
-      .eq("project_id", parsed.data.projectId)
-      .order("expires_at", { ascending: false })
-      .limit(1)
+    const { data: projRow } = await supabaseAdmin
+      .from("projects")
+      .select("runtime_grace_until")
+      .eq("id", parsed.data.projectId)
       .maybeSingle();
-    slot = slotRow ?? null;
+    graceUntil = projRow?.runtime_grace_until ?? null;
   }
 
   return Response.json({
@@ -112,8 +113,84 @@ async function handleStatus(userId: string, body: unknown): Promise<Response> {
     errorMessage: data.error_message,
     supabaseProjectRef: data.supabase_project_ref,
     pausedAt: data.paused_at,
-    slot,
+    graceUntil,
   });
+}
+
+/**
+ * POST /api/backend?action=enable-managed
+ *
+ * Cloud-balance enable: requires the user's Cloud top-up balance ≥ $10.
+ * Inserts a `project_backends` row in `provisioning` state and kicks off the
+ * upstream Supabase provision in the background. Idempotent — if a row
+ * already exists, returns its current state.
+ */
+async function handleEnableManaged(userId: string, body: unknown): Promise<Response> {
+  const parsed = ProjectIdInput.safeParse(body);
+  if (!parsed.success) return new Response(parsed.error.message, { status: 400 });
+  const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
+  if (ownerErr) return ownerErr;
+
+  // Already attached? Return current state.
+  const { data: existing } = await supabaseAdmin
+    .from("project_backends")
+    .select("provider, status")
+    .eq("project_id", parsed.data.projectId)
+    .maybeSingle();
+  if (existing) {
+    return new Response(
+      JSON.stringify({
+        error:
+          existing.provider === "managed_petal"
+            ? "A managed backend is already attached to this project."
+            : "This project is already connected to a backend.",
+        code: "already_connected",
+      }),
+      { status: 409, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  // Balance check.
+  const { data: wallet } = await supabaseAdmin
+    .from("user_wallets")
+    .select("runtime_topup_balance_cents")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const topup = Number(wallet?.runtime_topup_balance_cents ?? 0);
+  if (topup < PROVISIONING_FLOOR_CENTS) {
+    return new Response(
+      JSON.stringify({
+        error: `Top up your Cloud balance to at least $${PROVISIONING_FLOOR_CENTS / 100} to enable a managed backend.`,
+        code: "topup_required",
+        currentCents: topup,
+        requiredCents: PROVISIONING_FLOOR_CENTS,
+      }),
+      { status: 402, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const { error: insertErr } = await supabaseAdmin.from("project_backends").insert({
+    project_id: parsed.data.projectId,
+    provider: "managed_petal",
+    status: "provisioning",
+    supabase_url: "",
+    anon_key: "",
+    provisioning_started_at: new Date().toISOString(),
+  });
+  if (insertErr) return new Response(insertErr.message, { status: 500 });
+
+  // Clear any stale grace flag on this project.
+  await supabaseAdmin
+    .from("projects")
+    .update({ runtime_grace_until: null, runtime_paused: false })
+    .eq("id", parsed.data.projectId);
+
+  // Fire-and-forget provisioning. UI polls via provision-status.
+  provisionForProject(parsed.data.projectId).catch((e) =>
+    console.error("[enable-managed] provision failed", e),
+  );
+
+  return Response.json({ ok: true, status: "provisioning" });
 }
 
 async function handleConnect(userId: string, body: unknown): Promise<Response> {
@@ -281,6 +358,8 @@ export const Route = createFileRoute("/api/backend")({
             return handleProvisionRetry(auth, body);
           case "managed-credentials":
             return handleManagedCredentials(auth, body);
+          case "enable-managed":
+            return handleEnableManaged(auth, body);
           default:
             return new Response("Unknown action", { status: 400 });
         }
