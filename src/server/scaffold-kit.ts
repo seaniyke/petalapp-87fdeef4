@@ -299,6 +299,356 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
 Input.displayName = "Input";
 `;
 
+// Self-contained OTP input. Mirrors the shadcn/ui input-otp public API
+// (<InputOTP maxLength value onChange>, <InputOTPGroup>, <InputOTPSlot index>,
+// <InputOTPSeparator />) so the auth/onboarding example blocks compile without
+// pulling the `input-otp` npm package. Backed by a single hidden <input>; the
+// visible slot boxes are pure UI driven from context. Good enough for >95% of
+// product use cases (sign-up codes, 2FA, magic-link verification).
+const INPUT_OTP = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+type OTPCtx = {
+  value: string;
+  maxLength: number;
+  setValue: (v: string) => void;
+  focusedIndex: number;
+  setFocusedIndex: (i: number) => void;
+};
+const OTPContext = React.createContext<OTPCtx | null>(null);
+
+function useOTP(): OTPCtx {
+  const ctx = React.useContext(OTPContext);
+  if (!ctx) throw new Error("InputOTP slots must be used inside <InputOTP>");
+  return ctx;
+}
+
+export interface InputOTPProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> {
+  maxLength?: number;
+  value?: string;
+  onChange?: (value: string) => void;
+  containerClassName?: string;
+  children: React.ReactNode;
+}
+
+export const InputOTP = React.forwardRef<HTMLInputElement, InputOTPProps>(
+  ({ maxLength = 6, value, onChange, containerClassName, className, children, disabled, ...rest }, ref) => {
+    const [internal, setInternal] = React.useState("");
+    const isControlled = value !== undefined;
+    const current = isControlled ? value! : internal;
+    const [focusedIndex, setFocusedIndex] = React.useState(-1);
+    const inputRef = React.useRef<HTMLInputElement>(null);
+    React.useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
+
+    const setValue = React.useCallback(
+      (next: string) => {
+        const cleaned = next.replace(/\\D/g, "").slice(0, maxLength);
+        if (!isControlled) setInternal(cleaned);
+        onChange?.(cleaned);
+      },
+      [isControlled, maxLength, onChange],
+    );
+
+    return (
+      <OTPContext.Provider value={{ value: current, maxLength, setValue, focusedIndex, setFocusedIndex }}>
+        <div
+          className={cn("relative flex items-center gap-2", containerClassName)}
+          onClick={() => inputRef.current?.focus()}
+        >
+          {children}
+          <input
+            ref={inputRef}
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={current}
+            disabled={disabled}
+            onChange={(e) => setValue(e.target.value)}
+            onFocus={() => setFocusedIndex(Math.min(current.length, maxLength - 1))}
+            onBlur={() => setFocusedIndex(-1)}
+            maxLength={maxLength}
+            className={cn(
+              "absolute inset-0 h-full w-full opacity-0 outline-none disabled:cursor-not-allowed",
+              className,
+            )}
+            {...rest}
+          />
+        </div>
+      </OTPContext.Provider>
+    );
+  },
+);
+InputOTP.displayName = "InputOTP";
+
+export const InputOTPGroup = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("flex items-center", className)} {...props} />
+  ),
+);
+InputOTPGroup.displayName = "InputOTPGroup";
+
+export interface InputOTPSlotProps extends React.HTMLAttributes<HTMLDivElement> {
+  index: number;
+}
+export const InputOTPSlot = React.forwardRef<HTMLDivElement, InputOTPSlotProps>(
+  ({ index, className, ...props }, ref) => {
+    const { value, focusedIndex } = useOTP();
+    const char = value[index] ?? "";
+    const isActive = focusedIndex === index || (focusedIndex === -1 && index === value.length);
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "relative flex h-10 w-10 items-center justify-center border-y border-r border-input text-sm transition-all first:rounded-l-md first:border-l last:rounded-r-md",
+          isActive && "z-10 ring-2 ring-ring ring-offset-background",
+          className,
+        )}
+        {...props}
+      >
+        {char}
+        {isActive && !char && (
+          <span className="pointer-events-none absolute inset-y-2 w-px animate-pulse bg-foreground" aria-hidden />
+        )}
+      </div>
+    );
+  },
+);
+InputOTPSlot.displayName = "InputOTPSlot";
+
+export const InputOTPSeparator = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} role="separator" className={cn("text-muted-foreground", className)} {...props}>
+      <span aria-hidden>-</span>
+    </div>
+  ),
+);
+InputOTPSeparator.displayName = "InputOTPSeparator";
+`;
+
+// Pagination — thin nav primitive. Mirrors shadcn's surface area
+// (Pagination, PaginationContent, PaginationItem, PaginationLink,
+// PaginationPrevious, PaginationNext, PaginationEllipsis) so paginated
+// tables in examples compile out of the box.
+const PAGINATION = `import * as React from "react";
+import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export const Pagination = ({ className, ...props }: React.HTMLAttributes<HTMLElement>) => (
+  <nav role="navigation" aria-label="pagination" className={cn("mx-auto flex w-full justify-center", className)} {...props} />
+);
+Pagination.displayName = "Pagination";
+
+export const PaginationContent = React.forwardRef<HTMLUListElement, React.HTMLAttributes<HTMLUListElement>>(
+  ({ className, ...props }, ref) => (
+    <ul ref={ref} className={cn("flex flex-row items-center gap-1", className)} {...props} />
+  ),
+);
+PaginationContent.displayName = "PaginationContent";
+
+export const PaginationItem = React.forwardRef<HTMLLIElement, React.HTMLAttributes<HTMLLIElement>>(
+  ({ className, ...props }, ref) => <li ref={ref} className={cn("", className)} {...props} />,
+);
+PaginationItem.displayName = "PaginationItem";
+
+export interface PaginationLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
+  isActive?: boolean;
+  size?: "default" | "sm" | "lg" | "icon";
+}
+export const PaginationLink = ({ className, isActive, size = "icon", ...props }: PaginationLinkProps) => (
+  <a
+    aria-current={isActive ? "page" : undefined}
+    className={cn(
+      "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+      isActive ? "border border-input bg-background hover:bg-accent hover:text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground",
+      size === "icon" ? "h-10 w-10" : size === "sm" ? "h-9 px-3" : size === "lg" ? "h-11 px-8" : "h-10 px-4 py-2",
+      className,
+    )}
+    {...props}
+  />
+);
+PaginationLink.displayName = "PaginationLink";
+
+export const PaginationPrevious = ({ className, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+  <PaginationLink aria-label="Go to previous page" size="default" className={cn("gap-1 pl-2.5", className)} {...props}>
+    <ChevronLeft className="h-4 w-4" />
+    <span>Previous</span>
+  </PaginationLink>
+);
+PaginationPrevious.displayName = "PaginationPrevious";
+
+export const PaginationNext = ({ className, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+  <PaginationLink aria-label="Go to next page" size="default" className={cn("gap-1 pr-2.5", className)} {...props}>
+    <span>Next</span>
+    <ChevronRight className="h-4 w-4" />
+  </PaginationLink>
+);
+PaginationNext.displayName = "PaginationNext";
+
+export const PaginationEllipsis = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => (
+  <span aria-hidden className={cn("flex h-9 w-9 items-center justify-center", className)} {...props}>
+    <MoreHorizontal className="h-4 w-4" />
+    <span className="sr-only">More pages</span>
+  </span>
+);
+PaginationEllipsis.displayName = "PaginationEllipsis";
+`;
+
+// AlertDialog — Dialog variant for destructive/blocking confirms. Same
+// surface as shadcn's alert-dialog so the destructive-confirm example
+// compiles. Implemented as a controlled portal-less modal (kept simple to
+// avoid pulling @radix-ui/react-alert-dialog).
+const ALERT_DIALOG = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+type Ctx = { open: boolean; onOpenChange: (o: boolean) => void };
+const AlertDialogContext = React.createContext<Ctx | null>(null);
+
+export interface AlertDialogProps {
+  open?: boolean;
+  defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  children: React.ReactNode;
+}
+export function AlertDialog({ open, defaultOpen = false, onOpenChange, children }: AlertDialogProps) {
+  const [internal, setInternal] = React.useState(defaultOpen);
+  const isControlled = open !== undefined;
+  const value = isControlled ? open! : internal;
+  const setValue = (next: boolean) => {
+    if (!isControlled) setInternal(next);
+    onOpenChange?.(next);
+  };
+  return (
+    <AlertDialogContext.Provider value={{ open: value, onOpenChange: setValue }}>
+      {children}
+    </AlertDialogContext.Provider>
+  );
+}
+
+function useAlertDialog() {
+  const ctx = React.useContext(AlertDialogContext);
+  if (!ctx) throw new Error("AlertDialog subcomponents must be inside <AlertDialog>");
+  return ctx;
+}
+
+export interface AlertDialogTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
+}
+export const AlertDialogTrigger = React.forwardRef<HTMLButtonElement, AlertDialogTriggerProps>(
+  ({ asChild, onClick, children, ...props }, ref) => {
+    const { onOpenChange } = useAlertDialog();
+    const handle = (e: React.MouseEvent<HTMLButtonElement>) => {
+      onClick?.(e);
+      if (!e.defaultPrevented) onOpenChange(true);
+    };
+    if (asChild && React.isValidElement(children)) {
+      const child = children as React.ReactElement<{ onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void }>;
+      return React.cloneElement(child, {
+        onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+          child.props.onClick?.(e);
+          handle(e);
+        },
+      });
+    }
+    return <button ref={ref} type="button" onClick={handle} {...props}>{children}</button>;
+  },
+);
+AlertDialogTrigger.displayName = "AlertDialogTrigger";
+
+export const AlertDialogContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, children, ...props }, ref) => {
+    const { open, onOpenChange } = useAlertDialog();
+    if (!open) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
+        <div
+          ref={ref}
+          role="alertdialog"
+          aria-modal="true"
+          className={cn(
+            "relative z-10 grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
+            className,
+          )}
+          {...props}
+        >
+          {children}
+        </div>
+      </div>
+    );
+  },
+);
+AlertDialogContent.displayName = "AlertDialogContent";
+
+export const AlertDialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("flex flex-col space-y-2 text-center sm:text-left", className)} {...props} />
+);
+AlertDialogHeader.displayName = "AlertDialogHeader";
+
+export const AlertDialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />
+);
+AlertDialogFooter.displayName = "AlertDialogFooter";
+
+export const AlertDialogTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
+  ({ className, ...props }, ref) => (
+    <h2 ref={ref} className={cn("text-lg font-semibold", className)} {...props} />
+  ),
+);
+AlertDialogTitle.displayName = "AlertDialogTitle";
+
+export const AlertDialogDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
+  ({ className, ...props }, ref) => (
+    <p ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props} />
+  ),
+);
+AlertDialogDescription.displayName = "AlertDialogDescription";
+
+export const AlertDialogAction = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+  ({ className, onClick, ...props }, ref) => {
+    const { onOpenChange } = useAlertDialog();
+    return (
+      <button
+        ref={ref}
+        type="button"
+        className={cn(
+          "inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+          className,
+        )}
+        onClick={(e) => {
+          onClick?.(e);
+          if (!e.defaultPrevented) onOpenChange(false);
+        }}
+        {...props}
+      />
+    );
+  },
+);
+AlertDialogAction.displayName = "AlertDialogAction";
+
+export const AlertDialogCancel = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+  ({ className, onClick, ...props }, ref) => {
+    const { onOpenChange } = useAlertDialog();
+    return (
+      <button
+        ref={ref}
+        type="button"
+        className={cn(
+          "mt-2 inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 sm:mt-0",
+          className,
+        )}
+        onClick={(e) => {
+          onClick?.(e);
+          if (!e.defaultPrevented) onOpenChange(false);
+        }}
+        {...props}
+      />
+    );
+  },
+);
+AlertDialogCancel.displayName = "AlertDialogCancel";
+`;
+
+
 const TEXTAREA = `import * as React from "react";
 import { cn } from "@/lib/utils";
 
@@ -3154,6 +3504,9 @@ const KIT: KitFile[] = [
   { path: "src/components/ui/button.tsx", content: BUTTON, overwrite: true },
   { path: "src/components/ui/card.tsx", content: CARD, overwrite: true },
   { path: "src/components/ui/input.tsx", content: INPUT, overwrite: true },
+  { path: "src/components/ui/input-otp.tsx", content: INPUT_OTP, overwrite: true },
+  { path: "src/components/ui/pagination.tsx", content: PAGINATION, overwrite: true },
+  { path: "src/components/ui/alert-dialog.tsx", content: ALERT_DIALOG, overwrite: true },
   { path: "src/components/ui/textarea.tsx", content: TEXTAREA, overwrite: true },
   { path: "src/components/ui/label.tsx", content: LABEL, overwrite: true },
   { path: "src/components/ui/badge.tsx", content: BADGE, overwrite: true },
@@ -3225,6 +3578,53 @@ const KIT: KitFile[] = [
   // file from getting unwieldy.
   ...EXAMPLES_PACK,
 ];
+
+/**
+ * Walk every scaffold file and verify that every `@/...` import resolves
+ * against another scaffold file. Catches the class of bug where an example
+ * file imports a UI primitive that the kit forgot to ship (real example:
+ * examples-pack referenced @/components/ui/input-otp but the kit didn't
+ * include it, breaking every build that copied the auth-otp-card block).
+ *
+ * Throws a clear error at module load if anything is missing — fail fast
+ * during deploy is much better than a silent build failure on the user's
+ * side. Cost: ~10ms once per Worker isolate.
+ */
+function verifyScaffoldIntegrity(): void {
+  const paths = new Set(KIT.map((k) => k.path));
+  const importRe = /from\s+["']@\/([^"']+)["']/g;
+  const candidates = (base: string) => [
+    `src/${base}`,
+    `src/${base}.tsx`,
+    `src/${base}.ts`,
+    `src/${base}.jsx`,
+    `src/${base}.js`,
+    `src/${base}/index.tsx`,
+    `src/${base}/index.ts`,
+  ];
+  const failures: string[] = [];
+  for (const k of KIT) {
+    if (!/\.(tsx?|jsx?)$/.test(k.path)) continue;
+    let m: RegExpExecArray | null;
+    while ((m = importRe.exec(k.content))) {
+      const spec = m[1];
+      // Backend kit imports are injected separately and only resolve when a
+      // backend is connected — skip them here.
+      if (spec.startsWith("integrations/backend/")) continue;
+      const ok = candidates(spec).some((c) => paths.has(c));
+      if (!ok) failures.push(`${k.path} imports @/${spec} (not shipped by scaffold)`);
+    }
+  }
+  if (failures.length > 0) {
+    throw new Error(
+      `[scaffold-kit] integrity check failed:\n - ${failures.join("\n - ")}\n` +
+        `Either add the missing primitive to the kit or remove the example.`,
+    );
+  }
+}
+
+verifyScaffoldIntegrity();
+
 
 /**
  * Required deps the kit pulls in. We post-process the AI's package.json to
