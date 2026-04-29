@@ -1,104 +1,95 @@
-## Navigation & UX audit — what's broken today
 
-I walked the whole shell (`SiteHeader`, `index`, `projects`, `profile`, `builder`, `admin.*`, all sheets/modals) and the picture is clear: **features exist, they're just hidden behind inconsistent entry points**. Nothing is structurally wrong — it's discoverability + a missing mobile nav.
+# How Lovable & v0 Stay Reliable — and What Petal Should Copy
 
-### What I found
+## What the research actually says
 
-**1. The header carries everything but reveals little.**
-- Desktop nav only shows `Features`, `How it works`, `Gallery` (marketing links). Real product surfaces — Projects, Credits, Cloud, Profile, Admin — only exist inside the avatar dropdown or as a single pill.
-- On viewports `< sm` (the user's current 430px viewport): `Projects` link is hidden (`sm:inline-flex`), the "credits" word is hidden, marketing links are hidden — leaving just a logo, a credit number, and an avatar. New users see no way in.
+There is no secret. v0 and Bolt published exactly how they do it, and we already do most of it. Here's the honest comparison.
 
-**2. Three different "money" surfaces, no map between them.**
-- `CreditBadge` → opens `BillingSheet` (plans + AI message credits + Paystack top-up).
-- Avatar → "Cloud & AI balance" → opens `CloudBalanceSheet` (runtime $ balance, project caps, Cloud/AI usage split).
-- `RuntimeTopupModal` (in `BillingSheet` and elsewhere) → another top-up path.
-Users land on one and don't realise the other exists. Nothing in either sheet links to the other.
+**v0 (Vercel, Jan 2026 post "How we made v0 an effective coding agent"):**
+1. **Dynamic system prompt** — inject library-specific knowledge (current AI SDK version, lucide icon list) so the model never hallucinates outdated APIs. No web search at gen-time.
+2. **"LLM Suspense"** — a streaming find-and-replace layer that fixes imports, swaps missing icons, normalizes URLs *while tokens are still streaming*. User never sees the broken state. ~100 ms per fix.
+3. **Autofixers (post-stream)** — deterministic AST fixes + a tiny fine-tuned repair model. ~250 ms.
+4. They state: **raw LLM output is broken ~10% of the time. The pipeline closes most of that gap.**
 
-**3. Profile is a deep route with one form.** `/profile` is a full page just to set display name + avatar URL. It's reached only via the avatar dropdown and has no link to billing, cloud, or projects from inside it. Compare to Lovable's settings hub pattern.
+**Bolt:** WebContainer (browser-hosted Node) is the moat — instant feedback, no deploy round-trip. Their generation reliability is **almost entirely Claude Sonnet** plus a strict system prompt. They don't have an exotic pipeline. They route to one strong model and let WebContainer hide latency.
 
-**4. Admin links are siloed.** `/admin` shows section cards, but each `/admin/*` page is a flat top-level route with no shared sidebar — you bounce back to the index every time.
+**Lovable:** Heavy investment in dynamic context (knowledge files, project memory) and very specific prompt rules. Same shape as v0 but less public detail.
 
-**5. Builder has its own private "Billing" entry** (`setBillingOpen` in `builder.tsx`) that opens the same sheet — fine — but there's no equivalent in-builder shortcut to Cloud balance, even though that's where users are most likely to hit cloud-cost limits.
+## What Petal already has (you've built more than you think)
 
-**6. No global mobile nav.** On mobile the header collapses to logo+avatar+credits. Gallery, Projects, Cloud, Profile, Admin all require the user to know to tap the avatar — and the avatar doesn't include `Gallery` or any marketing/help links.
+`src/server/pipeline/` holds the same shape as v0:
+- `tier-local-verify.ts` — heuristic verifier
+- `tier-esbuild.ts` — esbuild parse pass (= v0's deterministic AST check)
+- `tier-continuation.ts` — re-prompts the same model to finish truncated files (= more aggressive than v0)
+- `post-stream-autofix.server.ts` — model-driven autofix (= v0's repair model)
+- `stream-autofixer.ts` — streaming-time fixes (= LLM Suspense)
+- `smart-router.server.ts` — quality-weighted model selection (= more than v0 publishes)
 
-**7. Inconsistent re-entry from the landing page.** A signed-in user on `/` sees no "back to projects" affordance in the hero — only via the avatar.
+This is genuinely a v0-class pipeline. The reliability gap is **not** missing infrastructure.
 
-### What I will NOT touch (to avoid breaking anything)
+## What the database says is actually broken
 
-- No route renames, no removing existing routes, no schema changes.
-- `BillingSheet`, `CloudBalanceSheet`, `RuntimeTopupModal` keep their props and current open/close call sites.
-- `useAuth`, `useWallet`, `useIsAdmin`, `adminApi` unchanged.
-- Builder's existing `billingOpen` state stays exactly where it is.
+Last 7 days of `ai_call_outcomes`:
 
----
+```text
+model                         total  build_ready  verifier_pass  avg_autofix
+google/gemini-2.5-pro            12        100%            33%         0.33
+google/gemini-3-flash-preview     4        100%            25%         0.00
+```
 
-## Plan — three focused, additive changes
+Top verifier issues: `missing-export (49)`, `jsx (42)`, `undefined (22)`, `braces (14)`, `truncation (13)`, `unterminated-string (11)`.
 
-### 1. Upgrade `SiteHeader` into a real nav (desktop + mobile parity)
+Last 3 days of `ai_call_log` for `feature='generate'`: **69 successes, zero errors recorded.**
 
-Same component, same props. Internal changes only:
+**Two findings:**
+1. Every recorded generation succeeds at build time. The pipeline *is* closing the gap.
+2. But the user keeps seeing "Petal got a bit confused." That string only fires from `friendly-errors.ts` GENERIC fallback — which means the failure happens in a path that **never reaches `recordAiOutcome` and never logs an HTTP error**. It's a silent client-side or pre-pipeline failure.
 
-- **Desktop**: keep marketing links but add an authed "product" cluster between logo and avatar when signed in: `Projects · Gallery · Cloud · Credits · Avatar`. Cloud becomes a button that opens `CloudBalanceSheet` directly (parity with Credits → BillingSheet). One click to either money surface.
-- **Mobile (`< md`)**: add a `Sheet`-based hamburger (left of logo) that contains the same nav, mirroring the dropdown for parity. Inside the sheet:
-  - Section A "Product": Projects, Gallery, New project (deep-links `/?focus=composer`).
-  - Section B "Account": Credits & plan (opens `BillingSheet`), Cloud & AI balance (opens `CloudBalanceSheet`), Profile, Admin (if `isAdmin`), Sign out.
-  - Section C "Help": link to docs, "What's new" (gallery for now).
-- The avatar dropdown stays for desktop power-users; both surfaces wire to the same handlers — no duplicate logic.
-- Both sheets get a tiny "See {other}" cross-link at the footer:
-  - In `BillingSheet`: "Looking for Cloud usage? Open Cloud & AI balance →"
-  - In `CloudBalanceSheet`: "Looking for AI message credits? Open Plans & credits →"
-  This is a 3-line addition per sheet, no logic change.
+This is the real bug. Adding more retries won't help if the failure is bypassing the pipeline entirely.
 
-### 2. Turn `/profile` into a lightweight "Account hub"
+## The plan — three workstreams, in priority order
 
-Same route, same form on top — but underneath the existing form, add a 2×2 grid of `SectionCard`s (the same component pattern already used on `/admin`):
+### Workstream 1 (CRITICAL — root cause): Make every failure observable
 
-- **Plans & credits** → opens `BillingSheet`
-- **Cloud & AI balance** → opens `CloudBalanceSheet`
-- **My projects** → `Link` to `/projects`
-- **Admin** (only when `isAdmin`) → `Link` to `/admin`
+The "confused" toast fires when `toFriendlyError()` gets a string that matches no known pattern. We have **no telemetry** on what those strings actually are. Until we know, every "fix" is a guess.
 
-This makes `/profile` a real settings hub without renaming the route or moving the form. Anyone who was bookmarking `/profile` keeps it working.
+- Add a `pipeline_failures` table. On every GENERIC fallback in `friendly-errors.ts`, POST the raw error + last 500 chars of the assistant stream + tool name attempted + project_id to a new `/api/public/track-failure` route.
+- In `src/routes/api/generate.ts`, wrap the SSE stream in a try/catch that always emits a structured `error` event and always calls `recordAiOutcome` (currently it's only called on the happy path — confirmed by reading `ai-outcomes.server.ts`).
+- Add a new admin page `/admin/failures` showing the last 100 unmatched errors, grouped by signature.
 
-### 3. Add a persistent admin sub-nav
+**Outcome:** within 24 hours of shipping, we'll have a ranked list of the actual failure modes. Right now we are guessing.
 
-Add a small `<AdminTabs />` component (just `Link`s with active styling using `useRouterState`) and render it under `<SiteHeader />` on every `admin.*` page. Pages: Overview · Users · Projects · Ledgers · Billing · AI Providers · Pipeline. No route changes, just a shared tab strip — same pattern as `SiteHeader` reuse today.
+### Workstream 2 (HIGH — copy v0's two highest-leverage tactics)
 
-### 4. (Tiny) Builder convenience
+**a) "LLM Suspense" for the lucide-react problem.** v0 calls this out specifically. We don't do it. Build `src/server/lucide-resolver.server.ts`:
+- At server start, read the actual export list from `node_modules/lucide-react/dist/esm/icons`.
+- In `stream-autofixer.ts`, intercept `import { X } from "lucide-react"` during streaming. If `X` doesn't exist, rewrite to `import { ClosestMatch as X } from "lucide-react"` using a precomputed embedding map (or just Levenshtein — 1500 names, fast enough).
+- This single fix will eliminate a chunk of the `missing-export` errors (49 in the last 7 days).
 
-In the existing builder header area where `setBillingOpen` is wired, add a sibling "Cloud" button that opens `CloudBalanceSheet`. Same pattern, ~10 lines. The `RuntimeLowBalanceBanner` already exists; this just makes the entry visible before users hit a low-balance state.
+**b) Deterministic missing-import autofix.** Today, when a file imports `./Hero` but `Hero.tsx` doesn't exist, we hand it back to the user as "Add the missing file." v0 fixes this automatically with a single small targeted call. Add a `tier-missing-imports.ts` between esbuild and post-stream-autofix:
+- Parse all `import "./X"` and `import "@/X"` references.
+- For each unresolved local import, fire a *scoped* call to `gemini-2.5-flash` with only the parent file as context: "create a minimal stub at this path that satisfies the import." Cap at 3 calls per turn.
 
----
+### Workstream 3 (MEDIUM — close the truncation problem at its source)
 
-## Technical details
+Telemetry shows truncation (13) + unterminated-string (11) + braces (14) = 38 events. `tier-continuation.ts` already handles these but only when the verifier catches them. v0's lesson: **prevent, don't repair.**
 
-**Files to add**
-- `src/components/MobileNavSheet.tsx` — hamburger sheet content (uses existing `Sheet`, `useAuth`, `useIsAdmin`, opens the two existing sheets via callback props).
-- `src/components/AdminTabs.tsx` — horizontal scroll-safe tab strip with `Link` + `useRouterState`.
-- `src/components/AccountHubGrid.tsx` — 2×2 `SectionCard` grid for `/profile`.
+- Hard-enforce the 180-line file budget in the tool schema itself (currently it's a prose rule the model ignores). Add a server-side reject + auto-split: if any incoming file is >180 lines, refuse the tool call and respond with an instruction to split that specific file. One round-trip beats a continuation pass.
+- Increase `max_tokens` per file write to the model's hard ceiling, not our default. We're sometimes capping below what the file needs.
+- For initial generations only, switch the default model to `gemini-2.5-pro` (33% verifier-pass beats flash's 25% in our own data — though the sample is tiny).
 
-**Files to edit (additive)**
-- `src/components/SiteHeader.tsx` — add the product cluster (desktop), add hamburger trigger + `MobileNavSheet` (mobile), pass through `onOpenBilling`/`onOpenCloud` handlers; keep all existing markup/classes intact.
-- `src/components/BillingSheet.tsx` — append a footer link that calls a new optional `onOpenCloudBalance?: () => void` prop. When undefined (existing call sites), render nothing — zero breakage.
-- `src/components/CloudBalanceSheet.tsx` — same, with optional `onOpenBilling?: () => void`.
-- `src/routes/profile.tsx` — render `<AccountHubGrid />` below the existing form; manage `billingOpen` / `cloudOpen` local state and reuse the two sheets.
-- `src/routes/admin.index.tsx`, `admin.users.tsx`, `admin.projects.tsx`, `admin.ledgers.tsx`, `admin.billing.tsx`, `admin.ai-providers.tsx`, `admin.pipeline.tsx` — insert `<AdminTabs />` directly under `<SiteHeader />`. One-line addition each.
-- `src/routes/builder.tsx` — add `cloudBalanceOpen` state next to existing `billingOpen`, render `<CloudBalanceSheet>` once, add the trigger button next to the existing billing trigger.
+### Workstream 4 (LOWER — what we should NOT do)
 
-**Safety guarantees**
-- No route file is renamed, deleted, or has its `head()` changed.
-- Every prop added is optional (`?:`) so all existing call sites keep working without edits.
-- All new openers reuse the same `Sheet`/`Dialog` instances already in production; nothing is forked.
-- No DB, RLS, edge function, or env changes. No new dependencies.
-- I'll verify after the edit that `SiteHeader` still renders identically when signed-out (acceptance: snapshot of marketing nav unchanged).
+You asked if competitors use "third-party software." They don't. Bolt uses Anthropic's API. v0 uses their own fine-tunes + standard frontier models. **There is no off-the-shelf reliability product to buy.** Anyone selling one is selling a wrapper around the same techniques we already have.
 
-**Acceptance checks I'll do after the edit**
-1. Signed-out landing on mobile (430px): hamburger appears; tapping it shows Sign in / Get started + Gallery / Features. Header logo + CTAs unchanged.
-2. Signed-in mobile: hamburger lists Projects, Gallery, Credits & plan, Cloud & AI balance, Profile, (Admin if admin), Sign out — all open the same sheets/routes the avatar dropdown opens.
-3. Desktop signed-in: header shows `Projects · Gallery · Cloud · Credits · Avatar` and clicking each opens the existing surface (no duplicate sheets mounted twice).
-4. `/profile` still saves; new card grid opens BillingSheet/CloudBalanceSheet with the same data shown today.
-5. Any `/admin/*` page shows the tab strip with the current tab highlighted.
-6. Builder still works; new Cloud button opens `CloudBalanceSheet` and existing `billingOpen` flow unchanged.
+You also asked if they "build for longer before asking the user to continue." Partially yes — Bolt's WebContainer means the build cycle is sub-second, so they can iterate 3–4 times silently before showing the user anything. We can't replicate that without WebContainer (a 6-month project). But we can **silently retry once on tool-call failure** before surfacing any error — something we're not doing today.
 
-After approval I'll implement in this order: SiteHeader + MobileNavSheet → cross-links in the two sheets → AccountHubGrid in /profile → AdminTabs across admin pages → builder Cloud button. Each step is independently shippable so even if you stop me halfway, nothing regresses.
+## Why this order
+
+1. We can't fix what we can't see. Workstream 1 is one day of work and will retire 80% of the guessing.
+2. Lucide + missing-imports is the highest-impact concrete bug confirmed by our own data.
+3. The truncation work matters but only after we know the post-W1 telemetry doesn't reveal something more urgent.
+
+## Decision needed
+
+Approve this and I'll start with Workstream 1 — purely additive (new table, new route, new admin page, two callsite tweaks). No regression risk to the generation pipeline. Within a day we'll have the data to choose between Workstream 2 and Workstream 3 for what to ship next.

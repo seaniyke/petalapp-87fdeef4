@@ -39,11 +39,13 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
 import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
+import { Route as AdminFailuresRouteImport } from './routes/admin.failures'
 import { Route as AdminBillingRouteImport } from './routes/admin.billing'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiRegistrarSearchRouteImport } from './routes/api/registrar/search'
 import { Route as ApiRegistrarPurchaseRouteImport } from './routes/api/registrar/purchase'
+import { Route as ApiPublicTrackFailureRouteImport } from './routes/api/public/track-failure'
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
 import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
@@ -214,6 +216,11 @@ const AdminLedgersRoute = AdminLedgersRouteImport.update({
   path: '/admin/ledgers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminFailuresRoute = AdminFailuresRouteImport.update({
+  id: '/admin/failures',
+  path: '/admin/failures',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminBillingRoute = AdminBillingRouteImport.update({
   id: '/admin/billing',
   path: '/admin/billing',
@@ -237,6 +244,11 @@ const ApiRegistrarSearchRoute = ApiRegistrarSearchRouteImport.update({
 const ApiRegistrarPurchaseRoute = ApiRegistrarPurchaseRouteImport.update({
   id: '/api/registrar/purchase',
   path: '/api/registrar/purchase',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicTrackFailureRoute = ApiPublicTrackFailureRouteImport.update({
+  id: '/api/public/track-failure',
+  path: '/api/public/track-failure',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicTrackRoute = ApiPublicTrackRouteImport.update({
@@ -351,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
@@ -383,6 +396,7 @@ export interface FileRoutesByFullPath {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
+  '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -407,6 +421,7 @@ export interface FileRoutesByTo {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
@@ -439,6 +454,7 @@ export interface FileRoutesByTo {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
+  '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -464,6 +480,7 @@ export interface FileRoutesById {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
@@ -496,6 +513,7 @@ export interface FileRoutesById {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
+  '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -522,6 +540,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
+    | '/admin/failures'
     | '/admin/ledgers'
     | '/admin/pipeline'
     | '/admin/projects'
@@ -554,6 +573,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
+    | '/api/public/track-failure'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
@@ -578,6 +598,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
+    | '/admin/failures'
     | '/admin/ledgers'
     | '/admin/pipeline'
     | '/admin/projects'
@@ -610,6 +631,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
+    | '/api/public/track-failure'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
@@ -634,6 +656,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
+    | '/admin/failures'
     | '/admin/ledgers'
     | '/admin/pipeline'
     | '/admin/projects'
@@ -666,6 +689,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
+    | '/api/public/track-failure'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
@@ -691,6 +715,7 @@ export interface RootRouteChildren {
   UnsubscribeRoute: typeof UnsubscribeRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminBillingRoute: typeof AdminBillingRoute
+  AdminFailuresRoute: typeof AdminFailuresRoute
   AdminLedgersRoute: typeof AdminLedgersRoute
   AdminPipelineRoute: typeof AdminPipelineRoute
   AdminProjectsRoute: typeof AdminProjectsRoute
@@ -722,6 +747,7 @@ export interface RootRouteChildren {
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
   ApiPublicHostLookupRoute: typeof ApiPublicHostLookupRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
+  ApiPublicTrackFailureRoute: typeof ApiPublicTrackFailureRoute
   ApiRegistrarPurchaseRoute: typeof ApiRegistrarPurchaseRoute
   ApiRegistrarSearchRoute: typeof ApiRegistrarSearchRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -948,6 +974,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLedgersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/failures': {
+      id: '/admin/failures'
+      path: '/admin/failures'
+      fullPath: '/admin/failures'
+      preLoaderRoute: typeof AdminFailuresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/billing': {
       id: '/admin/billing'
       path: '/admin/billing'
@@ -981,6 +1014,13 @@ declare module '@tanstack/react-router' {
       path: '/api/registrar/purchase'
       fullPath: '/api/registrar/purchase'
       preLoaderRoute: typeof ApiRegistrarPurchaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/track-failure': {
+      id: '/api/public/track-failure'
+      path: '/api/public/track-failure'
+      fullPath: '/api/public/track-failure'
+      preLoaderRoute: typeof ApiPublicTrackFailureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/track': {
@@ -1142,6 +1182,7 @@ const rootRouteChildren: RootRouteChildren = {
   UnsubscribeRoute: UnsubscribeRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminBillingRoute: AdminBillingRoute,
+  AdminFailuresRoute: AdminFailuresRoute,
   AdminLedgersRoute: AdminLedgersRoute,
   AdminPipelineRoute: AdminPipelineRoute,
   AdminProjectsRoute: AdminProjectsRoute,
@@ -1173,6 +1214,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
   ApiPublicHostLookupRoute: ApiPublicHostLookupRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
+  ApiPublicTrackFailureRoute: ApiPublicTrackFailureRoute,
   ApiRegistrarPurchaseRoute: ApiRegistrarPurchaseRoute,
   ApiRegistrarSearchRoute: ApiRegistrarSearchRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
