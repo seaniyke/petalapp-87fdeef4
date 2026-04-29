@@ -70,6 +70,7 @@ function AdminBillingPage() {
     return (
       <div className="min-h-screen bg-background">
         <SiteHeader />
+        <AdminTabs />
         <div className="flex items-center justify-center py-32 text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
         </div>
@@ -82,6 +83,7 @@ function AdminBillingPage() {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
+      <AdminTabs />
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-8 flex items-end justify-between">
           <div>
