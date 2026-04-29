@@ -60,13 +60,13 @@ function runFixture(fixture: (typeof FIXTURES)[number]): Result {
   // is named "clean" — the slip-through fixtures intentionally produce no
   // issues yet).
   if (fixture.expectIssueIncludes.length === 0 && fixture.name.startsWith("clean")) {
-    if (!verdict.ok) {
+    if (!verdict.ok || renderRiskIssues.length > 0) {
       return {
         name: fixture.name,
         ok: false,
-        reason: `clean fixture expected ok=true but verifier flagged: ${verdict.issues
-          .map((i) => `[${i.kind}] ${i.path}`)
-          .join(", ")}`,
+        reason: `clean fixture expected no issues but got: ${allIssues
+          .map((i) => `[${i.kind}] ${i.path}: ${i.detail}`)
+          .join(" | ")}`,
       };
     }
   }
