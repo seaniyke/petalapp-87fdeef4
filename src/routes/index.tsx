@@ -404,12 +404,25 @@ function Landing() {
     }
 
     const target = `/builder?${params.toString()}`;
-    if (!isReady) return;
-    if (!user) {
+    // Unauthenticated path is safe to take immediately — we don't need
+    // `isReady` to know we have to send them to signup. Gating on isReady
+    // here was making the button look broken: if a user clicked before the
+    // auth session finished hydrating, submit() returned silently and the
+    // surrounding <form> fell back to its default GET, dumping them onto
+    // "/?prompt=..." with no progress.
+    if (isReady && user) {
+      window.location.href = target;
+      return;
+    }
+    if (isReady && !user) {
       window.location.href = `/auth?mode=signup&redirect=${encodeURIComponent(target)}`;
       return;
     }
-    window.location.href = target;
+    // Auth state not yet known — assume signed-out (the common case for
+    // first-time visitors) and route them through signup. If they turn out
+    // to be signed in, /auth will bounce them straight to `target` via its
+    // own "already logged in" effect, so the prompt is never lost.
+    window.location.href = `/auth?mode=signup&redirect=${encodeURIComponent(target)}`;
   };
 
   const goToAuthForCoach = () => {
