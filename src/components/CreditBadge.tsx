@@ -36,7 +36,7 @@ export function CreditBadge() {
         <HoverCardTrigger asChild>
           <button
             type="button"
-            aria-label={`${breakdown.total} credits remaining. Open billing.`}
+            aria-label={`${formatCredits(breakdown.total)} credits remaining. Open billing.`}
             onClick={() => setSheetOpen(true)}
             className={cn(
               "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors hover:opacity-90",
