@@ -62,7 +62,7 @@ Goal: close the MEDIUM and WEAK gaps from the audit without destabilizing the pi
 
 ---
 
-## Phase 4 — Refactor `generate.ts` (WEAK-f)
+## Phase 4 — Refactor `generate.ts` (WEAK-f) ✅ SHIPPED (conservative)
 
 **Problem:** 1336 lines of orchestration in one file is now the audit risk it was designed to prevent.
 
