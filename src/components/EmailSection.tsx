@@ -60,9 +60,33 @@ export function EmailSection({ projectId }: { projectId: string }) {
     try {
       setBusy(true);
       const r = await fnEnable({ data: { projectId } });
+      // Optimistically flip to enabled so the CTA hides immediately, even
+      // before the follow-up refresh resolves. The refresh fills in usage,
+      // sender details, and outbound rows.
+      setStatus({
+        enabled: true,
+        subscription: {
+          id: r.subscriptionId,
+          plan: "free",
+          status: "active",
+          monthly_cap: 3000,
+          daily_cap: 100,
+          sender_email: r.sender,
+          reply_to: null,
+          custom_domain: null,
+          custom_domain_verified: false,
+          api_token_prefix: r.token.slice(0, 8),
+          current_period_start: new Date().toISOString(),
+          current_period_end: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+          created_at: new Date().toISOString(),
+        },
+        usage: { monthly_used: 0, daily_used: 0 },
+        pro: status?.pro ?? { monthly_cap: 50000, price_usd_cents: 2500 },
+      } as Status);
       setRevealedToken(r.token);
       toast.success("Petal Email enabled");
-      await refresh();
+      // Background refresh — don't block the UI flip on it.
+      void refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to enable");
     } finally {
