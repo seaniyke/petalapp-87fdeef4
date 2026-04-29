@@ -34,8 +34,6 @@ import { DomainsSection } from "@/components/DomainsSection";
 import { EmailSection } from "@/components/EmailSection";
 import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { LabsSection } from "@/components/LabsSection";
-import { IntegrationsSection } from "@/components/IntegrationsSection";
-import { useLabsFlag } from "@/hooks/use-labs-flags";
 import { useWallet } from "@/hooks/use-wallet";
 import { Switch } from "@/components/ui/switch";
 import { builderDraftKeys, clearDraft, readDraft, writeDraft } from "@/lib/draft-storage";
@@ -226,20 +224,16 @@ export function ProjectSettingsSheet({
         {/* Powered by Petal badge toggle */}
         <PetalBadgeSection project={project} onChange={onChange} />
 
-        {/* Integrations marketplace — gated by Labs flag */}
-        <IntegrationsSectionGated projectId={project.id} />
+        {/* Integrations marketplace removed — Petal scaffolds third-party
+            SDKs directly from prompts and asks for any required secrets via
+            the inline SecretRequestCard. The backend tables and API remain
+            intact so existing installs keep working. */}
 
         {/* Labs toggles */}
         <LabsSection />
       </SheetContent>
     </Sheet>
   );
-}
-
-function IntegrationsSectionGated({ projectId }: { projectId: string }) {
-  const enabled = useLabsFlag("integrations_marketplace");
-  if (!enabled) return null;
-  return <IntegrationsSection projectId={projectId} />;
 }
 
 /* ---------------- Backend section ---------------- */

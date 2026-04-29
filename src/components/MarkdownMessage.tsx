@@ -4,7 +4,8 @@ import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github.css";
 import { Fragment } from "react";
 import { SecretRequestCard } from "./SecretRequestCard";
-import { SuggestedIntegrationCard } from "./SuggestedIntegrationCard";
+// SuggestedIntegrationCard removed — third-party integrations are scaffolded
+// from prompts now, not suggested as one-click installs.
 
 // Only register the languages we actually need — keeps the highlight.js chunk
 // from ballooning past 500KB.
@@ -90,7 +91,8 @@ export function MarkdownMessage({ content, projectId }: { content: string; proje
     <div className="markdown prose prose-sm max-w-none text-sm leading-relaxed wrap-anywhere">
       {segments.map((seg, i) => {
         if (seg.kind === "suggest") {
-          return <SuggestedIntegrationCard key={i} code={seg.code} />;
+          // Marketplace removed — drop the tag silently instead of rendering a card.
+          return null;
         }
         if (seg.kind === "secret") {
           return (
