@@ -217,7 +217,10 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
               icon={<LayoutGrid className="h-4 w-4" />}
               label="All projects"
               active={section === "all"}
-              onClick={() => setSection("all")}
+              onClick={() => {
+                onOpenChange(false);
+                navigate({ to: "/projects" });
+              }}
             />
             <SectionRow
               icon={<Star className="h-4 w-4" />}
