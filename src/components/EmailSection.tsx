@@ -61,22 +61,24 @@ export function EmailSection({ projectId }: { projectId: string }) {
     try {
       setBusy(true);
       const r = await fnEnable({ data: { projectId } });
+      const token = typeof r?.token === "string" ? r.token : "";
+      const sender = r?.sender ?? "noreply@buildwithpetal.com";
       // Optimistically flip to enabled so the CTA hides immediately, even
       // before the follow-up refresh resolves. The refresh fills in usage,
       // sender details, and outbound rows.
       setStatus({
         enabled: true,
         subscription: {
-          id: r.subscriptionId,
+          id: r?.subscriptionId ?? "",
           plan: "free",
           status: "active",
           monthly_cap: 3000,
           daily_cap: 100,
-          sender_email: r.sender,
+          sender_email: sender,
           reply_to: null,
           custom_domain: null,
           custom_domain_verified: false,
-          api_token_prefix: r.token.slice(0, 8),
+          api_token_prefix: token ? token.slice(0, 8) : "pet_",
           current_period_start: new Date().toISOString(),
           current_period_end: new Date(Date.now() + 30 * 86_400_000).toISOString(),
           created_at: new Date().toISOString(),
@@ -84,13 +86,13 @@ export function EmailSection({ projectId }: { projectId: string }) {
         usage: { monthly_used: 0, daily_used: 0 },
         pro: status?.pro ?? { monthly_cap: 50000, price_usd_cents: 2500 },
       } as Status);
-      setRevealedToken(r.token);
+      if (token) setRevealedToken(token);
       toast.success("Petal Email enabled");
       emitServiceEnabled({
         projectId,
         service: "email",
         label: "Petal Email",
-        summary: `Sender ${r.sender} • 100/day, 3,000/month on the free tier. Your API token is shown once — copy it now.`,
+        summary: `Sender ${sender} • 100/day, 3,000/month on the free tier.${token ? " Your API token is shown once — copy it now." : ""}`,
       });
       // Background refresh — don't block the UI flip on it.
       void refresh();
