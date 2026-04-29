@@ -67,6 +67,34 @@ const customDomainProxy = createMiddleware().server(async ({ next }) => {
   return proxyToPages(request, target.pagesUrl);
 });
 
+/**
+ * Attach the signed-in user's Supabase access token to every server function
+ * call. Without this, server functions guarded by `requireSupabaseAuth`
+ * return 401 because the browser never sends an Authorization header by
+ * default.
+ *
+ * `.client()` runs in BOTH the browser and during SSR (when a server
+ * function is invoked from a loader). Guard browser-only APIs with
+ * `typeof window` so SSR doesn't crash trying to read `localStorage`.
+ */
+const attachSupabaseAuth = createMiddleware({ type: "function" }).client(
+  async ({ next }) => {
+    if (typeof window === "undefined") return next();
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (token) {
+        return next({ headers: { Authorization: `Bearer ${token}` } });
+      }
+    } catch {
+      // No session / supabase unavailable — let the call proceed unauthenticated.
+    }
+    return next();
+  },
+);
+
 export const startInstance = createStart(() => ({
   requestMiddleware: [customDomainProxy, crossOriginIsolation],
+  functionMiddleware: [attachSupabaseAuth],
 }));

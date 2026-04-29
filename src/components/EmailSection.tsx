@@ -63,9 +63,8 @@ export function EmailSection({ projectId }: { projectId: string }) {
       const r = await fnEnable({ data: { projectId } });
       const token = typeof r?.token === "string" ? r.token : "";
       const sender = r?.sender ?? "noreply@buildwithpetal.com";
-      // Optimistically flip to enabled so the CTA hides immediately, even
-      // before the follow-up refresh resolves. The refresh fills in usage,
-      // sender details, and outbound rows.
+      // Only flip to enabled AFTER the server confirms — otherwise a 401 /
+      // failure would still show a green "enabled" state and hide the CTA.
       setStatus({
         enabled: true,
         subscription: {
