@@ -58,7 +58,22 @@ async function backendApi<T>(action: BackendAction, body: unknown): Promise<T> {
   });
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
-    throw new Error(text || `Request failed (${resp.status})`);
+    // Server returns structured JSON for known failure codes (e.g. topup_required).
+    try {
+      const j = JSON.parse(text) as { error?: string; code?: string };
+      const err = new Error(j.error || `Request failed (${resp.status})`) as Error & {
+        code?: string;
+        status?: number;
+        body?: unknown;
+      };
+      if (j.code) err.code = j.code;
+      err.status = resp.status;
+      err.body = j;
+      throw err;
+    } catch (parseErr) {
+      if (parseErr instanceof Error && (parseErr as { code?: string }).code) throw parseErr;
+      throw new Error(text || `Request failed (${resp.status})`);
+    }
   }
   return (await resp.json()) as T;
 }
