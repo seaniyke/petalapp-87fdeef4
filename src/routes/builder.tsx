@@ -1408,6 +1408,11 @@ function Builder() {
     },
     [busy, messages, files, ensureProject, pendingAttachments],
   );
+  // Keep the latest send reference available to the service-enabled effect
+  // without making that effect re-subscribe on every keystroke.
+  useEffect(() => {
+    sendRef.current = send;
+  }, [send]);
 
   // Discuss mode: ask Petal a question without touching files. The reply is
   // appended as a normal assistant message and tagged so we can show an
