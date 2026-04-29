@@ -1164,9 +1164,13 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // per turn, AFTER all repair tiers, BEFORE the result event so
               // the client can attach it to this assistant message.
               if (handoffReason) {
+                const hasDetected =
+                  (handoffDetected.hallucinatedPackages?.length ?? 0) > 0 ||
+                  (handoffDetected.truncatedPaths?.length ?? 0) > 0;
                 const { message: handoffMessage, suggestedPrompt } = buildHandoffPrompt(
                   handoffReason,
                   budgetRejections,
+                  hasDetected ? handoffDetected : undefined,
                 );
                 controller.enqueue(
                   encoder.encode(
@@ -1175,6 +1179,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                       reason: handoffReason,
                       message: handoffMessage,
                       suggestedPrompt,
+                      ...(hasDetected ? { detected: handoffDetected } : {}),
                     }),
                   ),
                 );
