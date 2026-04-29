@@ -114,9 +114,20 @@ export const Route = createFileRoute("/api/billing/initialize")({
               if (rate <= 0) return new Response("Bad currency rate", { status: 500 });
               const localMajor = parsed.customAmountMinor / 100; // assumes 2-decimal
               const usdMajor = localMajor / rate;
+              const usdCents = Math.floor(usdMajor * 100);
+              // Enforce a sane minimum so we don't pay Paystack fees on a
+              // sub-dollar charge. $1 USD floor.
+              if (usdCents < 100) {
+                return new Response(
+                  JSON.stringify({
+                    error: "Minimum top-up is $1.00 USD equivalent.",
+                  }),
+                  { status: 400, headers: { "Content-Type": "application/json" } },
+                );
+              }
               price = {
                 amountMinor: parsed.customAmountMinor,
-                usdAmountCents: Math.max(50, Math.floor(usdMajor * 100)),
+                usdAmountCents: usdCents,
               };
             } else {
               const { data: pack } = await supabaseAdmin
