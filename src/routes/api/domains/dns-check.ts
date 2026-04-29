@@ -22,9 +22,9 @@ import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
-  PETAL_DOMAIN_CNAME_TARGET_FALLBACK,
-  PETAL_DOMAIN_A_RECORD_FALLBACK,
-} from "@/server/cloudflare-saas.server";
+  PETAL_DOMAIN_CNAME_TARGET as PETAL_DOMAIN_CNAME_TARGET_FALLBACK,
+  PETAL_DOMAIN_A_RECORD as PETAL_DOMAIN_A_RECORD_FALLBACK,
+} from "@/lib/domains";
 
 const Input = z.object({
   projectId: z.string().uuid(),

@@ -45,6 +45,7 @@ import { Route as ApiRegistrarSearchRouteImport } from './routes/api/registrar/s
 import { Route as ApiRegistrarPurchaseRouteImport } from './routes/api/registrar/purchase'
 import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
+import { Route as ApiDomainsDnsCheckRouteImport } from './routes/api/domains/dns-check'
 import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigger'
 import { Route as ApiBuildsCallbackRouteImport } from './routes/api/builds/callback'
 import { Route as ApiBillingVerifyRouteImport } from './routes/api/billing/verify'
@@ -241,6 +242,11 @@ const ApiPreviewProjectIdRoute = ApiPreviewProjectIdRouteImport.update({
   path: '/api/preview/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDomainsDnsCheckRoute = ApiDomainsDnsCheckRouteImport.update({
+  id: '/dns-check',
+  path: '/dns-check',
+  getParentRoute: () => ApiDomainsRoute,
+} as any)
 const ApiBuildsTriggerRoute = ApiBuildsTriggerRouteImport.update({
   id: '/api/builds/trigger',
   path: '/api/builds/trigger',
@@ -340,7 +346,7 @@ export interface FileRoutesByFullPath {
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
-  '/api/domains': typeof ApiDomainsRoute
+  '/api/domains': typeof ApiDomainsRouteWithChildren
   '/api/generate': typeof ApiGenerateRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
   '/api/integrations': typeof ApiIntegrationsRoute
@@ -360,6 +366,7 @@ export interface FileRoutesByFullPath {
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
+  '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
@@ -393,7 +400,7 @@ export interface FileRoutesByTo {
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
-  '/api/domains': typeof ApiDomainsRoute
+  '/api/domains': typeof ApiDomainsRouteWithChildren
   '/api/generate': typeof ApiGenerateRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
   '/api/integrations': typeof ApiIntegrationsRoute
@@ -413,6 +420,7 @@ export interface FileRoutesByTo {
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
+  '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
@@ -447,7 +455,7 @@ export interface FileRoutesById {
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
-  '/api/domains': typeof ApiDomainsRoute
+  '/api/domains': typeof ApiDomainsRouteWithChildren
   '/api/generate': typeof ApiGenerateRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
   '/api/integrations': typeof ApiIntegrationsRoute
@@ -467,6 +475,7 @@ export interface FileRoutesById {
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
+  '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
@@ -522,6 +531,7 @@ export interface FileRouteTypes {
     | '/api/billing/verify'
     | '/api/builds/callback'
     | '/api/builds/trigger'
+    | '/api/domains/dns-check'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/registrar/purchase'
@@ -575,6 +585,7 @@ export interface FileRouteTypes {
     | '/api/billing/verify'
     | '/api/builds/callback'
     | '/api/builds/trigger'
+    | '/api/domains/dns-check'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/registrar/purchase'
@@ -628,6 +639,7 @@ export interface FileRouteTypes {
     | '/api/billing/verify'
     | '/api/builds/callback'
     | '/api/builds/trigger'
+    | '/api/domains/dns-check'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/registrar/purchase'
@@ -662,7 +674,7 @@ export interface RootRouteChildren {
   ApiBackendRoute: typeof ApiBackendRoute
   ApiCoachRoute: typeof ApiCoachRoute
   ApiDiscussRoute: typeof ApiDiscussRoute
-  ApiDomainsRoute: typeof ApiDomainsRoute
+  ApiDomainsRoute: typeof ApiDomainsRouteWithChildren
   ApiGenerateRoute: typeof ApiGenerateRoute
   ApiGenerateImageRoute: typeof ApiGenerateImageRoute
   ApiIntegrationsRoute: typeof ApiIntegrationsRoute
@@ -952,6 +964,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPreviewProjectIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/domains/dns-check': {
+      id: '/api/domains/dns-check'
+      path: '/dns-check'
+      fullPath: '/api/domains/dns-check'
+      preLoaderRoute: typeof ApiDomainsDnsCheckRouteImport
+      parentRoute: typeof ApiDomainsRoute
+    }
     '/api/builds/trigger': {
       id: '/api/builds/trigger'
       path: '/api/builds/trigger'
@@ -1060,6 +1079,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ApiDomainsRouteChildren {
+  ApiDomainsDnsCheckRoute: typeof ApiDomainsDnsCheckRoute
+}
+
+const ApiDomainsRouteChildren: ApiDomainsRouteChildren = {
+  ApiDomainsDnsCheckRoute: ApiDomainsDnsCheckRoute,
+}
+
+const ApiDomainsRouteWithChildren = ApiDomainsRoute._addFileChildren(
+  ApiDomainsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
@@ -1078,7 +1109,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBackendRoute: ApiBackendRoute,
   ApiCoachRoute: ApiCoachRoute,
   ApiDiscussRoute: ApiDiscussRoute,
-  ApiDomainsRoute: ApiDomainsRoute,
+  ApiDomainsRoute: ApiDomainsRouteWithChildren,
   ApiGenerateRoute: ApiGenerateRoute,
   ApiGenerateImageRoute: ApiGenerateImageRoute,
   ApiIntegrationsRoute: ApiIntegrationsRoute,
