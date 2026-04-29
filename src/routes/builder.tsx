@@ -1843,6 +1843,7 @@ function Builder() {
   // the auto-fix variant.
   useEffect(() => {
     askPetalToFixRef.current = () => askPetalToFix({ isAuto: true });
+    askPetalToFixManualRef.current = () => askPetalToFix({ isAuto: false });
   }, [askPetalToFix]);
 
   async function downloadProject() {
