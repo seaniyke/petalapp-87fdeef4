@@ -44,6 +44,7 @@ import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-cla
 // verifier and its recovery pass was unconditionally skipped by the
 // Phase D one-round autofix cap, so it only added latency + tokens.
 import { verifyFilesLocal } from "@/server/local-verifier";
+import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import { runContinuation } from "@/server/stream-continuation.server";
 import { pickBestModel } from "@/server/smart-router.server";
 import { recordAiOutcome } from "@/server/ai-outcomes.server";
