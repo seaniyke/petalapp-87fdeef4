@@ -344,6 +344,7 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
       />
 
       <DnsRecordsDialog
+        projectId={projectId}
         domain={recordsFor}
         onClose={() => setRecordsFor(null)}
         onVerify={async () => {
