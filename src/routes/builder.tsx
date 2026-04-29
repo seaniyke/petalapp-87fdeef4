@@ -3068,6 +3068,23 @@ function Builder() {
                       <MessageSquare className="h-3 w-3" /> Discuss
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setDeepThink((v) => !v)}
+                    aria-pressed={deepThink}
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                      deepThink
+                        ? "border-foreground bg-foreground text-background shadow-sm"
+                        : "border-border bg-muted/40 text-muted-foreground hover:text-foreground"
+                    }`}
+                    title={
+                      deepThink
+                        ? "Deep think on — Petal will use the strongest model with extended reasoning. Slower and costs more."
+                        : "Turn on Deep think — uses the strongest model with extended reasoning for hard refactors. One-shot."
+                    }
+                  >
+                    <Sparkles className="h-3 w-3" /> Deep
+                  </button>
                 </div>
                 <button
                   type="submit"
