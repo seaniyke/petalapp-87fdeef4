@@ -107,8 +107,10 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
     try {
       const rows = await searchDomains(query);
       setResults(rows);
-      // Auto-select the first available result for convenience.
-      const firstAvail = rows.find((r) => r.available && r.priceCents != null);
+      // Auto-select the first BUYABLE result (skip premiums + unavailables).
+      const firstAvail = rows.find(
+        (r) => r.available && r.priceCents != null && r.tier !== "premium",
+      );
       if (firstAvail) setSelected(firstAvail);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Search failed");
