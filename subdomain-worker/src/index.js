@@ -1,8 +1,8 @@
 /**
  * Petal subdomain edge worker.
  *
- * Bound to `*.buildwithpetal.com/*`. For every request:
- *   1. Look up `<slug>.buildwithpetal.com` → project routing target via
+ * Bound to the SaaS zone. For every request:
+ *   1. Look up the requested host → project routing target via
  *      `https://petalapp.lovable.app/api/public/host-lookup`.
  *   2. If the project is published & public → proxy to its `pages.dev` URL.
  *   3. If unpublished / private → render a friendly placeholder.
@@ -149,9 +149,9 @@ export default {
     const url = new URL(request.url);
     const host = url.host.toLowerCase();
 
-    // Defensive: only handle subdomains, never the apex / www / fallback.
+    // Defensive: never handle Petal-owned hosts. Custom hostnames and Petal
+    // subdomains are routed through the control-plane lookup below.
     if (
-      !host.endsWith(`.${PETAL_ROOT}`) ||
       host === `www.${PETAL_ROOT}` ||
       host === `fallback.${PETAL_ROOT}` ||
       host === PETAL_ROOT

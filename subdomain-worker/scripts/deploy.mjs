@@ -1,5 +1,5 @@
 // Deploy the subdomain-router Worker via the Cloudflare REST API and bind it
-// to *.buildwithpetal.com/*. Run with: `node scripts/deploy.mjs`
+// to all SaaS-zone traffic. Run with: `node scripts/deploy.mjs`
 //
 // Required env: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_SAAS_ZONE_ID
 import { readFile } from "node:fs/promises";
@@ -17,7 +17,12 @@ if (!CLOUDFLARE_API_TOKEN || !CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_SAAS_ZONE_ID)
 }
 
 const SCRIPT = "petal-subdomain-router";
-const PATTERN = "*.buildwithpetal.com/*";
+const ROUTES = [
+  { pattern: "*/*", script: SCRIPT },
+  { pattern: "buildwithpetal.com/*" },
+  { pattern: "www.buildwithpetal.com/*" },
+  { pattern: "fallback.buildwithpetal.com/*" },
+];
 
 const cf = (p, init = {}) =>
   fetch(`https://api.cloudflare.com/client/v4${p}`, {
@@ -58,40 +63,46 @@ if (!uploadJson.success) {
 }
 console.log("✓ Worker uploaded");
 
-// ---- 2) Bind to *.buildwithpetal.com/* ---------------------------------
+// ---- 2) Bind to custom hostnames, while excluding Petal-owned hosts -------
 const routes = await cf(`/zones/${CLOUDFLARE_SAAS_ZONE_ID}/workers/routes`).then(
   (r) => r.json(),
 );
-const existing = routes.result?.find((r) => r.pattern === PATTERN);
-if (existing) {
-  if (existing.script === SCRIPT) {
-    console.log(`✓ Route ${PATTERN} already bound to ${SCRIPT}`);
-  } else {
+for (const route of ROUTES) {
+  const existing = routes.result?.find((r) => r.pattern === route.pattern);
+  const body = route.script
+    ? { pattern: route.pattern, script: route.script }
+    : { pattern: route.pattern };
+  if (existing) {
+    const desiredScript = route.script ?? null;
+    if ((existing.script ?? null) === desiredScript) {
+      console.log(`✓ Route ${route.pattern} already correct`);
+      continue;
+    }
     const upd = await cf(
       `/zones/${CLOUDFLARE_SAAS_ZONE_ID}/workers/routes/${existing.id}`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pattern: PATTERN, script: SCRIPT }),
+        body: JSON.stringify(body),
       },
     ).then((r) => r.json());
     if (!upd.success) {
       console.error("Route update failed:", JSON.stringify(upd, null, 2));
       process.exit(1);
     }
-    console.log(`✓ Route ${PATTERN} re-bound to ${SCRIPT}`);
+    console.log(`✓ Route ${route.pattern} updated`);
+    continue;
   }
-} else {
   const add = await cf(`/zones/${CLOUDFLARE_SAAS_ZONE_ID}/workers/routes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pattern: PATTERN, script: SCRIPT }),
+    body: JSON.stringify(body),
   }).then((r) => r.json());
   if (!add.success) {
     console.error("Route add failed:", JSON.stringify(add, null, 2));
     process.exit(1);
   }
-  console.log(`✓ Route ${PATTERN} bound to ${SCRIPT}`);
+  console.log(`✓ Route ${route.pattern} created`);
 }
 
 console.log("\nAll set. Test with:  curl -I https://<slug>.buildwithpetal.com");
