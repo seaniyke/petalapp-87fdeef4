@@ -61,7 +61,7 @@ export function CreditBadge() {
             {breakdown.monthly > 0 && (
               <li className="flex items-center justify-between">
                 <span className="text-muted-foreground">Monthly</span>
-                <span className="tabular-nums">{breakdown.monthly}</span>
+                <span className="tabular-nums">{formatCredits(breakdown.monthly)}</span>
               </li>
             )}
             {breakdown.topup > 0 && (
