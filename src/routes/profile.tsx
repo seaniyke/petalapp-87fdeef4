@@ -6,6 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SiteHeader } from "@/components/SiteHeader";
+import { AccountHubGrid } from "@/components/AccountHubGrid";
+import { BillingSheet } from "@/components/BillingSheet";
+import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
