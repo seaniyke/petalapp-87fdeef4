@@ -3,9 +3,13 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Compact, collapsible header used to wrap the streaming "Plan" and
- * "What changed" segments inside an assistant chat bubble. Default state
- * is collapsed so the chat reads cleanly; users click to expand.
+ * Compact, collapsible row used to wrap the streaming "Plan" and
+ * "What changed" segments inside an assistant chat reply.
+ *
+ * Visual goal: feel like a refined editorial side-note, not a boxed AI
+ * artifact. We intentionally drop the panel chrome (no card backgrounds,
+ * no chunky borders) and lean on tight typography + a single hairline
+ * divider when expanded.
  */
 export function CollapsibleSegment({
   label,
@@ -23,34 +27,44 @@ export function CollapsibleSegment({
   const [open, setOpen] = useState(defaultOpen);
   const isPrimary = tone === "primary";
   return (
-    <div
-      className={cn(
-        "rounded-lg border px-2.5 py-1.5",
-        isPrimary
-          ? "border-primary/15 bg-primary/5"
-          : "border-border/60 bg-card/50",
-      )}
-    >
+    <div className="select-none">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex w-full items-center gap-1 text-[9px] font-semibold uppercase tracking-wider",
-          isPrimary ? "text-primary/80" : "text-muted-foreground",
-          "hover:opacity-80",
+          "group/seg inline-flex w-full items-center gap-1.5 text-left text-[10px] font-bold uppercase tracking-[0.18em] transition-colors",
+          isPrimary
+            ? "text-primary/85 hover:text-primary"
+            : "text-muted-foreground hover:text-foreground",
         )}
         aria-expanded={open}
       >
-        {icon}
+        <span
+          className={cn(
+            "grid h-4 w-4 place-items-center rounded-full",
+            isPrimary ? "bg-primary/15 text-primary" : "bg-foreground/10",
+          )}
+        >
+          {icon}
+        </span>
         <span>{label}</span>
         <ChevronDown
           className={cn(
-            "ml-auto h-3 w-3 shrink-0 transition-transform",
+            "ml-1 h-3 w-3 shrink-0 transition-transform duration-200",
             open ? "rotate-180" : "rotate-0",
           )}
         />
       </button>
-      {open && <div className="mt-1">{children}</div>}
+      {open && (
+        <div
+          className={cn(
+            "mt-2 border-l-2 pl-3 text-[13.5px] leading-relaxed",
+            isPrimary ? "border-primary/35" : "border-border",
+          )}
+        >
+          {children}
+        </div>
+      )}
     </div>
   );
 }
