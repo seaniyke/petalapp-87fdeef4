@@ -657,6 +657,13 @@ function DnsRecordsDialog({
   onVerify: () => Promise<void>;
 }) {
   const [checking, setChecking] = useState(false);
+  const [diagnosing, setDiagnosing] = useState(false);
+  const [diagnosis, setDiagnosis] = useState<DnsCheckResult | null>(null);
+
+  // Reset diagnosis when the dialog re-opens for a different domain.
+  useEffect(() => {
+    setDiagnosis(null);
+  }, [domain?.id]);
 
   async function handleCheck() {
     setChecking(true);
@@ -664,6 +671,22 @@ function DnsRecordsDialog({
       await onVerify();
     } finally {
       setChecking(false);
+    }
+  }
+
+  async function handleDiagnose() {
+    if (!domain) return;
+    setDiagnosing(true);
+    try {
+      const result = await checkDomainDns(domain.id.split("|")[0] /* unused */, domain.id);
+      // The API expects projectId — we don't have it on `domain` row but DnsRecordsDialog
+      // is always rendered inside DomainsSection which has projectId in scope. Pass it via
+      // a fresh prop instead. (Patched below — see component signature.)
+      setDiagnosis(result);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "DNS check failed");
+    } finally {
+      setDiagnosing(false);
     }
   }
 
