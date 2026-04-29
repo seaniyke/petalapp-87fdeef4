@@ -2381,22 +2381,17 @@ function Builder() {
                         <Suspense fallback={<div className="whitespace-pre-wrap">{sanitizeNarrative(m.content)}</div>}>
                           <MarkdownMessage content={sanitizeNarrative(m.content)} projectId={project?.id ?? null} />
                         </Suspense>
-                        {/* Quick-reply chips. Tapping a chip sends its label
-                            as the next user turn — same as if they'd typed it.
-                            Only the most recent assistant message shows them
-                            so old chips don't pile up in the thread. */}
-                        {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !busy && !discussBusy && (
+                        {/* Clarifying-question chips. Only render when the
+                            post-build NextStepsCard is NOT shown (no files
+                            yet) — once a build exists, suggestions are folded
+                            into the "Keep building" action below to keep the
+                            thread calm. */}
+                        {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !busy && !discussBusy && files.length === 0 && (
                           <div className="-mx-0.5 mt-1 flex flex-wrap gap-1.5">
                             {m.suggestions.map((s, si) => (
                               <button
                                 key={si}
                                 type="button"
-                                // One-click follow-up: skip triage and go
-                                // straight into a build turn. The user
-                                // already decided by tapping the chip; a
-                                // re-classification round-trip here would
-                                // feel broken (and sometimes mis-routes
-                                // short edits as "clarify").
                                 onClick={() => void send(s, { forceBuild: true })}
                                 className="inline-flex items-center rounded-full border border-foreground/15 bg-background px-3 py-1.5 text-[12.5px] font-medium text-foreground transition hover:border-foreground/30 hover:bg-foreground hover:text-background"
                               >
@@ -2408,7 +2403,11 @@ function Builder() {
                         {/* Post-build "what's next?" card. Only on the latest
                             assistant message, only when Petal is idle and
                             there's a real app to show. Gives users a clear
-                            three-tap next step instead of a silent prompt. */}
+                            three-tap next step instead of a silent prompt.
+                            Quick-reply suggestions are tucked inside the
+                            "Keep building" action so the thread stays calm
+                            and the user has one obvious place to look for
+                            ideas. */}
                         {i === messages.length - 1 &&
                           !busy &&
                           !discussBusy &&
@@ -2424,6 +2423,8 @@ function Builder() {
                                 if (isMobile) setMobileTab("chat");
                                 composerTextareaRef.current?.focus();
                               }}
+                              suggestions={m.suggestions}
+                              onSuggest={(s) => void send(s, { forceBuild: true })}
                             />
                           )}
                         {m.recap && (() => {
