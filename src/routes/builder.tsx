@@ -2380,6 +2380,27 @@ function Builder() {
                             ))}
                           </div>
                         )}
+                        {/* Post-build "what's next?" card. Only on the latest
+                            assistant message, only when Petal is idle and
+                            there's a real app to show. Gives users a clear
+                            three-tap next step instead of a silent prompt. */}
+                        {i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          files.length > 0 && (
+                            <NextStepsCard
+                              showPreviewAction={isMobile ? mobileTab !== "preview" : view !== "preview"}
+                              onPreview={() => {
+                                if (isMobile) setMobileTab("preview");
+                                else setView("preview");
+                              }}
+                              onPublish={() => setPublishOpen(true)}
+                              onKeepBuilding={() => {
+                                if (isMobile) setMobileTab("chat");
+                                composerTextareaRef.current?.focus();
+                              }}
+                            />
+                          )}
                         {m.recap && (() => {
                           const safeRecap = sanitizeNarrative(m.recap);
                           return (
