@@ -115,7 +115,7 @@ export function SecretRequestCard(props: {
         <Button
           size="sm"
           onClick={() => fulfill.mutate()}
-          disabled={!value || fulfill.isPending || !props.requestId}
+          disabled={!value || fulfill.isPending || !resolvedId}
         >
           {fulfill.isPending ? "Saving…" : "Save securely"}
         </Button>

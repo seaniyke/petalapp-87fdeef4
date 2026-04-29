@@ -84,7 +84,7 @@ function splitSegments(content: string): Segment[] {
   return segs;
 }
 
-export function MarkdownMessage({ content }: { content: string }) {
+export function MarkdownMessage({ content, projectId }: { content: string; projectId?: string | null }) {
   const segments = splitSegments(content);
   return (
     <div className="markdown prose prose-sm max-w-none text-sm leading-relaxed wrap-anywhere">
@@ -100,6 +100,7 @@ export function MarkdownMessage({ content }: { content: string }) {
               instructions={seg.instructions}
               link={seg.link}
               requestId={seg.requestId ?? null}
+              projectId={projectId ?? null}
             />
           );
         }
