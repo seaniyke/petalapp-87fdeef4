@@ -24,6 +24,15 @@ export type PickedElement = {
   sourceLine: string | null;
 };
 
+export type RuntimeError = {
+  message: string;
+  stack: string | null;
+  source: string | null;
+  lineno: number | null;
+  colno: number | null;
+  kind: "error" | "unhandledrejection";
+};
+
 type Phase = "idle" | "booting" | "installing" | "starting" | "ready" | "error" | "unsupported";
 
 export function detectUnsupportedBrowser(): string | null {
@@ -38,12 +47,15 @@ export function WebContainerPreview({
   files,
   reloadKey,
   onPick,
+  onRuntimeError,
 }: {
   files: ProjectFile[];
   /** Bump this number to force the iframe to reload (e.g. after restoring a version). */
   reloadKey: number;
   /** Called when a user picks an element via the in-iframe overlay. */
   onPick?: (el: PickedElement) => void;
+  /** Called when the running app throws a runtime error or unhandled rejection. */
+  onRuntimeError?: (err: RuntimeError) => void;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [serverUrl, setServerUrl] = useState<string | null>(null);
