@@ -109,11 +109,15 @@ async function checkRouting(hostname: string): Promise<CheckRecord> {
   const wanted = normHost(PETAL_DOMAIN_CNAME_TARGET_FALLBACK);
 
   if (isApex) {
-    const [cnames, aRecords] = await Promise.all([
+    const [cnames, aRecords, targetARecords] = await Promise.all([
       doh(hostname, TYPE_CNAME),
       doh(hostname, TYPE_A),
+      doh(PETAL_DOMAIN_CNAME_TARGET_FALLBACK, TYPE_A),
     ]);
-    const ok = cnames.some((c) => normHost(c) === wanted);
+    const targetAs = new Set(targetARecords.map(normHost));
+    const ok =
+      cnames.some((c) => normHost(c) === wanted) ||
+      (targetAs.size > 0 && aRecords.some((a) => targetAs.has(normHost(a))));
     return {
       kind: "routing",
       type: "ALIAS",
