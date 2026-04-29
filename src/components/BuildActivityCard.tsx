@@ -6,7 +6,24 @@
  * Auto-collapses to a single success line a few seconds after going live.
  */
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, RefreshCcw, Wrench, X, Square } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  RefreshCcw,
+  Wrench,
+  X,
+  Square,
+  Sparkles,
+  Palette,
+  FileEdit,
+  Wand2,
+  Rocket,
+  CheckCircle2,
+  Loader2,
+  Check,
+  Circle,
+  type LucideIcon,
+} from "lucide-react";
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
 import type { FriendlyError } from "@/lib/friendly-errors";
 
