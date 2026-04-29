@@ -708,47 +708,44 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   ),
                 );
               }
-              const collected = await relayAndCollect(upstream, controller, encoder);
+              let collected = await relayAndCollect(upstream, controller, encoder);
               controller.enqueue(encoder.encode(sse({ type: "phase", phase: "polishing" })));
               controller.enqueue(
                 encoder.encode(sse({ type: "status", message: "Applying changes…" })),
               );
 
-              if (!collected.name || !collected.args) {
-                throw new Error("AI did not return a project. Try rephrasing.");
-              }
-
-              // INVARIANT: write_project is only allowed when the project is
-              // empty (turn 1). Every subsequent turn MUST go through patch_files
-              // so we keep an auditable diff history and never blow away user work.
-              if (collected.name === "write_project" && !isInitial) {
-                throw new Error(
-                  "AI tried to rewrite the whole project. Edits must be incremental patches.",
-                );
-              }
-              if (collected.name === "patch_files" && isInitial) {
-                throw new Error(
-                  "AI tried to patch an empty project. Initial generation must create files.",
-                );
-              }
-
-              let parsed: {
-                plan?: string;
-                summary?: string;
-                recap?: string;
-                files?: ProjectFile[];
-                ops?: FileOp[];
-              };
+              let payload: ParsedProjectPayload;
               try {
-                parsed = JSON.parse(collected.args);
+                payload = parseCollectedProject(collected, isInitial);
               } catch (e) {
-                console.error("Failed to parse tool args", e, collected.args.slice(0, 500));
-                throw new Error("AI returned invalid project data.");
+                controller.enqueue(
+                  encoder.encode(sse({ type: "status", message: "Retrying the response safely…" })),
+                );
+                const retry = await aiChatCompletions({
+                  feature: "generate",
+                  body: {
+                    model: MODEL_BEST,
+                    messages: addStructuredRetryInstruction(chatMessages, {
+                      isInitial,
+                      problem: e instanceof Error ? e.message : "invalid structured response",
+                    }),
+                    tools: [tool],
+                    tool_choice: { type: "function", function: { name: tool.function.name } },
+                    stream: true,
+                  },
+                  meta: {
+                    phase: phaseTag.phase,
+                    promptChars: lastUserContent.length,
+                    hadAttachments: hasVisionTurn,
+                    chosenBy: "structured_retry",
+                  },
+                });
+                if (!retry.ok || !retry.body) throw e;
+                collected = await relayAndCollect(retry, controller, encoder);
+                payload = parseCollectedProject(collected, isInitial);
               }
 
-              const summary = parsed.summary?.trim() || "Updated the project.";
-              const plan = parsed.plan?.trim() || undefined;
-              const recap = parsed.recap?.trim() || undefined;
+              const { parsed, summary, plan, recap } = payload;
               let nextFiles: ProjectFile[];
               if (collected.name === "write_project") {
                 if (!parsed.files?.length) throw new Error("AI returned no files.");
