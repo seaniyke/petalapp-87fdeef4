@@ -33,6 +33,7 @@ import {
   Shield,
   Link2,
   Play,
+  AlertTriangle,
 } from "lucide-react";
 import {
   encodeAttachments,
