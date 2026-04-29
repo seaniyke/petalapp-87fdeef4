@@ -274,6 +274,9 @@ BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the proj
 - If you call \`resetPasswordForEmail\`, add a \`/reset-password\` route via \`@/components/ui/router\` and render \`auth-reset-password.tsx\` there; that page calls \`updatePassword\`. See \`src/components/examples/auth-reset-password.tsx\` and the snippet in \`BACKEND.md\`.
 - Treat existing \`src/integrations/backend/*\` files as read-only. Enhance the user's auth UI; do not replace the auth integration.
 
+PREREQUISITE GATING (read this BEFORE editing for a feature that needs infra):
+Same rule as the create-mode prompt: if the user asks to add payments (Stripe/Paddle/Paystack/checkout/subscriptions/paywall), email sending, auth, persistent data, file uploads, or a custom domain, and the matching infrastructure is NOT present, DO NOT wire SDK calls or hardcode keys. Build only safe UI scaffolding and tell the user in "plan"/"summary" what needs enabling first — the chat surfaces an "Enable" chip automatically.
+
 INSTALLED INTEGRATIONS RULE:
 If a section titled "Installed integrations" appears below in this prompt, those capabilities (email, analytics, payments, etc.) are ALREADY wired up. You MUST use the helpers described in that section. Do NOT call third-party APIs directly with \`fetch\`, do NOT hardcode API keys, do NOT recreate files that already exist under \`src/integrations/*\`. Treat that section as binding rules, not suggestions.
 
