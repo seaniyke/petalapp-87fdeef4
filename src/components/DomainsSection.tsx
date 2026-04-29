@@ -688,7 +688,8 @@ function DnsRecordsDialog({
             type={routingRecordType}
             host={routingHost}
             value={routingRecordValue}
-            note="Points your domain at Petal."
+            zone={domain.hostname}
+            note="Routes traffic to Petal — required before SSL can be issued."
           />
           {(() => {
             const records =
@@ -707,14 +708,44 @@ function DnsRecordsDialog({
                 type="TXT"
                 host={rec.name}
                 value={rec.value}
+                zone={domain.hostname}
                 note={
                   multi
-                    ? `SSL validation record ${i + 1} of ${records.length} — add all of them.`
+                    ? `SSL validation ${i + 1} of ${records.length} — add ALL of them, both are required.`
                     : "Proves you own this domain (used to issue SSL)."
                 }
               />
             ));
           })()}
+
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-[11px] leading-relaxed text-amber-900 dark:text-amber-200">
+            <p className="font-medium">Stuck on “Verifying” for more than 10 minutes?</p>
+            <ul className="mt-1.5 list-disc space-y-1 pl-4">
+              <li>
+                Most registrars (Namecheap, GoDaddy, Cloudflare DNS, etc.) <strong>auto-append your domain</strong> to the host field. If it does, paste the <em>short</em> version of the host (the part before <code className="rounded bg-background px-1">.{domain.hostname}</code>) — not the full name.
+              </li>
+              <li>
+                For TXT values, paste the value <strong>exactly</strong> — no extra quotes, spaces, or line breaks.
+              </li>
+              <li>
+                Both routing (A/CNAME) <strong>and</strong> all TXT records above must be live at the same time. Verify with{" "}
+                <a
+                  href={`https://dnschecker.org/#TXT/_acme-challenge.${domain.hostname}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  dnschecker.org
+                </a>
+                .
+              </li>
+            </ul>
+            {domain.error_message && (
+              <p className="mt-2 rounded border border-destructive/30 bg-destructive/5 p-2 text-destructive">
+                <span className="font-medium">Cloudflare says:</span> {domain.error_message}
+              </p>
+            )}
+          </div>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-2">
@@ -744,20 +775,38 @@ function RecordCard({
   type,
   host,
   value,
+  zone,
   note,
 }: {
   type: "A" | "CNAME" | "TXT";
   host: string;
   value: string;
+  /** The hostname being configured, used to derive the short host label. */
+  zone?: string;
   note: string;
 }) {
+  // Some registrars want the full FQDN; others auto-append the zone and want
+  // only the leftmost label. Show both so users can pick what their registrar
+  // accepts. e.g. host="_acme-challenge.dev54.dev" + zone="dev54.dev" →
+  // shortHost="_acme-challenge"; host="@" stays "@".
+  const shortHost = (() => {
+    if (!zone) return null;
+    if (host === "@") return null;
+    if (host === zone) return "@";
+    if (host.endsWith(`.${zone}`)) {
+      const stripped = host.slice(0, -1 * (zone.length + 1));
+      return stripped.length > 0 ? stripped : null;
+    }
+    return null;
+  })();
+
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <span className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
           {type}
         </span>
-        <span className="text-[11px] text-muted-foreground">{note}</span>
+        <span className="text-right text-[11px] text-muted-foreground">{note}</span>
       </div>
       <div className="mt-2 grid grid-cols-[auto_1fr_auto] items-center gap-2 text-xs">
         <span className="text-muted-foreground">Host</span>
@@ -766,12 +815,31 @@ function RecordCard({
         </code>
         <CopyButton value={host} label="host" />
 
+        {shortHost && (
+          <>
+            <span className="text-muted-foreground">
+              Or just
+              <br />
+              <span className="text-[10px] uppercase tracking-wider opacity-70">short</span>
+            </span>
+            <code className="break-all rounded bg-background px-2 py-1 font-mono text-[11px]">
+              {shortHost}
+            </code>
+            <CopyButton value={shortHost} label="short host" />
+          </>
+        )}
+
         <span className="text-muted-foreground">Value</span>
         <code className="break-all rounded bg-background px-2 py-1 font-mono text-[11px]">
           {value}
         </code>
         <CopyButton value={value} label="value" />
       </div>
+      {shortHost && (
+        <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+          Tip: if your registrar auto-fills <code className="rounded bg-background px-1">.{zone}</code> at the end, use the short host instead — otherwise it becomes <code className="rounded bg-background px-1">{host}.{zone}</code>.
+        </p>
+      )}
     </div>
   );
 }
