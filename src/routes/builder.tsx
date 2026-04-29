@@ -159,12 +159,19 @@ function useWebContainerSupported(): boolean {
 type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
 export const Route = createFileRoute("/builder")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): {
+    prompt?: string;
+    id?: string;
+    mode?: "discuss";
+    attachKey?: string;
+    topup?: "success";
+  } => ({
     prompt: typeof search.prompt === "string" ? search.prompt : undefined,
     id: typeof search.id === "string" ? search.id : undefined,
     mode: search.mode === "discuss" ? ("discuss" as const) : undefined,
     /** sessionStorage key holding ChatAttachment[] stashed by the landing page. */
     attachKey: typeof search.attachKey === "string" ? search.attachKey : undefined,
+    topup: search.topup === "success" ? ("success" as const) : undefined,
   }),
   head: () => ({
     meta: [
@@ -178,9 +185,28 @@ export const Route = createFileRoute("/builder")({
 type ViewMode = "preview" | "code";
 
 function Builder() {
-  const { prompt: initialPrompt, id: searchId, mode: initialMode, attachKey } = Route.useSearch();
+  const { prompt: initialPrompt, id: searchId, mode: initialMode, attachKey, topup } = Route.useSearch();
   const { user, isReady } = useAuthReady();
   const navigate = useNavigate();
+
+  // Show a confirmation toast when returning from a successful Paystack top-up,
+  // then strip the ?topup=success param from the URL while keeping the project id.
+  useEffect(() => {
+    if (topup !== "success") return;
+    toast.success("Top-up successful 🎉", {
+      description: "Your balance will appear in a few seconds.",
+    });
+    navigate({
+      to: "/builder",
+      search: {
+        ...(searchId ? { id: searchId } : {}),
+        ...(initialPrompt ? { prompt: initialPrompt } : {}),
+        ...(initialMode ? { mode: initialMode } : {}),
+        ...(attachKey ? { attachKey } : {}),
+      },
+      replace: true,
+    });
+  }, [topup, navigate, searchId, initialPrompt, initialMode, attachKey]);
 
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);

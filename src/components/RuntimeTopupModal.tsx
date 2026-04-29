@@ -118,7 +118,11 @@ export function RuntimeTopupModal({
   const handleConfirm = async () => {
     setSubmitting(true);
     try {
-      const returnUrl = `${window.location.origin}${window.location.pathname}?topup=success`;
+      // Preserve existing query params (e.g. ?id=<projectId> on /builder) so
+      // Paystack returns the user to the same project they topped up from.
+      const currentParams = new URLSearchParams(window.location.search);
+      currentParams.set("topup", "success");
+      const returnUrl = `${window.location.origin}${window.location.pathname}?${currentParams.toString()}`;
       let result;
       if (mode === "custom") {
         const naira = Number(customNaira);
