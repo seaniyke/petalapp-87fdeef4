@@ -689,6 +689,72 @@ export const Route = createFileRoute("/api/admin/credits")({
             });
           }
 
+          if (body.action === "pipeline_failures") {
+            const sinceHours = Math.max(1, Math.min(24 * 30, Number(body.since_hours ?? 24) | 0));
+            const since = new Date(Date.now() - sinceHours * 3_600_000).toISOString();
+
+            const { data: rowsRaw, error: pfErr } = await supabaseAdmin
+              .from("pipeline_failures")
+              .select("id, project_id, surface, raw_message, signature, tool_name, model, stream_tail, url, created_at")
+              .gte("created_at", since)
+              .order("created_at", { ascending: false })
+              .limit(1000);
+            if (pfErr) return Response.json({ error: pfErr.message }, { status: 500 });
+
+            const rows = (rowsRaw ?? []) as Array<{
+              id: string;
+              project_id: string | null;
+              surface: string;
+              raw_message: string;
+              signature: string;
+              tool_name: string | null;
+              model: string | null;
+              stream_tail: string | null;
+              url: string | null;
+              created_at: string;
+            }>;
+
+            // Group by signature so we can rank "what's actually breaking"
+            // — the whole point of this view.
+            const bySig = new Map<
+              string,
+              { signature: string; count: number; surfaces: Set<string>; models: Set<string>; sample: typeof rows[number] }
+            >();
+            for (const r of rows) {
+              const g = bySig.get(r.signature);
+              if (!g) {
+                bySig.set(r.signature, {
+                  signature: r.signature,
+                  count: 1,
+                  surfaces: new Set([r.surface]),
+                  models: new Set(r.model ? [r.model] : []),
+                  sample: r,
+                });
+              } else {
+                g.count += 1;
+                g.surfaces.add(r.surface);
+                if (r.model) g.models.add(r.model);
+              }
+            }
+            const groups = Array.from(bySig.values())
+              .sort((a, b) => b.count - a.count)
+              .slice(0, 100)
+              .map((g) => ({
+                signature: g.signature,
+                count: g.count,
+                surfaces: Array.from(g.surfaces),
+                models: Array.from(g.models),
+                sample: g.sample,
+              }));
+
+            return Response.json({
+              since_hours: sinceHours,
+              total: rows.length,
+              groups,
+              recent: rows.slice(0, 50),
+            });
+          }
+
           return Response.json({ error: "Unknown action" }, { status: 400 });
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Server error";
