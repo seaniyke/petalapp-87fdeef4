@@ -711,17 +711,15 @@ function DnsRecordsDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-[calc(100vw-1.5rem)] sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="break-all">DNS records for {domain.hostname}</DialogTitle>
-          <DialogDescription>
-            Add these records at your domain registrar (GoDaddy, Namecheap,
-            Cloudflare, etc.). DNS changes can take a few minutes — sometimes up
-            to 72 hours. SSL is issued automatically once they are live.
+      <DialogContent className="flex max-h-[90vh] max-w-[calc(100vw-1.5rem)] flex-col gap-0 p-0 sm:max-w-lg">
+        <DialogHeader className="shrink-0 border-b border-border px-5 py-4 text-left">
+          <DialogTitle className="break-all pr-6 text-base">DNS records for {domain.hostname}</DialogTitle>
+          <DialogDescription className="text-xs">
+            Add these records at your domain registrar. SSL is issued automatically once they are live.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
           <RecordCard
             type={routingRecordType}
             host={routingHost}
@@ -794,7 +792,7 @@ function DnsRecordsDialog({
           {diagnosis && <DiagnosisPanel result={diagnosis} />}
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row sm:gap-2">
+        <DialogFooter className="shrink-0 flex-col gap-2 border-t border-border bg-background px-5 py-3 sm:flex-row sm:gap-2">
           <Button
             variant="outline"
             size="sm"
