@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useWallet } from "@/hooks/use-wallet";
 import { cn } from "@/lib/utils";
 import { BillingSheet } from "@/components/BillingSheet";
+import { formatCredits } from "@/lib/format-credits";
 
 export function CreditBadge() {
   const { wallet, plan, breakdown, loading } = useWallet();
