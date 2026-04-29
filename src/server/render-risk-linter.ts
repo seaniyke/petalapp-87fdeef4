@@ -517,49 +517,13 @@ function findUndeclaredJsxIdentifiers(src: string, clean: string): string[] {
     "void",
   ]);
 
-  // Globals + React + common browser APIs that don't need declaring.
-  const builtins = new Set([
-    "React",
-    "Fragment",
-    "Children",
-    "console",
-    "window",
-    "document",
-    "navigator",
-    "globalThis",
-    "process",
-    "Math",
-    "Date",
-    "JSON",
-    "Number",
-    "String",
-    "Boolean",
-    "Array",
-    "Object",
-    "Error",
-    "Promise",
-    "Set",
-    "Map",
-    "Symbol",
-    "undefined",
-    "null",
-    "true",
-    "false",
-    "NaN",
-    "Infinity",
-    "this",
-    "super",
-    "arguments",
-    "void",
-  ]);
-
   // JSX expressions of the shape `>{ident}`. We restrict to JSX context
   // (preceded by `>`) to avoid object literals like `{ foo }`.
   const jsxExprRe = />[^<]*?\{\s*([A-Za-z_$][\w$]*)\s*\}/g;
   const missing = new Set<string>();
   while ((m = jsxExprRe.exec(clean))) {
     const ident = m[1];
-    if (declared.has(ident)) continue;
+    if (allTokens.has(ident)) continue;
     if (builtins.has(ident)) continue;
     missing.add(ident);
   }
