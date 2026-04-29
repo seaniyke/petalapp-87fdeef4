@@ -46,6 +46,7 @@ import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-cla
 import { runLocalVerifyTier } from "@/server/pipeline/tier-local-verify";
 import { runContinuationTier } from "@/server/pipeline/tier-continuation";
 import { runEsbuildTier } from "@/server/pipeline/tier-esbuild";
+import { runRenderRiskTier } from "@/server/pipeline/tier-render-risk";
 import {
   checkFileBudgets,
   enforceFileBudgets,
