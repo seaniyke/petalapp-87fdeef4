@@ -93,6 +93,19 @@ export type IntegrationDefinition = {
    * configured domain, default from-address, etc.
    */
   aiGuidance?: (ctx: IntegrationContext) => string;
+  /**
+   * Trigger phrases that hint the user wants this capability. Used by the
+   * auto-suggest classifier to recommend installing this integration before
+   * the AI hand-rolls the same feature. Keep these short, lowercase, and
+   * specific (e.g. "send email", "subscription billing").
+   */
+  triggers?: string[];
+  /**
+   * Packages or APIs this integration replaces. Surfaced in the prompt so
+   * Petal stops reaching for raw SDKs when a managed helper exists. Examples:
+   * `nodemailer`, `stripe`, `@paystack/inline-js`.
+   */
+  replaces?: string[];
 };
 
 export type ProjectIntegrationRow = {

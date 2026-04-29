@@ -8,6 +8,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isValidSecretName, normalizeSecretName } from "./requests.server";
+import { encryptSecret } from "./crypto.server";
 
 const ListInput = z.object({ projectId: z.string().uuid() });
 
@@ -68,15 +69,15 @@ export const fulfillSecretRequest = createServerFn({ method: "POST" })
     const name = normalizeSecretName(req.data.secret_name);
     if (!isValidSecretName(name)) throw new Error("Bad secret name.");
 
-    // Store the value in `project_secrets` (the table marketplace uses for
-    // generic project-scoped secrets). Upsert so re-running replaces.
+    // Store the encrypted value in `project_secrets`. Upsert so re-running
+    // overwrites the previous value rather than failing on the unique key.
     const { error: upsertErr } = await supabaseAdmin
       .from("project_secrets")
       .upsert(
         {
           project_id: req.data.project_id,
           name,
-          value: data.value,
+          ciphertext: encryptSecret(data.value),
         },
         { onConflict: "project_id,name" },
       );
