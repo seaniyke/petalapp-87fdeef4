@@ -412,6 +412,7 @@ export function PublishSheet({
         : "bg-primary text-primary-foreground hover:bg-primary/90";
 
   return (
+    <>
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <DrawerTitle className="sr-only">Publish</DrawerTitle>
