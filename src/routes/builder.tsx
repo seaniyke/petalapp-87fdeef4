@@ -1765,16 +1765,19 @@ function Builder() {
   const retry = useCallback(() => {
     // If the last failure left a real bundler/build error log behind, the
     // user's original prompt won't help — Petal needs to *see* the error.
-    // Route through askPetalToFix so the next turn includes the log tail.
-    // Falls back to replaying the original ask when there's no log to work
-    // from (e.g. transient network failure during a chat-only turn).
+    // Route through askPetalToFix (via ref to avoid declaration ordering)
+    // so the next turn includes the log tail. Falls back to replaying the
+    // original ask when there's no log (e.g. transient network failure).
     const hasBuildLog = !!effectiveBuildSnap?.errorMessage?.trim();
-    if (hasBuildLog) {
-      askPetalToFix({ isAuto: false });
+    if (hasBuildLog && askPetalToFixRef.current) {
+      // Manual retry — not the silent auto-fix variant. We override the ref's
+      // default by calling the real fn from the closure if available; otherwise
+      // the ref's auto variant is still better than a contextless replay.
+      askPetalToFixRef.current();
       return;
     }
     if (lastUserPrompt) void send(lastUserPrompt, { isRetry: true });
-  }, [lastUserPrompt, send, effectiveBuildSnap, askPetalToFix]);
+  }, [lastUserPrompt, send, effectiveBuildSnap]);
 
   /** Re-trigger a Cloudflare build for the current files. Used by the
    *  "deploy stalled" friendly card so the user can recover from a silent
