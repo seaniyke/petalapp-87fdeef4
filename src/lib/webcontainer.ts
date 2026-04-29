@@ -218,6 +218,62 @@ const PICKER_SCRIPT = `(() => {
 })();`;
 
 /**
+ * Runtime error bridge — installed alongside the picker. Listens for
+ * `window.onerror` and `unhandledrejection` inside the running app's iframe
+ * and forwards a compact `{ message, stack, source, lineno, colno }` payload
+ * to the parent via `postMessage` as `petal:runtime:error`. The builder
+ * surfaces a non-blocking banner with a one-click "Fix this" button that
+ * routes through the existing free-charge auto-fix path.
+ *
+ * Throttled to one message per 1.5s + dedupe on identical message+source so a
+ * crashing render loop doesn't flood the parent.
+ */
+const RUNTIME_BRIDGE_VERSION = 1;
+const RUNTIME_BRIDGE_SCRIPT = `(() => {
+  var VERSION = ${RUNTIME_BRIDGE_VERSION};
+  if (window.__petalRuntimeBridgeVersion && window.__petalRuntimeBridgeVersion >= VERSION) return;
+  window.__petalRuntimeBridgeVersion = VERSION;
+  var lastKey = '';
+  var lastAt = 0;
+  function send(payload) {
+    try {
+      var key = (payload.message || '') + '|' + (payload.source || '') + ':' + (payload.lineno || '');
+      var now = Date.now();
+      if (key === lastKey && (now - lastAt) < 1500) return;
+      lastKey = key; lastAt = now;
+      parent.postMessage({ type: 'petal:runtime:error', payload: payload }, '*');
+    } catch (_) {}
+  }
+  window.addEventListener('error', function (e) {
+    if (!e) return;
+    // Ignore script-load CORS errors (no useful info) and ResizeObserver noise.
+    var msg = e.message || '';
+    if (!msg || msg === 'Script error.' || msg.indexOf('ResizeObserver loop') === 0) return;
+    send({
+      message: msg,
+      stack: e.error && e.error.stack ? String(e.error.stack).slice(0, 4000) : null,
+      source: e.filename || null,
+      lineno: e.lineno || null,
+      colno: e.colno || null,
+      kind: 'error',
+    });
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) {
+    if (!e) return;
+    var reason = e.reason;
+    var msg = reason && reason.message ? reason.message : (typeof reason === 'string' ? reason : 'Unhandled promise rejection');
+    send({
+      message: msg,
+      stack: reason && reason.stack ? String(reason.stack).slice(0, 4000) : null,
+      source: null,
+      lineno: null,
+      colno: null,
+      kind: 'unhandledrejection',
+    });
+  });
+})();`;
+
+/**
  * Ensure the picker script and a script tag in index.html exist in the
  * running container. Vite's HMR will pick up the change without a full
  * reload of the dev server. Idempotent — safe to call on every file change
@@ -229,28 +285,38 @@ const PICKER_SCRIPT = `(() => {
  */
 export async function ensurePickerInstalled(currentIndexHtml: string | undefined): Promise<void> {
   const wc = await getContainer();
-  // Drop the picker as a public asset Vite will serve at /__petal_picker.js.
+  // Drop the picker + runtime-error bridge as public assets.
   try {
     await wc.fs.mkdir("public", { recursive: true });
   } catch {
     /* ignore */
   }
   await wc.fs.writeFile("public/__petal_picker.js", PICKER_SCRIPT);
+  await wc.fs.writeFile("public/__petal_runtime.js", RUNTIME_BRIDGE_SCRIPT);
   if (!currentIndexHtml) return;
 
-  const versionAttr = `data-petal-picker-version="${PICKER_VERSION}"`;
-  const tag = `<script src="/__petal_picker.js" ${versionAttr}></script>`;
-  const hasCurrentVersion = currentIndexHtml.includes(versionAttr);
-  if (hasCurrentVersion) return;
+  const pickerVersionAttr = `data-petal-picker-version="${PICKER_VERSION}"`;
+  const pickerTag = `<script src="/__petal_picker.js" ${pickerVersionAttr}></script>`;
+  const runtimeVersionAttr = `data-petal-runtime-version="${RUNTIME_BRIDGE_VERSION}"`;
+  const runtimeTag = `<script src="/__petal_runtime.js" ${runtimeVersionAttr}></script>`;
 
-  // Strip any older picker tags so we don't accumulate stale ones.
-  const stripped = currentIndexHtml.replace(
+  const hasCurrentPicker = currentIndexHtml.includes(pickerVersionAttr);
+  const hasCurrentRuntime = currentIndexHtml.includes(runtimeVersionAttr);
+  if (hasCurrentPicker && hasCurrentRuntime) return;
+
+  // Strip any older picker / runtime tags so we don't accumulate stale ones.
+  let stripped = currentIndexHtml.replace(
     /\s*<script\s+src="\/__petal_picker\.js"[^>]*><\/script>/g,
     "",
   );
+  stripped = stripped.replace(
+    /\s*<script\s+src="\/__petal_runtime\.js"[^>]*><\/script>/g,
+    "",
+  );
+  const insert = `  ${runtimeTag}\n  ${pickerTag}\n  `;
   const next = stripped.includes("</body>")
-    ? stripped.replace("</body>", `  ${tag}\n  </body>`)
-    : `${stripped}\n${tag}`;
+    ? stripped.replace("</body>", `${insert}</body>`)
+    : `${stripped}\n${runtimeTag}\n${pickerTag}`;
   await wc.fs.writeFile("index.html", next);
 }
 

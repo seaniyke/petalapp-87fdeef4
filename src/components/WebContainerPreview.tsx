@@ -24,6 +24,15 @@ export type PickedElement = {
   sourceLine: string | null;
 };
 
+export type RuntimeError = {
+  message: string;
+  stack: string | null;
+  source: string | null;
+  lineno: number | null;
+  colno: number | null;
+  kind: "error" | "unhandledrejection";
+};
+
 type Phase = "idle" | "booting" | "installing" | "starting" | "ready" | "error" | "unsupported";
 
 export function detectUnsupportedBrowser(): string | null {
@@ -38,12 +47,15 @@ export function WebContainerPreview({
   files,
   reloadKey,
   onPick,
+  onRuntimeError,
 }: {
   files: ProjectFile[];
   /** Bump this number to force the iframe to reload (e.g. after restoring a version). */
   reloadKey: number;
   /** Called when a user picks an element via the in-iframe overlay. */
   onPick?: (el: PickedElement) => void;
+  /** Called when the running app throws a runtime error or unhandled rejection. */
+  onRuntimeError?: (err: RuntimeError) => void;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [serverUrl, setServerUrl] = useState<string | null>(null);
@@ -178,7 +190,7 @@ export function WebContainerPreview({
   // Listen for picker messages from the iframe (cross-origin postMessage).
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      const data = e.data as { type?: string; payload?: PickedElement } | null;
+      const data = e.data as { type?: string; payload?: unknown } | null;
       if (!data || typeof data !== "object") return;
       // `ready` arrives every time the picker re-attaches (initial mount, HMR
       // full-reload, in-app SPA navigation). Always honor it so the watchdog
@@ -188,9 +200,13 @@ export function WebContainerPreview({
         setPickerWarning(null);
         return;
       }
+      if (data.type === "petal:runtime:error" && data.payload && onRuntimeError) {
+        onRuntimeError(data.payload as unknown as RuntimeError);
+        return;
+      }
       if (!onPick) return;
       if (data.type === "petal:pick:selected" && data.payload) {
-        onPick(data.payload);
+        onPick(data.payload as PickedElement);
         setPickActive(false);
       } else if (data.type === "petal:pick:cancelled") {
         setPickActive(false);
@@ -198,7 +214,7 @@ export function WebContainerPreview({
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [onPick]);
+  }, [onPick, onRuntimeError]);
 
   // Reset the picker-ready flag whenever the iframe is hard-reloaded — the
   // new document needs to send `petal:pick:ready` again to be considered live.
