@@ -10,8 +10,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyWebhookSignature, getEnvironment } from "@/server/paystack.server";
-import { registerDomain } from "@/server/cloudflare-registrar.server";
-import { createCustomHostname } from "@/server/cloudflare-saas.server";
+import { startDomainRegistration } from "@/server/domain-purchase.server";
 import {
   sendBillingEmail,
   billingItemLabel,
@@ -243,13 +242,10 @@ export const Route = createFileRoute("/api/public/paystack/webhook")({
             if (!tx.project_id) {
               throw new Error("Domain purchase missing project_id");
             }
-            // Fire-and-forget the actual registration so we ack the webhook
-            // quickly. The handler updates `purchased_domains.status` itself.
-            handleDomainPurchase({
-              reference: ref,
-              projectId: tx.project_id,
-              userId: tx.user_id,
-            }).catch((e) =>
+            // Fire-and-forget — kick off Cloudflare's async registration
+            // workflow. Polling continues from /api/registrar/poll (and
+            // any future cron). We ack the webhook quickly either way.
+            startDomainRegistration({ reference: ref }).catch((e) =>
               console.error("[webhook] domain_purchase failed", e),
             );
           } else if (tx.purpose === "plan") {
@@ -310,95 +306,5 @@ export const Route = createFileRoute("/api/public/paystack/webhook")({
   },
 });
 
-/**
- * Background job kicked off when a domain_purchase Paystack charge succeeds.
- *
- * 1. Mark the purchase row as "registering".
- * 2. Call Cloudflare Registrar to actually register the domain.
- * 3. On success: register the hostname as a custom hostname on our SaaS zone
- *    so the project starts serving traffic, then link it back via
- *    `connected_domain_id`.
- * 4. On failure: store the error so the UI can show it; the user keeps the
- *    pending charge for support follow-up.
- *
- * We deliberately do NOT throw out of this function — Paystack already got
- * its 200 response; this runs after the webhook ack.
- */
-async function handleDomainPurchase(args: {
-  reference: string;
-  projectId: string;
-  userId: string;
-}): Promise<void> {
-  // Look up the pending purchase row.
-  const { data: pd, error: pdErr } = await supabaseAdmin
-    .from("purchased_domains")
-    .select("id, hostname, wholesale_cost_cents, status")
-    .eq("paystack_reference", args.reference)
-    .maybeSingle();
-  if (pdErr || !pd) {
-    console.error("[domain_purchase] missing purchase row", args.reference, pdErr);
-    return;
-  }
-  if (pd.status === "active" || pd.status === "registering") {
-    return; // already handled / in flight
-  }
-
-  await supabaseAdmin
-    .from("purchased_domains")
-    .update({ status: "registering" })
-    .eq("id", pd.id);
-
-  try {
-    const cf = await registerDomain({
-      hostname: pd.hostname,
-      expectedWholesaleCents: pd.wholesale_cost_cents,
-    });
-
-    // Add to our SaaS zone so traffic actually routes to the project.
-    let connectedDomainId: string | null = null;
-    try {
-      const cfHostname = await createCustomHostname(pd.hostname, { sslMethod: "http" });
-      const { data: pdRow } = await supabaseAdmin
-        .from("project_domains")
-        .insert({
-          project_id: args.projectId,
-          hostname: pd.hostname,
-          status: "verifying",
-          ssl_status: cfHostname.ssl?.status ?? "initializing",
-          provider_hostname_id: cfHostname.id,
-          verification_txt_name: `_purchased.${pd.hostname}`,
-          verification_txt_value: "(petal-managed — no action needed)",
-          last_checked_at: new Date().toISOString(),
-        })
-        .select("id")
-        .single();
-      connectedDomainId = pdRow?.id ?? null;
-    } catch (e) {
-      console.error("[domain_purchase] custom hostname attach failed", e);
-      // Domain is registered; user just has to manually connect it.
-    }
-
-    await supabaseAdmin
-      .from("purchased_domains")
-      .update({
-        status: "active",
-        registered_at: new Date().toISOString(),
-        expires_at: cf.expires_at ?? null,
-        auto_renew: cf.auto_renew ?? true,
-        connected_domain_id: connectedDomainId,
-        error_message: null,
-      })
-      .eq("id", pd.id);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Registration failed";
-    console.error("[domain_purchase] register failed", pd.hostname, e);
-    await supabaseAdmin
-      .from("purchased_domains")
-      .update({
-        status: "failed",
-        error_message: msg,
-      })
-      .eq("id", pd.id);
-  }
-}
+// Domain registration orchestration lives in src/server/domain-purchase.server.ts.
 

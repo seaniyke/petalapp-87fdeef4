@@ -54,7 +54,17 @@ export const Route = createFileRoute("/api/registrar/search")({
 
         try {
           const results = await searchDomains(parsed.query);
-          return Response.json(results);
+          // Trim server-only fields and hide TLDs the API beta doesn't support.
+          const visible = results
+            .filter((r) => r.reason !== "extension_not_supported_via_api")
+            .map((r) => ({
+              hostname: r.hostname,
+              available: r.available,
+              priceCents: r.priceCents,
+              tier: r.tier,
+              reason: r.reason,
+            }));
+          return Response.json(visible);
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Search failed";
           return new Response(msg, { status: 502 });

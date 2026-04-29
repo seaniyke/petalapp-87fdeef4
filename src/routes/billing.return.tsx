@@ -11,6 +11,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/hooks/use-wallet";
 import { supabase } from "@/integrations/supabase/client";
+import { pollDomainRegistrations } from "@/lib/registrar";
 
 const SearchSchema = z.object({
   reference: z.string().optional(),
@@ -23,6 +24,7 @@ const SearchSchema = z.object({
 type VerifyState =
   | { kind: "loading" }
   | { kind: "success"; purpose: string }
+  | { kind: "registering-domain"; hostname?: string }
   | { kind: "pending" }
   | { kind: "failed"; message: string };
 
@@ -74,9 +76,43 @@ function BillingReturn() {
             ? search.returnTo
             : null;
         if (json.status === "success") {
-          setState({ kind: "success", purpose: json.purpose ?? "purchase" });
+          const purpose = json.purpose ?? "purchase";
+          setState({ kind: "success", purpose });
           refresh();
           setTimeout(() => refresh(), 2000);
+
+          // Domain purchases need an extra step: nudge the server to poll
+          // Cloudflare's async registration workflow until it completes.
+          if (purpose === "domain_purchase") {
+            setState({ kind: "registering-domain" });
+            const ref = reference;
+            (async () => {
+              for (let i = 0; i < 8 && !cancelled; i++) {
+                try {
+                  const { updates } = await pollDomainRegistrations({ reference: ref });
+                  const u = updates[0];
+                  if (cancelled) return;
+                  if (u?.status === "active") {
+                    setState({ kind: "success", purpose: "domain_purchase" });
+                    return;
+                  }
+                  if (u?.status === "failed") {
+                    setState({
+                      kind: "failed",
+                      message:
+                        "We couldn't finish registering your domain. Our team has been notified.",
+                    });
+                    return;
+                  }
+                  setState({ kind: "registering-domain", hostname: u?.hostname });
+                } catch {
+                  /* keep retrying */
+                }
+                await new Promise((r) => setTimeout(r, 4000));
+              }
+            })();
+          }
+
           if (safeReturnTo) {
             // Brief pause so the user sees the success state before bouncing.
             setTimeout(() => {
@@ -137,11 +173,29 @@ function BillingReturn() {
           <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
             <Sparkles className="h-7 w-7 text-primary" />
           </div>
-          <h1 className="text-2xl font-semibold">Payment received</h1>
+          <h1 className="text-2xl font-semibold">
+            {state.purpose === "domain_purchase"
+              ? "Domain registered"
+              : "Payment received"}
+          </h1>
           <p className="mt-2 text-muted-foreground">
             {state.purpose === "plan"
               ? "Your plan is active. We've added $5 of runtime credit so you can spin up backends, email, and domains right away."
+              : state.purpose === "domain_purchase"
+              ? "Your domain is live. We've connected it to your project and SSL is provisioning — usually ready within a minute."
               : "Your credits have been added to your wallet."}
+          </p>
+        </>
+      )}
+
+      {state.kind === "registering-domain" && (
+        <>
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <h1 className="mt-4 text-xl font-semibold">Registering your domain…</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {state.hostname
+              ? `Cloudflare is finalising ${state.hostname}. This usually takes 10–60 seconds.`
+              : "Cloudflare is finalising your domain. This usually takes 10–60 seconds."}
           </p>
         </>
       )}
