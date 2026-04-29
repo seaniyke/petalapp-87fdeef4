@@ -27,6 +27,7 @@ type Handlers = {
       | "stream_autofix"
       | "local_verifier"
       | "continuation"
+      | "esbuild_parse"
       | "post_stream_autofix"
       | "image_resolve";
     outcome: "ok" | "fixed" | "skipped" | "failed";
