@@ -159,7 +159,13 @@ function useWebContainerSupported(): boolean {
 type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
 export const Route = createFileRoute("/builder")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): {
+    prompt?: string;
+    id?: string;
+    mode?: "discuss";
+    attachKey?: string;
+    topup?: "success";
+  } => ({
     prompt: typeof search.prompt === "string" ? search.prompt : undefined,
     id: typeof search.id === "string" ? search.id : undefined,
     mode: search.mode === "discuss" ? ("discuss" as const) : undefined,
