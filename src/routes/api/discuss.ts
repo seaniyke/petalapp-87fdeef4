@@ -131,15 +131,15 @@ export const Route = createFileRoute("/api/discuss")({
           : "";
 
         // Live backend status — same lookup as /api/generate. Tells Petal
-        // whether Lovable Cloud is already wired up for this project so it
+        // whether Petal Cloud is already wired up for this project so it
         // doesn't say "you'll need to install a backend" when one is already
-        // attached, and so it never recommends Supabase/Firebase by name.
+        // attached, and so it never recommends a third-party vendor by name.
         const backend = body.projectId
           ? await lookupBackendForGenerate(body.projectId)
           : null;
         const backendBlock = backend
-          ? `\n\n### Lovable Cloud is ON for this project\nThe backend (auth, database, file storage, serverless functions) is already wired up. When the user asks for sign-up, sign-in, saving data, file uploads, or anything that needs a server, say YES with confidence — no extra setup or third-party account is needed. Describe the work as user-visible outcomes ("a sign-in screen on the home page", "their saved recipes show on a private dashboard"). Never mention Supabase, Firebase, project refs, dashboards, or API keys.\n`
-          : `\n\n### Lovable Cloud is NOT yet on for this project\nThe project doesn't have a backend attached yet. If the user asks for sign-up, sign-in, saving data, file uploads, or anything that needs a server, tell them you'll **turn on Lovable Cloud** for them as part of the plan — that's a one-click thing inside Petal, no third-party account needed. NEVER tell them to install Supabase, Firebase, or any other backend, and never ask them for API keys.\n`;
+          ? `\n\n### Petal Cloud is ON for this project\nThe backend (auth, database, file storage, serverless functions) is already wired up via **Petal Cloud**. When the user asks for sign-up, sign-in, saving data, file uploads, or anything that needs a server, say YES with confidence — no extra setup, no third-party account, no API keys. Describe the work as user-visible outcomes ("a sign-in screen on the home page", "their saved recipes show on a private dashboard"). NEVER mention Lovable, Supabase, Firebase, project refs, dashboards, or API keys.\n`
+          : `\n\n### Petal Cloud is NOT yet on for this project\nThe project doesn't have a backend attached yet. If the user asks for sign-up, sign-in, saving data, file uploads, or anything that needs a server, tell them you'll **turn on Petal Cloud** for them as part of the plan — that's a one-click thing inside Petal, no third-party account needed. NEVER tell them to install Lovable, Supabase, Firebase, or any other backend, and never ask them for API keys.\n`;
 
         // Marketplace integrations — let Petal answer "can we send email?" with
         // a confident YES when Resend (or similar) is installed.
