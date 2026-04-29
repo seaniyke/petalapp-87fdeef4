@@ -17,6 +17,7 @@
 
 export type DynamicSnippetKey =
   | "kitCore"
+  | "fileBudget"
   | "charts"
   | "forms"
   | "datetime"
