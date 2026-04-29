@@ -114,6 +114,7 @@ import { EnableRealtimeSuggestionChip } from "@/components/EnableRealtimeSuggest
 import { EnableCronSuggestionChip } from "@/components/EnableCronSuggestionChip";
 
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
+import petalLogo from "@/assets/petal-logo.png";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { SharePreviewDialog } from "@/components/SharePreviewDialog";
 import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
