@@ -1051,6 +1051,54 @@ export type Database = {
         }
         Relationships: []
       }
+      pipeline_failures: {
+        Row: {
+          created_at: string
+          extra: Json
+          id: string
+          model: string | null
+          project_id: string | null
+          raw_message: string
+          signature: string
+          stream_tail: string | null
+          surface: string
+          tool_name: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          extra?: Json
+          id?: string
+          model?: string | null
+          project_id?: string | null
+          raw_message: string
+          signature: string
+          stream_tail?: string | null
+          surface: string
+          tool_name?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          extra?: Json
+          id?: string
+          model?: string | null
+          project_id?: string | null
+          raw_message?: string
+          signature?: string
+          stream_tail?: string | null
+          surface?: string
+          tool_name?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       pipeline_tier_events: {
         Row: {
           created_at: string
