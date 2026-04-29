@@ -263,13 +263,10 @@ async function relayAndCollect(
   return tool;
 }
 
-export const Route = createFileRoute("/api/generate")({
-  server: {
-    handlers: {
-      POST: async ({ request }) => {
-        const authResult = await authorize(request);
-        if (authResult instanceof Response) return authResult;
-        const userId = authResult;
+async function handleGenerateRequest(request: Request): Promise<Response> {
+  const authResult = await authorize(request);
+  if (authResult instanceof Response) return authResult;
+  const userId = authResult;
 
         // Provider key check is handled inside aiChatCompletions; we only verify
         // here so we can surface the existing friendly 500 if no provider is set.
