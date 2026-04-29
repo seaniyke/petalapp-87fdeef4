@@ -2037,12 +2037,14 @@ function Builder() {
               const canRevert = hasReply && !busy && !discussBusy;
               return (
                 <div key={i} className={`group min-w-0 ${isUser ? "flex justify-end" : ""}`}>
-                  {isUser ? (
-                    <div className="relative max-w-[85%] min-w-0 overflow-hidden wrap-anywhere rounded-2xl rounded-br-md bg-primary/12 px-3.5 py-2.5 text-[14px] font-medium leading-relaxed text-foreground ring-1 ring-primary/20">
-                      {/* User content — short, inline, no header chrome. */}
-                    </div>
-                  ) : (
-                    <div className="relative min-w-0 wrap-anywhere">
+                  <div
+                    className={`relative min-w-0 wrap-anywhere ${
+                      isUser
+                        ? "max-w-[85%] overflow-hidden rounded-2xl rounded-br-md bg-primary/12 px-3.5 py-2.5 text-[14px] font-medium leading-relaxed text-foreground ring-1 ring-primary/20"
+                        : "text-[14.5px] leading-[1.65] text-foreground"
+                    }`}
+                  >
+                    {!isUser && (
                       <div className="mb-2 flex items-center gap-2">
                         <span className="grid h-5 w-5 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-sm">
                           P
@@ -2050,16 +2052,15 @@ function Builder() {
                         <span className="font-display text-[13px] font-semibold tracking-tight text-foreground">
                           Petal
                         </span>
-                        {i === lastDiscussIndex && (
+                        {m.role === "assistant" && i === lastDiscussIndex && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-foreground/8 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                             <MessageSquare className="h-2.5 w-2.5" /> discuss
                           </span>
                         )}
                       </div>
-                    </div>
-                  )}
+                    )}
                     {m.role === "assistant" ? (
-                      <div className="space-y-2.5">
+                      <div className="space-y-3">
                         {m.plan && (() => {
                           const safePlan = sanitizeNarrative(m.plan);
                           return (
