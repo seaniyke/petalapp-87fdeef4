@@ -15,6 +15,7 @@ import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
+import { lookupBackendForGenerate } from "@/server/backend-connector.server";
 import {
   loadInstalledCodes,
   renderSuggestionsBlock,
@@ -39,7 +40,19 @@ Rules:
 - When proposing changes, describe them as user-visible outcomes ("a sign-in button on the home page") not as file paths or code.
 - If something is ambiguous, ask one focused question instead of guessing.
 - End with a single line like: "Reply *go* and I'll make these changes." so the user knows how to proceed.
-- Never invent features that aren't possible in a static React + Vite app **or covered by an installed integration listed below**. When the user asks for something an installed integration covers (e.g. sending email, tracking analytics, taking payments), say YES and describe how you'd wire it up using that integration.`;
+- Never invent features that aren't possible in a static React + Vite app **or covered by an installed integration listed below**. When the user asks for something an installed integration covers (e.g. sending email, tracking analytics, taking payments), say YES and describe how you'd wire it up using that integration.
+
+### Petal's built-in capabilities (what this app CAN already do, no extra accounts needed)
+The app you're helping with runs on **Petal**, which gives every project these native capabilities — they are part of the product, not third-party add-ons:
+- **Lovable Cloud** — managed backend that includes user accounts (sign up / sign in with email + Google), a Postgres database, file storage, and serverless functions. The user does NOT install Supabase, Firebase, or any other backend. They just turn on **Lovable Cloud** from the project. If a backend is already attached, the section below will say so.
+- **Petal AI Gateway** — call modern AI models (Gemini, GPT-5, etc.) without bringing an API key.
+- **Custom domains, publishing, SEO meta tags, analytics, email sending, payments** — available as one-click integrations inside Petal.
+
+Brand & wording rules (very important):
+- ALWAYS call the backend **"Lovable Cloud"** or just **"the backend"**. NEVER say "Supabase", "Firebase", "install the Supabase integration", or tell the user to create an account on another platform.
+- NEVER tell the user to "install" a backend. The correct phrasing is "I'll turn on **Lovable Cloud** for you" (or "Lovable Cloud is already on for this project, so we're good to go").
+- NEVER mention dashboards, project refs, service-role keys, or any internal plumbing. The user shouldn't have to leave Petal.
+- For payments, email, analytics, domains, SEO, AI: phrase them as Petal capabilities ("I'll wire up Petal's payments integration"), not as third-party SDKs.`;
 
 async function authorize(request: Request): Promise<string | Response> {
   const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -117,6 +130,17 @@ export const Route = createFileRoute("/api/discuss")({
           ? `\n\nProject Knowledge — the owner has asked you to always honor these instructions:\n"""\n${knowledge}\n"""\n`
           : "";
 
+        // Live backend status — same lookup as /api/generate. Tells Petal
+        // whether Lovable Cloud is already wired up for this project so it
+        // doesn't say "you'll need to install a backend" when one is already
+        // attached, and so it never recommends Supabase/Firebase by name.
+        const backend = body.projectId
+          ? await lookupBackendForGenerate(body.projectId)
+          : null;
+        const backendBlock = backend
+          ? `\n\n### Lovable Cloud is ON for this project\nThe backend (auth, database, file storage, serverless functions) is already wired up. When the user asks for sign-up, sign-in, saving data, file uploads, or anything that needs a server, say YES with confidence — no extra setup or third-party account is needed. Describe the work as user-visible outcomes ("a sign-in screen on the home page", "their saved recipes show on a private dashboard"). Never mention Supabase, Firebase, project refs, dashboards, or API keys.\n`
+          : `\n\n### Lovable Cloud is NOT yet on for this project\nThe project doesn't have a backend attached yet. If the user asks for sign-up, sign-in, saving data, file uploads, or anything that needs a server, tell them you'll **turn on Lovable Cloud** for them as part of the plan — that's a one-click thing inside Petal, no third-party account needed. NEVER tell them to install Supabase, Firebase, or any other backend, and never ask them for API keys.\n`;
+
         // Marketplace integrations — let Petal answer "can we send email?" with
         // a confident YES when Resend (or similar) is installed.
         const integrationsBlock = body.projectId
@@ -148,7 +172,7 @@ export const Route = createFileRoute("/api/discuss")({
           : "";
 
         const chatMessages = [
-          { role: "system", content: DISCUSS_SYSTEM_PROMPT + integrationsBlock + suggestionsBlock + knowledgeBlock + visionAddendum + filesContext },
+          { role: "system", content: DISCUSS_SYSTEM_PROMPT + backendBlock + integrationsBlock + suggestionsBlock + knowledgeBlock + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {
