@@ -190,7 +190,7 @@ export function WebContainerPreview({
   // Listen for picker messages from the iframe (cross-origin postMessage).
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      const data = e.data as { type?: string; payload?: PickedElement } | null;
+      const data = e.data as { type?: string; payload?: unknown } | null;
       if (!data || typeof data !== "object") return;
       // `ready` arrives every time the picker re-attaches (initial mount, HMR
       // full-reload, in-app SPA navigation). Always honor it so the watchdog
