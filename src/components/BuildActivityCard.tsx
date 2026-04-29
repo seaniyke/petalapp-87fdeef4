@@ -107,6 +107,9 @@ type Props = {
    *  copy ("Almost there", "Taking longer", "Still working") so the user
    *  always sees movement rather than a frozen "Putting your app online…". */
   deployElapsedSec?: number;
+  /** Live pipeline timeline — server pushes one entry per recovery / verifier
+   *  / autofix / image step. Rendered inside the expanded steps panel. */
+  timelineEvents?: TimelineEntry[];
   onStop?: () => void;
   onRetry?: () => void;
   onAskFix?: () => void;
@@ -126,6 +129,7 @@ export function BuildActivityCard({
   finalFileLines,
   fileChanges,
   deployElapsedSec,
+  timelineEvents,
   onStop,
   onRetry,
   onAskFix,
