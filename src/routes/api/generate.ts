@@ -738,6 +738,21 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   ),
                 );
               }
+              controller.enqueue(
+                encoder.encode(
+                  sse({
+                    type: "timeline",
+                    step: "stream_autofix",
+                    outcome: autofixOut.report.fixedCount > 0 ? "fixed" : "ok",
+                    message:
+                      autofixOut.report.fixedCount > 0
+                        ? `Auto-corrected ${autofixOut.report.fixedCount} small issue${autofixOut.report.fixedCount === 1 ? "" : "s"}`
+                        : "Quick safety scan — clean",
+                    count: autofixOut.report.fixedCount,
+                    ts: Date.now(),
+                  }),
+                ),
+              );
 
               // Tier 2.5 — DETERMINISTIC local verifier (no model call).
               // Catches truncated streams + unbalanced JSX/braces that the
