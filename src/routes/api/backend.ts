@@ -24,8 +24,11 @@ import {
   restoreForProject,
 } from "@/server/managed-backend.server";
 
-/** Cloud-balance floor required to enable (or re-enable) a managed backend. */
-const PROVISIONING_FLOOR_CENTS = 1000; // $10
+/**
+ * Plans that gate access to managed backend / email / domains. Free users
+ * are routed to upgrade instead of being asked to top up Cloud.
+ */
+const PAID_PLAN_CODES = new Set(["pro", "business"]);
 
 const SUPABASE_URL_RE = /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i;
 
@@ -150,36 +153,35 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
     );
   }
 
-  // Balance check.
+  // Plan + balance check.
   // Rule:
-  //  - First-time users (never qualified) must top up to the $10 floor to
-  //    activate Cloud on their first project.
-  //  - Already-qualified users (have topped up before) only need a positive
-  //    Cloud balance to enable Cloud on additional projects — no extra
-  //    top-up is required, but a $0 balance still blocks activation.
+  //  - Free plan: blocked. UI surfaces an upgrade prompt instead of top-up.
+  //  - Paid plan: allowed as long as the runtime wallet has > $0 (free + topup).
+  //    The first paid-plan upgrade auto-grants $5 so this is non-blocking
+  //    for new paying users; only paid users who fully drained their wallet
+  //    hit the balance_empty branch.
   const { data: wallet } = await supabaseAdmin
     .from("user_wallets")
-    .select("runtime_topup_balance_cents, runtime_free_balance_cents, runtime_topup_qualified_at")
+    .select("plan_code, runtime_topup_balance_cents, runtime_free_balance_cents")
     .eq("user_id", userId)
     .maybeSingle();
+  const planCode = String(wallet?.plan_code ?? "free");
   const topup = Number(wallet?.runtime_topup_balance_cents ?? 0);
   const free = Number(wallet?.runtime_free_balance_cents ?? 0);
   const totalBalance = topup + free;
-  const qualified = Boolean(wallet?.runtime_topup_qualified_at);
 
-  if (!qualified) {
-    if (topup < PROVISIONING_FLOOR_CENTS) {
-      return new Response(
-        JSON.stringify({
-          error: `Top up your Cloud balance to at least $${PROVISIONING_FLOOR_CENTS / 100} to enable a managed backend.`,
-          code: "topup_required",
-          currentCents: topup,
-          requiredCents: PROVISIONING_FLOOR_CENTS,
-        }),
-        { status: 402, headers: { "Content-Type": "application/json" } },
-      );
-    }
-  } else if (totalBalance <= 0) {
+  if (!PAID_PLAN_CODES.has(planCode)) {
+    return new Response(
+      JSON.stringify({
+        error: "Backends are included with paid plans. Upgrade to add a backend.",
+        code: "plan_upgrade_required",
+        requiredPlan: "pro",
+        currentPlan: planCode,
+      }),
+      { status: 402, headers: { "Content-Type": "application/json" } },
+    );
+  }
+  if (totalBalance <= 0) {
     return new Response(
       JSON.stringify({
         error:
