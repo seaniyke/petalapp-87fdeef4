@@ -98,6 +98,7 @@ function AdminBillingPage() {
           <TabsList>
             <TabsTrigger value="plans">Plans</TabsTrigger>
             <TabsTrigger value="packs">Credit packs</TabsTrigger>
+            <TabsTrigger value="addons">Add-ons</TabsTrigger>
             <TabsTrigger value="currencies">Currencies & rates</TabsTrigger>
             <TabsTrigger value="overrides">Price overrides</TabsTrigger>
           </TabsList>
@@ -106,6 +107,9 @@ function AdminBillingPage() {
           </TabsContent>
           <TabsContent value="packs">
             <CreditPacksPanel />
+          </TabsContent>
+          <TabsContent value="addons">
+            <AddonsPanel />
           </TabsContent>
           <TabsContent value="currencies">
             <CurrenciesPanel />
