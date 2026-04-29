@@ -340,6 +340,12 @@ function AdminIndexPage() {
             description="Route each AI feature to Lovable AI or OpenRouter to control cost."
             icon={<Cpu className="h-5 w-5" />}
           />
+          <SectionCard
+            to="/admin/pipeline"
+            title="Pipeline telemetry"
+            description="Per-tier outcomes, latency p50/p95, top hallucinated packages and handoff reasons."
+            icon={<Gauge className="h-5 w-5" />}
+          />
         </section>
       </main>
     </div>
