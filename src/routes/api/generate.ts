@@ -789,7 +789,15 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 | "oversize_files"
                 | "incomplete_turn"
                 | "large_changeset"
+                | "unrecoverable_turn"
                 | null = budgetRejections.length > 0 ? "oversize_files" : null;
+              // Detected detail attached to the handoff event so the chip can
+              // tell the user *what* tripped the stop (hallucinated packages,
+              // truncated files). Populated as the relevant tiers run.
+              const handoffDetected: {
+                hallucinatedPackages?: string[];
+                truncatedPaths?: string[];
+              } = {};
               // Heuristic: an unusually large changeset is itself a truncation
               // risk. Encourage stopping at a clean boundary even when nothing
               // technically failed.
