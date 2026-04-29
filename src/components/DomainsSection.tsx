@@ -64,7 +64,7 @@ import {
   listDomainSlots,
   checkDomainDns,
   PETAL_DOMAIN_CNAME_TARGET,
-  PETAL_DOMAIN_A_RECORD,
+  PETAL_DOMAIN_APEX_ALIAS_TARGET,
   DomainSlotRequiredError,
   type ProjectDomain,
   type DomainSlot,
@@ -699,8 +699,8 @@ function DnsRecordsDialog({
   const labels = domain.hostname.split(".");
   const isApex = labels.length === 2; // crude but matches common .com/.net cases
   const routingHost = isApex ? "@" : labels[0];
-  const routingRecordType = isApex ? "A" : "CNAME";
-  const routingRecordValue = isApex ? PETAL_DOMAIN_A_RECORD : PETAL_DOMAIN_CNAME_TARGET;
+  const routingRecordType = isApex ? "ALIAS" : "CNAME";
+  const routingRecordValue = isApex ? PETAL_DOMAIN_APEX_ALIAS_TARGET : PETAL_DOMAIN_CNAME_TARGET;
   const txtRecords = (
     domain.verification_records && domain.verification_records.length > 0
       ? domain.verification_records
@@ -768,7 +768,7 @@ function DnsRecordsDialog({
                 </li>
               )}
               <li>
-                {txtRecords.length > 0 ? "Both routing (A/CNAME) and the TXT records above" : "The routing record above"} must be live. Verify with{" "}
+                {txtRecords.length > 0 ? "Both routing and the TXT records above" : "The routing record above"} must be live. Verify with{" "}
                 <a
                   href={`https://dnschecker.org/#${routingRecordType}/${domain.hostname}`}
                   target="_blank"
@@ -834,7 +834,7 @@ function RecordCard({
   zone,
   note,
 }: {
-  type: "A" | "CNAME" | "TXT";
+  type: "ALIAS" | "CNAME" | "TXT";
   host: string;
   value: string;
   /** The hostname being configured, used to derive the short host label. */
