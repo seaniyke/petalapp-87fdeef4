@@ -252,13 +252,13 @@ async function relayAndCollect(
 
           // Count completed `"path": "..."` occurrences and announce file progress.
           PATH_RE.lastIndex = 0;
+          const pathMatches: { path: string; index: number }[] = [];
           let match: RegExpExecArray | null;
-          let count = 0;
-          let latest: string | undefined;
           while ((match = PATH_RE.exec(tool.args)) !== null) {
-            count += 1;
-            latest = match[1];
+            pathMatches.push({ path: match[1], index: match.index });
           }
+          const count = pathMatches.length;
+          const latest = pathMatches[pathMatches.length - 1]?.path;
           if (count > lastPathCount) {
             if (!writingPhaseSent) {
               controller.enqueue(encoder.encode(sse({ type: "phase", phase: "writing" })));
@@ -267,6 +267,40 @@ async function relayAndCollect(
             lastPathCount = count;
             controller.enqueue(
               encoder.encode(sse({ type: "file_progress", written: count, latestPath: latest })),
+            );
+          }
+
+          // Emit `file_complete` for each file whose `"content": "…"` string
+          // has fully closed in the buffer. This is the v0-style perceived
+          // latency win: the client can flip a file's status to "done" the
+          // instant it finishes streaming, instead of waiting for the whole
+          // tool call to land. Pair each closed content with the most recent
+          // path declared before it.
+          CONTENT_RE.lastIndex = 0;
+          let cm: RegExpExecArray | null;
+          while ((cm = CONTENT_RE.exec(tool.args)) !== null) {
+            const contentEnd = cm.index;
+            const contentBytes = cm[1].length;
+            // Find the closest preceding path.
+            let owner: string | undefined;
+            for (let i = pathMatches.length - 1; i >= 0; i--) {
+              if (pathMatches[i].index < contentEnd) {
+                owner = pathMatches[i].path;
+                break;
+              }
+            }
+            if (!owner || completedPaths.has(owner)) continue;
+            completedPaths.add(owner);
+            completedCount += 1;
+            controller.enqueue(
+              encoder.encode(
+                sse({
+                  type: "file_complete",
+                  path: owner,
+                  bytes: contentBytes,
+                  index: completedCount,
+                }),
+              ),
             );
           }
         }
