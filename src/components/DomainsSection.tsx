@@ -16,6 +16,8 @@ import {
   Copy,
   Check,
   CheckCircle2,
+  XCircle,
+  Stethoscope,
   MoreHorizontal,
   Star,
   Trash2,
