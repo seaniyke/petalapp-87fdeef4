@@ -1318,6 +1318,33 @@ export type Database = {
         }
         Relationships: []
       }
+      project_secrets: {
+        Row: {
+          ciphertext: string
+          created_at: string
+          id: string
+          name: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          ciphertext: string
+          created_at?: string
+          id?: string
+          name: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          ciphertext?: string
+          created_at?: string
+          id?: string
+          name?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       project_versions: {
         Row: {
           created_at: string
