@@ -237,18 +237,19 @@ async function handleVerify(userId: string, body: unknown): Promise<Response> {
   }
 
   const mapped = mapCfStatus(cf);
-  const txt = extractTxtValidation(cf);
+  const txts = extractAllTxtValidations(cf);
 
-  // Build the patch — only overwrite TXT fields if Cloudflare has issued one.
+  // Build the patch — only overwrite TXT fields if Cloudflare has issued any.
   const patch: Database["public"]["Tables"]["project_domains"]["Update"] = {
     status: mapped.status,
     ssl_status: mapped.ssl_status,
     error_message: mapped.error_message,
     last_checked_at: new Date().toISOString(),
   };
-  if (txt) {
-    patch.verification_txt_name = txt.name;
-    patch.verification_txt_value = txt.value;
+  if (txts.length > 0) {
+    patch.verification_txt_name = txts[0].name;
+    patch.verification_txt_value = txts[0].value;
+    patch.verification_records = txts;
   }
 
   const { data, error } = await supabaseAdmin
