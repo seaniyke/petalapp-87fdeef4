@@ -2381,6 +2381,25 @@ function Builder() {
                         <Suspense fallback={<div className="whitespace-pre-wrap">{sanitizeNarrative(m.content)}</div>}>
                           <MarkdownMessage content={sanitizeNarrative(m.content)} projectId={project?.id ?? null} />
                         </Suspense>
+                        {/* Clarifying-question chips. Only render when the
+                            post-build NextStepsCard is NOT shown (no files
+                            yet) — once a build exists, suggestions are folded
+                            into the "Keep building" action below to keep the
+                            thread calm. */}
+                        {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !busy && !discussBusy && files.length === 0 && (
+                          <div className="-mx-0.5 mt-1 flex flex-wrap gap-1.5">
+                            {m.suggestions.map((s, si) => (
+                              <button
+                                key={si}
+                                type="button"
+                                onClick={() => void send(s, { forceBuild: true })}
+                                className="inline-flex items-center rounded-full border border-foreground/15 bg-background px-3 py-1.5 text-[12.5px] font-medium text-foreground transition hover:border-foreground/30 hover:bg-foreground hover:text-background"
+                              >
+                                {s}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                         {/* Post-build "what's next?" card. Only on the latest
                             assistant message, only when Petal is idle and
                             there's a real app to show. Gives users a clear
