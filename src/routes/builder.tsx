@@ -451,6 +451,13 @@ function Builder() {
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [input]);
 
+  // When the preview hard-reloads (e.g. after a fix is applied), clear any
+  // stale runtime error so the banner doesn't stick around. The runtime
+  // bridge will re-emit if the error is still happening on the next render.
+  useEffect(() => {
+    setRuntimeError(null);
+  }, [previewKey]);
+
   useEffect(() => {
     if (!attachKey || typeof window === "undefined") return;
     try {
