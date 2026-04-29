@@ -728,6 +728,27 @@ export function PublishSheet({
           )}
         </div>
 
+        {/* Website info — title / description / favicon / social image used
+            by the subdomain worker to render <head> tags on the published
+            site. Defaults to the project's build-time title/summary and the
+            Petal logo until the user customises any of it. */}
+        <button
+          type="button"
+          onClick={() => setWebsiteInfoOpen(true)}
+          className="mt-5 flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left transition hover:bg-muted"
+        >
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <Search className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">Website info</span>
+            <span className="block truncate text-xs text-muted-foreground">
+              {(project.site_title?.trim() || project.title) ?? "Add a title and description"}
+            </span>
+          </span>
+          <Pencil className="h-4 w-4 text-muted-foreground" />
+        </button>
+
         {/* Build error (only when relevant) */}
         {buildStatus === "failed" && buildError && (
           <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
