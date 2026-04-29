@@ -2073,13 +2073,13 @@ function Builder() {
                               <Suspense
                                 fallback={<div className="whitespace-pre-wrap text-[13px]">{safePlan}</div>}
                               >
-                                <MarkdownMessage content={safePlan} />
+                                <MarkdownMessage content={safePlan} projectId={project?.id ?? null} />
                               </Suspense>
                             </CollapsibleSegment>
                           );
                         })()}
                         <Suspense fallback={<div className="whitespace-pre-wrap">{sanitizeNarrative(m.content)}</div>}>
-                          <MarkdownMessage content={sanitizeNarrative(m.content)} />
+                          <MarkdownMessage content={sanitizeNarrative(m.content)} projectId={project?.id ?? null} />
                         </Suspense>
                         {/* Quick-reply chips. Tapping a chip sends its label
                             as the next user turn — same as if they'd typed it.
@@ -2117,7 +2117,7 @@ function Builder() {
                               <Suspense
                                 fallback={<div className="whitespace-pre-wrap text-[13px]">{safeRecap}</div>}
                               >
-                                <MarkdownMessage content={safeRecap} />
+                                <MarkdownMessage content={safeRecap} projectId={project?.id ?? null} />
                               </Suspense>
                             </CollapsibleSegment>
                           );
@@ -2313,7 +2313,7 @@ function Builder() {
                       <Suspense
                         fallback={<div className="whitespace-pre-wrap">{safePreamble}</div>}
                       >
-                        <MarkdownMessage content={safePreamble} />
+                        <MarkdownMessage content={safePreamble} projectId={project?.id ?? null} />
                       </Suspense>
                     );
                   })()}
@@ -2329,7 +2329,7 @@ function Builder() {
                         <Suspense
                           fallback={<div className="whitespace-pre-wrap text-[13px]">{safePlan}</div>}
                         >
-                          <MarkdownMessage content={safePlan} />
+                          <MarkdownMessage content={safePlan} projectId={project?.id ?? null} />
                         </Suspense>
                       </CollapsibleSegment>
                     );
@@ -2340,7 +2340,7 @@ function Builder() {
                       <Suspense
                         fallback={<div className="whitespace-pre-wrap">{safeAssistant}</div>}
                       >
-                        <MarkdownMessage content={safeAssistant} />
+                        <MarkdownMessage content={safeAssistant} projectId={project?.id ?? null} />
                       </Suspense>
                     );
                   })()}
@@ -2356,7 +2356,7 @@ function Builder() {
                         <Suspense
                           fallback={<div className="whitespace-pre-wrap text-[13px]">{safeRecap}</div>}
                         >
-                          <MarkdownMessage content={safeRecap} />
+                          <MarkdownMessage content={safeRecap} projectId={project?.id ?? null} />
                         </Suspense>
                       </CollapsibleSegment>
                     );

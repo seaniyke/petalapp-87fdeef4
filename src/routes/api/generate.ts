@@ -15,6 +15,11 @@ import {
 import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { lookupBackendForGenerate } from "@/server/backend-connector.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
+import {
+  loadInstalledCodes,
+  renderSuggestionsBlock,
+  suggestIntegrations,
+} from "@/server/integrations/auto-suggest.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
@@ -339,6 +344,19 @@ export const Route = createFileRoute("/api/generate")({
           ? await loadInstalledIntegrationsContext(body.projectId)
           : "";
 
+        // Auto-suggest: when the user asks for a capability we already have a
+        // marketplace integration for (and it isn't installed yet), inject a
+        // short prompt block so Petal recommends installing it instead of
+        // hand-rolling the SDK.
+        const installedCodes = body.projectId
+          ? await loadInstalledCodes(body.projectId)
+          : new Set<string>();
+        const integrationSuggestions = suggestIntegrations({
+          messages: body.messages ?? [],
+          installedCodes,
+        });
+        const suggestionsBlock = renderSuggestionsBlock(integrationSuggestions);
+
         // Project Knowledge: small piece of context the owner attached to the
         // project ("always use a pastel palette", etc.). Prepended on every turn.
         const knowledge = (body.customInstructions ?? "").trim().slice(0, 4000);
@@ -420,7 +438,7 @@ export const Route = createFileRoute("/api/generate")({
         });
 
         const chatMessages = [
-          { role: "system", content: baseSystem + backendBlock + integrationsBlock + knowledgeBlock + memoryBlock + designBlock + dynamic.text + visionAddendum + filesContext },
+          { role: "system", content: baseSystem + backendBlock + integrationsBlock + suggestionsBlock + knowledgeBlock + memoryBlock + designBlock + dynamic.text + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {

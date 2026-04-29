@@ -18,6 +18,12 @@ export const stripeIntegration: IntegrationDefinition = {
   tagline: "Global card + wallet payments via Stripe Checkout.",
   category: "Payments",
   docsUrl: "https://stripe.com/docs/payments/checkout",
+  triggers: [
+    "accept payment","accept payments","take payment","take payments","checkout",
+    "stripe","subscription","subscriptions","billing","paywall","pricing page",
+    "credit card","one-time payment","sell product","sell products","sell access",
+  ],
+  replaces: ["stripe","@stripe/stripe-js"],
   fields: [
     {
       id: "secret_key",
