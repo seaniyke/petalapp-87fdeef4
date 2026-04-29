@@ -457,9 +457,10 @@ function Builder() {
     supersededBuildIdsRef.current = next;
     setSupersededBuildIds(next);
   }, []);
-  // Stable handle to the latest askPetalToFix so the failure effect (declared
-  // before send/askPetalToFix) can call it without stale-closure issues.
+  // Stable handles to the latest askPetalToFix so callbacks declared before
+  // it can invoke either variant without stale-closure issues.
   const askPetalToFixRef = useRef<(() => void) | null>(null);
+  const askPetalToFixManualRef = useRef<(() => void) | null>(null);
   // Phase 3 — track the build id we last surfaced an "Update available" toast
   // for, so a single ready build only nudges the user once.
   const pushUpdateToastedBuildIdRef = useRef<string | null>(null);
@@ -1763,8 +1764,18 @@ function Builder() {
   }, []);
 
   const retry = useCallback(() => {
+    // If the last failure left a real bundler/build error log behind, the
+    // user's original prompt won't help — Petal needs to *see* the error.
+    // Route through askPetalToFix (via ref to avoid declaration ordering)
+    // so the next turn includes the log tail. Falls back to replaying the
+    // original ask when there's no log (e.g. transient network failure).
+    const hasBuildLog = !!effectiveBuildSnap?.errorMessage?.trim();
+    if (hasBuildLog && askPetalToFixManualRef.current) {
+      askPetalToFixManualRef.current();
+      return;
+    }
     if (lastUserPrompt) void send(lastUserPrompt, { isRetry: true });
-  }, [lastUserPrompt, send]);
+  }, [lastUserPrompt, send, effectiveBuildSnap]);
 
   /** Re-trigger a Cloudflare build for the current files. Used by the
    *  "deploy stalled" friendly card so the user can recover from a silent
@@ -1829,6 +1840,7 @@ function Builder() {
   // the auto-fix variant.
   useEffect(() => {
     askPetalToFixRef.current = () => askPetalToFix({ isAuto: true });
+    askPetalToFixManualRef.current = () => askPetalToFix({ isAuto: false });
   }, [askPetalToFix]);
 
   async function downloadProject() {
@@ -3296,6 +3308,37 @@ function Builder() {
                 </button>
               </div>
             </div>
+            {/* Live status line — Lovable-style ambient cue right under the
+                composer. Only renders while busy. The activity card has the
+                full timeline; this is the one-glance summary. */}
+            {(busy || discussBusy) && (() => {
+              const activePhase = phases.find((p) => p.status === "active");
+              const fileLabel = latestPath
+                ? latestPath.split("/").pop() ?? latestPath
+                : null;
+              let label: string;
+              if (discussBusy) label = "Petal is thinking…";
+              else if (filesWritten > 0 && fileLabel)
+                label = `Writing ${filesWritten} file${filesWritten === 1 ? "" : "s"} · ${fileLabel}`;
+              else if (filesWritten > 0)
+                label = `Writing ${filesWritten} file${filesWritten === 1 ? "" : "s"}…`;
+              else if (activePhase?.id === "thinking") label = "Petal is thinking…";
+              else if (activePhase?.id === "designing") label = "Designing…";
+              else if (activePhase?.id === "writing") label = "Writing code…";
+              else if (activePhase?.id === "polishing") label = "Polishing…";
+              else if (activePhase?.id === "deploying") label = "Deploying…";
+              else label = "Working…";
+              return (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="mt-1.5 flex items-center gap-1.5 px-1 text-[11.5px] text-muted-foreground"
+                >
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-foreground/50" />
+                  <span className="min-w-0 flex-1 truncate">{label}</span>
+                </div>
+              );
+            })()}
             {/* Errors are shown inside <BuildActivityCard /> with friendly copy. */}
           </form>
         </aside>
