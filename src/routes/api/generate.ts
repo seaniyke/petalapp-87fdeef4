@@ -997,6 +997,20 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   }),
                 ),
               );
+
+              // Phase B — record the failed outcome so the smart router
+              // sees this model produced a broken build for this turn.
+              void recordAiOutcome({
+                feature: "generate",
+                provider: "lovable",
+                model: typeof model === "string" ? model : null,
+                projectId: body.projectId ?? null,
+                localVerifierPass: false,
+                localVerifierErrors: [{ path: "<pipeline>", kind: "exception", detail: raw }],
+                autofixCount: 0,
+                buildStatus: "failed",
+                filesWritten: 0,
+              });
             } finally {
               controller.close();
             }
