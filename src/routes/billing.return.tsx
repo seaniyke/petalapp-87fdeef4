@@ -11,6 +11,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/hooks/use-wallet";
 import { supabase } from "@/integrations/supabase/client";
+import { pollDomainRegistrations } from "@/lib/registrar";
 
 const SearchSchema = z.object({
   reference: z.string().optional(),
@@ -23,6 +24,7 @@ const SearchSchema = z.object({
 type VerifyState =
   | { kind: "loading" }
   | { kind: "success"; purpose: string }
+  | { kind: "registering-domain"; hostname?: string }
   | { kind: "pending" }
   | { kind: "failed"; message: string };
 
