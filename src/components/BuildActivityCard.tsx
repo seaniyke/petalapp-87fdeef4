@@ -26,6 +26,8 @@ type Props = {
   filesWritten?: number;
   /** Ordered list of every file path written so far (deduped). */
   writtenPaths?: string[];
+  /** Paths whose stream-time `"content"` string finished — drives per-file ✓. */
+  completedPaths?: Set<string>;
   /** After completion, final line counts keyed by path — drives the "X lines" badge. */
   finalFileLines?: Record<string, number>;
   /**
@@ -56,6 +58,7 @@ export function BuildActivityCard({
   latestPath,
   filesWritten,
   writtenPaths,
+  completedPaths,
   finalFileLines,
   fileChanges,
   deployElapsedSec,
@@ -284,6 +287,7 @@ export function BuildActivityCard({
               filesWritten={p.id === "writing" ? filesWritten : undefined}
               latestPath={p.id === "writing" ? latestPath : undefined}
               writtenPaths={p.id === "writing" ? writtenPaths : undefined}
+              completedPaths={p.id === "writing" ? completedPaths : undefined}
               finalFileLines={p.id === "writing" ? finalFileLines : undefined}
               fileChanges={p.id === "writing" ? fileChanges : undefined}
             />
@@ -300,6 +304,7 @@ function PhaseRow({
   filesWritten,
   latestPath,
   writtenPaths,
+  completedPaths,
   finalFileLines,
   fileChanges,
 }: {
@@ -308,6 +313,7 @@ function PhaseRow({
   filesWritten?: number;
   latestPath?: string;
   writtenPaths?: string[];
+  completedPaths?: Set<string>;
   finalFileLines?: Record<string, number>;
   fileChanges?: Record<
     string,
@@ -363,7 +369,19 @@ function PhaseRow({
             {writtenPaths!.map((p) => {
               const lines = finalFileLines?.[p];
               const isLatest = isActive && p === latestPath;
+              const isStreamDone = completedPaths?.has(p) ?? false;
               const change = fileChanges?.[p];
+              // Icon priority during the writing phase:
+              //   ✕ deleted → ✓ phase finished → ✓ this file finished streaming
+              //   → › currently writing this file → · queued
+              const rowIcon =
+                change?.kind === "deleted"
+                  ? "✕"
+                  : isDone || isStreamDone
+                    ? "✓"
+                    : isLatest
+                      ? "›"
+                      : "·";
               return (
                 <li
                   key={p}
@@ -373,7 +391,7 @@ function PhaseRow({
                 >
                   <span className="inline-flex min-w-0 items-center gap-1 truncate">
                     <span aria-hidden className="opacity-60">
-                      {isLatest ? "›" : change?.kind === "deleted" ? "✕" : isDone ? "✓" : "·"}
+                      {rowIcon}
                     </span>
                     <span className="truncate">{p}</span>
                     {change && (
