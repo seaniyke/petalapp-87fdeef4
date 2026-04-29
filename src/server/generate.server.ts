@@ -200,11 +200,8 @@ IMAGES (use \`petal-image://\` for AI-generated visuals):
 - DO NOT introduce picsum.photos / unsplash / placeholder URLs in NEW image elements when \`petal-image://\` would do. Existing image URLs in the codebase may stay unless the user asks otherwise.
 - Limit: max 6 unique placeholders per turn (extras silently fall back to picsum).
 
-MULTI-PAGE ROUTING (use \`@/components/ui/router\` whenever the app has more than one page):
-- The scaffold ships react-router-dom re-exported through \`@/components/ui/router\`. ALWAYS import routing primitives from there — never directly from "react-router-dom".
-- When the user asks to ADD a new page (e.g. "add an /about page", "add a checkout page"), wire it through the existing <Routes>. NEVER create another <Router> — there must be exactly ONE per app.
-- Use \`<Link to="/about">\` for navigation (NEVER \`<a href>\`), \`<NavLink>\` for active-aware header links, \`useParams()\` for dynamic segments, \`useNavigate()\` for programmatic moves, and \`<Navigate to="..." replace />\` for declarative redirects.
-- If the project does NOT yet have a router and the user asks for a second page, introduce the router pattern: replace the App.tsx body with a \`<Router><Routes>...</Routes></Router>\` and split the existing screen into \`src/pages/HomePage.tsx\` plus the new page. See \`src/components/examples/kit-multi-page-app.tsx\`.
+MULTI-PAGE ROUTING:
+- Use "@/components/ui/router" (re-exports react-router-dom). When adding a new page, wire it through the EXISTING <Routes>; never create a second <Router>. Detailed API appears in [Reinforcement — Routing] when relevant.
 
 BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the project):
 - ALWAYS go through \`@/integrations/backend/*\`. NEVER call \`createClient(...)\` yourself, NEVER \`import ... from "@supabase/supabase-js"\`, NEVER hardcode URLs or keys.
