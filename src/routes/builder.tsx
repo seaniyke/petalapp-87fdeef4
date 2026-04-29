@@ -2017,20 +2017,25 @@ function Builder() {
               return (
                 <div key={i} className="group min-w-0">
                   <div
-                    className={`relative min-w-0 overflow-hidden wrap-anywhere rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed text-foreground shadow-sm ${
+                    className={`relative min-w-0 overflow-hidden wrap-anywhere rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed text-foreground ${
                       isUser
-                        ? "ml-3 border border-border bg-card sm:ml-6"
-                        : "mr-3 border-l-2 border-foreground bg-secondary sm:mr-6"
+                        ? "ml-3 border border-border bg-card shadow-sm sm:ml-6"
+                        : "mr-1 sm:mr-4"
                     }`}
                   >
-                    <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                      <span className={isUser ? "" : "text-foreground"}>{isUser ? "you" : "petal"}</span>
-                      {m.role === "assistant" && i === lastDiscussIndex && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-foreground/70">
-                          <MessageSquare className="h-2.5 w-2.5" /> discuss
-                        </span>
-                      )}
-                    </div>
+                    {isUser ? (
+                      <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                        <span>you</span>
+                      </div>
+                    ) : (
+                      m.role === "assistant" && i === lastDiscussIndex && (
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px] text-foreground/70">
+                            <MessageSquare className="h-2.5 w-2.5" /> discuss
+                          </span>
+                        </div>
+                      )
+                    )}
                     {m.role === "assistant" ? (
                       <div className="space-y-2.5">
                         {m.plan && (() => {
@@ -2266,10 +2271,9 @@ function Builder() {
                 streamingPlan ||
                 streamingAssistant ||
                 streamingRecap) && (
-              <div className="mr-3 overflow-hidden wrap-anywhere rounded-2xl bg-secondary text-foreground px-3.5 py-2.5 text-sm leading-relaxed sm:mr-6">
-                <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <span>petal</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-primary">
+              <div className="mr-1 overflow-hidden wrap-anywhere rounded-2xl text-foreground px-3.5 py-2.5 text-sm leading-relaxed sm:mr-4">
+                <div className="mb-1.5 flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary/80">
                     <Loader2 className="h-2.5 w-2.5 animate-spin" />
                     {streamingRecap
                       ? "wrapping up"
