@@ -27,6 +27,16 @@ import {
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
 import type { FriendlyError } from "@/lib/friendly-errors";
 
+// Lovable-style: clean monoline icons per phase instead of emoji.
+const PHASE_ICONS: Record<PhaseId, LucideIcon> = {
+  thinking: Sparkles,
+  designing: Palette,
+  writing: FileEdit,
+  polishing: Wand2,
+  deploying: Rocket,
+  live: CheckCircle2,
+};
+
 type Props = {
   phases: Phase[];
   /** True while either generation or deployment is in flight. */
