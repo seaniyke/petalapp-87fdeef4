@@ -3209,6 +3209,23 @@ function Builder() {
                           setPickedElement(el);
                           setPickInstruction("");
                         }}
+                        onRuntimeError={(err) => {
+                          // Only surface fresh errors. If the same message is
+                          // already showing (and not yet sent for fixing), keep
+                          // the existing entry so the banner doesn't flicker.
+                          setRuntimeError((prev) => {
+                            if (
+                              prev &&
+                              !prev.fixed &&
+                              prev.message === err.message &&
+                              prev.source === err.source &&
+                              prev.lineno === err.lineno
+                            ) {
+                              return prev;
+                            }
+                            return { ...err, fixed: false };
+                          });
+                        }}
                       />
                     </Suspense>
                   ) : (
