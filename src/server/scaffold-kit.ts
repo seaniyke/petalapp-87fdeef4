@@ -299,6 +299,132 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
 Input.displayName = "Input";
 `;
 
+// Self-contained OTP input. Mirrors the shadcn/ui input-otp public API
+// (<InputOTP maxLength value onChange>, <InputOTPGroup>, <InputOTPSlot index>,
+// <InputOTPSeparator />) so the auth/onboarding example blocks compile without
+// pulling the `input-otp` npm package. Backed by a single hidden <input>; the
+// visible slot boxes are pure UI driven from context. Good enough for >95% of
+// product use cases (sign-up codes, 2FA, magic-link verification).
+const INPUT_OTP = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+type OTPCtx = {
+  value: string;
+  maxLength: number;
+  setValue: (v: string) => void;
+  focusedIndex: number;
+  setFocusedIndex: (i: number) => void;
+};
+const OTPContext = React.createContext<OTPCtx | null>(null);
+
+function useOTP(): OTPCtx {
+  const ctx = React.useContext(OTPContext);
+  if (!ctx) throw new Error("InputOTP slots must be used inside <InputOTP>");
+  return ctx;
+}
+
+export interface InputOTPProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> {
+  maxLength?: number;
+  value?: string;
+  onChange?: (value: string) => void;
+  containerClassName?: string;
+  children: React.ReactNode;
+}
+
+export const InputOTP = React.forwardRef<HTMLInputElement, InputOTPProps>(
+  ({ maxLength = 6, value, onChange, containerClassName, className, children, disabled, ...rest }, ref) => {
+    const [internal, setInternal] = React.useState("");
+    const isControlled = value !== undefined;
+    const current = isControlled ? value! : internal;
+    const [focusedIndex, setFocusedIndex] = React.useState(-1);
+    const inputRef = React.useRef<HTMLInputElement>(null);
+    React.useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
+
+    const setValue = React.useCallback(
+      (next: string) => {
+        const cleaned = next.replace(/\\D/g, "").slice(0, maxLength);
+        if (!isControlled) setInternal(cleaned);
+        onChange?.(cleaned);
+      },
+      [isControlled, maxLength, onChange],
+    );
+
+    return (
+      <OTPContext.Provider value={{ value: current, maxLength, setValue, focusedIndex, setFocusedIndex }}>
+        <div
+          className={cn("relative flex items-center gap-2", containerClassName)}
+          onClick={() => inputRef.current?.focus()}
+        >
+          {children}
+          <input
+            ref={inputRef}
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={current}
+            disabled={disabled}
+            onChange={(e) => setValue(e.target.value)}
+            onFocus={() => setFocusedIndex(Math.min(current.length, maxLength - 1))}
+            onBlur={() => setFocusedIndex(-1)}
+            maxLength={maxLength}
+            className={cn(
+              "absolute inset-0 h-full w-full opacity-0 outline-none disabled:cursor-not-allowed",
+              className,
+            )}
+            {...rest}
+          />
+        </div>
+      </OTPContext.Provider>
+    );
+  },
+);
+InputOTP.displayName = "InputOTP";
+
+export const InputOTPGroup = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("flex items-center", className)} {...props} />
+  ),
+);
+InputOTPGroup.displayName = "InputOTPGroup";
+
+export interface InputOTPSlotProps extends React.HTMLAttributes<HTMLDivElement> {
+  index: number;
+}
+export const InputOTPSlot = React.forwardRef<HTMLDivElement, InputOTPSlotProps>(
+  ({ index, className, ...props }, ref) => {
+    const { value, focusedIndex } = useOTP();
+    const char = value[index] ?? "";
+    const isActive = focusedIndex === index || (focusedIndex === -1 && index === value.length);
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "relative flex h-10 w-10 items-center justify-center border-y border-r border-input text-sm transition-all first:rounded-l-md first:border-l last:rounded-r-md",
+          isActive && "z-10 ring-2 ring-ring ring-offset-background",
+          className,
+        )}
+        {...props}
+      >
+        {char}
+        {isActive && !char && (
+          <span className="pointer-events-none absolute inset-y-2 w-px animate-pulse bg-foreground" aria-hidden />
+        )}
+      </div>
+    );
+  },
+);
+InputOTPSlot.displayName = "InputOTPSlot";
+
+export const InputOTPSeparator = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} role="separator" className={cn("text-muted-foreground", className)} {...props}>
+      <span aria-hidden>-</span>
+    </div>
+  ),
+);
+InputOTPSeparator.displayName = "InputOTPSeparator";
+`;
+
 const TEXTAREA = `import * as React from "react";
 import { cn } from "@/lib/utils";
 
