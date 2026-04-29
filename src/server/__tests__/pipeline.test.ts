@@ -25,16 +25,21 @@ import {
   applyNpmPreflight,
   _resetNpmExistenceCache,
 } from "../npm-existence.server";
+import { lintRenderRisks } from "../render-risk-linter";
 import { FIXTURES } from "./pipeline.fixtures";
 
 type Result = { name: string; ok: boolean; reason?: string };
 
 function runFixture(fixture: (typeof FIXTURES)[number]): Result {
   const verdict = verifyFilesLocal(fixture.files, fixture.changedPaths);
+  // Combine local-verifier issues with render-risk linter issues so the
+  // harness exercises the full Tier 2.5 + 2.8 surface in one assertion.
+  const renderRiskIssues = lintRenderRisks(fixture.files, fixture.changedPaths);
+  const allIssues = [...verdict.issues, ...renderRiskIssues];
 
   // Verifier check: every expected substring must appear in at least one issue.
   for (const needle of fixture.expectIssueIncludes) {
-    const hit = verdict.issues.some(
+    const hit = allIssues.some(
       (i) => i.detail.includes(needle) || i.path.includes(needle),
     );
     if (!hit) {
@@ -42,8 +47,8 @@ function runFixture(fixture: (typeof FIXTURES)[number]): Result {
         name: fixture.name,
         ok: false,
         reason: `expected an issue mentioning "${needle}" but got: ${
-          verdict.issues.length
-            ? verdict.issues.map((i) => `[${i.kind}] ${i.path}: ${i.detail}`).join(" | ")
+          allIssues.length
+            ? allIssues.map((i) => `[${i.kind}] ${i.path}: ${i.detail}`).join(" | ")
             : "(no issues)"
         }`,
       };
@@ -55,13 +60,13 @@ function runFixture(fixture: (typeof FIXTURES)[number]): Result {
   // is named "clean" — the slip-through fixtures intentionally produce no
   // issues yet).
   if (fixture.expectIssueIncludes.length === 0 && fixture.name.startsWith("clean")) {
-    if (!verdict.ok) {
+    if (!verdict.ok || renderRiskIssues.length > 0) {
       return {
         name: fixture.name,
         ok: false,
-        reason: `clean fixture expected ok=true but verifier flagged: ${verdict.issues
-          .map((i) => `[${i.kind}] ${i.path}`)
-          .join(", ")}`,
+        reason: `clean fixture expected no issues but got: ${allIssues
+          .map((i) => `[${i.kind}] ${i.path}: ${i.detail}`)
+          .join(" | ")}`,
       };
     }
   }

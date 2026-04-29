@@ -101,11 +101,39 @@ export default function Page() {
 `;
 
 // Page that PARSES fine but throws on render: reads .length on undefined prop.
-// (Used by the future render-smoke fixture; left here so Phase 5 can wire it.)
+// Phase 5's render-risk linter (Tier 2.8) catches this via R1.
 const RUNTIME_CRASH_PAGE = `export default function Crash({ items }: { items?: { id: string }[] }) {
   // Accesses .length on a value that may be undefined — render throws.
-  const total: number = (items as { id: string }[]).length;
+  const total: number = items.length;
   return <div>{total}</div>;
+}
+`;
+
+// R1 SAFE: optional prop with default value in destructure.
+const SAFE_PROP_WITH_DEFAULT = `export default function Safe({ items = [] }: { items?: { id: string }[] }) {
+  return <div>{items.map((i) => i.id).join(",")}</div>;
+}
+`;
+
+// R1 SAFE: optional prop guarded by early return before unsafe access.
+const SAFE_PROP_WITH_GUARD = `export default function SafeGuard({ items }: { items?: { id: string }[] }) {
+  if (!items) return null;
+  return <div>{items.map((i) => i.id).join(",")}</div>;
+}
+`;
+
+// R2: hook called inside an if branch.
+const CONDITIONAL_HOOK_PAGE = `import { useState } from "react";
+export default function Cond({ enabled }: { enabled: boolean }) {
+  if (enabled) useState(0);
+  return <div>x</div>;
+}
+`;
+
+// R3: JSX references a typo'd identifier.
+const JSX_TYPO_PAGE = `export default function Typo() {
+  const title = "Hello";
+  return <div>{titel}</div>;
 }
 `;
 
@@ -190,14 +218,53 @@ export const FIXTURES: PipelineFixture[] = [
     expectIssueIncludes: ["useFooStore"],
   },
   {
-    name: "render-time crash — Phase 5 will catch this",
+    name: "render-time crash — Phase 5 render-risk R1 catches optional-prop access",
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
       { path: "src/App.tsx", content: RUNTIME_CRASH_PAGE },
     ],
     changedPaths: ["src/App.tsx"],
-    // Today: passes verifier (parses fine). Phase 5's render gate will flag it.
+    expectIssueIncludes: ["items"],
+  },
+  {
+    name: "clean — R1 safe with default destructure (must NOT fire)",
+    files: [
+      { path: "package.json", content: PACKAGE_JSON },
+      { path: "index.html", content: INDEX_HTML },
+      { path: "src/App.tsx", content: SAFE_PROP_WITH_DEFAULT },
+    ],
+    changedPaths: ["src/App.tsx"],
     expectIssueIncludes: [],
+  },
+  {
+    name: "clean — R1 safe with early-return guard (must NOT fire)",
+    files: [
+      { path: "package.json", content: PACKAGE_JSON },
+      { path: "index.html", content: INDEX_HTML },
+      { path: "src/App.tsx", content: SAFE_PROP_WITH_GUARD },
+    ],
+    changedPaths: ["src/App.tsx"],
+    expectIssueIncludes: [],
+  },
+  {
+    name: "render-time crash — Phase 5 render-risk R2 catches conditional hook",
+    files: [
+      { path: "package.json", content: PACKAGE_JSON },
+      { path: "index.html", content: INDEX_HTML },
+      { path: "src/App.tsx", content: CONDITIONAL_HOOK_PAGE },
+    ],
+    changedPaths: ["src/App.tsx"],
+    expectIssueIncludes: ["useState"],
+  },
+  {
+    name: "render-time crash — Phase 5 render-risk R3 catches JSX typo",
+    files: [
+      { path: "package.json", content: PACKAGE_JSON },
+      { path: "index.html", content: INDEX_HTML },
+      { path: "src/App.tsx", content: JSX_TYPO_PAGE },
+    ],
+    changedPaths: ["src/App.tsx"],
+    expectIssueIncludes: ["titel"],
   },
 ];

@@ -29,6 +29,7 @@ type Handlers = {
       | "npm_preflight"
       | "continuation"
       | "esbuild_parse"
+      | "render_risk"
       | "file_budget"
       | "post_stream_autofix"
       | "image_resolve";
