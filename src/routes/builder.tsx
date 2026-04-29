@@ -104,6 +104,12 @@ import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestio
 import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
 import { EnableEmailSuggestionChip } from "@/components/EnableEmailSuggestionChip";
 import { EnablePaymentsSuggestionChip } from "@/components/EnablePaymentsSuggestionChip";
+import { EnableSeoSuggestionChip } from "@/components/EnableSeoSuggestionChip";
+import { EnableAnalyticsSuggestionChip } from "@/components/EnableAnalyticsSuggestionChip";
+import { EnableAiFeatureSuggestionChip } from "@/components/EnableAiFeatureSuggestionChip";
+import { EnableStorageSuggestionChip } from "@/components/EnableStorageSuggestionChip";
+import { EnableRealtimeSuggestionChip } from "@/components/EnableRealtimeSuggestionChip";
+import { EnableCronSuggestionChip } from "@/components/EnableCronSuggestionChip";
 
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
@@ -113,6 +119,12 @@ import { detectBackendIntentInTurn } from "@/lib/backend-intent";
 import { detectDomainIntentInTurn } from "@/lib/domain-intent";
 import { detectEmailIntentInTurn } from "@/lib/email-intent";
 import { detectPaymentIntentInTurn } from "@/lib/payment-intent";
+import { detectSeoIntentInTurn } from "@/lib/seo-intent";
+import { detectAnalyticsIntentInTurn } from "@/lib/analytics-intent";
+import { detectAiFeatureIntentInTurn } from "@/lib/ai-feature-intent";
+import { detectStorageIntentInTurn } from "@/lib/storage-intent";
+import { detectRealtimeIntentInTurn } from "@/lib/realtime-intent";
+import { detectCronIntentInTurn } from "@/lib/cron-intent";
 import { getProjectBackend } from "@/lib/projects";
 import { listDomains } from "@/lib/domains";
 import { useWallet } from "@/hooks/use-wallet";
@@ -294,7 +306,18 @@ function Builder() {
   // Project Knowledge sheet — also opens from the mobile overflow menu.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsScrollTo, setSettingsScrollTo] = useState<
-    "domains" | "backend" | "knowledge" | "email" | "payments" | null
+    | "domains"
+    | "backend"
+    | "knowledge"
+    | "email"
+    | "payments"
+    | "seo"
+    | "analytics"
+    | "ai"
+    | "storage"
+    | "realtime"
+    | "cron"
+    | null
   >(null);
   // Mobile builder menu (bottom sheet) + dependent dialogs.
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -321,6 +344,24 @@ function Builder() {
     () => new Set(),
   );
   const [dismissedPaymentChips, setDismissedPaymentChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedSeoChips, setDismissedSeoChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedAnalyticsChips, setDismissedAnalyticsChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedAiFeatureChips, setDismissedAiFeatureChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedStorageChips, setDismissedStorageChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedRealtimeChips, setDismissedRealtimeChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedCronChips, setDismissedCronChips] = useState<Set<number>>(
     () => new Set(),
   );
   const { plan: currentPlan } = useWallet();
@@ -2316,6 +2357,245 @@ function Builder() {
                                 }}
                                 onDismiss={() =>
                                   setDismissedPaymentChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
+                        {/* SEO suggestion — pure frontend, no backend gate. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          !dismissedSeoChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectSeoIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            return (
+                              <EnableSeoSuggestionChip
+                                reason={intent.reason}
+                                onOpenSeo={() => {
+                                  setSettingsScrollTo("seo");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={() =>
+                                  setDismissedSeoChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
+                        {/* AI-feature suggestion — pitches the gateway so
+                            Petal doesn't ask for an OpenAI key. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          !dismissedAiFeatureChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectAiFeatureIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            return (
+                              <EnableAiFeatureSuggestionChip
+                                reason={intent.reason}
+                                onUseGateway={() => {
+                                  setSettingsScrollTo("ai");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={() =>
+                                  setDismissedAiFeatureChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
+                        {/* Analytics suggestion — backend-first when no Cloud. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          !dismissedAnalyticsChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectAnalyticsIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            const backendIntent = detectBackendIntentInTurn(prevUser, m.content);
+                            const backendChipShowing =
+                              hasBackend === false &&
+                              backendIntent.detected &&
+                              !dismissedBackendChips.has(i);
+                            if (hasBackend === false && backendChipShowing) return null;
+                            return (
+                              <EnableAnalyticsSuggestionChip
+                                reason={intent.reason}
+                                needsBackendFirst={hasBackend === false}
+                                onOpenAnalytics={() => {
+                                  setSettingsScrollTo("analytics");
+                                  setSettingsOpen(true);
+                                }}
+                                onSetupBackend={() => {
+                                  setDismissedBackendChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(i);
+                                    return next;
+                                  });
+                                  setSettingsScrollTo("backend");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={() =>
+                                  setDismissedAnalyticsChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
+                        {/* Storage suggestion — backend-first when no Cloud. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          !dismissedStorageChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectStorageIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            const backendIntent = detectBackendIntentInTurn(prevUser, m.content);
+                            const backendChipShowing =
+                              hasBackend === false &&
+                              backendIntent.detected &&
+                              !dismissedBackendChips.has(i);
+                            if (hasBackend === false && backendChipShowing) return null;
+                            return (
+                              <EnableStorageSuggestionChip
+                                reason={intent.reason}
+                                needsBackendFirst={hasBackend === false}
+                                onOpenStorage={() => {
+                                  setSettingsScrollTo("storage");
+                                  setSettingsOpen(true);
+                                }}
+                                onSetupBackend={() => {
+                                  setDismissedBackendChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(i);
+                                    return next;
+                                  });
+                                  setSettingsScrollTo("backend");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={() =>
+                                  setDismissedStorageChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
+                        {/* Realtime suggestion — backend-first when no Cloud. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          !dismissedRealtimeChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectRealtimeIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            const backendIntent = detectBackendIntentInTurn(prevUser, m.content);
+                            const backendChipShowing =
+                              hasBackend === false &&
+                              backendIntent.detected &&
+                              !dismissedBackendChips.has(i);
+                            if (hasBackend === false && backendChipShowing) return null;
+                            return (
+                              <EnableRealtimeSuggestionChip
+                                reason={intent.reason}
+                                needsBackendFirst={hasBackend === false}
+                                onOpenRealtime={() => {
+                                  setSettingsScrollTo("realtime");
+                                  setSettingsOpen(true);
+                                }}
+                                onSetupBackend={() => {
+                                  setDismissedBackendChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(i);
+                                    return next;
+                                  });
+                                  setSettingsScrollTo("backend");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={() =>
+                                  setDismissedRealtimeChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
+                        {/* Cron suggestion — backend-first when no Cloud. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          !dismissedCronChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectCronIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            const backendIntent = detectBackendIntentInTurn(prevUser, m.content);
+                            const backendChipShowing =
+                              hasBackend === false &&
+                              backendIntent.detected &&
+                              !dismissedBackendChips.has(i);
+                            if (hasBackend === false && backendChipShowing) return null;
+                            return (
+                              <EnableCronSuggestionChip
+                                reason={intent.reason}
+                                needsBackendFirst={hasBackend === false}
+                                onOpenCron={() => {
+                                  setSettingsScrollTo("cron");
+                                  setSettingsOpen(true);
+                                }}
+                                onSetupBackend={() => {
+                                  setDismissedBackendChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(i);
+                                    return next;
+                                  });
+                                  setSettingsScrollTo("backend");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={() =>
+                                  setDismissedCronChips((prev) => {
                                     const next = new Set(prev);
                                     next.add(i);
                                     return next;
