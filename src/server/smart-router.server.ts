@@ -249,18 +249,75 @@ function buildSnapshot(
   };
 }
 
+async function loadOutcomes(): Promise<Map<string, OutcomeAgg>> {
+  // `ai_model_quality` is a 7-day rolling view aggregated per (feature,
+  // provider, model). We collapse across feature/provider here so a model's
+  // quality follows it everywhere it's used.
+  const out = new Map<string, OutcomeAgg>();
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("ai_model_quality")
+      .select("model, samples, verifier_pass_rate, build_success_rate, followup_fix_rate, avg_autofixes");
+    if (error) {
+      console.warn("[smart-router] outcomes read failed:", error.message);
+      return out;
+    }
+    // Weighted merge by sample count when the same model appears under
+    // multiple (feature, provider) rows.
+    for (const r of (data ?? []) as Array<{
+      model: string | null;
+      samples: number | null;
+      verifier_pass_rate: number | null;
+      build_success_rate: number | null;
+      followup_fix_rate: number | null;
+      avg_autofixes: number | null;
+    }>) {
+      if (!r.model || !r.samples) continue;
+      const prev = out.get(r.model);
+      if (!prev) {
+        out.set(r.model, {
+          samples: r.samples,
+          verifierPassRate: Number(r.verifier_pass_rate ?? 0),
+          buildSuccessRate: Number(r.build_success_rate ?? 0),
+          followupFixRate: Number(r.followup_fix_rate ?? 0),
+          avgAutofixes: Number(r.avg_autofixes ?? 0),
+        });
+      } else {
+        const total = prev.samples + r.samples;
+        out.set(r.model, {
+          samples: total,
+          verifierPassRate:
+            (prev.verifierPassRate * prev.samples + Number(r.verifier_pass_rate ?? 0) * r.samples) / total,
+          buildSuccessRate:
+            (prev.buildSuccessRate * prev.samples + Number(r.build_success_rate ?? 0) * r.samples) / total,
+          followupFixRate:
+            (prev.followupFixRate * prev.samples + Number(r.followup_fix_rate ?? 0) * r.samples) / total,
+          avgAutofixes:
+            (prev.avgAutofixes * prev.samples + Number(r.avg_autofixes ?? 0) * r.samples) / total,
+        });
+      }
+    }
+  } catch (e) {
+    console.warn("[smart-router] outcomes load threw:", e);
+  }
+  return out;
+}
+
 async function rebuildSnapshot(): Promise<RouterSnapshot> {
   const config = await loadConfig();
   const since = new Date(Date.now() - config.windowHours * 60 * 60 * 1000).toISOString();
 
-  const { data, error } = await supabaseAdmin
-    .from("ai_call_log")
-    .select("feature, phase, model, status, cost_usd_micro, latency_ms")
-    .gte("created_at", since)
-    .limit(50_000);
+  const [logRes, outcomes] = await Promise.all([
+    supabaseAdmin
+      .from("ai_call_log")
+      .select("feature, phase, model, status, cost_usd_micro, latency_ms")
+      .gte("created_at", since)
+      .limit(50_000),
+    loadOutcomes(),
+  ]);
 
-  if (error) {
-    console.warn("[smart-router] log read failed:", error.message);
+  if (logRes.error) {
+    console.warn("[smart-router] log read failed:", logRes.error.message);
     return {
       builtAt: Date.now(),
       config,
@@ -269,7 +326,7 @@ async function rebuildSnapshot(): Promise<RouterSnapshot> {
     };
   }
 
-  const snap = buildSnapshot((data ?? []) as RawRow[], config);
+  const snap = buildSnapshot((logRes.data ?? []) as RawRow[], config, outcomes);
   cached = snap;
   cacheLoadedAt = Date.now();
   return snap;
