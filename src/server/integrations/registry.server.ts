@@ -39,6 +39,9 @@ export type IntegrationCatalogEntry = {
   docsUrl?: string;
   requiresBackend: boolean;
   fields: IntegrationDefinition["fields"];
+  /** Surfaced so the marketplace UI can mirror AI auto-suggestions. */
+  triggers?: string[];
+  replaces?: string[];
 };
 
 export function publicCatalog(): IntegrationCatalogEntry[] {
@@ -50,5 +53,7 @@ export function publicCatalog(): IntegrationCatalogEntry[] {
     docsUrl: i.docsUrl,
     requiresBackend: i.requiresBackend ?? false,
     fields: i.fields,
+    triggers: i.triggers,
+    replaces: i.replaces,
   }));
 }
