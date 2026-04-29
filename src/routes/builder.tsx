@@ -1079,15 +1079,17 @@ function Builder() {
               }
             },
             onSelfCheck: (v) => {
-              // Layer 5 — surface honest follow-ups as suggestion chips.
-              // Only carry forward suggestions when the model thinks the
-              // build genuinely missed something (score < 90 or non-empty
-              // gaps); a clean build shouldn't nag.
-              if (v.suggestions.length > 0 && (v.score < 90 || v.gaps.length > 0)) {
+              // Layer 5 — surface follow-up chips after every build.
+              // When the build has gaps, suggestions help recover; when
+              // it looks clean, they propose the next natural move
+              // ("add auth", "make it mobile-friendly", etc.) so the
+              // user always has a tappable next step.
+              if (v.suggestions.length > 0) {
                 resultSuggestions = v.suggestions;
               }
               resultVerdict = v.verdict;
             },
+
             onError: (m, sugg) => {
               streamError = m;
               if (sugg && sugg.length > 0) errorSuggestions = sugg;

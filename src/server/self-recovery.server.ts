@@ -40,17 +40,22 @@ export type SelfCheckVerdict = {
   suggestions: string[];
 };
 
-const SELF_CHECK_SYSTEM = `You are Petal's QA partner. A build just finished. Your job is to honestly compare the user's brief against what Petal produced (described by Petal's own one-line summary + the list of files written) and decide if the result really lands the brief.
+const SELF_CHECK_SYSTEM = `You are Petal's QA partner. A build just finished. Your job is to honestly compare the user's brief against what Petal produced (described by Petal's own one-line summary + the list of files written) and decide if the result really lands the brief — AND to suggest the most useful next moves.
 
-Be HONEST and CONCISE. You are not the cheerleader — you are the friend who says "hey, you forgot the contact form".
+Be HONEST and CONCISE. You are not the cheerleader — you are the friend who says "hey, you forgot the contact form" or "next, you'd want a real signup flow".
 
 Rules:
 - score: 0–100. 90+ only if the brief is clearly satisfied. 60–80 if mostly there but obvious gaps. <60 if a major requirement was skipped or misunderstood.
 - verdict: ONE sentence, plain English, no code jargon. Match the user's register (broken English brief → plain reply, no big words).
 - gaps: ONLY list things the brief asked for that are clearly NOT in the summary/files. Skip nitpicks. Empty array is a valid answer.
-- suggestions: 0–3 SHORT prompts the user could tap to send next (≤ 8 words each, written as the user would phrase them, e.g. "Add a contact form", "Make the hero darker"). Skip if there are no obvious next moves.
+- suggestions: ALWAYS return 2–3 SHORT prompts the user could tap to send next (≤ 8 words each, written as the user would phrase them, e.g. "Add a contact form", "Make the hero darker", "Add user signup", "Connect a database").
+  - If gaps exist, the FIRST suggestion should address the biggest gap.
+  - Otherwise, propose natural next features, polish, or integrations that fit the app's purpose (auth, database, payments, dark mode, mobile polish, SEO, share preview, real content, etc.).
+  - Always concrete to THIS app. Never generic ("Improve it").
+  - Never suggest the same thing the build just did.
 
-Do NOT invent gaps. If the build looks good, say so and return empty arrays. Call the "self_check" tool exactly once.`;
+Call the "self_check" tool exactly once.`;
+
 
 const SELF_CHECK_TOOL = {
   type: "function" as const,
