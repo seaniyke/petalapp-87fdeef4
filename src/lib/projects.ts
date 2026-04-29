@@ -207,8 +207,21 @@ export async function remixProjectBySlug(slug: string): Promise<ProjectRow> {
 }
 
 export async function deleteProject(id: string) {
-  const { error } = await supabase.from("projects").delete().eq("id", id);
+  // `.select()` makes Supabase return the deleted rows so we can verify the
+  // delete actually landed. Without this, RLS-blocked deletes silently return
+  // success with zero rows affected — the UI removes the card optimistically,
+  // but on refresh the project reappears (which is exactly what users hit).
+  const { data, error } = await supabase
+    .from("projects")
+    .delete()
+    .eq("id", id)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(
+      "Could not delete this project. It may already be gone, or your session may have expired — try signing out and back in."
+    );
+  }
 }
 
 export async function setProjectStarred(id: string, is_starred: boolean): Promise<ProjectRow> {
