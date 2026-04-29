@@ -403,14 +403,16 @@ function OverridesPanel() {
   function nameFor(kind: "plan" | "pack" | "addon", code: string): string {
     if (kind === "plan") return plans.find((p) => p.code === code)?.name ?? code;
     if (kind === "pack") return packs.find((p) => p.code === code)?.name ?? code;
-    return code;
+    return addons.find((a) => a.code === code)?.name ?? code;
   }
 
   function usdPriceFor(kind: "plan" | "pack" | "addon", code: string): string {
-    if (kind === "addon") return "—";
-    const cents = kind === "plan"
-      ? plans.find((p) => p.code === code)?.price_cents
-      : packs.find((p) => p.code === code)?.price_cents;
+    const cents =
+      kind === "plan"
+        ? plans.find((p) => p.code === code)?.price_cents
+        : kind === "pack"
+          ? packs.find((p) => p.code === code)?.price_cents
+          : addons.find((a) => a.code === code)?.price_cents;
     if (cents == null) return "—";
     return `$${(cents / 100).toFixed(2)}`;
   }
