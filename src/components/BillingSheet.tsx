@@ -527,6 +527,10 @@ function PlanCard({
           {plan.daily_free_credits} daily credits
           {plan.monthly_free_cap ? ` (up to ${plan.monthly_free_cap}/month)` : ""}
         </PlanFeature>
+        <PlanFeature>$5 free Cloud + AI credit (one-time, on first upgrade)</PlanFeature>
+        <PlanFeature>Petal Cloud — backend, database, auth &amp; storage</PlanFeature>
+        <PlanFeature>Petal AI — call Gemini &amp; GPT-5 with no API key</PlanFeature>
+        <PlanFeature>Custom domains &amp; transactional email</PlanFeature>
         <PlanFeature>On-demand credit top-ups</PlanFeature>
         {plan.code === "business" && <PlanFeature>Priority support</PlanFeature>}
       </ul>
