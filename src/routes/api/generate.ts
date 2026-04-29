@@ -911,8 +911,23 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   }),
                 ),
               );
-
-              // Tier 2.6 — TRUE truncation recovery. If the local verifier
+              if (preflightDropped > 0 || preflightHallucinated.length > 0) {
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "timeline",
+                      step: "npm_preflight",
+                      outcome: preflightHallucinated.length > 0 ? "failed" : "fixed",
+                      message:
+                        preflightHallucinated.length > 0
+                          ? `Confirmed ${preflightHallucinated.length} hallucinated package${preflightHallucinated.length === 1 ? "" : "s"}: ${preflightHallucinated.slice(0, 3).join(", ")}`
+                          : `Cleared ${preflightDropped} real package${preflightDropped === 1 ? "" : "s"} the installer will fetch`,
+                      count: preflightHallucinated.length || preflightDropped,
+                      ts: Date.now(),
+                    }),
+                  ),
+                );
+              }
               // flagged any file as truncated mid-stream, ask the SAME model
               // to emit only the missing tail bytes. This beats asking
               // flash-lite to "fix" a half-written component (it would
