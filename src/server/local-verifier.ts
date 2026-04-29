@@ -153,6 +153,96 @@ function braceBalance(src: string): { braces: number; parens: number; brackets: 
 }
 
 /**
+ * Detect string literals that opened but never closed before EOF or before
+ * a hard newline (for ' and "). Template literals (`) may legally span lines
+ * but must still close. This is the #1 build-failure mode in our telemetry
+ * (`Unterminated string literal`, `Unterminated regular expression`).
+ *
+ * Returns a short snippet to put in the issue detail.
+ */
+function findUnterminatedString(src: string): string | null {
+  let i = 0;
+  const n = src.length;
+  let line = 1;
+  while (i < n) {
+    const c = src[i];
+    const c2 = src[i + 1];
+    if (c === "\n") {
+      line++;
+      i++;
+      continue;
+    }
+    // Skip line comments.
+    if (c === "/" && c2 === "/") {
+      while (i < n && src[i] !== "\n") i++;
+      continue;
+    }
+    // Skip block comments — and detect unterminated ones too.
+    if (c === "/" && c2 === "*") {
+      i += 2;
+      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) {
+        if (src[i] === "\n") line++;
+        i++;
+      }
+      if (i >= n) return `unterminated /* … */ block comment starting near line ${line}`;
+      i += 2;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      const quote = c;
+      const startLine = line;
+      i++;
+      while (i < n && src[i] !== quote) {
+        if (src[i] === "\\" && i + 1 < n) {
+          // Skip escapes (including \" \' \\ \n etc.). A literal newline
+          // inside a single/double-quoted string is illegal — flag it.
+          if (src[i + 1] === "\n") return `unterminated string starting at line ${startLine}`;
+          i += 2;
+          continue;
+        }
+        if (src[i] === "\n") {
+          // Hard newline inside ' or " — esbuild treats this as
+          // "Unterminated string literal" (matches our telemetry exactly).
+          return `unterminated string starting at line ${startLine}`;
+        }
+        i++;
+      }
+      if (i >= n) return `unterminated string starting at line ${startLine}`;
+      i++;
+      continue;
+    }
+    if (c === "`") {
+      const startLine = line;
+      i++;
+      while (i < n && src[i] !== "`") {
+        if (src[i] === "\\" && i + 1 < n) {
+          i += 2;
+          continue;
+        }
+        if (src[i] === "$" && src[i + 1] === "{") {
+          let depth = 1;
+          i += 2;
+          while (i < n && depth > 0) {
+            if (src[i] === "{") depth++;
+            else if (src[i] === "}") depth--;
+            else if (src[i] === "\n") line++;
+            i++;
+          }
+          continue;
+        }
+        if (src[i] === "\n") line++;
+        i++;
+      }
+      if (i >= n) return `unterminated template literal starting at line ${startLine}`;
+      i++;
+      continue;
+    }
+    i++;
+  }
+  return null;
+}
+
+/**
  * Find PascalCase JSX tag names that have no corresponding import or local
  * declaration in the file. Catches the common failure mode where the model
  * writes `<Container>` / `<Inline>` / `<Button>` etc. without an import,
