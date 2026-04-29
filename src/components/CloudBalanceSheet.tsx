@@ -150,7 +150,7 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
                     <p className="text-xs text-muted-foreground">
                       {wallet?.qualifiedForFreeGrant
                         ? `Monthly included usage resets ${resetDateLabel}`
-                        : "Top up once to unlock $10/mo free Cloud credit"}
+                        : "Top up once to unlock $5/mo free Cloud credit"}
                     </p>
                   </div>
                 </div>
@@ -221,7 +221,7 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
               )}
 
               <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-                Free $10/month allowance applies to every workspace. Top-ups never expire and are
+                Free $5/month allowance applies to every workspace. Top-ups never expire and are
                 drained only after the free allowance for that month is used up.
               </p>
             </div>
@@ -237,7 +237,7 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
         minReason={
           wallet?.qualifiedForFreeGrant
             ? undefined
-            : "to unlock your $10/mo free Cloud credit"
+            : "to unlock your $5/mo free Cloud credit"
         }
       />
     </>
