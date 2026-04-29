@@ -543,6 +543,12 @@ function AddDomainDialog({
       const d = await addDomain(projectId, cleaned);
       onAdded(d);
       toast.success("Domain added — now point your DNS at Petal");
+      emitServiceEnabled({
+        projectId,
+        service: "domain",
+        label: `Custom domain ${d.hostname}`,
+        summary: "Add the DNS records shown in Domains and we'll verify and issue SSL automatically.",
+      });
     } catch (e) {
       if (e instanceof DomainSlotRequiredError) {
         onOpenChange(false);
