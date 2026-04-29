@@ -125,10 +125,9 @@ export class TurnRecorder {
         outcome: r.outcome,
         duration_ms: r.duration_ms,
         issue_count: r.issue_count,
-        // The generated `Json` type from supabase doesn't accept arbitrary
-        // Record<string, unknown> — cast through unknown since the Postgres
-        // jsonb column accepts any structurally-valid JSON value.
-        details: r.details as unknown as Record<string, never>,
+        // jsonb column accepts any JSON value — the generated Supabase
+        // Json type is a recursive union we don't need to satisfy here.
+        details: JSON.parse(JSON.stringify(r.details)),
       }));
       const { error } = await supabaseAdmin.from("pipeline_tier_events").insert(payload);
       if (error) console.warn("[pipeline-telemetry] insert failed", error.message);
