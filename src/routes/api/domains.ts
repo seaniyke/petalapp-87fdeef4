@@ -158,20 +158,25 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
   }
 
   // Cloudflare often needs a second or two to issue the TXT validation
-  // record after createCustomHostname returns. Poll briefly so the user
-  // sees the real value immediately instead of a placeholder.
-  let txt = extractTxtValidation(cf);
-  for (let attempt = 0; attempt < 4 && !txt; attempt++) {
+  // record(s) after createCustomHostname returns. Poll briefly so the user
+  // sees the real values immediately instead of a placeholder. Cloudflare
+  // typically returns 2 TXT records (RSA + ECDSA cert variants) under the
+  // same _acme-challenge name with different values — both are required.
+  let txts = extractAllTxtValidations(cf);
+  for (let attempt = 0; attempt < 4 && txts.length < 2; attempt++) {
     await new Promise((r) => setTimeout(r, 750));
     try {
       cf = await getCustomHostname(cf.id);
-      txt = extractTxtValidation(cf);
+      const next = extractAllTxtValidations(cf);
+      if (next.length > txts.length) txts = next;
     } catch {
       break;
     }
   }
-  const txtName = txt?.name ?? `_acme-challenge.${parsed.data.hostname}`;
-  const txtValue = txt?.value ?? "Pending — tap Check status in a few seconds";
+  const firstTxt = txts[0];
+  const txtName = firstTxt?.name ?? `_acme-challenge.${parsed.data.hostname}`;
+  const txtValue =
+    firstTxt?.value ?? "Pending — tap Check status in a few seconds";
   const mapped = mapCfStatus(cf);
 
   const { data, error } = await supabaseAdmin
@@ -184,6 +189,7 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
       error_message: mapped.error_message,
       verification_txt_name: txtName,
       verification_txt_value: txtValue,
+      verification_records: txts,
       provider_hostname_id: cf.id,
       last_checked_at: new Date().toISOString(),
     })
