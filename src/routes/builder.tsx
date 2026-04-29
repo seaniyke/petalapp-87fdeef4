@@ -981,6 +981,7 @@ function Builder() {
       if (!text || busy) return;
       const proj = await ensureProject();
       if (!proj) return;
+      supersedeBuildId(proj.latest_build_id);
       setError(null);
       setFriendlyError(null);
       // Attachments precedence: explicit opts > composer state > stashed initial.
@@ -1371,6 +1372,7 @@ function Builder() {
           // card subscribes to project_builds via useBuildActivity().
           void triggerBuild(proj.id)
             .then(async (build) => {
+              restoreBuildId(build.buildId);
               startedBuildIdsRef.current.add(build.buildId);
               const r = await getProject(proj.id);
               if (r) setProject(r);
@@ -1429,7 +1431,7 @@ function Builder() {
         void clearMessageDraft(proj.id);
       }
     },
-    [busy, messages, files, ensureProject, pendingAttachments],
+    [busy, messages, files, ensureProject, pendingAttachments, supersedeBuildId, restoreBuildId],
   );
   // Keep the latest send reference available to the service-enabled effect
   // without making that effect re-subscribe on every keystroke.
