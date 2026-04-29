@@ -2044,17 +2044,17 @@ function Builder() {
                         : "text-[14.5px] leading-[1.65] text-foreground"
                     }`}
                   >
-                    {!isUser && (
-                      <div className="mb-2 flex items-center gap-2">
-                        <span className="grid h-5 w-5 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-sm">
+                    {!isUser && messages[i - 1]?.role !== "assistant" && (
+                      <div className="mb-1.5 flex items-center gap-2">
+                        <span className="grid h-5 w-5 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                           P
                         </span>
                         <span className="font-display text-[13px] font-semibold tracking-tight text-foreground">
                           Petal
                         </span>
                         {m.role === "assistant" && i === lastDiscussIndex && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-foreground/8 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            <MessageSquare className="h-2.5 w-2.5" /> discuss
+                          <span className="text-[11px] font-medium text-muted-foreground">
+                            · discussing
                           </span>
                         )}
                       </div>
