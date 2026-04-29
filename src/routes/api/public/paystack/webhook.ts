@@ -12,6 +12,11 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyWebhookSignature, getEnvironment } from "@/server/paystack.server";
 import { registerDomain } from "@/server/cloudflare-registrar.server";
 import { createCustomHostname } from "@/server/cloudflare-saas.server";
+import {
+  sendBillingEmail,
+  billingItemLabel,
+  formatMinorAmount,
+} from "@/server/billing-email.server";
 
 type ChargeEvent = {
   event: string;
@@ -87,21 +92,49 @@ export const Route = createFileRoute("/api/public/paystack/webhook")({
 
         if (payload.event !== "charge.success" || payload.data?.status !== "success") {
           // Record terminal failure states on the transaction, but don't grant.
-          if (payload.event === "charge.failed") {
+          const reason: "failed" | "abandoned" | null =
+            payload.event === "charge.failed"
+              ? "failed"
+              : payload.event === "charge.abandoned"
+                ? "abandoned"
+                : null;
+          if (reason) {
             await supabaseAdmin
               .from("paystack_transactions")
-              .update({ status: "failed" })
+              .update({ status: reason })
               .eq("reference", ref)
               .eq("status", "pending");
-          } else if (payload.event === "charge.abandoned") {
-            await supabaseAdmin
+
+            const { data: failedTx } = await supabaseAdmin
               .from("paystack_transactions")
-              .update({ status: "abandoned" })
+              .select("user_id, purpose, item_code, amount_minor, currency_code, usd_amount_cents")
               .eq("reference", ref)
-              .eq("status", "pending");
+              .maybeSingle();
+            if (failedTx?.user_id) {
+              void sendBillingEmail({
+                origin: new URL(request.url).origin,
+                templateName: "payment-failed",
+                idempotencyKey: `billing-failed-${ref}`,
+                userId: failedTx.user_id,
+                templateData: {
+                  itemLabel: billingItemLabel({
+                    purpose: failedTx.purpose,
+                    itemCode: failedTx.item_code,
+                    usdAmountCents: failedTx.usd_amount_cents,
+                  }),
+                  amountDisplay: formatMinorAmount(
+                    Number(failedTx.amount_minor),
+                    String(failedTx.currency_code),
+                  ),
+                  reference: ref,
+                  reason,
+                },
+              });
+            }
           }
           return new Response("ok", { status: 200 });
         }
+
 
         const { data: tx } = await supabaseAdmin
           .from("paystack_transactions")
@@ -240,6 +273,30 @@ export const Route = createFileRoute("/api/public/paystack/webhook")({
             })
             .eq("reference", ref)
             .eq("status", "pending");
+
+          // Branded receipt — fire-and-forget. Same idempotency key as
+          // the verify route so a verify+webhook race only sends one.
+          void sendBillingEmail({
+            origin: new URL(request.url).origin,
+            templateName: "payment-success",
+            idempotencyKey: `billing-success-${ref}`,
+            userId: tx.user_id,
+            templateData: {
+              purpose: tx.purpose,
+              itemLabel: billingItemLabel({
+                purpose: tx.purpose,
+                itemCode: tx.item_code,
+                usdAmountCents: tx.usd_amount_cents,
+              }),
+              amountDisplay: formatMinorAmount(
+                Number(tx.amount_minor),
+                String(tx.currency_code),
+              ),
+              reference: ref,
+              paidAt: payload.data?.paid_at ?? new Date().toISOString(),
+            },
+          });
+
         } catch (err) {
           console.error("[paystack webhook] grant failed", err);
           // Return 500 so Paystack retries with backoff — better than

@@ -16,6 +16,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyTransaction, getEnvironment } from "@/server/paystack.server";
+import {
+  sendBillingEmail,
+  billingItemLabel,
+  formatMinorAmount,
+} from "@/server/billing-email.server";
 
 const Query = z.object({
   reference: z.string().min(4).max(128).regex(/^[a-zA-Z0-9_-]+$/),
@@ -170,6 +175,30 @@ export const Route = createFileRoute("/api/billing/verify")({
               })
               .eq("reference", q.reference)
               .eq("status", "pending");
+
+            // Send branded receipt — fire-and-forget. Idempotency key is
+            // the reference, so a verify+webhook race only sends one email.
+            void sendBillingEmail({
+              origin: new URL(request.url).origin,
+              templateName: "payment-success",
+              idempotencyKey: `billing-success-${q.reference}`,
+              userId: tx.user_id,
+              templateData: {
+                purpose: tx.purpose,
+                itemLabel: billingItemLabel({
+                  purpose: tx.purpose,
+                  itemCode: tx.item_code,
+                  usdAmountCents: tx.usd_amount_cents,
+                }),
+                amountDisplay: formatMinorAmount(
+                  Number(tx.amount_minor),
+                  String(tx.currency_code),
+                ),
+                reference: q.reference,
+                paidAt: data.paid_at ?? new Date().toISOString(),
+              },
+            });
+
             return Response.json({
               status: "success",
               purpose: tx.purpose,
@@ -182,8 +211,29 @@ export const Route = createFileRoute("/api/billing/verify")({
               .update({ status: data.status })
               .eq("reference", q.reference)
               .eq("status", "pending");
+
+            void sendBillingEmail({
+              origin: new URL(request.url).origin,
+              templateName: "payment-failed",
+              idempotencyKey: `billing-failed-${q.reference}`,
+              userId: tx.user_id,
+              templateData: {
+                itemLabel: billingItemLabel({
+                  purpose: tx.purpose,
+                  itemCode: tx.item_code,
+                  usdAmountCents: tx.usd_amount_cents,
+                }),
+                amountDisplay: formatMinorAmount(
+                  Number(tx.amount_minor),
+                  String(tx.currency_code),
+                ),
+                reference: q.reference,
+                reason: data.status,
+              },
+            });
           }
           return Response.json({ status: data.status });
+
         } catch (err) {
           console.error("[paystack verify] failed", err);
           return new Response(
