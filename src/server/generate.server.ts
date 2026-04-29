@@ -82,33 +82,10 @@ IMAGES (use \`petal-image://\` for AI-generated visuals):
 - DO NOT use picsum.photos, unsplash.com, placeholder.com, or any other stock-photo URL when \`petal-image://\` would do — generated images always look more on-brand.
 - The ONLY exception: avatars for fake user testimonials can stay as \`https://i.pravatar.cc/150?u=<seed>\` since they're meant to look generic.
 
-MULTI-PAGE ROUTING (use \`@/components/ui/router\` whenever the app has more than one page):
-- The scaffold ships react-router-dom (BrowserRouter) re-exported through \`@/components/ui/router\`. ALWAYS import routing primitives from there — never directly from "react-router-dom" — so the kit can swap implementations later.
-- Default to multi-page architecture for ANY app with distinct sections (Home, About, Pricing, Contact, Dashboard, Product detail, Blog, Settings, Auth flows, etc.). One \`src/App.tsx\` per page is the WRONG mental model — split pages into \`src/pages/<Name>.tsx\` and wire them in App.tsx.
-- Canonical wiring (in \`src/App.tsx\`):
-    import { Router, Routes, Route, Outlet, NavLink } from "@/components/ui/router";
-    function SiteLayout() { return (<><Header /><main><Outlet /></main><Footer /></>); }
-    export default function App() {
-      return (
-        <Router>
-          <Routes>
-            <Route element={<SiteLayout />}>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/pricing" element={<PricingPage />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Route>
-          </Routes>
-        </Router>
-      );
-    }
-- Use \`<Link to="/about">\` for in-app navigation. NEVER \`<a href="/about">\` (it triggers a full page reload).
-- Use \`<NavLink to="/about">{({ isActive }) => ...}</NavLink>\` (or its \`className\` callback) for header links so the active route gets visual emphasis. NEVER track "current page" with useState.
-- Use dynamic segments like \`/post/:slug\` and read them with \`useParams()\`. NEVER parse \`window.location.pathname\` by hand.
-- Use \`useNavigate()\` for programmatic navigation after form submit / async actions. Use \`<Navigate to="..." replace />\` for declarative redirects.
-- Single-page tools (one calculator, one timer, one chat) do NOT need a router. Heuristic: if you'd write more than one screen-level page, add the router.
-- See \`src/components/examples/kit-multi-page-app.tsx\` for the canonical pattern.
-- PAGE EXPORTS — when wiring pages into the router, prefer **plain named exports** and import them eagerly: \`import { HomePage } from "@/pages/HomePage"\`. Do NOT use \`React.lazy(() => import("@/pages/HomePage"))\` UNLESS that page also has \`export default HomePage\`. \`React.lazy\` reads \`module.default\` only — pointing it at a named-only export resolves to \`undefined\` and crashes the app at render time with React error #306 ("Element type is invalid"). Either use eager named imports (preferred — these apps are small) OR add \`export default PageName\` alongside the named export before using \`lazy()\`.
+MULTI-PAGE ROUTING:
+- Default to multi-page architecture for ANY app with distinct sections (Home, About, Pricing, Contact, Dashboard, Auth, etc.). Split pages into \`src/pages/<Name>.tsx\` and wire them in App.tsx via the simple <Router><Routes> pattern from "@/components/ui/router".
+- Single-page tools (one calculator, one timer, one chat) do NOT need a router.
+- Detailed routing API + page-export pitfalls are appended below in [Reinforcement — Routing] when relevant.
 
 BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the project):
 - ALWAYS go through \`@/integrations/backend/*\`. NEVER call \`createClient(...)\` yourself, NEVER \`import ... from "@supabase/supabase-js"\`, NEVER hardcode URLs or keys.
