@@ -267,6 +267,7 @@ export const Route = createFileRoute("/api/generate")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        try {
         const authResult = await authorize(request);
         if (authResult instanceof Response) return authResult;
         const userId = authResult;
