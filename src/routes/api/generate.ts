@@ -37,10 +37,12 @@ import {
 import { runSelfCheck, humanizeBuildError } from "@/server/self-recovery.server";
 import { pickDynamicSnippets } from "@/server/dynamic-prompts.server";
 import { autofixFiles } from "@/server/stream-autofixer";
-import { runPostStreamAutofix, shouldRunPostStreamAutofix } from "@/server/post-stream-autofix.server";
+import { runPostStreamAutofix } from "@/server/post-stream-autofix.server";
 import { fallbackEstimate } from "@/server/preflight-estimate.server";
 import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-classifier.server";
-import { runVerifier, shouldRunVerifier } from "@/server/verifier.server";
+// Tier 3 model verifier removed: it duplicated the deterministic local
+// verifier and its recovery pass was unconditionally skipped by the
+// Phase D one-round autofix cap, so it only added latency + tokens.
 import { verifyFilesLocal } from "@/server/local-verifier";
 import { runContinuation } from "@/server/stream-continuation.server";
 import { pickBestModel } from "@/server/smart-router.server";
@@ -818,30 +820,23 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               }
 
               // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
-              // pass that ONLY fixes obvious build-breakers. Gated so 90%
-              // of turns never pay the cost — UNLESS local verifier failed.
+              // pass that ONLY fixes obvious build-breakers.
               //
-              // Phase D step 10: HARD CAP autofix at ONE round per turn.
-              // Previously Tier 2 + Tier 3 verifier-recovery could both fire
-              // back-to-back, doubling latency for the user with diminishing
-              // returns (the second pass rarely caught what the first missed).
-              // We track whether the model already ran and skip the second
-              // call entirely; the verifier still runs (read-only) so we
-              // record the verdict for telemetry.
-              let autofixModelRan = false;
-              const preflightKind = fallbackEstimate(lastUserContent).kind;
-              if (
-                !localVerdict.ok ||
-                shouldRunPostStreamAutofix({
-                  autofixCount: autofixOut.report.fixedCount,
-                  preflightKind,
-                  fileCount: nextFiles.length,
-                })
-              ) {
+              // Tightened gate (post-audit): we only spend a model call when
+              // the deterministic local verifier flagged something OR the
+              // regex autofixer caught ≥2 things. The old "any 6+ file turn
+              // or any feature/refactor" trigger fired on ~half of turns and
+              // returned an empty fix list almost every time — pure latency
+              // tax. Local verifier is the source of truth.
+              //
+              // The legacy Tier 3 model verifier was removed: it duplicated
+              // the local verifier's checks and its recovery pass was always
+              // skipped by the Phase D one-round cap. One autofix call max
+              // per turn is now structural, not just runtime-enforced.
+              if (!localVerdict.ok || autofixOut.report.fixedCount >= 2) {
                 try {
                   const fixOut = await runPostStreamAutofix(nextFiles, localVerdict.issues);
                   nextFiles = fixOut.files;
-                  autofixModelRan = true;
                   if (fixOut.result.fixedFiles > 0) {
                     console.log(
                       `[post-stream-autofix] fixed ${fixOut.result.fixedFiles}:`,
@@ -858,63 +853,6 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   }
                 } catch (e) {
                   console.warn("[post-stream-autofix] rejected:", e);
-                }
-              }
-
-              // Tier 3 — Replit-style verifier pass. Read-only scan for
-              // obvious compile/import/JSX issues. If it flags anything,
-              // emit a `verifier_warning` SSE event AND (only when Tier 2
-              // didn't already fire) run the autofix model to recover.
-              const changedPaths = earlyChangedPaths;
-              if (shouldRunVerifier({ fileCount: nextFiles.length, changedPaths })) {
-                try {
-                  const verdict = await runVerifier(nextFiles, changedPaths);
-                  if (verdict.ran && !verdict.ok && verdict.issues.length > 0) {
-                    console.log(
-                      `[verifier] ${verdict.issues.length} issue(s):`,
-                      verdict.issues.map((i) => `${i.path} (${i.kind}): ${i.detail}`).join("; "),
-                    );
-                    if (autofixModelRan) {
-                      // Phase D step 10: cap at one round. The second pass
-                      // historically caught <5% of cases the first missed
-                      // and added 3-8s of latency. Skip it.
-                      console.log(
-                        "[verifier-recovery] skipped — autofix already ran this turn (Phase D cap).",
-                      );
-                    } else {
-                      controller.enqueue(
-                        encoder.encode(
-                          sse({
-                            type: "status",
-                            message: `Verifier flagged ${verdict.issues.length} issue${verdict.issues.length === 1 ? "" : "s"} — repairing…`,
-                          }),
-                        ),
-                      );
-                      try {
-                        const fixOut = await runPostStreamAutofix(nextFiles, verdict.issues);
-                        nextFiles = fixOut.files;
-                        autofixModelRan = true;
-                        if (fixOut.result.fixedFiles > 0) {
-                          console.log(
-                            `[verifier-recovery] fixed ${fixOut.result.fixedFiles}:`,
-                            fixOut.result.notes.join("; "),
-                          );
-                          controller.enqueue(
-                            encoder.encode(
-                              sse({
-                                type: "status",
-                                message: `Repaired ${fixOut.result.fixedFiles} file${fixOut.result.fixedFiles === 1 ? "" : "s"}.`,
-                              }),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        console.warn("[verifier-recovery] failed:", e);
-                      }
-                    }
-                  }
-                } catch (e) {
-                  console.warn("[verifier] rejected:", e);
                 }
               }
 
