@@ -63,7 +63,7 @@ function runFixture(fixture: (typeof FIXTURES)[number]): Result {
   // is named "clean" — the slip-through fixtures intentionally produce no
   // issues yet).
   if (fixture.expectIssueIncludes.length === 0 && fixture.name.startsWith("clean")) {
-    if (!verdict.ok || renderRiskIssues.length > 0) {
+    if (!verdict.ok || renderRiskIssues.length > 0 || rlsSanityIssues.length > 0) {
       return {
         name: fixture.name,
         ok: false,
