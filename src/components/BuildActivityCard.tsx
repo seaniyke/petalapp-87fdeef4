@@ -367,14 +367,22 @@ function PhaseRow({
   const showFileList = phase.id === "writing" && (isActive || isDone) && writtenPaths && writtenPaths.length > 0;
 
   return (
-    <li className="flex items-start gap-2.5 text-sm leading-snug">
+    <li className="flex items-start gap-2.5 text-[13px] leading-snug">
       <span
-        className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center text-[13px] transition-opacity ${
-          isPending ? "opacity-30" : "opacity-100"
-        } ${isActive ? "animate-pulse" : ""}`}
+        className={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center transition-opacity ${
+          isPending ? "text-muted-foreground/40" : isDone ? "text-emerald-500" : isFailed ? "text-destructive" : "text-foreground"
+        }`}
         aria-hidden
       >
-        {isDone ? "✓" : isFailed ? "✕" : phase.emoji}
+        {isDone ? (
+          <Check className="h-3.5 w-3.5" />
+        ) : isFailed ? (
+          <X className="h-3.5 w-3.5" />
+        ) : isActive ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Circle className="h-2 w-2 fill-current" />
+        )}
       </span>
       <div className="min-w-0 flex-1">
         <div
