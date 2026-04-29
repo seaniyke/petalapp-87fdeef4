@@ -16,7 +16,6 @@ import {
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { adminApi, fmtUsd, fmtRelative } from "@/lib/admin-api";
 import { toast } from "sonner";
 
