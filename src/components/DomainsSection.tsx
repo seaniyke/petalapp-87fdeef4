@@ -762,13 +762,15 @@ function DnsRecordsDialog({
               <li>
                 Most registrars (Namecheap, GoDaddy, Cloudflare DNS, etc.) <strong>auto-append your domain</strong> to the host field. If it does, paste the <em>short</em> version of the host (the part before <code className="rounded bg-background px-1">.{domain.hostname}</code>) — not the full name.
               </li>
+              {txtRecords.length > 0 && (
+                <li>
+                  For TXT values, paste the value <strong>exactly</strong> — no extra quotes, spaces, or line breaks.
+                </li>
+              )}
               <li>
-                For TXT values, paste the value <strong>exactly</strong> — no extra quotes, spaces, or line breaks.
-              </li>
-              <li>
-                Both routing (A/CNAME) <strong>and</strong> all TXT records above must be live at the same time. Verify with{" "}
+                {txtRecords.length > 0 ? "Both routing (A/CNAME) and the TXT records above" : "The routing record above"} must be live. Verify with{" "}
                 <a
-                  href={`https://dnschecker.org/#TXT/_acme-challenge.${domain.hostname}`}
+                  href={`https://dnschecker.org/#${routingRecordType}/${domain.hostname}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline underline-offset-2"
