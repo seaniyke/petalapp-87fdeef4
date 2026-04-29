@@ -69,19 +69,21 @@ export async function initializeTransaction(args: InitArgs): Promise<{
   };
 }
 
+export type VerifiedTransaction = {
+  status: "success" | "failed" | "abandoned" | string;
+  reference: string;
+  amount: number;
+  currency: string;
+  channel: string | null;
+  paid_at: string | null;
+  customer: { email: string };
+  metadata: Record<string, unknown> | string | null;
+};
+
 type VerifyResponse = {
   status: boolean;
   message: string;
-  data?: {
-    status: "success" | "failed" | "abandoned" | string;
-    reference: string;
-    amount: number;
-    currency: string;
-    channel: string | null;
-    paid_at: string | null;
-    customer: { email: string };
-    metadata: Record<string, unknown> | string | null;
-  };
+  data?: VerifiedTransaction;
 };
 
 export async function verifyTransaction(reference: string): Promise<VerifyResponse["data"]> {
