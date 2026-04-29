@@ -386,6 +386,11 @@ function Builder() {
   // first auto-send consumes them.
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const initialAttachmentsRef = useRef<ChatAttachment[]>([]);
+  // "Deep think" toggle — when on, Petal uses the strongest model + extended
+  // reasoning effort. Costs more credits and is slower, but produces better
+  // results on hard refactors / multi-file features. One-shot: auto-resets
+  // after the next send so users don't accidentally pay for it forever.
+  const [deepThink, setDeepThink] = useState(false);
   const composerFileInputRef = useRef<HTMLInputElement>(null);
   const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
@@ -1088,7 +1093,7 @@ function Builder() {
             // sending — they're UI-only, the AI shouldn't see them.
             messages: nextMessages.filter((m) => m.role !== "system"),
             currentFiles: files,
-            model: "smart",
+            model: opts.isAutoFix ? "smart" : deepThink ? "deep" : "smart",
             customInstructions: proj.custom_instructions ?? undefined,
             projectId: proj.id,
             isAutoFix: opts.isAutoFix,
