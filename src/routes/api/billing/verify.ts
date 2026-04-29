@@ -21,6 +21,7 @@ import {
   billingItemLabel,
   formatMinorAmount,
 } from "@/server/billing-email.server";
+import { startDomainRegistration } from "@/server/domain-purchase.server";
 
 const Query = z.object({
   reference: z.string().min(4).max(128).regex(/^[a-zA-Z0-9_-]+$/),
@@ -57,6 +58,9 @@ export const Route = createFileRoute("/api/billing/verify")({
 
         // Already done — return what we have.
         if (tx.status === "success") {
+          if (tx.purpose === "domain_purchase") {
+            await startDomainRegistration({ reference: q.reference });
+          }
           return Response.json({
             status: "success",
             purpose: tx.purpose,
@@ -145,11 +149,7 @@ export const Route = createFileRoute("/api/billing/verify")({
                 _environment: tx.environment,
               });
             } else if (tx.purpose === "domain_purchase") {
-              // Domain registration is a slow, side-effecting job kicked off
-              // by the webhook. From verify's side we just confirm payment;
-              // the webhook (or our background worker) handles registration.
-              // We still flip status → success so the return page stops
-              // polling.
+              await startDomainRegistration({ reference: q.reference });
             } else if (tx.purpose === "plan") {
               await supabaseAdmin.rpc("apply_paystack_plan_grant", {
                 _user_id: tx.user_id,
