@@ -978,6 +978,51 @@ export type Database = {
         }
         Relationships: []
       }
+      pipeline_tier_events: {
+        Row: {
+          created_at: string
+          details: Json
+          duration_ms: number
+          id: string
+          issue_count: number
+          message_id: string | null
+          model: string | null
+          outcome: string
+          project_id: string | null
+          tier: string
+          tier_order: number
+          turn_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          duration_ms?: number
+          id?: string
+          issue_count?: number
+          message_id?: string | null
+          model?: string | null
+          outcome: string
+          project_id?: string | null
+          tier: string
+          tier_order: number
+          turn_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          duration_ms?: number
+          id?: string
+          issue_count?: number
+          message_id?: string | null
+          model?: string | null
+          outcome?: string
+          project_id?: string | null
+          tier?: string
+          tier_order?: number
+          turn_id?: string
+        }
+        Relationships: []
+      }
       preview_comments: {
         Row: {
           author_name: string | null
