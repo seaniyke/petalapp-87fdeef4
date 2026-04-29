@@ -60,11 +60,14 @@ import {
   setPrimaryDomain,
   removeDomain,
   listDomainSlots,
+  checkDomainDns,
   PETAL_DOMAIN_CNAME_TARGET,
   PETAL_DOMAIN_A_RECORD,
   DomainSlotRequiredError,
   type ProjectDomain,
   type DomainSlot,
+  type DnsCheckResult,
+  type DnsCheckRecord,
 } from "@/lib/domains";
 import { BuyDomainSlotDialog } from "@/components/BuyDomainSlotDialog";
 import { supabase } from "@/integrations/supabase/client";
