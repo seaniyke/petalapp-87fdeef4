@@ -1354,6 +1354,13 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 );
               }
 
+              nextFiles = await runFinalParseGuard(
+                nextFiles,
+                earlyChangedPaths,
+                controller,
+                encoder,
+              );
+
               // Charge ONCE, after the build succeeds. Cost is computed from
               // the MAIN generate call's token usage only — `collected.usage`
               // covers the patch_files / write_project completion, not the
