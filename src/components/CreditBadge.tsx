@@ -44,7 +44,7 @@ export function CreditBadge() {
             )}
           >
             <Sparkles className="h-3.5 w-3.5" />
-            <span className="tabular-nums">{breakdown.total}</span>
+            <span className="tabular-nums">{formatCredits(breakdown.total)}</span>
             <span className="hidden text-xs text-muted-foreground sm:inline">credits</span>
           </button>
         </HoverCardTrigger>
