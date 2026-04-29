@@ -127,9 +127,17 @@ export async function enableManagedBackend(
 }
 
 export async function listProjects(): Promise<ProjectRow[]> {
+  // The "My projects" page must show ONLY the signed-in user's own projects.
+  // Without this filter, the public-projects RLS policy ("is_public = true")
+  // would also surface OTHER people's public projects in the list — and then
+  // deleting one of those would be blocked by RLS, producing the confusing
+  // "Could not delete this project" error users have been hitting.
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return [];
   const { data, error } = await supabase
     .from("projects")
     .select("*")
+    .eq("owner_id", userData.user.id)
     .order("updated_at", { ascending: false });
   if (error) throw error;
   return data ?? [];
@@ -208,20 +216,40 @@ export async function remixProjectBySlug(slug: string): Promise<ProjectRow> {
 
 export async function deleteProject(id: string) {
   // `.select()` makes Supabase return the deleted rows so we can verify the
-  // delete actually landed. Without this, RLS-blocked deletes silently return
-  // success with zero rows affected — the UI removes the card optimistically,
-  // but on refresh the project reappears (which is exactly what users hit).
+  // delete actually landed. RLS-blocked deletes silently return success with
+  // zero rows affected.
   const { data, error } = await supabase
     .from("projects")
     .delete()
     .eq("id", id)
     .select("id");
   if (error) throw error;
-  if (!data || data.length === 0) {
+  if (data && data.length > 0) return; // happy path
+
+  // 0 rows could mean: (a) the row was already gone (double-click, retry, or
+  // a previous delete already landed) — that's SUCCESS, the desired end
+  // state holds; or (b) RLS blocked it because the user doesn't own this
+  // project. Disambiguate by reading the row back. If we can still see it,
+  // RLS blocked the delete — surface a permission error. Otherwise treat as
+  // already-deleted and return cleanly.
+  const { data: still, error: readErr } = await supabase
+    .from("projects")
+    .select("id, owner_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (readErr) throw readErr;
+  if (!still) return; // already deleted — idempotent success
+
+  const { data: userData } = await supabase.auth.getUser();
+  const ownsIt = userData.user && still.owner_id === userData.user.id;
+  if (ownsIt) {
+    // We own it but the delete didn't land — almost always a stale auth
+    // token (signed in elsewhere, refresh failed, etc.).
     throw new Error(
-      "Could not delete this project. It may already be gone, or your session may have expired — try signing out and back in."
+      "Couldn't delete this project — your session looks stale. Please sign out and back in, then try again.",
     );
   }
+  throw new Error("You can only delete projects you own.");
 }
 
 export async function setProjectStarred(id: string, is_starred: boolean): Promise<ProjectRow> {
