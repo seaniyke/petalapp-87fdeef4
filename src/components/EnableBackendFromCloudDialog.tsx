@@ -224,7 +224,6 @@ export function EnableBackendFromCloudDialog({
               .catch(() => {});
           }
         }}
-        suggestedAmountCents={Math.max(PROVISIONING_FLOOR_CENTS, shortfallCents)}
       />
     </>
   );
