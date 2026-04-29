@@ -206,8 +206,6 @@ const GENERIC: FriendlyError = {
   actionKind: "retry",
 };
 
-import { reportPipelineFailure, type FailureReportContext } from "./report-failure";
-
 export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): FriendlyError {
   const text =
     raw instanceof Error ? raw.message : typeof raw === "string" ? raw : JSON.stringify(raw);
