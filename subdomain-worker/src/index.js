@@ -258,7 +258,7 @@ export default {
     }
 
     const result = await lookup(host);
-    if (result.kind === "proxy") return proxy(request, result.target, result.projectId);
+    if (result.kind === "proxy") return proxy(request, result.target, result.projectId, result.meta);
     return placeholder(result.kind);
   },
 };
