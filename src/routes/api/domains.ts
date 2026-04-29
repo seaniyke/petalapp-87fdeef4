@@ -25,6 +25,7 @@ import {
   deleteCustomHostname,
   mapCfStatus,
   extractTxtValidation,
+  extractAllTxtValidations,
 } from "@/server/cloudflare-saas.server";
 
 // FQDN-ish: 4..253 chars, lowercase letters/digits/dot/hyphen, must include a dot.
@@ -50,7 +51,7 @@ const DomainIdInput = z.object({
 });
 
 const DOMAIN_COLS =
-  "id, hostname, status, is_primary, verification_txt_name, verification_txt_value, ssl_status, last_checked_at, error_message, created_at, provider_hostname_id";
+  "id, hostname, status, is_primary, verification_txt_name, verification_txt_value, verification_records, ssl_status, last_checked_at, error_message, created_at, provider_hostname_id";
 
 async function authorize(request: Request): Promise<string | Response> {
   const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -157,20 +158,25 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
   }
 
   // Cloudflare often needs a second or two to issue the TXT validation
-  // record after createCustomHostname returns. Poll briefly so the user
-  // sees the real value immediately instead of a placeholder.
-  let txt = extractTxtValidation(cf);
-  for (let attempt = 0; attempt < 4 && !txt; attempt++) {
+  // record(s) after createCustomHostname returns. Poll briefly so the user
+  // sees the real values immediately instead of a placeholder. Cloudflare
+  // typically returns 2 TXT records (RSA + ECDSA cert variants) under the
+  // same _acme-challenge name with different values — both are required.
+  let txts = extractAllTxtValidations(cf);
+  for (let attempt = 0; attempt < 4 && txts.length < 2; attempt++) {
     await new Promise((r) => setTimeout(r, 750));
     try {
       cf = await getCustomHostname(cf.id);
-      txt = extractTxtValidation(cf);
+      const next = extractAllTxtValidations(cf);
+      if (next.length > txts.length) txts = next;
     } catch {
       break;
     }
   }
-  const txtName = txt?.name ?? `_acme-challenge.${parsed.data.hostname}`;
-  const txtValue = txt?.value ?? "Pending — tap Check status in a few seconds";
+  const firstTxt = txts[0];
+  const txtName = firstTxt?.name ?? `_acme-challenge.${parsed.data.hostname}`;
+  const txtValue =
+    firstTxt?.value ?? "Pending — tap Check status in a few seconds";
   const mapped = mapCfStatus(cf);
 
   const { data, error } = await supabaseAdmin
@@ -183,6 +189,7 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
       error_message: mapped.error_message,
       verification_txt_name: txtName,
       verification_txt_value: txtValue,
+      verification_records: txts,
       provider_hostname_id: cf.id,
       last_checked_at: new Date().toISOString(),
     })
@@ -230,18 +237,19 @@ async function handleVerify(userId: string, body: unknown): Promise<Response> {
   }
 
   const mapped = mapCfStatus(cf);
-  const txt = extractTxtValidation(cf);
+  const txts = extractAllTxtValidations(cf);
 
-  // Build the patch — only overwrite TXT fields if Cloudflare has issued one.
+  // Build the patch — only overwrite TXT fields if Cloudflare has issued any.
   const patch: Database["public"]["Tables"]["project_domains"]["Update"] = {
     status: mapped.status,
     ssl_status: mapped.ssl_status,
     error_message: mapped.error_message,
     last_checked_at: new Date().toISOString(),
   };
-  if (txt) {
-    patch.verification_txt_name = txt.name;
-    patch.verification_txt_value = txt.value;
+  if (txts.length > 0) {
+    patch.verification_txt_name = txts[0].name;
+    patch.verification_txt_value = txts[0].value;
+    patch.verification_records = txts;
   }
 
   const { data, error } = await supabaseAdmin

@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export type DomainTxtRecord = { name: string; value: string };
+
 export type ProjectDomain = {
   id: string;
   hostname: string;
@@ -7,6 +9,13 @@ export type ProjectDomain = {
   is_primary: boolean;
   verification_txt_name: string;
   verification_txt_value: string;
+  /**
+   * All TXT records required for SSL validation. Cloudflare typically returns
+   * 2 (RSA + ECDSA cert variants) under the same _acme-challenge name with
+   * different values — both must be added at the registrar. Falls back to the
+   * single legacy field when empty (older domain rows pre-migration).
+   */
+  verification_records: DomainTxtRecord[];
   ssl_status: string | null;
   last_checked_at: string | null;
   error_message: string | null;

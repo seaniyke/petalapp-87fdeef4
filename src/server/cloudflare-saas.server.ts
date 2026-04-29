@@ -164,7 +164,28 @@ export function mapCfStatus(cf: CfHostname): {
 export function extractTxtValidation(
   cf: CfHostname,
 ): { name: string; value: string } | null {
-  const rec = cf.ssl?.validation_records?.find((r) => r.txt_name && r.txt_value);
-  if (!rec || !rec.txt_name || !rec.txt_value) return null;
-  return { name: rec.txt_name, value: rec.txt_value };
+  const all = extractAllTxtValidations(cf);
+  return all[0] ?? null;
+}
+
+/**
+ * Extract ALL TXT validation records Cloudflare wants the user to add.
+ * Cloudflare typically issues 2 records (RSA + ECDSA cert variants) under
+ * the same `_acme-challenge.<host>` name with different values — both must
+ * exist at the registrar simultaneously for SSL to validate.
+ */
+export function extractAllTxtValidations(
+  cf: CfHostname,
+): Array<{ name: string; value: string }> {
+  const records = cf.ssl?.validation_records ?? [];
+  const out: Array<{ name: string; value: string }> = [];
+  const seen = new Set<string>();
+  for (const r of records) {
+    if (!r.txt_name || !r.txt_value) continue;
+    const key = `${r.txt_name}\u0000${r.txt_value}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ name: r.txt_name, value: r.txt_value });
+  }
+  return out;
 }

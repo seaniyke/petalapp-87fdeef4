@@ -682,12 +682,31 @@ function DnsRecordsDialog({
             value={routingRecordValue}
             note="Points your domain at Petal."
           />
-          <RecordCard
-            type="TXT"
-            host={domain.verification_txt_name}
-            value={domain.verification_txt_value}
-            note="Proves you own this domain (used to issue SSL)."
-          />
+          {(() => {
+            const records =
+              domain.verification_records && domain.verification_records.length > 0
+                ? domain.verification_records
+                : [
+                    {
+                      name: domain.verification_txt_name,
+                      value: domain.verification_txt_value,
+                    },
+                  ];
+            const multi = records.length > 1;
+            return records.map((rec, i) => (
+              <RecordCard
+                key={`${rec.name}-${i}`}
+                type="TXT"
+                host={rec.name}
+                value={rec.value}
+                note={
+                  multi
+                    ? `SSL validation record ${i + 1} of ${records.length} — add all of them.`
+                    : "Proves you own this domain (used to issue SSL)."
+                }
+              />
+            ));
+          })()}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-2">
