@@ -10,6 +10,11 @@ export const plausibleIntegration: IntegrationDefinition = {
   tagline: "Lightweight, privacy-friendly analytics. No cookies.",
   category: "Analytics",
   docsUrl: "https://plausible.io/docs",
+  triggers: [
+    "analytics","track event","pageview","track pageview","privacy analytics",
+    "plausible","track conversions","funnel",
+  ],
+  replaces: ["@vercel/analytics","react-ga","gtag"],
   fields: [
     {
       id: "domain",

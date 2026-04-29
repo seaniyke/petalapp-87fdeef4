@@ -11,6 +11,11 @@ export const flutterwaveIntegration: IntegrationDefinition = {
   tagline: "Pan-African + global card / mobile-money payments.",
   category: "Payments",
   docsUrl: "https://developer.flutterwave.com/",
+  triggers: [
+    "flutterwave","rave","pan-african payment","payment link","accept usd in africa",
+    "mpesa","mobile money payment",
+  ],
+  replaces: ["flutterwave-node-v3","react-flutterwave"],
   fields: [
     {
       id: "secret_key",

@@ -12,6 +12,11 @@ export const paystackIntegration: IntegrationDefinition = {
   tagline: "Card, bank, and mobile-money payments across Africa.",
   category: "Payments",
   docsUrl: "https://paystack.com/docs",
+  triggers: [
+    "paystack","accept payment in nigeria","payment in africa","mobile money",
+    "naira","ghs","kes","zar","african payment","accept payments africa",
+  ],
+  replaces: ["paystack","@paystack/inline-js"],
   fields: [
     {
       id: "secret_key",
