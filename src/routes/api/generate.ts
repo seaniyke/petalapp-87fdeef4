@@ -617,6 +617,15 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         const encoder = new TextEncoder();
         const stream = new ReadableStream<Uint8Array>({
           async start(controller) {
+            // Phase 6 — per-tier telemetry. One row per tier per turn,
+            // flushed at end-of-turn (success OR failure path) in a single
+            // insert. Fire-and-forget; never blocks or throws.
+            const recorder = new TurnRecorder({
+              turnId: crypto.randomUUID(),
+              projectId: body.projectId ?? null,
+              messageId: null,
+              model,
+            });
             try {
               controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
               controller.enqueue(encoder.encode(sse({ type: "status", message: "Thinking…" })));
