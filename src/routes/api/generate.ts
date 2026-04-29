@@ -35,7 +35,7 @@ import {
   renderDesignDirectionBlock,
 } from "@/server/design-director.server";
 import { runSelfCheck, humanizeBuildError } from "@/server/self-recovery.server";
-import { pickDynamicSnippets } from "@/server/dynamic-prompts.server";
+import { pickDynamicSnippets, renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
 import { autofixFiles } from "@/server/stream-autofixer";
 import { runPostStreamAutofix } from "@/server/post-stream-autofix.server";
 import { fallbackEstimate } from "@/server/preflight-estimate.server";
@@ -592,8 +592,10 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           hasBackend: Boolean(backend),
         });
 
+        const dateBlock = renderCurrentDateBlock();
+
         const chatMessages = [
-          { role: "system", content: baseSystem + backendBlock + integrationsBlock + suggestionsBlock + knowledgeBlock + memoryBlock + designBlock + dynamic.text + visionAddendum + filesContext },
+          { role: "system", content: baseSystem + dateBlock + backendBlock + integrationsBlock + suggestionsBlock + knowledgeBlock + memoryBlock + designBlock + dynamic.text + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {

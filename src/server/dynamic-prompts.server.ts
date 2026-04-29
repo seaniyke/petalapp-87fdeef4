@@ -214,3 +214,27 @@ export function pickDynamicSnippets(args: {
   const text = picked.map((k) => SNIPPETS[k].body).join("");
   return { snippets: picked, text };
 }
+
+/**
+ * Inject the actual current date into the system prompt.
+ *
+ * Why: LLM training data has a knowledge cutoff (typically 2024). Without
+ * this, models default to writing `© 2024` in footers, "last updated 2024"
+ * in copy, and similar stale year references. We give them ground truth so
+ * every generated app reflects the real current year.
+ */
+export function renderCurrentDateBlock(now: Date = new Date()): string {
+  const iso = now.toISOString().slice(0, 10); // YYYY-MM-DD
+  const year = now.getUTCFullYear();
+  const human = now.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+  return `\n\n[Current date — use this, not your training cutoff]
+Today is ${human} (${iso}). The current year is ${year}.
+When writing footers, copyright notices ("© ${year}"), "last updated" labels, blog post dates, or any other user-facing date, use ${year} (or a sensible recent year). Never default to 2023 or 2024.`;
+}
+
