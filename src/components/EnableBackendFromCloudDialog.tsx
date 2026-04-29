@@ -193,6 +193,8 @@ export function EnableBackendFromCloudDialog({
 
       <RuntimeTopupModal
         open={topupOpen}
+        minUsdCents={shortfallCents > 0 ? shortfallCents : PROVISIONING_FLOOR_CENTS}
+        minReason="to enable your backend"
         onOpenChange={(v) => {
           setTopupOpen(v);
           // Re-fetch balance when the top-up modal closes so the user can
