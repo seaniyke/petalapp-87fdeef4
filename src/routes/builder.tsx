@@ -242,6 +242,10 @@ function Builder() {
   // Ordered, deduped list of every path Petal streams during the writing phase.
   // Drives the per-file progress list in BuildActivityCard.
   const [writtenPaths, setWrittenPaths] = useState<string[]>([]);
+  // Set of paths whose `"content"` string has fully closed during streaming.
+  // Drives the per-file ✓ tick in the activity card the instant a file finishes,
+  // instead of waiting for the entire tool call to land (Phase D step 9).
+  const [completedPaths, setCompletedPaths] = useState<Set<string>>(() => new Set());
   // Final per-file line counts, populated after a successful run.
   const [finalFileLines, setFinalFileLines] = useState<Record<string, number>>({});
   // Per-file change summary computed against the pre-run snapshot. Drives the
@@ -1078,6 +1082,7 @@ function Builder() {
       setFilesWritten(0);
       setLatestPath(undefined);
       setWrittenPaths([]);
+      setCompletedPaths(new Set());
       setFinalFileLines({});
       setFileChanges({});
       setStreamingAssistant("");
@@ -1220,6 +1225,16 @@ function Builder() {
                 // appear in the activity card as Petal writes it.
                 setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
               }
+            },
+            onFileComplete: (path) => {
+              // Phase D step 9 — flip this file's row to ✓ the moment its
+              // streaming content closes, without waiting for the whole turn.
+              setCompletedPaths((prev) => {
+                if (prev.has(path)) return prev;
+                const next = new Set(prev);
+                next.add(path);
+                return next;
+              });
             },
             onResult: (f, s, extras) => {
               resultFiles = f;
@@ -2909,6 +2924,7 @@ function Builder() {
                 latestPath={latestPath}
                 filesWritten={filesWritten}
                 writtenPaths={writtenPaths}
+                completedPaths={completedPaths}
                 finalFileLines={finalFileLines}
                 fileChanges={fileChanges}
                 deployElapsedSec={deployElapsed}
