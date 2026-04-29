@@ -51,7 +51,7 @@ const DomainIdInput = z.object({
 });
 
 const DOMAIN_COLS =
-  "id, hostname, status, is_primary, verification_txt_name, verification_txt_value, ssl_status, last_checked_at, error_message, created_at, provider_hostname_id";
+  "id, hostname, status, is_primary, verification_txt_name, verification_txt_value, verification_records, ssl_status, last_checked_at, error_message, created_at, provider_hostname_id";
 
 async function authorize(request: Request): Promise<string | Response> {
   const SUPABASE_URL = process.env.SUPABASE_URL;
