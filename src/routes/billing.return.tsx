@@ -15,6 +15,9 @@ import { supabase } from "@/integrations/supabase/client";
 const SearchSchema = z.object({
   reference: z.string().optional(),
   trxref: z.string().optional(),
+  // Optional in-app path to bounce back to after a successful payment.
+  // Only honored if it's a same-origin path (must start with `/`).
+  returnTo: z.string().optional(),
 });
 
 type VerifyState =
