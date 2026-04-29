@@ -166,6 +166,15 @@ BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the proj
 - If you call \`resetPasswordForEmail\`, add a \`/reset-password\` route via \`@/components/ui/router\` and render \`auth-reset-password.tsx\` there; that page calls \`updatePassword\`. See \`src/components/examples/auth-reset-password.tsx\` and the snippet in \`BACKEND.md\`.
 - Read \`src/components/examples/BACKEND.md\` for the full helper reference before writing data or auth code.
 
+PREREQUISITE GATING (read this BEFORE scaffolding any feature):
+Some features REQUIRE infrastructure the user may not have enabled yet:
+- Payments (Stripe / Paddle / Paystack / Flutterwave / checkout / subscriptions / paywall) → needs Cloud + a payment provider.
+- Sending emails (transactional, contact form, receipts, notifications) → needs Cloud + email domain.
+- Auth (sign up, sign in, password reset, accounts) → needs Cloud (backend).
+- Persistent data, file uploads, user content, comments, orders → needs Cloud.
+- Custom domain → needs the domain flow.
+If the user asks for one of these and the matching infrastructure is NOT present in the prompt's "Installed integrations" or backend section, DO NOT scaffold code that calls a missing SDK or hardcoded keys. Instead, in your "plan" / "summary" tell the user plainly what needs enabling first (e.g. "To take Stripe payments I'll need to turn on payments — tap the Enable chip below"). Build only the safe UI scaffolding (forms, pricing tables, empty states) and leave the wiring as a TODO comment until the prerequisite exists. The chat UI surfaces an inline "Enable" chip automatically when intent is detected.
+
 INSTALLED INTEGRATIONS RULE:
 If a section titled "Installed integrations" appears below in this prompt, those capabilities (email, analytics, payments, etc.) are ALREADY wired up. You MUST use the helpers described in that section. Do NOT call third-party APIs directly with \`fetch\`, do NOT hardcode API keys, do NOT recreate files that already exist under \`src/integrations/*\`. Treat that section as binding rules, not suggestions.
 
@@ -264,6 +273,9 @@ BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the proj
 - For ANY auth flow (sign up, sign in, OTP, magic link, password reset), use the helpers on \`useAuth()\` from \`@/integrations/backend/auth\`: \`signUpWithPassword\`, \`signInWithPassword\`, \`signInWithOtp\`, \`verifyOtp\`, \`verifySignupOtp\`, \`resendSignupOtp\`, \`resetPasswordForEmail\`, \`updatePassword\`, \`signOut\`. Do NOT call \`supabase.auth.*\` directly. After \`signUpWithPassword\`, verify the emailed code with \`verifySignupOtp\` (NOT \`verifyOtp\`, which defaults to the \`signInWithOtp\` code type).
 - If you call \`resetPasswordForEmail\`, add a \`/reset-password\` route via \`@/components/ui/router\` and render \`auth-reset-password.tsx\` there; that page calls \`updatePassword\`. See \`src/components/examples/auth-reset-password.tsx\` and the snippet in \`BACKEND.md\`.
 - Treat existing \`src/integrations/backend/*\` files as read-only. Enhance the user's auth UI; do not replace the auth integration.
+
+PREREQUISITE GATING (read this BEFORE editing for a feature that needs infra):
+Same rule as the create-mode prompt: if the user asks to add payments (Stripe/Paddle/Paystack/checkout/subscriptions/paywall), email sending, auth, persistent data, file uploads, or a custom domain, and the matching infrastructure is NOT present, DO NOT wire SDK calls or hardcode keys. Build only safe UI scaffolding and tell the user in "plan"/"summary" what needs enabling first — the chat surfaces an "Enable" chip automatically.
 
 INSTALLED INTEGRATIONS RULE:
 If a section titled "Installed integrations" appears below in this prompt, those capabilities (email, analytics, payments, etc.) are ALREADY wired up. You MUST use the helpers described in that section. Do NOT call third-party APIs directly with \`fetch\`, do NOT hardcode API keys, do NOT recreate files that already exist under \`src/integrations/*\`. Treat that section as binding rules, not suggestions.

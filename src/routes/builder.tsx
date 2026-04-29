@@ -103,6 +103,7 @@ import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
 import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
 import { EnableEmailSuggestionChip } from "@/components/EnableEmailSuggestionChip";
+import { EnablePaymentsSuggestionChip } from "@/components/EnablePaymentsSuggestionChip";
 
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
@@ -111,6 +112,7 @@ import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
 import { detectDomainIntentInTurn } from "@/lib/domain-intent";
 import { detectEmailIntentInTurn } from "@/lib/email-intent";
+import { detectPaymentIntentInTurn } from "@/lib/payment-intent";
 import { getProjectBackend } from "@/lib/projects";
 import { listDomains } from "@/lib/domains";
 import { useWallet } from "@/hooks/use-wallet";
@@ -292,7 +294,7 @@ function Builder() {
   // Project Knowledge sheet — also opens from the mobile overflow menu.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsScrollTo, setSettingsScrollTo] = useState<
-    "domains" | "backend" | "knowledge" | "email" | null
+    "domains" | "backend" | "knowledge" | "email" | "payments" | null
   >(null);
   // Mobile builder menu (bottom sheet) + dependent dialogs.
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -316,6 +318,9 @@ function Builder() {
     () => new Set(),
   );
   const [dismissedEmailChips, setDismissedEmailChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedPaymentChips, setDismissedPaymentChips] = useState<Set<number>>(
     () => new Set(),
   );
   const { plan: currentPlan } = useWallet();
@@ -2261,6 +2266,56 @@ function Builder() {
                                 }}
                                 onDismiss={() =>
                                   setDismissedEmailChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
+                        {/* Payment suggestion — same rules as email chip.
+                            If no backend yet, swap to backend-first nudge,
+                            since checkout webhooks need somewhere to run. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          !dismissedPaymentChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectPaymentIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            // Avoid double-chip: if the backend chip is
+                            // already showing for the same turn, defer to it.
+                            const backendIntent = detectBackendIntentInTurn(prevUser, m.content);
+                            const backendChipShowing =
+                              hasBackend === false &&
+                              backendIntent.detected &&
+                              !dismissedBackendChips.has(i);
+                            if (hasBackend === false && backendChipShowing) return null;
+                            const needsBackendFirst = hasBackend === false;
+                            return (
+                              <EnablePaymentsSuggestionChip
+                                reason={intent.reason}
+                                needsBackendFirst={needsBackendFirst}
+                                onOpenPayments={() => {
+                                  setSettingsScrollTo("payments");
+                                  setSettingsOpen(true);
+                                }}
+                                onSetupBackend={() => {
+                                  setDismissedBackendChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(i);
+                                    return next;
+                                  });
+                                  setSettingsScrollTo("backend");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={() =>
+                                  setDismissedPaymentChips((prev) => {
                                     const next = new Set(prev);
                                     next.add(i);
                                     return next;
