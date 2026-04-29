@@ -335,13 +335,6 @@ function splitDestructure(block: string): string[] {
   return out;
 }
 
-/** Skip whitespace + arrow body markers to find `{` of function body. */
-function findFunctionBodyStart(src: string, from: number): number {
-  let i = from;
-  while (i < src.length && /\s/.test(src[i])) i++;
-  if (src[i] === "{") return i;
-  return -1;
-}
 
 function findMatchingBrace(src: string, openIndex: number): number {
   let depth = 1;
