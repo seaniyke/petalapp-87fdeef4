@@ -12,7 +12,7 @@ import {
 import petalLogo from "@/assets/petal-logo.png";
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
-import { CreditBadge } from "@/components/CreditBadge";
+
 import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { BillingSheet } from "@/components/BillingSheet";
 import { MobileNavSheet } from "@/components/MobileNavSheet";
@@ -137,7 +137,7 @@ export function SiteHeader() {
                   <Wallet className="h-3.5 w-3.5" />
                   <span className="hidden text-xs text-muted-foreground lg:inline">Cloud</span>
                 </button>
-                <CreditBadge />
+                
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
