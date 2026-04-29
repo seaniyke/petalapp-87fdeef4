@@ -12,7 +12,7 @@ import {
 import petalLogo from "@/assets/petal-logo.png";
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
-import { CreditBadge } from "@/components/CreditBadge";
+
 import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { BillingSheet } from "@/components/BillingSheet";
 import { MobileNavSheet } from "@/components/MobileNavSheet";
