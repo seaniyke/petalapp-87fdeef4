@@ -306,7 +306,18 @@ function Builder() {
   // Project Knowledge sheet — also opens from the mobile overflow menu.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsScrollTo, setSettingsScrollTo] = useState<
-    "domains" | "backend" | "knowledge" | "email" | "payments" | null
+    | "domains"
+    | "backend"
+    | "knowledge"
+    | "email"
+    | "payments"
+    | "seo"
+    | "analytics"
+    | "ai"
+    | "storage"
+    | "realtime"
+    | "cron"
+    | null
   >(null);
   // Mobile builder menu (bottom sheet) + dependent dialogs.
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -333,6 +344,24 @@ function Builder() {
     () => new Set(),
   );
   const [dismissedPaymentChips, setDismissedPaymentChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedSeoChips, setDismissedSeoChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedAnalyticsChips, setDismissedAnalyticsChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedAiFeatureChips, setDismissedAiFeatureChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedStorageChips, setDismissedStorageChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedRealtimeChips, setDismissedRealtimeChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedCronChips, setDismissedCronChips] = useState<Set<number>>(
     () => new Set(),
   );
   const { plan: currentPlan } = useWallet();
