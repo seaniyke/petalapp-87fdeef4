@@ -91,7 +91,7 @@ export type RuntimeBalance = {
   topupBalanceCents: number;
   freeResetAt: string; // ISO date
   workspaceCapCents: number | null;
-  monthlyFreeGrantCents: number; // currently $10 = 1000
+  monthlyFreeGrantCents: number; // currently $5 = 500
 };
 
 export async function getRuntimeBalance(userId: string): Promise<RuntimeBalance> {
@@ -111,7 +111,7 @@ export async function getRuntimeBalance(userId: string): Promise<RuntimeBalance>
       new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
     workspaceCapCents:
       data?.workspace_cap_cents == null ? null : Number(data.workspace_cap_cents),
-    monthlyFreeGrantCents: 1000,
+    monthlyFreeGrantCents: 500,
   };
 }
 
