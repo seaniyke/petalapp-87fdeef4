@@ -509,10 +509,17 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           }
         } else {
           model = resolveModel(preset, lastUser, currentFiles.length);
+          if (preset === "deep") chosenBy = "deep_think";
         }
         console.log(
           `[phase-router] phase=${phaseTag.phase} (${phaseTag.confidence}/${phaseTag.source}) tier=${tier} chosenBy=${chosenBy} → ${model}`,
         );
+
+        // "deep" preset enables extended reasoning on the gateway. Models
+        // that don't support `reasoning` simply ignore the field, so this
+        // is safe to send unconditionally for deep turns.
+        const reasoningField =
+          preset === "deep" ? { reasoning: { effort: "high" as const } } : {};
 
         const upstream = await aiChatCompletions({
           feature: "generate",
@@ -522,6 +529,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
             tools: [tool],
             tool_choice: { type: "function", function: { name: tool.function.name } },
             stream: true,
+            ...reasoningField,
           },
           meta: {
             phase: phaseTag.phase,
