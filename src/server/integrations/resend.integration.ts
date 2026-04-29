@@ -11,6 +11,12 @@ export const resendIntegration: IntegrationDefinition = {
   tagline: "Transactional email with a sane API.",
   category: "Email",
   docsUrl: "https://resend.com/docs",
+  triggers: [
+    "send email","send emails","email notification","transactional email",
+    "welcome email","reset password email","newsletter","smtp","mailer",
+    "contact form email","email receipt","resend",
+  ],
+  replaces: ["nodemailer","sendgrid","@sendgrid/mail","mailgun"],
   fields: [
     {
       id: "api_key",
