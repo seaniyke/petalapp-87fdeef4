@@ -111,7 +111,19 @@ interface RawRow {
   latency_ms: number | null;
 }
 
-function buildSnapshot(rows: RawRow[], config: RouterConfig): RouterSnapshot {
+interface OutcomeAgg {
+  samples: number;
+  verifierPassRate: number;
+  buildSuccessRate: number;
+  followupFixRate: number;
+  avgAutofixes: number;
+}
+
+function buildSnapshot(
+  rows: RawRow[],
+  config: RouterConfig,
+  outcomesByModel: Map<string, OutcomeAgg>,
+): RouterSnapshot {
   // Group raw rows by (feature, phase, model) and (feature, model).
   type Bucket = {
     calls: number;
@@ -175,10 +187,37 @@ function buildSnapshot(rows: RawRow[], config: RouterConfig): RouterSnapshot {
         const p50LatencyMs = median(b.latencies);
         const enoughData = b.calls >= config.minSamples;
 
-        // Score: success per dollar. Add ε so free models don't divide by zero.
+        // Pull outcome quality for this model (feature-agnostic — outcomes
+        // are aggregated per model in `ai_model_quality`).
+        const oc = outcomesByModel.get(model) ?? null;
+        const verifierPassRate = oc ? oc.verifierPassRate : null;
+        const buildSuccessRate = oc ? oc.buildSuccessRate : null;
+        const followupFixRate = oc ? oc.followupFixRate : null;
+        const avgAutofixes = oc ? oc.avgAutofixes : null;
+        const outcomeSamples = oc ? oc.samples : 0;
+
+        // Score blends:
+        //   - HTTP success-per-cost (the original signal — keeps free fast
+        //     models alive when outcomes data is empty)
+        //   - quality multiplier from outcomes (if we have ≥3 samples):
+        //       0.6 * build_success + 0.3 * verifier_pass + 0.1 * (1 - followup_fix)
+        //     This rewards models whose generations actually compile and
+        //     don't immediately get a "fix this" follow-up turn.
         const costScore = medianCostMicro / 1000 + 1; // micro → milli, +1
         const latencyPenalty = p50LatencyMs > 5000 ? 0.05 : 0;
-        const score = successRate / costScore - latencyPenalty;
+        const httpScore = successRate / costScore - latencyPenalty;
+
+        let qualityMult = 1;
+        if (outcomeSamples >= 3) {
+          qualityMult =
+            0.6 * (buildSuccessRate ?? 0.5) +
+            0.3 * (verifierPassRate ?? 0.5) +
+            0.1 * (1 - (followupFixRate ?? 0.5));
+          // Keep multiplier in [0.25, 1.5] so a single bad day can't
+          // permanently kill a model.
+          qualityMult = Math.max(0.25, Math.min(1.5, qualityMult * 1.5));
+        }
+        const score = httpScore * qualityMult;
 
         stats.push({
           model,
@@ -189,6 +228,11 @@ function buildSnapshot(rows: RawRow[], config: RouterConfig): RouterSnapshot {
           p50LatencyMs,
           score,
           enoughData,
+          outcomeSamples,
+          verifierPassRate,
+          buildSuccessRate,
+          followupFixRate,
+          avgAutofixes,
         });
       }
       stats.sort((a, b) => b.score - a.score);
