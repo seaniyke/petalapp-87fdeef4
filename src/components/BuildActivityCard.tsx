@@ -157,9 +157,9 @@ export function BuildActivityCard({
   // ─── Collapsed success state ─────────────────────────────────────────────
   if (collapsed && isComplete && !error) {
     return (
-      <div className="mr-6 flex items-center justify-between rounded-2xl border border-mint/60 bg-mint/30 px-3.5 py-2 text-xs">
+      <div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-1.5 text-xs">
         <span className="inline-flex items-center gap-1.5 font-medium text-foreground/80">
-          <span aria-hidden>🌟</span>
+          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" aria-hidden />
           Your app is live · built in {elapsed}s
         </span>
         <button
