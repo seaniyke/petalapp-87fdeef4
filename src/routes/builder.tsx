@@ -1304,6 +1304,13 @@ function Builder() {
               }
               resultVerdict = v.verdict;
             },
+            onTimeline: (entry) => {
+              // Append every pipeline step to the live timeline. Cap at 30
+              // entries so a runaway server can't bloat React state.
+              setTimelineEvents((prev) =>
+                prev.length >= 30 ? prev : [...prev, entry],
+              );
+            },
 
             onError: (m, sugg) => {
               streamError = m;
