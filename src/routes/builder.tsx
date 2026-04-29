@@ -2098,7 +2098,7 @@ function Builder() {
                                 // feel broken (and sometimes mis-routes
                                 // short edits as "clarify").
                                 onClick={() => void send(s, { forceBuild: true })}
-                                className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs text-foreground shadow-sm transition hover:bg-accent hover:text-accent-foreground"
+                                className="inline-flex items-center rounded-full border border-foreground/15 bg-background px-3 py-1.5 text-[12.5px] font-medium text-foreground transition hover:border-foreground/30 hover:bg-foreground hover:text-background"
                               >
                                 {s}
                               </button>
