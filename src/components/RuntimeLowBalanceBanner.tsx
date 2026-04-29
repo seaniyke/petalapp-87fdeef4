@@ -19,6 +19,7 @@ export function RuntimeLowBalanceBanner({ projectId }: Props) {
   const { user } = useAuth();
   const [paused, setPaused] = useState(false);
   const [totalCents, setTotalCents] = useState<number | null>(null);
+  const [qualified, setQualified] = useState<boolean>(true);
   const [dismissed, setDismissed] = useState(false);
   const [topupOpen, setTopupOpen] = useState(false);
 
@@ -33,6 +34,7 @@ export function RuntimeLowBalanceBanner({ projectId }: Props) {
         ]);
         if (cancelled) return;
         setTotalCents(wallet.freeBalanceCents + wallet.topupBalanceCents);
+        setQualified(wallet.qualifiedForFreeGrant);
         const proj = projectId
           ? projects.find((p) => p.projectId === projectId)
           : undefined;
@@ -52,8 +54,18 @@ export function RuntimeLowBalanceBanner({ projectId }: Props) {
   if (!user?.id || dismissed) return null;
   if (totalCents === null) return null;
 
-  const isLow = totalCents < LOW_THRESHOLD_CENTS;
-  if (!isLow && !paused) return null;
+  const isEmpty = totalCents === 0 && !qualified;
+  const isLow = totalCents > 0 && totalCents < LOW_THRESHOLD_CENTS;
+  if (!isLow && !paused && !isEmpty) return null;
+
+  let message: string;
+  if (paused) {
+    message = "Runtime paused — your project hit its spend cap. Top up to bring it back online.";
+  } else if (isEmpty) {
+    message = "Top up to start using Cloud + AI. First top-up unlocks $5/mo free Cloud credit.";
+  } else {
+    message = `Cloud + AI balance is low (${formatCents(totalCents)}). Top up to keep your apps running.`;
+  }
 
   return (
     <>
@@ -66,11 +78,7 @@ export function RuntimeLowBalanceBanner({ projectId }: Props) {
         }`}
       >
         <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-        <span className="min-w-0 flex-1 truncate">
-          {paused
-            ? "Runtime paused — your project hit its spend cap. Top up to bring it back online."
-            : `Cloud + AI balance is low (${formatCents(totalCents)}). Top up to keep your apps running.`}
-        </span>
+        <span className="min-w-0 flex-1 truncate">{message}</span>
         <button
           type="button"
           onClick={() => setTopupOpen(true)}
