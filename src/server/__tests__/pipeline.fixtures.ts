@@ -339,6 +339,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/integrations/supabase/client.ts", content: `export const supabase = {} as any;\n` },
       { path: "supabase/migrations/0001_init.sql", content: RLS_HEALTHY_MIGRATION },
       { path: "src/App.tsx", content: RLS_HEALTHY_PAGE },
     ],
