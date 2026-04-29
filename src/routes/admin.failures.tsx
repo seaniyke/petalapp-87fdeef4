@@ -64,7 +64,7 @@ const WINDOWS = [
 ];
 
 function AdminFailuresPage() {
-  const { ready } = useAdminGuard();
+  const { ready } = useAdminGuard("/admin/failures");
   const [stats, setStats] = useState<Stats | null>(null);
   const [windowH, setWindowH] = useState(24);
   const [loading, setLoading] = useState(false);
