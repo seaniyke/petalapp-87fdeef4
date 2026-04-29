@@ -66,7 +66,9 @@ async function lookup(host: string): Promise<Result> {
 
   const { data: project } = await supabaseAdmin
     .from("projects")
-    .select("id, published_visibility, published_build_id")
+    .select(
+      "id, title, summary, published_visibility, published_build_id, site_title, site_description, site_icon_url, site_og_image_url",
+    )
     .eq("id", projectId)
     .maybeSingle();
   if (!project) return { kind: "unknown" };
@@ -91,7 +93,18 @@ async function lookup(host: string): Promise<Result> {
       target = build.dist_path.replace(/\/$/, "");
     }
   }
-  return { kind: "proxy", target, projectId: project.id };
+
+  // Site meta — site_* columns override, otherwise fall back to the
+  // project's build-time title/summary so newly generated apps still get
+  // sensible browser-tab text without the user having to fill anything in.
+  const meta: SiteMeta = {
+    title: project.site_title?.trim() || project.title || null,
+    description: project.site_description?.trim() || project.summary || null,
+    iconUrl: project.site_icon_url?.trim() || null,
+    ogImageUrl: project.site_og_image_url?.trim() || null,
+  };
+
+  return { kind: "proxy", target, projectId: project.id, meta };
 }
 
 export const Route = createFileRoute("/api/public/host-lookup")({
