@@ -453,8 +453,10 @@ export type StreamEvent =
   | { type: "error"; message: string; suggestions?: string[] };
 
 /** Apply a list of file operations to a current set of files.
- *  "update" ops may use "// ... keep existing code ..." markers — we expand
- *  those against the file's previous content before saving. */
+ *  "update" ops must contain complete, valid file contents. Legacy
+ *  "// ... keep existing code ..." markers are expanded only when they can be
+ *  anchored safely; otherwise we reject the patch before broken half-files can
+ *  be saved or deployed. */
 export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
   const map = new Map(current.map((f) => [f.path, f.content]));
   for (const op of ops) {
@@ -466,6 +468,11 @@ export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
       if (expanded > 0 || failed > 0) {
         console.log(
           `[keep-existing] ${op.path}: expanded=${expanded} failed=${failed}`,
+        );
+      }
+      if (failed > 0 || /keep existing code/i.test(content)) {
+        throw new Error(
+          `AI returned an incomplete placeholder patch for ${op.path}. It must resend the full file contents.`,
         );
       }
       map.set(op.path, content);
