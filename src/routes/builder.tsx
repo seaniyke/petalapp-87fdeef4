@@ -2461,6 +2461,7 @@ function Builder() {
                           <ContinueBuildingChip
                             message={m.handoff.message}
                             suggestedPrompt={m.handoff.suggestedPrompt}
+                            detected={m.handoff.detected}
                             onContinue={(prompt) => {
                               setInput(prompt);
                               composerTextareaRef.current?.focus();
