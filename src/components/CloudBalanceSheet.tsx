@@ -109,15 +109,13 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
       })
     : "";
 
-  // Free allowance is split notionally: we treat the $10 as one bucket,
-  // but display "Cloud $X / $X" + "AI $Y / $Y" by attributing usage by meter.
-  // Until the user qualifies (first top-up) the free grant is LOCKED — we must
-  // show $0 used of the cap, not "fully used".
-  const monthlyGrant = wallet?.monthlyFreeGrantCents ?? 1000;
+  // Single shared $5 free grant bucket spans both Cloud and AI usage.
+  // It's locked until the user's first paid top-up. Per-meter usage rows
+  // below only show top-up spend; free grant is shown once at the top.
+  const monthlyGrant = wallet?.monthlyFreeGrantCents ?? 500;
   const qualified = wallet?.qualifiedForFreeGrant ?? false;
-  const freeUsedCents = qualified
-    ? Math.max(0, monthlyGrant - (wallet?.freeBalanceCents ?? monthlyGrant))
-    : 0;
+  const freeRemainingCents = qualified ? wallet?.freeBalanceCents ?? 0 : 0;
+  const freeUsedCents = qualified ? Math.max(0, monthlyGrant - freeRemainingCents) : 0;
 
   return (
     <>
@@ -171,21 +169,25 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
                 </div>
               </div>
 
-              {/* Usage card */}
+              {/* Free grant + per-meter top-up usage */}
               <div className="space-y-4 rounded-2xl bg-muted/40 p-5">
-                <UsageRow
-                  label="Cloud"
-                  freeUsedCents={Math.min(freeUsedCents, monthlyGrant)}
-                  freeCapCents={monthlyGrant}
-                  topupUsedCents={split.cloudCents}
-                />
+                <div>
+                  <h4 className="text-sm font-semibold">Free monthly credit</h4>
+                  <div className="mt-2 text-xl font-semibold tabular-nums">
+                    {qualified
+                      ? `${formatUsdCents(freeUsedCents)} / ${formatUsdCents(monthlyGrant)}`
+                      : `Locked`}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {qualified
+                      ? `Resets ${resetDateLabel}. Shared across Cloud and AI.`
+                      : `Top up once to unlock $${(monthlyGrant / 100).toFixed(0)}/mo free Cloud credit.`}
+                  </div>
+                </div>
                 <div className="border-t border-border/60" />
-                <UsageRow
-                  label="AI"
-                  freeUsedCents={0 /* once meter is wired, attribute appropriately */}
-                  freeCapCents={100}
-                  topupUsedCents={split.aiCents}
-                />
+                <UsageRow label="Cloud" topupUsedCents={split.cloudCents} />
+                <div className="border-t border-border/60" />
+                <UsageRow label="AI" topupUsedCents={split.aiCents} />
               </div>
 
               {/* Project breakdown */}
