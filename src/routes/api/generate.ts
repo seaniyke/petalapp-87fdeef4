@@ -48,6 +48,7 @@ import { runContinuationTier } from "@/server/pipeline/tier-continuation";
 import { runEsbuildTier } from "@/server/pipeline/tier-esbuild";
 import { runRenderRiskTier } from "@/server/pipeline/tier-render-risk";
 import { runRlsSanityTier } from "@/server/pipeline/tier-rls-sanity";
+import { TurnRecorder } from "@/server/pipeline-telemetry.server";
 import { stripHallucinatedImports } from "@/server/strip-hallucinated-imports.server";
 import {
   checkFileBudgets,
@@ -616,6 +617,15 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         const encoder = new TextEncoder();
         const stream = new ReadableStream<Uint8Array>({
           async start(controller) {
+            // Phase 6 — per-tier telemetry. One row per tier per turn,
+            // flushed at end-of-turn (success OR failure path) in a single
+            // insert. Fire-and-forget; never blocks or throws.
+            const recorder = new TurnRecorder({
+              turnId: crypto.randomUUID(),
+              projectId: body.projectId ?? null,
+              messageId: null,
+              model,
+            });
             try {
               controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
               controller.enqueue(encoder.encode(sse({ type: "status", message: "Thinking…" })));
@@ -761,6 +771,22 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 );
               }
               const budgetIssueCount = budgetRejections.length + budgetWarnings.length;
+              recorder.record({
+                tier: "file_budget",
+                outcome:
+                  budgetRejections.length > 0
+                    ? "failed"
+                    : budgetWarnings.length > 0
+                      ? "fixed"
+                      : "ok",
+                duration_ms: 0,
+                issue_count: budgetIssueCount,
+                details: {
+                  rejections: budgetRejections.length,
+                  warnings: budgetWarnings.length,
+                  changed_paths: budgetChangedPaths.length,
+                },
+              });
               controller.enqueue(
                 encoder.encode(
                   sse({
@@ -808,6 +834,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
 
               // Tier 2 — stream-time autofixer (regex pass, <10ms total).
               // Repairs known footguns BEFORE the build/image steps run.
+              const autofixT0 = Date.now();
               const autofixOut = autofixFiles(nextFiles);
               nextFiles = autofixOut.files;
               if (autofixOut.report.fixedCount > 0) {
@@ -824,6 +851,13 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   ),
                 );
               }
+              recorder.record({
+                tier: "stream_autofix",
+                outcome: autofixOut.report.fixedCount > 0 ? "fixed" : "ok",
+                duration_ms: Date.now() - autofixT0,
+                issue_count: autofixOut.report.fixedCount,
+                details: { notes: autofixOut.report.notes.slice(0, 8) },
+              });
               controller.enqueue(
                 encoder.encode(
                   sse({
@@ -842,6 +876,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
 
               // Tier 2.5 + 2.45 — local verifier and npm pre-flight
               // (extracted to src/server/pipeline/tier-local-verify.ts).
+              const localT0 = Date.now();
               const localOut = await runLocalVerifyTier({
                 nextFiles,
                 currentFiles,
@@ -853,6 +888,21 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               for (const ev of localOut.emit) {
                 controller.enqueue(encoder.encode(sse(ev)));
               }
+              recorder.record({
+                tier: "local_verify",
+                outcome: localVerdict.ok ? "ok" : "failed",
+                duration_ms: Date.now() - localT0,
+                issue_count: localVerdict.issues.length,
+                details: {
+                  preflight_dropped: localOut.preflightDropped,
+                  preflight_hallucinated: localOut.preflightHallucinated,
+                  changed_paths: earlyChangedPaths.length,
+                  issue_kinds: localVerdict.issues.reduce<Record<string, number>>(
+                    (acc, i) => ((acc[i.kind] = (acc[i.kind] ?? 0) + 1), acc),
+                    {},
+                  ),
+                },
+              });
 
               // Tier 2.46 — deterministic strip of npm-confirmed-hallucinated
               // imports. We do this BEFORE continuation/esbuild so the parse
@@ -864,11 +914,22 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 handoffDetected.hallucinatedPackages = [
                   ...localOut.preflightHallucinated,
                 ];
+                const stripT0 = Date.now();
                 const stripOut = stripHallucinatedImports(
                   nextFiles,
                   localOut.preflightHallucinated,
                   earlyChangedPaths,
                 );
+                recorder.record({
+                  tier: "hallu_strip",
+                  outcome: stripOut.filesChanged > 0 ? "fixed" : "skipped",
+                  duration_ms: Date.now() - stripT0,
+                  issue_count: stripOut.importsRemoved,
+                  details: {
+                    files_changed: stripOut.filesChanged,
+                    hallucinated: localOut.preflightHallucinated,
+                  },
+                });
                 if (stripOut.filesChanged > 0) {
                   nextFiles = stripOut.files;
                   console.log(
@@ -896,6 +957,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // flagged any file as truncated mid-stream, ask the SAME model
               // to emit only the missing tail bytes.
               // (extracted to src/server/pipeline/tier-continuation.ts).
+              const contT0 = Date.now();
               const contOut = await runContinuationTier({
                 files: nextFiles,
                 verdict: localVerdict,
@@ -928,9 +990,21 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               for (const ev of contOut.emit) {
                 controller.enqueue(encoder.encode(sse(ev)));
               }
+              recorder.record({
+                tier: "continuation",
+                outcome: contOut.requestHandoff
+                  ? "failed"
+                  : contOut.files !== nextFiles
+                    ? "fixed"
+                    : "skipped",
+                duration_ms: Date.now() - contT0,
+                issue_count: contOut.requestHandoff ? 1 : 0,
+                details: { handoff_requested: contOut.requestHandoff },
+              });
 
               // Tier 2.7 — esbuild parse pass
               // (extracted to src/server/pipeline/tier-esbuild.ts).
+              const esbuildT0 = Date.now();
               const esbuildOut = await runEsbuildTier({
                 files: nextFiles,
                 earlyChangedPaths,
@@ -939,12 +1013,25 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               for (const ev of esbuildOut.emit) {
                 controller.enqueue(encoder.encode(sse(ev)));
               }
+              recorder.record({
+                tier: "esbuild",
+                outcome: esbuildVerdict.ok ? "ok" : "failed",
+                duration_ms: Date.now() - esbuildT0,
+                issue_count: esbuildVerdict.issues.length,
+                details: {
+                  parse_errors: esbuildVerdict.issues.slice(0, 5).map((i) => ({
+                    path: i.path,
+                    line: i.line,
+                  })),
+                },
+              });
 
               // Tier 2.8 — render-risk linter (Phase 5).
               // Soft-warn only: feeds findings into combinedAutofixIssues so
               // the post-stream autofix model fixes them when the gate is
               // already open for other reasons. Does NOT independently open
               // the gate — false positives must never wedge a clean turn.
+              const renderRiskT0 = Date.now();
               const renderRiskOut = runRenderRiskTier({
                 files: nextFiles,
                 earlyChangedPaths,
@@ -953,6 +1040,18 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               for (const ev of renderRiskOut.emit) {
                 controller.enqueue(encoder.encode(sse(ev)));
               }
+              recorder.record({
+                tier: "render_risk",
+                outcome: renderRiskIssues.length > 0 ? "warned" : "ok",
+                duration_ms: Date.now() - renderRiskT0,
+                issue_count: renderRiskIssues.length,
+                details: {
+                  rule_kinds: renderRiskIssues.reduce<Record<string, number>>(
+                    (acc, i) => ((acc[i.kind] = (acc[i.kind] ?? 0) + 1), acc),
+                    {},
+                  ),
+                },
+              });
 
               // Tier 2.9 — RLS sanity linter (Phase 5b).
               // Soft-warn only: cross-references supabase.from() calls in
@@ -960,6 +1059,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // missing RLS, or missing policies. Feeds into the autofix
               // queue but never independently opens the gate — false
               // positives must never wedge a clean turn.
+              const rlsSanityT0 = Date.now();
               const rlsSanityOut = runRlsSanityTier({
                 files: nextFiles,
                 earlyChangedPaths,
@@ -968,6 +1068,18 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               for (const ev of rlsSanityOut.emit) {
                 controller.enqueue(encoder.encode(sse(ev)));
               }
+              recorder.record({
+                tier: "rls_sanity",
+                outcome: rlsSanityIssues.length > 0 ? "warned" : "ok",
+                duration_ms: Date.now() - rlsSanityT0,
+                issue_count: rlsSanityIssues.length,
+                details: {
+                  rule_kinds: rlsSanityIssues.reduce<Record<string, number>>(
+                    (acc, i) => ((acc[i.kind] = (acc[i.kind] ?? 0) + 1), acc),
+                    {},
+                  ),
+                },
+              });
 
               // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
               // pass that ONLY fixes obvious build-breakers.
@@ -1007,6 +1119,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 ...rlsSanityIssues,
               ];
               if (autofixGateOpen) {
+                const fixT0 = Date.now();
                 try {
                   const fixOut = await runPostStreamAutofix(nextFiles, combinedAutofixIssues);
                   nextFiles = fixOut.files;
@@ -1024,6 +1137,13 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                       ),
                     );
                   }
+                  recorder.record({
+                    tier: "post_stream_autofix",
+                    outcome: fixOut.result.fixedFiles > 0 ? "fixed" : "ok",
+                    duration_ms: Date.now() - fixT0,
+                    issue_count: fixOut.result.fixedFiles,
+                    details: { gate_open: true, input_issues: combinedAutofixIssues.length },
+                  });
                   controller.enqueue(
                     encoder.encode(
                       sse({
@@ -1041,6 +1161,16 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   );
                 } catch (e) {
                   console.warn("[post-stream-autofix] rejected:", e);
+                  recorder.record({
+                    tier: "post_stream_autofix",
+                    outcome: "failed",
+                    duration_ms: Date.now() - fixT0,
+                    issue_count: 0,
+                    details: {
+                      gate_open: true,
+                      error: e instanceof Error ? e.message : String(e),
+                    },
+                  });
                   controller.enqueue(
                     encoder.encode(
                       sse({
@@ -1054,6 +1184,13 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   );
                 }
               } else {
+                recorder.record({
+                  tier: "post_stream_autofix",
+                  outcome: "skipped",
+                  duration_ms: 0,
+                  issue_count: 0,
+                  details: { gate_open: false },
+                });
                 controller.enqueue(
                   encoder.encode(
                     sse({
@@ -1290,6 +1427,9 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 filesWritten: 0,
               });
             } finally {
+              // Phase 6 — flush per-tier telemetry in a single insert.
+              // Idempotent and never throws; safe in finally.
+              void recorder.flush();
               controller.close();
             }
           },
