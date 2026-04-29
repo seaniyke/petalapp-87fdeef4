@@ -13,7 +13,15 @@
 
 export interface LocalIssue {
   path: string;
-  kind: "truncation" | "jsx" | "braces" | "undefined" | "lazy-export";
+  kind:
+    | "truncation"
+    | "jsx"
+    | "braces"
+    | "undefined"
+    | "lazy-export"
+    | "unterminated-string"
+    | "missing-dep"
+    | "missing-sibling";
   detail: string;
 }
 
@@ -145,6 +153,96 @@ function braceBalance(src: string): { braces: number; parens: number; brackets: 
 }
 
 /**
+ * Detect string literals that opened but never closed before EOF or before
+ * a hard newline (for ' and "). Template literals (`) may legally span lines
+ * but must still close. This is the #1 build-failure mode in our telemetry
+ * (`Unterminated string literal`, `Unterminated regular expression`).
+ *
+ * Returns a short snippet to put in the issue detail.
+ */
+function findUnterminatedString(src: string): string | null {
+  let i = 0;
+  const n = src.length;
+  let line = 1;
+  while (i < n) {
+    const c = src[i];
+    const c2 = src[i + 1];
+    if (c === "\n") {
+      line++;
+      i++;
+      continue;
+    }
+    // Skip line comments.
+    if (c === "/" && c2 === "/") {
+      while (i < n && src[i] !== "\n") i++;
+      continue;
+    }
+    // Skip block comments — and detect unterminated ones too.
+    if (c === "/" && c2 === "*") {
+      i += 2;
+      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) {
+        if (src[i] === "\n") line++;
+        i++;
+      }
+      if (i >= n) return `unterminated /* … */ block comment starting near line ${line}`;
+      i += 2;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      const quote = c;
+      const startLine = line;
+      i++;
+      while (i < n && src[i] !== quote) {
+        if (src[i] === "\\" && i + 1 < n) {
+          // Skip escapes (including \" \' \\ \n etc.). A literal newline
+          // inside a single/double-quoted string is illegal — flag it.
+          if (src[i + 1] === "\n") return `unterminated string starting at line ${startLine}`;
+          i += 2;
+          continue;
+        }
+        if (src[i] === "\n") {
+          // Hard newline inside ' or " — esbuild treats this as
+          // "Unterminated string literal" (matches our telemetry exactly).
+          return `unterminated string starting at line ${startLine}`;
+        }
+        i++;
+      }
+      if (i >= n) return `unterminated string starting at line ${startLine}`;
+      i++;
+      continue;
+    }
+    if (c === "`") {
+      const startLine = line;
+      i++;
+      while (i < n && src[i] !== "`") {
+        if (src[i] === "\\" && i + 1 < n) {
+          i += 2;
+          continue;
+        }
+        if (src[i] === "$" && src[i + 1] === "{") {
+          let depth = 1;
+          i += 2;
+          while (i < n && depth > 0) {
+            if (src[i] === "{") depth++;
+            else if (src[i] === "}") depth--;
+            else if (src[i] === "\n") line++;
+            i++;
+          }
+          continue;
+        }
+        if (src[i] === "\n") line++;
+        i++;
+      }
+      if (i >= n) return `unterminated template literal starting at line ${startLine}`;
+      i++;
+      continue;
+    }
+    i++;
+  }
+  return null;
+}
+
+/**
  * Find PascalCase JSX tag names that have no corresponding import or local
  * declaration in the file. Catches the common failure mode where the model
  * writes `<Container>` / `<Inline>` / `<Button>` etc. without an import,
@@ -257,6 +355,20 @@ export function verifyFileLocal(path: string, content: string): LocalIssue[] {
     });
   }
 
+  // Unterminated string / template / regex / block-comment detection.
+  // This is the #1 build-failure mode in our telemetry — esbuild reports it
+  // as "Unterminated string literal" / "Unterminated regular expression" /
+  // "Unexpected end of file". Catch it deterministically here so the
+  // continuation pass kicks in before the user ever sees a build failure.
+  const unterm = findUnterminatedString(content);
+  if (unterm) {
+    issues.push({
+      path,
+      kind: "unterminated-string",
+      detail: unterm,
+    });
+  }
+
   if (looksTruncated(content)) {
     const tail = content.trimEnd().slice(-40).replace(/\s+/g, " ");
     issues.push({
@@ -305,6 +417,120 @@ export function verifyFileLocal(path: string, content: string): LocalIssue[] {
   return issues;
 }
 
+/**
+ * Walk every emitted .ts/.tsx file and collect its bare imports. For each
+ * one, decide whether it can possibly resolve at build time:
+ *   - relative `./Foo` or alias `@/Foo`  →  must exist in the file map
+ *     (changed OR scaffold OR pre-existing).
+ *   - bare `pkg` or `@scope/pkg`         →  must be in package.json deps.
+ * Anything that fails resolves to a `missing-sibling` or `missing-dep` issue.
+ *
+ * Whitelisted: `react`, `react-dom`, scaffold-managed namespaces (`@/components/ui/*`,
+ * `@/integrations/backend/*`, `@/lib/utils`) — those always exist in the kit.
+ */
+function findUnresolvedImports(
+  files: { path: string; content: string }[],
+  changedPaths: Set<string>,
+): LocalIssue[] {
+  const issues: LocalIssue[] = [];
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+
+  // Build the dep whitelist from the AI-emitted package.json (or the
+  // scaffold's, if the AI didn't emit one).
+  const deps = new Set<string>([
+    "react",
+    "react-dom",
+    "react/jsx-runtime",
+    "react/jsx-dev-runtime",
+  ]);
+  const pkgRaw = byPath.get("package.json");
+  if (pkgRaw) {
+    try {
+      const pkg = JSON.parse(pkgRaw) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      for (const k of Object.keys(pkg.dependencies ?? {})) deps.add(k);
+      for (const k of Object.keys(pkg.devDependencies ?? {})) deps.add(k);
+    } catch {
+      /* malformed package.json — handled elsewhere */
+    }
+  }
+
+  // Scaffold prefixes that always resolve via the kit even when no file map
+  // entry exists yet (the kit injects them post-AI).
+  const SCAFFOLD_PREFIXES = [
+    "@/components/ui/",
+    "@/integrations/backend/",
+    "@/integrations/lovable/",
+    "@/lib/utils",
+    "@/lib/router",
+    "@/styles.css",
+  ];
+  function isScaffoldAlias(spec: string): boolean {
+    return SCAFFOLD_PREFIXES.some((p) => spec === p || spec.startsWith(p));
+  }
+
+  // Bare specifier → npm package name (handles scoped: `@scope/pkg` and
+  // sub-paths: `pkg/sub/path` → `pkg`, `@scope/pkg/sub` → `@scope/pkg`).
+  function pkgRoot(spec: string): string {
+    if (spec.startsWith("@")) return spec.split("/").slice(0, 2).join("/");
+    return spec.split("/")[0];
+  }
+
+  // Single regex catches both `import … from "x"` and bare side-effect
+  // imports `import "x"`. Skip type-only imports — they don't trigger Rollup.
+  const importRe = /import\s+(?!type\b)(?:[^"';]+?\s+from\s+)?["']([^"']+)["']/g;
+  // Also catch dynamic imports + CJS-style requires the model occasionally
+  // emits inside server functions.
+  const dynRe = /(?:^|[^.\w])import\(\s*["']([^"']+)["']\s*\)/g;
+
+  const seen = new Set<string>();
+  for (const f of files) {
+    if (!changedPaths.has(f.path)) continue;
+    if (!/\.(tsx?|jsx?)$/.test(f.path)) continue;
+    if (f.path.startsWith("src/components/ui/")) continue;
+    if (f.path.startsWith("src/integrations/")) continue;
+
+    const specs: string[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = importRe.exec(f.content))) specs.push(m[1]);
+    while ((m = dynRe.exec(f.content))) specs.push(m[1]);
+
+    for (const spec of specs) {
+      // Already-emitted issue for this file/spec? Skip noise.
+      const dedupeKey = `${f.path}|${spec}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+
+      // Relative or alias import → resolve against the file map.
+      if (spec.startsWith(".") || spec.startsWith("@/")) {
+        if (isScaffoldAlias(spec)) continue;
+        const resolved = resolveImportPath(f.path, spec, byPath);
+        if (!resolved) {
+          issues.push({
+            path: f.path,
+            kind: "missing-sibling",
+            detail: `import "${spec}" — referenced file does not exist`,
+          });
+        }
+        continue;
+      }
+
+      // Bare specifier → npm package.
+      const root = pkgRoot(spec);
+      if (!deps.has(root)) {
+        issues.push({
+          path: f.path,
+          kind: "missing-dep",
+          detail: `import "${spec}" — package "${root}" is not in package.json`,
+        });
+      }
+    }
+  }
+  return issues;
+}
+
 export function verifyFilesLocal(
   files: { path: string; content: string }[],
   changedPaths: string[],
@@ -318,5 +544,6 @@ export function verifyFilesLocal(
     issues.push(...verifyFileLocal(f.path, f.content));
   }
   issues.push(...findLazyNamedExportIssues(files, changed));
+  issues.push(...findUnresolvedImports(files, changed));
   return { ok: issues.length === 0, issues };
 }

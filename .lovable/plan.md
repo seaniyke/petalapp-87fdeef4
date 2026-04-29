@@ -1,80 +1,71 @@
 
-# Petal AI Audit & Reliability Plan
+# Make Petal feel like Lovable — and stop confusing users
 
-I pulled real telemetry from `ai_call_log` (last 7d) and `project_builds` (last 14d) to ground this — not vibes. Here is what's actually going wrong, and what to fix, in order of impact.
+I went into the database and read the last ~40 build failures + the screenshot the user sent. The "Petal got a bit confused" card they hit is the **generic** error — it fires when nothing else matched. The real failures right now are not the ones we already fixed in Phase A–D. They're new ones. I'll fix the actual root causes AND the chat UX that made it feel hostile.
 
-## Findings
+## What's actually breaking (last 7 days, real data)
 
-### 1. Build success rate is bad: ~55% (21 ready / 17 failed in 7d)
-The biggest user-visible quality problem. Two root causes dominate:
-
-**a. Scaffold ships example files that import a missing UI primitive.**
-- `src/server/examples-pack.ts` includes `auth-otp-card.tsx` and `onboarding-verify-step.tsx`, both of which import `@/components/ui/input-otp`.
-- The scaffold-kit does not ship `src/components/ui/input-otp.tsx`.
-- When the AI follows our own "copy-from auth-otp-card" prompt suggestion, the user's `App.tsx` imports the example, Vite traverses it, and the build fails with `Could not load /src/components/ui/input-otp`.
-- This single bug accounts for 3 of the 10 vite build failures in the window — likely more under-counted because the AI sometimes uses the OTP block silently.
-
-**b. AI emits `import { createBrowserRouter, RouteObject } from "@/components/ui/router"` even when our re-export surface used to omit it.**
-- Scaffold now exports them, so new builds are OK, but 2+ historical failures show the model favours `createBrowserRouter` patterns. Worth tightening the prompt so the simpler `<Router><Routes>` form is the default and `createBrowserRouter` is only suggested when the user asks for nested data routes.
-
-### 2. Deploy timeouts (7 in 14d): the build worker doesn't report back within 10–20 min
-Not an AI quality issue per se, but it surfaces as "Petal failed". Needs separate investigation in the deploy worker — out of scope for this AI audit, but worth flagging.
-
-### 3. Phase router is doing nothing useful
-- 18 of 30 recent generate calls were tagged `phase=debug`. Of those, basically all routed to `gemini-2.5-pro`. That's correct — but it also means the user is constantly going back to fix things the model just shipped. Debug rate should be <10% of turns; we're at ~60%.
-- The smart router has only ~13 generate samples in the whole window — not enough to actually learn. It picks `gemini-2.5-pro` for `implement` turns simply because it has more successes recorded, even though `gemini-3-flash-preview` is supposed to be the cheap default for implement. Net effect: we pay Pro prices for trivial scaffolds and STILL get failures.
-
-### 4. Real model latency is rough
-- p50 generate latency on Pro: 12.6s; p95: 20.4s.
-- p50 generate latency on Flash-preview: 11s but p95 spikes to 40.7s (one outlier 42s scaffolding turn).
-- Recovery / autofix passes add another 1–15s.
-- A user typing a small change waits 13–25s on average. v0/Bolt are at 6–10s for comparable turns.
-
-### 5. We have NO outcome telemetry tying an AI call to a build result
-- `ai_call_log` records HTTP status + latency. It does NOT record whether the resulting build compiled, whether the next user turn was a "fix this" message, or whether the local-verifier flagged issues.
-- The smart router is therefore optimising for "did the gateway return 200" — which is ~100% across the board — not "did the model produce working code". This is why it can't distinguish good from bad models.
-
-### 6. Post-stream autofix isn't tracked
-- We don't know how often it fires, what it fixes, or how often it fails to fix. Could be silently saving 30% of turns or adding noise — we have no idea.
+1. **Truncated AI output** — 5 of the last 10 build failures are `Unterminated string literal` / `Unterminated regular expression` / `Unexpected end of file` in `App.tsx`, `main.tsx`, `AuthPage.tsx`. The model stops streaming mid-file. Our truncation recovery only fires when the local verifier flags it, and it's not catching these.
+2. **Imports that don't resolve** — `date-fns` (not in package.json), `./ThemeToggle` (file never created). The Phase C "import integrity" prompt nudge isn't enough on its own.
+3. **Generic "got confused" card** — when ANY of the above happen, the user sees "Something didn't go right. Want to try that again?" with no useful info and a button that just retries the same broken prompt.
+4. **The screenshot itself**: top-up banner is truncated, the warning eclipses the chat, and the assistant's clarifying question got an answer ("Both combined") that should have moved the build forward but instead errored.
 
 ## Plan
 
-### Phase A — Stop the bleeding (highest ROI, ~2-3 hour change)
+### Part 1 — Stop the bleeding (build-failure causes)
 
-1. **Ship `src/components/ui/input-otp.tsx` in the scaffold-kit.** Either a real OTP input (using `input-otp` npm package, already a shadcn standard) or a thin fallback that re-exports basic `Input` slots. This single fix removes ~30% of build failures.
-2. **Either inline the OTP example or remove it from `examples-pack.ts`** until the kit primitive ships. Same for `onboarding-verify-step.tsx`.
-3. **Add a build-time scaffold sanity test**: walk every example file, parse imports, and fail CI if any `@/...` import doesn't resolve in the scaffold output. Prevents regression.
+1. **Truncation defense at the parser, not just the verifier.**
+   In `src/routes/api/generate.ts`, after the stream finishes, run a deterministic "is this file syntactically closed?" check on every emitted file (`{`, `(`, `[`, JSX `<Tag>`, string quotes, template literals). If any file fails, force `runContinuation` for THAT file specifically — even if the verifier didn't flag a `truncation` issue. Today continuation only runs when the verifier says "truncation"; broaden it to "syntax-incomplete OR truncation".
 
-### Phase B — Outcome telemetry (the missing feedback loop)
+2. **Whitelist-based npm import guard.**
+   In `src/server/local-verifier.ts`, add a check: for every bare `import "x"` (not `@/...`, not `./...`), confirm `x` (or its scope root) is in scaffold `package.json`. If not, mark it as a `missing-dep` issue. Then in the post-stream autofix prompt, list the missing deps explicitly so the model either (a) removes the import, or (b) swaps for an in-tree alternative. We do NOT auto-add to package.json — that's a build-pipeline change.
 
-4. **Add `ai_call_outcomes` table** linking an `ai_call_log.id` to:
-   - `local_verifier_pass: bool` (run synchronously after the stream completes)
-   - `autofix_ran: bool`, `autofix_fixed_count: int`
-   - `next_user_turn_was_fix: bool` (filled in lazily when the next message arrives, classified by phase classifier = "debug")
-   - `build_status: text` (filled in when the build finishes)
-5. **Update smart-router scoring** to use `outcome_success_rate` (built + no debug follow-up) instead of HTTP 200. This is the single change that lets the router actually learn.
+3. **Sibling-file integrity check.**
+   Same verifier: for every `import X from "./Foo"` or `from "@/components/Foo"`, confirm Foo exists either in the scaffold OR in the same emitted file set. If not, queue a fix instruction. This catches the `./ThemeToggle` class of failures.
 
-### Phase C — Reduce debug-turn rate by hardening the model output
+4. **Lower truncation odds at the source.**
+   In `SYSTEM_PROMPT_PATCH` (`src/server/generate.server.ts`), add a "FILE-LENGTH BUDGET" rule: any single file over ~6KB MUST be split into smaller modules. Big monolithic `App.tsx` files are the ones that consistently truncate.
 
-6. **Tighten `SYSTEM_PROMPT_PATCH`** with the top 3 patterns we see fail:
-   - Forbid `createBrowserRouter` unless the user explicitly asks for data routers.
-   - Require explicit `export default` next to every page component (the React.lazy footgun the local-verifier already catches).
-   - Pin a "no new dependency unless added to package.json" check.
-7. **Run the local-verifier BEFORE we save files**, not after. Currently we save, then autofix; if autofix fails the user sees broken output. Reject the AI tool call and force a single retry instead.
-8. **Promote `gemini-3-flash-preview` for `implement` turns again** but only after Phase B telemetry confirms its outcome rate isn't worse than Pro's. Right now we're masking the problem by always using Pro.
+### Part 2 — Make the chat feel like Lovable
 
-### Phase D — Latency (lower priority, do after A–C land)
+5. **Warmer top-of-screen banner.**
+   The Cloud-AI banner in the screenshot is loud, truncated, and dominates the chat. Replace the full-width yellow alert with a one-line, dismissible chip that lives ABOVE the composer (not above the chat), with copy: "Add credits to keep building — first top-up unlocks $5/mo free." The "Top up" CTA stays.
 
-9. **Stream files to the client as they're parsed** rather than waiting for the full tool-call to finish. The scaffolding includes this for `plan_delta`/`summary_delta` but not for `file_progress`. v0 perceived-latency win comes from showing the first file <2s in.
-10. **Cap autofix to one round and parallelize with the user's chat-bubble render** so the user sees the result while we patch in background.
+6. **Friendly clarifier handling.**
+   When triage asks a clarifying question and the next user message is short ("Both combined", "Yes", "the first one"), the builder currently treats it as a fresh build prompt with no context. Patch `src/routes/builder.tsx` so when the previous assistant turn was a triage clarifier, the next short reply is folded into the original ask before being sent to `/api/generate`. This is the single biggest "Petal feels stupid" moment.
 
-## Out of scope for this plan (call out, don't fix)
+7. **Replace the generic error card with a smart one.**
+   In `src/lib/friendly-errors.ts`, add specific patterns for the failure modes we now SEE in telemetry:
+   - `Unterminated string|regex|Unexpected end of file` → "Petal's reply got cut off — let me try again with a smaller scope." Auto-retries with a "be concise, split files" prompt nudge (no extra credit).
+   - `Could not resolve "(.+)" from` → "Petal forgot to create `<file>`. One more tap and I'll add it." Single-button targeted fix.
+   - `Rollup failed to resolve import "(.+)"` (npm package) → "That feature needs a package Petal didn't include. Tap to use the built-in alternative."
+   The generic fallback gets a "Show details" that's open by default with a one-line plain-English summary, not a stack trace.
 
-- Deploy timeouts (deploy worker, not AI).
-- WebContainer preview hydration warnings (cosmetic; from console logs).
+8. **Lovable-style streaming chat shell.**
+   The current chat bubbles are dense and dark. Tighten to match Lovable's pattern: assistant bubble has a soft surface with a thin left accent in `--primary`, user bubble is a pill on `--muted`, sender label and avatar are smaller, and the message content uses `prose-sm` markdown rendering (already in place via `MarkdownMessage` — verify `react-markdown` is wired everywhere, not just on streaming deltas).
 
-## Order of operations I propose
+9. **Status line under the composer.**
+   Lovable shows "Ready" / "Thinking…" / "Writing 4 files…" right under the input. We have the data (`phase`, `filesWritten`, `latestPath`) but only show it inside `BuildActivityCard`. Mirror it into a small caption under the composer so the user always knows Petal's state without scrolling.
 
-Do Phase A first (one PR, ships today, instantly removes the most common failure). Then Phase B (a migration + small worker change — unblocks every smarter routing decision after that). Then C and D iteratively, measuring with the new outcome telemetry.
+### Part 3 — Recovery, not retry
 
-Would you like me to start with Phase A, or do you want me to draft the full migration in Phase B too in the same change?
+10. **One-click "fix this" on every error card.**
+    Today the "Try again" button replays the EXACT user prompt verbatim. For build / parse / truncation errors that's not what the user wants — they want the LAST broken state fixed. Wire the retry button on parse/build errors to an `askPetalToFix(errorLog)` flow (we already have the function) instead of a verbatim replay.
+
+11. **Auto-fix budget bump from 2 → 3 attempts** for syntax/truncation errors only (these have very high success on the third try in our telemetry — Phase D capped autofix to 1 round at the model level, but the build-callback retry loop is separate).
+
+## Out of scope (call out, don't do)
+
+- Switching default model — Phase B telemetry isn't ripe yet.
+- Deploy worker timeouts (separate audit).
+- Custom-domain / publishing flow polish.
+
+## Order of operations
+
+A → 1, 2, 3 (one PR, removes ~80% of the failures we see today)
+B → 4, 6, 7, 10 (the parts the user actually feels)
+C → 5, 8, 9, 11 (visual polish + safety net)
+
+Each phase is independently shippable and individually verifiable against the telemetry views we built in Phase B.
+
+After approval I'll start with Part 1 (build reliability), then Part 2 (chat feel), then Part 3 (recovery). Want me to proceed in that order, or front-load the visual changes (Part 2) so the user feels the difference immediately?

@@ -258,6 +258,13 @@ ROUTING SAFETY (avoid the fragile patterns):
 - AVOID \`createBrowserRouter\` + \`createRoutesFromElements\` + \`<RouterProvider />\` unless the user explicitly asks for data routers. The simple pattern is more forgiving when imports are slightly off.
 - If the project already uses one routing style, KEEP using it — do not switch styles mid-app.
 
+FILE-LENGTH BUDGET (the #1 cause of mid-stream truncation in our telemetry):
+- Hard cap: NO single file may exceed ~6 KB / ~180 lines of code.
+- If a page or component would be larger, SPLIT it into smaller modules under \`src/components/\` or \`src/sections/\` and import them from the page. A typical landing page should look like:
+    \`<Hero />\`, \`<Features />\`, \`<Testimonials />\`, \`<CTA />\`, \`<FooterSection />\` — each in its own file.
+- Big monolithic \`App.tsx\` / \`AuthPage.tsx\` files are exactly where the model's response gets cut off mid-string and breaks the build. Smaller files = no truncation.
+- Each emitted file MUST end with a clear top-level closing brace AND a trailing newline. Never end a file mid-statement, mid-JSX, or mid-string.
+
 STYLES.CSS SAFETY RULES (Tailwind v4 aborts the build on ANY invalid CSS):
 - If you edit "src/styles.css", the FIRST line MUST be \`@import "tailwindcss";\`.
 - Inside \`@theme { ... }\`, every line must be a valid token declaration like \`--color-primary: oklch(0.7 0.15 30);\` ending with \`;\`. NEVER leave bare numbers, words, or fragments — Tailwind will fail with "Invalid declaration".
