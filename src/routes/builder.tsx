@@ -2274,6 +2274,56 @@ function Builder() {
                               />
                             );
                           })()}
+                        {/* Payment suggestion — same rules as email chip.
+                            If no backend yet, swap to backend-first nudge,
+                            since checkout webhooks need somewhere to run. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !busy &&
+                          !discussBusy &&
+                          !dismissedPaymentChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectPaymentIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            // Avoid double-chip: if the backend chip is
+                            // already showing for the same turn, defer to it.
+                            const backendIntent = detectBackendIntentInTurn(prevUser, m.content);
+                            const backendChipShowing =
+                              hasBackend === false &&
+                              backendIntent.detected &&
+                              !dismissedBackendChips.has(i);
+                            if (hasBackend === false && backendChipShowing) return null;
+                            const needsBackendFirst = hasBackend === false;
+                            return (
+                              <EnablePaymentsSuggestionChip
+                                reason={intent.reason}
+                                needsBackendFirst={needsBackendFirst}
+                                onOpenPayments={() => {
+                                  setSettingsScrollTo("payments");
+                                  setSettingsOpen(true);
+                                }}
+                                onSetupBackend={() => {
+                                  setDismissedBackendChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(i);
+                                    return next;
+                                  });
+                                  setSettingsScrollTo("backend");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={() =>
+                                  setDismissedPaymentChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
                       </div>
                     ) : (
                       <div className="whitespace-pre-wrap">{m.content}</div>
