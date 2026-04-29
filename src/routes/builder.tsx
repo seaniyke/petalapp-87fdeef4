@@ -2552,9 +2552,6 @@ function Builder() {
                   return "Petal will edit files";
                 })()}
               </span>
-              {mode === "build" && (
-                <PreflightCostChip prompt={input} disabled={busy || discussBusy} />
-              )}
               {project?.custom_instructions && (
                 <button
                   type="button"
