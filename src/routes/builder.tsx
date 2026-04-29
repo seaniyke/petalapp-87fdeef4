@@ -956,6 +956,9 @@ function Builder() {
       setInput("");
       setPendingAttachments([]);
       initialAttachmentsRef.current = [];
+      // Deep-think is one-shot per send so users don't accidentally pay for
+      // the strongest model on every subsequent turn. They can re-toggle.
+      if (deepThink && !opts.isAutoFix) setDeepThink(false);
       setBusy(true);
       // Clear any stale "couldn't auto-fix" / build-failure card the moment
       // Petal starts working again. It's confusing to show a give-up card
