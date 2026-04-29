@@ -50,12 +50,11 @@ export async function purchaseDomain(args: {
   return (await resp.json()) as { authorizationUrl: string; reference: string };
 }
 
-/** Ask the server to poll Cloudflare for any in-flight registrations on this
- *  project. Used by the post-payment return page so the UI updates promptly. */
+/** Ask the server to poll Cloudflare for any in-flight registrations. */
 export async function pollDomainRegistrations(
-  projectId: string,
+  args: { projectId: string } | { reference: string },
 ): Promise<{ updates: Array<{ id: string; hostname: string; status: string }> }> {
-  const resp = await authedFetch("/api/registrar/poll", { projectId });
+  const resp = await authedFetch("/api/registrar/poll", args);
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
     throw new Error(text || `Poll failed (${resp.status})`);
