@@ -742,6 +742,45 @@ export type Database = {
           },
         ]
       }
+      pending_secret_requests: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          fulfilled_at: string | null
+          id: string
+          instructions: string | null
+          link: string | null
+          project_id: string
+          secret_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          fulfilled_at?: string | null
+          id?: string
+          instructions?: string | null
+          link?: string | null
+          project_id: string
+          secret_name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          fulfilled_at?: string | null
+          id?: string
+          instructions?: string | null
+          link?: string | null
+          project_id?: string
+          secret_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       petal_email_outbound: {
         Row: {
           created_at: string
