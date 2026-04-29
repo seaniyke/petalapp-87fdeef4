@@ -853,6 +853,44 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 controller.enqueue(encoder.encode(sse(ev)));
               }
 
+              // Tier 2.46 — deterministic strip of npm-confirmed-hallucinated
+              // imports. We do this BEFORE continuation/esbuild so the parse
+              // tier doesn't trip on identifiers that point at packages the
+              // installer can never resolve. The replaced code is ugly on
+              // purpose; the Continue-building chip nudges the user to ask
+              // Petal to reimplement those sections cleanly.
+              if (localOut.preflightHallucinated.length > 0) {
+                handoffDetected.hallucinatedPackages = [
+                  ...localOut.preflightHallucinated,
+                ];
+                const stripOut = stripHallucinatedImports(
+                  nextFiles,
+                  localOut.preflightHallucinated,
+                  earlyChangedPaths,
+                );
+                if (stripOut.filesChanged > 0) {
+                  nextFiles = stripOut.files;
+                  console.log(
+                    `[hallu-strip] ${stripOut.filesChanged} file(s), ${stripOut.importsRemoved} import(s):`,
+                    stripOut.notes.join("; "),
+                  );
+                  controller.enqueue(
+                    encoder.encode(
+                      sse({
+                        type: "status",
+                        message: `Removed ${stripOut.importsRemoved} unknown package import${stripOut.importsRemoved === 1 ? "" : "s"} so the build can ship.`,
+                      }),
+                    ),
+                  );
+                }
+                // Hallucinations are unrecoverable for THIS turn — even after
+                // stripping, the user needs to reimplement those sections.
+                // Surface the handoff so they get a clear next step.
+                if (!handoffReason || handoffReason === "large_changeset") {
+                  handoffReason = "unrecoverable_turn";
+                }
+              }
+
               // Tier 2.6 — TRUE truncation recovery. If the local verifier
               // flagged any file as truncated mid-stream, ask the SAME model
               // to emit only the missing tail bytes.
@@ -863,8 +901,30 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 model,
               });
               nextFiles = contOut.files;
-              if (contOut.requestHandoff && !handoffReason) {
-                handoffReason = "incomplete_turn";
+              if (contOut.requestHandoff) {
+                // Capture which files we couldn't recover for the chip.
+                const truncated = Array.from(
+                  new Set(
+                    localVerdict.issues
+                      .filter((i) =>
+                        ["truncation", "unterminated-string", "braces"].includes(i.kind),
+                      )
+                      .map((i) => i.path),
+                  ),
+                );
+                if (truncated.length) handoffDetected.truncatedPaths = truncated;
+                if (!handoffReason) {
+                  handoffReason = handoffDetected.hallucinatedPackages?.length
+                    ? "unrecoverable_turn"
+                    : "incomplete_turn";
+                } else if (
+                  handoffReason === "large_changeset" ||
+                  handoffReason === "incomplete_turn"
+                ) {
+                  if (handoffDetected.hallucinatedPackages?.length) {
+                    handoffReason = "unrecoverable_turn";
+                  }
+                }
               }
               for (const ev of contOut.emit) {
                 controller.enqueue(encoder.encode(sse(ev)));
