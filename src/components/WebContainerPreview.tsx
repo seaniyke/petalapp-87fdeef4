@@ -200,9 +200,13 @@ export function WebContainerPreview({
         setPickerWarning(null);
         return;
       }
+      if (data.type === "petal:runtime:error" && data.payload && onRuntimeError) {
+        onRuntimeError(data.payload as unknown as RuntimeError);
+        return;
+      }
       if (!onPick) return;
       if (data.type === "petal:pick:selected" && data.payload) {
-        onPick(data.payload);
+        onPick(data.payload as PickedElement);
         setPickActive(false);
       } else if (data.type === "petal:pick:cancelled") {
         setPickActive(false);
@@ -210,7 +214,7 @@ export function WebContainerPreview({
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [onPick]);
+  }, [onPick, onRuntimeError]);
 
   // Reset the picker-ready flag whenever the iframe is hard-reloaded — the
   // new document needs to send `petal:pick:ready` again to be considered live.
