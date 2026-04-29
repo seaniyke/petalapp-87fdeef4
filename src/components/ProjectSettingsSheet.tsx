@@ -226,20 +226,16 @@ export function ProjectSettingsSheet({
         {/* Powered by Petal badge toggle */}
         <PetalBadgeSection project={project} onChange={onChange} />
 
-        {/* Integrations marketplace — gated by Labs flag */}
-        <IntegrationsSectionGated projectId={project.id} />
+        {/* Integrations marketplace removed — Petal scaffolds third-party
+            SDKs directly from prompts and asks for any required secrets via
+            the inline SecretRequestCard. The backend tables and API remain
+            intact so existing installs keep working. */}
 
         {/* Labs toggles */}
         <LabsSection />
       </SheetContent>
     </Sheet>
   );
-}
-
-function IntegrationsSectionGated({ projectId }: { projectId: string }) {
-  const enabled = useLabsFlag("integrations_marketplace");
-  if (!enabled) return null;
-  return <IntegrationsSection projectId={projectId} />;
 }
 
 /* ---------------- Backend section ---------------- */
