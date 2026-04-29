@@ -22,10 +22,47 @@ import {
   Loader2,
   Check,
   Circle,
+  ShieldCheck,
+  Image as ImageIcon,
+  MinusCircle,
+  AlertCircle,
   type LucideIcon,
 } from "lucide-react";
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
 import type { FriendlyError } from "@/lib/friendly-errors";
+
+/**
+ * One entry in the real-time build pipeline timeline.
+ * Mirrors the `timeline` SSE event shape emitted by /api/generate.
+ */
+export type TimelineEntry = {
+  step:
+    | "stream_autofix"
+    | "local_verifier"
+    | "continuation"
+    | "post_stream_autofix"
+    | "image_resolve";
+  outcome: "ok" | "fixed" | "skipped" | "failed";
+  message: string;
+  count?: number;
+  ts: number;
+};
+
+const TIMELINE_LABELS: Record<TimelineEntry["step"], string> = {
+  stream_autofix: "Quick autofix",
+  local_verifier: "Local verifier",
+  continuation: "Stream continuation",
+  post_stream_autofix: "Polish pass",
+  image_resolve: "Image generation",
+};
+
+const TIMELINE_ICONS: Record<TimelineEntry["step"], LucideIcon> = {
+  stream_autofix: Wand2,
+  local_verifier: ShieldCheck,
+  continuation: FileEdit,
+  post_stream_autofix: Wrench,
+  image_resolve: ImageIcon,
+};
 
 // Lovable-style: clean monoline icons per phase instead of emoji.
 const PHASE_ICONS: Record<PhaseId, LucideIcon> = {
