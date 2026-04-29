@@ -1,0 +1,1 @@
+ALTER VIEW public.ai_model_quality SET (security_invoker = on);
