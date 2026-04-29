@@ -137,7 +137,7 @@ export function SiteHeader() {
                   <Wallet className="h-3.5 w-3.5" />
                   <span className="hidden text-xs text-muted-foreground lg:inline">Cloud</span>
                 </button>
-                <CreditBadge />
+                
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
