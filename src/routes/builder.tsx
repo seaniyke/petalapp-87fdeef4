@@ -198,13 +198,15 @@ function Builder() {
     });
     navigate({
       to: "/builder",
-      search: (prev) => {
-        const { topup: _omit, ...rest } = prev;
-        return rest;
+      search: {
+        ...(searchId ? { id: searchId } : {}),
+        ...(initialPrompt ? { prompt: initialPrompt } : {}),
+        ...(initialMode ? { mode: initialMode } : {}),
+        ...(attachKey ? { attachKey } : {}),
       },
       replace: true,
     });
-  }, [topup, navigate]);
+  }, [topup, navigate, searchId, initialPrompt, initialMode, attachKey]);
 
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
