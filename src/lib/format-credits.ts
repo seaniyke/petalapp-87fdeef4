@@ -2,14 +2,17 @@
  * Format a credit amount for display.
  *
  * - Whole numbers render without decimals: 5 -> "5".
- * - Fractional amounts render with two decimal places: 1.9 -> "1.90".
- * - Tiny floating-point noise (e.g. 1.9000000001) is squashed.
+ * - Fractional amounts render truncated (NOT rounded) to one decimal:
+ *     205.5199999 -> "205.5", 1.99 -> "1.9".
+ *   Truncation avoids ever showing the user more credits than they have.
+ * - Tiny floating-point noise is squashed.
  */
 export function formatCredits(n: number): string {
   if (!Number.isFinite(n)) return "0";
-  const rounded = Math.round(n * 100) / 100;
-  if (Number.isInteger(rounded)) return String(rounded);
-  return rounded.toFixed(2);
+  // Truncate toward zero at 1 decimal place — never round up.
+  const truncated = Math.trunc(n * 10) / 10;
+  if (Number.isInteger(truncated)) return String(truncated);
+  return truncated.toFixed(1);
 }
 
 /** "1 credit" / "1.92 credits". */
