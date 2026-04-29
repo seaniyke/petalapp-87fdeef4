@@ -589,6 +589,12 @@ function Builder() {
   // domain, …) fired from anywhere in the app. Stream a friendly assistant
   // announcement into the active chat so the activation feels like part of
   // the build, not a silent toast that vanishes.
+  // Refs keep the latest send/busy without re-subscribing on every keystroke.
+  const sendRef = useRef<typeof send | null>(null);
+  const busyRef = useRef(false);
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
   useEffect(() => {
     return onServiceEnabled((detail) => {
       if (!project?.id || detail.projectId !== project.id) return;
@@ -619,7 +625,7 @@ function Builder() {
           // wondering what to do next. We only auto-continue for the backend
           // (the other services like email/domains are usually optional
           // side-quests, not a hard prerequisite of an in-progress build).
-          if (detail.service === "backend" && !busy) {
+          if (detail.service === "backend" && !busyRef.current) {
             const followUp =
               "The managed backend is now enabled (database, auth and storage are ready). " +
               "Please continue the build you were working on by wiring it up to the new backend — " +
@@ -629,7 +635,7 @@ function Builder() {
             // Tiny delay so the user visually registers the activation banner
             // before Petal starts typing again.
             setTimeout(() => {
-              void send(followUp, { isAutoContinue: true });
+              void sendRef.current?.(followUp, { isAutoContinue: true });
             }, 600);
           }
         }
