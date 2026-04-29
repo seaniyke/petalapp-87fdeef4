@@ -1132,6 +1132,7 @@ function Builder() {
       setCompletedPaths(new Set());
       setFinalFileLines({});
       setFileChanges({});
+      setTimelineEvents([]);
       setStreamingAssistant("");
       setStreamingPlan("");
       setStreamingRecap("");
