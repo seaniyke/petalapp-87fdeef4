@@ -82,6 +82,12 @@ export function EnableBackendFromCloudDialog({
     try {
       await enableManagedBackend(projectId);
       toast.success("Setting up your backend…");
+      emitServiceEnabled({
+        projectId,
+        service: "backend",
+        label: "Managed backend",
+        summary: "Provisioning your database, auth, and storage. Drains from your Cloud balance hourly — top up anytime.",
+      });
       onOpenChange(false);
       onEnabled?.();
     } catch (e) {
