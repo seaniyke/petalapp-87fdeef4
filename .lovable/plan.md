@@ -1,71 +1,68 @@
 
-# Make Petal feel like Lovable — and stop confusing users
+## Goal
 
-I went into the database and read the last ~40 build failures + the screenshot the user sent. The "Petal got a bit confused" card they hit is the **generic** error — it fires when nothing else matched. The real failures right now are not the ones we already fixed in Phase A–D. They're new ones. I'll fix the actual root causes AND the chat UX that made it feel hostile.
+Stop treating "Petal builds bad code" as something to *repair*. Make the first pass correct.
 
-## What's actually breaking (last 7 days, real data)
+## What the data says
 
-1. **Truncated AI output** — 5 of the last 10 build failures are `Unterminated string literal` / `Unterminated regular expression` / `Unexpected end of file` in `App.tsx`, `main.tsx`, `AuthPage.tsx`. The model stops streaming mid-file. Our truncation recovery only fires when the local verifier flags it, and it's not catching these.
-2. **Imports that don't resolve** — `date-fns` (not in package.json), `./ThemeToggle` (file never created). The Phase C "import integrity" prompt nudge isn't enough on its own.
-3. **Generic "got confused" card** — when ANY of the above happen, the user sees "Something didn't go right. Want to try that again?" with no useful info and a button that just retries the same broken prompt.
-4. **The screenshot itself**: top-up banner is truncated, the warning eclipses the chat, and the assistant's clarifying question got an answer ("Both combined") that should have moved the build forward but instead errored.
+I pulled the last 30 days of generation outcomes from `ai_call_outcomes`. Of failed verifications:
 
-## Plan
+| Failure kind | Count |
+|---|---|
+| jsx (unbalanced tags) | 32 |
+| undefined identifier | 20 |
+| braces (unbalanced) | 10 |
+| truncation (mid-stream cut-off) | 6 |
 
-### Part 1 — Stop the bleeding (build-failure causes)
+All four are symptoms of **one root cause**: the model is asked to emit too much code at once, with too much instruction overhead, in a single tool call — so it loses track of structure, drifts, hallucinates names, or simply runs out of completion tokens mid-file.
 
-1. **Truncation defense at the parser, not just the verifier.**
-   In `src/routes/api/generate.ts`, after the stream finishes, run a deterministic "is this file syntactically closed?" check on every emitted file (`{`, `(`, `[`, JSX `<Tag>`, string quotes, template literals). If any file fails, force `runContinuation` for THAT file specifically — even if the verifier didn't flag a `truncation` issue. Today continuation only runs when the verifier says "truncation"; broaden it to "syntax-incomplete OR truncation".
+Layered autofixers (regex pass → flash-lite model → verifier → flash-lite model again → continuation) can recover *some* of these, but they are a band-aid. They add latency, double-charge attention, and fail when the underlying file is structurally lost.
 
-2. **Whitelist-based npm import guard.**
-   In `src/server/local-verifier.ts`, add a check: for every bare `import "x"` (not `@/...`, not `./...`), confirm `x` (or its scope root) is in scaffold `package.json`. If not, mark it as a `missing-dep` issue. Then in the post-stream autofix prompt, list the missing deps explicitly so the model either (a) removes the import, or (b) swaps for an in-tree alternative. We do NOT auto-add to package.json — that's a build-pipeline change.
+## The real fixes (3 changes)
 
-3. **Sibling-file integrity check.**
-   Same verifier: for every `import X from "./Foo"` or `from "@/components/Foo"`, confirm Foo exists either in the scaffold OR in the same emitted file set. If not, queue a fix instruction. This catches the `./ThemeToggle` class of failures.
+### 1. Shrink the prompt the model has to read every turn
 
-4. **Lower truncation odds at the source.**
-   In `SYSTEM_PROMPT_PATCH` (`src/server/generate.server.ts`), add a "FILE-LENGTH BUDGET" rule: any single file over ~6KB MUST be split into smaller modules. Big monolithic `App.tsx` files are the ones that consistently truncate.
+Current `SYSTEM_PROMPT_INITIAL` is ~195 lines of rules + a 50-component kit catalog. Then we append: backendBlock + integrationsBlock + suggestionsBlock + knowledgeBlock + memoryBlock + designBlock + dynamic snippets + visionAddendum + the entire current project. On a 15-file patch, the system message can hit 25–40k tokens before the user prompt.
 
-### Part 2 — Make the chat feel like Lovable
+Models lose adherence to instructions buried that deep. We will:
 
-5. **Warmer top-of-screen banner.**
-   The Cloud-AI banner in the screenshot is loud, truncated, and dominates the chat. Replace the full-width yellow alert with a one-line, dismissible chip that lives ABOVE the composer (not above the chat), with copy: "Add credits to keep building — first top-up unlocks $5/mo free." The "Top up" CTA stays.
+- Split the kit catalog out of the always-on prompt. Keep only a one-line "components live in `@/components/ui/*`; here are the categories" pointer.
+- Inject the **specific** kit components relevant to the user's turn via the existing `pickDynamicSnippets` mechanism (it already does keyword matching for charts/forms/router/etc.). Expand it to also pick the matching component signatures rather than re-stating them in the base prompt.
+- For patch turns, switch from "dump every file's full contents" to a **manifest + on-demand** pattern: send a compact list of `path → first 200 chars` for every file, and only the FULL contents of files the user's request likely touches (heuristic match on filenames mentioned + the last-edited files). This is what Cursor/Aider do.
 
-6. **Friendly clarifier handling.**
-   When triage asks a clarifying question and the next user message is short ("Both combined", "Yes", "the first one"), the builder currently treats it as a fresh build prompt with no context. Patch `src/routes/builder.tsx` so when the previous assistant turn was a triage clarifier, the next short reply is folded into the original ask before being sent to `/api/generate`. This is the single biggest "Petal feels stupid" moment.
+Expected effect: prompt size drops 60–80% on patch turns, model focus rises sharply, "undefined" errors drop because the model can actually see what it imports.
 
-7. **Replace the generic error card with a smart one.**
-   In `src/lib/friendly-errors.ts`, add specific patterns for the failure modes we now SEE in telemetry:
-   - `Unterminated string|regex|Unexpected end of file` → "Petal's reply got cut off — let me try again with a smaller scope." Auto-retries with a "be concise, split files" prompt nudge (no extra credit).
-   - `Could not resolve "(.+)" from` → "Petal forgot to create `<file>`. One more tap and I'll add it." Single-button targeted fix.
-   - `Rollup failed to resolve import "(.+)"` (npm package) → "That feature needs a package Petal didn't include. Tap to use the built-in alternative."
-   The generic fallback gets a "Show details" that's open by default with a one-line plain-English summary, not a stack trace.
+### 2. Enforce file-size caps the model consistently violates
 
-8. **Lovable-style streaming chat shell.**
-   The current chat bubbles are dense and dark. Tighten to match Lovable's pattern: assistant bubble has a soft surface with a thin left accent in `--primary`, user bubble is a pill on `--muted`, sender label and avatar are smaller, and the message content uses `prose-sm` markdown rendering (already in place via `MarkdownMessage` — verify `react-markdown` is wired everywhere, not just on streaming deltas).
+`SYSTEM_PROMPT_PATCH` already says "no file > 6 KB / 180 LOC". The model ignores it because nothing punishes the violation. Add a deterministic split step:
 
-9. **Status line under the composer.**
-   Lovable shows "Ready" / "Thinking…" / "Writing 4 files…" right under the input. We have the data (`phase`, `filesWritten`, `latestPath`) but only show it inside `BuildActivityCard`. Mirror it into a small caption under the composer so the user always knows Petal's state without scrolling.
+- After `relayAndCollect`, before the autofixers, scan each emitted file's size. If any file exceeds 6 KB or 180 lines, run a **mandatory targeted continuation**: ask the same model to split *that specific file* into smaller modules and re-emit. This is not a "fix bugs" pass — it's a "stay under the budget" pass and it's bounded (one shot per oversized file).
+- Reject the response and re-prompt once if the model emits the literal string `// ... keep existing code` or `{/* ... rest unchanged */}` (currently the prompt forbids these but they still slip through).
 
-### Part 3 — Recovery, not retry
+Expected effect: truncation errors → 0. Half of jsx/braces errors come from giant files; those drop too.
 
-10. **One-click "fix this" on every error card.**
-    Today the "Try again" button replays the EXACT user prompt verbatim. For build / parse / truncation errors that's not what the user wants — they want the LAST broken state fixed. Wire the retry button on parse/build errors to an `askPetalToFix(errorLog)` flow (we already have the function) instead of a verbatim replay.
+### 3. Replace the JSON-tool-call streaming with structured per-file emission
 
-11. **Auto-fix budget bump from 2 → 3 attempts** for syntax/truncation errors only (these have very high success on the third try in our telemetry — Phase D capped autofix to 1 round at the model level, but the build-callback retry loop is separate).
+Today the model emits one giant JSON tool call where all files are nested string values. The model has to JSON-escape every quote, backslash, and newline in every file. A single mis-escape mid-stream causes the parse to fail and we throw "AI returned invalid project data."
 
-## Out of scope (call out, don't do)
+Switch to OpenAI's parallel tool calls: define `write_file` (path, content) and `finish_project` (plan, summary, recap) as separate tools. Each file becomes its own tool invocation with its own `arguments` object — much smaller scope per call, no nested escaping, and we can validate/repair each file independently the moment it lands instead of waiting for the whole blob.
 
-- Switching default model — Phase B telemetry isn't ripe yet.
-- Deploy worker timeouts (separate audit).
-- Custom-domain / publishing flow polish.
+This is the single biggest win. It directly attacks truncation (each call is small enough to never get cut) and JSON-escape bugs (each file's content is an isolated string).
 
-## Order of operations
+## What we are NOT doing
 
-A → 1, 2, 3 (one PR, removes ~80% of the failures we see today)
-B → 4, 6, 7, 10 (the parts the user actually feels)
-C → 5, 8, 9, 11 (visual polish + safety net)
+- More autofixer rounds. The current pipeline already runs up to 4 model calls on a single user turn (continuation + post-stream autofix + verifier-recovery + self-check). Adding a 5th would worsen latency without addressing the cause.
+- Retrying with a stronger model on failure. The smart router already escalates; that's table stakes.
 
-Each phase is independently shippable and individually verifiable against the telemetry views we built in Phase B.
+## Files to change
 
-After approval I'll start with Part 1 (build reliability), then Part 2 (chat feel), then Part 3 (recovery). Want me to proceed in that order, or front-load the visual changes (Part 2) so the user feels the difference immediately?
+- `src/server/generate.server.ts` — split the kit catalog out of `SYSTEM_PROMPT_INITIAL`/`PATCH`; redefine `WRITE_PROJECT_TOOL` / `PATCH_FILES_TOOL` to use parallel per-file tools.
+- `src/server/dynamic-prompts.server.ts` — expand snippets to include component signatures, not just usage rules.
+- `src/routes/api/generate.ts` — change `relayAndCollect` to handle multiple parallel tool calls; add the manifest-based file context for patch turns; add the size-cap split step before existing autofixers.
+
+## Validation
+
+- Re-check `ai_call_outcomes` after 24 h of traffic. Targets: pass-rate >70 % (currently 0 % over the last 4 calls), avg autofix invocations <1, zero truncation kind errors.
+- Smoke test: build a marketing site, a dashboard with charts, and an auth flow. Each should land first-pass with no `[verifier-recovery]` log entries.
+
+If you approve, I'll implement these in order (1 → 2 → 3, each independently shippable).
