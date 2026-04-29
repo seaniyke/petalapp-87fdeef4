@@ -104,6 +104,12 @@ import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestio
 import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
 import { EnableEmailSuggestionChip } from "@/components/EnableEmailSuggestionChip";
 import { EnablePaymentsSuggestionChip } from "@/components/EnablePaymentsSuggestionChip";
+import { EnableSeoSuggestionChip } from "@/components/EnableSeoSuggestionChip";
+import { EnableAnalyticsSuggestionChip } from "@/components/EnableAnalyticsSuggestionChip";
+import { EnableAiFeatureSuggestionChip } from "@/components/EnableAiFeatureSuggestionChip";
+import { EnableStorageSuggestionChip } from "@/components/EnableStorageSuggestionChip";
+import { EnableRealtimeSuggestionChip } from "@/components/EnableRealtimeSuggestionChip";
+import { EnableCronSuggestionChip } from "@/components/EnableCronSuggestionChip";
 
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
@@ -113,6 +119,12 @@ import { detectBackendIntentInTurn } from "@/lib/backend-intent";
 import { detectDomainIntentInTurn } from "@/lib/domain-intent";
 import { detectEmailIntentInTurn } from "@/lib/email-intent";
 import { detectPaymentIntentInTurn } from "@/lib/payment-intent";
+import { detectSeoIntentInTurn } from "@/lib/seo-intent";
+import { detectAnalyticsIntentInTurn } from "@/lib/analytics-intent";
+import { detectAiFeatureIntentInTurn } from "@/lib/ai-feature-intent";
+import { detectStorageIntentInTurn } from "@/lib/storage-intent";
+import { detectRealtimeIntentInTurn } from "@/lib/realtime-intent";
+import { detectCronIntentInTurn } from "@/lib/cron-intent";
 import { getProjectBackend } from "@/lib/projects";
 import { listDomains } from "@/lib/domains";
 import { useWallet } from "@/hooks/use-wallet";
