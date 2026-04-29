@@ -239,26 +239,18 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
 
 function UsageRow({
   label,
-  freeUsedCents,
-  freeCapCents,
   topupUsedCents,
 }: {
   label: string;
-  freeUsedCents: number;
-  freeCapCents: number;
   topupUsedCents: number;
 }) {
   return (
     <div>
       <h4 className="text-sm font-semibold">{label}</h4>
       <div className="mt-2 text-xl font-semibold tabular-nums">
-        {formatUsdCents(freeUsedCents)} / {formatUsdCents(freeCapCents)}
-      </div>
-      <div className="text-xs text-muted-foreground">Free balance used</div>
-      <div className="mt-2 text-xl font-semibold tabular-nums">
         {formatUsdCents(topupUsedCents)}
       </div>
-      <div className="text-xs text-muted-foreground">Top-ups used</div>
+      <div className="text-xs text-muted-foreground">Top-ups used this month</div>
     </div>
   );
 }
