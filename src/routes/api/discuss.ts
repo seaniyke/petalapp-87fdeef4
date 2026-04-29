@@ -148,7 +148,7 @@ export const Route = createFileRoute("/api/discuss")({
           : "";
 
         const chatMessages = [
-          { role: "system", content: DISCUSS_SYSTEM_PROMPT + integrationsBlock + knowledgeBlock + visionAddendum + filesContext },
+          { role: "system", content: DISCUSS_SYSTEM_PROMPT + integrationsBlock + suggestionsBlock + knowledgeBlock + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {
