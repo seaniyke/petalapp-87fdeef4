@@ -369,7 +369,19 @@ function PhaseRow({
             {writtenPaths!.map((p) => {
               const lines = finalFileLines?.[p];
               const isLatest = isActive && p === latestPath;
+              const isStreamDone = completedPaths?.has(p) ?? false;
               const change = fileChanges?.[p];
+              // Icon priority during the writing phase:
+              //   ✕ deleted → ✓ phase finished → ✓ this file finished streaming
+              //   → › currently writing this file → · queued
+              const rowIcon =
+                change?.kind === "deleted"
+                  ? "✕"
+                  : isDone || isStreamDone
+                    ? "✓"
+                    : isLatest
+                      ? "›"
+                      : "·";
               return (
                 <li
                   key={p}
@@ -379,7 +391,7 @@ function PhaseRow({
                 >
                   <span className="inline-flex min-w-0 items-center gap-1 truncate">
                     <span aria-hidden className="opacity-60">
-                      {isLatest ? "›" : change?.kind === "deleted" ? "✕" : isDone ? "✓" : "·"}
+                      {rowIcon}
                     </span>
                     <span className="truncate">{p}</span>
                     {change && (
