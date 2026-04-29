@@ -30,6 +30,7 @@ type Handlers = {
       | "continuation"
       | "esbuild_parse"
       | "render_risk"
+      | "rls_sanity"
       | "file_budget"
       | "post_stream_autofix"
       | "image_resolve";

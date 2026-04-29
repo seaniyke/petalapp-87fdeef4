@@ -47,6 +47,7 @@ import { runLocalVerifyTier } from "@/server/pipeline/tier-local-verify";
 import { runContinuationTier } from "@/server/pipeline/tier-continuation";
 import { runEsbuildTier } from "@/server/pipeline/tier-esbuild";
 import { runRenderRiskTier } from "@/server/pipeline/tier-render-risk";
+import { runRlsSanityTier } from "@/server/pipeline/tier-rls-sanity";
 import {
   checkFileBudgets,
   enforceFileBudgets,
@@ -886,6 +887,21 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 controller.enqueue(encoder.encode(sse(ev)));
               }
 
+              // Tier 2.9 — RLS sanity linter (Phase 5b).
+              // Soft-warn only: cross-references supabase.from() calls in
+              // changed code against migrations to catch missing tables,
+              // missing RLS, or missing policies. Feeds into the autofix
+              // queue but never independently opens the gate — false
+              // positives must never wedge a clean turn.
+              const rlsSanityOut = runRlsSanityTier({
+                files: nextFiles,
+                earlyChangedPaths,
+              });
+              const rlsSanityIssues = rlsSanityOut.issues;
+              for (const ev of rlsSanityOut.emit) {
+                controller.enqueue(encoder.encode(sse(ev)));
+              }
+
               // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
               // pass that ONLY fixes obvious build-breakers.
               //
@@ -917,9 +933,11 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   kind: "oversize" as const,
                   detail: w.detail,
                 })),
-                // Render-risk issues come along for the ride when the gate
-                // is already open; they don't open it on their own.
+                // Render-risk + RLS-sanity issues come along for the ride
+                // when the gate is already open; they don't open it on
+                // their own.
                 ...renderRiskIssues,
+                ...rlsSanityIssues,
               ];
               if (autofixGateOpen) {
                 try {

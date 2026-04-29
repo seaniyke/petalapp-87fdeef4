@@ -150,6 +150,73 @@ const PACKAGE_JSON = `{
 `;
 const INDEX_HTML = `<!doctype html><html><body><div id="root"></div></body></html>`;
 
+// =============================================================================
+// Phase 5b — RLS sanity fixtures (Tier 2.9)
+// =============================================================================
+
+// Healthy: table created, RLS enabled, policy exists. Must NOT fire.
+const RLS_HEALTHY_MIGRATION = `
+CREATE TABLE public.notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  body text
+);
+ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner_select" ON public.notes
+  FOR SELECT USING (auth.uid() = user_id);
+`;
+const RLS_HEALTHY_PAGE = `import { supabase } from "@/integrations/supabase/client";
+
+export default function Notes() {
+  const load = async () => {
+    const { data } = await supabase.from("notes").select("*");
+    return data;
+  };
+  return <button onClick={load}>Load</button>;
+}
+`;
+
+// M1: page references a table that no migration creates.
+const RLS_MISSING_TABLE_PAGE = `import { supabase } from "@/integrations/supabase/client";
+
+export default function Page() {
+  const load = async () => supabase.from("note").select("*"); // typo: "note" vs "notes"
+  return <button onClick={load}>Load</button>;
+}
+`;
+
+// M2: table created, no RLS enabled.
+const RLS_NO_RLS_MIGRATION = `
+CREATE TABLE public.tasks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text
+);
+`;
+const RLS_NO_RLS_PAGE = `import { supabase } from "@/integrations/supabase/client";
+
+export default function Tasks() {
+  const load = async () => supabase.from("tasks").select("*");
+  return <button onClick={load}>Load</button>;
+}
+`;
+
+// M3: RLS enabled but no CREATE POLICY anywhere.
+const RLS_NO_POLICY_MIGRATION = `
+CREATE TABLE public.posts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  body text
+);
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+`;
+const RLS_NO_POLICY_PAGE = `import { supabase } from "@/integrations/supabase/client";
+
+export default function Posts() {
+  const load = async () => supabase.from("posts").select("*");
+  return <button onClick={load}>Load</button>;
+}
+`;
+
+
 export const FIXTURES: PipelineFixture[] = [
   {
     name: "clean turn — verifier passes, no budget hit",
@@ -266,5 +333,50 @@ export const FIXTURES: PipelineFixture[] = [
     ],
     changedPaths: ["src/App.tsx"],
     expectIssueIncludes: ["titel"],
+  },
+  {
+    name: "clean — Phase 5b RLS healthy (table + RLS + policy, must NOT fire)",
+    files: [
+      { path: "package.json", content: PACKAGE_JSON },
+      { path: "index.html", content: INDEX_HTML },
+      { path: "src/integrations/supabase/client.ts", content: `export const supabase = {} as any;\n` },
+      { path: "supabase/migrations/0001_init.sql", content: RLS_HEALTHY_MIGRATION },
+      { path: "src/App.tsx", content: RLS_HEALTHY_PAGE },
+    ],
+    changedPaths: ["src/App.tsx"],
+    expectIssueIncludes: [],
+  },
+  {
+    name: "Phase 5b — RLS M1 catches missing table",
+    files: [
+      { path: "package.json", content: PACKAGE_JSON },
+      { path: "index.html", content: INDEX_HTML },
+      { path: "supabase/migrations/0001_init.sql", content: RLS_HEALTHY_MIGRATION },
+      { path: "src/App.tsx", content: RLS_MISSING_TABLE_PAGE },
+    ],
+    changedPaths: ["src/App.tsx"],
+    expectIssueIncludes: ["note"],
+  },
+  {
+    name: "Phase 5b — RLS M2 catches table with no ENABLE ROW LEVEL SECURITY",
+    files: [
+      { path: "package.json", content: PACKAGE_JSON },
+      { path: "index.html", content: INDEX_HTML },
+      { path: "supabase/migrations/0001_init.sql", content: RLS_NO_RLS_MIGRATION },
+      { path: "src/App.tsx", content: RLS_NO_RLS_PAGE },
+    ],
+    changedPaths: ["src/App.tsx"],
+    expectIssueIncludes: ["tasks"],
+  },
+  {
+    name: "Phase 5b — RLS M3 catches RLS-enabled table with no policy",
+    files: [
+      { path: "package.json", content: PACKAGE_JSON },
+      { path: "index.html", content: INDEX_HTML },
+      { path: "supabase/migrations/0001_init.sql", content: RLS_NO_POLICY_MIGRATION },
+      { path: "src/App.tsx", content: RLS_NO_POLICY_PAGE },
+    ],
+    changedPaths: ["src/App.tsx"],
+    expectIssueIncludes: ["posts"],
   },
 ];
