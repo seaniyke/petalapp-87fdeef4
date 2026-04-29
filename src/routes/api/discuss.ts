@@ -15,6 +15,11 @@ import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
+import {
+  loadInstalledCodes,
+  renderSuggestionsBlock,
+  suggestIntegrations,
+} from "@/server/integrations/auto-suggest.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
 
 type Body = {
@@ -117,6 +122,15 @@ export const Route = createFileRoute("/api/discuss")({
         const integrationsBlock = body.projectId
           ? await loadInstalledIntegrationsContext(body.projectId)
           : "";
+
+        // Auto-suggest: if the user is asking for something a marketplace
+        // integration handles (payments, email, analytics) and it's NOT yet
+        // installed, recommend installing it before hand-rolling.
+        const installedCodes = body.projectId
+          ? await loadInstalledCodes(body.projectId)
+          : new Set<string>();
+        const suggestions = suggestIntegrations({ messages, installedCodes });
+        const suggestionsBlock = renderSuggestionsBlock(suggestions);
 
         // If the latest user turn carries image attachments, send it as a
         // multimodal content array so Petal can actually look at the screenshot.
