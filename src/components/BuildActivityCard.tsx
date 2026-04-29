@@ -43,6 +43,7 @@ export type TimelineEntry = {
     | "continuation"
     | "esbuild_parse"
     | "render_risk"
+    | "rls_sanity"
     | "file_budget"
     | "post_stream_autofix"
     | "image_resolve";
@@ -59,6 +60,7 @@ const TIMELINE_LABELS: Record<TimelineEntry["step"], string> = {
   continuation: "Stream continuation",
   esbuild_parse: "Compiler check",
   render_risk: "Render-risk check",
+  rls_sanity: "RLS sanity check",
   file_budget: "File-size guard",
   post_stream_autofix: "Polish pass",
   image_resolve: "Image generation",
@@ -71,6 +73,7 @@ const TIMELINE_ICONS: Record<TimelineEntry["step"], LucideIcon> = {
   continuation: FileEdit,
   esbuild_parse: ShieldCheck,
   render_risk: ShieldCheck,
+  rls_sanity: ShieldCheck,
   file_budget: ShieldCheck,
   post_stream_autofix: Wrench,
   image_resolve: ImageIcon,
