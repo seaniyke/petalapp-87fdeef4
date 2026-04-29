@@ -1763,8 +1763,18 @@ function Builder() {
   }, []);
 
   const retry = useCallback(() => {
+    // If the last failure left a real bundler/build error log behind, the
+    // user's original prompt won't help — Petal needs to *see* the error.
+    // Route through askPetalToFix so the next turn includes the log tail.
+    // Falls back to replaying the original ask when there's no log to work
+    // from (e.g. transient network failure during a chat-only turn).
+    const hasBuildLog = !!effectiveBuildSnap?.errorMessage?.trim();
+    if (hasBuildLog) {
+      askPetalToFix({ isAuto: false });
+      return;
+    }
     if (lastUserPrompt) void send(lastUserPrompt, { isRetry: true });
-  }, [lastUserPrompt, send]);
+  }, [lastUserPrompt, send, effectiveBuildSnap, askPetalToFix]);
 
   /** Re-trigger a Cloudflare build for the current files. Used by the
    *  "deploy stalled" friendly card so the user can recover from a silent
