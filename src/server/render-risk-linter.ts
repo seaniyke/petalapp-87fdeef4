@@ -482,12 +482,16 @@ function findUndeclaredJsxIdentifiers(src: string, clean: string): string[] {
   const arrowSingleRe = /\b([A-Za-z_$][\w$]*)\s*=>/g;
   while ((m = arrowSingleRe.exec(clean))) declared.add(m[1]);
 
-  // Destructured names anywhere: `{ a, b: c, d = 1 }` and `[a, b]`.
-  const destObjRe = /\{([^{}]*)\}/g;
+  // Destructured names from real destructure positions only. A destructure
+  // `{ a, b }` is followed by `=` (assignment) or `)` / `,` (param list)
+  // — possibly after a `:Type` annotation. JSX `{titel}` is followed by
+  // `<` and must NOT contribute names, otherwise R3 silently swallows
+  // every typo.
+  const destObjRe = /\{([^{}]*)\}\s*(?::\s*[^=)]+?)?\s*([=),])/g;
   while ((m = destObjRe.exec(clean))) {
     extractIdents(m[1]).forEach((n) => declared.add(n));
   }
-  const destArrRe = /\[([^\[\]]*)\]/g;
+  const destArrRe = /\[([^\[\]]*)\]\s*(?::\s*[^=)]+?)?\s*([=),])/g;
   while ((m = destArrRe.exec(clean))) {
     extractIdents(m[1]).forEach((n) => declared.add(n));
   }
