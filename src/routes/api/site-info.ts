@@ -97,10 +97,11 @@ export const Route = createFileRoute("/api/site-info")({
         }
 
         // Only set fields the client actually sent (undefined → leave alone).
-        const updates: Record<string, string | null> = {};
-        for (const [k, v] of Object.entries(rest)) {
-          if (v !== undefined) updates[k] = v;
-        }
+        const updates: Database["public"]["Tables"]["projects"]["Update"] = {};
+        if (rest.site_title !== undefined) updates.site_title = rest.site_title;
+        if (rest.site_description !== undefined) updates.site_description = rest.site_description;
+        if (rest.site_icon_url !== undefined) updates.site_icon_url = rest.site_icon_url;
+        if (rest.site_og_image_url !== undefined) updates.site_og_image_url = rest.site_og_image_url;
         if (Object.keys(updates).length === 0) {
           return Response.json({ error: "Nothing to update" }, { status: 400 });
         }
