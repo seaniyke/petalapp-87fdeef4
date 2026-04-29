@@ -24,7 +24,7 @@
  *   - "Publishing…"    — build pending
  *   - "Retry publish"  — last build failed
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Drawer,
   DrawerContent,
@@ -49,6 +49,7 @@ import {
   Search,
 } from "lucide-react";
 import { WebsiteInfoSheet } from "@/components/WebsiteInfoSheet";
+import { supabase } from "@/integrations/supabase/client";
 import { triggerBuild } from "@/lib/builds";
 import { publishProject, type PublishVisibility } from "@/lib/publish";
 import { resolvePublishedUrl, type PublishedUrlResult } from "@/lib/published-url";
@@ -99,8 +100,9 @@ export function PublishSheet({
   const [publishing, setPublishing] = useState(false);
   const [visibilityBusy, setVisibilityBusy] = useState(false);
   const [websiteInfoOpen, setWebsiteInfoOpen] = useState(false);
-  // Visitor analytics — Cloudflare Pages traffic for the project's site.
-  // We fetch on open and when the user flips the range, never poll.
+  // Visitor analytics — database-backed traffic for the project's published site.
+  // We fetch on open/range changes and subscribe to the daily rollup so the
+  // count updates as new visits are recorded.
   const [visitorRange, setVisitorRange] = useState<VisitorRange>("7d");
   const [visitors, setVisitors] = useState<VisitorStatsResult | null>(null);
   const [visitorsLoading, setVisitorsLoading] = useState(false);
