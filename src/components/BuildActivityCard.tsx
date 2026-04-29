@@ -6,9 +6,36 @@
  * Auto-collapses to a single success line a few seconds after going live.
  */
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, RefreshCcw, Wrench, X, Square } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  RefreshCcw,
+  Wrench,
+  X,
+  Square,
+  Sparkles,
+  Palette,
+  FileEdit,
+  Wand2,
+  Rocket,
+  CheckCircle2,
+  Loader2,
+  Check,
+  Circle,
+  type LucideIcon,
+} from "lucide-react";
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
 import type { FriendlyError } from "@/lib/friendly-errors";
+
+// Lovable-style: clean monoline icons per phase instead of emoji.
+const PHASE_ICONS: Record<PhaseId, LucideIcon> = {
+  thinking: Sparkles,
+  designing: Palette,
+  writing: FileEdit,
+  polishing: Wand2,
+  deploying: Rocket,
+  live: CheckCircle2,
+};
 
 type Props = {
   phases: Phase[];
@@ -130,9 +157,9 @@ export function BuildActivityCard({
   // ─── Collapsed success state ─────────────────────────────────────────────
   if (collapsed && isComplete && !error) {
     return (
-      <div className="mr-6 flex items-center justify-between rounded-2xl border border-mint/60 bg-mint/30 px-3.5 py-2 text-xs">
+      <div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-1.5 text-xs">
         <span className="inline-flex items-center gap-1.5 font-medium text-foreground/80">
-          <span aria-hidden>🌟</span>
+          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" aria-hidden />
           Your app is live · built in {elapsed}s
         </span>
         <button
@@ -214,23 +241,24 @@ export function BuildActivityCard({
   // ─── Default: single evolving status line (Lovable-style) ───────────────
   // Calm, one-line update that swaps as the phase advances. Tap to expand
   // for the full step-by-step timeline.
+  const CurrentIcon = currentPhase ? PHASE_ICONS[currentPhase.id] : Sparkles;
   return (
-    <div className="mr-6 overflow-hidden transition-all">
-      <div className="flex items-center gap-2 py-1">
-        {/* Emoji crossfades when the phase changes. The `key` triggers a
-            remount so the `animate-fade-in` keyframe replays each time. */}
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/20 transition-all">
+      <div className="flex items-center gap-2.5 px-3 py-2">
+        {/* Active phase shows a spinner; idle/done shows the phase icon. */}
         <span
-          key={`emoji-${currentPhase?.id ?? "init"}`}
-          className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-[13px] animate-fade-in"
+          key={`icon-${currentPhase?.id ?? "init"}`}
+          className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground animate-fade-in"
           aria-hidden
         >
-          {currentPhase?.emoji ?? "🌸"}
+          {isActive ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <CurrentIcon className="h-3.5 w-3.5" />
+          )}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 text-[13px] leading-snug">
-            {/* Phase label crossfades on change via key-based remount. While
-                active it shimmers — no spinner, no badge, just a calm sheen
-                across the text so the user knows it's running. */}
             <span
               key={`label-${currentPhase?.id ?? "init"}`}
               className={`truncate font-medium animate-fade-in motion-reduce:animate-none ${
@@ -240,14 +268,11 @@ export function BuildActivityCard({
               {currentPhase?.label ?? "Working…"}
             </span>
             {elapsed > 0 && (
-              <span className="shrink-0 font-mono text-[10.5px] font-normal text-muted-foreground/80 tabular-nums">
+              <span className="shrink-0 font-mono text-[10.5px] font-normal text-muted-foreground/70 tabular-nums">
                 {elapsed}s
               </span>
             )}
           </div>
-          {/* Sub-caption fades whenever its text changes (e.g. new file path
-              while writing). Using the caption itself as the key gives a
-              fresh fade per-message without extra state. */}
           {subCaption && (
             <div
               key={`cap-${subCaption}`}
@@ -278,7 +303,7 @@ export function BuildActivityCard({
         </div>
       </div>
       {stepsOpen && (
-        <ol className="mt-1 space-y-1 border-l border-border/60 pl-3">
+        <ol className="space-y-1.5 border-t border-border/50 px-3 py-2.5">
           {phases.map((p) => (
             <PhaseRow
               key={p.id}
@@ -342,14 +367,22 @@ function PhaseRow({
   const showFileList = phase.id === "writing" && (isActive || isDone) && writtenPaths && writtenPaths.length > 0;
 
   return (
-    <li className="flex items-start gap-2.5 text-sm leading-snug">
+    <li className="flex items-start gap-2.5 text-[13px] leading-snug">
       <span
-        className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center text-[13px] transition-opacity ${
-          isPending ? "opacity-30" : "opacity-100"
-        } ${isActive ? "animate-pulse" : ""}`}
+        className={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center transition-opacity ${
+          isPending ? "text-muted-foreground/40" : isDone ? "text-emerald-500" : isFailed ? "text-destructive" : "text-foreground"
+        }`}
         aria-hidden
       >
-        {isDone ? "✓" : isFailed ? "✕" : phase.emoji}
+        {isDone ? (
+          <Check className="h-3.5 w-3.5" />
+        ) : isFailed ? (
+          <X className="h-3.5 w-3.5" />
+        ) : isActive ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Circle className="h-2 w-2 fill-current" />
+        )}
       </span>
       <div className="min-w-0 flex-1">
         <div
