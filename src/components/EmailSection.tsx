@@ -86,6 +86,12 @@ export function EmailSection({ projectId }: { projectId: string }) {
       } as Status);
       setRevealedToken(r.token);
       toast.success("Petal Email enabled");
+      emitServiceEnabled({
+        projectId,
+        service: "email",
+        label: "Petal Email",
+        summary: `Sender ${r.sender} • 100/day, 3,000/month on the free tier. Your API token is shown once — copy it now.`,
+      });
       // Background refresh — don't block the UI flip on it.
       void refresh();
     } catch (e) {
