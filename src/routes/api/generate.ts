@@ -920,6 +920,25 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 ),
               );
 
+              // Phase B — record outcome telemetry. Pairs this generation
+              // with its local-verifier verdict + autofix count so the smart
+              // router can learn which models ship working code. Best-effort.
+              void recordAiOutcome({
+                feature: "generate",
+                provider: "lovable",
+                model,
+                projectId: body.projectId ?? null,
+                localVerifierPass: localVerdict.ok,
+                localVerifierErrors: localVerdict.issues.map((i) => ({
+                  path: i.path,
+                  kind: i.kind,
+                  detail: i.detail,
+                })),
+                autofixCount: autofixOut.report.fixedCount,
+                buildStatus: "ready",
+                filesWritten: nextFiles.length,
+              });
+
               // Layer 5 — Self-check. Awaited (not fire-and-forget) so the
               // verdict reaches the client BEFORE the stream closes. Bounded
               // to a single fast model call; on any failure we emit nothing
