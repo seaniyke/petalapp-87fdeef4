@@ -1,119 +1,113 @@
-# Petal Go-Live Audit — Honest Assessment
+# Intent Detection Gap Audit — Petal vs the Field
 
-Short answer: **Not today.** Petal is ~85% there. The product works end-to-end, but there are real backend/security findings and one untested-at-scale path (the new secret + integration auto-suggest you just shipped) that need a same-day cleanup pass before you should put paying users on it.
+## What we ship today
 
-Below is everything we've built, rated, with what's blocking and what's safe to ship.
+| Intent | Detector | Chip | Status |
+|---|---|---|---|
+| Backend (auth/db/storage) | ✅ | ✅ | Live |
+| Email | ✅ | ✅ | Live |
+| Custom domain | ✅ | ✅ | Live |
+| Payments | ✅ | ✅ | Just shipped |
 
----
+That's 4 of ~10 places where Petal *should* be smart. The rest get scaffolded as broken stubs or skipped entirely.
 
-## What's built — feature-by-feature rating
+## What competitors trigger that we don't
 
-Scale: A = production-ready · B = ready but rough edges · C = needs work before launch · D = broken/risky
+From scanning Lovable, Bolt, v0, Replit, Base44, plus the third-party "Lovable SEO" auto-fixer that exists *because* Lovable misses this:
 
-### Core builder loop — A−
-- Composer → `/api/discuss` → `/api/generate` → preview is solid.
-- Streaming, autofix, self-recovery, local verifier, post-stream autofix all wired.
-- Idea Coach, ComposerModePicker, sample showcase landing — polished.
-- One known dev warning: `RESET_BLANK_CHECK` console message (cosmetic, not blocking).
+- **SEO** — Lovable is famously not SEO-ready out of the box. A whole side-business (lovable-seo.com) exists to fix it. Mentioning "rank on Google", "meta tags", "share preview", "OG image" should trigger an SEO setup chip.
+- **Analytics** — Bolt and Replit auto-suggest Plausible/PostHog when users say "track visits". We have `plausible.integration.ts` sitting unused.
+- **AI features in the user's app** — Replit and v0 detect "add a chatbot / summarize / generate text" and offer their AI gateway. We have Lovable AI but no detector that says "use the gateway, don't ask for an OpenAI key."
+- **File uploads / images** — currently folded into the generic backend chip. Deserves its own surfacing because the answer is "Cloud storage bucket", not "Cloud + auth + DB."
+- **Realtime** ("live chat", "presence", "collaborative cursor") — Cloud has it, Petal never mentions it.
+- **Cron / scheduled jobs** — "send weekly digest", "remind me", "reset every Monday" needs `pg_cron`. No detector.
+- **Maps / geolocation** — "store locator", "delivery zone", "nearby". Needs Mapbox/Google Maps key. No detector.
+- **Push notifications** — PWA + web push. No detector.
+- **PWA / install to home screen** — common ask, easy win. No detector.
+- **Social auth** — "let users sign in with Google" works through backend chip but doesn't tell them they need to also configure the OAuth provider. Sub-detector under backend.
 
-### Auth & accounts — A
-- Email/password + Google OAuth in place (`/auth`).
-- Profile route, projects ownership, RLS in place on `projects`.
-- 3 real users in the system already.
+## The 6 to ship now (ranked by user impact)
 
-### Projects, gallery, sharing, publish — A−
-- `/projects`, `/gallery`, `/p/$slug`, `/share/$token`, `PublishSheet`, `SharePopover` all wired.
-- Petal subdomain + custom domain via Cloudflare SaaS implemented.
-- Publish settings & badge visibility tools available.
+I'm not building all 10. Six are clear wins; the others can wait.
 
-### Billing & wallet — B+
-- Paystack-based top-up (`paystack.server.ts`, `billing.return.tsx`).
-- Runtime wallet, credits, preflight estimate, low-balance banner & top-up modal.
-- $5 grant + $10 floor model is in code and matches your memory rule.
-- Edge case to verify: wallet refresh after Paystack callback in production (we've only smoke-tested locally).
+### 1. SEO intent (highest impact — competitors weaponize our gap)
 
-### Email infra — A−
-- `email_domain` tools, scaffolded transactional + auth templates, unsubscribe route. Solid.
+`src/lib/seo-intent.ts` — triggers on: "rank on Google", "SEO", "meta tags", "OG image", "share preview", "sitemap", "robots.txt", "Google indexing", "search engine".
 
-### Marketplace integrations — B
-- Stripe, Paystack, Flutterwave, Resend, Plausible registered.
-- AES-256-GCM secret encryption in `project_integration_secrets`.
-- Auto-suggest classifier shipped this session (`auto-suggest.server.ts`).
-- Not yet exercised in a real user prompt → low confidence it fires correctly under streaming load.
+Chip CTA: "Make this page shareable & searchable" → opens a new `SeoSetupSheet` (separate task, scoped here just to detector + chip).
 
-### `<lov-add-secret>` mid-conversation flow — B−
-- DB tables (`pending_secret_requests`, `project_secrets`), encryption helper, server functions, `SecretRequestCard`, parser in `MarkdownMessage` all shipped.
-- Not yet end-to-end tested with a real chat. Risk: tag arrives mid-stream before the request row exists in DB → card may render in a stuck "pending" state on first paint.
+### 2. Analytics intent
 
-### Admin surface — A−
-- `/admin/*` routes for users, projects, billing, ledgers, AI providers. Adequate for a soft launch.
+`src/lib/analytics-intent.ts` — triggers on: "track visitors", "page views", "analytics", "Plausible", "PostHog", "Google Analytics", "conversion", "funnel".
 
-### AI providers & cost — A−
-- Smart router, dynamic prompts, design director, phase classifier all in place.
-- Lovable AI gateway used (no BYOK required from end users).
+Chip CTA: "Add visitor analytics" → enables our existing Plausible integration.
 
----
+### 3. AI-feature intent (in the user's app, not Petal itself)
 
-## Blocking issues to fix before go-live
+`src/lib/ai-feature-intent.ts` — triggers on: "add a chatbot", "AI assistant", "summarize", "generate text/image", "translate", "ask AI", "OpenAI", "Claude", "Gemini" *when* paired with verbs like "add/integrate/build".
 
-These are real, not nitpicks.
+Chip CTA: "Wire this through Lovable AI — no key needed" → scaffolds a server function using our gateway. Critical: prevents the AI from asking the user for an OpenAI key when we have a free gateway.
 
-### 1. Database security findings (HIGH priority)
-The Supabase linter found **83 issues**. None are RLS-disabled-on-data-tables (which would be catastrophic), but they include:
+### 4. File-upload intent (split from backend chip)
 
-- **3× RLS Enabled No Policy** — tables with RLS on but zero policies = nobody can read them. Likely one of the recently-added tables (`pending_secret_requests`, `project_secrets`) or an admin table. Will cause silent failures.
-- **5× Function Search Path Mutable** — security warnings on SECURITY DEFINER functions; needs `SET search_path = public` added.
-- **70+ "Public/Authenticated can execute SECURITY DEFINER function"** — many of our `has_role`, owner-check, and helper functions are EXECUTE-grantable to anon/authenticated. Most are intentional, but we should audit and revoke EXECUTE on the ones that should be internal-only.
-- **1× Public Bucket Allows Listing** — a storage bucket has a broad SELECT policy on `storage.objects`. If it's the public assets bucket that's fine; if it's user-uploaded content, it leaks file names.
-- **1× Extension in Public** — cosmetic, low risk.
+`src/lib/storage-intent.ts` — triggers on: "upload image/photo/video/file/PDF", "user avatar", "profile picture", "attach file", "S3", "bucket".
 
-Action: triage each finding, fix the 3 RLS-with-no-policy ones (definitely blocking), fix the 5 search_path warnings, and audit the bucket + SECURITY DEFINER list.
+Chip CTA: same Cloud activation but with "+ storage bucket" copy so the user knows what's being turned on.
 
-### 2. Untested mid-stream tags
-`<lov-add-secret>` and `<lov-suggest-integration>` were shipped without a live chat smoke test. Need to:
-- Trigger one of each in a real conversation.
-- Confirm the card renders, the secret saves, and the AI continues correctly.
-- Confirm parser doesn't break ordinary markdown.
+### 5. Realtime intent
 
-### 3. Tailwind config build warning
-`Could not resolve "/dev-server/tailwind.config.ts"` is being logged repeatedly. The app still runs (Tailwind v4 reads `src/styles.css`), but a stale tooling reference is failing on every regen. Cosmetic in dev but worth removing so it doesn't mask real errors.
+`src/lib/realtime-intent.ts` — triggers on: "live chat", "real-time", "realtime", "presence", "online users", "collaborative", "live updates", "websocket", "pusher", "ably".
 
-### 4. Paystack production callback
-Verify the published `billing.return` URL actually receives the redirect from Paystack live mode (not just test mode) and that the wallet credits before the user lands on the page.
+Chip CTA: "Enable realtime" → toggles Cloud's realtime publication on the relevant table.
 
----
+### 6. Cron / scheduled jobs intent
 
-## Non-blocking but should-do this week
+`src/lib/cron-intent.ts` — triggers on: "every day/week/month", "daily/weekly/nightly", "scheduled", "cron", "reminder email", "digest", "auto-send", "background job".
 
-- Add basic rate limiting on `/api/discuss` and `/api/generate` (currently relies on credit check only).
-- First-run tour exists (`FirstRunTour.tsx`) — confirm it triggers for brand-new accounts only.
-- The `RESET_BLANK_CHECK` warning — track down the unknown message handler and either implement or stop emitting.
-- Add a status page or at minimum a "report a bug" link in `SiteHeader`.
+Chip CTA: "Schedule this job" → scaffolds a `pg_cron` entry hitting an API route.
 
----
+## Deferred (not now, but document)
 
-## Go-live checklist (recommended order, ~half a day of work)
+- Maps / geolocation — needs paid Mapbox/Google key; better as a future paid integration.
+- Push notifications — Service Worker complexity; punt.
+- PWA install — small surface area, low ask volume so far.
+- Social auth sub-chip — works through backend chip already; refine later.
+
+## Implementation pattern (identical for all 6)
+
+Each detector + chip follows the existing `email-intent.ts` / `EnableEmailSuggestionChip.tsx` pattern. Per intent:
+
+1. `src/lib/<name>-intent.ts` — same shape as existing detectors (regex list, MIN_LENGTH, `detect…InTurn`).
+2. `src/components/Enable<Name>SuggestionChip.tsx` — same two-mode pattern (default + `needsBackendFirst` for the four that require Cloud: Analytics, AI feature, Storage, Realtime, Cron).
+3. Wire into `src/routes/builder.tsx` — add to the chip block alongside the existing four, with the same dedupe rule (don't double-show with backend chip).
+4. Add a state slot: `dismissed<Name>Chips` Set keyed by message index.
+5. Extend `settingsScrollTo` union with the new section keys.
+6. Update `src/server/generate.server.ts` PREREQUISITE GATING block — add the new categories so Petal's plan/summary mentions them before scaffolding broken code.
+
+## Order of work
 
 ```text
-1. Fix the 3 RLS-no-policy tables                   (30 min)
-2. Add SET search_path = public to 5 functions      (15 min)
-3. Audit + revoke EXECUTE on internal-only          (45 min)
-   SECURITY DEFINER functions
-4. Verify storage bucket policy intent              (15 min)
-5. Live-test <lov-add-secret> + auto-suggest        (30 min)
-6. Live-test Paystack production callback           (20 min)
-7. Remove stale tailwind.config.ts reference        (10 min)
-8. Final security re-scan + linter pass             (10 min)
-9. Smoke test: signup → build → publish → bill      (30 min)
-10. Flip publish + announce                         (—)
+Pass A (detectors + chips, no settings UI yet)
+  1. SEO intent + chip → opens existing project settings (placeholder)
+  2. Analytics intent + chip → reuses Plausible installer
+  3. AI-feature intent + chip → scaffolds gateway server fn
+  4. Storage intent + chip → reuses Cloud activation
+  5. Realtime intent + chip → reuses Cloud activation
+  6. Cron intent + chip → reuses Cloud activation
+
+Pass B (system prompt)
+  7. Update PREREQUISITE GATING in generate.server.ts to cover all 10 intents
+
+Pass C (deferred — needs design)
+  - SeoSetupSheet (real settings panel for OG/meta/sitemap)
+  - Storage bucket picker UI
+  - Cron job manager UI
 ```
 
----
+Pass A + B is the scope of the next implementation message. Pass C is its own follow-up because each needs a real settings panel, not just a chip.
 
-## My honest recommendation
+## Why this matters now (we're live)
 
-Spend **today** on items 1–8, do the smoke test (item 9) tomorrow morning, **launch tomorrow** instead of tonight. The cost of one extra day is small; the cost of leaking data via an over-permissive SECURITY DEFINER on day one would be much larger.
+Every day Petal scaffolds an SEO-broken site, asks the user for an OpenAI key we don't need, or builds a "live chat" with no realtime, is a day a competitor's blog post writes itself ("Lovable can't even do X"). The chips are cheap insurance — they cost nothing when intent isn't detected, and they save a wasted prompt cycle when it is.
 
-If you're determined to go today, the absolute minimum is items **1, 2, 4, and 9**. Items 3 and 5 can wait a few days if you accept the risk.
-
-Tell me which path you want — full overnight cleanup, or minimum-viable launch tonight — and I'll execute.
+Approve and I'll ship Pass A + B in the next message.
