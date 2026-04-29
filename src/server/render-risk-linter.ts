@@ -473,8 +473,15 @@ function findUndeclaredJsxIdentifiers(src: string, clean: string): string[] {
     /(?:^|\n|;|\{|\(|,)\s*(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/g;
   while ((m = declRe.exec(clean))) declared.add(m[1]);
 
-  // Function parameters: `function name(...)`, `=> (...)`, `(...) =>`.
-  const fnParamRe = /(?:function\s+[\w$]*\s*|=\s*)\(([^)]*)\)/g;
+  // Function parameters: any `(...)` directly followed by `=>` is an
+  // arrow with destructure-friendly params. Catches `.map((p) => ...)`,
+  // `.filter(({ id }) => ...)`, etc. Also matches plain
+  // `function name(...)` since we run the regex separately.
+  const arrowParamRe = /\(([^()]*)\)\s*=>/g;
+  while ((m = arrowParamRe.exec(clean))) {
+    extractIdents(m[1]).forEach((n) => declared.add(n));
+  }
+  const fnParamRe = /function\s+[\w$]*\s*\(([^()]*)\)/g;
   while ((m = fnParamRe.exec(clean))) {
     extractIdents(m[1]).forEach((n) => declared.add(n));
   }
