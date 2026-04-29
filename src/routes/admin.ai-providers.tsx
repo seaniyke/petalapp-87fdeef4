@@ -24,6 +24,7 @@ import {
   Save,
   RefreshCw,
 } from "lucide-react";
+import { AdminTabs } from "@/components/AdminTabs";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { Card, CardContent } from "@/components/ui/card";

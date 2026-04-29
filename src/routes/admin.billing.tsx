@@ -15,6 +15,7 @@ import {
   type CreditPack,
   type PriceOverride,
 } from "@/lib/billing";
+import { AdminTabs } from "@/components/AdminTabs";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
