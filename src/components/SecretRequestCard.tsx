@@ -31,14 +31,10 @@ export function SecretRequestCard(props: {
 
   const fulfill = useMutation({
     mutationFn: async () => {
-      if (!props.requestId) throw new Error("This secret request expired — ask Petal again.");
-      return fulfillSecretRequest({ data: { requestId: props.requestId, value } });
+      if (!resolvedId) throw new Error("This secret request expired — ask Petal again.");
+      return fulfillSecretRequest({ data: { requestId: resolvedId, value } });
     },
-    onSuccess: () => {
-      setDone(true);
-      setValue("");
-      setError(null);
-    },
+    onSuccess: () => { setDone(true); setValue(""); setError(null); },
     onError: (e: unknown) => {
       setError(e instanceof Error ? e.message : "Could not save the secret.");
     },
@@ -46,17 +42,35 @@ export function SecretRequestCard(props: {
 
   const cancel = useMutation({
     mutationFn: async () => {
-      if (!props.requestId) return { ok: true };
-      return cancelSecretRequest({ data: { requestId: props.requestId } });
+      if (!resolvedId) return { ok: true };
+      return cancelSecretRequest({ data: { requestId: resolvedId } });
     },
     onSuccess: () => setDone(true),
   });
 
-  // Clear field if the prop changes (new request streamed in).
+  // Auto-create a pending request the first time the tag appears in chat.
   useEffect(() => {
     setDone(false);
     setError(null);
-  }, [props.requestId, props.name]);
+    if (resolvedId || !props.projectId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await createSecretRequestFromChat({
+          data: {
+            projectId: props.projectId!,
+            secretName: props.name,
+            instructions: props.instructions,
+            link: props.link,
+          },
+        });
+        if (!cancelled) setResolvedId(res.request.id);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Could not initialize secret request.");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [props.projectId, props.name, props.instructions, props.link, resolvedId]);
 
   if (done) {
     return (
