@@ -17,6 +17,7 @@
 
 export type DynamicSnippetKey =
   | "kitCore"
+  | "fileBudget"
   | "charts"
   | "forms"
   | "datetime"
@@ -53,6 +54,27 @@ const SNIPPETS: Record<DynamicSnippetKey, SnippetDef> = {
 - cn() helper from "@/lib/utils" for conditional classes
 - Icons: lucide-react (NEVER emoji as functional icons)
 Other primitives exist (Tabs/Dialog/Sheet/Drawer/Select/Combobox/DatePicker/Calendar/Form/Chart/Table/DropdownMenu/Popover/Tooltip/Accordion/ScrollArea/Slider/Progress/Switch/Checkbox/RadioGroup/Container/Stack/Inline/Grid/Router/Toast/ThemeProvider/ThemeToggle) — they are documented further down ONLY when this turn's request matches them. If you need one that isn't documented, the import path is "@/components/ui/<kebab-name>".`,
+  },
+  // Fires on multi-section / landing / dashboard / page-shaped requests —
+  // the exact turns that historically blew past the 180-line cap and got
+  // reverted by the file-budget gate. Reinforces the split-into-files
+  // pattern WITH a concrete example so the model has a template to follow.
+  fileBudget: {
+    triggers: /\b(landing|landing page|home ?page|dashboard|marketing site|portfolio|saas|product page|pricing page|about page|multi[- ]?page|site|website|several pages?|full app|complete app|app from scratch|build me an? app)\b/i,
+    body: `\n\n[Reinforcement — Split into small files]
+This turn looks like a multi-section page. The server enforces a hard 180-line / 6 KB cap per file (>280 lines is auto-reverted). To stay under it:
+- Build the page as a SHELL that composes sub-components — never a single 300-line file.
+- Canonical landing-page split (mirror this structure):
+    src/components/Hero.tsx
+    src/components/Features.tsx
+    src/components/Testimonials.tsx   (if asked)
+    src/components/Pricing.tsx        (if asked)
+    src/components/CTA.tsx
+    src/components/FooterSection.tsx
+  Then src/App.tsx (or src/pages/Home.tsx) is just:
+    <Container><Hero /><Features /><CTA /><FooterSection /></Container>
+- Each sub-component owns its own copy/data — do not pass props down for purely-presentational content.
+- The MOMENT a file you are writing crosses ~120 lines, stop and extract the next section into its own file before continuing.`,
   },
   layout: {
     triggers: /\b(layout|page|section|hero|landing|grid|stack|inline|container|sidebar|header|footer|two[- ]column|split|columns?)\b/i,

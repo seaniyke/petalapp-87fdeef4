@@ -1,189 +1,144 @@
-## Goal
+# Builder Hardening — Phased Plan
 
-Make the 180-line / 6KB cap a **real server-side gate**, not a prompt suggestion. And — exactly as you described — when a turn is too big to land cleanly in one go, stop at a safe boundary and surface a **"Continue building"** handoff instead of letting the model truncate.
+Goal: close the MEDIUM and WEAK gaps from the audit without destabilizing the pipeline. Each phase is small, independently shippable, and reversible. Nothing in a later phase depends on speculative behavior from an earlier one.
 
-You're 100% right that this is the *causal* fix. Truncation isn't a model bug, it's the model trying to write 600-line files in one shot. Cap the file, cap the turn, and offer a clean continuation — same pattern Lovable uses.
-
-## Two layers, both needed
-
-```text
-Layer A (file-level):  hard cap per file        → reject + force a split
-Layer B (turn-level):  too many oversize files  → stop early, offer "Continue"
-```
-
-Layer A keeps any single file healthy. Layer B keeps any single *turn* healthy.
+**Guardrails for every phase:**
+- One pipeline change per phase. Ship, observe in `ai_outcomes` for ~24h, then move on.
+- No phase touches `src/components/ui/*`, `src/integrations/backend/*`, or `scaffold-kit.ts`.
+- Every new gate emits a `timeline` SSE event with `outcome: ok | fixed | failed | skipped` so we can see hit-rates immediately.
+- Every new gate is **fail-soft**: if the check itself errors (wasm OOM, network blip, npm rate-limit), we log and pass. We never fail a build because our verifier broke.
+- No new model calls without a gate. Every model-driven repair must be conditional on a deterministic check failing first.
 
 ---
 
-## Layer A — Server-side per-file cap
+## Phase 1 — Pre-stream prompt hardening (MEDIUM-a)
 
-### Where it runs
+**Problem:** the 180-line cap is enforced after the fact. The model already gets size guidance (lines 183-188 of `generate.server.ts`), but it's buried among 80+ other rules and lacks a "WHY this matters" hook the model can act on.
 
-New tier in `src/routes/api/generate.ts`, inserted **immediately after the stream completes and `applyOps` has merged the file map**, BEFORE the styles validator and regex autofixer (so we never spend autofix budget on an oversize file we're about to reject).
+**Change:**
+- Promote the file-budget rule to the top of the "Hard rules" block, not buried under STYLES.CSS.
+- Add a concrete trigger threshold: *"If a single component is heading past ~120 lines, stop and extract the next logical sub-component before continuing."* 120, not 180 — give the model headroom so we hit the gate less.
+- Add a `dynamic-prompts` snippet that fires when the user prompt contains landing/dashboard/multi-section keywords, reinforcing the split-into-files pattern with the canonical Hero/Features/CTA example.
+- Add one sentence to `SYSTEM_PROMPT_PATCH`: *"If you're about to emit a file > 180 lines, instead emit two ops: one creating the extracted sub-component, one updating the parent to import it."*
 
-```text
-stream → applyOps → [NEW] file-budget gate → styles validator → regex autofix → …
-```
-
-### Constants
-
-```ts
-// src/server/file-budget.server.ts
-export const MAX_FILE_LINES = 180;
-export const MAX_FILE_BYTES = 6 * 1024;
-// Hard ceiling — anything beyond this is rejected outright (truncation risk
-// is too high to even attempt a recovery).
-export const HARD_REJECT_LINES = 280;
-```
-
-### Behavior — three buckets
-
-For each *changed* `.ts/.tsx/.jsx/.js` file under `src/` (skip the same scaffold paths as the verifiers):
-
-| Bucket | Condition | Action |
-|---|---|---|
-| **Healthy** | ≤ 180 lines AND ≤ 6 KB | pass through |
-| **Oversize** | 181-280 lines OR 6-10 KB | **emit a warning issue** into the autofix issue list with `kind: "oversize"` and let the existing post-stream-autofix pass try a split. Don't reject yet. |
-| **Hard reject** | > 280 lines OR > 10 KB | **revert the file** to its prior content from the snapshot (or drop it if brand new) and emit a turn-level event telling the user "the page got too big — continuing in the next message." This routes into Layer B below. |
-
-The middle bucket is important: a file at 195 lines is almost certainly fine — we just nudge the model to split next turn. Reverting a 195-line file would be more disruptive than helpful.
-
-### New file: `src/server/file-budget.server.ts`
-
-```ts
-export type FileBudgetIssue = {
-  path: string;
-  lines: number;
-  bytes: number;
-  severity: "warn" | "reject";
-};
-
-export type FileBudgetVerdict = {
-  warnings: FileBudgetIssue[];
-  rejections: FileBudgetIssue[];
-};
-
-export function checkFileBudgets(
-  files: { path: string; content: string }[],
-  changedPaths: string[],
-): FileBudgetVerdict;
-
-/** Apply rejections to the file map: revert reverted files to their prior
- *  content, drop newly-added rejected files entirely. Returns the cleaned
- *  file list. */
-export function enforceFileBudgets(
-  nextFiles: { path: string; content: string }[],
-  priorFiles: { path: string; content: string }[],
-  rejections: FileBudgetIssue[],
-): { path: string; content: string }[];
-```
-
-### Wire into the autofix issue list
-
-When the file-budget pass emits **warnings**, pipe them into `combinedAutofixIssues` (already built post-esbuild) so the autofix model is asked to split them. Extend `LocalIssue["kind"]` with `"oversize"` and the autofix prompt already prints `${kind}: ${detail}` so the model gets:
-
-```text
-oversize: src/pages/Landing.tsx is 214 lines / 7.1 KB — split into <Hero />, <Features />, <CTA /> sub-components
-```
-
-### Timeline event
-
-Add a new timeline step `file_budget` so users see it in the BuildActivityCard:
-
-- **ok** — "All N files within size budget"
-- **fixed** — "Flagged X file(s) as too large — repairing"
-- **failed** — "Reverted Y oversized file(s) — continuing in next message" (only when Layer B fires)
+**Files:** `src/server/generate.server.ts`, `src/server/dynamic-prompts.server.ts`.
+**Risk:** zero — prompt-only.
+**Success metric:** `file_budget` timeline event `outcome: failed` rate drops in `ai_outcomes`.
 
 ---
 
-## Layer B — Turn-level "Continue building" handoff
+## Phase 2 — Cross-file export/import consistency (WEAK-c, partially MEDIUM-b)
 
-This is the part you specifically asked about. Two triggers, both lead to the same affordance:
+**Problem:** the local verifier checks each file in isolation. If `Page.tsx` imports `{ useFooStore }` from `./store` and `store.ts` only exports `useStore`, we ship green and the user sees a red preview.
 
-### Trigger conditions
+**Change:** extend `local-verifier.ts` with a new pass `findDanglingNamedImports`:
+1. For every changed `.ts/.tsx` file, parse `import { A, B as C } from "./X"` (named only — default and namespace are already covered by missing-sibling).
+2. Resolve `"./X"` against the file map (reuses existing `resolveImportPath`).
+3. Read the target file's exports with a regex: `export\s+(?:const|let|function|class|async\s+function|type|interface)\s+(\w+)`, plus `export\s*\{\s*([^}]+)\s*\}`.
+4. If a named import has no matching export in the target file, emit a new `LocalIssue` with `kind: "missing-export"` (add to the union).
+5. Skip scaffold paths and `examples/` (same skip list as the rest of the verifier).
 
-1. **Layer A produced ≥1 hard rejection** (the model genuinely tried to over-emit), OR
-2. **The continuation pass ran but couldn't finish** all truncated files in one repair round (means we hit the model's output ceiling), OR
-3. **The model emitted ≥ N=8 changed app files in this turn** (heuristic — beyond this, the next turn is statistically more likely to truncate).
-
-If any trigger fires, we **don't** keep retrying. We accept the partial-but-clean state and ship a handoff.
-
-### Server-side: new SSE event
-
-Extend `StreamEvent` with:
-
-```ts
-| {
-    type: "continuation_handoff";
-    /** Why we're suggesting a continuation. */
-    reason: "oversize_files" | "incomplete_turn" | "large_changeset";
-    /** ≤ 80-char human message shown in chat. */
-    message: string;
-    /** Pre-filled prompt the user can send with one click. */
-    suggestedPrompt: string;
-  }
-```
-
-Emit this exactly once per turn, after all repair tiers have run, just before the final `done` event.
-
-Example payload:
-
-```json
-{
-  "type": "continuation_handoff",
-  "reason": "oversize_files",
-  "message": "Your landing page got large — let's finish it in the next message so nothing breaks.",
-  "suggestedPrompt": "Continue building the landing page — break Hero, Features, and CTA into their own components."
-}
-```
-
-### Client-side: chip in the chat
-
-Reuse the existing chip styling from `EnableBackendSuggestionChip` / `NextStepsCard` to render a **"Continue building"** chip at the bottom of the assistant message that triggered it:
-
-```text
-┌──────────────────────────────────────────────────────────┐
-│ ✨ Your landing page got large — let's finish it in the  │
-│    next message so nothing breaks.                       │
-│                                       [ Continue → ]     │
-└──────────────────────────────────────────────────────────┘
-```
-
-Click → fills the composer with `suggestedPrompt` and auto-submits (or just fills, if you want the user to confirm — I'd default to "fill, don't submit" so the user stays in control). Clicking the chip dismisses it.
-
-### Why this works
-
-- Today the model tries to land everything in one turn → truncates → autofix scrambles.
-- With this gate, the model gets implicit **"it's okay to stop here"** permission. Combined with the per-file cap, the system pressure is to split early instead of cramming.
-- The user gets a one-click way to keep going — same UX as Lovable's "Continue building" affordance you mentioned.
+**Files:** `src/server/local-verifier.ts` only. New `kind` flows automatically into `combinedAutofixIssues` in `generate.ts`.
+**Risk:** low. Regex parsing of TS exports has edge cases (re-exports, `export *`), so we **only emit issues when we're confident** — if we can't parse the target file's exports cleanly, we skip silently rather than false-positive.
+**Success metric:** new `missing-export` issues appear in `ai_outcomes.local_verifier_errors`; post-stream autofix fixes them.
 
 ---
 
-## Files to change
+## Phase 3 — Package-name pre-flight (WEAK-b)
 
-**New:**
-- `src/server/file-budget.server.ts` — pure helpers (`checkFileBudgets`, `enforceFileBudgets`).
+**Problem:** model hallucinates `react-cooler-toast`; we don't know until sandbox install fails.
 
-**Edit:**
-- `src/server/local-verifier.ts` — add `"oversize"` to `LocalIssue["kind"]`.
-- `src/server/generate.server.ts` — extend `StreamEvent` with `continuation_handoff`; add `"file_budget"` to the timeline `step` union.
-- `src/lib/stream.ts` — mirror the new `StreamEvent` shapes.
-- `src/components/BuildActivityCard.tsx` — add `file_budget` label + icon.
-- `src/routes/api/generate.ts` — insert Tier 2.4 (file-budget) between `applyOps` and the styles validator; emit the `continuation_handoff` event when triggers fire.
-- `src/routes/builder.tsx` — handle the new `continuation_handoff` event; attach a `handoff` field to the relevant assistant message.
-- **New** `src/components/ContinueBuildingChip.tsx` — the inline chip with the "Continue →" button (modeled on `EnableBackendSuggestionChip`).
-- `src/routes/builder.tsx` — render `<ContinueBuildingChip>` under any assistant message that has a `handoff` payload.
+**Change:** new module `src/server/npm-existence.server.ts` with `verifyNpmPackages(specs: string[])`:
+1. Diff against `package.json` to find packages **newly introduced** this turn (skip everything already pinned).
+2. For each new bare specifier, `HEAD https://registry.npmjs.org/<pkg>` with a 1.5s timeout, 3 in parallel max.
+3. In-memory LRU cache (Map, capped at 500) so the same package isn't re-checked across turns.
+4. 200 → exists. 404 → emit `LocalIssue { kind: "missing-dep", detail: "package … not found on npm" }`. Network error / timeout → log and pass (fail-soft).
 
-No DB changes. No new dependencies.
+**Pipeline integration:** insert as Tier 2.45 (between file-budget and stream autofix). Feeds into `combinedAutofixIssues`. Emits `timeline` step `npm_check`.
+**Files created:** `src/server/npm-existence.server.ts`.
+**Files edited:** `src/routes/api/generate.ts` (add the gate + timeline event).
+**Risk:** low. Worst case the npm registry is slow → we skip the check, pipeline continues unchanged.
+**Success metric:** `npm_check` outcome counts in telemetry; "package not found" build failures in user previews drop.
 
-## Out of scope (explicitly NOT this turn)
+---
 
-- Auto-splitting files on the **server** (i.e. without a model call). Splitting JSX safely needs a parser-aware refactor; we'd risk producing worse code than the model. We let the autofix model handle warnings, and Layer B catches the rest.
-- Token-budget tracking (counting model output bytes mid-stream). Worth doing later, but Layer A + B together solve ~95% of what truncation costs us today.
+## Phase 4 — Refactor `generate.ts` (WEAK-f)
 
-## Success criteria
+**Problem:** 1336 lines of orchestration in one file is now the audit risk it was designed to prevent.
 
-- A turn that produces a 320-line `App.tsx` is rejected, the prior `App.tsx` is preserved, and the user sees a "Continue building" chip with a sensible prefilled prompt.
-- A turn with two 200-line files passes through but the next turn (when the user accepts the chip or asks naturally) splits them — visible in the timeline.
-- Healthy turns show `file_budget: All N files within size budget` and add < 5ms total cost.
-- No build is ever shipped containing a file > 280 lines.
+**Change:** **pure refactor, zero behavior change.** Extract each tier into a named helper inside `src/server/pipeline/`:
+- `pipeline/run-stream.server.ts` — the model stream + tool-call collection (~lines 400-720 of generate.ts)
+- `pipeline/run-tiers.server.ts` — tiers 2.4 → 2.7 + post-stream autofix + image resolve (~lines 720-1130)
+- `pipeline/finalize.server.ts` — credit charge + handoff event + result event + telemetry + self-check (~lines 1130-end)
+
+Each helper takes `{ controller, encoder, ...inputs }` and returns the next state. `generate.ts` becomes the route handler that wires them together — should land near 300 lines.
+
+**Process:**
+1. Land the refactor in **one PR** with no logic changes. Diff each extracted block character-for-character against the original to confirm.
+2. Manual smoke test: one initial generate, one patch, one oversize-rejection turn, one truncation-recovery turn, one petal-image turn. All `timeline` events still fire in the same order.
+
+**Files created:** 3 in `src/server/pipeline/`.
+**Files edited:** `src/routes/api/generate.ts` (now ~300 lines).
+**Risk:** medium — refactor of the hottest file in the codebase. **Mitigation:** do this *after* Phase 3 so we have ~48h of clean telemetry to compare against post-refactor. Any timeline-event regression is immediately visible.
+
+---
+
+## Phase 5 — Headless render smoke test (MEDIUM-c, WEAK-a)
+
+**Problem:** esbuild parses the file; we never mount it. Components that throw `Cannot read undefined` on first render ship green.
+
+**Change:** new module `src/server/render-smoke.server.ts`:
+1. Build an in-memory module map from the changed files using a tiny `vite` SSR transform, OR (simpler & more Worker-safe) use `esbuild.build` with an in-memory plugin that resolves bare specifiers to stubs (`() => null` for any npm import other than `react`, `react-dom/server`, `@/components/ui/*`).
+2. Stub `@/components/ui/*` with no-op components.
+3. `renderToString(<App />)` for the home route only. Wrap in try/catch.
+4. If render throws, emit `LocalIssue { kind: "render", detail: <error.message + first 3 stack frames> }`.
+
+**Why "home route only":** rendering all routes requires routing infra and will explode in scope. Home route catches ~80% of "white screen on load" reports per the audit.
+
+**Pipeline integration:** insert as Tier 2.8 (after esbuild). Gated to **changed files only** — skip if no `src/routes/index.tsx` or `src/App.tsx` change.
+**Risk:** medium-high. SSR rendering is the most failure-prone of all the gates (timing, env, missing browser globals). **Mitigations:**
+- 3-second hard timeout via `Promise.race`.
+- Fail-soft: any throw inside the smoke test itself (not from user code) = skip + log.
+- Ship behind a labs flag (`render_smoke_enabled`) so we can A/B against turns without it for a week before defaulting on.
+
+**Files created:** `src/server/render-smoke.server.ts`.
+**Files edited:** `src/routes/api/generate.ts` or the new `pipeline/run-tiers.server.ts` (depending on whether Phase 4 has shipped).
+**Success metric:** new `render` issues caught pre-ship; reduction in user "blank preview" support reports.
+
+---
+
+## Phase 6 — Pipeline regression harness (WEAK-d)
+
+**Problem:** zero automated tests for the gate stack. Every change to `generate.ts` is shipped on faith.
+
+**Change:** add `src/server/__tests__/pipeline.fixtures.ts` with frozen JSON fixtures of (a) clean turn, (b) truncated stream, (c) oversize file, (d) hallucinated npm package, (e) dangling named import, (f) render-time crash. Then `pipeline.test.ts` runs each fixture through the verifier modules (not the full route — too much mocking) and asserts the expected `LocalIssue[]` shape.
+
+**Files created:** 2 in `src/server/__tests__/`.
+**Files edited:** none.
+**Risk:** zero — test-only.
+**Success metric:** `bunx vitest run` green; future PRs catch regressions before merge.
+
+---
+
+## Deferred (not in this plan, intentionally)
+
+- **MEDIUM-d (semantic patch_files validation):** would require implementing op-application semantics tests. The post-Phase-2 verifier catches most consequences (missing exports, dangling imports). Revisit only if telemetry shows real harm.
+- **WEAK-e (RLS / auth correctness for generated apps):** generated apps live in user backends we don't own. Best handled by stronger prompt rules + the existing `integrations/auto-suggest` chip system, not by a server-side gate.
+- **MEDIUM-b (full type-checker pass):** running `tsc` on the in-memory file map is the obvious nuclear option. Cost: 3-8s per turn, doubles latency, conflicts with our cost-discipline goal. Ship Phase 5 first; if `render` gate doesn't catch enough, reconsider.
+
+---
+
+## Order of operations
+
+```text
+Phase 1 (1-2 hrs)   → ship → observe 24h
+Phase 2 (3-4 hrs)   → ship → observe 24h
+Phase 3 (3-4 hrs)   → ship → observe 24h
+Phase 4 (4-6 hrs)   → ship → observe 48h  ← refactor only after telemetry baseline is clean
+Phase 5 (1-2 days)  → ship behind labs flag → A/B 7 days → flip on
+Phase 6 (3-4 hrs)   → ship anytime, ideally before Phase 4
+```
+
+Recommendation: ship **Phase 1 + Phase 6 together first** — both are zero-risk, and Phase 6 gives us the safety net to do Phase 2-5 confidently.
+
+Approve and I'll start with Phase 1.
