@@ -777,9 +777,25 @@ function DnsRecordsDialog({
               </p>
             )}
           </div>
+
+          {diagnosis && <DiagnosisPanel result={diagnosis} />}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDiagnose}
+            disabled={diagnosing}
+            className="inline-flex items-center gap-1.5 sm:mr-auto"
+          >
+            {diagnosing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Stethoscope className="h-3.5 w-3.5" />
+            )}
+            {diagnosing ? "Looking up DNS…" : "Diagnose DNS"}
+          </Button>
           <Button variant="ghost" size="sm" onClick={onClose}>
             Close
           </Button>
