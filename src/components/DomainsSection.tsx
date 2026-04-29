@@ -792,7 +792,7 @@ function DnsRecordsDialog({
           {diagnosis && <DiagnosisPanel result={diagnosis} />}
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row sm:gap-2">
+        <DialogFooter className="shrink-0 flex-col gap-2 border-t border-border bg-background px-5 py-3 sm:flex-row sm:gap-2">
           <Button
             variant="outline"
             size="sm"
