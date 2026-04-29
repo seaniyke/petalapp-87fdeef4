@@ -67,7 +67,7 @@ export function CreditBadge() {
             {breakdown.topup > 0 && (
               <li className="flex items-center justify-between">
                 <span className="text-muted-foreground">Top-up</span>
-                <span className="tabular-nums">{breakdown.topup}</span>
+                <span className="tabular-nums">{formatCredits(breakdown.topup)}</span>
               </li>
             )}
           </ul>
