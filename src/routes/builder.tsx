@@ -3018,6 +3018,53 @@ function Builder() {
                 </button>
               )}
             </div>
+            {runtimeError && !runtimeError.fixed && (
+              <div className="mb-2 flex items-start gap-2 rounded-xl border-2 border-destructive/30 bg-destructive/10 p-2.5 text-[12px]">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-destructive">Runtime error in preview</div>
+                  <div className="mt-0.5 truncate text-muted-foreground" title={runtimeError.message}>
+                    {runtimeError.message}
+                    {runtimeError.source && (
+                      <span className="ml-1 opacity-70">
+                        — {runtimeError.source.split("/").pop()}
+                        {runtimeError.lineno ? `:${runtimeError.lineno}` : ""}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const err = runtimeError;
+                      if (!err) return;
+                      const lines: string[] = [
+                        "The running app threw a runtime error in the preview iframe. Find and fix the cause. Make the smallest correct change.",
+                        "",
+                        `Kind: ${err.kind}`,
+                        `Message: ${err.message}`,
+                      ];
+                      if (err.source) lines.push(`Source: ${err.source}${err.lineno ? `:${err.lineno}` : ""}${err.colno ? `:${err.colno}` : ""}`);
+                      if (err.stack) lines.push("", "Stack:", err.stack);
+                      setRuntimeError({ ...err, fixed: true });
+                      void send(lines.join("\n"), { isAutoFix: true });
+                    }}
+                    className="rounded-md bg-destructive px-2.5 py-1 text-[11px] font-semibold text-destructive-foreground hover:brightness-110"
+                  >
+                    Fix this
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRuntimeError(null)}
+                    className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                    title="Dismiss"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
             {/* Composer: textarea on top, integrated toolbar (attach + mode toggle on left, send on right) below. Auto-expands as user types. */}
             <div
               className={`flex flex-col gap-2 rounded-2xl border-2 bg-background p-2 shadow-sm transition focus-within:border-primary focus-within:shadow-md ${
