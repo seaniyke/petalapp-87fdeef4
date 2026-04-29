@@ -768,7 +768,14 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // to emit only the missing tail bytes. This beats asking
               // flash-lite to "fix" a half-written component (it would
               // hallucinate the rest).
-              if (localVerdict.issues.some((i) => i.kind === "truncation")) {
+              if (
+                localVerdict.issues.some(
+                  (i) =>
+                    i.kind === "truncation" ||
+                    i.kind === "unterminated-string" ||
+                    i.kind === "braces",
+                )
+              ) {
                 try {
                   const contOut = await runContinuation({
                     files: nextFiles,
