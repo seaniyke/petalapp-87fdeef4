@@ -522,6 +522,8 @@ function Builder() {
       };
     });
   }, [project?.id]);
+
+  // Reflect Cloudflare build state into the phase timeline + friendly errors.
   // On failure: auto-trigger the fix loop (Phase 2) up to MAX_AUTO_FIX_ATTEMPTS
   // before surfacing the manual "Ask Petal to fix it" button.
   useEffect(() => {
