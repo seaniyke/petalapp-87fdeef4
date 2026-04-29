@@ -2322,9 +2322,12 @@ function Builder() {
                   >
                     {!isUser && messages[i - 1]?.role !== "assistant" && (
                       <div className="mb-1.5 flex items-center gap-2">
-                        <span className="grid h-5 w-5 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                          P
-                        </span>
+                        <img
+                          src={petalLogo}
+                          alt=""
+                          aria-hidden
+                          className="h-5 w-5 shrink-0 rounded-full object-cover ring-1 ring-border"
+                        />
                         <span className="font-display text-[13px] font-semibold tracking-tight text-foreground">
                           Petal
                         </span>
