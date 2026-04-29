@@ -714,6 +714,79 @@ export type Database = {
           },
         ]
       }
+      page_views: {
+        Row: {
+          country: string | null
+          created_at: string
+          created_day: string | null
+          id: number
+          path: string
+          project_id: string
+          referrer: string | null
+          user_agent: string | null
+          visitor_hash: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          created_day?: string | null
+          id?: number
+          path?: string
+          project_id: string
+          referrer?: string | null
+          user_agent?: string | null
+          visitor_hash?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          created_day?: string | null
+          id?: number
+          path?: string
+          project_id?: string
+          referrer?: string | null
+          user_agent?: string | null
+          visitor_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "page_views_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      page_views_daily: {
+        Row: {
+          day: string
+          project_id: string
+          unique_visitors: number
+          views: number
+        }
+        Insert: {
+          day: string
+          project_id: string
+          unique_visitors?: number
+          views?: number
+        }
+        Update: {
+          day?: string
+          project_id?: string
+          unique_visitors?: number
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "page_views_daily_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paystack_events: {
         Row: {
           id: string
@@ -2238,6 +2311,16 @@ export type Database = {
       expire_domain_slots: { Args: never; Returns: undefined }
       expire_paystack_plans: { Args: never; Returns: undefined }
       expire_topup_lots: { Args: never; Returns: undefined }
+      get_project_pageview_stats: {
+        Args: { _project_id: string }
+        Returns: {
+          views_24h: number
+          views_30d: number
+          views_7d: number
+          visitors_30d: number
+          visitors_7d: number
+        }[]
+      }
       grant_credits: {
         Args: {
           _amount: number
@@ -2274,6 +2357,17 @@ export type Database = {
         }[]
       }
       reap_stalled_builds: { Args: never; Returns: undefined }
+      record_page_view: {
+        Args: {
+          _country: string
+          _path: string
+          _project_id: string
+          _referrer: string
+          _user_agent: string
+          _visitor_hash: string
+        }
+        Returns: undefined
+      }
       refund_credit: {
         Args: {
           _ledger_id: string
