@@ -44,6 +44,7 @@ import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-provider
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiRegistrarSearchRouteImport } from './routes/api/registrar/search'
 import { Route as ApiRegistrarPurchaseRouteImport } from './routes/api/registrar/purchase'
+import { Route as ApiPublicTrackFailureRouteImport } from './routes/api/public/track-failure'
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
 import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
@@ -239,6 +240,11 @@ const ApiRegistrarPurchaseRoute = ApiRegistrarPurchaseRouteImport.update({
   path: '/api/registrar/purchase',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTrackFailureRoute = ApiPublicTrackFailureRouteImport.update({
+  id: '/api/public/track-failure',
+  path: '/api/public/track-failure',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTrackRoute = ApiPublicTrackRouteImport.update({
   id: '/api/public/track',
   path: '/api/public/track',
@@ -383,6 +389,7 @@ export interface FileRoutesByFullPath {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
+  '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -439,6 +446,7 @@ export interface FileRoutesByTo {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
+  '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -496,6 +504,7 @@ export interface FileRoutesById {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
+  '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -554,6 +563,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
+    | '/api/public/track-failure'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
@@ -610,6 +620,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
+    | '/api/public/track-failure'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
@@ -666,6 +677,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
+    | '/api/public/track-failure'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
@@ -722,6 +734,7 @@ export interface RootRouteChildren {
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
   ApiPublicHostLookupRoute: typeof ApiPublicHostLookupRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
+  ApiPublicTrackFailureRoute: typeof ApiPublicTrackFailureRoute
   ApiRegistrarPurchaseRoute: typeof ApiRegistrarPurchaseRoute
   ApiRegistrarSearchRoute: typeof ApiRegistrarSearchRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -983,6 +996,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRegistrarPurchaseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/track-failure': {
+      id: '/api/public/track-failure'
+      path: '/api/public/track-failure'
+      fullPath: '/api/public/track-failure'
+      preLoaderRoute: typeof ApiPublicTrackFailureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/track': {
       id: '/api/public/track'
       path: '/api/public/track'
@@ -1173,6 +1193,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
   ApiPublicHostLookupRoute: ApiPublicHostLookupRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
+  ApiPublicTrackFailureRoute: ApiPublicTrackFailureRoute,
   ApiRegistrarPurchaseRoute: ApiRegistrarPurchaseRoute,
   ApiRegistrarSearchRoute: ApiRegistrarSearchRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,

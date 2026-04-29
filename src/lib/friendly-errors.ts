@@ -204,7 +204,9 @@ const GENERIC: FriendlyError = {
   actionKind: "retry",
 };
 
-export function toFriendlyError(raw: unknown): FriendlyError {
+import { reportPipelineFailure, type FailureReportContext } from "./report-failure";
+
+export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): FriendlyError {
   const text =
     raw instanceof Error ? raw.message : typeof raw === "string" ? raw : JSON.stringify(raw);
 
@@ -217,6 +219,9 @@ export function toFriendlyError(raw: unknown): FriendlyError {
       return p.build(text);
     }
   }
+  // Unmatched — this is the "Petal got a bit confused" path. Capture it so
+  // we can rank the actual failure modes hitting users.
+  reportPipelineFailure(text, ctx);
   return { ...GENERIC, technicalDetail: text };
 }
 
