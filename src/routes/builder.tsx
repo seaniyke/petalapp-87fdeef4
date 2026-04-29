@@ -224,6 +224,10 @@ function Builder() {
   // human "Got it, here's what I'll do" reply that competitors (Lovable,
   // Bolt, v0) say before showing any phase indicators. Comes from /api/triage.
   const [streamingPreamble, setStreamingPreamble] = useState<string>("");
+  // Live "service enabled" announcement — typed character-by-character into a
+  // dedicated chat bubble so users feel the activation. Persisted as a system
+  // note once the typing finishes.
+  const [streamingService, setStreamingService] = useState<string>("");
   // Whether the current send() turn is actually going to build (vs. just
   // chat or ask a clarifying question). Drives whether the activity card
   // and build pipeline UI render at all.
