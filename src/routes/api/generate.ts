@@ -45,6 +45,12 @@ import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-cla
 // Phase D one-round autofix cap, so it only added latency + tokens.
 import { verifyFilesLocal } from "@/server/local-verifier";
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
+import {
+  checkFileBudgets,
+  enforceFileBudgets,
+  buildHandoffPrompt,
+  type FileBudgetIssue,
+} from "@/server/file-budget.server";
 import { runContinuation } from "@/server/stream-continuation.server";
 import { pickBestModel } from "@/server/smart-router.server";
 import { recordAiOutcome } from "@/server/ai-outcomes.server";
