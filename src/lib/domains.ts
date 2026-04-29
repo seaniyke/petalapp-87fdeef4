@@ -10,10 +10,9 @@ export type ProjectDomain = {
   verification_txt_name: string;
   verification_txt_value: string;
   /**
-   * All TXT records required for SSL validation. Cloudflare typically returns
-   * 2 (RSA + ECDSA cert variants) under the same _acme-challenge name with
-   * different values — both must be added at the registrar. Falls back to the
-   * single legacy field when empty (older domain rows pre-migration).
+   * Explicit TXT records required for wildcard/pre-validation flows. Normal
+   * custom domains use Cloudflare's automatic HTTP DCV and usually have none.
+   * Falls back to the single legacy field when empty (older domain rows).
    */
   verification_records: DomainTxtRecord[];
   ssl_status: string | null;

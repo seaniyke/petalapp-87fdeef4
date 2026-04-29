@@ -22,9 +22,9 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   createCustomHostname,
   getCustomHostname,
+  recheckCustomHostname,
   deleteCustomHostname,
   mapCfStatus,
-  extractTxtValidation,
   extractAllTxtValidations,
 } from "@/server/cloudflare-saas.server";
 
@@ -157,13 +157,12 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
     });
   }
 
-  // Cloudflare often needs a second or two to issue the TXT validation
-  // record(s) after createCustomHostname returns. Poll briefly so the user
-  // sees the real values immediately instead of a placeholder. Cloudflare
-  // typically returns 2 TXT records (RSA + ECDSA cert variants) under the
-  // same _acme-challenge name with different values — both are required.
+  // Cloudflare's correct real-time validation path for normal SaaS hostnames
+  // is HTTP DCV: once DNS routes to Petal, Cloudflare serves the CA token at
+  // the edge. TXT records are only expected for wildcard/pre-validation flows,
+  // but keep support in case Cloudflare returns them for an edge case.
   let txts = extractAllTxtValidations(cf);
-  for (let attempt = 0; attempt < 4 && txts.length < 2; attempt++) {
+  for (let attempt = 0; attempt < 4 && cf.ssl?.status === "initializing"; attempt++) {
     await new Promise((r) => setTimeout(r, 750));
     try {
       cf = await getCustomHostname(cf.id);
@@ -174,9 +173,9 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
     }
   }
   const firstTxt = txts[0];
-  const txtName = firstTxt?.name ?? `_acme-challenge.${parsed.data.hostname}`;
+  const txtName = firstTxt?.name ?? `_cf-http-validation.${parsed.data.hostname}`;
   const txtValue =
-    firstTxt?.value ?? "Pending — tap Check status in a few seconds";
+    firstTxt?.value ?? "Automatic HTTP validation — no TXT record required";
   const mapped = mapCfStatus(cf);
 
   const { data, error } = await supabaseAdmin
@@ -230,7 +229,11 @@ async function handleVerify(userId: string, body: unknown): Promise<Response> {
 
   let cf;
   try {
-    cf = await getCustomHostname(cfId);
+    const current = await getCustomHostname(cfId);
+    cf =
+      current.ssl?.status === "active"
+        ? current
+        : await recheckCustomHostname(cfId, { sslMethod: "http" });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Cloudflare error";
     return new Response(`Couldn't reach Cloudflare: ${msg}`, { status: 502 });
@@ -250,6 +253,10 @@ async function handleVerify(userId: string, body: unknown): Promise<Response> {
     patch.verification_txt_name = txts[0].name;
     patch.verification_txt_value = txts[0].value;
     patch.verification_records = txts;
+  } else if (cf.ssl?.method === "http") {
+    patch.verification_txt_name = `_cf-http-validation.${cf.hostname}`;
+    patch.verification_txt_value = "Automatic HTTP validation — no TXT record required";
+    patch.verification_records = [];
   }
 
   const { data, error } = await supabaseAdmin

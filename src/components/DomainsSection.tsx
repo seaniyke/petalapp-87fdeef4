@@ -701,6 +701,13 @@ function DnsRecordsDialog({
   const routingHost = isApex ? "@" : labels[0];
   const routingRecordType = isApex ? "A" : "CNAME";
   const routingRecordValue = isApex ? PETAL_DOMAIN_A_RECORD : PETAL_DOMAIN_CNAME_TARGET;
+  const txtRecords = (
+    domain.verification_records && domain.verification_records.length > 0
+      ? domain.verification_records
+      : domain.verification_txt_value.toLowerCase().includes("no txt record required")
+      ? []
+      : [{ name: domain.verification_txt_name, value: domain.verification_txt_value }]
+  ).filter((rec) => !rec.value.toLowerCase().includes("no txt record required"));
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -723,17 +730,8 @@ function DnsRecordsDialog({
             note="Routes traffic to Petal — required before SSL can be issued."
           />
           {(() => {
-            const records =
-              domain.verification_records && domain.verification_records.length > 0
-                ? domain.verification_records
-                : [
-                    {
-                      name: domain.verification_txt_name,
-                      value: domain.verification_txt_value,
-                    },
-                  ];
-            const multi = records.length > 1;
-            return records.map((rec, i) => (
+            const multi = txtRecords.length > 1;
+            return txtRecords.map((rec, i) => (
               <RecordCard
                 key={`${rec.name}-${i}`}
                 type="TXT"
@@ -742,12 +740,21 @@ function DnsRecordsDialog({
                 zone={domain.hostname}
                 note={
                   multi
-                    ? `SSL validation ${i + 1} of ${records.length} — add ALL of them, both are required.`
+                    ? `SSL validation ${i + 1} of ${txtRecords.length} — add ALL of them, both are required.`
                     : "Proves you own this domain (used to issue SSL)."
                 }
               />
             ));
           })()}
+
+          {txtRecords.length === 0 && (
+            <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-[11px] leading-relaxed text-green-700 dark:text-green-300">
+              <p className="font-medium">SSL validation is automatic.</p>
+              <p className="mt-1 text-muted-foreground">
+                For this domain, only the routing record above is required. Once it points to Petal, Cloudflare validates SSL over HTTP automatically.
+              </p>
+            </div>
+          )}
 
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-[11px] leading-relaxed text-amber-900 dark:text-amber-200">
             <p className="font-medium">Stuck on “Verifying” for more than 10 minutes?</p>
@@ -755,13 +762,15 @@ function DnsRecordsDialog({
               <li>
                 Most registrars (Namecheap, GoDaddy, Cloudflare DNS, etc.) <strong>auto-append your domain</strong> to the host field. If it does, paste the <em>short</em> version of the host (the part before <code className="rounded bg-background px-1">.{domain.hostname}</code>) — not the full name.
               </li>
+              {txtRecords.length > 0 && (
+                <li>
+                  For TXT values, paste the value <strong>exactly</strong> — no extra quotes, spaces, or line breaks.
+                </li>
+              )}
               <li>
-                For TXT values, paste the value <strong>exactly</strong> — no extra quotes, spaces, or line breaks.
-              </li>
-              <li>
-                Both routing (A/CNAME) <strong>and</strong> all TXT records above must be live at the same time. Verify with{" "}
+                {txtRecords.length > 0 ? "Both routing (A/CNAME) and the TXT records above" : "The routing record above"} must be live. Verify with{" "}
                 <a
-                  href={`https://dnschecker.org/#TXT/_acme-challenge.${domain.hostname}`}
+                  href={`https://dnschecker.org/#${routingRecordType}/${domain.hostname}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline underline-offset-2"
