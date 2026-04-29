@@ -2023,14 +2023,19 @@ function Builder() {
                         : "mr-1 sm:mr-4"
                     }`}
                   >
-                    <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                      <span className={isUser ? "" : "text-foreground"}>{isUser ? "you" : "petal"}</span>
-                      {m.role === "assistant" && i === lastDiscussIndex && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-foreground/70">
-                          <MessageSquare className="h-2.5 w-2.5" /> discuss
-                        </span>
-                      )}
-                    </div>
+                    {isUser ? (
+                      <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                        <span>you</span>
+                      </div>
+                    ) : (
+                      m.role === "assistant" && i === lastDiscussIndex && (
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px] text-foreground/70">
+                            <MessageSquare className="h-2.5 w-2.5" /> discuss
+                          </span>
+                        </div>
+                      )
+                    )}
                     {m.role === "assistant" ? (
                       <div className="space-y-2.5">
                         {m.plan && (() => {
