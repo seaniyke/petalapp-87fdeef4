@@ -684,7 +684,7 @@ function DnsRecordsDialog({
       const result = await checkDomainDns(projectId, domain.id);
       setDiagnosis(result);
       if (result.allOk) {
-        toast.success("DNS looks good — Cloudflare should pick it up shortly");
+        toast.success("DNS looks good — Petal should pick it up shortly");
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "DNS check failed");
@@ -753,7 +753,7 @@ function DnsRecordsDialog({
             <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-[11px] leading-relaxed text-green-700 dark:text-green-300">
               <p className="font-medium">SSL validation is automatic.</p>
               <p className="mt-1 text-muted-foreground">
-                For this domain, only the routing record above is required. Once it points to Petal, Cloudflare validates SSL over HTTP automatically.
+                For this domain, only the routing record above is required. Once it points to Petal, SSL validates automatically.
               </p>
             </div>
           )}
@@ -784,7 +784,7 @@ function DnsRecordsDialog({
             </ul>
             {domain.error_message && (
               <p className="mt-2 rounded border border-destructive/30 bg-destructive/5 p-2 text-destructive">
-                <span className="font-medium">Cloudflare says:</span> {domain.error_message}
+                <span className="font-medium">Provider says:</span> {domain.error_message}
               </p>
             )}
           </div>
@@ -947,12 +947,12 @@ function DiagnosisPanel({ result }: { result: DnsCheckResult }) {
       </ul>
       {result.allOk ? (
         <p className="mt-2 text-[11px] text-green-700 dark:text-green-300">
-          ✓ All records resolve correctly. Cloudflare typically picks this up
+          ✓ All records resolve correctly. Petal typically picks this up
           within a few minutes — tap "Check status" above to refresh.
         </p>
       ) : (
         <p className="mt-2 text-[11px] text-muted-foreground">
-          We queried Cloudflare's public resolver (1.1.1.1) — the same data
+          We queried public DNS — the same data
           Let's Encrypt sees. Fix the items above, then run Diagnose again.
         </p>
       )}

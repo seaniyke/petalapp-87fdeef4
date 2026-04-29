@@ -27,6 +27,10 @@ import {
   mapCfStatus,
   extractAllTxtValidations,
 } from "@/server/cloudflare-saas.server";
+import {
+  pollDomainRegistration,
+  startDomainRegistration,
+} from "@/server/domain-purchase.server";
 
 // FQDN-ish: 4..253 chars, lowercase letters/digits/dot/hyphen, must include a dot.
 const HOSTNAME_RE =
@@ -116,6 +120,33 @@ async function handleList(userId: string, body: unknown): Promise<Response> {
   if (!parsed.success) return new Response(parsed.error.message, { status: 400 });
   const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
   if (ownerErr) return ownerErr;
+
+  const { data: purchased } = await supabaseAdmin
+    .from("purchased_domains")
+    .select("id, hostname, status, paystack_reference")
+    .eq("project_id", parsed.data.projectId)
+    .eq("user_id", userId)
+    .in("status", ["pending_payment", "registering", "polling"]);
+
+  for (const row of purchased ?? []) {
+    try {
+      if (row.status === "pending_payment" && row.paystack_reference) {
+        const { data: tx } = await supabaseAdmin
+          .from("paystack_transactions")
+          .select("status")
+          .eq("reference", row.paystack_reference)
+          .maybeSingle();
+
+        if ((tx as { status: string } | null)?.status === "success") {
+          await startDomainRegistration({ reference: row.paystack_reference });
+        }
+      }
+
+      await pollDomainRegistration({ rowId: row.id });
+    } catch (e) {
+      console.error("[domains/list] purchased-domain reconcile failed", row.hostname, e);
+    }
+  }
 
   const { data, error } = await supabaseAdmin
     .from("project_domains")
