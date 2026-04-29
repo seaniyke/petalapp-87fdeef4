@@ -57,8 +57,8 @@ export const Route = createRootRoute({
       { name: "description", content: "Chat Build Studio is a platform for building real apps through conversational AI." },
       { property: "og:description", content: "Chat Build Studio is a platform for building real apps through conversational AI." },
       { name: "twitter:description", content: "Chat Build Studio is a platform for building real apps through conversational AI." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/c49a8307-2264-4e94-96da-33bc69cc7713" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/c49a8307-2264-4e94-96da-33bc69cc7713" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/dnn5UC7sBgddckI5x1vWL1uUQpH3/social-images/social-1777427283960-IMG_7512.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/dnn5UC7sBgddckI5x1vWL1uUQpH3/social-images/social-1777427283960-IMG_7512.webp" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
