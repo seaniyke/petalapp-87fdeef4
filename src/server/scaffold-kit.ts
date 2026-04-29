@@ -3354,6 +3354,53 @@ const KIT: KitFile[] = [
 ];
 
 /**
+ * Walk every scaffold file and verify that every `@/...` import resolves
+ * against another scaffold file. Catches the class of bug where an example
+ * file imports a UI primitive that the kit forgot to ship (real example:
+ * examples-pack referenced @/components/ui/input-otp but the kit didn't
+ * include it, breaking every build that copied the auth-otp-card block).
+ *
+ * Throws a clear error at module load if anything is missing — fail fast
+ * during deploy is much better than a silent build failure on the user's
+ * side. Cost: ~10ms once per Worker isolate.
+ */
+function verifyScaffoldIntegrity(): void {
+  const paths = new Set(KIT.map((k) => k.path));
+  const importRe = /from\s+["']@\/([^"']+)["']/g;
+  const candidates = (base: string) => [
+    `src/${base}`,
+    `src/${base}.tsx`,
+    `src/${base}.ts`,
+    `src/${base}.jsx`,
+    `src/${base}.js`,
+    `src/${base}/index.tsx`,
+    `src/${base}/index.ts`,
+  ];
+  const failures: string[] = [];
+  for (const k of KIT) {
+    if (!/\.(tsx?|jsx?)$/.test(k.path)) continue;
+    let m: RegExpExecArray | null;
+    while ((m = importRe.exec(k.content))) {
+      const spec = m[1];
+      // Backend kit imports are injected separately and only resolve when a
+      // backend is connected — skip them here.
+      if (spec.startsWith("integrations/backend/")) continue;
+      const ok = candidates(spec).some((c) => paths.has(c));
+      if (!ok) failures.push(`${k.path} imports @/${spec} (not shipped by scaffold)`);
+    }
+  }
+  if (failures.length > 0) {
+    throw new Error(
+      `[scaffold-kit] integrity check failed:\n - ${failures.join("\n - ")}\n` +
+        `Either add the missing primitive to the kit or remove the example.`,
+    );
+  }
+}
+
+verifyScaffoldIntegrity();
+
+
+/**
  * Required deps the kit pulls in. We post-process the AI's package.json to
  * guarantee they're present at the right caret ranges.
  */
