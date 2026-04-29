@@ -39,6 +39,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
 import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
+import { Route as AdminFailuresRouteImport } from './routes/admin.failures'
 import { Route as AdminBillingRouteImport } from './routes/admin.billing'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -215,6 +216,11 @@ const AdminLedgersRoute = AdminLedgersRouteImport.update({
   path: '/admin/ledgers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminFailuresRoute = AdminFailuresRouteImport.update({
+  id: '/admin/failures',
+  path: '/admin/failures',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminBillingRoute = AdminBillingRouteImport.update({
   id: '/admin/billing',
   path: '/admin/billing',
@@ -357,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
@@ -414,6 +421,7 @@ export interface FileRoutesByTo {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
@@ -472,6 +480,7 @@ export interface FileRoutesById {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
@@ -531,6 +540,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
+    | '/admin/failures'
     | '/admin/ledgers'
     | '/admin/pipeline'
     | '/admin/projects'
@@ -588,6 +598,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
+    | '/admin/failures'
     | '/admin/ledgers'
     | '/admin/pipeline'
     | '/admin/projects'
@@ -645,6 +656,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
+    | '/admin/failures'
     | '/admin/ledgers'
     | '/admin/pipeline'
     | '/admin/projects'
@@ -703,6 +715,7 @@ export interface RootRouteChildren {
   UnsubscribeRoute: typeof UnsubscribeRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminBillingRoute: typeof AdminBillingRoute
+  AdminFailuresRoute: typeof AdminFailuresRoute
   AdminLedgersRoute: typeof AdminLedgersRoute
   AdminPipelineRoute: typeof AdminPipelineRoute
   AdminProjectsRoute: typeof AdminProjectsRoute
@@ -961,6 +974,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLedgersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/failures': {
+      id: '/admin/failures'
+      path: '/admin/failures'
+      fullPath: '/admin/failures'
+      preLoaderRoute: typeof AdminFailuresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/billing': {
       id: '/admin/billing'
       path: '/admin/billing'
@@ -1162,6 +1182,7 @@ const rootRouteChildren: RootRouteChildren = {
   UnsubscribeRoute: UnsubscribeRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminBillingRoute: AdminBillingRoute,
+  AdminFailuresRoute: AdminFailuresRoute,
   AdminLedgersRoute: AdminLedgersRoute,
   AdminPipelineRoute: AdminPipelineRoute,
   AdminProjectsRoute: AdminProjectsRoute,
