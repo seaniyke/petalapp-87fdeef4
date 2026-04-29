@@ -173,7 +173,7 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
               {/* Free grant + per-meter top-up usage */}
               <div className="space-y-4 rounded-2xl bg-muted/40 p-5">
                 <div>
-                  <h4 className="text-sm font-semibold">Free monthly credit</h4>
+                  <h4 className="text-sm font-semibold">Free Cloud + AI credit</h4>
                   <div className="mt-2 text-xl font-semibold tabular-nums">
                     {qualified
                       ? `${formatUsdCents(freeUsedCents)} / ${formatUsdCents(monthlyGrant)}`
@@ -181,8 +181,8 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {qualified
-                      ? `Resets ${resetDateLabel}. Shared across Cloud and AI.`
-                      : `Top up once to unlock $${(monthlyGrant / 100).toFixed(0)}/mo free Cloud credit.`}
+                      ? `One-time grant. Shared across Cloud and AI.`
+                      : `Upgrade to a paid plan or top up once to unlock $${(monthlyGrant / 100).toFixed(0)} free Cloud + AI credit.`}
                   </div>
                 </div>
                 <div className="border-t border-border/60" />
