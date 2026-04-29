@@ -221,7 +221,6 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
                 />
               )}
 
-              </div>
               <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
                 Cloud + AI is pay-as-you-go from your top-up balance. Top-ups never expire.
               </p>
