@@ -1334,6 +1334,7 @@ export type Database = {
           published_visibility: string
           remix_count: number
           remixed_from_id: string | null
+          runtime_grace_until: string | null
           runtime_paused: boolean
           slug: string
           spend_cap_cents: number | null
@@ -1358,6 +1359,7 @@ export type Database = {
           published_visibility?: string
           remix_count?: number
           remixed_from_id?: string | null
+          runtime_grace_until?: string | null
           runtime_paused?: boolean
           slug: string
           spend_cap_cents?: number | null
@@ -1382,6 +1384,7 @@ export type Database = {
           published_visibility?: string
           remix_count?: number
           remixed_from_id?: string | null
+          runtime_grace_until?: string | null
           runtime_paused?: boolean
           slug?: string
           spend_cap_cents?: number | null
@@ -1996,6 +1999,10 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      can_enable_managed_backend: {
+        Args: { _user_id: string }
+        Returns: boolean
       }
       charge_runtime: {
         Args: {
