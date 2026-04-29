@@ -165,9 +165,8 @@ function AdminFailuresPage() {
                     {stats.groups.map((g) => {
                       const open = expanded === g.signature;
                       return (
-                        <>
+                        <Fragment key={g.signature}>
                           <tr
-                            key={g.signature}
                             onClick={() => setExpanded(open ? null : g.signature)}
                             className="cursor-pointer border-b border-border/40 transition-colors hover:bg-muted/30"
                           >
