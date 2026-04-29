@@ -173,19 +173,30 @@ export const Route = createFileRoute("/api/billing/initialize")({
             });
           if (insertErr) throw new Error(insertErr.message);
 
-          const init = await initializeTransaction({
-            email: userData.user.email,
-            amountMinor: price.amountMinor,
-            currency: parsed.currency,
-            reference,
-            callbackUrl: parsed.returnUrl,
-            metadata: {
-              user_id: userData.user.id,
-              purpose: parsed.purpose,
-              item_code: parsed.itemCode,
-              project_id: parsed.projectId ?? null,
-            },
-          });
+          let init;
+          try {
+            init = await initializeTransaction({
+              email: userData.user.email,
+              amountMinor: price.amountMinor,
+              currency: parsed.currency,
+              reference,
+              callbackUrl: parsed.returnUrl,
+              metadata: {
+                user_id: userData.user.id,
+                purpose: parsed.purpose,
+                item_code: parsed.itemCode,
+                project_id: parsed.projectId ?? null,
+              },
+            });
+          } catch (e) {
+            // Roll back the orphan pending row so the user can retry cleanly
+            // and we don't accumulate dead pending transactions.
+            await supabaseAdmin
+              .from("paystack_transactions")
+              .delete()
+              .eq("reference", reference);
+            throw e;
+          }
 
           // Remember preferred currency.
           await supabaseAdmin
