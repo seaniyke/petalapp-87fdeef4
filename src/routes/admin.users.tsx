@@ -393,7 +393,7 @@ function AdminUsersPage() {
                         </div>
                       </div>
                       <a
-                        href={`/projects/${p.id}`}
+                        href={`/p/${p.slug}`}
                         target="_blank"
                         rel="noreferrer"
                         className="text-muted-foreground hover:text-foreground"
