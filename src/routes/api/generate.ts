@@ -1119,6 +1119,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 ...rlsSanityIssues,
               ];
               if (autofixGateOpen) {
+                const fixT0 = Date.now();
                 try {
                   const fixOut = await runPostStreamAutofix(nextFiles, combinedAutofixIssues);
                   nextFiles = fixOut.files;
@@ -1136,6 +1137,13 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                       ),
                     );
                   }
+                  recorder.record({
+                    tier: "post_stream_autofix",
+                    outcome: fixOut.result.fixedFiles > 0 ? "fixed" : "ok",
+                    duration_ms: Date.now() - fixT0,
+                    issue_count: fixOut.result.fixedFiles,
+                    details: { gate_open: true, input_issues: combinedAutofixIssues.length },
+                  });
                   controller.enqueue(
                     encoder.encode(
                       sse({
@@ -1153,6 +1161,16 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   );
                 } catch (e) {
                   console.warn("[post-stream-autofix] rejected:", e);
+                  recorder.record({
+                    tier: "post_stream_autofix",
+                    outcome: "failed",
+                    duration_ms: Date.now() - fixT0,
+                    issue_count: 0,
+                    details: {
+                      gate_open: true,
+                      error: e instanceof Error ? e.message : String(e),
+                    },
+                  });
                   controller.enqueue(
                     encoder.encode(
                       sse({
@@ -1166,6 +1184,13 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   );
                 }
               } else {
+                recorder.record({
+                  tier: "post_stream_autofix",
+                  outcome: "skipped",
+                  duration_ms: 0,
+                  issue_count: 0,
+                  details: { gate_open: false },
+                });
                 controller.enqueue(
                   encoder.encode(
                     sse({
