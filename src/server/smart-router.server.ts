@@ -41,11 +41,17 @@ export interface ModelStat {
   model: string;
   calls: number;
   errors: number;
-  successRate: number; // smoothed
+  successRate: number; // smoothed HTTP-level success
   medianCostMicro: number;
   p50LatencyMs: number;
   score: number;
   enoughData: boolean;
+  // Phase B — outcome quality (joined from ai_call_outcomes / ai_model_quality).
+  outcomeSamples: number;
+  verifierPassRate: number | null;   // 0..1
+  buildSuccessRate: number | null;   // 0..1
+  followupFixRate: number | null;    // 0..1 (lower = better)
+  avgAutofixes: number | null;
 }
 
 export interface RouterSnapshot {
