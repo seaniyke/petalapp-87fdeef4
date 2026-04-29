@@ -45,9 +45,10 @@ import petalLogo from "@/assets/petal-logo.png";
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  onOpenBilling?: () => void;
 };
 
-export function CloudBalanceSheet({ open, onOpenChange }: Props) {
+export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [wallet, setWallet] = useState<RuntimeWallet | null>(null);
@@ -223,6 +224,18 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
               <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
                 Cloud + AI is pay-as-you-go from your top-up balance. Top-ups never expire.
               </p>
+              {onOpenBilling && (
+                <div className="rounded-xl border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+                  Looking for AI message credits?{" "}
+                  <button
+                    type="button"
+                    onClick={onOpenBilling}
+                    className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
+                  >
+                    Open Plans &amp; credits →
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </SheetContent>

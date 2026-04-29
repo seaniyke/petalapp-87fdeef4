@@ -49,9 +49,10 @@ import petalLogo from "@/assets/petal-logo.png";
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onOpenCloudBalance?: () => void;
 };
 
-export function BillingSheet({ open, onOpenChange }: Props) {
+export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) {
   const { user } = useAuth();
   const { wallet, plans, plan, breakdown } = useWallet();
   const [packs, setPacks] = useState<CreditPack[]>([]);
@@ -426,6 +427,19 @@ export function BillingSheet({ open, onOpenChange }: Props) {
               />
             )}
           </section>
+
+          {onOpenCloudBalance && (
+            <div className="mt-6 rounded-xl border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+              Looking for runtime usage?{" "}
+              <button
+                type="button"
+                onClick={onOpenCloudBalance}
+                className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
+              >
+                Open Cloud &amp; AI balance →
+              </button>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>

@@ -6,6 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SiteHeader } from "@/components/SiteHeader";
+import { AccountHubGrid } from "@/components/AccountHubGrid";
+import { BillingSheet } from "@/components/BillingSheet";
+import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
@@ -25,6 +29,8 @@ function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [billingOpen, setBillingOpen] = useState(false);
+  const [cloudOpen, setCloudOpen] = useState(false);
 
   useEffect(() => {
     if (!isReady) return;
@@ -86,6 +92,7 @@ function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SiteHeader />
       <div className="mx-auto max-w-2xl px-5 pb-20 pt-10 sm:px-6 sm:pt-14">
         <Link
           to="/"
@@ -148,7 +155,29 @@ function ProfilePage() {
             </Button>
           </div>
         </form>
+
+        <AccountHubGrid
+          onOpenBilling={() => setBillingOpen(true)}
+          onOpenCloudBalance={() => setCloudOpen(true)}
+        />
       </div>
+
+      <BillingSheet
+        open={billingOpen}
+        onOpenChange={setBillingOpen}
+        onOpenCloudBalance={() => {
+          setBillingOpen(false);
+          setCloudOpen(true);
+        }}
+      />
+      <CloudBalanceSheet
+        open={cloudOpen}
+        onOpenChange={setCloudOpen}
+        onOpenBilling={() => {
+          setCloudOpen(false);
+          setBillingOpen(true);
+        }}
+      />
     </div>
   );
 }

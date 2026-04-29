@@ -13,6 +13,7 @@ import {
   X,
   ExternalLink,
 } from "lucide-react";
+import { AdminTabs } from "@/components/AdminTabs";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { Card, CardContent } from "@/components/ui/card";
@@ -176,6 +177,7 @@ function AdminUsersPage() {
     return (
       <div className="min-h-screen bg-background">
         <SiteHeader />
+        <AdminTabs />
         <div className="flex items-center justify-center py-32 text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
         </div>
@@ -186,6 +188,7 @@ function AdminUsersPage() {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
+      <AdminTabs />
       <main className="mx-auto max-w-7xl px-6 py-10">
         <div className="mb-6 flex items-end justify-between">
           <div>
