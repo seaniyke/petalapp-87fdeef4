@@ -1377,6 +1377,11 @@ function Builder() {
       setPendingAttachments([]);
       initialAttachmentsRef.current = [];
       setDiscussBusy(true);
+      // Discuss mode never runs the build pipeline — hide any leftover
+      // activity card from a previous build turn so it doesn't look like
+      // Petal is "working" on a deploy when it's just chatting.
+      setActivityVisible(false);
+      setPhases(defaultPhases());
 
       // Persist the user prompt up-front so a refresh during the request
       // doesn't lose what they asked. We'll write the assistant reply (and,
