@@ -2185,7 +2185,11 @@ function Builder() {
                               />
                             );
                           })()}
-                        {/* Email suggestion — same rules as backend/domain chips. */}
+                        {/* Email suggestion — same rules as backend/domain chips.
+                            If the project has no backend yet, swap to a
+                            friendly "set up your app's home first" nudge
+                            that opens the backend setup flow, since email
+                            sending needs a backend. Non-techie copy. */}
                         {project &&
                           i === messages.length - 1 &&
                           !busy &&
@@ -2197,11 +2201,34 @@ function Builder() {
                               : null;
                             const intent = detectEmailIntentInTurn(prevUser, m.content);
                             if (!intent.detected) return null;
+                            // Avoid double-chip if the backend chip is
+                            // already showing for the same turn.
+                            const backendIntent = detectBackendIntentInTurn(prevUser, m.content);
+                            const backendChipShowing =
+                              hasBackend === false &&
+                              backendIntent.detected &&
+                              !dismissedBackendChips.has(i);
+                            if (hasBackend === false && backendChipShowing) return null;
+                            const needsBackendFirst = hasBackend === false;
                             return (
                               <EnableEmailSuggestionChip
                                 reason={intent.reason}
+                                needsBackendFirst={needsBackendFirst}
                                 onOpenEmail={() => {
                                   setSettingsScrollTo("email");
+                                  setSettingsOpen(true);
+                                }}
+                                onSetupBackend={() => {
+                                  // Reuse the backend chip path: dismiss the
+                                  // email nudge and surface the backend chip
+                                  // by clearing its dismissal, then open
+                                  // settings as a fallback affordance.
+                                  setDismissedBackendChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(i);
+                                    return next;
+                                  });
+                                  setSettingsScrollTo("backend");
                                   setSettingsOpen(true);
                                 }}
                                 onDismiss={() =>
