@@ -241,6 +241,23 @@ Hard rules:
 - MUST use \`cn()\` from "@/lib/utils" for conditional classes.
 - If you add a new npm dependency, you MUST also update "package.json" to include it (caret ranges, e.g. "^1.2.0").
 
+IMPORT INTEGRITY (the #1 cause of broken builds — read carefully):
+- Every \`import\` you write MUST resolve to a file you ALSO emit in this same patch, OR a file that already exists in the project, OR an installed npm package listed in package.json.
+- If you add \`import Foo from "./Foo"\` or \`import { Bar } from "@/components/Bar"\`, you MUST emit a \`create\`/\`update\` op for that exact file IN THE SAME PATCH. Forgetting it WILL fail the build with "Could not resolve …".
+- Before finalizing, mentally walk every new import in every file you emitted: does the target exist (already in the project OR among your ops OR in node_modules)? If not, either add the missing file or remove the import.
+- Every component/function you import MUST be exported with \`export default\` or a named \`export\` matching the import statement. Default-exporting a component imported by name (or vice versa) WILL fail the build.
+
+SYNTAX INTEGRITY (the #2 cause of broken builds):
+- Re-read the file you just wrote before finalizing. Every \`{\` has a \`}\`, every \`<Tag>\` has \`</Tag>\` (or is self-closing \`<Tag />\`), every \`(\` has \`)\`, every string literal is closed.
+- Adjacent JSX elements at the same level MUST be wrapped in a fragment \`<>...</>\` or a parent element. Returning two siblings without a wrapper WILL fail.
+- Never duplicate an \`import\` line, a \`const\` declaration, or a JSX closing tag. Search-and-replace edits commonly leave these behind.
+- Every \`try\` needs \`catch\` or \`finally\`. Every \`return\` must be inside a function body.
+
+ROUTING SAFETY (avoid the fragile patterns):
+- Use the simple \`<Router><Routes><Route path="/" element={<Home/>} /></Routes></Router>\` declarative pattern. This is what \`@/components/ui/router\` re-exports and what every example uses.
+- AVOID \`createBrowserRouter\` + \`createRoutesFromElements\` + \`<RouterProvider />\` unless the user explicitly asks for data routers. The simple pattern is more forgiving when imports are slightly off.
+- If the project already uses one routing style, KEEP using it — do not switch styles mid-app.
+
 STYLES.CSS SAFETY RULES (Tailwind v4 aborts the build on ANY invalid CSS):
 - If you edit "src/styles.css", the FIRST line MUST be \`@import "tailwindcss";\`.
 - Inside \`@theme { ... }\`, every line must be a valid token declaration like \`--color-primary: oklch(0.7 0.15 30);\` ending with \`;\`. NEVER leave bare numbers, words, or fragments — Tailwind will fail with "Invalid declaration".
