@@ -451,57 +451,71 @@ function findConditionalHooks(clean: string): { name: string; line: number; reas
  * to resolve any complex chain.
  */
 function findUndeclaredJsxIdentifiers(src: string, clean: string): string[] {
-  const declared = new Set<string>();
+  // Conservative R3 strategy: a JSX `{ident}` is a typo only if the
+  // identifier appears NOWHERE ELSE in the file (not as an import, not
+  // as a declaration, not as a parameter, not even as a reference). This
+  // avoids the entire class of false positives from "did we manage to
+  // detect this binding?" — if the name shows up anywhere else in the
+  // file, we trust the file. We still catch the canonical typo case
+  // (`{titel}` when only `title` is defined) because typos by
+  // construction don't appear elsewhere.
+  //
+  // We additionally allow imports + globals so that idents only
+  // referenced via JSX (e.g. an icon used once) don't trip the rule.
+  const allTokens = new Set<string>();
+  const tokenRe = /\b([A-Za-z_$][\w$]*)\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = tokenRe.exec(clean))) allTokens.add(m[1]);
 
-  // Imports.
+  // Also include names from imports (in case the file is mostly JSX).
   const importRe =
     /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
-  let m: RegExpExecArray | null;
   while ((m = importRe.exec(src))) {
-    if (m[1]) declared.add(m[1]);
-    if (m[3]) declared.add(m[3]);
+    if (m[1]) allTokens.add(m[1]);
+    if (m[3]) allTokens.add(m[3]);
     if (m[2]) {
       for (const part of m[2].split(",")) {
         const name = part.trim().split(/\s+as\s+/i).pop()?.trim();
-        if (name) declared.add(name);
+        if (name) allTokens.add(name);
       }
     }
   }
 
-  // Top-level + nested declarations.
-  const declRe =
-    /(?:^|\n|;|\{|\(|,)\s*(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/g;
-  while ((m = declRe.exec(clean))) declared.add(m[1]);
-
-  // Function parameters: any `(...)` directly followed by `=>` is an
-  // arrow with destructure-friendly params. Catches `.map((p) => ...)`,
-  // `.filter(({ id }) => ...)`, etc. Also matches plain
-  // `function name(...)` since we run the regex separately.
-  const arrowParamRe = /\(([^()]*)\)\s*=>/g;
-  while ((m = arrowParamRe.exec(clean))) {
-    extractIdents(m[1]).forEach((n) => declared.add(n));
-  }
-  const fnParamRe = /function\s+[\w$]*\s*\(([^()]*)\)/g;
-  while ((m = fnParamRe.exec(clean))) {
-    extractIdents(m[1]).forEach((n) => declared.add(n));
-  }
-  // Single-arg arrow: `a => ...`.
-  const arrowSingleRe = /\b([A-Za-z_$][\w$]*)\s*=>/g;
-  while ((m = arrowSingleRe.exec(clean))) declared.add(m[1]);
-
-  // Destructured names from real destructure positions only. A destructure
-  // `{ a, b }` is followed by `=` (assignment) or `)` / `,` (param list)
-  // — possibly after a `:Type` annotation. JSX `{titel}` is followed by
-  // `<` and must NOT contribute names, otherwise R3 silently swallows
-  // every typo.
-  const destObjRe = /\{([^{}]*)\}\s*(?::\s*[^=)]+?)?\s*([=),])/g;
-  while ((m = destObjRe.exec(clean))) {
-    extractIdents(m[1]).forEach((n) => declared.add(n));
-  }
-  const destArrRe = /\[([^\[\]]*)\]\s*(?::\s*[^=)]+?)?\s*([=),])/g;
-  while ((m = destArrRe.exec(clean))) {
-    extractIdents(m[1]).forEach((n) => declared.add(n));
-  }
+  // Globals + React + common browser APIs that don't need declaring.
+  const builtins = new Set([
+    "React",
+    "Fragment",
+    "Children",
+    "console",
+    "window",
+    "document",
+    "navigator",
+    "globalThis",
+    "process",
+    "Math",
+    "Date",
+    "JSON",
+    "Number",
+    "String",
+    "Boolean",
+    "Array",
+    "Object",
+    "Error",
+    "Promise",
+    "Set",
+    "Map",
+    "Symbol",
+    "undefined",
+    "null",
+    "true",
+    "false",
+    "NaN",
+    "Infinity",
+    "this",
+    "super",
+    "arguments",
+    "void",
+  ]);
 
   // Globals + React + common browser APIs that don't need declaring.
   const builtins = new Set([
