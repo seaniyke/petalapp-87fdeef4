@@ -991,14 +991,23 @@ function Builder() {
               "🔧 Petal noticed a build error and is fixing it automatically. This fix is on us — no credits used.",
           };
           setMessages([...messages, note]);
+        } else if (opts.isAutoContinue) {
+          // Friendly system note instead of the internal "wire it up" prompt.
+          const note: ChatMessage = {
+            role: "system",
+            system: true,
+            content:
+              "✨ Picking the build back up — wiring your app to the new backend.",
+          };
+          setMessages([...messages, note]);
         } else {
           setMessages(nextMessages);
         }
       }
-      // Don't overwrite lastUserPrompt during an auto-fix — the "Retry last
-      // prompt" affordance should still replay the user's real ask, not our
-      // internal error-log dump.
-      if (!opts.isAutoFix) setLastUserPrompt(text);
+      // Don't overwrite lastUserPrompt during an auto-fix / auto-continue —
+      // the "Retry last prompt" affordance should still replay the user's
+      // real ask, not our internal prompts.
+      if (!opts.isAutoFix && !opts.isAutoContinue) setLastUserPrompt(text);
       setInput("");
       setPendingAttachments([]);
       initialAttachmentsRef.current = [];
