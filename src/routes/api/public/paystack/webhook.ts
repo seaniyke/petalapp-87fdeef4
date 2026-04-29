@@ -12,6 +12,11 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyWebhookSignature, getEnvironment } from "@/server/paystack.server";
 import { registerDomain } from "@/server/cloudflare-registrar.server";
 import { createCustomHostname } from "@/server/cloudflare-saas.server";
+import {
+  sendBillingEmail,
+  billingItemLabel,
+  formatMinorAmount,
+} from "@/server/billing-email.server";
 
 type ChargeEvent = {
   event: string;
