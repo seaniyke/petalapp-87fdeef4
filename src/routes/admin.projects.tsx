@@ -252,7 +252,7 @@ function AdminProjectsPage() {
                               />
                             </Button>
                             <a
-                              href={`/projects/${p.id}`}
+                              href={`/p/${p.slug}`}
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
