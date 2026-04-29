@@ -37,6 +37,9 @@ import {
   formatUsdCents,
   type DomainSearchResult,
 } from "@/lib/registrar";
+import { useWallet } from "@/hooks/use-wallet";
+import { BillingSheet } from "@/components/BillingSheet";
+import { Sparkles } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -45,6 +48,10 @@ type Props = {
 };
 
 export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
+  const { plan } = useWallet();
+  const isPaidPlan = !!plan && plan.code !== "free";
+  const [billingOpen, setBillingOpen] = useState(false);
+
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<DomainSearchResult[] | null>(null);
