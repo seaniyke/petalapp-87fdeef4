@@ -15,6 +15,9 @@ import { supabase } from "@/integrations/supabase/client";
 const SearchSchema = z.object({
   reference: z.string().optional(),
   trxref: z.string().optional(),
+  // Optional in-app path to bounce back to after a successful payment.
+  // Only honored if it's a same-origin path (must start with `/`).
+  returnTo: z.string().optional(),
 });
 
 type VerifyState =
@@ -64,10 +67,22 @@ function BillingReturn() {
           return;
         }
         const json = (await res.json()) as { status?: string; purpose?: string };
+        // Only honor returnTo when it's a same-origin in-app path —
+        // protects against open-redirect attacks via crafted Paystack URLs.
+        const safeReturnTo =
+          search.returnTo && search.returnTo.startsWith("/") && !search.returnTo.startsWith("//")
+            ? search.returnTo
+            : null;
         if (json.status === "success") {
           setState({ kind: "success", purpose: json.purpose ?? "purchase" });
           refresh();
           setTimeout(() => refresh(), 2000);
+          if (safeReturnTo) {
+            // Brief pause so the user sees the success state before bouncing.
+            setTimeout(() => {
+              if (!cancelled) window.location.replace(safeReturnTo);
+            }, 1500);
+          }
         } else if (json.status === "failed" || json.status === "abandoned") {
           setState({
             kind: "failed",
@@ -86,6 +101,11 @@ function BillingReturn() {
             if (j2.status === "success") {
               setState({ kind: "success", purpose: j2.purpose ?? "purchase" });
               refresh();
+              if (safeReturnTo) {
+                setTimeout(() => {
+                  if (!cancelled) window.location.replace(safeReturnTo);
+                }, 1500);
+              }
             }
           }, 4000);
         }
@@ -101,7 +121,7 @@ function BillingReturn() {
     return () => {
       cancelled = true;
     };
-  }, [reference, refresh]);
+  }, [reference, refresh, search.returnTo]);
 
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-6 text-center">

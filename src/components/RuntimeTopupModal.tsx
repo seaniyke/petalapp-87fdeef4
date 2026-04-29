@@ -118,11 +118,15 @@ export function RuntimeTopupModal({
   const handleConfirm = async () => {
     setSubmitting(true);
     try {
-      // Preserve existing query params (e.g. ?id=<projectId> on /builder) so
-      // Paystack returns the user to the same project they topped up from.
-      const currentParams = new URLSearchParams(window.location.search);
-      currentParams.set("topup", "success");
-      const returnUrl = `${window.location.origin}${window.location.pathname}?${currentParams.toString()}`;
+      // IMPORTANT: callback_url MUST point at /billing/return so the page
+      // can call /api/billing/verify on arrival. Without this safety net,
+      // any webhook hiccup (Paystack retry queue, instance asleep, env
+      // mismatch, etc.) leaves the transaction stuck in `pending` forever
+      // and the user's wallet is never credited. We pass the original
+      // page URL as `returnTo` so /billing/return can bounce the user
+      // back to where they started after success.
+      const here = `${window.location.pathname}${window.location.search}`;
+      const returnUrl = `${window.location.origin}/billing/return?returnTo=${encodeURIComponent(here)}`;
       let result;
       if (mode === "custom") {
         const naira = Number(customNaira);
