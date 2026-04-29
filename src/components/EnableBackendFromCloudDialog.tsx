@@ -200,12 +200,3 @@ export function EnableBackendFromCloudDialog({
     </>
   );
 }
-
-function Bullet({ children }: { children: React.ReactNode }) {
-  return (
-    <li className="flex items-start gap-2">
-      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-      <span>{children}</span>
-    </li>
-  );
-}
