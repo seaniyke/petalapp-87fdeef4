@@ -12,6 +12,7 @@ import {
   TrendingUp,
   TrendingDown,
   Activity,
+  Gauge,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
