@@ -67,10 +67,22 @@ function BillingReturn() {
           return;
         }
         const json = (await res.json()) as { status?: string; purpose?: string };
+        // Only honor returnTo when it's a same-origin in-app path —
+        // protects against open-redirect attacks via crafted Paystack URLs.
+        const safeReturnTo =
+          search.returnTo && search.returnTo.startsWith("/") && !search.returnTo.startsWith("//")
+            ? search.returnTo
+            : null;
         if (json.status === "success") {
           setState({ kind: "success", purpose: json.purpose ?? "purchase" });
           refresh();
           setTimeout(() => refresh(), 2000);
+          if (safeReturnTo) {
+            // Brief pause so the user sees the success state before bouncing.
+            setTimeout(() => {
+              if (!cancelled) window.location.replace(safeReturnTo);
+            }, 1500);
+          }
         } else if (json.status === "failed" || json.status === "abandoned") {
           setState({
             kind: "failed",
@@ -89,6 +101,11 @@ function BillingReturn() {
             if (j2.status === "success") {
               setState({ kind: "success", purpose: j2.purpose ?? "purchase" });
               refresh();
+              if (safeReturnTo) {
+                setTimeout(() => {
+                  if (!cancelled) window.location.replace(safeReturnTo);
+                }, 1500);
+              }
             }
           }, 4000);
         }
