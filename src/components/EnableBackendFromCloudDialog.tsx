@@ -75,8 +75,6 @@ export function EnableBackendFromCloudDialog({
 
   const enoughBalance = balanceCents >= PROVISIONING_FLOOR_CENTS;
   const shortfallCents = Math.max(0, PROVISIONING_FLOOR_CENTS - balanceCents);
-  // Approx monthly cost at $0.02/hr × 24 × 30 ≈ $14.40
-  const monthlyEstimateCents = HOURLY_RATE_CENTS * 24 * 30;
 
   async function handleEnable() {
     setSubmitting(true);
