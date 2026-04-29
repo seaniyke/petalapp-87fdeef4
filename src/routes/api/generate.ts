@@ -771,6 +771,22 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 );
               }
               const budgetIssueCount = budgetRejections.length + budgetWarnings.length;
+              recorder.record({
+                tier: "file_budget",
+                outcome:
+                  budgetRejections.length > 0
+                    ? "failed"
+                    : budgetWarnings.length > 0
+                      ? "fixed"
+                      : "ok",
+                duration_ms: 0,
+                issue_count: budgetIssueCount,
+                details: {
+                  rejections: budgetRejections.length,
+                  warnings: budgetWarnings.length,
+                  changed_paths: budgetChangedPaths.length,
+                },
+              });
               controller.enqueue(
                 encoder.encode(
                   sse({
