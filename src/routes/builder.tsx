@@ -2453,6 +2453,20 @@ function Builder() {
                             </CollapsibleSegment>
                           );
                         })()}
+                        {/* Layer-B "Continue building" handoff chip. Server
+                            attaches when it deliberately stops early at a
+                            safe boundary. Pre-fills the composer (no
+                            auto-submit) so the user stays in control. */}
+                        {m.handoff && (
+                          <ContinueBuildingChip
+                            message={m.handoff.message}
+                            suggestedPrompt={m.handoff.suggestedPrompt}
+                            onContinue={(prompt) => {
+                              setInput(prompt);
+                              composerTextareaRef.current?.focus();
+                            }}
+                          />
+                        )}
                         {/* "You'll need a backend" inline suggestion. Only on
                             the most recent assistant message, only when no
                             backend exists yet, and only when the heuristic
