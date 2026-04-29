@@ -16,6 +16,8 @@ import {
   Copy,
   Check,
   CheckCircle2,
+  XCircle,
+  Stethoscope,
   MoreHorizontal,
   Star,
   Trash2,
@@ -60,11 +62,14 @@ import {
   setPrimaryDomain,
   removeDomain,
   listDomainSlots,
+  checkDomainDns,
   PETAL_DOMAIN_CNAME_TARGET,
   PETAL_DOMAIN_A_RECORD,
   DomainSlotRequiredError,
   type ProjectDomain,
   type DomainSlot,
+  type DnsCheckResult,
+  type DnsCheckRecord,
 } from "@/lib/domains";
 import { BuyDomainSlotDialog } from "@/components/BuyDomainSlotDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -339,6 +344,7 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
       />
 
       <DnsRecordsDialog
+        projectId={projectId}
         domain={recordsFor}
         onClose={() => setRecordsFor(null)}
         onVerify={async () => {
@@ -643,15 +649,24 @@ function AddDomainDialog({
 /* ---------------- DNS records dialog ---------------- */
 
 function DnsRecordsDialog({
+  projectId,
   domain,
   onClose,
   onVerify,
 }: {
+  projectId: string;
   domain: ProjectDomain | null;
   onClose: () => void;
   onVerify: () => Promise<void>;
 }) {
   const [checking, setChecking] = useState(false);
+  const [diagnosing, setDiagnosing] = useState(false);
+  const [diagnosis, setDiagnosis] = useState<DnsCheckResult | null>(null);
+
+  // Reset diagnosis when the dialog re-opens for a different domain.
+  useEffect(() => {
+    setDiagnosis(null);
+  }, [domain?.id]);
 
   async function handleCheck() {
     setChecking(true);
@@ -659,6 +674,22 @@ function DnsRecordsDialog({
       await onVerify();
     } finally {
       setChecking(false);
+    }
+  }
+
+  async function handleDiagnose() {
+    if (!domain) return;
+    setDiagnosing(true);
+    try {
+      const result = await checkDomainDns(projectId, domain.id);
+      setDiagnosis(result);
+      if (result.allOk) {
+        toast.success("DNS looks good — Cloudflare should pick it up shortly");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "DNS check failed");
+    } finally {
+      setDiagnosing(false);
     }
   }
 
@@ -746,9 +777,25 @@ function DnsRecordsDialog({
               </p>
             )}
           </div>
+
+          {diagnosis && <DiagnosisPanel result={diagnosis} />}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDiagnose}
+            disabled={diagnosing}
+            className="inline-flex items-center gap-1.5 sm:mr-auto"
+          >
+            {diagnosing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Stethoscope className="h-3.5 w-3.5" />
+            )}
+            {diagnosing ? "Looking up DNS…" : "Diagnose DNS"}
+          </Button>
           <Button variant="ghost" size="sm" onClick={onClose}>
             Close
           </Button>
@@ -866,5 +913,86 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       </span>
       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
     </button>
+  );
+}
+
+/* ---------------- diagnosis panel ---------------- */
+
+function DiagnosisPanel({ result }: { result: DnsCheckResult }) {
+  const all: DnsCheckRecord[] = [result.routing, ...result.txts];
+  const okCount = all.filter((r) => r.status === "ok").length;
+  return (
+    <div className="rounded-lg border border-border bg-background p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-xs font-medium">
+          Live DNS lookup — {okCount} of {all.length} ready
+        </p>
+        <span className="text-[10px] text-muted-foreground">
+          {new Date(result.checkedAt).toLocaleTimeString()}
+        </span>
+      </div>
+      <ul className="space-y-2">
+        {all.map((r, i) => (
+          <DiagnosisRow key={`${r.host}-${r.type}-${i}`} record={r} />
+        ))}
+      </ul>
+      {result.allOk ? (
+        <p className="mt-2 text-[11px] text-green-700 dark:text-green-300">
+          ✓ All records resolve correctly. Cloudflare typically picks this up
+          within a few minutes — tap "Check status" above to refresh.
+        </p>
+      ) : (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          We queried Cloudflare's public resolver (1.1.1.1) — the same data
+          Let's Encrypt sees. Fix the items above, then run Diagnose again.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function DiagnosisRow({ record }: { record: DnsCheckRecord }) {
+  const ok = record.status === "ok";
+  const Icon = ok ? CheckCircle2 : XCircle;
+  const tone = ok
+    ? "text-green-600 dark:text-green-400"
+    : "text-destructive";
+  return (
+    <li className="rounded-md border border-border/60 bg-muted/20 p-2">
+      <div className="flex items-start gap-2">
+        <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${tone}`} />
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-medium">
+            <span className="rounded border border-border bg-background px-1 py-0.5 font-mono text-[9px] uppercase">
+              {record.type}
+            </span>{" "}
+            <span className="break-all">{record.host}</span>
+          </p>
+          {ok ? (
+            <p className="mt-0.5 break-all text-[10px] text-muted-foreground">
+              → {record.found.join(", ")}
+            </p>
+          ) : (
+            <>
+              <p className="mt-0.5 break-all text-[10px] text-muted-foreground">
+                Expected:{" "}
+                <code className="rounded bg-background px-1">{record.expected}</code>
+              </p>
+              {record.found.length > 0 && (
+                <p className="mt-0.5 break-all text-[10px] text-muted-foreground">
+                  Found:{" "}
+                  <code className="rounded bg-background px-1">
+                    {record.found.join(", ")}
+                  </code>
+                </p>
+              )}
+              {record.hint && (
+                <p className="mt-1 text-[10px] text-destructive">{record.hint}</p>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </li>
   );
 }

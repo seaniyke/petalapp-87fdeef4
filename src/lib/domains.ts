@@ -108,6 +108,47 @@ export const setPrimaryDomain = (projectId: string, domainId: string) =>
 export const removeDomain = (projectId: string, domainId: string) =>
   call<{ ok: true }>("remove", { projectId, domainId });
 
+/* -------------------- DNS sanity check -------------------- */
+
+export type DnsCheckRecord = {
+  kind: "routing" | "txt";
+  type: "A" | "CNAME" | "TXT";
+  host: string;
+  expected: string;
+  found: string[];
+  status: "ok" | "missing" | "wrong";
+  hint: string | null;
+};
+
+export type DnsCheckResult = {
+  checkedAt: string;
+  allOk: boolean;
+  routing: DnsCheckRecord;
+  txts: DnsCheckRecord[];
+};
+
+export async function checkDomainDns(
+  projectId: string,
+  domainId: string,
+): Promise<DnsCheckResult> {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token;
+  if (!token) throw new Error("Not signed in");
+  const resp = await fetch("/api/domains/dns-check", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ projectId, domainId }),
+  });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    throw new Error(text || `DNS check failed (${resp.status})`);
+  }
+  return (await resp.json()) as DnsCheckResult;
+}
+
 /* -------------------- Domain slots (paywall helpers) -------------------- */
 
 /** List slots for a project (unexpired or recently expired, newest first). */
