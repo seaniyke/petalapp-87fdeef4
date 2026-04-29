@@ -103,7 +103,7 @@ import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
 import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
 import { EnableEmailSuggestionChip } from "@/components/EnableEmailSuggestionChip";
-import { PreflightCostChip } from "@/components/PreflightCostChip";
+
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { SharePreviewDialog } from "@/components/SharePreviewDialog";
@@ -2552,9 +2552,6 @@ function Builder() {
                   return "Petal will edit files";
                 })()}
               </span>
-              {mode === "build" && (
-                <PreflightCostChip prompt={input} disabled={busy || discussBusy} />
-              )}
               {project?.custom_instructions && (
                 <button
                   type="button"
