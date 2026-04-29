@@ -16,6 +16,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyTransaction, getEnvironment } from "@/server/paystack.server";
+import {
+  sendBillingEmail,
+  billingItemLabel,
+  formatMinorAmount,
+} from "@/server/billing-email.server";
 
 const Query = z.object({
   reference: z.string().min(4).max(128).regex(/^[a-zA-Z0-9_-]+$/),
