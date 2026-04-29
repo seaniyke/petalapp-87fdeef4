@@ -1,6 +1,6 @@
 /**
  * /api/visitors — return visitor + pageview counts for a project's published
- * site, sourced from Cloudflare's GraphQL Analytics API.
+ * site, sourced from our own `page_views` / `page_views_daily` tables.
  *
  * Auth: bearer token in `Authorization` header. Owner of the project only
  * (matches /api/publish). We don't expose visitor counts to remix viewers.
@@ -9,28 +9,20 @@
  *   - projectId (uuid, required)
  *   - range     (24h | 7d | 30d, optional, default 7d)
  *
- * Response shape: { visitors, pageviews, range, since, until }.
+ * Response shape (kept stable for the Publish sheet):
+ *   { visitors, pageviews, range, since, until, unavailable: false }
  *
- * Failure mode: when Cloudflare analytics is unreachable or the token is
- * misconfigured, we return 200 with `{ visitors: 0, pageviews: 0,
- * unavailable: true, error }` so the Publish sheet can render a "—" state
- * without breaking. Real auth/ownership errors still return 4xx.
+ * Data source: `get_project_pageview_stats(_project_id)` RPC. The beacon
+ * injected by the subdomain Worker into every served HTML page calls
+ * `/api/public/track`, which writes into `page_views` and the daily rollup.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import {
-  getPagesProjectVisitors,
-  type VisitorRange,
-} from "@/server/cloudflare-analytics.server";
 
-/** Mirrors `pagesProjectName` in `host-routing.server.ts` and `builder/build.ts`. */
-function pagesProjectName(projectId: string): string {
-  const id = projectId.replace(/-/g, "").slice(0, 12).toLowerCase();
-  return `petal-${id}`;
-}
+type Range = "24h" | "7d" | "30d";
 
 const QuerySchema = z.object({
   projectId: z.string().uuid(),
@@ -60,6 +52,15 @@ async function authorize(request: Request): Promise<string | Response> {
   return data.claims.sub;
 }
 
+function rangeWindow(range: Range): { since: string; until: string } {
+  const until = new Date();
+  const since = new Date(until);
+  if (range === "24h") since.setUTCHours(since.getUTCHours() - 24);
+  else if (range === "7d") since.setUTCDate(since.getUTCDate() - 7);
+  else since.setUTCDate(since.getUTCDate() - 30);
+  return { since: since.toISOString(), until: until.toISOString() };
+}
+
 export const Route = createFileRoute("/api/visitors")({
   server: {
     handlers: {
@@ -80,7 +81,7 @@ export const Route = createFileRoute("/api/visitors")({
           );
         }
         const { projectId } = parsed.data;
-        const range: VisitorRange = parsed.data.range ?? "7d";
+        const range: Range = parsed.data.range ?? "7d";
 
         // Ownership check.
         const { data: project, error: projErr } = await supabaseAdmin
@@ -104,39 +105,57 @@ export const Route = createFileRoute("/api/visitors")({
           );
         }
 
-        // Nothing has ever been published → no traffic to query. Skip the
-        // round-trip to Cloudflare entirely.
+        const { since, until } = rangeWindow(range);
+
+        // Nothing has ever been published → no traffic to count.
         if (!project.published_build_id) {
           return Response.json({
             visitors: 0,
             pageviews: 0,
             range,
-            since: null,
-            until: null,
+            since,
+            until,
             unavailable: false,
             neverPublished: true,
           });
         }
 
-        try {
-          const stats = await getPagesProjectVisitors(
-            pagesProjectName(projectId),
-            range,
-          );
-          return Response.json({ ...stats, unavailable: false });
-        } catch (e) {
-          // Soft-fail: analytics outage shouldn't break the Publish sheet.
-          // The client renders "—" when `unavailable` is true.
+        const { data, error } = await supabaseAdmin.rpc(
+          "get_project_pageview_stats",
+          { _project_id: projectId },
+        );
+        if (error) {
           return Response.json({
             visitors: 0,
             pageviews: 0,
             range,
-            since: null,
-            until: null,
+            since,
+            until,
             unavailable: true,
-            error: e instanceof Error ? e.message : "Unknown error",
+            error: error.message,
           });
         }
+
+        const row = Array.isArray(data) ? data[0] : data;
+        const pageviews =
+          range === "24h"
+            ? Number(row?.views_24h ?? 0)
+            : range === "30d"
+              ? Number(row?.views_30d ?? 0)
+              : Number(row?.views_7d ?? 0);
+        const visitors =
+          range === "30d"
+            ? Number(row?.visitors_30d ?? 0)
+            : Number(row?.visitors_7d ?? 0);
+
+        return Response.json({
+          visitors,
+          pageviews,
+          range,
+          since,
+          until,
+          unavailable: false,
+        });
       },
     },
   },
