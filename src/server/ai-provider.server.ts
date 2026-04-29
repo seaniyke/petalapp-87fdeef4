@@ -314,6 +314,35 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   return retried;
 }
 
+/**
+ * Default per-request timeouts. The Cloudflare Worker has a hard CPU/wall
+ * budget; an upstream that hangs WILL kill the worker and produce an empty
+ * response (status 0 in CF logs → "Something went wrong" in the UI). Every
+ * AI call MUST be bounded.
+ *
+ * - Non-streaming: 25s. Plenty for short tool calls (classifier, director,
+ *   self-check, autofix) but well under the worker's wall budget.
+ * - Streaming: 90s. The big generate/discuss calls stream back and we
+ *   forward bytes as they arrive, so the worker doesn't burn CPU while
+ *   waiting. Still bounded so a wedged stream can't run forever.
+ *
+ * If the caller passes its own `signal`, we honor BOTH — whichever fires
+ * first wins (AbortSignal.any is supported in Workers + Node ≥ 20).
+ */
+const DEFAULT_TIMEOUT_MS = 25_000;
+const DEFAULT_STREAM_TIMEOUT_MS = 90_000;
+
+function effectiveSignal(
+  caller: AbortSignal | undefined,
+  isStreaming: boolean,
+): AbortSignal {
+  const ms = isStreaming ? DEFAULT_STREAM_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
+  const timeout = AbortSignal.timeout(ms);
+  if (!caller) return timeout;
+  // Combine — abort as soon as either fires.
+  return AbortSignal.any([caller, timeout]);
+}
+
 async function dispatch(
   provider: Provider,
   body: Record<string, unknown>,
@@ -353,11 +382,13 @@ async function dispatch(
     headers["X-Title"] = "Petal";
   }
 
+  const isStreaming = outBody.stream === true;
+
   return fetch(url, {
     method: "POST",
     headers,
     body: JSON.stringify(outBody),
-    signal,
+    signal: effectiveSignal(signal, isStreaming),
   });
 }
 
