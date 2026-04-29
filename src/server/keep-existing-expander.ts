@@ -24,13 +24,13 @@
 
 const MARKER_PATTERNS: RegExp[] = [
   // // ... keep existing code (description) ...
-  /^\s*\/\/\s*\.\.\.\s*keep existing code(?:\s*\([^)]*\))?\s*\.\.\.\s*$/,
+  /^\s*\/\/\s*\.\.\.\s*keep existing code(?:\s*\([^)]*\))?\s*(?:\.\.\.)?\s*$/,
   // /* ... keep existing code (description) ... */
-  /^\s*\/\*\s*\.\.\.\s*keep existing code(?:\s*\([^)]*\))?\s*\.\.\.\s*\*\/\s*$/,
+  /^\s*\/\*\s*\.\.\.\s*keep existing code(?:\s*\([^)]*\))?\s*(?:\.\.\.)?\s*\*\/\s*$/,
   // {/* ... keep existing code (description) ... */}
-  /^\s*\{\s*\/\*\s*\.\.\.\s*keep existing code(?:\s*\([^)]*\))?\s*\.\.\.\s*\*\/\s*\}\s*$/,
+  /^\s*\{\s*\/\*\s*\.\.\.\s*keep existing code(?:\s*\([^)]*\))?\s*(?:\.\.\.)?\s*\*\/\s*\}\s*$/,
   // <!-- ... keep existing code (description) -->
-  /^\s*<!--\s*\.\.\.\s*keep existing code(?:\s*\([^)]*\))?\s*\.\.\.\s*-->\s*$/,
+  /^\s*<!--\s*\.\.\.\s*keep existing code(?:\s*\([^)]*\))?\s*(?:\.\.\.)?\s*-->\s*$/,
 ];
 
 function isMarkerLine(line: string): boolean {
