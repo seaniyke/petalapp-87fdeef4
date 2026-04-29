@@ -1770,11 +1770,8 @@ function Builder() {
     // so the next turn includes the log tail. Falls back to replaying the
     // original ask when there's no log (e.g. transient network failure).
     const hasBuildLog = !!effectiveBuildSnap?.errorMessage?.trim();
-    if (hasBuildLog && askPetalToFixRef.current) {
-      // Manual retry — not the silent auto-fix variant. We override the ref's
-      // default by calling the real fn from the closure if available; otherwise
-      // the ref's auto variant is still better than a contextless replay.
-      askPetalToFixRef.current();
+    if (hasBuildLog && askPetalToFixManualRef.current) {
+      askPetalToFixManualRef.current();
       return;
     }
     if (lastUserPrompt) void send(lastUserPrompt, { isRetry: true });
