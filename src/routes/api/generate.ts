@@ -263,13 +263,10 @@ async function relayAndCollect(
   return tool;
 }
 
-export const Route = createFileRoute("/api/generate")({
-  server: {
-    handlers: {
-      POST: async ({ request }) => {
-        const authResult = await authorize(request);
-        if (authResult instanceof Response) return authResult;
-        const userId = authResult;
+async function handleGenerateRequest(request: Request): Promise<Response> {
+  const authResult = await authorize(request);
+  if (authResult instanceof Response) return authResult;
+  const userId = authResult;
 
         // Provider key check is handled inside aiChatCompletions; we only verify
         // here so we can surface the existing friendly 500 if no provider is set.
@@ -983,6 +980,31 @@ export const Route = createFileRoute("/api/generate")({
             Connection: "keep-alive",
           },
         });
+}
+
+export const Route = createFileRoute("/api/generate")({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        try {
+          return await handleGenerateRequest(request);
+        } catch (handlerErr) {
+          // Catch-all so the worker NEVER returns an empty response (status 0
+          // in CF logs, "Something went wrong" in the UI). Guards every awaited
+          // setup step before the stream starts (auth lookup, project memory
+          // load, design director, classifier, smart router, upstream fetch).
+          console.error("[/api/generate] unhandled error", handlerErr);
+          const message =
+            handlerErr instanceof Error ? handlerErr.message : "Unexpected server error";
+          return new Response(
+            JSON.stringify({
+              error:
+                "Petal hit an unexpected error before starting your build. No credits were charged. Please try again.",
+              detail: message,
+            }),
+            { status: 500, headers: { "Content-Type": "application/json" } },
+          );
+        }
       },
     },
   },
