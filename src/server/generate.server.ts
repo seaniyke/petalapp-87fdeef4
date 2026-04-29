@@ -38,25 +38,13 @@ Files YOU MUST emit (the actual app):
 - (Optional) Any feature components under "src/components/*" (NOT in src/components/ui/ — that's reserved for the kit).
 
 REUSE-FIRST PROTOCOL (most important rule):
-Before writing ANY JSX element, ask: "Is there a kit component for this?" If yes, you MUST use it.
-- Need a clickable action? -> <Button>. NEVER raw <button>, NEVER <div onClick>, NEVER <a> styled as a button.
-- Need a text field? -> <Input> or <Textarea>. NEVER raw <input> or <textarea>.
-- Need a container with a heading? -> <Card> + <CardHeader> + <CardTitle> + <CardContent>. NEVER a custom <div className="rounded-lg border p-4">.
-- Need a labeled field? -> <Label htmlFor> + <Input>. NEVER raw <label>.
-- Need a tag/pill? -> <Badge>. NEVER a custom <span className="rounded-full px-2...">.
-- Need a divider? -> <Separator>. NEVER <hr> or a styled div.
-- Need a modal? -> <Dialog>. NEVER a hand-rolled overlay.
-- Need a dropdown/menu? -> <DropdownMenu>. NEVER a custom popover with absolute positioning.
-- Need a toggle? -> <Switch> or <Checkbox>. NEVER raw checkboxes.
-- Need a notification? -> toast.success(...) from "@/components/ui/toast". NEVER a custom alert div.
-- Need a date field? -> <DatePicker>. NEVER raw <input type="date"> or a hand-rolled calendar.
-- Need a searchable select? -> <Combobox>. NEVER a styled <select> for 5+ options.
-- Need an inline search field? -> <Input> with a Search icon and a filtered list. Do NOT build a Cmd+K palette unless the user asks for one explicitly.
-- Need a validated form? -> useForm + <Form> + <FormField>. NEVER track values/errors with scattered useState.
-- Need a chart? -> <LineChart>/<AreaChart>/<BarChart>. NEVER hand-roll SVG bars or pull recharts.
-- Need a mobile sheet with a handle? -> <Drawer>. Use <Sheet> for desktop side panels.
-- Need tabs, accordions, sliders, tooltips, sheets, tables, scroll areas, progress bars, popovers, selects, radio groups? -> use the kit equivalent. ALL of them exist.
-- Need page layout? -> <Container> wraps every section, <Stack>/<Inline> replace ad-hoc \`flex flex-col gap-N\` divs, <Grid cols=... md=... lg=...> replaces hand-written \`grid-cols-N\` chains. Reach for these BEFORE writing layout utilities directly.
+Before writing ANY JSX element, ask: "Is there a kit component for this?" If yes, you MUST use it. If you find yourself styling a primitive HTML element to look like a UI control, STOP and import the kit equivalent. Specific component signatures relevant to THIS turn appear in the [Reinforcement — ...] sections appended below — defer to those for exact API.
+
+ESSENTIAL substitutions (always true):
+- <button> → <Button>. <input>/<textarea> → <Input>/<Textarea>. <label> → <Label htmlFor>.
+- div-styled-as-card → <Card>/<CardContent>. span-styled-as-pill → <Badge>. <hr> → <Separator>.
+- Hand-rolled modal/menu → <Dialog>/<DropdownMenu>. Custom alert div → toast.success/.error.
+- Layout: wrap pages in <Container>; use <Stack>/<Inline>/<Grid> instead of raw flex/gap chains.
 
 Hard rules:
 - MUST use Tailwind utility classes for ALL styling. NEVER write inline \`style={{}}\` (except for truly dynamic values like \`style={{ width: progress + '%' }}\`) or custom CSS classes outside src/styles.css.
