@@ -678,14 +678,13 @@ function Landing() {
               </div>
 
               {/* Filter chips — Lovable-style segmented pills */}
-              {((projects && projects.length > 0) || projectFilter === "public") && (
+              {projects && projects.length > 0 && (
                 <div className="flex items-center gap-2">
                   <div className="inline-flex items-center gap-1 rounded-full border border-border bg-card/60 p-1 text-xs">
                     {(
                       [
                         { id: "all" as const, label: "All" },
                         { id: "recent" as const, label: "Recent" },
-                        { id: "public" as const, label: "Public" },
                       ]
                     ).map((opt) => {
                       const active = projectFilter === opt.id;
