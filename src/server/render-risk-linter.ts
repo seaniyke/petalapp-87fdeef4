@@ -478,12 +478,13 @@ function findUndeclaredJsxIdentifiers(src: string, clean: string): string[] {
   const importRe =
     /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
   while ((m = importRe.exec(src))) {
-    if (m[1]) allTokens.add(m[1]);
-    if (m[3]) allTokens.add(m[3]);
+    const bump = (n: string) => tokenCount.set(n, (tokenCount.get(n) ?? 0) + 2);
+    if (m[1]) bump(m[1]);
+    if (m[3]) bump(m[3]);
     if (m[2]) {
       for (const part of m[2].split(",")) {
         const name = part.trim().split(/\s+as\s+/i).pop()?.trim();
-        if (name) allTokens.add(name);
+        if (name) bump(name);
       }
     }
   }
@@ -530,7 +531,7 @@ function findUndeclaredJsxIdentifiers(src: string, clean: string): string[] {
   const missing = new Set<string>();
   while ((m = jsxExprRe.exec(clean))) {
     const ident = m[1];
-    if (allTokens.has(ident)) continue;
+    if ((tokenCount.get(ident) ?? 0) >= 2) continue;
     if (builtins.has(ident)) continue;
     missing.add(ident);
   }
