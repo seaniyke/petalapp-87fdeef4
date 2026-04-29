@@ -395,6 +395,7 @@ export type StreamEvent =
         | "stream_autofix"
         | "local_verifier"
         | "continuation"
+        | "esbuild_parse"
         | "post_stream_autofix"
         | "image_resolve";
       /** "ok" = ran clean, "fixed" = ran and changed something, "skipped" = gated off. */
