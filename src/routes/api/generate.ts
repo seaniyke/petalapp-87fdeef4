@@ -156,9 +156,18 @@ async function relayAndCollect(
   let designingPhaseSent = false;
   let writingPhaseSent = false;
   let lastPathCount = 0;
+  // Track which file paths we've already announced as "complete" so each
+  // fires exactly once even though we re-scan the cumulative buffer.
+  const completedPaths = new Set<string>();
+  let completedCount = 0;
 
   // Matches a completed `"path": "<value>"` occurrence (handles escaped chars).
   const PATH_RE = /"path"\s*:\s*"((?:\\.|[^"\\])*)"/g;
+  // Matches a completed `"content": "<value>"` occurrence — the trailing
+  // lookahead `[,}]` guarantees the JSON string actually closed (not just
+  // a `\"` mid-stream). We pair each match with the most recent path that
+  // precedes it in the buffer to know which file just finished streaming.
+  const CONTENT_RE = /"content"\s*:\s*"((?:\\.|[^"\\])*)"(?=\s*[,}])/g;
   // Helper: extract the partial value of a top-level string field from the
   // streaming JSON args. Returns "" until the field appears.
   const partial = (field: string): string => {
