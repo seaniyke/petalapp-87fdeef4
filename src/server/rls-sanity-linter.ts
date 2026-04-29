@@ -218,6 +218,23 @@ function findFromCalls(codeFiles: FileLike[]): FromCall[] {
     if (!SCANNABLE_CODE.test(file.path)) continue;
     if (SKIP_PREFIXES.some((p) => file.path.startsWith(p))) continue;
     const clean = stripJsNoise(file.content);
+
+    // File-level admin-mode detection. If the file constructs a Supabase
+    // client with the service-role key (or imports a known admin export),
+    // treat ALL `supabase.from(...)` calls in this file as admin — RLS
+    // is intentionally bypassed and missing policies are not a finding.
+    //
+    // Patterns we trust:
+    //   - `process.env.SUPABASE_SERVICE_ROLE_KEY` referenced anywhere
+    //   - `serviceRoleKey` / `serviceKey` / `service_role` referenced
+    //   - import of `supabaseAdmin` from any `*client.server*` path
+    //   - `.server.ts(x)` files using `createClient` (server-only by file
+    //     convention; safer to assume admin than to false-positive)
+    const fileLooksAdmin =
+      /SUPABASE_SERVICE_ROLE_KEY|serviceRoleKey|service_role\b|supabaseServiceKey/.test(clean) ||
+      /import\s+\{[^}]*\bsupabaseAdmin\b[^}]*\}\s+from\s+['"][^'"]*client\.server/.test(clean) ||
+      (/\.server\.(tsx?|jsx?)$/.test(file.path) && /createClient\s*\(/.test(clean));
+
     let m: RegExpExecArray | null;
     while ((m = re.exec(clean))) {
       const receiver = m[1];
@@ -235,7 +252,7 @@ function findFromCalls(codeFiles: FileLike[]): FromCall[] {
       out.push({
         path: file.path,
         table: m[2],
-        viaAdmin: /admin|service/i.test(receiver),
+        viaAdmin: fileLooksAdmin || /admin|service/i.test(receiver),
       });
     }
   }
