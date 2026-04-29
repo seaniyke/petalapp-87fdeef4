@@ -108,6 +108,9 @@ export function EmailSection({ projectId }: { projectId: string }) {
     try {
       setBusy(true);
       const r = await fnRotate({ data: { projectId } });
+      if (typeof r?.token !== "string" || !r.token) {
+        throw new Error("Server did not return a new token");
+      }
       setRevealedToken(r.token);
       toast.success("New token issued");
     } catch (e) {
