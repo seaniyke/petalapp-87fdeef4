@@ -5,7 +5,9 @@
  * the records we need to be live before Cloudflare for SaaS can finish
  * verification + SSL issuance:
  *   - The routing record (CNAME → fallback.buildwithpetal.com OR A → 185.158.133.1)
- *   - Each `_acme-challenge.<host>` TXT validation record
+ *   - Any explicit TXT validation records Cloudflare returns for wildcard or
+ *     pre-validation flows. Normal hostnames use automatic HTTP DCV, so no TXT
+ *     record should be required.
  *
  * Returns a per-record result the UI can render as ✅ / ❌ so users can
  * self-diagnose "stuck on Verifying" without leaving Petal. Read-only,
@@ -245,7 +247,7 @@ export const Route = createFileRoute("/api/domains/dns-check")({
         const txtRecords = (domain.verification_records as
           | Array<{ name: string; value: string }>
           | null) ?? [];
-        const expectedTxts =
+        const expectedTxts = (
           txtRecords.length > 0
             ? txtRecords
             : domain.verification_txt_name && domain.verification_txt_value
@@ -255,7 +257,8 @@ export const Route = createFileRoute("/api/domains/dns-check")({
                   value: domain.verification_txt_value,
                 },
               ]
-            : [];
+            : []
+        ).filter((r) => !r.value.toLowerCase().includes("no txt record required"));
 
         // Run all lookups in parallel — total time bounded by slowest DoH call.
         const [routing, ...txts] = await Promise.all([
