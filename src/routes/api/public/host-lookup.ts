@@ -1,8 +1,9 @@
 /**
  * Public hostname → routing target lookup.
  *
- * Called by the edge Worker bound to `*.buildwithpetal.com` to figure out
- * what to do with an incoming request. Returns:
+ * Called by the edge Worker bound to the SaaS zone to figure out what to do
+ * with an incoming request. Handles both Petal subdomains and customer-owned
+ * custom hostnames. Returns:
  *   - `{ kind: "proxy", target: "https://...pages.dev" }` — proxy to that URL
  *   - `{ kind: "unpublished" | "private" }` — render placeholder
  *   - `{ kind: "unknown" }` — no project owns this subdomain
@@ -32,14 +33,32 @@ type Result =
 
 async function lookup(host: string): Promise<Result> {
   const h = host.toLowerCase().split(":")[0];
-  if (!h.endsWith(`.${PETAL_ROOT}`)) return { kind: "unknown" };
-  const slug = h.slice(0, -1 - PETAL_ROOT.length);
-  if (!slug || slug.includes(".")) return { kind: "unknown" };
+  let projectId: string | null = null;
+
+  if (h.endsWith(`.${PETAL_ROOT}`)) {
+    const slug = h.slice(0, -1 - PETAL_ROOT.length);
+    if (!slug || slug.includes(".")) return { kind: "unknown" };
+    const { data: project } = await supabaseAdmin
+      .from("projects")
+      .select("id")
+      .eq("subdomain", slug)
+      .maybeSingle();
+    projectId = project?.id ?? null;
+  } else {
+    const { data: domain } = await supabaseAdmin
+      .from("project_domains")
+      .select("project_id, status")
+      .eq("hostname", h)
+      .maybeSingle();
+    projectId = domain?.status === "active" ? domain.project_id : null;
+  }
+
+  if (!projectId) return { kind: "unknown" };
 
   const { data: project } = await supabaseAdmin
     .from("projects")
     .select("id, published_visibility, published_build_id")
-    .eq("subdomain", slug)
+    .eq("id", projectId)
     .maybeSingle();
   if (!project) return { kind: "unknown" };
 
