@@ -919,12 +919,10 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                     ? "unrecoverable_turn"
                     : "incomplete_turn";
                 } else if (
-                  handoffReason === "large_changeset" ||
-                  handoffReason === "incomplete_turn"
+                  handoffReason === "large_changeset" &&
+                  handoffDetected.hallucinatedPackages?.length
                 ) {
-                  if (handoffDetected.hallucinatedPackages?.length) {
-                    handoffReason = "unrecoverable_turn";
-                  }
+                  handoffReason = "unrecoverable_turn";
                 }
               }
               for (const ev of contOut.emit) {
