@@ -241,23 +241,24 @@ export function BuildActivityCard({
   // ─── Default: single evolving status line (Lovable-style) ───────────────
   // Calm, one-line update that swaps as the phase advances. Tap to expand
   // for the full step-by-step timeline.
+  const CurrentIcon = currentPhase ? PHASE_ICONS[currentPhase.id] : Sparkles;
   return (
-    <div className="mr-6 overflow-hidden transition-all">
-      <div className="flex items-center gap-2 py-1">
-        {/* Emoji crossfades when the phase changes. The `key` triggers a
-            remount so the `animate-fade-in` keyframe replays each time. */}
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/20 transition-all">
+      <div className="flex items-center gap-2.5 px-3 py-2">
+        {/* Active phase shows a spinner; idle/done shows the phase icon. */}
         <span
-          key={`emoji-${currentPhase?.id ?? "init"}`}
-          className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-[13px] animate-fade-in"
+          key={`icon-${currentPhase?.id ?? "init"}`}
+          className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground animate-fade-in"
           aria-hidden
         >
-          {currentPhase?.emoji ?? "🌸"}
+          {isActive ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <CurrentIcon className="h-3.5 w-3.5" />
+          )}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 text-[13px] leading-snug">
-            {/* Phase label crossfades on change via key-based remount. While
-                active it shimmers — no spinner, no badge, just a calm sheen
-                across the text so the user knows it's running. */}
             <span
               key={`label-${currentPhase?.id ?? "init"}`}
               className={`truncate font-medium animate-fade-in motion-reduce:animate-none ${
@@ -267,14 +268,11 @@ export function BuildActivityCard({
               {currentPhase?.label ?? "Working…"}
             </span>
             {elapsed > 0 && (
-              <span className="shrink-0 font-mono text-[10.5px] font-normal text-muted-foreground/80 tabular-nums">
+              <span className="shrink-0 font-mono text-[10.5px] font-normal text-muted-foreground/70 tabular-nums">
                 {elapsed}s
               </span>
             )}
           </div>
-          {/* Sub-caption fades whenever its text changes (e.g. new file path
-              while writing). Using the caption itself as the key gives a
-              fresh fade per-message without extra state. */}
           {subCaption && (
             <div
               key={`cap-${subCaption}`}
@@ -305,7 +303,7 @@ export function BuildActivityCard({
         </div>
       </div>
       {stepsOpen && (
-        <ol className="mt-1 space-y-1 border-l border-border/60 pl-3">
+        <ol className="space-y-1.5 border-t border-border/50 px-3 py-2.5">
           {phases.map((p) => (
             <PhaseRow
               key={p.id}
