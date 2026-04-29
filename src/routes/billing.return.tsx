@@ -173,11 +173,29 @@ function BillingReturn() {
           <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
             <Sparkles className="h-7 w-7 text-primary" />
           </div>
-          <h1 className="text-2xl font-semibold">Payment received</h1>
+          <h1 className="text-2xl font-semibold">
+            {state.purpose === "domain_purchase"
+              ? "Domain registered"
+              : "Payment received"}
+          </h1>
           <p className="mt-2 text-muted-foreground">
             {state.purpose === "plan"
               ? "Your plan is active. We've added $5 of runtime credit so you can spin up backends, email, and domains right away."
+              : state.purpose === "domain_purchase"
+              ? "Your domain is live. We've connected it to your project and SSL is provisioning — usually ready within a minute."
               : "Your credits have been added to your wallet."}
+          </p>
+        </>
+      )}
+
+      {state.kind === "registering-domain" && (
+        <>
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <h1 className="mt-4 text-xl font-semibold">Registering your domain…</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {state.hostname
+              ? `Cloudflare is finalising ${state.hostname}. This usually takes 10–60 seconds.`
+              : "Cloudflare is finalising your domain. This usually takes 10–60 seconds."}
           </p>
         </>
       )}
