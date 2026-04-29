@@ -51,7 +51,7 @@ export function CreditBadge() {
         <HoverCardContent align="end" className="w-64 p-4">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm font-semibold">{plan.name} plan</p>
-            <span className="text-xs text-muted-foreground">{breakdown.total} total</span>
+            <span className="text-xs text-muted-foreground">{formatCredits(breakdown.total)} total</span>
           </div>
           <ul className="space-y-1.5 text-xs">
             <li className="flex items-center justify-between">
