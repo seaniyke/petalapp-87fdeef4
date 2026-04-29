@@ -27,7 +27,7 @@ Goal: close the MEDIUM and WEAK gaps from the audit without destabilizing the pi
 
 ---
 
-## Phase 2 — Cross-file export/import consistency (WEAK-c, partially MEDIUM-b)
+## Phase 2 — Cross-file export/import consistency (WEAK-c, partially MEDIUM-b) ✅ SHIPPED
 
 **Problem:** the local verifier checks each file in isolation. If `Page.tsx` imports `{ useFooStore }` from `./store` and `store.ts` only exports `useStore`, we ship green and the user sees a red preview.
 

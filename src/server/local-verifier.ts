@@ -22,6 +22,7 @@ export interface LocalIssue {
     | "unterminated-string"
     | "missing-dep"
     | "missing-sibling"
+    | "missing-export"
     | "parse"
     | "oversize";
   detail: string;
@@ -533,6 +534,144 @@ function findUnresolvedImports(
   return issues;
 }
 
+/**
+ * Collect named exports declared in a single file. Heuristic — covers the
+ * common shapes the model emits:
+ *   export const Foo = …  /  export function Foo  /  export class Foo
+ *   export { Foo, Bar as Baz }
+ *   export { Foo } from "./other"        (re-export)
+ *   export * from "./other"              (star re-export → marked separately)
+ *   export default …                     (tracked as "default")
+ *   export type Foo / export interface Foo / export enum Foo
+ */
+interface FileExports {
+  named: Set<string>;
+  hasDefault: boolean;
+  starReexports: string[]; // unresolved specifiers — treat as "exports anything"
+}
+
+function collectExports(src: string): FileExports {
+  const named = new Set<string>();
+  let hasDefault = false;
+  const starReexports: string[] = [];
+
+  // export default …
+  if (/(^|\n)\s*export\s+default\b/.test(src)) hasDefault = true;
+
+  // export {const|let|var|function|class|type|interface|enum} Name
+  const declRe = /(^|\n)\s*export\s+(?:async\s+)?(?:const|let|var|function|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g;
+  let m: RegExpExecArray | null;
+  while ((m = declRe.exec(src))) named.add(m[2]);
+
+  // export { A, B as C } [from "..."]
+  const groupRe = /export\s*\{([^}]+)\}/g;
+  while ((m = groupRe.exec(src))) {
+    for (const part of m[1].split(",")) {
+      const piece = part.trim();
+      if (!piece) continue;
+      const name = piece.split(/\s+as\s+/i).pop()?.trim();
+      if (name && /^[A-Za-z_$][\w$]*$/.test(name)) named.add(name);
+    }
+  }
+
+  // export * from "spec"
+  const starRe = /export\s*\*\s*from\s*["']([^"']+)["']/g;
+  while ((m = starRe.exec(src))) starReexports.push(m[1]);
+
+  return { named, hasDefault, starReexports };
+}
+
+/**
+ * For each changed file, scan its named imports from relative/alias paths
+ * and confirm the target file actually exports those names. Catches the
+ * "model invents an export" failure mode where `import { useFooStore }`
+ * compiles in dev (TS treats missing as undefined) but throws at runtime
+ * or fails the production build.
+ *
+ * Conservative: skips files we can't resolve, default imports, type-only
+ * imports, namespace imports, and any target that uses `export * from`
+ * (since we can't easily follow the chain without a full resolver).
+ */
+function findMissingNamedExports(
+  files: { path: string; content: string }[],
+  changedPaths: Set<string>,
+): LocalIssue[] {
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const exportCache = new Map<string, FileExports>();
+  const exportsOf = (path: string): FileExports => {
+    let e = exportCache.get(path);
+    if (!e) {
+      e = collectExports(byPath.get(path) ?? "");
+      exportCache.set(path, e);
+    }
+    return e;
+  };
+
+  const issues: LocalIssue[] = [];
+  // Match `import [type] { A, B as C } from "spec"` — captures the brace
+  // contents and the specifier. Skips type-only imports and default/namespace-only.
+  const importRe = /import\s+(?:type\s+)?(?:[A-Za-z_$][\w$]*\s*,\s*)?\{([^}]+)\}\s*from\s*["']([^"']+)["']/g;
+
+  const seen = new Set<string>();
+  for (const f of files) {
+    if (!changedPaths.has(f.path)) continue;
+    if (!/\.(tsx?|jsx?)$/.test(f.path)) continue;
+    if (f.path.startsWith("src/components/ui/")) continue;
+    if (f.path.startsWith("src/integrations/")) continue;
+
+    let m: RegExpExecArray | null;
+    while ((m = importRe.exec(f.content))) {
+      const group = m[1];
+      const spec = m[2];
+      if (!spec.startsWith(".") && !spec.startsWith("@/")) continue;
+
+      const targetPath = resolveImportPath(f.path, spec, byPath);
+      if (!targetPath) continue; // missing-sibling handles this elsewhere
+
+      const exp = exportsOf(targetPath);
+      // If the target re-exports * from somewhere, we can't safely judge
+      // missing names — treat as "exports anything" to avoid false positives.
+      if (exp.starReexports.length > 0) continue;
+
+      // Parse imported names: "A, B as C, type D" → ["A","C"] (skip type-only).
+      for (const part of group.split(",")) {
+        const piece = part.trim();
+        if (!piece) continue;
+        // Skip per-specifier `type X` imports.
+        const isTypeOnly = /^type\s+/i.test(piece);
+        if (isTypeOnly) continue;
+        const segs = piece.split(/\s+as\s+/i);
+        const original = segs[0].replace(/^type\s+/i, "").trim();
+        if (!original || !/^[A-Za-z_$][\w$]*$/.test(original)) continue;
+        // `default as X` is valid and renames the default export.
+        if (original === "default") {
+          if (!exp.hasDefault) {
+            const key = `${f.path}|${spec}|default`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            issues.push({
+              path: f.path,
+              kind: "missing-export",
+              detail: `import { default } from "${spec}" — ${targetPath} has no default export`,
+            });
+          }
+          continue;
+        }
+        if (exp.named.has(original)) continue;
+        const key = `${f.path}|${spec}|${original}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        issues.push({
+          path: f.path,
+          kind: "missing-export",
+          detail: `import { ${original} } from "${spec}" — ${targetPath} does not export "${original}"`,
+        });
+      }
+    }
+  }
+  return issues;
+}
+
 export function verifyFilesLocal(
   files: { path: string; content: string }[],
   changedPaths: string[],
@@ -554,5 +693,6 @@ export function verifyFilesLocal(
   }
   issues.push(...findLazyNamedExportIssues(files, changed));
   issues.push(...findUnresolvedImports(files, changed));
+  issues.push(...findMissingNamedExports(files, changed));
   return { ok: issues.length === 0, issues };
 }
