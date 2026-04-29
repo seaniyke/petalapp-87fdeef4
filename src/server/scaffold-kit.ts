@@ -425,6 +425,230 @@ export const InputOTPSeparator = React.forwardRef<HTMLDivElement, React.HTMLAttr
 InputOTPSeparator.displayName = "InputOTPSeparator";
 `;
 
+// Pagination — thin nav primitive. Mirrors shadcn's surface area
+// (Pagination, PaginationContent, PaginationItem, PaginationLink,
+// PaginationPrevious, PaginationNext, PaginationEllipsis) so paginated
+// tables in examples compile out of the box.
+const PAGINATION = `import * as React from "react";
+import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export const Pagination = ({ className, ...props }: React.HTMLAttributes<HTMLElement>) => (
+  <nav role="navigation" aria-label="pagination" className={cn("mx-auto flex w-full justify-center", className)} {...props} />
+);
+Pagination.displayName = "Pagination";
+
+export const PaginationContent = React.forwardRef<HTMLUListElement, React.HTMLAttributes<HTMLUListElement>>(
+  ({ className, ...props }, ref) => (
+    <ul ref={ref} className={cn("flex flex-row items-center gap-1", className)} {...props} />
+  ),
+);
+PaginationContent.displayName = "PaginationContent";
+
+export const PaginationItem = React.forwardRef<HTMLLIElement, React.HTMLAttributes<HTMLLIElement>>(
+  ({ className, ...props }, ref) => <li ref={ref} className={cn("", className)} {...props} />,
+);
+PaginationItem.displayName = "PaginationItem";
+
+export interface PaginationLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
+  isActive?: boolean;
+  size?: "default" | "sm" | "lg" | "icon";
+}
+export const PaginationLink = ({ className, isActive, size = "icon", ...props }: PaginationLinkProps) => (
+  <a
+    aria-current={isActive ? "page" : undefined}
+    className={cn(
+      "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+      isActive ? "border border-input bg-background hover:bg-accent hover:text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground",
+      size === "icon" ? "h-10 w-10" : size === "sm" ? "h-9 px-3" : size === "lg" ? "h-11 px-8" : "h-10 px-4 py-2",
+      className,
+    )}
+    {...props}
+  />
+);
+PaginationLink.displayName = "PaginationLink";
+
+export const PaginationPrevious = ({ className, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+  <PaginationLink aria-label="Go to previous page" size="default" className={cn("gap-1 pl-2.5", className)} {...props}>
+    <ChevronLeft className="h-4 w-4" />
+    <span>Previous</span>
+  </PaginationLink>
+);
+PaginationPrevious.displayName = "PaginationPrevious";
+
+export const PaginationNext = ({ className, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+  <PaginationLink aria-label="Go to next page" size="default" className={cn("gap-1 pr-2.5", className)} {...props}>
+    <span>Next</span>
+    <ChevronRight className="h-4 w-4" />
+  </PaginationLink>
+);
+PaginationNext.displayName = "PaginationNext";
+
+export const PaginationEllipsis = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => (
+  <span aria-hidden className={cn("flex h-9 w-9 items-center justify-center", className)} {...props}>
+    <MoreHorizontal className="h-4 w-4" />
+    <span className="sr-only">More pages</span>
+  </span>
+);
+PaginationEllipsis.displayName = "PaginationEllipsis";
+`;
+
+// AlertDialog — Dialog variant for destructive/blocking confirms. Same
+// surface as shadcn's alert-dialog so the destructive-confirm example
+// compiles. Implemented as a controlled portal-less modal (kept simple to
+// avoid pulling @radix-ui/react-alert-dialog).
+const ALERT_DIALOG = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+type Ctx = { open: boolean; onOpenChange: (o: boolean) => void };
+const AlertDialogContext = React.createContext<Ctx | null>(null);
+
+export interface AlertDialogProps {
+  open?: boolean;
+  defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  children: React.ReactNode;
+}
+export function AlertDialog({ open, defaultOpen = false, onOpenChange, children }: AlertDialogProps) {
+  const [internal, setInternal] = React.useState(defaultOpen);
+  const isControlled = open !== undefined;
+  const value = isControlled ? open! : internal;
+  const setValue = (next: boolean) => {
+    if (!isControlled) setInternal(next);
+    onOpenChange?.(next);
+  };
+  return (
+    <AlertDialogContext.Provider value={{ open: value, onOpenChange: setValue }}>
+      {children}
+    </AlertDialogContext.Provider>
+  );
+}
+
+function useAlertDialog() {
+  const ctx = React.useContext(AlertDialogContext);
+  if (!ctx) throw new Error("AlertDialog subcomponents must be inside <AlertDialog>");
+  return ctx;
+}
+
+export interface AlertDialogTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
+}
+export const AlertDialogTrigger = React.forwardRef<HTMLButtonElement, AlertDialogTriggerProps>(
+  ({ asChild, onClick, children, ...props }, ref) => {
+    const { onOpenChange } = useAlertDialog();
+    const handle = (e: React.MouseEvent<HTMLButtonElement>) => {
+      onClick?.(e);
+      if (!e.defaultPrevented) onOpenChange(true);
+    };
+    if (asChild && React.isValidElement(children)) {
+      const child = children as React.ReactElement<{ onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void }>;
+      return React.cloneElement(child, {
+        onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+          child.props.onClick?.(e);
+          handle(e);
+        },
+      });
+    }
+    return <button ref={ref} type="button" onClick={handle} {...props}>{children}</button>;
+  },
+);
+AlertDialogTrigger.displayName = "AlertDialogTrigger";
+
+export const AlertDialogContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, children, ...props }, ref) => {
+    const { open, onOpenChange } = useAlertDialog();
+    if (!open) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
+        <div
+          ref={ref}
+          role="alertdialog"
+          aria-modal="true"
+          className={cn(
+            "relative z-10 grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
+            className,
+          )}
+          {...props}
+        >
+          {children}
+        </div>
+      </div>
+    );
+  },
+);
+AlertDialogContent.displayName = "AlertDialogContent";
+
+export const AlertDialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("flex flex-col space-y-2 text-center sm:text-left", className)} {...props} />
+);
+AlertDialogHeader.displayName = "AlertDialogHeader";
+
+export const AlertDialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />
+);
+AlertDialogFooter.displayName = "AlertDialogFooter";
+
+export const AlertDialogTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
+  ({ className, ...props }, ref) => (
+    <h2 ref={ref} className={cn("text-lg font-semibold", className)} {...props} />
+  ),
+);
+AlertDialogTitle.displayName = "AlertDialogTitle";
+
+export const AlertDialogDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
+  ({ className, ...props }, ref) => (
+    <p ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props} />
+  ),
+);
+AlertDialogDescription.displayName = "AlertDialogDescription";
+
+export const AlertDialogAction = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+  ({ className, onClick, ...props }, ref) => {
+    const { onOpenChange } = useAlertDialog();
+    return (
+      <button
+        ref={ref}
+        type="button"
+        className={cn(
+          "inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+          className,
+        )}
+        onClick={(e) => {
+          onClick?.(e);
+          if (!e.defaultPrevented) onOpenChange(false);
+        }}
+        {...props}
+      />
+    );
+  },
+);
+AlertDialogAction.displayName = "AlertDialogAction";
+
+export const AlertDialogCancel = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+  ({ className, onClick, ...props }, ref) => {
+    const { onOpenChange } = useAlertDialog();
+    return (
+      <button
+        ref={ref}
+        type="button"
+        className={cn(
+          "mt-2 inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 sm:mt-0",
+          className,
+        )}
+        onClick={(e) => {
+          onClick?.(e);
+          if (!e.defaultPrevented) onOpenChange(false);
+        }}
+        {...props}
+      />
+    );
+  },
+);
+AlertDialogCancel.displayName = "AlertDialogCancel";
+`;
+
+
 const TEXTAREA = `import * as React from "react";
 import { cn } from "@/lib/utils";
 
