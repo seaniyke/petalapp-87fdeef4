@@ -11,7 +11,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { pollDomainRegistration } from "@/server/domain-purchase.server";
+import {
+  pollDomainRegistration,
+  startDomainRegistration,
+} from "@/server/domain-purchase.server";
 
 const Body = z.union([
   z.object({ projectId: z.string().uuid() }),
@@ -43,11 +46,11 @@ export const Route = createFileRoute("/api/registrar/poll")({
         }
 
         // Resolve target rows + verify ownership.
-        let rows: Array<{ id: string; hostname: string; status: string; project_id: string }> = [];
+        let rows: Array<{ id: string; hostname: string; status: string; project_id: string; paystack_reference: string | null }> = [];
         if ("reference" in parsed) {
           const { data: row } = await supabaseAdmin
             .from("purchased_domains")
-            .select("id, hostname, status, project_id, user_id")
+            .select("id, hostname, status, project_id, user_id, paystack_reference")
             .eq("paystack_reference", parsed.reference)
             .maybeSingle();
           if (!row) return new Response("Not found", { status: 404 });
@@ -67,15 +70,28 @@ export const Route = createFileRoute("/api/registrar/poll")({
           }
           const { data: list } = await supabaseAdmin
             .from("purchased_domains")
-            .select("id, hostname, status, project_id")
+            .select("id, hostname, status, project_id, paystack_reference")
             .eq("project_id", parsed.projectId)
-            .in("status", ["registering", "polling"]);
+            .in("status", ["pending_payment", "registering", "polling"]);
           rows = (list ?? []) as typeof rows;
         }
 
         const updates: Array<{ id: string; hostname: string; status: string }> = [];
         for (const row of rows) {
           try {
+            // Self-heal: if the row is still `pending_payment` but the
+            // Paystack transaction is `success`, kick off registration now.
+            // (Webhook background promises can be killed by the Worker.)
+            if (row.status === "pending_payment" && row.paystack_reference) {
+              const { data: tx } = await supabaseAdmin
+                .from("paystack_transactions")
+                .select("status")
+                .eq("reference", row.paystack_reference)
+                .maybeSingle();
+              if ((tx as { status: string } | null)?.status === "success") {
+                await startDomainRegistration({ reference: row.paystack_reference });
+              }
+            }
             const { status } = await pollDomainRegistration({ rowId: row.id });
             updates.push({ id: row.id, hostname: row.hostname, status });
           } catch (e) {
