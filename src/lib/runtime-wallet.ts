@@ -2,9 +2,9 @@
  * Client-side helpers for the runtime wallet ("Cloud + AI balance").
  *
  * The runtime wallet is denominated in USD cents and is SEPARATE from the
- * build-credit system in `billing.ts`. Users start with $0 free balance.
- * After their first paid top-up they qualify for the $5/month free Cloud
- * gift (granted immediately on first top-up, then refilled on the 1st).
+ * build-credit system in `billing.ts`. Cloud + AI is pure pay-as-you-go:
+ * users top up via Paystack and the balance never expires. There is no
+ * monthly free $ grant for Cloud or AI.
  */
 import { supabase } from "@/integrations/supabase/client";
 
