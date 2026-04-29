@@ -81,6 +81,25 @@ Implementation in one batch:
 5. Wire into `generate.ts` after Tier 2.7
 6. Fixture updates + run `bun src/server/__tests__/pipeline.test.ts` to confirm 12/12 pass
 
-## Phase 5b — RLS sanity check (separate, after Phase 5 ships)
+## Phase 5b — RLS sanity check (Tier 2.9) — SHIPPED
 
-Once Phase 5 is observed-clean for ~24h, ship Tier 2.9: scan AI output for `supabase.from('table_name')` calls; cross-reference against the migration history; flag any table that has no `ENABLE ROW LEVEL SECURITY` or no policies. This catches the "ships an app that 403s on every query" failure mode from the audit. Plan separately because it requires migration parsing infrastructure.
+Tier 2.9 scans changed `.tsx?/.jsx?` files for `<supabase-ish>.from('name')` literal-arg calls and cross-references against parsed `supabase/migrations/*.sql` in the same file set. Three rules:
+
+- **M1 — MISSING_TABLE.** Call references a table with no `CREATE TABLE` in any migration. Catches typos and forgotten migrations.
+- **M2 — NO_RLS.** Table exists but has no `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`. Fully-open via the publishable key.
+- **M3 — NO_POLICY.** RLS enabled but no `CREATE POLICY ... ON <table>`. Every non-admin query 403s.
+
+**Skips**: reserved schemas (`auth.*`, `storage.*`, `realtime.*`, `vault.*`, `supabase_functions.*`), `src/integrations/`, dynamic `.from(<expr>)` calls, files using the service-role client (`SUPABASE_SERVICE_ROLE_KEY` / `supabaseServiceKey` / `serviceRoleKey` referenced, or `supabaseAdmin` imported, or a `*.server.ts` file using `createClient`), receivers like `Array.from`/`Object.from`/etc. If the project has zero migrations, all three rules go silent — early scaffolding shouldn't get flagged.
+
+**Behavior**: Soft-warn, identical to Tier 2.8. Issues feed into `combinedAutofixIssues` but do not independently open the autofix gate. Three independent kill switches in `ENABLED_RULES`.
+
+**Files shipped**:
+- `src/server/rls-sanity-linter.ts` (new — pure function)
+- `src/server/pipeline/tier-rls-sanity.ts` (new — orchestrator wrapper)
+- `src/server/local-verifier.ts` (kind union: `+ "rls-sanity"`)
+- `src/lib/stream.ts`, `src/server/generate.server.ts`, `src/components/BuildActivityCard.tsx` (timeline step `+ "rls_sanity"`, label "RLS sanity check", `ShieldCheck` icon)
+- `src/routes/api/generate.ts` (call `runRlsSanityTier` after Tier 2.8; spread `rlsSanityIssues` into `combinedAutofixIssues`)
+- `src/server/__tests__/pipeline.fixtures.ts` + `pipeline.test.ts` (4 fixtures: healthy must-not-fire, M1, M2, M3 — all green; harness 17/17)
+
+**Verification**: All 17 pipeline fixtures pass. Host-project scan confirmed admin-bypass detection works for the email infrastructure (10 false positives → 0). Remaining 5 host-scan hits are inside string-template fixtures and the linter's own template literal — not real code paths the linter sees in production.
+
