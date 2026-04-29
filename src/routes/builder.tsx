@@ -380,6 +380,21 @@ function Builder() {
   };
   const [pickedElement, setPickedElement] = useState<PickedElement | null>(null);
   const [pickInstruction, setPickInstruction] = useState("");
+  // Runtime error captured from the live preview iframe. Surfaces a banner
+  // above the composer with a one-click "Fix this" button that routes through
+  // the existing free-charge auto-fix path. Dismissed by the user OR cleared
+  // automatically when files change (i.e. a fix was applied).
+  type RuntimeErrorState = {
+    message: string;
+    stack: string | null;
+    source: string | null;
+    lineno: number | null;
+    colno: number | null;
+    kind: "error" | "unhandledrejection";
+    /** When the user already asked Petal to fix this exact error. */
+    fixed: boolean;
+  };
+  const [runtimeError, setRuntimeError] = useState<RuntimeErrorState | null>(null);
   // Composer attachments — encoded images that ride along with the next prompt.
   // Cleared after each send. The `initialAttachments` ref holds attachments
   // stashed by the landing page (via sessionStorage attachKey) until the
