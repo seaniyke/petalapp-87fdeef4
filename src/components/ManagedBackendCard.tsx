@@ -2,13 +2,16 @@
  * ManagedBackendCard — UI for the Petal-managed Supabase backend.
  *
  * Renders one of these states:
- *   - not-purchased: pitch + "Auto-provision" CTA -> opens BuyBackendSlotDialog
- *   - provisioning: progress card, polls every 5s for status
- *   - ready: shows hostname, expiry date, "Renew" / "Download credentials"
- *   - paused: explains slot expired, "Renew" CTA
- *   - failed: shows error, "Retry" CTA
+ *   - not-purchased: pitch + "Enable backend" CTA -> opens
+ *     EnableBackendFromCloudDialog (Cloud-balance gated, no slots).
+ *   - provisioning: progress card, polls every 5s for status.
+ *   - ready: shows hostname, optional grace-period warning if Cloud balance
+ *     ran out, "Download credentials".
+ *   - paused: explains the project ran out of Cloud balance through the 48h
+ *     grace window — top up to bring it back online.
+ *   - failed: shows error, "Retry" CTA.
  *
- * This card is always visible alongside the BYO connector; the user picks
+ * The card is always visible alongside the BYO connector; the user picks
  * whichever path they want. Once one is connected, the other is hidden.
  */
 import { useEffect, useRef, useState } from "react";
@@ -20,19 +23,19 @@ import {
   PauseCircle,
   RefreshCw,
   Download,
-  
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
-  getProjectBackend,
   getManagedProvisionStatus,
   retryManagedProvision,
   getManagedCredentials,
   type ProjectBackend,
   type ManagedProvisionStatus,
 } from "@/lib/projects";
-import { BuyBackendSlotDialog } from "@/components/BuyBackendSlotDialog";
+import { EnableBackendFromCloudDialog } from "@/components/EnableBackendFromCloudDialog";
+import { RuntimeTopupModal } from "@/components/RuntimeTopupModal";
 
 type Props = {
   projectId: string;
@@ -45,7 +48,8 @@ type Props = {
 const POLL_MS = 5_000;
 
 export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
-  const [buyOpen, setBuyOpen] = useState(false);
+  const [enableOpen, setEnableOpen] = useState(false);
+  const [topupOpen, setTopupOpen] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [status, setStatus] = useState<ManagedProvisionStatus | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -126,11 +130,13 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
     }
   }
 
-  const expiresAt = backend?.slot?.expires_at ? new Date(backend.slot.expires_at) : null;
-  const daysLeft = expiresAt
-    ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 86_400_000))
-    : null;
-  const renewSoon = daysLeft !== null && daysLeft <= 7;
+  // Grace-period countdown (only shown when ready + balance ran out).
+  const graceUntil = backend?.graceUntil ? new Date(backend.graceUntil) : null;
+  const inGrace =
+    graceUntil != null && graceUntil.getTime() > Date.now() && phase === "ready";
+  const graceHoursLeft = inGrace
+    ? Math.max(0, Math.ceil((graceUntil!.getTime() - Date.now()) / (60 * 60 * 1000)))
+    : 0;
 
   /* ---------------- Not purchased ---------------- */
   if (!isManaged) {
@@ -142,24 +148,25 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
             <div className="flex-1">
               <p className="text-sm font-medium">Add Petal Cloud backend</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Auth, database and file storage — fully managed by Petal. We provision and
-                wire it in automatically. Renews every 30 days.
+                Auth, database and file storage — fully managed by Petal. Funded by
+                your Cloud balance, no separate fee.
               </p>
             </div>
           </div>
           <Button
             size="sm"
-            onClick={() => setBuyOpen(true)}
+            onClick={() => setEnableOpen(true)}
             className="mt-3 inline-flex items-center gap-1.5"
           >
             <Sparkles className="h-3.5 w-3.5" />
             Enable Petal Cloud
           </Button>
         </div>
-        <BuyBackendSlotDialog
-          open={buyOpen}
-          onOpenChange={setBuyOpen}
+        <EnableBackendFromCloudDialog
+          open={enableOpen}
+          onOpenChange={setEnableOpen}
           projectId={projectId}
+          onEnabled={onChanged}
         />
       </>
     );
@@ -224,7 +231,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
     );
   }
 
-  /* ---------------- Paused (slot expired) ---------------- */
+  /* ---------------- Paused (Cloud balance ran out) ---------------- */
   if (phase === "paused") {
     return (
       <>
@@ -234,27 +241,28 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
             <div className="flex-1 text-sm">
               <div className="font-medium">Backend paused</div>
               <div className="mt-0.5 text-xs text-muted-foreground">
-                Your backend slot expired. Renew to bring your data back online — your
-                tables and rows are preserved.
+                Your Cloud balance ran out and the 48-hour grace period ended. Top up
+                to bring your data back online — your tables and rows are preserved.
               </div>
             </div>
           </div>
           <div className="mt-3 flex justify-end">
             <Button
               size="sm"
-              onClick={() => setBuyOpen(true)}
+              onClick={() => setTopupOpen(true)}
               className="inline-flex items-center gap-1.5"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Renew
+              <Sparkles className="h-3.5 w-3.5" />
+              Top up Cloud balance
             </Button>
           </div>
         </div>
-        <BuyBackendSlotDialog
-          open={buyOpen}
-          onOpenChange={setBuyOpen}
-          projectId={projectId}
-          isRenewal
+        <RuntimeTopupModal
+          open={topupOpen}
+          onOpenChange={(v) => {
+            setTopupOpen(v);
+            if (!v) onChanged();
+          }}
         />
       </>
     );
@@ -274,19 +282,35 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
               </span>
             </div>
             <div className="mt-0.5 text-xs text-muted-foreground">
-              Auth, database and file storage are live and wired into your app.
+              Auth, database and file storage are live and wired into your app. Costs
+              drain from your Cloud balance hourly.
             </div>
-            {expiresAt && (
-              <div
-                className={`mt-1 text-[11px] ${
-                  renewSoon ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
-                }`}
-              >
-                Renews {expiresAt.toLocaleDateString()} ({daysLeft} day{daysLeft === 1 ? "" : "s"} left)
-              </div>
-            )}
           </div>
         </div>
+
+        {inGrace && (
+          <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 px-2.5 py-2">
+            <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="flex-1 text-[11px] leading-snug">
+              <span className="font-medium text-foreground">
+                Cloud balance is empty
+              </span>{" "}
+              <span className="text-muted-foreground">
+                — backend pauses in {graceHoursLeft}{" "}
+                {graceHoursLeft === 1 ? "hour" : "hours"} unless you top up.
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 px-2 text-[11px]"
+              onClick={() => setTopupOpen(true)}
+            >
+              Top up
+            </Button>
+          </div>
+        )}
+
         <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
           <Button
             size="sm"
@@ -302,22 +326,14 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
             )}
             Download credentials
           </Button>
-          <Button
-            size="sm"
-            variant={renewSoon ? "default" : "outline"}
-            onClick={() => setBuyOpen(true)}
-            className="inline-flex items-center gap-1.5"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Renew
-          </Button>
         </div>
       </div>
-      <BuyBackendSlotDialog
-        open={buyOpen}
-        onOpenChange={setBuyOpen}
-        projectId={projectId}
-        isRenewal
+      <RuntimeTopupModal
+        open={topupOpen}
+        onOpenChange={(v) => {
+          setTopupOpen(v);
+          if (!v) onChanged();
+        }}
       />
     </>
   );
