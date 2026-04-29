@@ -614,6 +614,24 @@ function Builder() {
           void appendMessages(project.id, [note]).catch(() => {
             // Persistence is best-effort — the in-memory message still shows.
           });
+          // After the managed backend lights up, automatically continue the
+          // build so users don't sit confused on the "Provisioning…" banner
+          // wondering what to do next. We only auto-continue for the backend
+          // (the other services like email/domains are usually optional
+          // side-quests, not a hard prerequisite of an in-progress build).
+          if (detail.service === "backend" && !busy) {
+            const followUp =
+              "The managed backend is now enabled (database, auth and storage are ready). " +
+              "Please continue the build you were working on by wiring it up to the new backend — " +
+              "create the necessary tables with RLS, hook up authentication where the app needs " +
+              "sign-in/sign-up, and replace any in-memory or mock data with real persisted data. " +
+              "If a feature was blocked earlier because there was no backend, finish it now.";
+            // Tiny delay so the user visually registers the activation banner
+            // before Petal starts typing again.
+            setTimeout(() => {
+              void send(followUp, { isAutoContinue: true });
+            }, 600);
+          }
         }
       };
       tick();
