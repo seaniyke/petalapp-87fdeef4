@@ -233,6 +233,12 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
         open={topupOpen}
         onOpenChange={setTopupOpen}
         onSuccess={reload}
+        minUsdCents={wallet?.qualifiedForFreeGrant ? undefined : 1000}
+        minReason={
+          wallet?.qualifiedForFreeGrant
+            ? undefined
+            : "to unlock your $10/mo free Cloud credit"
+        }
       />
     </>
   );
