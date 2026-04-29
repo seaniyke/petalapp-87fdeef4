@@ -7,7 +7,7 @@
  * ("can you also make it work on mobile?", "what would it take to add auth?")
  * without fear of breaking the project.
  *
- * Mirrors Base44's Discuss and Lovable's Plan mode.
+ * Petal's "Discuss" mode — chat about the app without touching code.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
