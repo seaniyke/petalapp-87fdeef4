@@ -100,6 +100,7 @@ import { BuilderActionsSheet } from "@/components/BuilderActionsSheet";
 import { PublishSheet } from "@/components/PublishSheet";
 import { RenameProjectDialog } from "@/components/RenameProjectDialog";
 import { BillingSheet } from "@/components/BillingSheet";
+import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
@@ -336,6 +337,7 @@ function Builder() {
   const [projectsDrawerOpen, setProjectsDrawerOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
+  const [cloudBalanceOpen, setCloudBalanceOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [shieldOpen, setShieldOpen] = useState(false);
   const [sharePreviewOpen, setSharePreviewOpen] = useState(false);
@@ -2232,7 +2234,22 @@ function Builder() {
             onOpenChange={setRenameOpen}
             onChange={setProject}
           />
-          <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
+          <BillingSheet
+            open={billingOpen}
+            onOpenChange={setBillingOpen}
+            onOpenCloudBalance={() => {
+              setBillingOpen(false);
+              setCloudBalanceOpen(true);
+            }}
+          />
+          <CloudBalanceSheet
+            open={cloudBalanceOpen}
+            onOpenChange={setCloudBalanceOpen}
+            onOpenBilling={() => {
+              setCloudBalanceOpen(false);
+              setBillingOpen(true);
+            }}
+          />
           <PetalShieldSheet
             open={shieldOpen}
             onOpenChange={setShieldOpen}
