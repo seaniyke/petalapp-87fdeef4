@@ -61,11 +61,12 @@ export const Route = createFileRoute("/api/public/track")({
 
         const { error } = await supabaseAdmin.rpc("record_page_view", {
           _project_id: project_id,
-          _path: path ?? "/",
+          _path: path && path.length > 0 ? path : "/",
           _referrer: referrer ?? "",
           _country: country ?? "",
           _user_agent: userAgent ?? "",
-          _visitor_hash: visitor_hash ?? "",
+          // Empty hash → SQL skips the unique-visitor check.
+          _visitor_hash: visitor_hash && visitor_hash.length > 0 ? visitor_hash : "",
         });
         if (error) {
           // Don't leak details to anonymous callers.
