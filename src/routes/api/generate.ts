@@ -44,6 +44,7 @@ import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-cla
 // verifier and its recovery pass was unconditionally skipped by the
 // Phase D one-round autofix cap, so it only added latency + tokens.
 import { verifyFilesLocal } from "@/server/local-verifier";
+import { applyNpmPreflight } from "@/server/npm-existence.server";
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import {
   checkFileBudgets,
