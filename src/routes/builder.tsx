@@ -433,6 +433,26 @@ function Builder() {
     attempts: 0,
     handledBuildIds: new Set(),
   });
+  // When a user starts a new AI turn or retries a stalled deploy, the previous
+  // `latest_build_id` is no longer the thing the chat should react to. Without
+  // this, an old pending deploy can keep re-opening the "Publishing is taking
+  // longer" card while Petal is already fixing or rebuilding newer code.
+  const [supersededBuildIds, setSupersededBuildIds] = useState<Set<string>>(() => new Set());
+  const supersededBuildIdsRef = useRef<Set<string>>(new Set());
+  const supersedeBuildId = useCallback((id: string | null | undefined) => {
+    if (!id || supersededBuildIdsRef.current.has(id)) return;
+    const next = new Set(supersededBuildIdsRef.current);
+    next.add(id);
+    supersededBuildIdsRef.current = next;
+    setSupersededBuildIds(next);
+  }, []);
+  const restoreBuildId = useCallback((id: string | null | undefined) => {
+    if (!id || !supersededBuildIdsRef.current.has(id)) return;
+    const next = new Set(supersededBuildIdsRef.current);
+    next.delete(id);
+    supersededBuildIdsRef.current = next;
+    setSupersededBuildIds(next);
+  }, []);
   // Stable handle to the latest askPetalToFix so the failure effect (declared
   // before send/askPetalToFix) can call it without stale-closure issues.
   const askPetalToFixRef = useRef<(() => void) | null>(null);
