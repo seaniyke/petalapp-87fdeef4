@@ -1,121 +1,117 @@
-# Payments-as-Integrations — Paystack + Stripe + Flutterwave (BYOK)
+# Close the AI Capability Gaps
 
-## Why this matters
+Build all three improvements so Petal AI can write backend code, collect secrets mid-conversation, test what it ships, and recommend the right marketplace integration before hand-rolling.
 
-Today, when a user prompts Petal "add a $20 checkout", the AI hallucinates: it invents env-var names, hardcodes test keys, or calls Stripe/Paystack APIs directly without verification or webhooks. Competing builders (Lovable, Bolt, v0) ship pre-baked payment installers that the AI is *taught* about via system-prompt context, so it writes against a known-good local wrapper instead of guessing.
+---
 
-Our integrations marketplace already has the perfect pipeline for this — `resend.integration.ts` and `plausible.integration.ts` prove the pattern works. We just need three more definition files and to register them.
+## 1. `add_secret` Mid-Conversation Capability
 
-## Scope
+Goal: AI can request any secret at any point and a secure form pops up in chat.
 
-Add three BYOK payment integrations using the existing `IntegrationDefinition` framework. Each one is purely a new file (no installer/registry refactor needed):
+### Backend
+- New table `pending_secret_requests` (id, project_id, conversation_id, secret_name, instructions, status, created_at, fulfilled_at). RLS: only project members can read/write their own.
+- Server function `requestSecret({ name, instructions, link? })` — inserts a pending request and returns its id.
+- Server function `fulfillSecret({ requestId, value })` — encrypts with AES-256-GCM (reuse `project_integration_secrets` crypto helper) and stores into `project_secrets`. Marks request fulfilled.
+- Server function `listProjectSecrets()` — names only, never values.
 
-- **Paystack** — Africa-focused. Already have a server SDK we can mirror.
-- **Stripe** — Global default. Most-requested by users.
-- **Flutterwave** — African + global hybrid. Strong in Nigeria, Kenya, Ghana, plus card/USD support.
+### AI Streaming Action
+- Register a new streamed action tag the assistant can emit:
+  `<lov-add-secret name="OPENAI_API_KEY" instructions="Get from platform.openai.com" link="https://platform.openai.com/api-keys" />`
+- Stream parser (in `src/server/ai/stream-actions.ts`) intercepts the tag and calls `requestSecret`, then renders an inline `SecretRequestCard` in the chat transcript.
 
-All three use the same shape: collect API keys → scaffold `src/integrations/<provider>/` with a typed `createCheckout()` + `verifyPayment()` helper and a webhook server route → expose `aiGuidance` so Petal writes against the local wrapper.
+### Chat UI
+- `SecretRequestCard.tsx`: input (masked), "Save securely" button, status pill (Pending → Saved). On save, calls `fulfillSecret`, shows checkmark, and emits a synthetic user message `[Secret OPENAI_API_KEY saved]` so the AI continues.
+- Resend / cancel buttons.
 
-## What we'll build
+### System prompt update
+- Document the action tag, when to use it (only after confirming intent + scaffolding any infra that needs the URL), and that values are never echoed back.
 
-### 1. `src/server/integrations/stripe.integration.ts`
+---
 
-**Fields collected:**
-- `secret_key` (secret) — `sk_test_...` / `sk_live_...`
-- `publishable_key` (string, public) — `pk_test_...` / `pk_live_...` — emitted as `VITE_STRIPE_PUBLISHABLE_KEY` for client SDK
-- `webhook_secret` (secret) — `whsec_...` for signature verification
-- `currency` (string, public) — default `usd`
+## 2. Self-Testing Loop
 
-**Files scaffolded into user's project:**
-- `src/integrations/stripe/checkout.ts` — `createCheckoutSession({ items, successUrl, cancelUrl, mode })` returning Stripe Checkout URL
-- `src/integrations/stripe/verify.ts` — `verifyPayment(sessionId)` that calls Stripe's retrieve API
-- `src/integrations/stripe/webhook-verify.ts` — signature verification helper (HMAC-SHA256 over raw body)
-- `src/routes/api/payments/stripe/checkout.ts` — server route the frontend POSTs to
-- `src/routes/api/public/stripe/webhook.ts` — public webhook receiver (verifies signature, updates DB)
-- `src/integrations/stripe/README.md` — usage examples
+Goal: AI can invoke its own server functions, read logs, and query the DB before declaring "done."
 
-### 2. `src/server/integrations/paystack.integration.ts`
+### Three new tools (server-side, gated to AI runtime)
 
-**Fields collected:**
-- `secret_key` (secret) — `sk_test_...` / `sk_live_...` (one key, env auto-detected from prefix — same as our internal Petal Paystack code)
-- `public_key` (string, public) — emitted as `VITE_PAYSTACK_PUBLIC_KEY` for inline checkout
-- `currency` (string, public) — default `NGN`, validated against `NGN|GHS|ZAR|KES|USD`
+**`invoke_server_function`**
+- Accepts `{ path, method, headers?, body? }`
+- Resolves to the latest preview deployment URL for the project (`project--{id}-dev.lovable.app`).
+- Returns `{ status, headers, body }` truncated to 8KB.
 
-**Files scaffolded:**
-- `src/integrations/paystack/checkout.ts` — `initializeTransaction({ email, amount, reference, callbackUrl })` (mirror our existing `paystack.server.ts`)
-- `src/integrations/paystack/verify.ts` — `verifyTransaction(reference)` with strict amount/currency cross-check (lessons learned from our own audit)
-- `src/integrations/paystack/webhook-verify.ts` — HMAC-SHA512 signature check
-- `src/routes/api/payments/paystack/initialize.ts`
-- `src/routes/api/public/paystack/webhook.ts`
-- `src/integrations/paystack/README.md`
+**`read_server_logs`**
+- Reads worker + sandbox logs (last 1h, max 100 entries).
+- Optional `search` filter and `deployment` (`preview` | `published`).
+- Returns newest-first.
 
-### 3. `src/server/integrations/flutterwave.integration.ts`
+**`read_database`**
+- Wraps `supabaseAdmin` with a SELECT-only guard (parses SQL, rejects anything but `SELECT` / `WITH … SELECT`).
+- Limits 1000 rows, 5s timeout.
 
-**Fields collected:**
-- `secret_key` (secret) — `FLWSECK_TEST-...` / `FLWSECK-...`
-- `public_key` (string, public) — emitted as `VITE_FLUTTERWAVE_PUBLIC_KEY`
-- `encryption_key` (secret) — required for direct charge endpoints
-- `webhook_secret_hash` (secret) — Flutterwave uses a "verif-hash" header instead of HMAC
-- `currency` (string, public) — default `NGN`
+### Loop integration
+- After any code edit that touches `src/server/**` or `src/routes/api/**`, the agent runner auto-suggests a smoke check step.
+- Errors found in logs are fed back into the next AI turn as a `<tool-result>` block so the model can self-correct.
 
-**Files scaffolded:**
-- `src/integrations/flutterwave/checkout.ts` — `createPaymentLink({ tx_ref, amount, currency, customer, redirect_url })` calling Flutterwave Standard v3 API
-- `src/integrations/flutterwave/verify.ts` — `verifyTransaction(transactionId)` with amount/currency cross-check
-- `src/integrations/flutterwave/webhook-verify.ts` — `verif-hash` header equality check
-- `src/routes/api/payments/flutterwave/initialize.ts`
-- `src/routes/api/public/flutterwave/webhook.ts`
-- `src/integrations/flutterwave/README.md`
+### Safety
+- All three tools are read-only or invoke existing user code — no arbitrary SQL writes, no shell.
+- Rate-limited per conversation (20 invocations / 50 log reads / 30 db reads per turn).
 
-### 4. Register in `src/server/integrations/registry.server.ts`
+---
 
-Add the three imports + push into `INTEGRATIONS`. Remove the `// TODO follow-up: stripe, paystack` comment. One-line change.
+## 3. Integration Auto-Suggest
 
-### 5. AI guidance per integration
+Goal: When the user asks for a feature that overlaps a marketplace integration, the AI proposes installing it instead of hand-rolling.
 
-Each definition's `aiGuidance()` will tell Petal:
-- The exact helper to import (`@/integrations/<provider>/checkout`)
-- That checkout MUST go through a server route, never client-side fetch with raw keys
-- That webhook handlers MUST verify signatures (link to the scaffolded `webhook-verify.ts`)
-- That amount/currency MUST be cross-checked on verify (our hard-won lesson)
-- NOT to hardcode keys, NOT to call provider APIs directly, NOT to recreate the helpers
-- Which currency is configured so it picks the right one in checkout flows
+### Registry metadata
+- Extend each `IntegrationDefinition` with:
+  - `triggers: string[]` — example user phrases ("send email", "accept payment", "add auth", "send SMS").
+  - `replaces: string[]` — npm packages or patterns the integration supersedes (e.g. `nodemailer`, `stripe`).
 
-This is the lever that makes "add a $20 checkout" actually produce working code.
+### Pre-prompt classifier
+- New step in the agent pipeline: a lightweight classifier (gpt-5-nano) runs over the user message, scores against `triggers`, and surfaces matches into the system prompt as:
+  ```
+  Suggested integrations for this request:
+  - Stripe (payments) — install via marketplace before writing checkout code
+  - Resend (email) — install instead of hand-rolling SMTP
+  ```
 
-### 6. Marketplace UI
+### Behavior change in system prompt
+- "If a suggested integration matches the request, recommend installing it first. Only hand-roll if the user declines."
+- AI emits `<lov-suggest-integration id="stripe">` which renders an "Install Stripe" button in chat.
 
-`IntegrationsSection.tsx` already iterates the catalog automatically — the three new payment integrations will appear with their `category: "Payments"` badge and install dialog with no UI changes needed.
+### Marketplace UI
+- Add a "Suggested for this prompt" row at the top of the integrations panel that mirrors the AI's suggestions.
 
-## Out of scope (explicit)
+---
 
-- **No DB migrations bundled** — users get a `payments` table only if they ask Petal "store my orders". Keeps the install lightweight; Petal can add the table on demand because the `aiGuidance` will tell it the expected shape.
-- **No subscription/recurring billing scaffolding in v1** — checkout-only. Subscriptions can be a v2 once we see usage patterns.
-- **No Apple Pay / Google Pay / wallet-specific UI** — Stripe Checkout / Paystack inline / Flutterwave Standard already render those automatically when the keys support them.
-- **Petal's own internal Paystack billing is untouched** — that's a separate code path (`src/server/paystack.server.ts`, `src/routes/api/billing/*`) and stays exactly as it is. The new integration is for *user apps*, not Petal itself.
+## Rollout Order
 
-## Technical notes
+1. **Self-testing loop** first — unblocks debugging for everything else.
+2. **`add_secret`** second — needed before integration auto-suggest can complete user flows that require keys.
+3. **Integration auto-suggest** last — depends on the registry metadata being stable.
 
-**File layout under `src/integrations/<provider>/`** — matches the existing Resend pattern so users can find things consistently. Server-only files import `process.env`; the env injector already maps integration field IDs to env vars (`STRIPE_SECRET_KEY`, `PAYSTACK_SECRET_KEY`, `FLUTTERWAVE_SECRET_KEY`, etc.) and automatically aliases public fields with `VITE_` prefixes.
+## Files to Create / Edit
 
-**Webhook routes under `/api/public/*`** — required so they bypass auth on published sites (per existing convention in `src/routes/api/public/`).
+**New**
+- `supabase/migrations/<ts>_pending_secret_requests.sql`
+- `src/server/secrets/requests.functions.ts`
+- `src/server/secrets/requests.server.ts`
+- `src/server/ai/stream-actions.ts` (or extend existing)
+- `src/components/chat/SecretRequestCard.tsx`
+- `src/server/ai/tools/invoke-server-function.ts`
+- `src/server/ai/tools/read-server-logs.ts`
+- `src/server/ai/tools/read-database.ts`
+- `src/server/ai/classifier/integration-suggester.ts`
+- `src/components/integrations/SuggestedIntegrationCard.tsx`
 
-**Idempotency baked in** — each scaffolded webhook handler will include a comment block telling the AI to use a `processed_webhook_events` table keyed on event ID before granting anything, mirroring what we did in our own `paystack/webhook.ts` audit.
+**Edit**
+- `src/server/integrations/registry.server.ts` — add `triggers` / `replaces` to all entries
+- `src/server/integrations/{stripe,paystack,flutterwave,resend,...}.integration.ts` — add metadata
+- `src/server/ai/system-prompt.ts` — document new actions and self-test expectations
+- `src/server/ai/agent-runner.ts` — wire the three new tools + classifier step
+- `src/components/chat/MessageRenderer.tsx` — render `SecretRequestCard` and `SuggestedIntegrationCard`
 
-**No new dependencies** — all three providers expose REST APIs we hit with `fetch`. No SDK installs needed.
+## Notes / Open Decisions
 
-## Files to create
-
-- `src/server/integrations/stripe.integration.ts` (new)
-- `src/server/integrations/paystack.integration.ts` (new)
-- `src/server/integrations/flutterwave.integration.ts` (new)
-- `src/server/integrations/registry.server.ts` (edit — register the three)
-
-## Verification after build
-
-1. Open Integrations marketplace → confirm Stripe, Paystack, Flutterwave appear with "Payments" category
-2. Install one (e.g. Paystack) with test keys → confirm files appear under `src/integrations/paystack/` in the user's project tree
-3. Confirm `.env.production` and `.dev.vars` get the managed block with `PAYSTACK_SECRET_KEY` + `VITE_PAYSTACK_PUBLIC_KEY`
-4. In the project, prompt Petal: "add a button to charge $10" → confirm it imports from `@/integrations/paystack/checkout` instead of inventing fetch calls
-5. Uninstall → confirm scaffolded files are removed and env block is stripped
-
-Approve to proceed.
+- Classifier model: `google/gemini-2.5-flash-lite` is cheaper than `gpt-5-nano` and fast enough — pick one before implementation.
+- For `read_database`, decide whether to expose to the AI by default or require user opt-in per project (matches Cloud "Read database" toggle). Recommend: opt-in, default off, with a one-click enable in chat when the AI requests it.
