@@ -86,6 +86,9 @@ export async function classifyPhase(prompt: string): Promise<PhaseTag> {
   }
 
   try {
+    // HARD TIMEOUT (4s). Same reasoning as design-director: the classifier
+    // is a routing hint, not a build dependency. If the gateway is slow we
+    // must NOT block the worker — fall back to the heuristic.
     const resp = await aiChatCompletions({
       feature: "preflight",
       body: {
@@ -102,6 +105,7 @@ export async function classifyPhase(prompt: string): Promise<PhaseTag> {
         tool_choice: { type: "function", function: { name: "tag_phase" } },
         max_tokens: 80,
       },
+      signal: AbortSignal.timeout(4000),
     });
     if (!resp.ok) {
       return heuristic ?? { phase: "implement", confidence: "low", source: "fallback" };
