@@ -45,6 +45,12 @@ import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-cla
 // Phase D one-round autofix cap, so it only added latency + tokens.
 import { verifyFilesLocal } from "@/server/local-verifier";
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
+import {
+  checkFileBudgets,
+  enforceFileBudgets,
+  buildHandoffPrompt,
+  type FileBudgetIssue,
+} from "@/server/file-budget.server";
 import { runContinuation } from "@/server/stream-continuation.server";
 import { pickBestModel } from "@/server/smart-router.server";
 import { recordAiOutcome } from "@/server/ai-outcomes.server";
@@ -721,6 +727,74 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 return { ...f, content: STYLES_CSS };
               });
 
+              // Tier 2.4 — server-side file budget gate. Reject any file
+              // that blew past the hard ceiling (> 280 lines or > 10 KB)
+              // and revert it to its prior content. Files in the soft band
+              // (181-280 lines) get warned and flow into the autofix issue
+              // list as `oversize` so the polish pass tries a split.
+              //
+              // This is the CAUSAL fix for stream truncation: the model
+              // can't ship a 400-line file by accident any more.
+              const priorByPathBudget = new Map(currentFiles.map((f) => [f.path, f.content]));
+              const budgetChangedPaths = nextFiles
+                .filter((f) => priorByPathBudget.get(f.path) !== f.content)
+                .map((f) => f.path);
+              const budgetVerdict = checkFileBudgets(nextFiles, budgetChangedPaths);
+              const budgetRejections: FileBudgetIssue[] = budgetVerdict.rejections;
+              if (budgetRejections.length > 0) {
+                console.warn(
+                  `[file-budget] reverting ${budgetRejections.length} oversize file(s):`,
+                  budgetRejections
+                    .map((r) => `${r.path} (${r.lines}L/${(r.bytes / 1024).toFixed(1)}KB)`)
+                    .join(", "),
+                );
+                nextFiles = enforceFileBudgets(nextFiles, currentFiles, budgetRejections);
+              }
+              const budgetWarnings = budgetVerdict.warnings;
+              if (budgetWarnings.length > 0) {
+                console.log(
+                  `[file-budget] ${budgetWarnings.length} oversize warning(s):`,
+                  budgetWarnings.map((w) => `${w.path} (${w.lines}L)`).join(", "),
+                );
+              }
+              const budgetIssueCount = budgetRejections.length + budgetWarnings.length;
+              controller.enqueue(
+                encoder.encode(
+                  sse({
+                    type: "timeline",
+                    step: "file_budget",
+                    outcome:
+                      budgetRejections.length > 0
+                        ? "failed"
+                        : budgetWarnings.length > 0
+                          ? "fixed"
+                          : "ok",
+                    message:
+                      budgetRejections.length > 0
+                        ? `Reverted ${budgetRejections.length} oversized file${budgetRejections.length === 1 ? "" : "s"} — continuing in next message`
+                        : budgetWarnings.length > 0
+                          ? `Flagged ${budgetWarnings.length} large file${budgetWarnings.length === 1 ? "" : "s"} — repairing`
+                          : `All ${budgetChangedPaths.length} file${budgetChangedPaths.length === 1 ? "" : "s"} within size budget`,
+                    count: budgetIssueCount,
+                    ts: Date.now(),
+                  }),
+                ),
+              );
+
+              // Track Layer-B handoff triggers as the pipeline runs. Emitted
+              // as a single `continuation_handoff` event right before `result`.
+              let handoffReason:
+                | "oversize_files"
+                | "incomplete_turn"
+                | "large_changeset"
+                | null = budgetRejections.length > 0 ? "oversize_files" : null;
+              // Heuristic: an unusually large changeset is itself a truncation
+              // risk. Encourage stopping at a clean boundary even when nothing
+              // technically failed.
+              if (!handoffReason && budgetChangedPaths.length >= 8) {
+                handoffReason = "large_changeset";
+              }
+
               // Tier 2 — stream-time autofixer (regex pass, <10ms total).
               // Repairs known footguns BEFORE the build/image steps run.
               const autofixOut = autofixFiles(nextFiles);
@@ -843,6 +917,9 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                       "[continuation] no files completed:",
                       contOut.result.notes.join("; "),
                     );
+                    // Continuation pass ran but couldn't finish — strongest
+                    // signal we hit the model's output ceiling. Hand off.
+                    if (!handoffReason) handoffReason = "incomplete_turn";
                   }
                   controller.enqueue(
                     encoder.encode(
@@ -919,13 +996,21 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // skipped by the Phase D one-round cap. One autofix call max
               // per turn is now structural, not just runtime-enforced.
               const autofixGateOpen =
-                !localVerdict.ok || !esbuildVerdict.ok || autofixOut.report.fixedCount >= 2;
+                !localVerdict.ok ||
+                !esbuildVerdict.ok ||
+                budgetWarnings.length > 0 ||
+                autofixOut.report.fixedCount >= 2;
               const combinedAutofixIssues = [
                 ...localVerdict.issues,
                 ...esbuildVerdict.issues.map((i) => ({
                   path: i.path,
                   kind: "parse" as const,
                   detail: `${i.message} (line ${i.line}:${i.column})`,
+                })),
+                ...budgetWarnings.map((w) => ({
+                  path: w.path,
+                  kind: "oversize" as const,
+                  detail: w.detail,
                 })),
               ];
               if (autofixGateOpen) {
@@ -1080,6 +1165,26 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 } else {
                   console.warn("[credits] post-build charge failed", charge);
                 }
+              }
+
+              // Layer-B "Continue building" handoff. Emitted at most once
+              // per turn, AFTER all repair tiers, BEFORE the result event so
+              // the client can attach it to this assistant message.
+              if (handoffReason) {
+                const { message: handoffMessage, suggestedPrompt } = buildHandoffPrompt(
+                  handoffReason,
+                  budgetRejections,
+                );
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "continuation_handoff",
+                      reason: handoffReason,
+                      message: handoffMessage,
+                      suggestedPrompt,
+                    }),
+                  ),
+                );
               }
 
               controller.enqueue(

@@ -340,6 +340,15 @@ export type ChatMessage = {
    *  chip sends its label as the user's next turn. Used most often on
    *  "clarify" turns so users don't have to type a full answer. */
   suggestions?: string[];
+  /** Layer-B "Continue building" handoff. Server attaches this when the
+   *  pipeline deliberately stopped early at a safe boundary. Renders an
+   *  inline chip under the assistant message that pre-fills the composer
+   *  with `suggestedPrompt` so the user can continue with one click. */
+  handoff?: {
+    reason: "oversize_files" | "incomplete_turn" | "large_changeset";
+    message: string;
+    suggestedPrompt: string;
+  };
   /** Marks an internal system note (e.g. "Petal is auto-fixing a build
    *  error — free"). Rendered as a small inline notice, never sent to the
    *  AI as part of the conversation. */
@@ -396,6 +405,7 @@ export type StreamEvent =
         | "local_verifier"
         | "continuation"
         | "esbuild_parse"
+        | "file_budget"
         | "post_stream_autofix"
         | "image_resolve";
       /** "ok" = ran clean, "fixed" = ran and changed something, "skipped" = gated off. */
@@ -406,6 +416,21 @@ export type StreamEvent =
       count?: number;
       /** Server timestamp when this step finished. */
       ts: number;
+    }
+  | {
+      /**
+       * Layer-B "Continue building" handoff. Emitted at most once per turn,
+       * AFTER all repair tiers run, when we deliberately stopped early at
+       * a safe boundary (oversize files reverted, continuation pass
+       * couldn't finish, or the changeset was unusually large). The client
+       * renders an inline chip under the assistant message that pre-fills
+       * the composer with `suggestedPrompt` so the user can continue with
+       * one click.
+       */
+      type: "continuation_handoff";
+      reason: "oversize_files" | "incomplete_turn" | "large_changeset";
+      message: string;
+      suggestedPrompt: string;
     }
   | { type: "error"; message: string; suggestions?: string[] };
 

@@ -1,128 +1,189 @@
 ## Goal
 
-Add a real **bundle-grade syntax/parse check** to the build pipeline using `esbuild-wasm` (already installed). Today the local verifier counts braces and JSX tags heuristically — strong, but not semantic. esbuild is the same parser Vite uses to ship the bundle, so if it parses cleanly here, it will parse cleanly in the deployed app. This is the single biggest jump in "the build is green when we say it's green."
+Make the 180-line / 6KB cap a **real server-side gate**, not a prompt suggestion. And — exactly as you described — when a turn is too big to land cleanly in one go, stop at a safe boundary and surface a **"Continue building"** handoff instead of letting the model truncate.
 
-This is **quality-only** — no new UI, no new feature surface. It plugs into the existing pipeline as a new tier between the local verifier and the post-stream autofix.
+You're 100% right that this is the *causal* fix. Truncation isn't a model bug, it's the model trying to write 600-line files in one shot. Cap the file, cap the turn, and offer a clean continuation — same pattern Lovable uses.
 
-## Where it fits in the pipeline
-
-Current order in `src/routes/api/generate.ts`:
+## Two layers, both needed
 
 ```text
-stream → styles.css validator → regex autofixer (Tier 2) →
-  local verifier (Tier 2.5) → continuation (Tier 2.6) →
-  post-stream autofix (Tier 2) → image resolution → self-check
+Layer A (file-level):  hard cap per file        → reject + force a split
+Layer B (turn-level):  too many oversize files  → stop early, offer "Continue"
 ```
 
-New order:
+Layer A keeps any single file healthy. Layer B keeps any single *turn* healthy.
+
+---
+
+## Layer A — Server-side per-file cap
+
+### Where it runs
+
+New tier in `src/routes/api/generate.ts`, inserted **immediately after the stream completes and `applyOps` has merged the file map**, BEFORE the styles validator and regex autofixer (so we never spend autofix budget on an oversize file we're about to reject).
 
 ```text
-… → local verifier (Tier 2.5) → continuation (Tier 2.6) →
-  esbuild parse (Tier 2.7 — NEW) → post-stream autofix → …
+stream → applyOps → [NEW] file-budget gate → styles validator → regex autofix → …
 ```
 
-The esbuild pass runs **after** continuation (so we don't flag files we know are mid-repair) and **before** the autofix gate (so its findings can open the gate just like the local verifier does today).
-
-## Technical design
-
-### 1. New file: `src/server/esbuild-verifier.server.ts`
-
-Worker-safe wrapper around `esbuild-wasm`. Exposes:
+### Constants
 
 ```ts
-export type EsbuildIssue = {
+// src/server/file-budget.server.ts
+export const MAX_FILE_LINES = 180;
+export const MAX_FILE_BYTES = 6 * 1024;
+// Hard ceiling — anything beyond this is rejected outright (truncation risk
+// is too high to even attempt a recovery).
+export const HARD_REJECT_LINES = 280;
+```
+
+### Behavior — three buckets
+
+For each *changed* `.ts/.tsx/.jsx/.js` file under `src/` (skip the same scaffold paths as the verifiers):
+
+| Bucket | Condition | Action |
+|---|---|---|
+| **Healthy** | ≤ 180 lines AND ≤ 6 KB | pass through |
+| **Oversize** | 181-280 lines OR 6-10 KB | **emit a warning issue** into the autofix issue list with `kind: "oversize"` and let the existing post-stream-autofix pass try a split. Don't reject yet. |
+| **Hard reject** | > 280 lines OR > 10 KB | **revert the file** to its prior content from the snapshot (or drop it if brand new) and emit a turn-level event telling the user "the page got too big — continuing in the next message." This routes into Layer B below. |
+
+The middle bucket is important: a file at 195 lines is almost certainly fine — we just nudge the model to split next turn. Reverting a 195-line file would be more disruptive than helpful.
+
+### New file: `src/server/file-budget.server.ts`
+
+```ts
+export type FileBudgetIssue = {
   path: string;
-  line: number;
-  column: number;
-  message: string;
-  // "parse" = syntax error, "resolve" = bare import esbuild can't see (we ignore these — own resolver above)
-  kind: "parse";
+  lines: number;
+  bytes: number;
+  severity: "warn" | "reject";
 };
 
-export type EsbuildVerdict = { ok: boolean; issues: EsbuildIssue[] };
+export type FileBudgetVerdict = {
+  warnings: FileBudgetIssue[];
+  rejections: FileBudgetIssue[];
+};
 
-export async function verifyFilesEsbuild(
+export function checkFileBudgets(
   files: { path: string; content: string }[],
   changedPaths: string[],
-): Promise<EsbuildVerdict>;
+): FileBudgetVerdict;
+
+/** Apply rejections to the file map: revert reverted files to their prior
+ *  content, drop newly-added rejected files entirely. Returns the cleaned
+ *  file list. */
+export function enforceFileBudgets(
+  nextFiles: { path: string; content: string }[],
+  priorFiles: { path: string; content: string }[],
+  rejections: FileBudgetIssue[],
+): { path: string; content: string }[];
 ```
 
-Implementation notes:
-- Initialize esbuild-wasm **lazily and once** per Worker instance (`initialize({ wasmURL })` cached in a module-level promise). Worker cold start cost is ~80ms; subsequent calls are sub-millisecond per file.
-- For each changed `.ts/.tsx/.jsx/.js` file, call `transform(content, { loader, sourcefile: path })`.
-- We only care about **parse errors**, not bundling. No plugins, no resolve, no minify. This sidesteps the "esbuild can't find `@/components/ui/button`" noise (we already cover that in `findUnresolvedImports`).
-- Skip the same paths the local verifier skips: `src/components/ui/*`, `src/integrations/*`, `src/components/examples/*`.
-- Catch and downgrade: if esbuild itself throws (e.g. wasm init failure on a cold worker), log and return `{ ok: true, issues: [] }` so a transient infra hiccup never breaks a build that would otherwise pass.
+### Wire into the autofix issue list
 
-### 2. Wire into `src/routes/api/generate.ts`
+When the file-budget pass emits **warnings**, pipe them into `combinedAutofixIssues` (already built post-esbuild) so the autofix model is asked to split them. Extend `LocalIssue["kind"]` with `"oversize"` and the autofix prompt already prints `${kind}: ${detail}` so the model gets:
 
-Insert immediately after the existing continuation block (around line 875), before the autofix gate (line 891):
-
-```ts
-// Tier 2.7 — esbuild parse pass. Authoritative syntax check using the
-// same parser Vite ships with. If this passes, the bundle will parse.
-const esbuildVerdict = await verifyFilesEsbuild(nextFiles, earlyChangedPaths);
-controller.enqueue(encoder.encode(sse({
-  type: "timeline",
-  step: "esbuild_parse",
-  outcome: esbuildVerdict.ok ? "ok" : "failed",
-  message: esbuildVerdict.ok
-    ? `Parsed ${earlyChangedPaths.length} file${earlyChangedPaths.length === 1 ? "" : "s"} cleanly`
-    : `Found ${esbuildVerdict.issues.length} syntax issue${esbuildVerdict.issues.length === 1 ? "" : "s"}`,
-  count: esbuildVerdict.ok ? earlyChangedPaths.length : esbuildVerdict.issues.length,
-  ts: Date.now(),
-})));
+```text
+oversize: src/pages/Landing.tsx is 214 lines / 7.1 KB — split into <Hero />, <Features />, <CTA /> sub-components
 ```
 
-Then update the autofix gate one line below to also open on esbuild failure, and pass esbuild's structured issues into the autofix call so the model has line/column context:
+### Timeline event
+
+Add a new timeline step `file_budget` so users see it in the BuildActivityCard:
+
+- **ok** — "All N files within size budget"
+- **fixed** — "Flagged X file(s) as too large — repairing"
+- **failed** — "Reverted Y oversized file(s) — continuing in next message" (only when Layer B fires)
+
+---
+
+## Layer B — Turn-level "Continue building" handoff
+
+This is the part you specifically asked about. Two triggers, both lead to the same affordance:
+
+### Trigger conditions
+
+1. **Layer A produced ≥1 hard rejection** (the model genuinely tried to over-emit), OR
+2. **The continuation pass ran but couldn't finish** all truncated files in one repair round (means we hit the model's output ceiling), OR
+3. **The model emitted ≥ N=8 changed app files in this turn** (heuristic — beyond this, the next turn is statistically more likely to truncate).
+
+If any trigger fires, we **don't** keep retrying. We accept the partial-but-clean state and ship a handoff.
+
+### Server-side: new SSE event
+
+Extend `StreamEvent` with:
 
 ```ts
-const autofixGateOpen =
-  !localVerdict.ok ||
-  !esbuildVerdict.ok ||
-  autofixOut.report.fixedCount >= 2;
+| {
+    type: "continuation_handoff";
+    /** Why we're suggesting a continuation. */
+    reason: "oversize_files" | "incomplete_turn" | "large_changeset";
+    /** ≤ 80-char human message shown in chat. */
+    message: string;
+    /** Pre-filled prompt the user can send with one click. */
+    suggestedPrompt: string;
+  }
+```
 
-const combinedIssues = [
-  ...localVerdict.issues,
-  ...esbuildVerdict.issues.map((i) => ({
-    path: i.path,
-    kind: "parse" as const,
-    detail: `${i.message} (line ${i.line}:${i.column})`,
-  })),
-];
+Emit this exactly once per turn, after all repair tiers have run, just before the final `done` event.
 
-if (autofixGateOpen) {
-  const fixOut = await runPostStreamAutofix(nextFiles, combinedIssues);
-  …
+Example payload:
+
+```json
+{
+  "type": "continuation_handoff",
+  "reason": "oversize_files",
+  "message": "Your landing page got large — let's finish it in the next message so nothing breaks.",
+  "suggestedPrompt": "Continue building the landing page — break Hero, Features, and CTA into their own components."
 }
 ```
 
-### 3. Extend `LocalIssue` kind union
+### Client-side: chip in the chat
 
-In `src/server/local-verifier.ts`, add `"parse"` to the `kind` union so the autofix prompt template (which already prints `kind: detail`) renders esbuild errors without a type cast workaround.
+Reuse the existing chip styling from `EnableBackendSuggestionChip` / `NextStepsCard` to render a **"Continue building"** chip at the bottom of the assistant message that triggered it:
 
-### 4. Surface in the build timeline
+```text
+┌──────────────────────────────────────────────────────────┐
+│ ✨ Your landing page got large — let's finish it in the  │
+│    next message so nothing breaks.                       │
+│                                       [ Continue → ]     │
+└──────────────────────────────────────────────────────────┘
+```
 
-The `BuildActivityCard` already renders any `step` it receives — no changes needed. The new `esbuild_parse` step appears between `local_verifier` and `post_stream_autofix` automatically.
+Click → fills the composer with `suggestedPrompt` and auto-submits (or just fills, if you want the user to confirm — I'd default to "fill, don't submit" so the user stays in control). Clicking the chip dismisses it.
+
+### Why this works
+
+- Today the model tries to land everything in one turn → truncates → autofix scrambles.
+- With this gate, the model gets implicit **"it's okay to stop here"** permission. Combined with the per-file cap, the system pressure is to split early instead of cramming.
+- The user gets a one-click way to keep going — same UX as Lovable's "Continue building" affordance you mentioned.
+
+---
+
+## Files to change
+
+**New:**
+- `src/server/file-budget.server.ts` — pure helpers (`checkFileBudgets`, `enforceFileBudgets`).
+
+**Edit:**
+- `src/server/local-verifier.ts` — add `"oversize"` to `LocalIssue["kind"]`.
+- `src/server/generate.server.ts` — extend `StreamEvent` with `continuation_handoff`; add `"file_budget"` to the timeline `step` union.
+- `src/lib/stream.ts` — mirror the new `StreamEvent` shapes.
+- `src/components/BuildActivityCard.tsx` — add `file_budget` label + icon.
+- `src/routes/api/generate.ts` — insert Tier 2.4 (file-budget) between `applyOps` and the styles validator; emit the `continuation_handoff` event when triggers fire.
+- `src/routes/builder.tsx` — handle the new `continuation_handoff` event; attach a `handoff` field to the relevant assistant message.
+- **New** `src/components/ContinueBuildingChip.tsx` — the inline chip with the "Continue →" button (modeled on `EnableBackendSuggestionChip`).
+- `src/routes/builder.tsx` — render `<ContinueBuildingChip>` under any assistant message that has a `handoff` payload.
+
+No DB changes. No new dependencies.
 
 ## Out of scope (explicitly NOT this turn)
 
-- Full **typecheck** (`tsc --noEmit`). Worth doing later, but tsc-on-Worker is a much bigger investment (no native binary, programmatic API is heavy, multi-second cost). esbuild parse covers ~80% of what users hit.
-- Hard server-side enforcement of the 180-line cap.
-- Runtime smoke check / preview boot loop.
-
-These three are the remaining items from the readiness audit. We can plan #2 next once #1 is shipped and we have telemetry on how many turns it catches.
-
-## Files to edit
-
-- **new** `src/server/esbuild-verifier.server.ts` — esbuild-wasm wrapper, lazy init, per-file `transform`.
-- **edit** `src/server/local-verifier.ts` — add `"parse"` to `LocalIssue["kind"]`.
-- **edit** `src/routes/api/generate.ts` — insert Tier 2.7 block, update autofix gate + issue payload.
-
-No DB changes. No new env vars. No new dependencies (esbuild-wasm is already in `package.json`).
+- Auto-splitting files on the **server** (i.e. without a model call). Splitting JSX safely needs a parser-aware refactor; we'd risk producing worse code than the model. We let the autofix model handle warnings, and Layer B catches the rest.
+- Token-budget tracking (counting model output bytes mid-stream). Worth doing later, but Layer A + B together solve ~95% of what truncation costs us today.
 
 ## Success criteria
 
-- A turn where the model emits a file with a real syntax error (e.g. missing `)`) is now flagged by `esbuild_parse` in the timeline, the autofix gate opens, and the repaired file parses cleanly on the next pass.
-- A clean turn shows `esbuild_parse: Parsed N files cleanly` and adds <100ms warm / <250ms cold to total turn time.
-- Zero false positives on scaffold-managed files (UI kit, examples, integrations) — they're skipped by path filter.
+- A turn that produces a 320-line `App.tsx` is rejected, the prior `App.tsx` is preserved, and the user sees a "Continue building" chip with a sensible prefilled prompt.
+- A turn with two 200-line files passes through but the next turn (when the user accepts the chip or asks naturally) splits them — visible in the timeline.
+- Healthy turns show `file_budget: All N files within size budget` and add < 5ms total cost.
+- No build is ever shipped containing a file > 280 lines.

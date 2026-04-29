@@ -103,6 +103,7 @@ import { BillingSheet } from "@/components/BillingSheet";
 import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
+import { ContinueBuildingChip } from "@/components/ContinueBuildingChip";
 import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
 import { EnableEmailSuggestionChip } from "@/components/EnableEmailSuggestionChip";
 import { EnablePaymentsSuggestionChip } from "@/components/EnablePaymentsSuggestionChip";
@@ -1148,6 +1149,7 @@ function Builder() {
       // follow-up chips to the assistant message and on error suggestions.
       let resultSuggestions: string[] = [];
       let resultVerdict: string | undefined;
+      let resultHandoff: ChatMessage["handoff"] | undefined;
       let streamError: string | null = null;
       let errorSuggestions: string[] = [];
       // Mirror of the streamingAssistant state we accumulate as deltas come in.
@@ -1311,6 +1313,11 @@ function Builder() {
                 prev.length >= 30 ? prev : [...prev, entry],
               );
             },
+            onContinuationHandoff: (handoff) => {
+              // Layer-B handoff — server stopped early at a safe boundary.
+              // Stash so we can attach to the assistant message below.
+              resultHandoff = handoff;
+            },
 
             onError: (m, sugg) => {
               streamError = m;
@@ -1341,6 +1348,8 @@ function Builder() {
           // Layer 5 — gap-driven follow-up chips. Empty array stays out of
           // the message so a clean build doesn't render an empty chip row.
           ...(resultSuggestions.length > 0 ? { suggestions: resultSuggestions } : {}),
+          // Layer-B "Continue building" handoff payload (optional).
+          ...(resultHandoff ? { handoff: resultHandoff } : {}),
         };
         setFiles(files2);
         setActiveFile((prev) => prev ?? "index.html");
@@ -2444,6 +2453,20 @@ function Builder() {
                             </CollapsibleSegment>
                           );
                         })()}
+                        {/* Layer-B "Continue building" handoff chip. Server
+                            attaches when it deliberately stops early at a
+                            safe boundary. Pre-fills the composer (no
+                            auto-submit) so the user stays in control. */}
+                        {m.handoff && (
+                          <ContinueBuildingChip
+                            message={m.handoff.message}
+                            suggestedPrompt={m.handoff.suggestedPrompt}
+                            onContinue={(prompt) => {
+                              setInput(prompt);
+                              composerTextareaRef.current?.focus();
+                            }}
+                          />
+                        )}
                         {/* "You'll need a backend" inline suggestion. Only on
                             the most recent assistant message, only when no
                             backend exists yet, and only when the heuristic
