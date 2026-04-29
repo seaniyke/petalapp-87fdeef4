@@ -31,11 +31,16 @@ function tokenize(s: string): string[] {
  * Score each integration against the user's most recent turn(s).
  * Returns top matches above a confidence threshold.
  */
-export function suggestIntegrations(args: {
+export function suggestIntegrations(_args: {
   messages: Array<{ role: string; content: unknown }>;
   installedCodes: Set<string>;
 }): IntegrationSuggestion[] {
-  const recentText = args.messages
+  // Marketplace auto-suggest disabled — Petal scaffolds third-party SDKs
+  // directly from prompts and uses SecretRequestCard for any keys it needs.
+  // Kept as a no-op so existing call sites remain stable.
+  return [];
+  // eslint-disable-next-line no-unreachable
+  const recentText = _args.messages
     .filter((m) => m.role === "user")
     .slice(-2)
     .map((m) => (typeof m.content === "string" ? m.content : ""))
