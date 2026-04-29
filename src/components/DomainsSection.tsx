@@ -478,10 +478,10 @@ function StatusPill({ status }: { status: ProjectDomain["status"] }) {
   const styles = useMemo(() => {
     switch (status) {
       case "active":
-        return "border-green-600/40 bg-green-600/10 text-green-700 dark:text-green-400";
+        return "border-green-500/50 bg-green-500/15 text-green-700 dark:text-green-300 shadow-[0_0_0_3px_rgba(34,197,94,0.08)]";
       case "verifying":
       case "pending":
-        return "border-amber-600/40 bg-amber-600/10 text-amber-700 dark:text-amber-400";
+        return "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300";
       case "failed":
       case "offline":
         return "border-destructive/40 bg-destructive/10 text-destructive";
@@ -507,12 +507,19 @@ function StatusPill({ status }: { status: ProjectDomain["status"] }) {
         return status;
     }
   }, [status]);
+  const isWorking = status === "verifying" || status === "pending";
+  const isActive = status === "active";
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${styles}`}
+      key={status /* re-trigger animation when status flips */}
+      className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider transition-colors duration-300 ${styles} ${isActive ? "animate-scale-in" : ""}`}
     >
-      {(status === "verifying" || status === "pending") && (
-        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+      {isWorking && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+      {isActive && (
+        <CheckCircle2
+          className="h-2.5 w-2.5 text-green-600 dark:text-green-400"
+          aria-hidden
+        />
       )}
       {label}
     </span>
