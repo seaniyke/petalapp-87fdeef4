@@ -179,7 +179,7 @@ export const FIXTURES: PipelineFixture[] = [
     expectIssueIncludes: ["react-cooler-toast-9001"],
   },
   {
-    name: "dangling named import — Phase 2 will catch this; today it slips through",
+    name: "dangling named import — Phase 2 missing-export detection",
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
@@ -187,10 +187,7 @@ export const FIXTURES: PipelineFixture[] = [
       { path: "src/App.tsx", content: PAGE_USING_DANGLING_NAMED },
     ],
     changedPaths: ["src/store.ts", "src/App.tsx"],
-    // Today: empty (slips through). After Phase 2: ["useFooStore"].
-    // We set this to [] so the test passes today and we'll flip it when
-    // Phase 2 lands. The fixture is here to make that flip a one-line PR.
-    expectIssueIncludes: [],
+    expectIssueIncludes: ["useFooStore"],
   },
   {
     name: "render-time crash — Phase 5 will catch this",
