@@ -43,16 +43,15 @@ import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-cla
 // Tier 3 model verifier removed: it duplicated the deterministic local
 // verifier and its recovery pass was unconditionally skipped by the
 // Phase D one-round autofix cap, so it only added latency + tokens.
-import { verifyFilesLocal } from "@/server/local-verifier";
-import { applyNpmPreflight } from "@/server/npm-existence.server";
-import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
+import { runLocalVerifyTier } from "@/server/pipeline/tier-local-verify";
+import { runContinuationTier } from "@/server/pipeline/tier-continuation";
+import { runEsbuildTier } from "@/server/pipeline/tier-esbuild";
 import {
   checkFileBudgets,
   enforceFileBudgets,
   buildHandoffPrompt,
   type FileBudgetIssue,
 } from "@/server/file-budget.server";
-import { runContinuation } from "@/server/stream-continuation.server";
 import { pickBestModel } from "@/server/smart-router.server";
 import { recordAiOutcome } from "@/server/ai-outcomes.server";
 
@@ -830,204 +829,47 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 ),
               );
 
-              // Tier 2.5 — DETERMINISTIC local verifier (no model call).
-              // Catches truncated streams + unbalanced JSX/braces that the
-              // model verifier sometimes misses. If it fires, we HARD-TRIGGER
-              // the post-stream autofix model (no gating).
-              // For `write_project` the model returns a FULL snapshot, but
-              // most files in that snapshot are unchanged scaffold passthroughs
-              // (UI primitives, examples-pack, integrations). Verifying every
-              // path triggers phantom issues on intentionally-partial reference
-              // snippets and burns the continuation pass on files the model
-              // never touched. Only verify paths whose content actually changed
-              // vs. the prior snapshot (or are brand-new this turn).
-              const priorByPath = new Map(currentFiles.map((f) => [f.path, f.content]));
-              const earlyChangedPaths =
-                collected.name === "write_project"
-                  ? nextFiles
-                      .filter((f) => priorByPath.get(f.path) !== f.content)
-                      .map((f) => f.path)
-                  : (parsed.ops ?? []).map((o) => o.path);
-              const localVerdictRaw = verifyFilesLocal(nextFiles, earlyChangedPaths);
-              // Tier 2.45 — npm pre-flight. The local verifier flags every
-              // bare import that's not in package.json as `missing-dep`. Most
-              // of those are real packages the install step will fetch; a few
-              // are hallucinations. Hit the registry to tell them apart, then
-              // drop the real ones and escalate the hallucinations. Network
-              // failures degrade gracefully (issue stays as-is). Adds ~50ms
-              // when the local verifier already passes (probe pool is empty).
-              let preflightDropped = 0;
-              let preflightHallucinated: string[] = [];
-              try {
-                const pre = await applyNpmPreflight(localVerdictRaw.issues);
-                preflightDropped = pre.realButMissing.length;
-                preflightHallucinated = pre.hallucinated;
-                localVerdictRaw.issues = pre.issues;
-                localVerdictRaw.ok = pre.issues.length === 0;
-                if (preflightDropped > 0) {
-                  console.log(
-                    `[npm-preflight] dropped ${preflightDropped} real-but-missing dep issue(s):`,
-                    pre.realButMissing.join(", "),
-                  );
-                }
-                if (pre.hallucinated.length > 0) {
-                  console.warn(
-                    `[npm-preflight] confirmed ${pre.hallucinated.length} hallucinated package(s):`,
-                    pre.hallucinated.join(", "),
-                  );
-                }
-              } catch (e) {
-                // Probe failed entirely — keep the original verdict unchanged.
-                console.warn("[npm-preflight] errored, skipping:", e);
-              }
-              const localVerdict = localVerdictRaw;
-              if (!localVerdict.ok) {
-                console.warn(
-                  `[local-verifier] ${localVerdict.issues.length} issue(s):`,
-                  localVerdict.issues
-                    .map((i) => `${i.path} (${i.kind}): ${i.detail}`)
-                    .join("; "),
-                );
-                controller.enqueue(
-                  encoder.encode(
-                    sse({
-                      type: "status",
-                      message: `Detected ${localVerdict.issues.length} structural issue${localVerdict.issues.length === 1 ? "" : "s"} — repairing…`,
-                    }),
-                  ),
-                );
-              }
-              controller.enqueue(
-                encoder.encode(
-                  sse({
-                    type: "timeline",
-                    step: "local_verifier",
-                    outcome: localVerdict.ok ? "ok" : "failed",
-                    message: localVerdict.ok
-                      ? `Verified ${earlyChangedPaths.length} changed file${earlyChangedPaths.length === 1 ? "" : "s"} — looks healthy`
-                      : `Found ${localVerdict.issues.length} structural issue${localVerdict.issues.length === 1 ? "" : "s"}`,
-                    count: localVerdict.ok ? earlyChangedPaths.length : localVerdict.issues.length,
-                    ts: Date.now(),
-                  }),
-                ),
-              );
-              if (preflightDropped > 0 || preflightHallucinated.length > 0) {
-                controller.enqueue(
-                  encoder.encode(
-                    sse({
-                      type: "timeline",
-                      step: "npm_preflight",
-                      outcome: preflightHallucinated.length > 0 ? "failed" : "fixed",
-                      message:
-                        preflightHallucinated.length > 0
-                          ? `Confirmed ${preflightHallucinated.length} hallucinated package${preflightHallucinated.length === 1 ? "" : "s"}: ${preflightHallucinated.slice(0, 3).join(", ")}`
-                          : `Cleared ${preflightDropped} real package${preflightDropped === 1 ? "" : "s"} the installer will fetch`,
-                      count: preflightHallucinated.length || preflightDropped,
-                      ts: Date.now(),
-                    }),
-                  ),
-                );
-              }
-              // flagged any file as truncated mid-stream, ask the SAME model
-              // to emit only the missing tail bytes. This beats asking
-              // flash-lite to "fix" a half-written component (it would
-              // hallucinate the rest).
-              if (
-                localVerdict.issues.some(
-                  (i) =>
-                    i.kind === "truncation" ||
-                    i.kind === "unterminated-string" ||
-                    i.kind === "braces",
-                )
-              ) {
-                try {
-                  const contOut = await runContinuation({
-                    files: nextFiles,
-                    issues: localVerdict.issues,
-                    model,
-                  });
-                  nextFiles = contOut.files;
-                  if (contOut.result.completedFiles > 0) {
-                    console.log(
-                      `[continuation] completed ${contOut.result.completedFiles}:`,
-                      contOut.result.notes.join("; "),
-                    );
-                    controller.enqueue(
-                      encoder.encode(
-                        sse({
-                          type: "status",
-                          message: `Completed ${contOut.result.completedFiles} truncated file${contOut.result.completedFiles === 1 ? "" : "s"}.`,
-                        }),
-                      ),
-                    );
-                  } else if (contOut.result.notes.length) {
-                    console.warn(
-                      "[continuation] no files completed:",
-                      contOut.result.notes.join("; "),
-                    );
-                    // Continuation pass ran but couldn't finish — strongest
-                    // signal we hit the model's output ceiling. Hand off.
-                    if (!handoffReason) handoffReason = "incomplete_turn";
-                  }
-                  controller.enqueue(
-                    encoder.encode(
-                      sse({
-                        type: "timeline",
-                        step: "continuation",
-                        outcome: contOut.result.completedFiles > 0 ? "fixed" : "failed",
-                        message:
-                          contOut.result.completedFiles > 0
-                            ? `Finished ${contOut.result.completedFiles} truncated file${contOut.result.completedFiles === 1 ? "" : "s"}`
-                            : "Couldn't finish a truncated file — handing off to autofix",
-                        count: contOut.result.completedFiles,
-                        ts: Date.now(),
-                      }),
-                    ),
-                  );
-                } catch (e) {
-                  console.warn("[continuation] failed:", e);
-                  controller.enqueue(
-                    encoder.encode(
-                      sse({
-                        type: "timeline",
-                        step: "continuation",
-                        outcome: "failed",
-                        message: "Continuation pass errored — falling back to autofix",
-                        ts: Date.now(),
-                      }),
-                    ),
-                  );
-                }
+              // Tier 2.5 + 2.45 — local verifier and npm pre-flight
+              // (extracted to src/server/pipeline/tier-local-verify.ts).
+              const localOut = await runLocalVerifyTier({
+                nextFiles,
+                currentFiles,
+                toolName: collected.name,
+                parsedOps: parsed.ops,
+              });
+              const localVerdict = localOut.verdict;
+              const earlyChangedPaths = localOut.earlyChangedPaths;
+              for (const ev of localOut.emit) {
+                controller.enqueue(encoder.encode(sse(ev)));
               }
 
-              // Tier 2.7 — esbuild parse pass (NEW). The same parser Vite
-              // uses to ship the bundle. If a file passes here, it WILL
-              // parse in production. Catches semantic syntax errors the
-              // heuristic local verifier can miss (mismatched generics,
-              // misplaced `await`, invalid JSX expression children, etc.).
-              const esbuildVerdict = await verifyFilesEsbuild(nextFiles, earlyChangedPaths);
-              if (!esbuildVerdict.ok) {
-                console.warn(
-                  `[esbuild-verifier] ${esbuildVerdict.issues.length} parse error(s):`,
-                  esbuildVerdict.issues
-                    .map((i) => `${i.path}:${i.line}:${i.column} ${i.message}`)
-                    .join("; "),
-                );
+              // Tier 2.6 — TRUE truncation recovery. If the local verifier
+              // flagged any file as truncated mid-stream, ask the SAME model
+              // to emit only the missing tail bytes.
+              // (extracted to src/server/pipeline/tier-continuation.ts).
+              const contOut = await runContinuationTier({
+                files: nextFiles,
+                verdict: localVerdict,
+                model,
+              });
+              nextFiles = contOut.files;
+              if (contOut.requestHandoff && !handoffReason) {
+                handoffReason = "incomplete_turn";
               }
-              controller.enqueue(
-                encoder.encode(
-                  sse({
-                    type: "timeline",
-                    step: "esbuild_parse",
-                    outcome: esbuildVerdict.ok ? "ok" : "failed",
-                    message: esbuildVerdict.ok
-                      ? `Parsed ${earlyChangedPaths.length} file${earlyChangedPaths.length === 1 ? "" : "s"} cleanly`
-                      : `Found ${esbuildVerdict.issues.length} syntax issue${esbuildVerdict.issues.length === 1 ? "" : "s"}`,
-                    count: esbuildVerdict.ok ? earlyChangedPaths.length : esbuildVerdict.issues.length,
-                    ts: Date.now(),
-                  }),
-                ),
-              );
+              for (const ev of contOut.emit) {
+                controller.enqueue(encoder.encode(sse(ev)));
+              }
+
+              // Tier 2.7 — esbuild parse pass
+              // (extracted to src/server/pipeline/tier-esbuild.ts).
+              const esbuildOut = await runEsbuildTier({
+                files: nextFiles,
+                earlyChangedPaths,
+              });
+              const esbuildVerdict = esbuildOut.verdict;
+              for (const ev of esbuildOut.emit) {
+                controller.enqueue(encoder.encode(sse(ev)));
+              }
 
               // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
               // pass that ONLY fixes obvious build-breakers.
