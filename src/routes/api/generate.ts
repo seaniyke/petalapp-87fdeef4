@@ -1167,6 +1167,26 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 }
               }
 
+              // Layer-B "Continue building" handoff. Emitted at most once
+              // per turn, AFTER all repair tiers, BEFORE the result event so
+              // the client can attach it to this assistant message.
+              if (handoffReason) {
+                const { message: handoffMessage, suggestedPrompt } = buildHandoffPrompt(
+                  handoffReason,
+                  budgetRejections,
+                );
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "continuation_handoff",
+                      reason: handoffReason,
+                      message: handoffMessage,
+                      suggestedPrompt,
+                    }),
+                  ),
+                );
+              }
+
               controller.enqueue(
                 encoder.encode(
                   sse({
