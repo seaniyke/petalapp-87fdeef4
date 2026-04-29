@@ -1588,6 +1588,10 @@ export type Database = {
           remixed_from_id: string | null
           runtime_grace_until: string | null
           runtime_paused: boolean
+          site_description: string | null
+          site_icon_url: string | null
+          site_og_image_url: string | null
+          site_title: string | null
           slug: string
           spend_cap_cents: number | null
           subdomain: string | null
@@ -1613,6 +1617,10 @@ export type Database = {
           remixed_from_id?: string | null
           runtime_grace_until?: string | null
           runtime_paused?: boolean
+          site_description?: string | null
+          site_icon_url?: string | null
+          site_og_image_url?: string | null
+          site_title?: string | null
           slug: string
           spend_cap_cents?: number | null
           subdomain?: string | null
@@ -1638,6 +1646,10 @@ export type Database = {
           remixed_from_id?: string | null
           runtime_grace_until?: string | null
           runtime_paused?: boolean
+          site_description?: string | null
+          site_icon_url?: string | null
+          site_og_image_url?: string | null
+          site_title?: string | null
           slug?: string
           spend_cap_cents?: number | null
           subdomain?: string | null
