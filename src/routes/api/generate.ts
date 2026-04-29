@@ -843,8 +843,34 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                       contOut.result.notes.join("; "),
                     );
                   }
+                  controller.enqueue(
+                    encoder.encode(
+                      sse({
+                        type: "timeline",
+                        step: "continuation",
+                        outcome: contOut.result.completedFiles > 0 ? "fixed" : "failed",
+                        message:
+                          contOut.result.completedFiles > 0
+                            ? `Finished ${contOut.result.completedFiles} truncated file${contOut.result.completedFiles === 1 ? "" : "s"}`
+                            : "Couldn't finish a truncated file — handing off to autofix",
+                        count: contOut.result.completedFiles,
+                        ts: Date.now(),
+                      }),
+                    ),
+                  );
                 } catch (e) {
                   console.warn("[continuation] failed:", e);
+                  controller.enqueue(
+                    encoder.encode(
+                      sse({
+                        type: "timeline",
+                        step: "continuation",
+                        outcome: "failed",
+                        message: "Continuation pass errored — falling back to autofix",
+                        ts: Date.now(),
+                      }),
+                    ),
+                  );
                 }
               }
 
@@ -862,7 +888,8 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // the local verifier's checks and its recovery pass was always
               // skipped by the Phase D one-round cap. One autofix call max
               // per turn is now structural, not just runtime-enforced.
-              if (!localVerdict.ok || autofixOut.report.fixedCount >= 2) {
+              const autofixGateOpen = !localVerdict.ok || autofixOut.report.fixedCount >= 2;
+              if (autofixGateOpen) {
                 try {
                   const fixOut = await runPostStreamAutofix(nextFiles, localVerdict.issues);
                   nextFiles = fixOut.files;
@@ -880,9 +907,47 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                       ),
                     );
                   }
+                  controller.enqueue(
+                    encoder.encode(
+                      sse({
+                        type: "timeline",
+                        step: "post_stream_autofix",
+                        outcome: fixOut.result.fixedFiles > 0 ? "fixed" : "ok",
+                        message:
+                          fixOut.result.fixedFiles > 0
+                            ? `Repaired ${fixOut.result.fixedFiles} file${fixOut.result.fixedFiles === 1 ? "" : "s"}`
+                            : "Autofix pass — nothing to repair",
+                        count: fixOut.result.fixedFiles,
+                        ts: Date.now(),
+                      }),
+                    ),
+                  );
                 } catch (e) {
                   console.warn("[post-stream-autofix] rejected:", e);
+                  controller.enqueue(
+                    encoder.encode(
+                      sse({
+                        type: "timeline",
+                        step: "post_stream_autofix",
+                        outcome: "failed",
+                        message: "Autofix pass errored — continuing with current files",
+                        ts: Date.now(),
+                      }),
+                    ),
+                  );
                 }
+              } else {
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "timeline",
+                      step: "post_stream_autofix",
+                      outcome: "skipped",
+                      message: "Autofix skipped — files look healthy",
+                      ts: Date.now(),
+                    }),
+                  ),
+                );
               }
 
               // Phase 4: resolve `petal-image://...` placeholders into real
@@ -909,9 +974,35 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                       ),
                     );
                   }
+                  controller.enqueue(
+                    encoder.encode(
+                      sse({
+                        type: "timeline",
+                        step: "image_resolve",
+                        outcome: imgResult.resolved > 0 ? "fixed" : "ok",
+                        message:
+                          imgResult.resolved > 0
+                            ? `Generated ${imgResult.resolved} image${imgResult.resolved === 1 ? "" : "s"}`
+                            : "Image placeholders resolved",
+                        count: imgResult.resolved,
+                        ts: Date.now(),
+                      }),
+                    ),
+                  );
                 }
               } catch (e) {
                 console.warn("[petal-image] resolver failed", e);
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "timeline",
+                      step: "image_resolve",
+                      outcome: "failed",
+                      message: "Image generation failed — using fallback images",
+                      ts: Date.now(),
+                    }),
+                  ),
+                );
               }
 
               // Charge ONCE, after the build succeeds. Cost is computed from
