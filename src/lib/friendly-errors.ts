@@ -52,6 +52,7 @@ const PATTERNS: Array<{
       technicalDetail: raw,
     }),
   },
+  {
     test: /credits?.*(exhaust|out|empty|low)|402/i,
     build: (raw) => ({
       title: "Out of free generations",
