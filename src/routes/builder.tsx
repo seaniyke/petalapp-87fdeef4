@@ -644,6 +644,10 @@ function Builder() {
         return () => clearTimeout(t);
       }
       if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
+      // Don't surface the "couldn't auto-fix" card while Petal is actively
+      // working — a run is in flight (manual or auto) and may still resolve
+      // the issue. Only show the manual fallback once Petal is idle.
+      if (busy) return;
       // Manual fallback after we've burned both auto-attempts, or when the
       // failed build was already present when the user opened the project.
       setFriendlyError(friendlyBuildFailure(buildSnap.errorMessage));
