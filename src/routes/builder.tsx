@@ -952,6 +952,12 @@ function Builder() {
       setPendingAttachments([]);
       initialAttachmentsRef.current = [];
       setBusy(true);
+      // Clear any stale "couldn't auto-fix" / build-failure card the moment
+      // Petal starts working again. It's confusing to show a give-up card
+      // next to an active "Petal is working" indicator.
+      setFriendlyError((prev) =>
+        prev && (prev.title?.includes("auto-fix") || prev.title?.includes("Build")) ? null : prev,
+      );
 
       // Persist the user message to the DB *before* the stream starts. If the
       // user refreshes mid-build (which can take 30–60s) we still want to show
