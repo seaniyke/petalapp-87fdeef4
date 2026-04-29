@@ -741,9 +741,19 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // Catches truncated streams + unbalanced JSX/braces that the
               // model verifier sometimes misses. If it fires, we HARD-TRIGGER
               // the post-stream autofix model (no gating).
+              // For `write_project` the model returns a FULL snapshot, but
+              // most files in that snapshot are unchanged scaffold passthroughs
+              // (UI primitives, examples-pack, integrations). Verifying every
+              // path triggers phantom issues on intentionally-partial reference
+              // snippets and burns the continuation pass on files the model
+              // never touched. Only verify paths whose content actually changed
+              // vs. the prior snapshot (or are brand-new this turn).
+              const priorByPath = new Map(currentFiles.map((f) => [f.path, f.content]));
               const earlyChangedPaths =
                 collected.name === "write_project"
-                  ? nextFiles.map((f) => f.path)
+                  ? nextFiles
+                      .filter((f) => priorByPath.get(f.path) !== f.content)
+                      .map((f) => f.path)
                   : (parsed.ops ?? []).map((o) => o.path);
               const localVerdict = verifyFilesLocal(nextFiles, earlyChangedPaths);
               if (!localVerdict.ok) {
