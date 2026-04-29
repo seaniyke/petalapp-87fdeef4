@@ -941,6 +941,11 @@ function Builder() {
          *  charge. The AI still receives the full error log as a user
          *  message so it can patch the actual cause. */
         isAutoFix?: boolean;
+        /** Internal auto-continue run (Petal picking the build back up after
+         *  the user enables a service mid-flow, e.g. managed backend). The
+         *  visible thread shows a friendly system note instead of the raw
+         *  internal prompt. Credits ARE charged — this is real product work. */
+        isAutoContinue?: boolean;
       } = {},
     ) => {
       const text = content.trim();
