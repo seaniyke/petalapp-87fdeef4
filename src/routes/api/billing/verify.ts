@@ -9,9 +9,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyTransaction } from "@/server/paystack.server";
-import { provisionForProject } from "@/server/managed-backend.server";
-
-const MANAGED_BACKEND_ADDON = "managed_backend_monthly";
 
 const Query = z.object({
   reference: z.string().min(4).max(128).regex(/^[a-zA-Z0-9_-]+$/),
@@ -68,32 +65,17 @@ export const Route = createFileRoute("/api/billing/verify")({
               if (!tx.project_id) {
                 throw new Error("Add-on transaction missing project_id");
               }
-              if (tx.item_code === MANAGED_BACKEND_ADDON) {
-                await supabaseAdmin.rpc("apply_paystack_backend_slot", {
-                  _user_id: tx.user_id,
-                  _project_id: tx.project_id,
-                  _addon_code: tx.item_code,
-                  _reference: q.reference,
-                  _amount_minor: tx.amount_minor,
-                  _currency_code: tx.currency_code,
-                  _environment: tx.environment,
-                });
-                // Kick off provisioning. Don't block the verify response on
-                // it — the UI will poll via /api/backend?action=provision-status.
-                provisionForProject(tx.project_id).catch((e) =>
-                  console.error("[verify] provisionForProject failed", e),
-                );
-              } else {
-                await supabaseAdmin.rpc("apply_paystack_domain_slot", {
-                  _user_id: tx.user_id,
-                  _project_id: tx.project_id,
-                  _addon_code: tx.item_code,
-                  _reference: q.reference,
-                  _amount_minor: tx.amount_minor,
-                  _currency_code: tx.currency_code,
-                  _environment: tx.environment,
-                });
-              }
+              // Backend slots have been retired — backend is now funded from
+              // Cloud balance. Only the $7/yr domain slot still flows here.
+              await supabaseAdmin.rpc("apply_paystack_domain_slot", {
+                _user_id: tx.user_id,
+                _project_id: tx.project_id,
+                _addon_code: tx.item_code,
+                _reference: q.reference,
+                _amount_minor: tx.amount_minor,
+                _currency_code: tx.currency_code,
+                _environment: tx.environment,
+              });
             } else {
               await supabaseAdmin.rpc("apply_paystack_plan_grant", {
                 _user_id: tx.user_id,

@@ -10,11 +10,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyWebhookSignature } from "@/server/paystack.server";
-import { provisionForProject } from "@/server/managed-backend.server";
 import { registerDomain } from "@/server/cloudflare-registrar.server";
 import { createCustomHostname } from "@/server/cloudflare-saas.server";
-
-const MANAGED_BACKEND_ADDON = "managed_backend_monthly";
 
 type ChargeEvent = {
   event: string;
@@ -114,30 +111,17 @@ export const Route = createFileRoute("/api/public/paystack/webhook")({
             if (!tx.project_id) {
               throw new Error("Add-on transaction missing project_id");
             }
-            if (tx.item_code === MANAGED_BACKEND_ADDON) {
-              await supabaseAdmin.rpc("apply_paystack_backend_slot", {
-                _user_id: tx.user_id,
-                _project_id: tx.project_id,
-                _addon_code: tx.item_code,
-                _reference: ref,
-                _amount_minor: tx.amount_minor,
-                _currency_code: tx.currency_code,
-                _environment: tx.environment,
-              });
-              provisionForProject(tx.project_id).catch((e) =>
-                console.error("[webhook] provisionForProject failed", e),
-              );
-            } else {
-              await supabaseAdmin.rpc("apply_paystack_domain_slot", {
-                _user_id: tx.user_id,
-                _project_id: tx.project_id,
-                _addon_code: tx.item_code,
-                _reference: ref,
-                _amount_minor: tx.amount_minor,
-                _currency_code: tx.currency_code,
-                _environment: tx.environment,
-              });
-            }
+            // Backend slots are retired (backend is now Cloud-balance funded).
+            // Only the $7/yr domain slot still uses the addon purpose.
+            await supabaseAdmin.rpc("apply_paystack_domain_slot", {
+              _user_id: tx.user_id,
+              _project_id: tx.project_id,
+              _addon_code: tx.item_code,
+              _reference: ref,
+              _amount_minor: tx.amount_minor,
+              _currency_code: tx.currency_code,
+              _environment: tx.environment,
+            });
           } else if (tx.purpose === "domain_purchase") {
             if (!tx.project_id) {
               throw new Error("Domain purchase missing project_id");
