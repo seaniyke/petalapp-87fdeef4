@@ -1012,10 +1012,40 @@ function Builder() {
             }
           : {}),
       };
+      // Clarifier folding: if the most recent assistant message asked a
+      // clarifying question (it carries suggestion chips, or ends with "?"),
+      // a short user reply like "Both combined" is an *answer* — not a fresh
+      // intent. Fold the prior question + the original build prompt into the
+      // copy the AI sees so triage routes it as "build" with full context.
+      // The visible thread is unchanged (user still sees their short reply).
+      const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+      const lastAssistantText = (lastAssistant?.content ?? "").trim();
+      const looksLikeQuestion =
+        !!lastAssistant &&
+        ((lastAssistant.suggestions?.length ?? 0) > 0 ||
+          /\?\s*$/.test(lastAssistantText));
+      const isShortReply = text.length <= 80 && !/\n/.test(text);
+      const shouldFold =
+        !opts.isRetry &&
+        !opts.isAutoFix &&
+        !opts.isAutoContinue &&
+        !opts.forceBuild &&
+        looksLikeQuestion &&
+        isShortReply &&
+        !!lastUserPrompt;
+      const aiUserMsg: ChatMessage = shouldFold
+        ? {
+            ...userMsg,
+            content:
+              `[Continuing previous request] My original ask was: "${lastUserPrompt}". ` +
+              `You asked: "${lastAssistantText.slice(0, 240)}". ` +
+              `My answer: ${text}. Please proceed with the build using this answer.`,
+          }
+        : userMsg;
       // What the AI sees: full conversation including the (possibly large)
       // auto-fix prompt with the error log. What the user sees: either the
       // normal user message OR a calm system note for auto-fix runs.
-      const nextMessages: ChatMessage[] = opts.isRetry ? messages : [...messages, userMsg];
+      const nextMessages: ChatMessage[] = opts.isRetry ? messages : [...messages, aiUserMsg];
       if (!opts.isRetry) {
         if (opts.isAutoFix) {
           // Replace the giant error-log prompt with a friendly system note
