@@ -55,7 +55,7 @@ type Props = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   /** When set, scroll this section into view after the sheet opens. */
-  scrollTo?: "domains" | "backend" | "knowledge" | "email" | null;
+  scrollTo?: "domains" | "backend" | "knowledge" | "email" | "payments" | null;
   onScrollHandled?: () => void;
 };
 
