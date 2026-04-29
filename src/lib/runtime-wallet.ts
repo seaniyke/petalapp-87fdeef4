@@ -13,7 +13,7 @@ export type RuntimeWallet = {
   topupBalanceCents: number;
   freeResetAt: string; // YYYY-MM-DD
   workspaceCapCents: number | null;
-  monthlyFreeGrantCents: number; // currently 1000 ($10) once qualified
+  monthlyFreeGrantCents: number; // currently 500 ($5) once qualified
   qualifiedForFreeGrant: boolean;
   qualifiedAt: string | null;
 };
@@ -40,7 +40,7 @@ export type RuntimeUsageSplit = {
   aiCents: number;
 };
 
-const MONTHLY_FREE_GRANT_CENTS = 1000;
+const MONTHLY_FREE_GRANT_CENTS = 500;
 
 export async function fetchRuntimeWallet(userId: string): Promise<RuntimeWallet> {
   const { data } = await supabase

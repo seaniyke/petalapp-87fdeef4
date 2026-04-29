@@ -201,6 +201,19 @@ export const Route = createFileRoute("/api/generate-image")({
               });
               if (!charge.ok) {
                 console.warn("[runtime-wallet] image_gen charge blocked", charge);
+                const message =
+                  charge.reason === "project_cap_exceeded"
+                    ? "This app hit its spend cap. The owner needs to raise it or top up."
+                    : charge.reason === "workspace_cap_exceeded"
+                      ? "This workspace hit its spend cap. The owner needs to raise it or top up."
+                      : "This app's Cloud + AI balance is exhausted. The owner needs to top up.";
+                return new Response(JSON.stringify({ error: message }), {
+                  status: 402,
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*",
+                  },
+                });
               }
             }
           }
