@@ -12,7 +12,12 @@ export type ProjectBackend = {
   errorMessage: string | null;
   supabaseProjectRef?: string | null;
   pausedAt?: string | null;
-  slot?: { expires_at: string; status: string } | null;
+  /**
+   * For managed backends only: when set, the project's Cloud balance has run
+   * out and the backend will be paused after this timestamp unless the user
+   * tops up. Cleared automatically once the user adds Cloud balance.
+   */
+  graceUntil?: string | null;
 } | null;
 
 export type ManagedProvisionStatus = {
@@ -36,7 +41,8 @@ type BackendAction =
   | "disconnect"
   | "provision-status"
   | "provision-retry"
-  | "managed-credentials";
+  | "managed-credentials"
+  | "enable-managed";
 
 async function backendApi<T>(action: BackendAction, body: unknown): Promise<T> {
   const { data: sess } = await supabase.auth.getSession();
@@ -90,6 +96,19 @@ export function retryManagedProvision(projectId: string): Promise<{ ok: true }> 
 /** Download the credentials for a managed backend (for export / lock-in escape). */
 export function getManagedCredentials(projectId: string): Promise<ManagedCredentials> {
   return backendApi<ManagedCredentials>("managed-credentials", { projectId });
+}
+
+/**
+ * Enable a Petal-managed backend funded by the user's Cloud balance.
+ *
+ * Server-side guard requires Cloud top-up balance ≥ $10. On 402 the server
+ * returns a JSON body with `code: "topup_required"` and the current balance
+ * so the UI can route straight to the Cloud top-up flow.
+ */
+export async function enableManagedBackend(
+  projectId: string,
+): Promise<{ ok: true; status: "provisioning" }> {
+  return backendApi<{ ok: true; status: "provisioning" }>("enable-managed", { projectId });
 }
 
 export async function listProjects(): Promise<ProjectRow[]> {
