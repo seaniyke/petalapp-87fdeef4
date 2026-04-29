@@ -37,6 +37,21 @@ const PATTERNS: Array<{
     }),
   },
   {
+    // Upstream AI provider hiccups (gateway 502/503/504, "bad gateway",
+    // "upstream", "service unavailable"). These are transient and almost
+    // always clear within a few seconds. Without this branch they fall
+    // through to the generic "Petal got a bit confused" card, which is
+    // misleading — the model never even responded.
+    test: /\b(50[234])\b|bad gateway|upstream|service unavailable|gateway timeout|AI gateway error/i,
+    build: (raw) => ({
+      title: "The AI was briefly unreachable",
+      message:
+        "Petal couldn't reach the model just now — usually clears in a few seconds. Tap to try again.",
+      actionLabel: "Try again",
+      actionKind: "retry",
+      technicalDetail: raw,
+    }),
+  },
     test: /credits?.*(exhaust|out|empty|low)|402/i,
     build: (raw) => ({
       title: "Out of free generations",
