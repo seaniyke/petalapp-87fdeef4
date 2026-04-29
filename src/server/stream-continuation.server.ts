@@ -68,7 +68,7 @@ export async function runContinuation(args: {
   let count = 0;
 
   // Limit blast radius — at most 3 continuation calls per turn.
-  for (const issue of truncations.slice(0, 3)) {
+  for (const issue of uniq.slice(0, 3)) {
     const file = byPath.get(issue.path);
     if (!file) continue;
 
@@ -119,9 +119,14 @@ export async function runContinuation(args: {
       // OR braces are still wildly unbalanced, keep the original (the
       // post-stream autofix model gets a shot next).
       const after = verifyFileLocal(file.path, merged);
-      const stillTruncated = after.some((i) => i.kind === "truncation");
-      if (stillTruncated) {
-        notes.push(`${file.path}: continuation still truncated, skipping`);
+      const stillBroken = after.some(
+        (i) =>
+          i.kind === "truncation" ||
+          i.kind === "unterminated-string" ||
+          i.kind === "braces",
+      );
+      if (stillBroken) {
+        notes.push(`${file.path}: continuation still broken, skipping`);
         continue;
       }
 
