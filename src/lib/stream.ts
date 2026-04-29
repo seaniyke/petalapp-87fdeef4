@@ -10,6 +10,7 @@ type Handlers = {
   onPhase?: (phase: "thinking" | "designing" | "writing" | "polishing") => void;
   onDesignVibe?: (vibe: string, rationale: string) => void;
   onFileProgress?: (written: number, latestPath?: string) => void;
+  onFileComplete?: (path: string, bytes: number, index: number) => void;
   onResult?: (
     files: ProjectFile[],
     summary: string,
@@ -111,6 +112,9 @@ export async function streamGenerate(
             break;
           case "file_progress":
             handlers.onFileProgress?.(evt.written, evt.latestPath);
+            break;
+          case "file_complete":
+            handlers.onFileComplete?.(evt.path, evt.bytes, evt.index);
             break;
           case "result":
             handlers.onResult?.(evt.files, evt.summary, {
