@@ -2261,7 +2261,8 @@ function Builder() {
               );
             })}
             {discussBusy && (
-              <div className="mr-3 inline-flex items-center gap-2 rounded-2xl bg-secondary px-3.5 py-2.5 text-sm text-muted-foreground sm:mr-6">
+              <div className="inline-flex items-center gap-2 text-[13px] text-muted-foreground">
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">P</span>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
               </div>
             )}
@@ -2269,7 +2270,7 @@ function Builder() {
                 centered chip, matching the system-note style used elsewhere. */}
             {streamingService && (
               <div className="my-1 flex justify-center">
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] text-foreground">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-foreground ring-1 ring-primary/25">
                   {streamingService}
                   <span className="ml-0.5 inline-block h-2 w-[2px] animate-pulse bg-foreground/70" />
                 </div>
@@ -2283,7 +2284,8 @@ function Builder() {
               !streamingPlan &&
               !streamingAssistant &&
               !streamingRecap && (
-                <div className="mr-3 inline-flex items-center gap-2 rounded-2xl bg-secondary px-3.5 py-2.5 text-sm text-muted-foreground sm:mr-6">
+                <div className="inline-flex items-center gap-2 text-[13px] text-muted-foreground">
+                  <span className="grid h-5 w-5 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">P</span>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" /> Petal is thinking…
                 </div>
               )}
@@ -2294,9 +2296,11 @@ function Builder() {
                 streamingPlan ||
                 streamingAssistant ||
                 streamingRecap) && (
-              <div className="mr-1 overflow-hidden wrap-anywhere rounded-2xl text-foreground px-3.5 py-2.5 text-sm leading-relaxed sm:mr-4">
-                <div className="mb-1.5 flex items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary/80">
+              <div className="overflow-hidden wrap-anywhere text-[14.5px] leading-[1.65] text-foreground">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="grid h-5 w-5 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-sm">P</span>
+                  <span className="font-display text-[13px] font-semibold tracking-tight text-foreground">Petal</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                     <Loader2 className="h-2.5 w-2.5 animate-spin" />
                     {streamingRecap
                       ? "wrapping up"
