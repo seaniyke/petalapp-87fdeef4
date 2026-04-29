@@ -208,8 +208,8 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
             Buy a new domain
           </DialogTitle>
           <DialogDescription>
-            Search for an available domain. Pricing is wholesale + 25% — what
-            you see is what you pay. Includes WHOIS privacy and auto-renewal.
+            Search for an available domain. What you see is what you pay —
+            includes WHOIS privacy and auto-renewal.
           </DialogDescription>
         </DialogHeader>
 
@@ -256,10 +256,19 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
               // Premiums need a separate fee-acknowledgement flow we haven't
               // built yet — show price but disable the option.
               const canBuy = r.available && r.priceCents != null && !isPremium;
+              // Distinguish a real "taken" from an upstream error so we don't
+              // mislead the user when Cloudflare itself failed.
+              const isCheckError =
+                !r.available &&
+                r.reason != null &&
+                r.reason !== "domain_unavailable" &&
+                r.reason !== "registered";
               const rightLabel = canBuy
                 ? `${localizedPrice(r.priceCents!)}/yr`
                 : isPremium
                 ? "Premium — coming soon"
+                : isCheckError
+                ? "Unavailable"
                 : "Taken";
               return (
                 <li key={r.hostname}>
