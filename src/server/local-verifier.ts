@@ -25,7 +25,8 @@ export interface LocalIssue {
     | "missing-export"
     | "parse"
     | "oversize"
-    | "render-risk";
+    | "render-risk"
+    | "rls-sanity";
   detail: string;
 }
 
