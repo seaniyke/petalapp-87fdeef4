@@ -1148,6 +1148,7 @@ function Builder() {
       // follow-up chips to the assistant message and on error suggestions.
       let resultSuggestions: string[] = [];
       let resultVerdict: string | undefined;
+      let resultHandoff: ChatMessage["handoff"] | undefined;
       let streamError: string | null = null;
       let errorSuggestions: string[] = [];
       // Mirror of the streamingAssistant state we accumulate as deltas come in.
@@ -1311,6 +1312,11 @@ function Builder() {
                 prev.length >= 30 ? prev : [...prev, entry],
               );
             },
+            onContinuationHandoff: (handoff) => {
+              // Layer-B handoff — server stopped early at a safe boundary.
+              // Stash so we can attach to the assistant message below.
+              resultHandoff = handoff;
+            },
 
             onError: (m, sugg) => {
               streamError = m;
@@ -1341,6 +1347,8 @@ function Builder() {
           // Layer 5 — gap-driven follow-up chips. Empty array stays out of
           // the message so a clean build doesn't render an empty chip row.
           ...(resultSuggestions.length > 0 ? { suggestions: resultSuggestions } : {}),
+          // Layer-B "Continue building" handoff payload (optional).
+          ...(resultHandoff ? { handoff: resultHandoff } : {}),
         };
         setFiles(files2);
         setActiveFile((prev) => prev ?? "index.html");
