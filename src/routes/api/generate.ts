@@ -957,6 +957,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // flagged any file as truncated mid-stream, ask the SAME model
               // to emit only the missing tail bytes.
               // (extracted to src/server/pipeline/tier-continuation.ts).
+              const contT0 = Date.now();
               const contOut = await runContinuationTier({
                 files: nextFiles,
                 verdict: localVerdict,
@@ -989,9 +990,21 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               for (const ev of contOut.emit) {
                 controller.enqueue(encoder.encode(sse(ev)));
               }
+              recorder.record({
+                tier: "continuation",
+                outcome: contOut.requestHandoff
+                  ? "failed"
+                  : contOut.files !== nextFiles
+                    ? "fixed"
+                    : "skipped",
+                duration_ms: Date.now() - contT0,
+                issue_count: contOut.requestHandoff ? 1 : 0,
+                details: { handoff_requested: contOut.requestHandoff },
+              });
 
               // Tier 2.7 — esbuild parse pass
               // (extracted to src/server/pipeline/tier-esbuild.ts).
+              const esbuildT0 = Date.now();
               const esbuildOut = await runEsbuildTier({
                 files: nextFiles,
                 earlyChangedPaths,
@@ -1000,12 +1013,25 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               for (const ev of esbuildOut.emit) {
                 controller.enqueue(encoder.encode(sse(ev)));
               }
+              recorder.record({
+                tier: "esbuild",
+                outcome: esbuildVerdict.ok ? "ok" : "failed",
+                duration_ms: Date.now() - esbuildT0,
+                issue_count: esbuildVerdict.issues.length,
+                details: {
+                  parse_errors: esbuildVerdict.issues.slice(0, 5).map((i) => ({
+                    path: i.path,
+                    line: i.line,
+                  })),
+                },
+              });
 
               // Tier 2.8 — render-risk linter (Phase 5).
               // Soft-warn only: feeds findings into combinedAutofixIssues so
               // the post-stream autofix model fixes them when the gate is
               // already open for other reasons. Does NOT independently open
               // the gate — false positives must never wedge a clean turn.
+              const renderRiskT0 = Date.now();
               const renderRiskOut = runRenderRiskTier({
                 files: nextFiles,
                 earlyChangedPaths,
@@ -1014,6 +1040,18 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               for (const ev of renderRiskOut.emit) {
                 controller.enqueue(encoder.encode(sse(ev)));
               }
+              recorder.record({
+                tier: "render_risk",
+                outcome: renderRiskIssues.length > 0 ? "warned" : "ok",
+                duration_ms: Date.now() - renderRiskT0,
+                issue_count: renderRiskIssues.length,
+                details: {
+                  rule_kinds: renderRiskIssues.reduce<Record<string, number>>(
+                    (acc, i) => ((acc[i.kind] = (acc[i.kind] ?? 0) + 1), acc),
+                    {},
+                  ),
+                },
+              });
 
               // Tier 2.9 — RLS sanity linter (Phase 5b).
               // Soft-warn only: cross-references supabase.from() calls in
@@ -1021,6 +1059,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // missing RLS, or missing policies. Feeds into the autofix
               // queue but never independently opens the gate — false
               // positives must never wedge a clean turn.
+              const rlsSanityT0 = Date.now();
               const rlsSanityOut = runRlsSanityTier({
                 files: nextFiles,
                 earlyChangedPaths,
@@ -1029,6 +1068,18 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               for (const ev of rlsSanityOut.emit) {
                 controller.enqueue(encoder.encode(sse(ev)));
               }
+              recorder.record({
+                tier: "rls_sanity",
+                outcome: rlsSanityIssues.length > 0 ? "warned" : "ok",
+                duration_ms: Date.now() - rlsSanityT0,
+                issue_count: rlsSanityIssues.length,
+                details: {
+                  rule_kinds: rlsSanityIssues.reduce<Record<string, number>>(
+                    (acc, i) => ((acc[i.kind] = (acc[i.kind] ?? 0) + 1), acc),
+                    {},
+                  ),
+                },
+              });
 
               // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
               // pass that ONLY fixes obvious build-breakers.
