@@ -4,20 +4,10 @@
  * expiry. One trigger event per recipient (the cron owns dedup via the
  * idempotency key).
  */
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Preview,
-  Section,
-  Text,
-} from "@react-email/components";
+import * as React from "react";
+import { Text } from "@react-email/components";
 import type { TemplateEntry } from "./registry";
-
-const SITE_NAME = "Petal";
+import { PetalEmailLayout, SITE_NAME, SITE_URL, text, muted } from "./_layout";
 
 interface Props {
   daysLeft?: number;
@@ -30,7 +20,7 @@ const BackendRenewalReminderEmail = ({
   daysLeft = 7,
   projectTitle = "your project",
   expiresAt,
-  renewUrl = "https://buildwithpetal.com",
+  renewUrl = SITE_URL,
 }: Props) => {
   const heading =
     daysLeft <= 1
@@ -41,35 +31,20 @@ const BackendRenewalReminderEmail = ({
     : null;
 
   return (
-    <Html lang="en" dir="ltr">
-      <Head />
-      <Preview>
-        Heads up — your managed backend for {projectTitle} renews in{" "}
-        {String(daysLeft)} day{daysLeft === 1 ? "" : "s"}.
-      </Preview>
-      <Body style={main}>
-        <Container style={container}>
-          <Heading style={h1}>{heading}</Heading>
-          <Text style={text}>
-            This is a friendly reminder that the managed backend on{" "}
-            <strong>{projectTitle}</strong> is about to renew.
-          </Text>
-          {expiresLine ? <Text style={text}>{expiresLine}</Text> : null}
-          <Text style={text}>
-            If you'd like to keep your data online without interruption, you can
-            renew now from the project's settings. If you don't renew, the
-            backend will pause when the period ends — your tables and rows are
-            preserved and will come back as soon as you renew.
-          </Text>
-          <Section style={btnWrap}>
-            <Button href={renewUrl} style={btn}>
-              Renew backend
-            </Button>
-          </Section>
-          <Text style={footer}>— The {SITE_NAME} team</Text>
-        </Container>
-      </Body>
-    </Html>
+    <PetalEmailLayout
+      preview={`Heads up — your managed backend for ${projectTitle} renews in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.`}
+      heading={heading}
+      cta={{ label: "Renew backend", href: renewUrl }}
+    >
+      <Text style={text}>
+        This is a friendly reminder that the managed backend on{" "}
+        <strong>{projectTitle}</strong> is about to renew.
+      </Text>
+      {expiresLine ? <Text style={text}>{expiresLine}</Text> : null}
+      <Text style={muted}>
+        If you'd like to keep your data online without interruption, renew now from the project's settings. If you don't renew, the backend will pause when the period ends — your tables and rows are preserved and come back as soon as you renew.
+      </Text>
+    </PetalEmailLayout>
   );
 };
 
@@ -85,45 +60,6 @@ export const template = {
     daysLeft: 3,
     projectTitle: "Acme dashboard",
     expiresAt: new Date(Date.now() + 3 * 86_400_000).toISOString(),
-    renewUrl: "https://buildwithpetal.com",
+    renewUrl: SITE_URL,
   },
 } satisfies TemplateEntry;
-
-const main = {
-  backgroundColor: "#ffffff",
-  fontFamily:
-    "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-};
-const container = {
-  padding: "32px 28px",
-  maxWidth: "560px",
-};
-const h1 = {
-  fontSize: "22px",
-  fontWeight: 700,
-  color: "#1a1a1a",
-  margin: "0 0 18px",
-  lineHeight: 1.25,
-};
-const text = {
-  fontSize: "15px",
-  color: "#3f3f46",
-  lineHeight: 1.55,
-  margin: "0 0 14px",
-};
-const btnWrap = { margin: "24px 0 8px" };
-const btn = {
-  backgroundColor: "#e85d4a", // coral / primary
-  color: "#ffffff",
-  fontSize: "14px",
-  fontWeight: 600,
-  textDecoration: "none",
-  borderRadius: "8px",
-  padding: "11px 20px",
-  display: "inline-block",
-};
-const footer = {
-  fontSize: "12px",
-  color: "#9a9a9a",
-  margin: "28px 0 0",
-};
