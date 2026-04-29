@@ -63,7 +63,7 @@ import {
   toFriendlyError,
   type FriendlyError,
 } from "@/lib/friendly-errors";
-import { BuildActivityCard } from "@/components/BuildActivityCard";
+import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivityCard";
 import { NextStepsCard } from "@/components/NextStepsCard";
 
 
