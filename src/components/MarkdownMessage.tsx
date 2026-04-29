@@ -91,7 +91,8 @@ export function MarkdownMessage({ content, projectId }: { content: string; proje
     <div className="markdown prose prose-sm max-w-none text-sm leading-relaxed wrap-anywhere">
       {segments.map((seg, i) => {
         if (seg.kind === "suggest") {
-          return <SuggestedIntegrationCard key={i} code={seg.code} />;
+          // Marketplace removed — drop the tag silently instead of rendering a card.
+          return null;
         }
         if (seg.kind === "secret") {
           return (
