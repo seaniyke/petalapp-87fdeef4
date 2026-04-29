@@ -9,7 +9,7 @@
  * Use this view to rank what's actually breaking, then pattern-match the
  * top signatures back into `friendly-errors.ts`.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { AdminTabs } from "@/components/AdminTabs";
@@ -221,7 +221,7 @@ function AdminFailuresPage() {
                               </td>
                             </tr>
                           ) : null}
-                        </>
+                        </Fragment>
                       );
                     })}
                   </tbody>
