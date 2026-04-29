@@ -13,6 +13,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { ProjectFile } from "@/server/generate.server";
 import { injectPetalBadge } from "@/server/petal-badge.server";
+import { freshenStaleYears } from "@/server/freshen-stale-years.server";
 
 const MAX_AGE_SECONDS = 5 * 60;
 
@@ -76,7 +77,13 @@ export async function postBuildToRailway(args: {
   if (!builderUrl) throw new Error("BUILDER_URL is not configured");
   if (!sharedSecret) throw new Error("BUILDER_SHARED_SECRET is not configured");
 
-  const filesToShip = args.hideBadge ? args.files : injectPetalBadge(args.files);
+  // Rewrite stale copyright years (e.g. "© 2024" → "© 2026") that the LLM
+  // emitted from its training-data cutoff. Cheap, runs on every build.
+  const { files: yearFreshened, replacements: yearReplacements } = freshenStaleYears(args.files);
+  if (yearReplacements > 0) {
+    console.log(`[builder] freshened ${yearReplacements} stale year reference(s)`);
+  }
+  const filesToShip = args.hideBadge ? yearFreshened : injectPetalBadge(yearFreshened);
 
   const body = JSON.stringify({
     projectId: args.projectId,
