@@ -64,6 +64,7 @@ import {
   type FriendlyError,
 } from "@/lib/friendly-errors";
 import { BuildActivityCard } from "@/components/BuildActivityCard";
+import { NextStepsCard } from "@/components/NextStepsCard";
 
 
 import {
