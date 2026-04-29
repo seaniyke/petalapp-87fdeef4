@@ -316,12 +316,23 @@ function Landing() {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const prefix = mode === "discuss" ? "Ask Petal about " : "Ask Petal to build ";
+    const restingPlaceholder =
+      mode === "discuss"
+        ? "Ask Petal anything about your idea…"
+        : "Describe an app you want to build…";
     let promptIdx = 0;
     let charIdx = 0;
-    let typingMode: "typing" | "pausing" | "deleting" = "typing";
+    let typingMode: "typing" | "pausing" | "deleting" | "done" = "typing";
+    // Cycle through the samples once, then settle on a calm static placeholder
+    // so the input doesn't type/delete forever (it was distracting on mobile).
+    const maxCycles = samplePrompts.length;
 
     const tick = () => {
       if (cancelled) return;
+      if (typingMode === "done") {
+        setAnimatedPlaceholder(restingPlaceholder);
+        return;
+      }
       const target = samplePrompts[promptIdx % samplePrompts.length];
       const fullText = prefix + target.toLowerCase().replace(/^a /, "a ");
 
@@ -341,8 +352,13 @@ function Landing() {
         charIdx--;
         setAnimatedPlaceholder(fullText.slice(0, Math.max(charIdx, prefix.length)));
         if (charIdx <= prefix.length) {
-          typingMode = "typing";
           promptIdx++;
+          if (promptIdx >= maxCycles) {
+            typingMode = "done";
+            timer = setTimeout(tick, 200);
+            return;
+          }
+          typingMode = "typing";
           timer = setTimeout(tick, 250);
           return;
         }
