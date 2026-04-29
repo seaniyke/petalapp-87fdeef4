@@ -249,6 +249,14 @@ export function verifyFileLocal(path: string, content: string): LocalIssue[] {
   if (!SCANNABLE.test(path)) return [];
   const issues: LocalIssue[] = [];
 
+  if (/keep existing code/i.test(content)) {
+    issues.push({
+      path,
+      kind: "truncation",
+      detail: "unexpanded keep-existing placeholder remains in generated file",
+    });
+  }
+
   if (looksTruncated(content)) {
     const tail = content.trimEnd().slice(-40).replace(/\s+/g, " ");
     issues.push({
