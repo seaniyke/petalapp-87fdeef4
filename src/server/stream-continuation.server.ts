@@ -41,10 +41,27 @@ export async function runContinuation(args: {
   issues: LocalIssue[];
   model: string;
 }): Promise<{ files: ProjectFile[]; result: ContinuationResult }> {
-  const truncations = args.issues.filter((i) => i.kind === "truncation");
+  // A "truncation-shaped" issue is anything that suggests the file ended
+  // early: classic mid-statement truncation, an unterminated string/template,
+  // or unbalanced braces/parens at file scope. Each of these means the model
+  // stopped writing before it should have, and the cheapest fix is to ask
+  // the SAME model to emit the missing tail.
+  const TRUNCATION_KINDS = new Set([
+    "truncation",
+    "unterminated-string",
+    "braces",
+  ]);
+  const truncations = args.issues.filter((i) => TRUNCATION_KINDS.has(i.kind));
   if (truncations.length === 0) {
     return { files: args.files, result: { ran: false, completedFiles: 0, notes: [] } };
   }
+  // Dedupe by path — one continuation call per file is plenty.
+  const seenPaths = new Set<string>();
+  const uniq = truncations.filter((i) => {
+    if (seenPaths.has(i.path)) return false;
+    seenPaths.add(i.path);
+    return true;
+  });
 
   const byPath = new Map(args.files.map((f) => [f.path, f]));
   const notes: string[] = [];
