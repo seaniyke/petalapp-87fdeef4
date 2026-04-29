@@ -649,10 +649,12 @@ function AddDomainDialog({
 /* ---------------- DNS records dialog ---------------- */
 
 function DnsRecordsDialog({
+  projectId,
   domain,
   onClose,
   onVerify,
 }: {
+  projectId: string;
   domain: ProjectDomain | null;
   onClose: () => void;
   onVerify: () => Promise<void>;
@@ -679,11 +681,11 @@ function DnsRecordsDialog({
     if (!domain) return;
     setDiagnosing(true);
     try {
-      const result = await checkDomainDns(domain.id.split("|")[0] /* unused */, domain.id);
-      // The API expects projectId — we don't have it on `domain` row but DnsRecordsDialog
-      // is always rendered inside DomainsSection which has projectId in scope. Pass it via
-      // a fresh prop instead. (Patched below — see component signature.)
+      const result = await checkDomainDns(projectId, domain.id);
       setDiagnosis(result);
+      if (result.allOk) {
+        toast.success("DNS looks good — Cloudflare should pick it up shortly");
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "DNS check failed");
     } finally {
