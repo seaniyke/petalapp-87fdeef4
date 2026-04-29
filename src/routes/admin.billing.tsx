@@ -289,12 +289,13 @@ const CURRENCY_DECIMALS: Record<string, number> = {
 function OverridesPanel() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [packs, setPacks] = useState<CreditPack[]>([]);
+  const [addons, setAddons] = useState<Array<{ code: string; name: string; price_cents: number }>>([]);
   const [currencies, setCurrencies] = useState<BillingCurrency[]>([]);
   const [overrides, setOverrides] = useState<PriceOverride[]>([]);
   const [loading, setLoading] = useState(true);
 
   // New override form
-  const [newKind, setNewKind] = useState<"plan" | "pack">("plan");
+  const [newKind, setNewKind] = useState<"plan" | "pack" | "addon">("plan");
   const [newItem, setNewItem] = useState<string>("");
   const [newCurrency, setNewCurrency] = useState<string>("");
   const [newAmountMajor, setNewAmountMajor] = useState<string>("");
@@ -303,16 +304,21 @@ function OverridesPanel() {
   async function load() {
     setLoading(true);
     try {
-      const [p, c, cur, ovs] = await Promise.all([
+      const [p, c, cur, ovs, addonRes] = await Promise.all([
         fetchPlans(),
         fetchCreditPacks(),
         fetchCurrencies(),
         fetchPriceOverrides(),
+        supabase
+          .from("billing_addons")
+          .select("code, name, price_cents")
+          .order("sort_order", { ascending: true }),
       ]);
       setPlans(p);
       setPacks(c);
       setCurrencies(cur);
       setOverrides(ovs);
+      setAddons((addonRes.data ?? []) as Array<{ code: string; name: string; price_cents: number }>);
       if (!newItem && p.length > 0) setNewItem(p[0].code);
       if (!newCurrency && cur.length > 0) setNewCurrency(cur[0].code);
     } catch (e) {
@@ -331,11 +337,17 @@ function OverridesPanel() {
   useEffect(() => {
     if (newKind === "plan" && plans.length > 0) setNewItem(plans[0].code);
     if (newKind === "pack" && packs.length > 0) setNewItem(packs[0].code);
-  }, [newKind, plans, packs]);
+    if (newKind === "addon" && addons.length > 0) setNewItem(addons[0].code);
+  }, [newKind, plans, packs, addons]);
 
   const itemOptions = useMemo(
-    () => (newKind === "plan" ? plans.map((p) => ({ code: p.code, name: p.name })) : packs.map((p) => ({ code: p.code, name: p.name }))),
-    [newKind, plans, packs],
+    () =>
+      newKind === "plan"
+        ? plans.map((p) => ({ code: p.code, name: p.name }))
+        : newKind === "pack"
+          ? packs.map((p) => ({ code: p.code, name: p.name }))
+          : addons.map((p) => ({ code: p.code, name: p.name })),
+    [newKind, plans, packs, addons],
   );
 
   async function addOverride() {
