@@ -103,6 +103,7 @@ import { BillingSheet } from "@/components/BillingSheet";
 import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
+import { ContinueBuildingChip } from "@/components/ContinueBuildingChip";
 import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
 import { EnableEmailSuggestionChip } from "@/components/EnableEmailSuggestionChip";
 import { EnablePaymentsSuggestionChip } from "@/components/EnablePaymentsSuggestionChip";
