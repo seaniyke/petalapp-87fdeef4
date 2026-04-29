@@ -90,7 +90,7 @@ export async function loadInstalledCodes(projectId: string): Promise<Set<string>
 
 /** Render the prompt block injected for the AI. Empty string when no matches. */
 export function renderSuggestionsBlock(suggestions: IntegrationSuggestion[]): string {
-  if (suggestions.length === 0) return "";
+  if (suggestions.length === 0) return INLINE_TAGS_REFERENCE;
   const lines = suggestions.map(
     (s) =>
       `- **${s.name}** (${s.category}) — ${s.reason} Emit \`<lov-suggest-integration code="${s.code}" />\` in your reply so the user can install it in one click. Do NOT hand-roll this capability.`,
@@ -102,5 +102,19 @@ export function renderSuggestionsBlock(suggestions: IntegrationSuggestion[]): st
     "Before writing any code that overlaps with these, recommend installing the integration first. If the user declines, then hand-roll it.",
     ...lines,
     "",
+    INLINE_TAGS_REFERENCE,
   ].join("\n");
 }
+
+/**
+ * Reference for the two interactive inline tags Petal can stream into a chat
+ * reply. Keep it terse — added to every turn so size matters.
+ */
+const INLINE_TAGS_REFERENCE = `
+### Inline interactive tags (use sparingly)
+You can stream these self-closing tags inline in your reply; the chat UI
+turns them into interactive cards.
+- \`<lov-suggest-integration code="stripe" />\` — render an "Install Stripe" chip. Use ONLY when an integration suggestion above matches the request.
+- \`<lov-add-secret name="OPENAI_API_KEY" instructions="Get this from platform.openai.com → API Keys" link="https://platform.openai.com/api-keys" />\` — open a secure inline form so the user can paste a secret. Use ONLY after the user has agreed to add the feature, and only for keys you genuinely need on the server. Names MUST be UPPER_SNAKE_CASE. Never echo or repeat the value back. Never put real secret values inside the tag.
+`;
+
