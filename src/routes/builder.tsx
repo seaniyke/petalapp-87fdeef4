@@ -1985,15 +1985,36 @@ function Builder() {
               </span>
             )}
           </div>
-          <div className="flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-4">
+          <div className="flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-5">
             {bootstrapping && (
-              <div className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 text-sm text-muted-foreground shadow-sm">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading project…
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-3.5 py-1.5 text-[12px] text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading project…
               </div>
             )}
             {!bootstrapping && messages.length === 0 && !busy && (
-              <div className="rounded-2xl border-2 border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
-                Describe an app to start. Try <span className="font-semibold text-foreground">"a calm pomodoro timer with stats"</span> or <span className="font-semibold text-foreground">"a recipe card generator"</span>.
+              <div className="space-y-2 py-4">
+                <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+                  What are we building?
+                </h2>
+                <p className="text-[14px] leading-relaxed text-muted-foreground">
+                  Describe an app to start. Try{" "}
+                  <button
+                    type="button"
+                    onClick={() => setInput("a calm pomodoro timer with stats")}
+                    className="font-medium text-foreground underline decoration-primary/40 underline-offset-4 transition hover:decoration-primary"
+                  >
+                    a calm pomodoro timer with stats
+                  </button>{" "}
+                  or{" "}
+                  <button
+                    type="button"
+                    onClick={() => setInput("a recipe card generator")}
+                    className="font-medium text-foreground underline decoration-primary/40 underline-offset-4 transition hover:decoration-primary"
+                  >
+                    a recipe card generator
+                  </button>
+                  .
+                </p>
               </div>
             )}
             {messages.map((m, i) => {
@@ -2003,7 +2024,7 @@ function Builder() {
               if (m.role === "system" || m.system) {
                 return (
                   <div key={i} className="my-1 flex justify-center">
-                    <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 py-1 text-[11px] text-muted-foreground">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-3 py-1 text-[11px] font-medium text-muted-foreground">
                       {m.content}
                     </div>
                   </div>
@@ -2015,27 +2036,28 @@ function Builder() {
               const hasReply = isUser && messages[i + 1]?.role === "assistant";
               const canRevert = hasReply && !busy && !discussBusy;
               return (
-                <div key={i} className="group min-w-0">
-                  <div
-                    className={`relative min-w-0 overflow-hidden wrap-anywhere rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed text-foreground ${
-                      isUser
-                        ? "ml-3 border border-border bg-card shadow-sm sm:ml-6"
-                        : "mr-1 sm:mr-4"
-                    }`}
-                  >
-                    {isUser ? (
-                      <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                        <span>you</span>
-                      </div>
-                    ) : (
-                      m.role === "assistant" && i === lastDiscussIndex && (
-                        <div className="mb-1 flex items-center gap-1.5">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px] text-foreground/70">
+                <div key={i} className={`group min-w-0 ${isUser ? "flex justify-end" : ""}`}>
+                  {isUser ? (
+                    <div className="relative max-w-[85%] min-w-0 overflow-hidden wrap-anywhere rounded-2xl rounded-br-md bg-primary/12 px-3.5 py-2.5 text-[14px] font-medium leading-relaxed text-foreground ring-1 ring-primary/20">
+                      {/* User content — short, inline, no header chrome. */}
+                    </div>
+                  ) : (
+                    <div className="relative min-w-0 wrap-anywhere">
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="grid h-5 w-5 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-sm">
+                          P
+                        </span>
+                        <span className="font-display text-[13px] font-semibold tracking-tight text-foreground">
+                          Petal
+                        </span>
+                        {i === lastDiscussIndex && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-foreground/8 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                             <MessageSquare className="h-2.5 w-2.5" /> discuss
                           </span>
-                        </div>
-                      )
-                    )}
+                        )}
+                      </div>
+                    </div>
+                  )}
                     {m.role === "assistant" ? (
                       <div className="space-y-2.5">
                         {m.plan && (() => {
