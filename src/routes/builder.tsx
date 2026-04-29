@@ -589,6 +589,12 @@ function Builder() {
   // domain, …) fired from anywhere in the app. Stream a friendly assistant
   // announcement into the active chat so the activation feels like part of
   // the build, not a silent toast that vanishes.
+  // Refs keep the latest send/busy without re-subscribing on every keystroke.
+  const sendRef = useRef<typeof send | null>(null);
+  const busyRef = useRef(false);
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
   useEffect(() => {
     return onServiceEnabled((detail) => {
       if (!project?.id || detail.projectId !== project.id) return;
@@ -614,6 +620,24 @@ function Builder() {
           void appendMessages(project.id, [note]).catch(() => {
             // Persistence is best-effort — the in-memory message still shows.
           });
+          // After the managed backend lights up, automatically continue the
+          // build so users don't sit confused on the "Provisioning…" banner
+          // wondering what to do next. We only auto-continue for the backend
+          // (the other services like email/domains are usually optional
+          // side-quests, not a hard prerequisite of an in-progress build).
+          if (detail.service === "backend" && !busyRef.current) {
+            const followUp =
+              "The managed backend is now enabled (database, auth and storage are ready). " +
+              "Please continue the build you were working on by wiring it up to the new backend — " +
+              "create the necessary tables with RLS, hook up authentication where the app needs " +
+              "sign-in/sign-up, and replace any in-memory or mock data with real persisted data. " +
+              "If a feature was blocked earlier because there was no backend, finish it now.";
+            // Tiny delay so the user visually registers the activation banner
+            // before Petal starts typing again.
+            setTimeout(() => {
+              void sendRef.current?.(followUp, { isAutoContinue: true });
+            }, 600);
+          }
         }
       };
       tick();
@@ -923,6 +947,11 @@ function Builder() {
          *  charge. The AI still receives the full error log as a user
          *  message so it can patch the actual cause. */
         isAutoFix?: boolean;
+        /** Internal auto-continue run (Petal picking the build back up after
+         *  the user enables a service mid-flow, e.g. managed backend). The
+         *  visible thread shows a friendly system note instead of the raw
+         *  internal prompt. Credits ARE charged — this is real product work. */
+        isAutoContinue?: boolean;
       } = {},
     ) => {
       const text = content.trim();
@@ -968,14 +997,23 @@ function Builder() {
               "🔧 Petal noticed a build error and is fixing it automatically. This fix is on us — no credits used.",
           };
           setMessages([...messages, note]);
+        } else if (opts.isAutoContinue) {
+          // Friendly system note instead of the internal "wire it up" prompt.
+          const note: ChatMessage = {
+            role: "system",
+            system: true,
+            content:
+              "✨ Picking the build back up — wiring your app to the new backend.",
+          };
+          setMessages([...messages, note]);
         } else {
           setMessages(nextMessages);
         }
       }
-      // Don't overwrite lastUserPrompt during an auto-fix — the "Retry last
-      // prompt" affordance should still replay the user's real ask, not our
-      // internal error-log dump.
-      if (!opts.isAutoFix) setLastUserPrompt(text);
+      // Don't overwrite lastUserPrompt during an auto-fix / auto-continue —
+      // the "Retry last prompt" affordance should still replay the user's
+      // real ask, not our internal prompts.
+      if (!opts.isAutoFix && !opts.isAutoContinue) setLastUserPrompt(text);
       setInput("");
       setPendingAttachments([]);
       initialAttachmentsRef.current = [];
@@ -1370,6 +1408,11 @@ function Builder() {
     },
     [busy, messages, files, ensureProject, pendingAttachments],
   );
+  // Keep the latest send reference available to the service-enabled effect
+  // without making that effect re-subscribe on every keystroke.
+  useEffect(() => {
+    sendRef.current = send;
+  }, [send]);
 
   // Discuss mode: ask Petal a question without touching files. The reply is
   // appended as a normal assistant message and tagged so we can show an
