@@ -76,9 +76,43 @@ function BillingReturn() {
             ? search.returnTo
             : null;
         if (json.status === "success") {
-          setState({ kind: "success", purpose: json.purpose ?? "purchase" });
+          const purpose = json.purpose ?? "purchase";
+          setState({ kind: "success", purpose });
           refresh();
           setTimeout(() => refresh(), 2000);
+
+          // Domain purchases need an extra step: nudge the server to poll
+          // Cloudflare's async registration workflow until it completes.
+          if (purpose === "domain_purchase") {
+            setState({ kind: "registering-domain" });
+            const ref = reference;
+            (async () => {
+              for (let i = 0; i < 8 && !cancelled; i++) {
+                try {
+                  const { updates } = await pollDomainRegistrations({ reference: ref });
+                  const u = updates[0];
+                  if (cancelled) return;
+                  if (u?.status === "active") {
+                    setState({ kind: "success", purpose: "domain_purchase" });
+                    return;
+                  }
+                  if (u?.status === "failed") {
+                    setState({
+                      kind: "failed",
+                      message:
+                        "We couldn't finish registering your domain. Our team has been notified.",
+                    });
+                    return;
+                  }
+                  setState({ kind: "registering-domain", hostname: u?.hostname });
+                } catch {
+                  /* keep retrying */
+                }
+                await new Promise((r) => setTimeout(r, 4000));
+              }
+            })();
+          }
+
           if (safeReturnTo) {
             // Brief pause so the user sees the success state before bouncing.
             setTimeout(() => {
