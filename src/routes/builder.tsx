@@ -433,6 +433,26 @@ function Builder() {
     attempts: 0,
     handledBuildIds: new Set(),
   });
+  // When a user starts a new AI turn or retries a stalled deploy, the previous
+  // `latest_build_id` is no longer the thing the chat should react to. Without
+  // this, an old pending deploy can keep re-opening the "Publishing is taking
+  // longer" card while Petal is already fixing or rebuilding newer code.
+  const [supersededBuildIds, setSupersededBuildIds] = useState<Set<string>>(() => new Set());
+  const supersededBuildIdsRef = useRef<Set<string>>(new Set());
+  const supersedeBuildId = useCallback((id: string | null | undefined) => {
+    if (!id || supersededBuildIdsRef.current.has(id)) return;
+    const next = new Set(supersededBuildIdsRef.current);
+    next.add(id);
+    supersededBuildIdsRef.current = next;
+    setSupersededBuildIds(next);
+  }, []);
+  const restoreBuildId = useCallback((id: string | null | undefined) => {
+    if (!id || !supersededBuildIdsRef.current.has(id)) return;
+    const next = new Set(supersededBuildIdsRef.current);
+    next.delete(id);
+    supersededBuildIdsRef.current = next;
+    setSupersededBuildIds(next);
+  }, []);
   // Stable handle to the latest askPetalToFix so the failure effect (declared
   // before send/askPetalToFix) can call it without stale-closure issues.
   const askPetalToFixRef = useRef<(() => void) | null>(null);
@@ -480,30 +500,36 @@ function Builder() {
   // activity card in its "deploying" phase. Treating 'building' as inactive
   // (the previous behavior, since it wasn't in the enum) was the bug that
   // froze the spinner whenever Railway flipped the row mid-build.
-  const isDeploying = buildSnap?.status === "pending" || buildSnap?.status === "building";
-  const isLive = buildSnap?.status === "ready";
+  const activeBuildId = project?.latest_build_id ?? null;
+  const isSupersededBuild = !!activeBuildId && supersededBuildIds.has(activeBuildId);
+  const effectiveBuildSnap = isSupersededBuild ? null : buildSnap;
+  const isDeploying = effectiveBuildSnap?.status === "pending" || effectiveBuildSnap?.status === "building";
+  const isLive = effectiveBuildSnap?.status === "ready";
 
   // Long-wait escalation for the deploy phase. We escalate copy at 60s/90s
   // and surface a friendly "deploy stalled" card at 150s so the user always
   // has a way to retry or keep working — never a stranded spinner.
   const [deployElapsed, setDeployElapsed] = useState(0);
   useEffect(() => {
-    if (!isDeploying || !buildSnap) {
+    if (!isDeploying || !effectiveBuildSnap) {
       setDeployElapsed(0);
       return;
     }
-    const tick = () => setDeployElapsed(Math.floor((Date.now() - buildSnap.observedAt) / 1000));
+    const tick = () => setDeployElapsed(Math.floor((Date.now() - effectiveBuildSnap.observedAt) / 1000));
     tick();
     const t = window.setInterval(tick, 1000);
     return () => window.clearInterval(t);
-  }, [isDeploying, buildSnap?.observedAt]);
+  }, [isDeploying, effectiveBuildSnap?.observedAt]);
 
   // Once we cross the 150s threshold, surface the friendly stalled card.
   // The card lets the user Retry (re-trigger the build with the current
   // files) or Keep editing (dismiss; if Railway eventually responds the
   // status will still flip to ready in the background).
   useEffect(() => {
-    if (!isDeploying || friendlyError) return;
+    // Never stack a stale deploy warning on top of an active AI repair/build.
+    // The current turn supersedes the old deploy; if it still matters after
+    // Petal finishes, the non-superseded build watcher can surface it then.
+    if (!isDeploying || friendlyError || busy) return;
     if (deployElapsed < 150) return;
     setFriendlyError({
       title: "Publishing is taking longer than usual",
@@ -514,7 +540,7 @@ function Builder() {
       technicalDetail: `Deploy elapsed ${deployElapsed}s with no callback`,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deployElapsed, isDeploying]);
+  }, [deployElapsed, isDeploying, busy]);
 
 
   // Subscribe to `projects` row changes so when the build callback writes a
@@ -651,7 +677,7 @@ function Builder() {
   // On failure: auto-trigger the fix loop (Phase 2) up to MAX_AUTO_FIX_ATTEMPTS
   // before surfacing the manual "Ask Petal to fix it" button.
   useEffect(() => {
-    if (!buildSnap) return;
+    if (!effectiveBuildSnap) return;
     const buildId = project?.latest_build_id ?? null;
 
     if (autoFixRef.current.projectId !== project?.id) {
@@ -662,19 +688,19 @@ function Builder() {
       };
     }
 
-    if (buildSnap.status === "ready") {
+    if (effectiveBuildSnap.status === "ready") {
       setPhases((p) => completeThrough(p, "live"));
       autoFixRef.current.attempts = 0;
       autoFixRef.current.handledBuildIds.clear();
       // Note: we used to surface a "Changes ready to publish" toast here, but
       // it fired on every refresh / build completion and was more noise than
       // signal. Users can publish from the header button when ready.
-    } else if (buildSnap.status === "pending" || buildSnap.status === "building") {
+    } else if (effectiveBuildSnap.status === "pending" || effectiveBuildSnap.status === "building") {
       // Both states keep the activity card on the deploying phase. Without
       // the 'building' branch, the card would freeze the moment Railway
       // started processing the job.
       setPhases((p) => advanceTo(p, "deploying"));
-    } else if (buildSnap.status === "failed") {
+    } else if (effectiveBuildSnap.status === "failed") {
       setPhases((p) => markFailed(p, "deploying"));
       const shouldAutoFix =
         !!buildId &&
@@ -702,10 +728,10 @@ function Builder() {
       if (busy) return;
       // Manual fallback after we've burned both auto-attempts, or when the
       // failed build was already present when the user opened the project.
-      setFriendlyError(friendlyBuildFailure(buildSnap.errorMessage));
+      setFriendlyError(friendlyBuildFailure(effectiveBuildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildSnap?.status, buildSnap?.errorMessage, project?.latest_build_id, project?.published_build_id, busy]);
+  }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, project?.latest_build_id, project?.published_build_id, busy]);
 
   // Auto-hide the success card a little after the app goes live so the chat
   // returns to a calm state. The card itself also self-collapses.
@@ -958,6 +984,7 @@ function Builder() {
       if (!text || busy) return;
       const proj = await ensureProject();
       if (!proj) return;
+      supersedeBuildId(proj.latest_build_id);
       setError(null);
       setFriendlyError(null);
       // Attachments precedence: explicit opts > composer state > stashed initial.
@@ -1348,6 +1375,7 @@ function Builder() {
           // card subscribes to project_builds via useBuildActivity().
           void triggerBuild(proj.id)
             .then(async (build) => {
+              restoreBuildId(build.buildId);
               startedBuildIdsRef.current.add(build.buildId);
               const r = await getProject(proj.id);
               if (r) setProject(r);
@@ -1406,7 +1434,7 @@ function Builder() {
         void clearMessageDraft(proj.id);
       }
     },
-    [busy, messages, files, ensureProject, pendingAttachments],
+    [busy, messages, files, ensureProject, pendingAttachments, supersedeBuildId, restoreBuildId],
   );
   // Keep the latest send reference available to the service-enabled effect
   // without making that effect re-subscribe on every keystroke.
@@ -1697,11 +1725,13 @@ function Builder() {
    *  Railway hiccup without having to re-prompt the AI. */
   const retryDeploy = useCallback(() => {
     if (!project?.id) return;
+    supersedeBuildId(project.latest_build_id);
     setFriendlyError(null);
     setPhases((p) => advanceTo(p, "deploying"));
     setActivityVisible(true);
     void triggerBuild(project.id)
       .then(async (build) => {
+        restoreBuildId(build.buildId);
         startedBuildIdsRef.current.add(build.buildId);
         const r = await getProject(project.id);
         if (r) setProject(r);
@@ -1710,7 +1740,7 @@ function Builder() {
         setFriendlyError(toFriendlyError(err));
         setPhases((p) => markFailed(p, "deploying"));
       });
-  }, [project?.id]);
+  }, [project?.id, project?.latest_build_id, supersedeBuildId, restoreBuildId]);
 
   const askPetalToFix = useCallback(
     (opts: { isAuto?: boolean } = {}) => {
@@ -1718,7 +1748,7 @@ function Builder() {
       // Feed the actual build error/log back into the next prompt so the AI
       // can patch the real cause (this is what Lovable, Bolt and Base44 do).
       // The Railway callback already concatenates logs into error_message.
-      const rawLog = buildSnap?.errorMessage?.trim();
+      const rawLog = effectiveBuildSnap?.errorMessage?.trim();
       const tail = rawLog
         ? rawLog.split("\n").slice(-60).join("\n").slice(-3500)
         : "";
@@ -1745,7 +1775,7 @@ function Builder() {
       // runs behave like any other build prompt (charged + visible).
       void send(prompt, { isRetry: false, isAutoFix: opts.isAuto === true });
     },
-    [send, buildSnap],
+    [send, effectiveBuildSnap],
   );
 
   // Keep the ref in sync so the build-failure effect (declared earlier in
@@ -2057,11 +2087,11 @@ function Builder() {
               title="Publish"
             >
               <Globe className="h-3.5 w-3.5" />
-              {buildSnap?.status === "pending"
+              {effectiveBuildSnap?.status === "pending" || effectiveBuildSnap?.status === "building"
                 ? "Publishing…"
-                : buildSnap?.status === "failed"
+                : effectiveBuildSnap?.status === "failed"
                   ? "Retry publish"
-                  : project.latest_build_id && buildSnap?.status === "ready"
+                  : project.latest_build_id && effectiveBuildSnap?.status === "ready"
                     ? "Published"
                     : "Publish"}
             </button>
