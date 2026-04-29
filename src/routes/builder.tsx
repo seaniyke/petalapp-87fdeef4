@@ -485,7 +485,43 @@ function Builder() {
     };
   }, [project?.id]);
 
-  // Reflect Cloudflare build state into the phase timeline + friendly errors.
+  // Listen for service activations (Petal Email, managed backend, custom
+  // domain, …) fired from anywhere in the app. Stream a friendly assistant
+  // announcement into the active chat so the activation feels like part of
+  // the build, not a silent toast that vanishes.
+  useEffect(() => {
+    return onServiceEnabled((detail) => {
+      if (!project?.id || detail.projectId !== project.id) return;
+      const fullText =
+        `✨ ${detail.label} is enabled` +
+        (detail.summary ? ` — ${detail.summary}` : ".");
+      // Cancel any in-flight service typing so back-to-back activations
+      // don't collide on the same bubble.
+      let cancelled = false;
+      setStreamingService("");
+      let i = 0;
+      const tick = () => {
+        if (cancelled) return;
+        i = Math.min(fullText.length, i + 2);
+        setStreamingService(fullText.slice(0, i));
+        if (i < fullText.length) {
+          setTimeout(tick, 18);
+        } else {
+          // Promote the streamed text into a real system note and persist.
+          const note: ChatMessage = { role: "system", system: true, content: fullText };
+          setMessages((prev) => [...prev, note]);
+          setStreamingService("");
+          void appendMessages(project.id, [note]).catch(() => {
+            // Persistence is best-effort — the in-memory message still shows.
+          });
+        }
+      };
+      tick();
+      return () => {
+        cancelled = true;
+      };
+    });
+  }, [project?.id]);
   // On failure: auto-trigger the fix loop (Phase 2) up to MAX_AUTO_FIX_ATTEMPTS
   // before surfacing the manual "Ask Petal to fix it" button.
   useEffect(() => {
