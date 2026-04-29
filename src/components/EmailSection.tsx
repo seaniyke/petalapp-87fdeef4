@@ -18,6 +18,7 @@ import {
   listPetalEmailOutbound,
 } from "@/server/petal-email.functions";
 import { toast } from "sonner";
+import { emitServiceEnabled } from "@/lib/service-events";
 
 type Status = Awaited<ReturnType<typeof getPetalEmailStatus>>;
 type OutboundRows = Awaited<ReturnType<typeof listPetalEmailOutbound>>["rows"];
