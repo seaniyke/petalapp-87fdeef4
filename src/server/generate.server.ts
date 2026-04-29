@@ -437,9 +437,20 @@ export type StreamEvent =
        * one click.
        */
       type: "continuation_handoff";
-      reason: "oversize_files" | "incomplete_turn" | "large_changeset";
+      reason:
+        | "oversize_files"
+        | "incomplete_turn"
+        | "large_changeset"
+        | "unrecoverable_turn";
       message: string;
       suggestedPrompt: string;
+      /** Optional structured detail of what tripped the handoff. Used by the
+       *  client to render specifics (hallucinated package names, truncated
+       *  file paths) so the user knows *what* to continue fixing. */
+      detected?: {
+        hallucinatedPackages?: string[];
+        truncatedPaths?: string[];
+      };
     }
   | { type: "error"; message: string; suggestions?: string[] };
 
