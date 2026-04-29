@@ -984,6 +984,24 @@ export const Route = createFileRoute("/api/generate")({
             Connection: "keep-alive",
           },
         });
+        } catch (handlerErr) {
+          // Catch-all so the worker NEVER returns an empty response (status 0
+          // in CF logs, "Something went wrong" in the UI). The streaming body
+          // has its own try/catch — this guards every awaited setup step
+          // before the stream starts (auth lookup, project memory load,
+          // design director, classifier, smart router, upstream fetch).
+          console.error("[/api/generate] unhandled error", handlerErr);
+          const message =
+            handlerErr instanceof Error ? handlerErr.message : "Unexpected server error";
+          return new Response(
+            JSON.stringify({
+              error:
+                "Petal hit an unexpected error before starting your build. No credits were charged. Please try again.",
+              detail: message,
+            }),
+            { status: 500, headers: { "Content-Type": "application/json" } },
+          );
+        }
       },
     },
   },
