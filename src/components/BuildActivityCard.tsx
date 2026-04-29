@@ -39,6 +39,7 @@ export type TimelineEntry = {
   step:
     | "stream_autofix"
     | "local_verifier"
+    | "npm_preflight"
     | "continuation"
     | "esbuild_parse"
     | "file_budget"
@@ -53,6 +54,7 @@ export type TimelineEntry = {
 const TIMELINE_LABELS: Record<TimelineEntry["step"], string> = {
   stream_autofix: "Quick autofix",
   local_verifier: "Local verifier",
+  npm_preflight: "Package check",
   continuation: "Stream continuation",
   esbuild_parse: "Compiler check",
   file_budget: "File-size guard",
@@ -63,6 +65,7 @@ const TIMELINE_LABELS: Record<TimelineEntry["step"], string> = {
 const TIMELINE_ICONS: Record<TimelineEntry["step"], LucideIcon> = {
   stream_autofix: Wand2,
   local_verifier: ShieldCheck,
+  npm_preflight: ShieldCheck,
   continuation: FileEdit,
   esbuild_parse: ShieldCheck,
   file_budget: ShieldCheck,
