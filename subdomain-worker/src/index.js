@@ -22,7 +22,7 @@
  */
 
 const PETAL_ROOT = "buildwithpetal.com";
-const CONTROL_PLANE = "https://petalapp.lovable.app";
+const CONTROL_PLANE = "https://buildwithpetal.com";
 const HOP_BY_HOP = new Set([
   "host",
   "connection",
@@ -186,8 +186,7 @@ var s=(navigator.userAgent||"")+"|"+(navigator.language||"")+"|"+screen.width+"x
 var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}
 var v="v"+(h>>>0).toString(36);
 var b=JSON.stringify({project_id:p,path:location.pathname,referrer:document.referrer||"",visitor_hash:v});
-if(navigator.sendBeacon){navigator.sendBeacon(e,new Blob([b],{type:"application/json"}));}
-else{fetch(e,{method:"POST",headers:{"Content-Type":"application/json"},body:b,keepalive:true}).catch(function(){});}
+if(!navigator.sendBeacon||!navigator.sendBeacon(e,new Blob([b],{type:"application/json"}))){fetch(e,{method:"POST",headers:{"Content-Type":"application/json"},body:b,keepalive:true}).catch(function(){});}
 }catch(_){}})();</script>`;
     el.append(script, { html: true });
   }

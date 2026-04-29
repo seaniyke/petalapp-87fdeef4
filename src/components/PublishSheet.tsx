@@ -24,7 +24,7 @@
  *   - "Publishing…"    — build pending
  *   - "Retry publish"  — last build failed
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Drawer,
   DrawerContent,
@@ -49,6 +49,7 @@ import {
   Search,
 } from "lucide-react";
 import { WebsiteInfoSheet } from "@/components/WebsiteInfoSheet";
+import { supabase } from "@/integrations/supabase/client";
 import { triggerBuild } from "@/lib/builds";
 import { publishProject, type PublishVisibility } from "@/lib/publish";
 import { resolvePublishedUrl, type PublishedUrlResult } from "@/lib/published-url";
@@ -99,8 +100,9 @@ export function PublishSheet({
   const [publishing, setPublishing] = useState(false);
   const [visibilityBusy, setVisibilityBusy] = useState(false);
   const [websiteInfoOpen, setWebsiteInfoOpen] = useState(false);
-  // Visitor analytics — Cloudflare Pages traffic for the project's site.
-  // We fetch on open and when the user flips the range, never poll.
+  // Visitor analytics — database-backed traffic for the project's published site.
+  // We fetch on open/range changes and subscribe to the daily rollup so the
+  // count updates as new visits are recorded.
   const [visitorRange, setVisitorRange] = useState<VisitorRange>("7d");
   const [visitors, setVisitors] = useState<VisitorStatsResult | null>(null);
   const [visitorsLoading, setVisitorsLoading] = useState(false);
@@ -156,29 +158,22 @@ export function PublishSheet({
     buildStatus === "ready";
   const hasUrl = !!resolved.url;
 
-  // Fetch Cloudflare visitor counts when the sheet opens (and when the
-  // user flips the time range). Skipped for never-published projects since
-  // /api/visitors short-circuits to zero anyway. Aborts on close so a slow
-  // analytics call can't update closed-sheet state.
-  useEffect(() => {
-    if (!open) return;
-    if (!hasPublishedBuild) {
-      setVisitors(null);
-      return;
-    }
-    const ac = new AbortController();
-    setVisitorsLoading(true);
-    fetchProjectVisitors({
-      projectId: project.id,
-      range: visitorRange,
-      signal: ac.signal,
-    })
-      .then((stats) => {
-        if (!ac.signal.aborted) setVisitors(stats);
-      })
-      .catch((e) => {
-        if (ac.signal.aborted) return;
-        // Match the server's soft-fail shape so the UI logic is uniform.
+  const loadVisitors = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!hasPublishedBuild) {
+        setVisitors(null);
+        return;
+      }
+      setVisitorsLoading(true);
+      try {
+        const stats = await fetchProjectVisitors({
+          projectId: project.id,
+          range: visitorRange,
+          signal,
+        });
+        if (!signal?.aborted) setVisitors(stats);
+      } catch (e) {
+        if (signal?.aborted) return;
         setVisitors({
           visitors: 0,
           pageviews: 0,
@@ -188,12 +183,42 @@ export function PublishSheet({
           unavailable: true,
           error: e instanceof Error ? e.message : "Unknown error",
         });
-      })
-      .finally(() => {
-        if (!ac.signal.aborted) setVisitorsLoading(false);
-      });
+      } finally {
+        if (!signal?.aborted) setVisitorsLoading(false);
+      }
+    },
+    [hasPublishedBuild, project.id, visitorRange],
+  );
+
+  // Fetch visitor counts when the sheet opens (and when the user flips the
+  // time range). Aborts on close so a slow analytics call can't update closed
+  // sheet state.
+  useEffect(() => {
+    if (!open) return;
+    const ac = new AbortController();
+    void loadVisitors(ac.signal);
     return () => ac.abort();
-  }, [open, project.id, hasPublishedBuild, visitorRange, project.published_build_id]);
+  }, [open, loadVisitors, project.published_build_id]);
+
+  useEffect(() => {
+    if (!open || !hasPublishedBuild) return;
+    const channel = supabase
+      .channel(`project-visitors-${project.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "page_views_daily",
+          filter: `project_id=eq.${project.id}`,
+        },
+        () => void loadVisitors(),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [open, hasPublishedBuild, project.id, loadVisitors]);
 
 
   async function copyUrl() {
