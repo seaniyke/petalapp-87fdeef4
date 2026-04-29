@@ -797,6 +797,13 @@ export function PublishSheet({
         </div>
       </DrawerContent>
     </Drawer>
+    <WebsiteInfoSheet
+      open={websiteInfoOpen}
+      onOpenChange={setWebsiteInfoOpen}
+      project={project}
+      onChange={onChange}
+    />
+    </>
   );
 }
 
