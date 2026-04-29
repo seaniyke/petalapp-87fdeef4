@@ -208,8 +208,8 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
             Buy a new domain
           </DialogTitle>
           <DialogDescription>
-            Search for an available domain. Pricing is wholesale + 25% — what
-            you see is what you pay. Includes WHOIS privacy and auto-renewal.
+            Search for an available domain. What you see is what you pay —
+            includes WHOIS privacy and auto-renewal.
           </DialogDescription>
         </DialogHeader>
 
