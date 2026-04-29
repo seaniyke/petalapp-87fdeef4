@@ -151,19 +151,42 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
   }
 
   // Balance check.
+  // Rule:
+  //  - First-time users (never qualified) must top up to the $10 floor to
+  //    activate Cloud on their first project.
+  //  - Already-qualified users (have topped up before) only need a positive
+  //    Cloud balance to enable Cloud on additional projects — no extra
+  //    top-up is required, but a $0 balance still blocks activation.
   const { data: wallet } = await supabaseAdmin
     .from("user_wallets")
-    .select("runtime_topup_balance_cents")
+    .select("runtime_topup_balance_cents, runtime_free_balance_cents, runtime_topup_qualified_at")
     .eq("user_id", userId)
     .maybeSingle();
   const topup = Number(wallet?.runtime_topup_balance_cents ?? 0);
-  if (topup < PROVISIONING_FLOOR_CENTS) {
+  const free = Number(wallet?.runtime_free_balance_cents ?? 0);
+  const totalBalance = topup + free;
+  const qualified = Boolean(wallet?.runtime_topup_qualified_at);
+
+  if (!qualified) {
+    if (topup < PROVISIONING_FLOOR_CENTS) {
+      return new Response(
+        JSON.stringify({
+          error: `Top up your Cloud balance to at least $${PROVISIONING_FLOOR_CENTS / 100} to enable a managed backend.`,
+          code: "topup_required",
+          currentCents: topup,
+          requiredCents: PROVISIONING_FLOOR_CENTS,
+        }),
+        { status: 402, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  } else if (totalBalance <= 0) {
     return new Response(
       JSON.stringify({
-        error: `Top up your Cloud balance to at least $${PROVISIONING_FLOOR_CENTS / 100} to enable a managed backend.`,
-        code: "topup_required",
-        currentCents: topup,
-        requiredCents: PROVISIONING_FLOOR_CENTS,
+        error:
+          "Your Cloud balance is $0. Top up to enable Cloud on this project.",
+        code: "balance_empty",
+        currentCents: totalBalance,
+        requiredCents: 1,
       }),
       { status: 402, headers: { "Content-Type": "application/json" } },
     );
