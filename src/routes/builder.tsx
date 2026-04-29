@@ -500,23 +500,26 @@ function Builder() {
   // activity card in its "deploying" phase. Treating 'building' as inactive
   // (the previous behavior, since it wasn't in the enum) was the bug that
   // froze the spinner whenever Railway flipped the row mid-build.
-  const isDeploying = buildSnap?.status === "pending" || buildSnap?.status === "building";
-  const isLive = buildSnap?.status === "ready";
+  const activeBuildId = project?.latest_build_id ?? null;
+  const isSupersededBuild = !!activeBuildId && supersededBuildIds.has(activeBuildId);
+  const effectiveBuildSnap = isSupersededBuild ? null : buildSnap;
+  const isDeploying = effectiveBuildSnap?.status === "pending" || effectiveBuildSnap?.status === "building";
+  const isLive = effectiveBuildSnap?.status === "ready";
 
   // Long-wait escalation for the deploy phase. We escalate copy at 60s/90s
   // and surface a friendly "deploy stalled" card at 150s so the user always
   // has a way to retry or keep working — never a stranded spinner.
   const [deployElapsed, setDeployElapsed] = useState(0);
   useEffect(() => {
-    if (!isDeploying || !buildSnap) {
+    if (!isDeploying || !effectiveBuildSnap) {
       setDeployElapsed(0);
       return;
     }
-    const tick = () => setDeployElapsed(Math.floor((Date.now() - buildSnap.observedAt) / 1000));
+    const tick = () => setDeployElapsed(Math.floor((Date.now() - effectiveBuildSnap.observedAt) / 1000));
     tick();
     const t = window.setInterval(tick, 1000);
     return () => window.clearInterval(t);
-  }, [isDeploying, buildSnap?.observedAt]);
+  }, [isDeploying, effectiveBuildSnap?.observedAt]);
 
   // Once we cross the 150s threshold, surface the friendly stalled card.
   // The card lets the user Retry (re-trigger the build with the current
