@@ -46,7 +46,9 @@ import {
   BarChart3,
   Pencil,
   X,
+  Search,
 } from "lucide-react";
+import { WebsiteInfoSheet } from "@/components/WebsiteInfoSheet";
 import { triggerBuild } from "@/lib/builds";
 import { publishProject, type PublishVisibility } from "@/lib/publish";
 import { resolvePublishedUrl, type PublishedUrlResult } from "@/lib/published-url";
