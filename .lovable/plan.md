@@ -1,93 +1,80 @@
-## Builder audit — Petal vs the top 5 AI app builders
 
-Benchmarked against **Lovable, Bolt.new, v0 (Vercel), Replit Agent, Base44** (with Cursor as a code-fidelity reference). I read every relevant file under `src/server/`, `src/routes/api/generate.ts`, `src/routes/api/discuss.ts`, the WebContainer preview, and the builder UI. Petal is already strong on several axes — but four areas are clearly behind the field, and that's what this plan ships.
+# Petal AI Audit & Reliability Plan
 
-### What Petal already does well (do not touch)
+I pulled real telemetry from `ai_call_log` (last 7d) and `project_builds` (last 14d) to ground this — not vibes. Here is what's actually going wrong, and what to fix, in order of impact.
 
-- **Multi-tier safety pipeline**: triage → design director → smart-router model pick → stream-time autofixer → local verifier → continuation-on-truncation → post-stream autofix → Replit-style verifier → image resolver → self-check → memory writer. This is genuinely state-of-the-art; Lovable/Bolt do not publicly run this many gates.
-- **Smart router with telemetry** (`src/server/smart-router.server.ts`) picks model per (feature, phase) from historical success — Base44/Lovable expose this as a manual dropdown only.
-- **Project memory**, **design director**, **prerequisite gating** (10 categories of intent detection), **integration auto-suggest** with secret requests — at par or ahead.
-- **Phase classifier + per-phase model tier**, **petal-image://** placeholder pipeline, **build → auto-fix loop** (2 free attempts on Petal's tab) — solid.
+## Findings
 
-### Gaps vs competitors (ranked by impact on "power of the AI")
+### 1. Build success rate is bad: ~55% (21 ready / 17 failed in 7d)
+The biggest user-visible quality problem. Two root causes dominate:
 
+**a. Scaffold ships example files that import a missing UI primitive.**
+- `src/server/examples-pack.ts` includes `auth-otp-card.tsx` and `onboarding-verify-step.tsx`, both of which import `@/components/ui/input-otp`.
+- The scaffold-kit does not ship `src/components/ui/input-otp.tsx`.
+- When the AI follows our own "copy-from auth-otp-card" prompt suggestion, the user's `App.tsx` imports the example, Vite traverses it, and the build fails with `Could not load /src/components/ui/input-otp`.
+- This single bug accounts for 3 of the 10 vite build failures in the window — likely more under-counted because the AI sometimes uses the OTP block silently.
 
-| #   | Capability                                                                                    | Petal today                                                                                                                                                                           | Top competitors                                                                                             | Gap                                                                                                        |
-| --- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| 1   | **Agentic tool-loop** (multi-turn: read → think → write → verify → write again, autonomously) | Single tool call per turn (`write_project` or `patch_files`), then deterministic verifier passes                                                                                      | Replit Agent + Bolt + Cursor run a real ReAct loop with `read_file`, `search`, `write`, `run_command` tools | **Big** — limits power on multi-step refactors                                                             |
-| 2   | **Visual edit ↔ source mapping**                                                              | Element picker exists in `webcontainer.ts` and posts `data-source-file` / `data-source-line` to chat — but the kit never **emits** those attributes, so the metadata is always `null` | Lovable, v0, Bolt all support click-to-edit with file pinpointing                                           | **Big** — picker is shipped but blind                                                                      |
-| 3   | **Console / runtime error → "Fix with AI" loop**                                              | Build failures auto-fix; in-preview runtime errors are NOT surfaced as a fix button                                                                                                   | Bolt and Lovable both watch the iframe console and offer a one-click fix                                    | **Medium**                                                                                                 |
-| 4   | **Reasoning model toggle**                                                                    | `pickSmartModel` picks pro for heavy keywords; no explicit "deep think" / extended-reasoning option exposed                                                                           | Replit Agent and Cursor expose an explicit "high effort" mode                                               | **Medium**                                                                                                 |
-| 5   | **Inline diff preview before apply**                                                          | Patches apply directly; revert is per-message after the fact                                                                                                                          | v0 and Cursor show a diff + "accept/reject" before writing                                                  | **Small** (Petal's instant-apply is intentional, but a "preview changes" toggle would help on big patches) |
-| 6   | **Long-context / repo search tool**                                                           | Full file context is dumped into every prompt                                                                                                                                         | Bolt/Replit give the agent a `search_files` tool so it can pull only what it needs                          | **Small now, big once apps get >40 files**                                                                 |
+**b. AI emits `import { createBrowserRouter, RouteObject } from "@/components/ui/router"` even when our re-export surface used to omit it.**
+- Scaffold now exports them, so new builds are OK, but 2+ historical failures show the model favours `createBrowserRouter` patterns. Worth tightening the prompt so the simpler `<Router><Routes>` form is the default and `createBrowserRouter` is only suggested when the user asks for nested data routes.
 
+### 2. Deploy timeouts (7 in 14d): the build worker doesn't report back within 10–20 min
+Not an AI quality issue per se, but it surfaces as "Petal failed". Needs separate investigation in the deploy worker — out of scope for this AI audit, but worth flagging.
 
-### What we ship in this plan
+### 3. Phase router is doing nothing useful
+- 18 of 30 recent generate calls were tagged `phase=debug`. Of those, basically all routed to `gemini-2.5-pro`. That's correct — but it also means the user is constantly going back to fix things the model just shipped. Debug rate should be <10% of turns; we're at ~60%.
+- The smart router has only ~13 generate samples in the whole window — not enough to actually learn. It picks `gemini-2.5-pro` for `implement` turns simply because it has more successes recorded, even though `gemini-3-flash-preview` is supposed to be the cheap default for implement. Net effect: we pay Pro prices for trivial scaffolds and STILL get failures.
 
-Six focused upgrades, ordered by leverage. Each is independently shippable and testable.
+### 4. Real model latency is rough
+- p50 generate latency on Pro: 12.6s; p95: 20.4s.
+- p50 generate latency on Flash-preview: 11s but p95 spikes to 40.7s (one outlier 42s scaffolding turn).
+- Recovery / autofix passes add another 1–15s.
+- A user typing a small change waits 13–25s on average. v0/Bolt are at 6–10s for comparable turns.
 
-#### 1. Source-mapped visual editor (Pass A)
+### 5. We have NO outcome telemetry tying an AI call to a build result
+- `ai_call_log` records HTTP status + latency. It does NOT record whether the resulting build compiled, whether the next user turn was a "fix this" message, or whether the local-verifier flagged issues.
+- The smart router is therefore optimising for "did the gateway return 200" — which is ~100% across the board — not "did the model produce working code". This is why it can't distinguish good from bad models.
 
-The picker already round-trips `data-source-file` / `data-source-line` to the chat composer — but no JSX emits them. Add a Vite plugin to the in-browser preview that injects `data-source-file="src/pages/Home.tsx"` / `data-source-line="42"` onto every JSX opener. When a user picks an element and types "make this red", Petal now gets `Source file: src/pages/Home.tsx:42` and can patch the **exact** node — not guess.
+### 6. Post-stream autofix isn't tracked
+- We don't know how often it fires, what it fixes, or how often it fails to fix. Could be silently saving 30% of turns or adding noise — we have no idea.
 
-- Add `vite-plugin-petal-source` (tiny Babel/SWC visitor or runtime esbuild transform) injected in `scaffold-kit.ts`.
-- Strip the attribute in production builds (only injected when `import.meta.env.DEV`).
-- Keep the picker UI exactly as it is.
+## Plan
 
-#### 2. Console-to-fix bridge
+### Phase A — Stop the bleeding (highest ROI, ~2-3 hour change)
 
-WebContainerPreview already proxies the iframe's console. Add a postMessage channel for `window.onerror` / `unhandledrejection`, surface a non-blocking toast in the builder ("React error in `Home.tsx` — fix with AI"), and pre-fill an autofix prompt with the stack frame + file. Reuse the existing `isAutoFix` free-charge path.
+1. **Ship `src/components/ui/input-otp.tsx` in the scaffold-kit.** Either a real OTP input (using `input-otp` npm package, already a shadcn standard) or a thin fallback that re-exports basic `Input` slots. This single fix removes ~30% of build failures.
+2. **Either inline the OTP example or remove it from `examples-pack.ts`** until the kit primitive ships. Same for `onboarding-verify-step.tsx`.
+3. **Add a build-time scaffold sanity test**: walk every example file, parse imports, and fail CI if any `@/...` import doesn't resolve in the scaffold output. Prevents regression.
 
-- New file: `src/lib/runtime-error-bridge.ts` (injected the same way the picker is).
-- Builder shows a small banner above the composer with one button: **Fix this**.
-- Free fix attempt counter shared with the build-failure auto-fix budget.
+### Phase B — Outcome telemetry (the missing feedback loop)
 
-#### 3. Agentic tool loop for "deep" turns
+4. **Add `ai_call_outcomes` table** linking an `ai_call_log.id` to:
+   - `local_verifier_pass: bool` (run synchronously after the stream completes)
+   - `autofix_ran: bool`, `autofix_fixed_count: int`
+   - `next_user_turn_was_fix: bool` (filled in lazily when the next message arrives, classified by phase classifier = "debug")
+   - `build_status: text` (filled in when the build finishes)
+5. **Update smart-router scoring** to use `outcome_success_rate` (built + no debug follow-up) instead of HTTP 200. This is the single change that lets the router actually learn.
 
-Today `/api/generate` makes ONE model call and trusts whatever comes out. For non-trivial turns (phase = `feature` / `refactor`, or files > 12), upgrade to a bounded ReAct loop with three tools: `read_file(path)`, `search_files(query)`, and `patch_files(ops)`. Cap at 6 tool calls per turn, hard timeout at 90s, falls back to today's single-shot path if the loop errors.
+### Phase C — Reduce debug-turn rate by hardening the model output
 
-- New file: `src/server/agent-loop.server.ts`.
-- Routed by phase classifier — keep the fast single-shot path for `ui_tweak` / `new_component`.
-- Stream tool calls as `{type:"tool_call", name, args}` SSE events so the UI can show "Reading `Header.tsx`…" in the activity card.
-- Existing verifier/autofix tiers run unchanged after the loop.
+6. **Tighten `SYSTEM_PROMPT_PATCH`** with the top 3 patterns we see fail:
+   - Forbid `createBrowserRouter` unless the user explicitly asks for data routers.
+   - Require explicit `export default` next to every page component (the React.lazy footgun the local-verifier already catches).
+   - Pin a "no new dependency unless added to package.json" check.
+7. **Run the local-verifier BEFORE we save files**, not after. Currently we save, then autofix; if autofix fails the user sees broken output. Reject the AI tool call and force a single retry instead.
+8. **Promote `gemini-3-flash-preview` for `implement` turns again** but only after Phase B telemetry confirms its outcome rate isn't worse than Pro's. Right now we're masking the problem by always using Pro.
 
-#### 4. Reasoning effort surfacing
+### Phase D — Latency (lower priority, do after A–C land)
 
-Add a third option to the existing model preset dropdown: **Fast / Smart / Deep think**. "Deep think" passes `reasoning: { effort: "high" }` to gpt-5 / gemini-2.5-pro, lets users opt into the highest-quality output for hard refactors.
+9. **Stream files to the client as they're parsed** rather than waiting for the full tool-call to finish. The scaffolding includes this for `plan_delta`/`summary_delta` but not for `file_progress`. v0 perceived-latency win comes from showing the first file <2s in.
+10. **Cap autofix to one round and parallelize with the user's chat-bubble render** so the user sees the result while we patch in background.
 
-- One field added to `Body.model` type (`"fast" | "smart" | "best" | "deep"`).
-- `aiChatCompletions` already passes the body through; extend `resolveModel` and add the reasoning flag.
+## Out of scope for this plan (call out, don't fix)
 
-#### 5. Inline diff preview for big patches
+- Deploy timeouts (deploy worker, not AI).
+- WebContainer preview hydration warnings (cosmetic; from console logs).
 
-When a `patch_files` op set touches >3 files OR rewrites a file >100 lines, hold the apply step and emit a `pending_diff` SSE event. UI renders a sheet listing changed files with accept-all / reject buttons. Auto-applies after 8 seconds if the user does nothing (so small power-users aren't slowed down).
+## Order of operations I propose
 
-- Build on top of existing `applyOps` — gate it behind a feature flag in `labs-flags`.
+Do Phase A first (one PR, ships today, instantly removes the most common failure). Then Phase B (a migration + small worker change — unblocks every smarter routing decision after that). Then C and D iteratively, measuring with the new outcome telemetry.
 
-#### 6. Repo-search tool (foundation for #3)
-
-Add `searchProjectFiles({ projectId, query, kind })` server function that does a fast ripgrep-equivalent over the project's files (already loaded into memory in the request). Used by #3's loop, also surfaceable in Discuss mode so Petal can answer "where is the cart total computed?" by citing files.
-
-### Out of scope (acknowledged, not shipped here)
-
-- **Branching / git checkpoints**: project_versions already gives revert. A full "branch this build" is a bigger UX shift — separate plan.
-- **Multi-modal chat (video / Figma import)**: Petal handles image attachments. Figma import is its own ingest pipeline.
-- **Background long-running agents** (Replit's "Agent runs while you sleep"): worth doing once #3 is stable; would build on the same loop primitive.
-
-### Technical notes
-
-- **Files added**: `src/server/agent-loop.server.ts`, `src/server/repo-search.server.ts`, `src/lib/runtime-error-bridge.ts`, a Vite plugin file under `scaffold-kit` for source attributes, a small `RuntimeErrorBanner.tsx` in components.
-- **Files edited**: `src/routes/api/generate.ts` (route deep turns to the agent loop), `src/server/scaffold-kit.ts` (inject the new dev-only plugin and runtime-error script), `src/components/WebContainerPreview.tsx` (forward error postMessages), `src/routes/builder.tsx` (banner + diff sheet + Deep model option), `src/server/generate.server.ts` (extend tool list).
-- **Telemetry**: every new path logs to the existing smart-router stats so we can A/B agent-loop vs single-shot on real traffic.
-- **Backwards compatibility**: every gate is feature-flagged; existing turns still hit the proven single-shot path until we confirm wins.
-
-### Order of work (single PR per item, in this order)
-
-1. Source-mapped picker (highest UX win, smallest risk)
-2. Reasoning effort toggle (1 file, 30 min)
-3. Console-to-fix bridge
-4. Repo-search server function
-5. Agent loop (uses #4)
-6. Inline diff preview (labs flag)
-
-Approve and I'll ship #1 + #2 first so you have something visible immediately, then move down the list.
+Would you like me to start with Phase A, or do you want me to draft the full migration in Phase B too in the same change?
