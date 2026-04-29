@@ -44,7 +44,7 @@ Goal: close the MEDIUM and WEAK gaps from the audit without destabilizing the pi
 
 ---
 
-## Phase 3 — Package-name pre-flight (WEAK-b)
+## Phase 3 — Package-name pre-flight (WEAK-b) ✅ SHIPPED
 
 **Problem:** model hallucinates `react-cooler-toast`; we don't know until sandbox install fails.
 

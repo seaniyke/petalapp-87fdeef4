@@ -44,6 +44,7 @@ import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-cla
 // verifier and its recovery pass was unconditionally skipped by the
 // Phase D one-round autofix cap, so it only added latency + tokens.
 import { verifyFilesLocal } from "@/server/local-verifier";
+import { applyNpmPreflight } from "@/server/npm-existence.server";
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import {
   checkFileBudgets,
@@ -847,7 +848,39 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                       .filter((f) => priorByPath.get(f.path) !== f.content)
                       .map((f) => f.path)
                   : (parsed.ops ?? []).map((o) => o.path);
-              const localVerdict = verifyFilesLocal(nextFiles, earlyChangedPaths);
+              const localVerdictRaw = verifyFilesLocal(nextFiles, earlyChangedPaths);
+              // Tier 2.45 — npm pre-flight. The local verifier flags every
+              // bare import that's not in package.json as `missing-dep`. Most
+              // of those are real packages the install step will fetch; a few
+              // are hallucinations. Hit the registry to tell them apart, then
+              // drop the real ones and escalate the hallucinations. Network
+              // failures degrade gracefully (issue stays as-is). Adds ~50ms
+              // when the local verifier already passes (probe pool is empty).
+              let preflightDropped = 0;
+              let preflightHallucinated: string[] = [];
+              try {
+                const pre = await applyNpmPreflight(localVerdictRaw.issues);
+                preflightDropped = pre.realButMissing.length;
+                preflightHallucinated = pre.hallucinated;
+                localVerdictRaw.issues = pre.issues;
+                localVerdictRaw.ok = pre.issues.length === 0;
+                if (preflightDropped > 0) {
+                  console.log(
+                    `[npm-preflight] dropped ${preflightDropped} real-but-missing dep issue(s):`,
+                    pre.realButMissing.join(", "),
+                  );
+                }
+                if (pre.hallucinated.length > 0) {
+                  console.warn(
+                    `[npm-preflight] confirmed ${pre.hallucinated.length} hallucinated package(s):`,
+                    pre.hallucinated.join(", "),
+                  );
+                }
+              } catch (e) {
+                // Probe failed entirely — keep the original verdict unchanged.
+                console.warn("[npm-preflight] errored, skipping:", e);
+              }
+              const localVerdict = localVerdictRaw;
               if (!localVerdict.ok) {
                 console.warn(
                   `[local-verifier] ${localVerdict.issues.length} issue(s):`,
@@ -878,8 +911,23 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   }),
                 ),
               );
-
-              // Tier 2.6 — TRUE truncation recovery. If the local verifier
+              if (preflightDropped > 0 || preflightHallucinated.length > 0) {
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "timeline",
+                      step: "npm_preflight",
+                      outcome: preflightHallucinated.length > 0 ? "failed" : "fixed",
+                      message:
+                        preflightHallucinated.length > 0
+                          ? `Confirmed ${preflightHallucinated.length} hallucinated package${preflightHallucinated.length === 1 ? "" : "s"}: ${preflightHallucinated.slice(0, 3).join(", ")}`
+                          : `Cleared ${preflightDropped} real package${preflightDropped === 1 ? "" : "s"} the installer will fetch`,
+                      count: preflightHallucinated.length || preflightDropped,
+                      ts: Date.now(),
+                    }),
+                  ),
+                );
+              }
               // flagged any file as truncated mid-stream, ask the SAME model
               // to emit only the missing tail bytes. This beats asking
               // flash-lite to "fix" a half-written component (it would

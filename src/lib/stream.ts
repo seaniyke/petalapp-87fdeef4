@@ -26,6 +26,7 @@ type Handlers = {
     step:
       | "stream_autofix"
       | "local_verifier"
+      | "npm_preflight"
       | "continuation"
       | "esbuild_parse"
       | "file_budget"
