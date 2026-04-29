@@ -67,33 +67,67 @@ export function RuntimeLowBalanceBanner({ projectId }: Props) {
     message = `Cloud + AI balance is low (${formatCents(totalCents)}). Top up to keep your apps running.`;
   }
 
+  // Paused = blocking. Keep the full-width banner so users can't miss it.
+  if (paused) {
+    return (
+      <>
+        <div
+          role="status"
+          className="flex items-center gap-2 border-b border-destructive/40 bg-destructive/10 px-3 py-1.5 text-xs text-destructive-foreground sm:px-4"
+        >
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">{message}</span>
+          <button
+            type="button"
+            onClick={() => setTopupOpen(true)}
+            className="rounded-full border border-current/40 px-2 py-0.5 text-[11px] font-medium hover:bg-background/40"
+          >
+            Top up
+          </button>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setDismissed(true)}
+            className="rounded-full p-0.5 hover:bg-background/40"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+        <RuntimeTopupModal open={topupOpen} onOpenChange={setTopupOpen} />
+      </>
+    );
+  }
+
+  // Low / empty = informational. Render as a floating pill chip in the
+  // bottom-right so it doesn't shove the chat down or feel alarmist.
+  const tone = isEmpty
+    ? "border-foreground/15 bg-background text-foreground"
+    : "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200";
   return (
     <>
-      <div
-        role="status"
-        className={`flex items-center gap-2 border-b px-3 py-1.5 text-xs sm:px-4 ${
-          paused
-            ? "border-destructive/40 bg-destructive/10 text-destructive-foreground"
-            : "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200"
-        }`}
-      >
-        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-        <span className="min-w-0 flex-1 truncate">{message}</span>
-        <button
-          type="button"
-          onClick={() => setTopupOpen(true)}
-          className="rounded-full border border-current/40 px-2 py-0.5 text-[11px] font-medium hover:bg-background/40"
+      <div className="pointer-events-none fixed bottom-3 right-3 z-40 sm:bottom-4 sm:right-4">
+        <div
+          role="status"
+          className={`pointer-events-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] shadow-sm backdrop-blur ${tone}`}
         >
-          Top up
-        </button>
-        <button
-          type="button"
-          aria-label="Dismiss"
-          onClick={() => setDismissed(true)}
-          className="rounded-full p-0.5 hover:bg-background/40"
-        >
-          <X className="h-3 w-3" />
-        </button>
+          <AlertTriangle className="h-3 w-3 shrink-0 opacity-70" />
+          <span className="max-w-[60vw] truncate sm:max-w-xs">{message}</span>
+          <button
+            type="button"
+            onClick={() => setTopupOpen(true)}
+            className="rounded-full border border-current/40 px-1.5 py-0.5 text-[10.5px] font-medium hover:bg-background/40"
+          >
+            Top up
+          </button>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setDismissed(true)}
+            className="rounded-full p-0.5 hover:bg-background/40"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
       </div>
       <RuntimeTopupModal open={topupOpen} onOpenChange={setTopupOpen} />
     </>
