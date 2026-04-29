@@ -41,11 +41,17 @@ export interface ModelStat {
   model: string;
   calls: number;
   errors: number;
-  successRate: number; // smoothed
+  successRate: number; // smoothed HTTP-level success
   medianCostMicro: number;
   p50LatencyMs: number;
   score: number;
   enoughData: boolean;
+  // Phase B — outcome quality (joined from ai_call_outcomes / ai_model_quality).
+  outcomeSamples: number;
+  verifierPassRate: number | null;   // 0..1
+  buildSuccessRate: number | null;   // 0..1
+  followupFixRate: number | null;    // 0..1 (lower = better)
+  avgAutofixes: number | null;
 }
 
 export interface RouterSnapshot {
@@ -105,7 +111,19 @@ interface RawRow {
   latency_ms: number | null;
 }
 
-function buildSnapshot(rows: RawRow[], config: RouterConfig): RouterSnapshot {
+interface OutcomeAgg {
+  samples: number;
+  verifierPassRate: number;
+  buildSuccessRate: number;
+  followupFixRate: number;
+  avgAutofixes: number;
+}
+
+function buildSnapshot(
+  rows: RawRow[],
+  config: RouterConfig,
+  outcomesByModel: Map<string, OutcomeAgg>,
+): RouterSnapshot {
   // Group raw rows by (feature, phase, model) and (feature, model).
   type Bucket = {
     calls: number;
@@ -169,10 +187,37 @@ function buildSnapshot(rows: RawRow[], config: RouterConfig): RouterSnapshot {
         const p50LatencyMs = median(b.latencies);
         const enoughData = b.calls >= config.minSamples;
 
-        // Score: success per dollar. Add ε so free models don't divide by zero.
+        // Pull outcome quality for this model (feature-agnostic — outcomes
+        // are aggregated per model in `ai_model_quality`).
+        const oc = outcomesByModel.get(model) ?? null;
+        const verifierPassRate = oc ? oc.verifierPassRate : null;
+        const buildSuccessRate = oc ? oc.buildSuccessRate : null;
+        const followupFixRate = oc ? oc.followupFixRate : null;
+        const avgAutofixes = oc ? oc.avgAutofixes : null;
+        const outcomeSamples = oc ? oc.samples : 0;
+
+        // Score blends:
+        //   - HTTP success-per-cost (the original signal — keeps free fast
+        //     models alive when outcomes data is empty)
+        //   - quality multiplier from outcomes (if we have ≥3 samples):
+        //       0.6 * build_success + 0.3 * verifier_pass + 0.1 * (1 - followup_fix)
+        //     This rewards models whose generations actually compile and
+        //     don't immediately get a "fix this" follow-up turn.
         const costScore = medianCostMicro / 1000 + 1; // micro → milli, +1
         const latencyPenalty = p50LatencyMs > 5000 ? 0.05 : 0;
-        const score = successRate / costScore - latencyPenalty;
+        const httpScore = successRate / costScore - latencyPenalty;
+
+        let qualityMult = 1;
+        if (outcomeSamples >= 3) {
+          qualityMult =
+            0.6 * (buildSuccessRate ?? 0.5) +
+            0.3 * (verifierPassRate ?? 0.5) +
+            0.1 * (1 - (followupFixRate ?? 0.5));
+          // Keep multiplier in [0.25, 1.5] so a single bad day can't
+          // permanently kill a model.
+          qualityMult = Math.max(0.25, Math.min(1.5, qualityMult * 1.5));
+        }
+        const score = httpScore * qualityMult;
 
         stats.push({
           model,
@@ -183,6 +228,11 @@ function buildSnapshot(rows: RawRow[], config: RouterConfig): RouterSnapshot {
           p50LatencyMs,
           score,
           enoughData,
+          outcomeSamples,
+          verifierPassRate,
+          buildSuccessRate,
+          followupFixRate,
+          avgAutofixes,
         });
       }
       stats.sort((a, b) => b.score - a.score);
@@ -199,18 +249,75 @@ function buildSnapshot(rows: RawRow[], config: RouterConfig): RouterSnapshot {
   };
 }
 
+async function loadOutcomes(): Promise<Map<string, OutcomeAgg>> {
+  // `ai_model_quality` is a 7-day rolling view aggregated per (feature,
+  // provider, model). We collapse across feature/provider here so a model's
+  // quality follows it everywhere it's used.
+  const out = new Map<string, OutcomeAgg>();
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("ai_model_quality")
+      .select("model, samples, verifier_pass_rate, build_success_rate, followup_fix_rate, avg_autofixes");
+    if (error) {
+      console.warn("[smart-router] outcomes read failed:", error.message);
+      return out;
+    }
+    // Weighted merge by sample count when the same model appears under
+    // multiple (feature, provider) rows.
+    for (const r of (data ?? []) as Array<{
+      model: string | null;
+      samples: number | null;
+      verifier_pass_rate: number | null;
+      build_success_rate: number | null;
+      followup_fix_rate: number | null;
+      avg_autofixes: number | null;
+    }>) {
+      if (!r.model || !r.samples) continue;
+      const prev = out.get(r.model);
+      if (!prev) {
+        out.set(r.model, {
+          samples: r.samples,
+          verifierPassRate: Number(r.verifier_pass_rate ?? 0),
+          buildSuccessRate: Number(r.build_success_rate ?? 0),
+          followupFixRate: Number(r.followup_fix_rate ?? 0),
+          avgAutofixes: Number(r.avg_autofixes ?? 0),
+        });
+      } else {
+        const total = prev.samples + r.samples;
+        out.set(r.model, {
+          samples: total,
+          verifierPassRate:
+            (prev.verifierPassRate * prev.samples + Number(r.verifier_pass_rate ?? 0) * r.samples) / total,
+          buildSuccessRate:
+            (prev.buildSuccessRate * prev.samples + Number(r.build_success_rate ?? 0) * r.samples) / total,
+          followupFixRate:
+            (prev.followupFixRate * prev.samples + Number(r.followup_fix_rate ?? 0) * r.samples) / total,
+          avgAutofixes:
+            (prev.avgAutofixes * prev.samples + Number(r.avg_autofixes ?? 0) * r.samples) / total,
+        });
+      }
+    }
+  } catch (e) {
+    console.warn("[smart-router] outcomes load threw:", e);
+  }
+  return out;
+}
+
 async function rebuildSnapshot(): Promise<RouterSnapshot> {
   const config = await loadConfig();
   const since = new Date(Date.now() - config.windowHours * 60 * 60 * 1000).toISOString();
 
-  const { data, error } = await supabaseAdmin
-    .from("ai_call_log")
-    .select("feature, phase, model, status, cost_usd_micro, latency_ms")
-    .gte("created_at", since)
-    .limit(50_000);
+  const [logRes, outcomes] = await Promise.all([
+    supabaseAdmin
+      .from("ai_call_log")
+      .select("feature, phase, model, status, cost_usd_micro, latency_ms")
+      .gte("created_at", since)
+      .limit(50_000),
+    loadOutcomes(),
+  ]);
 
-  if (error) {
-    console.warn("[smart-router] log read failed:", error.message);
+  if (logRes.error) {
+    console.warn("[smart-router] log read failed:", logRes.error.message);
     return {
       builtAt: Date.now(),
       config,
@@ -219,7 +326,7 @@ async function rebuildSnapshot(): Promise<RouterSnapshot> {
     };
   }
 
-  const snap = buildSnapshot((data ?? []) as RawRow[], config);
+  const snap = buildSnapshot((logRes.data ?? []) as RawRow[], config, outcomes);
   cached = snap;
   cacheLoadedAt = Date.now();
   return snap;
