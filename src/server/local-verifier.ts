@@ -355,6 +355,20 @@ export function verifyFileLocal(path: string, content: string): LocalIssue[] {
     });
   }
 
+  // Unterminated string / template / regex / block-comment detection.
+  // This is the #1 build-failure mode in our telemetry — esbuild reports it
+  // as "Unterminated string literal" / "Unterminated regular expression" /
+  // "Unexpected end of file". Catch it deterministically here so the
+  // continuation pass kicks in before the user ever sees a build failure.
+  const unterm = findUnterminatedString(content);
+  if (unterm) {
+    issues.push({
+      path,
+      kind: "unterminated-string",
+      detail: unterm,
+    });
+  }
+
   if (looksTruncated(content)) {
     const tail = content.trimEnd().slice(-40).replace(/\s+/g, " ");
     issues.push({
