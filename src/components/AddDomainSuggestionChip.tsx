@@ -28,7 +28,7 @@ export function AddDomainSuggestionChip({
       <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5">
         <Globe className="h-3.5 w-3.5 shrink-0 text-primary" />
         <span className="min-w-0 flex-1 text-[12px] leading-snug text-foreground">
-          Want to use a custom domain{reason ? ` for "${reason}"` : ""}?
+          Want to use a custom domain?
         </span>
         <button
           type="button"
