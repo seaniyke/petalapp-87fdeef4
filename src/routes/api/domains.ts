@@ -156,9 +156,21 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
     });
   }
 
-  const txt = extractTxtValidation(cf);
+  // Cloudflare often needs a second or two to issue the TXT validation
+  // record after createCustomHostname returns. Poll briefly so the user
+  // sees the real value immediately instead of a placeholder.
+  let txt = extractTxtValidation(cf);
+  for (let attempt = 0; attempt < 4 && !txt; attempt++) {
+    await new Promise((r) => setTimeout(r, 750));
+    try {
+      cf = await getCustomHostname(cf.id);
+      txt = extractTxtValidation(cf);
+    } catch {
+      break;
+    }
+  }
   const txtName = txt?.name ?? `_acme-challenge.${parsed.data.hostname}`;
-  const txtValue = txt?.value ?? "(generating — click Check status in a few seconds)";
+  const txtValue = txt?.value ?? "Pending — tap Check status in a few seconds";
   const mapped = mapCfStatus(cf);
 
   const { data, error } = await supabaseAdmin
