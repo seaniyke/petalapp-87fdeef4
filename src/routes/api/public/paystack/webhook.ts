@@ -242,12 +242,14 @@ export const Route = createFileRoute("/api/public/paystack/webhook")({
             if (!tx.project_id) {
               throw new Error("Domain purchase missing project_id");
             }
-            // Fire-and-forget — kick off Cloudflare's async registration
-            // workflow. Polling continues from /api/registrar/poll (and
-            // any future cron). We ack the webhook quickly either way.
-            startDomainRegistration({ reference: ref }).catch((e) =>
-              console.error("[webhook] domain_purchase failed", e),
-            );
+            // IMPORTANT: await — Workers terminate background promises after
+            // the response is returned, so fire-and-forget left rows stuck in
+            // `pending_payment`. The poller continues from /api/registrar/poll.
+            try {
+              await startDomainRegistration({ reference: ref });
+            } catch (e) {
+              console.error("[webhook] domain_purchase failed", e);
+            }
           } else if (tx.purpose === "plan") {
             await supabaseAdmin.rpc("apply_paystack_plan_grant", {
               _user_id: tx.user_id,

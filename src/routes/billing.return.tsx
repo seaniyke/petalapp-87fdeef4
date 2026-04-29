@@ -194,8 +194,8 @@ function BillingReturn() {
           <h1 className="mt-4 text-xl font-semibold">Registering your domain…</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {state.hostname
-              ? `Cloudflare is finalising ${state.hostname}. This usually takes 10–60 seconds.`
-              : "Cloudflare is finalising your domain. This usually takes 10–60 seconds."}
+              ? `We're finalising ${state.hostname}. This usually takes 10–60 seconds.`
+              : "We're finalising your domain. This usually takes 10–60 seconds."}
           </p>
         </>
       )}
