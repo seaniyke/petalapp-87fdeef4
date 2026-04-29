@@ -21,6 +21,10 @@
  */
 import { verifyFilesLocal } from "../local-verifier";
 import { checkFileBudgets } from "../file-budget.server";
+import {
+  applyNpmPreflight,
+  _resetNpmExistenceCache,
+} from "../npm-existence.server";
 import { FIXTURES } from "./pipeline.fixtures";
 
 type Result = { name: string; ok: boolean; reason?: string };
