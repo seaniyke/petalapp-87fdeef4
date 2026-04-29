@@ -2545,7 +2545,7 @@ function Builder() {
                 }
               }}
             />
-            <div className="mb-2 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+            <div className="mb-2 flex items-center justify-between gap-2 px-1 text-[11px] font-medium tracking-tight text-muted-foreground">
               <span className="min-w-0 flex-1 truncate">
                 {(() => {
                   const isAutoFixing =
@@ -2567,10 +2567,10 @@ function Builder() {
                 <button
                   type="button"
                   onClick={() => setSettingsOpen(true)}
-                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary transition hover:brightness-110"
+                  className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[10px] font-semibold text-primary transition hover:brightness-110"
                   title="Project knowledge is active"
                 >
-                  <BookOpen className="h-2.5 w-2.5" /> knowledge active
+                  <BookOpen className="h-2.5 w-2.5" /> knowledge
                 </button>
               )}
             </div>
