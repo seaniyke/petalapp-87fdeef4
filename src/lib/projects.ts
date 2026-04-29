@@ -127,9 +127,17 @@ export async function enableManagedBackend(
 }
 
 export async function listProjects(): Promise<ProjectRow[]> {
+  // The "My projects" page must show ONLY the signed-in user's own projects.
+  // Without this filter, the public-projects RLS policy ("is_public = true")
+  // would also surface OTHER people's public projects in the list — and then
+  // deleting one of those would be blocked by RLS, producing the confusing
+  // "Could not delete this project" error users have been hitting.
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return [];
   const { data, error } = await supabase
     .from("projects")
     .select("*")
+    .eq("owner_id", userData.user.id)
     .order("updated_at", { ascending: false });
   if (error) throw error;
   return data ?? [];
