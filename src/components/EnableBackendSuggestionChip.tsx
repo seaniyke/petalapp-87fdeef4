@@ -4,10 +4,9 @@
  * (auth, database, file storage, etc.) AND the project doesn't have a
  * backend connected yet.
  *
- * - Free plan → opens the upgrade nudge instead of the purchase dialog.
- *   (Managed backend is a paid add-on; we never want a Pay Now button to
- *    take a free user to Paystack only to bounce them back.)
- * - Paid plan → opens BuyBackendSlotDialog which kicks off provisioning.
+ * Opens EnableBackendFromCloudDialog, which gates provisioning on the user's
+ * Cloud balance ($10 minimum). No plan / paywall check — backend cost is
+ * funded directly from Cloud balance, drained hourly.
  *
  * Self-dismissable: once clicked or X'd it stays hidden for the session via
  * sessionStorage (per project) so it doesn't pop up on every assistant turn.
