@@ -148,9 +148,7 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
                   <div className="flex-1">
                     <h3 className="text-base font-semibold">Cloud + AI</h3>
                     <p className="text-xs text-muted-foreground">
-                      {wallet?.qualifiedForFreeGrant
-                        ? `Monthly included usage resets ${resetDateLabel}`
-                        : "Top up once to unlock $5/mo free Cloud credit"}
+                      Pay-as-you-go. Top-ups never expire.
                     </p>
                   </div>
                 </div>
@@ -221,8 +219,7 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
               )}
 
               <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-                Free $5/month allowance applies to every workspace. Top-ups never expire and are
-                drained only after the free allowance for that month is used up.
+                Cloud + AI is pay-as-you-go from your top-up balance. Top-ups never expire.
               </p>
             </div>
           )}
@@ -233,12 +230,6 @@ export function CloudBalanceSheet({ open, onOpenChange }: Props) {
         open={topupOpen}
         onOpenChange={setTopupOpen}
         onSuccess={reload}
-        minUsdCents={wallet?.qualifiedForFreeGrant ? undefined : 1000}
-        minReason={
-          wallet?.qualifiedForFreeGrant
-            ? undefined
-            : "to unlock your $5/mo free Cloud credit"
-        }
       />
     </>
   );
