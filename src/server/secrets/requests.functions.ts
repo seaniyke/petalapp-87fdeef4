@@ -7,8 +7,42 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { isValidSecretName, normalizeSecretName } from "./requests.server";
+import { isValidSecretName, normalizeSecretName, createPendingSecretRequest } from "./requests.server";
 import { encryptSecret } from "./crypto.server";
+
+const CreateInput = z.object({
+  projectId: z.string().uuid(),
+  conversationId: z.string().max(200).nullable().optional(),
+  secretName: z.string().min(1).max(80),
+  instructions: z.string().max(2000).optional(),
+  link: z.string().max(500).optional(),
+});
+
+/**
+ * Called by the chat UI when it first sees a `<lov-add-secret>` tag streamed
+ * by the AI. Returns the request id so the inline form can submit fulfilment.
+ */
+export const createSecretRequestFromChat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => CreateInput.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const owned = await supabase
+      .from("projects")
+      .select("id")
+      .eq("id", data.projectId)
+      .eq("owner_id", userId)
+      .maybeSingle();
+    if (!owned.data) throw new Error("Not your project.");
+    const row = await createPendingSecretRequest({
+      projectId: data.projectId,
+      conversationId: data.conversationId ?? null,
+      secretName: data.secretName,
+      instructions: data.instructions,
+      link: data.link,
+    });
+    return { request: row };
+  });
 
 const ListInput = z.object({ projectId: z.string().uuid() });
 
