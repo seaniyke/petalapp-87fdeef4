@@ -259,6 +259,10 @@ function Builder() {
       { kind: "added" | "modified" | "unchanged" | "deleted"; addedLines: number; removedLines: number }
     >
   >({});
+  // Real-time pipeline timeline: ordered log of every recovery / verifier /
+  // autofix / image step the server ran for the in-flight (or last) turn.
+  // Drives the expanded "Build steps" panel inside BuildActivityCard.
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEntry[]>([]);
   // Live, token-by-token assistant reply rendered in the chat thread while busy.
   // This mirrors what Lovable/Bolt/v0 do — the user sees Petal "talking" in real
   // time, not just a structured timeline. Cleared when the run completes.
