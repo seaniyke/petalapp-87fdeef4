@@ -250,7 +250,15 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
           <ul className="max-h-72 space-y-1 overflow-y-auto pr-1">
             {results.map((r) => {
               const isSelected = selected?.hostname === r.hostname;
-              const canBuy = r.available && r.priceCents != null;
+              const isPremium = r.tier === "premium";
+              // Premiums need a separate fee-acknowledgement flow we haven't
+              // built yet — show price but disable the option.
+              const canBuy = r.available && r.priceCents != null && !isPremium;
+              const rightLabel = canBuy
+                ? `${localizedPrice(r.priceCents!)}/yr`
+                : isPremium
+                ? "Premium — coming soon"
+                : "Taken";
               return (
                 <li key={r.hostname}>
                   <button
@@ -286,9 +294,7 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
                           : "shrink-0 text-[11px] text-muted-foreground"
                       }
                     >
-                      {canBuy
-                        ? `${localizedPrice(r.priceCents!)}/yr`
-                        : "Taken"}
+                      {rightLabel}
                     </span>
                   </button>
                 </li>
