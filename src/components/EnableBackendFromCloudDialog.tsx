@@ -1,17 +1,15 @@
 /**
- * EnableBackendFromCloudDialog — Cloud-balance gated backend enable.
+ * EnableBackendFromCloudDialog — plan-gated backend enable.
  *
- * Replaces the legacy 30-day BuyBackendSlotDialog. There are no slots: a
- * managed backend is provisioned for free as long as the user has at least
- * $10 in their Cloud top-up balance. Hourly usage drains the wallet; if
- * the wallet hits $0 the project enters a 48-hour grace period before
- * being paused (handled server-side).
+ * Rules (matches /api/backend?action=enable-managed):
+ *   - Free plan → show upgrade CTA (opens BillingSheet). Backend not available
+ *     until they upgrade.
+ *   - Paid plan + balance > $0 → "Enable backend". Hourly usage drains the
+ *     wallet; if it hits $0 the project enters a 48h grace period.
+ *   - Paid plan + balance == $0 → "Top up Cloud balance".
  *
- * Two states:
- *   - balance < $10 → show "Top up to enable" with the missing amount + a
- *     CTA that opens the Cloud top-up modal.
- *   - balance ≥ $10 → show the running cost estimate and an "Enable backend"
- *     button that POSTs to /api/backend?action=enable-managed.
+ * The first paid-plan upgrade auto-grants $5 of runtime credit, so a brand
+ * new paying user lands here with money in the wallet and one click away.
  */
 import { useEffect, useState } from "react";
 import { Loader2, Database, Sparkles, AlertCircle } from "lucide-react";
@@ -26,13 +24,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { useWallet } from "@/hooks/use-wallet";
 import { fetchRuntimeWallet, formatUsdCents } from "@/lib/runtime-wallet";
 import { enableManagedBackend } from "@/lib/projects";
 import { RuntimeTopupModal } from "@/components/RuntimeTopupModal";
+import { BillingSheet } from "@/components/BillingSheet";
 import { emitServiceEnabled } from "@/lib/service-events";
-
-const PROVISIONING_FLOOR_CENTS = 1000; // keep in sync with /api/backend
-const HOURLY_RATE_CENTS = 2; // keep in sync with cron/runtime-backend-hour
 
 type Props = {
   open: boolean;
@@ -49,12 +46,14 @@ export function EnableBackendFromCloudDialog({
   onEnabled,
 }: Props) {
   const { user } = useAuth();
+  const { plan } = useWallet();
+  const isPaidPlan = !!plan && plan.code !== "free";
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [topupOpen, setTopupOpen] = useState(false);
-  const [balanceCents, setBalanceCents] = useState<number>(0);
+  const [billingOpen, setBillingOpen] = useState(false);
   const [totalBalanceCents, setTotalBalanceCents] = useState<number>(0);
-  const [qualified, setQualified] = useState<boolean>(false);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -63,16 +62,10 @@ export function EnableBackendFromCloudDialog({
     fetchRuntimeWallet(user.id)
       .then((w) => {
         if (cancelled) return;
-        setBalanceCents(w.topupBalanceCents);
         setTotalBalanceCents(w.topupBalanceCents + w.freeBalanceCents);
-        setQualified(w.qualifiedForFreeGrant);
       })
       .catch(() => {
-        if (!cancelled) {
-          setBalanceCents(0);
-          setTotalBalanceCents(0);
-          setQualified(false);
-        }
+        if (!cancelled) setTotalBalanceCents(0);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -82,15 +75,8 @@ export function EnableBackendFromCloudDialog({
     };
   }, [open, user]);
 
-  // Qualified users (already topped up before) only need a positive balance to
-  // enable Cloud on additional projects. First-time users still need to clear
-  // the $10 top-up floor.
-  const enoughBalance = qualified
-    ? totalBalanceCents > 0
-    : balanceCents >= PROVISIONING_FLOOR_CENTS;
-  const shortfallCents = qualified
-    ? 0
-    : Math.max(0, PROVISIONING_FLOOR_CENTS - balanceCents);
+  const hasBalance = totalBalanceCents > 0;
+  const canEnable = isPaidPlan && hasBalance;
 
   async function handleEnable() {
     setSubmitting(true);
@@ -101,14 +87,17 @@ export function EnableBackendFromCloudDialog({
         projectId,
         service: "backend",
         label: "Managed backend",
-        summary: "Provisioning your database, auth, and storage. Drains from your Cloud balance hourly — top up anytime.",
+        summary:
+          "Provisioning your database, auth, and storage. Drains from your Cloud balance hourly — top up anytime.",
       });
       onOpenChange(false);
       onEnabled?.();
     } catch (e) {
       const err = e as Error & { code?: string };
-      if (err.code === "topup_required") {
-        // Race: balance dropped between fetch and click. Push to top-up.
+      if (err.code === "plan_upgrade_required") {
+        onOpenChange(false);
+        setBillingOpen(true);
+      } else if (err.code === "balance_empty" || err.code === "topup_required") {
         setTopupOpen(true);
       } else {
         toast.error(err.message || "Couldn't enable backend");
@@ -134,11 +123,22 @@ export function EnableBackendFromCloudDialog({
 
           {loading ? (
             <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Checking your balance…
+              <Loader2 className="h-4 w-4 animate-spin" /> Checking your plan…
+            </div>
+          ) : !isPaidPlan ? (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
+                <p className="font-medium text-foreground">
+                  Backends are included with paid plans.
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Upgrade to add a backend. We'll add $5 of runtime credit to
+                  get you started — no top-up required.
+                </p>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
-              {/* Balance card */}
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <div className="flex items-baseline justify-between">
                   <span className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -146,21 +146,22 @@ export function EnableBackendFromCloudDialog({
                   </span>
                   <span
                     className={`text-2xl font-semibold tabular-nums ${
-                      enoughBalance ? "text-foreground" : "text-amber-600 dark:text-amber-400"
+                      hasBalance ? "text-foreground" : "text-amber-600 dark:text-amber-400"
                     }`}
                   >
-                    {formatUsdCents(balanceCents)}
+                    {formatUsdCents(totalBalanceCents)}
                   </span>
                 </div>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  ~$0.02/hr while running. Drains from your Cloud balance.
+                </p>
               </div>
 
-              {!enoughBalance && (
+              {!hasBalance && (
                 <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <p className="font-medium text-foreground">
-                    {qualified
-                      ? "Your Cloud balance is $0. Top up to enable Cloud on this project."
-                      : `Top up ${formatUsdCents(shortfallCents)} more to enable.`}
+                    Your Cloud balance is $0. Top up to enable Cloud on this project.
                   </p>
                 </div>
               )}
@@ -177,7 +178,21 @@ export function EnableBackendFromCloudDialog({
             >
               Cancel
             </Button>
-            {enoughBalance ? (
+            {!isPaidPlan ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  onOpenChange(false);
+                  setBillingOpen(true);
+                }}
+                disabled={loading}
+                className="inline-flex items-center gap-1.5"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Upgrade to add backend
+              </Button>
+            ) : canEnable ? (
               <Button
                 type="button"
                 size="sm"
@@ -210,19 +225,21 @@ export function EnableBackendFromCloudDialog({
 
       <RuntimeTopupModal
         open={topupOpen}
-        minUsdCents={shortfallCents > 0 ? shortfallCents : PROVISIONING_FLOOR_CENTS}
+        minUsdCents={500}
         minReason="to enable your backend"
         onOpenChange={(v) => {
           setTopupOpen(v);
-          // Re-fetch balance when the top-up modal closes so the user can
-          // try Enable again without reopening this dialog.
           if (!v && user) {
             fetchRuntimeWallet(user.id)
-              .then((w) => setBalanceCents(w.topupBalanceCents))
+              .then((w) =>
+                setTotalBalanceCents(w.topupBalanceCents + w.freeBalanceCents),
+              )
               .catch(() => {});
           }
         }}
       />
+
+      <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
     </>
   );
 }
