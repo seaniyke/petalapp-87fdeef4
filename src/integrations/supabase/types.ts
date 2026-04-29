@@ -1732,6 +1732,9 @@ export type Database = {
       purchased_domains: {
         Row: {
           auto_renew: boolean
+          cf_registration_id: string | null
+          cf_registration_resource_link: string | null
+          cf_state: string | null
           charged_cents: number
           charged_minor: number
           connected_domain_id: string | null
@@ -1741,16 +1744,21 @@ export type Database = {
           expires_at: string | null
           hostname: string
           id: string
+          last_polled_at: string | null
           paystack_reference: string | null
           project_id: string
           registered_at: string | null
           status: string
+          tier: string | null
           updated_at: string
           user_id: string
           wholesale_cost_cents: number
         }
         Insert: {
           auto_renew?: boolean
+          cf_registration_id?: string | null
+          cf_registration_resource_link?: string | null
+          cf_state?: string | null
           charged_cents: number
           charged_minor: number
           connected_domain_id?: string | null
@@ -1760,16 +1768,21 @@ export type Database = {
           expires_at?: string | null
           hostname: string
           id?: string
+          last_polled_at?: string | null
           paystack_reference?: string | null
           project_id: string
           registered_at?: string | null
           status?: string
+          tier?: string | null
           updated_at?: string
           user_id: string
           wholesale_cost_cents: number
         }
         Update: {
           auto_renew?: boolean
+          cf_registration_id?: string | null
+          cf_registration_resource_link?: string | null
+          cf_state?: string | null
           charged_cents?: number
           charged_minor?: number
           connected_domain_id?: string | null
@@ -1779,10 +1792,12 @@ export type Database = {
           expires_at?: string | null
           hostname?: string
           id?: string
+          last_polled_at?: string | null
           paystack_reference?: string | null
           project_id?: string
           registered_at?: string | null
           status?: string
+          tier?: string | null
           updated_at?: string
           user_id?: string
           wholesale_cost_cents?: number
