@@ -43,7 +43,7 @@ import {
 import { streamGenerate } from "@/lib/stream";
 import { streamTriage } from "@/lib/triage";
 import { requestDiscussion } from "@/lib/discuss";
-import { onServiceEnabled } from "@/lib/service-events";
+import { emitServiceEnabled, onServiceEnabled } from "@/lib/service-events";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useBuildActivity } from "@/hooks/use-build-activity";
@@ -130,7 +130,7 @@ import { detectAiFeatureIntentInTurn } from "@/lib/ai-feature-intent";
 import { detectStorageIntentInTurn } from "@/lib/storage-intent";
 import { detectRealtimeIntentInTurn } from "@/lib/realtime-intent";
 import { detectCronIntentInTurn } from "@/lib/cron-intent";
-import { getProjectBackend } from "@/lib/projects";
+import { getManagedProvisionStatus, getProjectBackend } from "@/lib/projects";
 import { listDomains } from "@/lib/domains";
 import { useWallet } from "@/hooks/use-wallet";
 import {
