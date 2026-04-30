@@ -66,11 +66,20 @@ const PATTERNS: Array<{
     }),
   },
   {
-    test: /invalid project data|did not return a project|returned no (files|ops)/i,
+    // The model returned prose instead of calling the write_project /
+    // patch_files tool. Two surfaces produce this:
+    //   1. Raw upstream errors from parseCollectedProject ("did not return a
+    //      project", "returned no files/ops", "invalid project data").
+    //   2. The LLM-rewritten apology copy from humanizeBuildError ("hit a
+    //      snag", "took longer than expected", "ran out of time").
+    // Both mean the same thing: the model bailed without producing edits.
+    // Treat them as one failure mode with a clear retry CTA.
+    test: /invalid project data|did not return a project|returned no (files|ops)|hit a snag|took (a bit )?longer than expected|ran out of (time|room)|tried to (rewrite|patch)/i,
     build: (raw) => ({
-      title: "Petal got a bit tangled up",
-      message: "Petal didn't quite finish that one. Let's try again.",
-      actionLabel: "Try again",
+      title: "Petal didn't make any edits this turn",
+      message:
+        "The AI replied without writing files. Tap below — Petal will retry on a stronger model that's better at finishing the job.",
+      actionLabel: "Retry on a stronger model",
       actionKind: "retry",
       technicalDetail: raw,
     }),
