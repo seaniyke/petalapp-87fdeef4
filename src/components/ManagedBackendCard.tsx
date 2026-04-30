@@ -175,6 +175,13 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
   /* ---------------- Provisioning ---------------- */
   if (phase === "provisioning") {
     const upstream = status?.upstreamStatus;
+    // After 3 minutes of provisioning the row is likely stuck — show a Retry
+    // affordance instead of leaving the user staring at a spinner.
+    const startedAt = backend?.provisioningStartedAt
+      ? new Date(backend.provisioningStartedAt).getTime()
+      : 0;
+    const stuckMs = 3 * 60 * 1000;
+    const looksStuck = startedAt > 0 && Date.now() - startedAt > stuckMs;
     return (
       <div className="rounded-lg border border-border bg-muted/30 p-3">
         <div className="flex items-start gap-2">
@@ -192,8 +199,31 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
                 </span>
               ) : null}
             </div>
+            {looksStuck && (
+              <div className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+                Taking longer than usual. You can safely retry.
+              </div>
+            )}
           </div>
         </div>
+        {looksStuck && (
+          <div className="mt-3 flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleRetry}
+              disabled={retrying}
+              className="inline-flex items-center gap-1.5"
+            >
+              {retrying ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              Retry
+            </Button>
+          </div>
+        )}
       </div>
     );
   }
