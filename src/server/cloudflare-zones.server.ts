@@ -155,10 +155,9 @@ export async function pointZoneAtSaas(args: { hostname: string }): Promise<{
   zoneId: string;
 }> {
   const { fallback } = getEnv();
-  const zone = await findZoneByName(args.hostname);
-  if (!zone) {
-    throw new Error(`Zone for ${args.hostname} not found yet`);
-  }
+  // Provision the zone if Cloudflare Registrar didn't (it never does for new
+  // registrations — `cloudflare_dns` stays false until we POST /zones).
+  const zone = await ensureZoneForRegistrarDomain(args.hostname);
 
   // Replace apex + www with proxied CNAMEs to our SaaS edge.
   for (const name of [args.hostname, `www.${args.hostname}`]) {
