@@ -314,7 +314,7 @@ async function handleVerify(userId: string, body: unknown): Promise<Response> {
       const { data: project } = await supabaseAdmin
         .from("projects")
         .select("primary_domain_id")
-        .eq("id", data.project_id)
+        .eq("id", parsed.data.projectId)
         .maybeSingle();
       if (project && !project.primary_domain_id) {
         await supabaseAdmin
