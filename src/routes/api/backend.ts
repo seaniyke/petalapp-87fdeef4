@@ -87,6 +87,20 @@ async function handleStatus(userId: string, body: unknown): Promise<Response> {
   if (!parsed.success) return new Response(parsed.error.message, { status: 400 });
   const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
   if (ownerErr) return ownerErr;
+
+  // Managed backends may still be warming up after the original enable request
+  // returns. Treat a regular status check as an opportunity to finalize/recover
+  // so the UI does not depend on a separate polling path staying mounted.
+  const { data: providerRow } = await supabaseAdmin
+    .from("project_backends")
+    .select("provider")
+    .eq("project_id", parsed.data.projectId)
+    .maybeSingle();
+
+  if (providerRow?.provider === "managed_petal") {
+    await refreshStatus(parsed.data.projectId);
+  }
+
   const { data, error } = await supabaseAdmin
     .from("project_backends")
     .select(
