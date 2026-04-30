@@ -254,6 +254,16 @@ export const Route = createFileRoute("/api/publish")({
           );
         }
 
+        // Best-effort: rewrite stale "© 2024" → current year in the stored
+        // files and re-ship if anything changed. Only on a real publish action
+        // (pinLatestBuild) and only when going public.
+        const goingPublic =
+          updated.published_visibility === "public" &&
+          (pinLatestBuild || visibility === "public");
+        if (goingPublic) {
+          await freshenAndReshipIfStale(projectId, project.hide_petal_badge === true);
+        }
+
         return Response.json({ ok: true, project: updated });
       },
     },
