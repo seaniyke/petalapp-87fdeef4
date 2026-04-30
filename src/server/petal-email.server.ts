@@ -291,8 +291,8 @@ export async function logOutbound(args: {
     resend_message_id: args.resendMessageId ?? null,
     error_message: args.errorMessage ?? null,
     idempotency_key: args.idempotencyKey ?? null,
-    metadata: args.metadata ?? {},
-  });
+    metadata: (args.metadata ?? {}) as never,
+  } as never);
 }
 
 // ---------- Auth ----------
