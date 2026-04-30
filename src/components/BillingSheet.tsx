@@ -571,6 +571,39 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
         </div>
       </SheetContent>
     </Sheet>
+    <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Cancel subscription?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Your card will not be charged again. You'll keep your current plan and
+            credits until {renewsLabel ?? "the period ends"}, then drop to Free.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={busyKey === "sub:cancel"}>
+            Keep subscription
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
+              cancelSubscription();
+            }}
+            disabled={busyKey === "sub:cancel"}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {busyKey === "sub:cancel" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Cancel subscription"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
+  );
+}
   );
 }
 
