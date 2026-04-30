@@ -19,6 +19,7 @@ import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
+  ensureUpstreamProjectRef,
   provisionForProject,
   refreshStatus,
   restoreForProject,
