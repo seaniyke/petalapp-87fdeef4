@@ -34,7 +34,7 @@ import {
   pickDesignDirection,
   renderDesignDirectionBlock,
 } from "@/server/design-director.server";
-import { runSelfCheck, humanizeBuildError } from "@/server/self-recovery.server";
+import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/self-recovery.server";
 import { pickDynamicSnippets, renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
 import { autofixFiles } from "@/server/stream-autofixer";
 import { runPostStreamAutofix } from "@/server/post-stream-autofix.server";
