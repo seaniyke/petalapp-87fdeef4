@@ -66,12 +66,59 @@ async function setBackend(
 }
 
 /**
- * Kicks off (or resumes) provisioning of a managed Supabase project. Should
- * be invoked right after apply_paystack_backend_slot inserts the slot row.
+ * Ensure the upstream Supabase project exists. AWAITED inline so the
+ * `supabase_project_ref` is persisted before the HTTP response returns —
+ * otherwise the Worker may kill our background promise and leave a wedged
+ * row with no ref (unrecoverable by `refreshStatus`).
  *
- * Returns when the project is ACTIVE_HEALTHY (and project_backends.status is
- * 'ready'), OR after MAX_INLINE_WAIT_MS — in which case the row is left as
- * 'provisioning' and the UI poll will pick it up.
+ * Idempotent: re-uses an existing ref if present. On a hard failure, marks
+ * the row 'failed' and rethrows so the caller can return a 502.
+ */
+export async function ensureUpstreamProjectRef(
+  projectId: string,
+): Promise<string> {
+  const { data: row, error } = await supabaseAdmin
+    .from("project_backends")
+    .select("status, supabase_project_ref, provider")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!row) throw new Error(`No project_backends row for ${projectId}`);
+  if (row.provider !== "managed_petal") {
+    throw new Error(
+      `project_backends.provider is ${row.provider}, not managed_petal — refusing to provision.`,
+    );
+  }
+  if (row.supabase_project_ref) return row.supabase_project_ref;
+
+  try {
+    const created = await mgmtCreate({ name: projectNameFor(projectId) });
+    await setBackend(projectId, {
+      supabase_project_ref: created.ref,
+      provisioning_started_at: new Date().toISOString(),
+      error_message: null,
+    });
+    return created.ref;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[managed-backend] create failed", projectId, msg);
+    await setBackend(projectId, {
+      status: "failed",
+      error_message: `Couldn't create Supabase project: ${msg.slice(0, 300)}`,
+    });
+    throw e;
+  }
+}
+
+/**
+ * Kicks off (or resumes) provisioning of a managed Supabase project.
+ *
+ * Two-phase:
+ *   Phase A (awaited): ensure upstream project + ref persisted.
+ *   Phase B (best-effort polling): walk the Mgmt API until ACTIVE_HEALTHY,
+ *     then finalize keys. If the Worker kills us mid-poll, the UI's
+ *     `refreshStatus` poll will pick up where we left off because the ref
+ *     is already saved.
  */
 export async function provisionForProject(projectId: string): Promise<void> {
   // Look up current state.
@@ -91,30 +138,19 @@ export async function provisionForProject(projectId: string): Promise<void> {
     return; // already done
   }
 
-  // Step 1: ensure a Supabase project exists. If we already have a ref,
-  // reuse it; otherwise create one.
   let ref: string | null = row.supabase_project_ref ?? null;
   if (!ref) {
+    // Should be rare — caller (handleEnableManaged) already awaited
+    // ensureUpstreamProjectRef. But this is the recovery path used by
+    // refreshStatus when it finds a stalled row.
     try {
-      const created = await mgmtCreate({ name: projectNameFor(projectId) });
-      ref = created.ref;
-      await setBackend(projectId, {
-        supabase_project_ref: ref,
-        provisioning_started_at: new Date().toISOString(),
-        error_message: null,
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.error("[managed-backend] create failed", projectId, msg);
-      await setBackend(projectId, {
-        status: "failed",
-        error_message: `Couldn't create Supabase project: ${msg.slice(0, 300)}`,
-      });
-      return;
+      ref = await ensureUpstreamProjectRef(projectId);
+    } catch {
+      return; // ensureUpstreamProjectRef already marked the row failed
     }
   }
 
-  // Step 2: poll until ready (with cap).
+  // Poll until ready (with cap).
   const deadline = Date.now() + MAX_INLINE_WAIT_MS;
   while (Date.now() < deadline) {
     let status: string | null = null;
