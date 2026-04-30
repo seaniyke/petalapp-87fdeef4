@@ -460,7 +460,32 @@ export type StreamEvent =
         truncatedPaths?: string[];
       };
     }
-  | { type: "error"; message: string; suggestions?: string[] };
+  | {
+      type: "error";
+      message: string;
+      suggestions?: string[];
+      /**
+       * Structured failure code classified at the source (against the raw
+       * exception, BEFORE humanization). Lets the client render the right
+       * friendly card without regexing our own LLM-rewritten apology prose.
+       *
+       * Add new codes here when you add a new failure mode at the throw
+       * site — never invent a new regex on humanized output.
+       */
+      kind?: ErrorKind;
+    };
+
+/** Structured failure codes for SSE `error` events. Every value here MUST
+ *  have a matching entry in `KIND_TO_FRIENDLY` on the client; the smoke
+ *  test in friendly-errors covers the round-trip. */
+export type ErrorKind =
+  | "no_files_emitted"
+  | "rate_limit"
+  | "credits_exhausted"
+  | "upstream_unavailable"
+  | "unauthorized"
+  | "aborted"
+  | "unknown";
 
 /** Apply a list of file operations to a current set of files.
  *  "update" ops must contain complete, valid file contents. Legacy
