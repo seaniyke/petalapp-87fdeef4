@@ -1371,7 +1371,12 @@ function Builder() {
         );
 
         if (controller.signal.aborted) return;
-        if (streamError) throw new Error(streamError);
+        if (streamError) {
+          // Preserve the server-classified kind across the throw boundary so
+          // toFriendlyError can render the right card without regexing the
+          // (humanized) message text.
+          throw new PipelineError(streamError, streamErrorKind ?? "unknown");
+        }
         if (!resultFiles) throw new Error("No result returned.");
 
         const files2: ProjectFile[] = resultFiles;
