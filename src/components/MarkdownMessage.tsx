@@ -128,7 +128,7 @@ export function MarkdownMessage({ content, projectId }: { content: string; proje
                   }
                   return (
                     <code
-                      className="wrap-anywhere rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]"
+                      className="wrap-anywhere rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.88em] text-foreground"
                       {...rest}
                     >
                       {children}
@@ -138,7 +138,7 @@ export function MarkdownMessage({ content, projectId }: { content: string; proje
                 pre: (props) => (
                   <pre
                     {...props}
-                    className="my-2 overflow-x-auto rounded-lg bg-muted p-3 text-[12px] leading-relaxed"
+                    className="my-3 overflow-x-auto rounded-xl bg-muted p-3.5 font-mono text-[13px] leading-[1.55]"
                   />
                 ),
               }}
