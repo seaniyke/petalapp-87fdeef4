@@ -102,6 +102,19 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
     }
   }
 
+  async function handleCheckNow() {
+    setRetrying(true);
+    try {
+      const next = await getManagedProvisionStatus(projectId);
+      setStatus(next);
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't check status");
+    } finally {
+      setRetrying(false);
+    }
+  }
+
   async function handleDownload() {
     setDownloading(true);
     try {
@@ -211,7 +224,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
             <Button
               size="sm"
               variant="outline"
-              onClick={handleRetry}
+              onClick={handleCheckNow}
               disabled={retrying}
               className="inline-flex items-center gap-1.5"
             >
@@ -220,7 +233,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
               ) : (
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
-              Retry
+              Check now
             </Button>
           </div>
         )}
