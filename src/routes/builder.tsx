@@ -61,6 +61,7 @@ import {
   autoFixingBuild,
   friendlyBuildFailure,
   toFriendlyError,
+  PipelineError,
   type FriendlyError,
 } from "@/lib/friendly-errors";
 import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivityCard";
