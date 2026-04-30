@@ -107,7 +107,7 @@ export const Route = createFileRoute("/api/public/email/resend-webhook")({
               status: "sent",
               resend_message_id: messageId,
               metadata: { event: type, source: "webhook" },
-            });
+            } as never);
             break;
           }
           case "email.bounced": {
@@ -120,7 +120,7 @@ export const Route = createFileRoute("/api/public/email/resend-webhook")({
               resend_message_id: messageId,
               error_message: String(reason).slice(0, 500),
               metadata: { event: type, bounce: evt.data?.bounce ?? null },
-            });
+            } as never);
             await addSuppression({
               projectId,
               email: recipient,
@@ -137,7 +137,7 @@ export const Route = createFileRoute("/api/public/email/resend-webhook")({
               resend_message_id: messageId,
               error_message: "Recipient marked as spam",
               metadata: { event: type, complaint: evt.data?.complaint ?? null },
-            });
+            } as never);
             await addSuppression({
               projectId,
               email: recipient,
