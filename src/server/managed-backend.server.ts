@@ -216,7 +216,7 @@ export async function refreshStatus(projectId: string): Promise<{
   const { data: row } = await supabaseAdmin
     .from("project_backends")
     .select(
-      "status, supabase_url, anon_key, supabase_project_ref, error_message, provider",
+      "status, supabase_url, anon_key, supabase_project_ref, error_message, provider, provisioning_started_at",
     )
     .eq("project_id", projectId)
     .maybeSingle();
@@ -259,38 +259,72 @@ export async function refreshStatus(projectId: string): Promise<{
     };
   }
 
-  // Otherwise we're provisioning — peek at upstream status.
-  let upstream: string | null = null;
-  if (row.supabase_project_ref) {
-    try {
-      const proj = await mgmtGet(row.supabase_project_ref);
-      upstream = proj?.status ?? null;
-      if (upstream === READY_STATUS) {
-        await finalizeReady(projectId, row.supabase_project_ref);
-        return {
-          status: "ready",
-          errorMessage: null,
-          supabaseUrl: projectUrl(row.supabase_project_ref),
-          supabaseProjectRef: row.supabase_project_ref,
-          upstreamStatus: upstream,
-        };
-      }
-      if (upstream && FATAL_STATUSES.has(upstream)) {
-        await setBackend(projectId, {
-          status: "failed",
-          error_message: `Supabase project is in state ${upstream}.`,
-        });
+  // Provisioning. Self-heal stalled rows (no upstream ref after 30s of waiting):
+  // either the original Worker died before persisting the ref, or the Mgmt API
+  // call silently failed. Re-attempt the create and kick the polling.
+  if (!row.supabase_project_ref) {
+    const startedMs = row.provisioning_started_at
+      ? new Date(row.provisioning_started_at).getTime()
+      : 0;
+    const ageMs = Date.now() - startedMs;
+    if (!startedMs || ageMs > 30_000) {
+      try {
+        await ensureUpstreamProjectRef(projectId);
+        // Fire-and-forget poll. Next refreshStatus tick will pick up upstream.
+        provisionForProject(projectId).catch((e) =>
+          console.error("[refreshStatus] heal-provision failed", e),
+        );
+      } catch (e) {
+        // ensureUpstreamProjectRef already marked the row failed.
+        const msg = e instanceof Error ? e.message : String(e);
         return {
           status: "failed",
-          errorMessage: `Supabase project is in state ${upstream}.`,
+          errorMessage: `Couldn't create Supabase project: ${msg.slice(0, 300)}`,
           supabaseUrl: null,
-          supabaseProjectRef: row.supabase_project_ref,
-          upstreamStatus: upstream,
+          supabaseProjectRef: null,
+          upstreamStatus: null,
         };
       }
-    } catch (e) {
-      console.warn("[managed-backend] refreshStatus mgmt err", (e as Error).message);
     }
+    return {
+      status: "provisioning",
+      errorMessage: null,
+      supabaseUrl: null,
+      supabaseProjectRef: null,
+      upstreamStatus: null,
+    };
+  }
+
+  // Have a ref — peek at upstream status.
+  let upstream: string | null = null;
+  try {
+    const proj = await mgmtGet(row.supabase_project_ref);
+    upstream = proj?.status ?? null;
+    if (upstream === READY_STATUS) {
+      await finalizeReady(projectId, row.supabase_project_ref);
+      return {
+        status: "ready",
+        errorMessage: null,
+        supabaseUrl: projectUrl(row.supabase_project_ref),
+        supabaseProjectRef: row.supabase_project_ref,
+        upstreamStatus: upstream,
+      };
+    }
+    if (upstream && FATAL_STATUSES.has(upstream)) {
+      await setBackend(projectId, {
+        status: "failed",
+        error_message: `Supabase project is in state ${upstream}.`,
+      });
+      return {
+        status: "failed",
+        errorMessage: `Supabase project is in state ${upstream}.`,
+        supabaseUrl: null,
+        supabaseProjectRef: row.supabase_project_ref,
+        upstreamStatus: upstream,
+      };
+    }
+  } catch (e) {
+    console.warn("[managed-backend] refreshStatus mgmt err", (e as Error).message);
   }
 
   return {
