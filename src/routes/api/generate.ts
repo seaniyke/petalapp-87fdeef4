@@ -796,6 +796,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                     messages: addStructuredRetryInstruction(chatMessages, {
                       isInitial,
                       problem: e instanceof Error ? e.message : "invalid structured response",
+                      hasBackend: Boolean(backend),
                     }),
                     tools: [tool],
                     tool_choice: { type: "function", function: { name: tool.function.name } },
