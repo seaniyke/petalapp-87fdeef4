@@ -169,12 +169,18 @@ export async function createProject(
   return data;
 }
 
-/** Public list for /gallery — featured first, then by remix_count, then recency. */
+/** Public list for /gallery — featured first, then by remix_count, then recency.
+ *  Excludes projects that have never been built (no published build) or that
+ *  still carry the default "Untitled project" title — they look broken in the grid. */
 export async function listPublicProjects(limit = 60): Promise<ProjectRow[]> {
   const { data, error } = await supabase
     .from("projects")
     .select("*")
     .eq("is_public", true)
+    .not("published_build_id", "is", null)
+    .not("title", "is", null)
+    .neq("title", "")
+    .neq("title", "Untitled project")
     .order("is_featured", { ascending: false })
     .order("remix_count", { ascending: false })
     .order("updated_at", { ascending: false })
