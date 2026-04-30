@@ -99,6 +99,8 @@ export function EnableBackendFromCloudDialog({
         setBillingOpen(true);
       } else if (err.code === "balance_empty" || err.code === "topup_required") {
         setTopupOpen(true);
+      } else if (err.code === "provision_failed") {
+        toast.error(err.message || "Couldn't create your backend. Please try again.");
       } else {
         toast.error(err.message || "Couldn't enable backend");
       }
