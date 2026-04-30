@@ -125,10 +125,17 @@ const PATTERNS: Array<{
     }),
   },
   {
-    // Server-side input cap rejections from /api/generate (8000 chars) or
-    // /api/generate-image (500 chars). Both surface "too long" / "too large"
-    // in the response body, so a single pattern catches both.
-    test: /too long|too large|max(?:imum)?\s+\d+\s*chars?|prompt is too/i,
+    // Server-side input cap rejections ONLY. We anchor to the exact wording
+    // emitted by /api/generate ("Your message is too long (N chars, max M)")
+    // and /api/generate-image ("prompt is too long (max 500 chars)").
+    //
+    // Earlier this matched any text containing "too long", which caused
+    // false positives when the LLM-powered humanizeBuildError happened to
+    // use that phrase in its rewritten apology — users saw a "your message
+    // is too long" card after sending tiny prompts like "Build a weather
+    // app". Keep this pattern strict; the generic prose-no-files case is
+    // already handled by the "didn't make any edits" rule above.
+    test: /\b(?:your message is too long|prompt is too long)\b|max(?:imum)?\s+\d+\s*chars?/i,
     build: (raw) => ({
       title: "That message is a bit too long",
       message:
