@@ -329,6 +329,12 @@ export type Database = {
           monthly_credits: number
           monthly_free_cap: number | null
           name: string
+          paystack_interval: string
+          paystack_plan_code_ghs: string | null
+          paystack_plan_code_kes: string | null
+          paystack_plan_code_ngn: string | null
+          paystack_plan_code_usd: string | null
+          paystack_plan_code_zar: string | null
           price_cents: number
           sort_order: number
           stripe_price_id: string | null
@@ -344,6 +350,12 @@ export type Database = {
           monthly_credits?: number
           monthly_free_cap?: number | null
           name: string
+          paystack_interval?: string
+          paystack_plan_code_ghs?: string | null
+          paystack_plan_code_kes?: string | null
+          paystack_plan_code_ngn?: string | null
+          paystack_plan_code_usd?: string | null
+          paystack_plan_code_zar?: string | null
           price_cents?: number
           sort_order?: number
           stripe_price_id?: string | null
@@ -359,6 +371,12 @@ export type Database = {
           monthly_credits?: number
           monthly_free_cap?: number | null
           name?: string
+          paystack_interval?: string
+          paystack_plan_code_ghs?: string | null
+          paystack_plan_code_kes?: string | null
+          paystack_plan_code_ngn?: string | null
+          paystack_plan_code_usd?: string | null
+          paystack_plan_code_zar?: string | null
           price_cents?: number
           sort_order?: number
           stripe_price_id?: string | null
@@ -805,6 +823,51 @@ export type Database = {
           payload?: Json | null
           processed_at?: string
           type?: string
+        }
+        Relationships: []
+      }
+      paystack_invoices: {
+        Row: {
+          amount_minor: number
+          created_at: string
+          currency_code: string
+          description: string | null
+          event_payload: Json
+          id: string
+          invoice_code: string
+          paid_at: string | null
+          paystack_reference: string | null
+          status: string
+          subscription_code: string
+          user_id: string
+        }
+        Insert: {
+          amount_minor: number
+          created_at?: string
+          currency_code: string
+          description?: string | null
+          event_payload?: Json
+          id?: string
+          invoice_code: string
+          paid_at?: string | null
+          paystack_reference?: string | null
+          status: string
+          subscription_code: string
+          user_id: string
+        }
+        Update: {
+          amount_minor?: number
+          created_at?: string
+          currency_code?: string
+          description?: string | null
+          event_payload?: Json
+          id?: string
+          invoice_code?: string
+          paid_at?: string | null
+          paystack_reference?: string | null
+          status?: string
+          subscription_code?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1920,10 +1983,16 @@ export type Database = {
           current_period_start: string | null
           environment: string
           id: string
+          next_payment_date: string | null
+          paystack_authorization_code: string | null
+          paystack_customer_code: string | null
+          paystack_email_token: string | null
+          paystack_subscription_code: string | null
           pending_plan_code: string | null
           plan_code: string
           price_id: string
           product_id: string | null
+          provider: string
           status: string
           stripe_customer_id: string
           stripe_subscription_id: string
@@ -1937,10 +2006,16 @@ export type Database = {
           current_period_start?: string | null
           environment?: string
           id?: string
+          next_payment_date?: string | null
+          paystack_authorization_code?: string | null
+          paystack_customer_code?: string | null
+          paystack_email_token?: string | null
+          paystack_subscription_code?: string | null
           pending_plan_code?: string | null
           plan_code: string
           price_id: string
           product_id?: string | null
+          provider?: string
           status?: string
           stripe_customer_id: string
           stripe_subscription_id: string
@@ -1954,10 +2029,16 @@ export type Database = {
           current_period_start?: string | null
           environment?: string
           id?: string
+          next_payment_date?: string | null
+          paystack_authorization_code?: string | null
+          paystack_customer_code?: string | null
+          paystack_email_token?: string | null
+          paystack_subscription_code?: string | null
           pending_plan_code?: string | null
           plan_code?: string
           price_id?: string
           product_id?: string | null
+          provider?: string
           status?: string
           stripe_customer_id?: string
           stripe_subscription_id?: string
@@ -2347,6 +2428,10 @@ export type Database = {
       can_enable_managed_backend: {
         Args: { _user_id: string }
         Returns: boolean
+      }
+      cancel_paystack_plan: {
+        Args: { _subscription_code: string; _user_id: string }
+        Returns: undefined
       }
       charge_runtime: {
         Args: {
