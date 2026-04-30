@@ -153,6 +153,7 @@ export function ProjectSettingsSheet({
   const dirty = (value.trim() || "") !== (project.custom_instructions?.trim() ?? "");
 
   return (
+    <>
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         {trigger ?? (
@@ -268,20 +269,21 @@ export function ProjectSettingsSheet({
         {/* Labs toggles */}
         <LabsSection />
       </SheetContent>
-
-      {/* Per-project Cloud hub + Cloud & AI balance, mounted alongside the
-          settings sheet so they overlay cleanly. */}
-      <CloudPanelSheet
-        open={cloudOpen}
-        onOpenChange={setCloudOpen}
-        projectId={project.id}
-        onOpenBalance={() => {
-          setCloudOpen(false);
-          setBalanceOpen(true);
-        }}
-      />
-      <CloudBalanceSheet open={balanceOpen} onOpenChange={setBalanceOpen} />
     </Sheet>
+
+    {/* Per-project Cloud hub + Cloud & AI balance, mounted as siblings of
+        the settings sheet so their portals/focus-traps don't fight. */}
+    <CloudPanelSheet
+      open={cloudOpen}
+      onOpenChange={setCloudOpen}
+      projectId={project.id}
+      onOpenBalance={() => {
+        setCloudOpen(false);
+        setBalanceOpen(true);
+      }}
+    />
+    <CloudBalanceSheet open={balanceOpen} onOpenChange={setBalanceOpen} />
+    </>
   );
 }
 
