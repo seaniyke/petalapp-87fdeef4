@@ -34,7 +34,7 @@ import {
   pickDesignDirection,
   renderDesignDirectionBlock,
 } from "@/server/design-director.server";
-import { runSelfCheck, humanizeBuildError } from "@/server/self-recovery.server";
+import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/self-recovery.server";
 import { pickDynamicSnippets, renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
 import { autofixFiles } from "@/server/stream-autofixer";
 import { runPostStreamAutofix } from "@/server/post-stream-autofix.server";
@@ -1536,6 +1536,10 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               }
             } catch (e) {
               const raw = e instanceof Error ? e.message : "Generation failed.";
+              // Classify FIRST — against the raw exception, before any LLM
+              // touches it. This `kind` flows through SSE so the client can
+              // pick the right friendly card without regexing humanized prose.
+              const kind = classifyRawError(raw);
               // Layer 5 — humanize the raw error before showing it. No credits
               // were taken — nothing to refund. The friendly rewrite gives the
               // user a clear next step (retry, simplify, top up, …) instead
@@ -1550,6 +1554,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                     type: "error",
                     message: friendly.message,
                     suggestions: friendly.suggestions,
+                    kind,
                   }),
                 ),
               );

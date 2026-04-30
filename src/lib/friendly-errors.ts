@@ -7,9 +7,26 @@
  *  - No jargon: never expose "AI gateway", "502", "Cloudflare", "esbuild", etc.
  *  - Always end with a clear next step the user can take.
  *  - When unsure, fall back to a gentle generic message.
+ *
+ * Architecture (post-refactor):
+ *  We previously regexed the error TEXT to pick a friendly card. That broke
+ *  the moment `humanizeBuildError` (a tiny LLM rewriter) returned an apology
+ *  containing words like "too long", because the regex couldn't tell our own
+ *  rewritten prose apart from a real input-cap rejection.
+ *
+ *  The fix: classify at the SOURCE. The server runs `classifyRawError` on
+ *  the raw exception (before any LLM touches it) and ships a structured
+ *  `kind` field on the SSE error event. The client passes that `kind`
+ *  through `PipelineError` → `toFriendlyError`, which now looks up the
+ *  card in `KIND_TO_FRIENDLY` and never inspects humanized prose.
+ *
+ *  Regex PATTERNS still exist — but only for raw error sources that have
+ *  no `kind` (build-log failures, fetch network errors, JSON 400 bodies).
+ *  Never add a regex that matches LLM-generated text.
  */
 
 import { reportPipelineFailure, type FailureReportContext } from "./report-failure";
+import type { ErrorKind } from "@/server/generate.server";
 
 export type FriendlyError = {
   /** Short headline shown next to the warning icon. */
@@ -24,117 +41,100 @@ export type FriendlyError = {
   technicalDetail?: string;
 };
 
+/**
+ * Error subclass that carries the structured failure code from the server
+ * through the throw/catch boundary. Use this anywhere we need to surface a
+ * server-classified failure to the user without leaning on text matching.
+ */
+export class PipelineError extends Error {
+  readonly kind: ErrorKind;
+  constructor(message: string, kind: ErrorKind) {
+    super(message);
+    this.name = "PipelineError";
+    this.kind = kind;
+  }
+}
+
+const GENERIC: FriendlyError = {
+  title: "Petal got a bit confused",
+  message: "Something didn't go right. Want to try that again?",
+  actionLabel: "Try again",
+  actionKind: "retry",
+};
+
+/**
+ * Card lookup keyed on server-classified failure codes. Every `ErrorKind`
+ * value MUST have an entry here.
+ */
+const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
+  no_files_emitted: (raw) => ({
+    title: "Petal didn't make any edits this turn",
+    message:
+      "The AI replied without writing files. Tap below — Petal will retry on a stronger model that's better at finishing the job.",
+    actionLabel: "Retry on a stronger model",
+    actionKind: "retry",
+    technicalDetail: raw,
+  }),
+  rate_limit: (raw) => ({
+    title: "Petal needs a quick breather",
+    message: "We're getting a lot of requests right now. Try again in a moment.",
+    actionLabel: "Try again",
+    actionKind: "retry",
+    technicalDetail: raw,
+  }),
+  credits_exhausted: (raw) => ({
+    title: "Out of free generations",
+    message:
+      "We've used up today's free generations. Add credits in Settings → Workspace to keep going.",
+    actionLabel: "Try again",
+    actionKind: "retry",
+    technicalDetail: raw,
+  }),
+  upstream_unavailable: (raw) => ({
+    title: "The AI was briefly unreachable",
+    message:
+      "Petal couldn't reach the model just now — usually clears in a few seconds. Tap to try again.",
+    actionLabel: "Try again",
+    actionKind: "retry",
+    technicalDetail: raw,
+  }),
+  unauthorized: (raw) => ({
+    title: "You've been signed out",
+    message: "Please sign in again to continue.",
+    actionLabel: "Sign in",
+    actionKind: "dismiss",
+    technicalDetail: raw,
+  }),
+  aborted: (raw) => ({
+    title: "Stopped",
+    message: "You stopped Petal. Send another message when you're ready.",
+    actionLabel: "Dismiss",
+    actionKind: "dismiss",
+    technicalDetail: raw,
+  }),
+  unknown: (raw) => ({ ...GENERIC, technicalDetail: raw }),
+};
+
+
+/**
+ * Regex matchers for RAW error sources only — i.e. errors that arrive
+ * WITHOUT a structured `kind` from the server. Examples:
+ *   - JSON 400 bodies from /api/generate (input caps)
+ *   - Build-log failures from Cloudflare Pages (esbuild, rollup, tailwind)
+ *   - Fetch/network errors thrown before the SSE stream starts
+ *
+ * NEVER add a regex here that matches LLM-generated apology text. If a
+ * generation-path failure needs a new card, add a new value to `ErrorKind`
+ * and classify it server-side in `classifyRawError`.
+ */
 const PATTERNS: Array<{
   test: RegExp;
   build: (raw: string) => FriendlyError;
 }> = [
   {
-    test: /rate.?limit/i,
-    build: (raw) => ({
-      title: "Petal needs a quick breather",
-      message: "We're getting a lot of requests right now. Try again in a moment.",
-      actionLabel: "Try again",
-      actionKind: "retry",
-      technicalDetail: raw,
-    }),
-  },
-  {
-    // Upstream AI provider hiccups (gateway 502/503/504, "bad gateway",
-    // "upstream", "service unavailable"). These are transient and almost
-    // always clear within a few seconds. Without this branch they fall
-    // through to the generic "Petal got a bit confused" card, which is
-    // misleading — the model never even responded.
-    test: /\b(50[234])\b|bad gateway|upstream|service unavailable|gateway timeout|AI gateway error/i,
-    build: (raw) => ({
-      title: "The AI was briefly unreachable",
-      message:
-        "Petal couldn't reach the model just now — usually clears in a few seconds. Tap to try again.",
-      actionLabel: "Try again",
-      actionKind: "retry",
-      technicalDetail: raw,
-    }),
-  },
-  {
-    test: /credits?.*(exhaust|out|empty|low)|402/i,
-    build: (raw) => ({
-      title: "Out of free generations",
-      message:
-        "We've used up today's free generations. Add credits in Settings → Workspace to keep going.",
-      actionLabel: "Try again",
-      actionKind: "retry",
-      technicalDetail: raw,
-    }),
-  },
-  {
-    // The model returned prose instead of calling the write_project /
-    // patch_files tool. Two surfaces produce this:
-    //   1. Raw upstream errors from parseCollectedProject ("did not return a
-    //      project", "returned no files/ops", "invalid project data").
-    //   2. The LLM-rewritten apology copy from humanizeBuildError ("hit a
-    //      snag", "took longer than expected", "ran out of time").
-    // Both mean the same thing: the model bailed without producing edits.
-    // Treat them as one failure mode with a clear retry CTA.
-    test: /invalid project data|did not return a project|returned no (files|ops)|hit a snag|took (a bit )?longer than expected|ran out of (time|room)|wasn'?t able to finish|couldn'?t finish|tried to (rewrite|patch)/i,
-    build: (raw) => ({
-      title: "Petal didn't make any edits this turn",
-      message:
-        "The AI replied without writing files. Tap below — Petal will retry on a stronger model that's better at finishing the job.",
-      actionLabel: "Retry on a stronger model",
-      actionKind: "retry",
-      technicalDetail: raw,
-    }),
-  },
-  {
-    test: /missing index\.html/i,
-    build: (raw) => ({
-      title: "Something's missing",
-      message: "Petal forgot to add the main page. Let's try once more.",
-      actionLabel: "Try again",
-      actionKind: "retry",
-      technicalDetail: raw,
-    }),
-  },
-  {
-    test: /not signed in|unauthori[sz]ed|401/i,
-    build: (raw) => ({
-      title: "You've been signed out",
-      message: "Please sign in again to continue.",
-      actionLabel: "Sign in",
-      actionKind: "dismiss",
-      technicalDetail: raw,
-    }),
-  },
-  {
-    test: /could not reach build|reach builder|build service|fetch failed|network/i,
-    build: (raw) => ({
-      title: "Couldn't reach the publishing service",
-      message: "Petal can build it, but it can't go online right now. We'll keep trying.",
-      actionLabel: "Try again",
-      actionKind: "retry",
-      technicalDetail: raw,
-    }),
-  },
-  {
-    test: /aborted|cancell?ed/i,
-    build: (raw) => ({
-      title: "Stopped",
-      message: "You stopped Petal. Send another message when you're ready.",
-      actionLabel: "Dismiss",
-      actionKind: "dismiss",
-      technicalDetail: raw,
-    }),
-  },
-  {
-    // Server-side input cap rejections ONLY. We anchor to the exact wording
-    // emitted by /api/generate ("Your message is too long (N chars, max M)")
-    // and /api/generate-image ("prompt is too long (max 500 chars)").
-    //
-    // Earlier this matched any text containing "too long", which caused
-    // false positives when the LLM-powered humanizeBuildError happened to
-    // use that phrase in its rewritten apology — users saw a "your message
-    // is too long" card after sending tiny prompts like "Build a weather
-    // app". Keep this pattern strict; the generic prose-no-files case is
-    // already handled by the "didn't make any edits" rule above.
+    // Server-side input cap rejection (JSON 400 from /api/generate or
+    // /api/generate-image). Anchored to the exact wording emitted by those
+    // routes so we never match humanized prose.
     test: /\b(?:your message is too long|prompt is too long)\b|max(?:imum)?\s+\d+\s*chars?/i,
     build: (raw) => ({
       title: "That message is a bit too long",
@@ -146,12 +146,33 @@ const PATTERNS: Array<{
     }),
   },
   {
-    // ESBuild syntax-truncation failures. Our telemetry shows these are the
-    // single most common build-failure shape right now ("Unterminated string
-    // literal", "Unterminated regular expression", "Unexpected end of file").
-    // Cause: the model stopped streaming mid-file. The fix is the same in
-    // every case — re-run the turn with a "split big files, finish closures"
-    // nudge. The retry button on this card maps to that nudge in builder.tsx.
+    // Network/transport failures BEFORE the SSE stream — e.g. user offline,
+    // publishing service unreachable. Server-classified upstream errors flow
+    // through `kind: "upstream_unavailable"` instead.
+    test: /could not reach build|reach builder|build service|fetch failed|network error|failed to fetch/i,
+    build: (raw) => ({
+      title: "Couldn't reach the publishing service",
+      message: "Petal can build it, but it can't go online right now. We'll keep trying.",
+      actionLabel: "Try again",
+      actionKind: "retry",
+      technicalDetail: raw,
+    }),
+  },
+  {
+    // Build-log shape: missing entry HTML.
+    test: /missing index\.html/i,
+    build: (raw) => ({
+      title: "Something's missing",
+      message: "Petal forgot to add the main page. Let's try once more.",
+      actionLabel: "Try again",
+      actionKind: "retry",
+      technicalDetail: raw,
+    }),
+  },
+  {
+    // ESBuild syntax-truncation failures from build logs ("Unterminated
+    // string literal", "Unexpected end of file"). These arrive via
+    // friendlyBuildFailure / triggerBuild rejection — never with a `kind`.
     test: /Unterminated (?:string|regular expression|template)|Unexpected end of file/i,
     build: (raw) => ({
       title: "Petal's reply got cut off",
@@ -163,10 +184,7 @@ const PATTERNS: Array<{
     }),
   },
   {
-    // Vite/Rollup local-file resolution failure: the AI imported "./Foo" or
-    // "@/components/Foo" but never created Foo. We can fix this with a single
-    // targeted patch — the retry button routes to askPetalToFix(log) in
-    // builder.tsx for this category.
+    // Vite/Rollup local-file resolution failure — build-log only.
     test: /Could not (?:resolve|load)\s+["']?(\.{1,2}\/|@\/)/i,
     build: (raw) => {
       const m = raw.match(/Could not (?:resolve|load)\s+["']?([^"'\s)]+)/i);
@@ -181,11 +199,7 @@ const PATTERNS: Array<{
     },
   },
   {
-    // Unresolved npm package — the AI imported something like "date-fns"
-    // without it being in package.json. We can't auto-install, so the fix is
-    // to swap for a built-in alternative (Date / Intl / lucide / our scaffold
-    // utilities). askPetalToFix routes this to the model with the package
-    // name explicitly called out.
+    // Unresolved npm package — build-log only.
     test: /Rollup failed to resolve import\s+["']([^"']+)["']/i,
     build: (raw) => {
       const m = raw.match(/Rollup failed to resolve import\s+["']([^"']+)["']/i);
@@ -200,9 +214,7 @@ const PATTERNS: Array<{
     },
   },
   {
-    // Tailwind v4 / styles.css validation. Already surfaced via friendlyBuildFailure
-    // for build-time, but if the same shape arrives via the generate path
-    // (e.g. local-verifier flagged it), give a matching message here.
+    // Tailwind v4 / styles.css validation — build-log only.
     test: /Invalid declaration|Cannot apply unknown utility|@tailwindcss\/vite/i,
     build: (raw) => ({
       title: "A styling rule isn't quite right",
@@ -215,28 +227,34 @@ const PATTERNS: Array<{
   },
 ];
 
-const GENERIC: FriendlyError = {
-  title: "Petal got a bit confused",
-  message: "Something didn't go right. Want to try that again?",
-  actionLabel: "Try again",
-  actionKind: "retry",
-};
-
 export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): FriendlyError {
   const text =
     raw instanceof Error ? raw.message : typeof raw === "string" ? raw : JSON.stringify(raw);
 
   // Always log the original for our own debugging.
-
   console.error("[petal] generation/build error:", raw);
 
+  // 1. Prefer the structured kind classified at the source. This bypasses
+  //    all text matching — the server already decided what went wrong, so
+  //    the client just renders the matching card. No more false positives
+  //    from LLM-rewritten apology copy.
+  if (raw instanceof PipelineError) {
+    const builder = KIND_TO_FRIENDLY[raw.kind];
+    if (builder && raw.kind !== "unknown") return builder(text);
+    // kind === "unknown" → fall through to regex/generic, and report so
+    // we can add a new branch.
+  }
+
+  // 2. Fall back to regex on RAW sources (build logs, fetch errors,
+  //    JSON 400 bodies). Never matches humanized SSE prose.
   for (const p of PATTERNS) {
     if (p.test.test(text)) {
       return p.build(text);
     }
   }
-  // Unmatched — this is the "Petal got a bit confused" path. Capture it so
-  // we can rank the actual failure modes hitting users.
+
+  // 3. Unmatched — generic card + telemetry so we can rank real failure
+  //    modes that need a `kind`.
   reportPipelineFailure(text, ctx);
   return { ...GENERIC, technicalDetail: text };
 }

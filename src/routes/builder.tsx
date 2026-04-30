@@ -61,6 +61,7 @@ import {
   autoFixingBuild,
   friendlyBuildFailure,
   toFriendlyError,
+  PipelineError,
   type FriendlyError,
 } from "@/lib/friendly-errors";
 import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivityCard";
@@ -1192,6 +1193,7 @@ function Builder() {
       let resultVerdict: string | undefined;
       let resultHandoff: ChatMessage["handoff"] | undefined;
       let streamError: string | null = null;
+      let streamErrorKind: import("@/server/generate.server").ErrorKind | undefined;
       let errorSuggestions: string[] = [];
       // Mirror of the streamingAssistant state we accumulate as deltas come in.
       // Kept locally so the catch/finally branches can read the latest value
@@ -1360,8 +1362,9 @@ function Builder() {
               resultHandoff = handoff;
             },
 
-            onError: (m, sugg) => {
+            onError: (m, sugg, kind) => {
               streamError = m;
+              streamErrorKind = kind;
               if (sugg && sugg.length > 0) errorSuggestions = sugg;
             },
           },
@@ -1369,7 +1372,12 @@ function Builder() {
         );
 
         if (controller.signal.aborted) return;
-        if (streamError) throw new Error(streamError);
+        if (streamError) {
+          // Preserve the server-classified kind across the throw boundary so
+          // toFriendlyError can render the right card without regexing the
+          // (humanized) message text.
+          throw new PipelineError(streamError, streamErrorKind ?? "unknown");
+        }
         if (!resultFiles) throw new Error("No result returned.");
 
         const files2: ProjectFile[] = resultFiles;
