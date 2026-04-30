@@ -29,7 +29,6 @@ import { fetchRuntimeWallet, formatUsdCents } from "@/lib/runtime-wallet";
 import { enableManagedBackend } from "@/lib/projects";
 import { RuntimeTopupModal } from "@/components/RuntimeTopupModal";
 import { BillingSheet } from "@/components/BillingSheet";
-import { emitServiceEnabled } from "@/lib/service-events";
 
 type Props = {
   open: boolean;
@@ -83,13 +82,6 @@ export function EnableBackendFromCloudDialog({
     try {
       await enableManagedBackend(projectId);
       toast.success("Setting up your backend…");
-      emitServiceEnabled({
-        projectId,
-        service: "backend",
-        label: "Managed backend",
-        summary:
-          "Provisioning your database, auth, and storage.",
-      });
       onOpenChange(false);
       onEnabled?.();
     } catch (e) {
