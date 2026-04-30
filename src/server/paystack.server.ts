@@ -26,6 +26,8 @@ type InitArgs = {
   reference: string;
   callbackUrl: string;
   metadata?: Record<string, unknown>;
+  /** Paystack plan code (PLN_xxx). When set, this transaction creates a subscription. */
+  plan?: string;
 };
 
 type InitResponse = {
