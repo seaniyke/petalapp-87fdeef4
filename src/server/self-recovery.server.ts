@@ -43,7 +43,15 @@ export function classifyRawError(rawMessage: string): ErrorKind {
   const t = (rawMessage || "").toString();
 
   // Order matters: more specific first.
-  if (/\baborted\b|cancell?ed/i.test(t)) return "aborted";
+  //
+  // NOTE: We intentionally do NOT regex for "aborted" / "cancelled" here.
+  // Those words appear in many non-user-initiated failures (AbortError from
+  // upstream gateway timeouts, "stream aborted by provider", "request
+  // aborted: tool_call missing", etc.) and inferring user intent from text
+  // produces the "You stopped Petal" misattribution we hit in the wild.
+  // True user-cancel must be set by the catch site from
+  // `request.signal.aborted` — never inferred from prose. Until that's
+  // wired, "aborted" is only emitted when the catch site sets it explicitly.
   if (/\b401\b|unauthori[sz]ed|not signed in/i.test(t)) return "unauthorized";
   if (/rate.?limit|\b429\b/i.test(t)) return "rate_limit";
   if (/credits?.*(exhaust|out|empty|low)|\b402\b|insufficient.*(credit|balance)/i.test(t))
