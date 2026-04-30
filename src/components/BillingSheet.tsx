@@ -366,7 +366,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
 
             <div className="mt-4 flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={scrollToPlans}>
-                {currentPlanCode === "free" ? "See plans" : "Manage"}
+                {currentPlanCode === "free" ? "See plans" : "Change plan"}
               </Button>
               {currentPlanCode !== "free" && (
                 <Button size="sm" variant="outline" onClick={scrollToTopups}>
@@ -374,7 +374,38 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                   Top up credits
                 </Button>
               )}
+              {subStatus?.hasPaystackSubscription && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={openManageCard}
+                  disabled={busyKey === "sub:manage"}
+                >
+                  {busyKey === "sub:manage" ? (
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <CreditCard className="mr-1 h-3.5 w-3.5" />
+                  )}
+                  Manage card
+                </Button>
+              )}
+              {subStatus?.hasPaystackSubscription && !subStatus.cancelAtPeriodEnd && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setConfirmCancelOpen(true)}
+                >
+                  <X className="mr-1 h-3.5 w-3.5" />
+                  Cancel subscription
+                </Button>
+              )}
             </div>
+            {subStatus?.hasPaystackSubscription && subStatus.cancelAtPeriodEnd && (
+              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                Subscription cancelled — access continues until the period ends.
+              </p>
+            )}
           </div>
 
           {/* 3. Credits remaining */}
