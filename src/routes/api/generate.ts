@@ -59,6 +59,7 @@ import {
 } from "@/server/file-budget.server";
 import { pickBestModel } from "@/server/smart-router.server";
 import { recordAiOutcome } from "@/server/ai-outcomes.server";
+import { applyContextBudget, type BudgetMessage } from "@/server/context-budget.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
