@@ -548,6 +548,7 @@ function findUnresolvedImports(
     "react/jsx-dev-runtime",
   ]);
   const pkgRaw = byPath.get("package.json");
+  const hasPkgJson = !!pkgRaw;
   if (pkgRaw) {
     try {
       const pkg = JSON.parse(pkgRaw) as {
@@ -559,6 +560,34 @@ function findUnresolvedImports(
     } catch {
       /* malformed package.json — handled elsewhere */
     }
+  }
+
+  // Scaffold-installed framework packages — always present in the runtime
+  // even when the AI didn't emit a package.json in this turn's write set.
+  // Only consulted when no package.json is in scope; with a package.json
+  // we trust its dependency list and surface real "missing-dep" issues.
+  const SCAFFOLD_DEPS = new Set<string>([
+    "@tanstack/react-router",
+    "@tanstack/react-start",
+    "@tanstack/router-devtools",
+    "@supabase/supabase-js",
+    "zod",
+    "clsx",
+    "tailwind-merge",
+    "class-variance-authority",
+    "lucide-react",
+    "framer-motion",
+    "sonner",
+    "date-fns",
+    "@radix-ui/react-dialog",
+    "@radix-ui/react-popover",
+    "@radix-ui/react-slot",
+    "@radix-ui/react-tooltip",
+    "@radix-ui/react-tabs",
+    "@radix-ui/react-toast",
+  ]);
+  if (!hasPkgJson) {
+    for (const d of SCAFFOLD_DEPS) deps.add(d);
   }
 
   // Scaffold prefixes that always resolve via the kit even when no file map
