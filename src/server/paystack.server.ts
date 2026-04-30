@@ -193,6 +193,27 @@ export async function createPlan(args: CreatePlanArgs): Promise<{ plan_code: str
   });
 }
 
+export type PaystackPlan = {
+  id: number;
+  plan_code: string;
+  name: string;
+  amount: number;
+  currency: string;
+  interval: string;
+};
+
+/**
+ * Fetch a plan by its plan_code. Returns undefined if Paystack returns a
+ * not-found / error response (we treat any failure as "needs reprovision").
+ */
+export async function fetchPlan(code: string): Promise<PaystackPlan | undefined> {
+  try {
+    return await paystackGet<PaystackPlan>(`/plan/${encodeURIComponent(code)}`);
+  } catch {
+    return undefined;
+  }
+}
+
 export type PaystackSubscription = {
   id: number;
   subscription_code: string;

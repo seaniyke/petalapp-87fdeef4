@@ -10,7 +10,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { initializeTransaction, getEnvironment } from "@/server/paystack.server";
+import { initializeTransaction, getEnvironment, fetchPlan, createPlan } from "@/server/paystack.server";
 import { resolvePrice } from "@/server/billing-pricing.server";
 
 const SUPPORTED_CURRENCIES = ["NGN", "GHS", "KES", "ZAR", "USD"] as const;
@@ -153,11 +153,13 @@ export const Route = createFileRoute("/api/billing/initialize")({
             price = await resolvePrice(parsed.purpose, parsed.itemCode, parsed.currency);
           }
 
-          // For plan checkouts, look up the per-currency Paystack plan code so
-          // Paystack auto-creates a subscription on charge.success and renews
-          // monthly. If we don't have a plan code yet (admin hasn't synced the
-          // currency), fail fast — we don't want a one-shot charge masquerading
-          // as a subscription.
+          // For plan checkouts, we need a Paystack plan whose amount EXACTLY
+          // matches the price we just resolved. Paystack ignores the `amount`
+          // we pass to /transaction/initialize when a `plan` is also passed —
+          // it always charges the plan's amount. Plans are immutable on
+          // amount, so when admin changes the price we must create a new plan
+          // and overwrite the stored code. We also fetch the plan's interval
+          // and name from billing_plans (interval) and admin (display name).
           let paystackPlanCode: string | undefined;
           if (parsed.purpose === "plan") {
             const col = `paystack_plan_code_${parsed.currency.toLowerCase()}` as
@@ -168,21 +170,50 @@ export const Route = createFileRoute("/api/billing/initialize")({
               | "paystack_plan_code_usd";
             const { data: planRow } = await supabaseAdmin
               .from("billing_plans")
-              .select(col)
+              .select(`code, name, paystack_interval, ${col}`)
               .eq("code", parsed.itemCode)
               .maybeSingle();
-            const code = (planRow as Record<string, string | null> | null)?.[col] ?? null;
-            if (!code) {
+            if (!planRow) {
               return new Response(
-                JSON.stringify({
-                  error: `This plan isn't available in ${parsed.currency} yet. Pick a different currency or contact support.`,
-                  code: "plan_not_provisioned",
-                }),
+                JSON.stringify({ error: "Plan not found.", code: "plan_not_found" }),
                 { status: 400, headers: { "Content-Type": "application/json" } },
               );
             }
-            paystackPlanCode = code;
+            const row = planRow as Record<string, string | null>;
+            const storedCode = row[col];
+            const interval = row.paystack_interval || "monthly";
+            const planName = `${row.name ?? parsed.itemCode} (${parsed.currency})`;
+
+            // Check whether the stored plan matches the resolved price.
+            let needsNewPlan = !storedCode;
+            if (storedCode) {
+              const existing = await fetchPlan(storedCode);
+              if (
+                !existing ||
+                Number(existing.amount) !== price.amountMinor ||
+                existing.currency?.toUpperCase() !== parsed.currency
+              ) {
+                needsNewPlan = true;
+              }
+            }
+
+            if (needsNewPlan) {
+              const created = await createPlan({
+                name: planName,
+                amountMinor: price.amountMinor,
+                currency: parsed.currency,
+                interval,
+              });
+              await supabaseAdmin
+                .from("billing_plans")
+                .update({ [col]: created.plan_code } as never)
+                .eq("code", parsed.itemCode);
+              paystackPlanCode = created.plan_code;
+            } else {
+              paystackPlanCode = storedCode!;
+            }
           }
+
 
           const reference = `pt_${crypto.randomUUID().replace(/-/g, "")}`;
           const env = getEnvironment();
