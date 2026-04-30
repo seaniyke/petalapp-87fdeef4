@@ -225,15 +225,16 @@ export async function updateLastCallUsage(args: {
     // (the row we just inserted from `aiChatCompletions`). Wider windows risk
     // updating a stale row from a previous call that genuinely had no usage.
     const since = new Date(Date.now() - 5 * 60_000).toISOString();
-    const { data: rows } = await supabaseAdmin
+    let q = supabaseAdmin
       .from("ai_call_log")
       .select("id")
       .eq("feature", args.feature)
-      .eq("model", args.model)
       .is("prompt_tokens", null)
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(1);
+    q = args.model ? q.eq("model", args.model) : q.is("model", null);
+    const { data: rows } = await q;
     const id = rows?.[0]?.id;
     if (!id) return;
     await supabaseAdmin
