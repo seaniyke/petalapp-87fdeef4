@@ -123,10 +123,18 @@ const SampleInput = z.object({
   limit: z.number().int().min(1).max(50).default(20),
 });
 
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [k: string]: JsonValue };
+
 export type CloudTableSample = {
   available: boolean;
   columns: string[];
-  rows: Record<string, unknown>[];
+  rows: { [k: string]: JsonValue }[];
 };
 
 export const sampleProjectTable = createServerFn({ method: "POST" })
@@ -147,7 +155,7 @@ export const sampleProjectTable = createServerFn({ method: "POST" })
       },
     );
     if (!res.ok) return { available: false, columns: [], rows: [] };
-    const rows = (await res.json()) as Record<string, unknown>[];
+    const rows = (await res.json()) as { [k: string]: JsonValue }[];
     const columns = rows.length ? Object.keys(rows[0]) : [];
     return { available: true, columns, rows };
   });
