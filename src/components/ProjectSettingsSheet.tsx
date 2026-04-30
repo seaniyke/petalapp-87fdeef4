@@ -98,6 +98,8 @@ export function ProjectSettingsSheet({
     return draft ?? (project.custom_instructions ?? "");
   });
   const [saving, setSaving] = useState(false);
+  const [cloudOpen, setCloudOpen] = useState(false);
+  const [balanceOpen, setBalanceOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
