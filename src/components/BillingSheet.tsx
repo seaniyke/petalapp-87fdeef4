@@ -270,6 +270,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
     topupRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
