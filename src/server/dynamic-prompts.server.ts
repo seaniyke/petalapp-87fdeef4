@@ -149,6 +149,30 @@ PAGE EXPORTS: prefer plain named exports + eager imports. React.lazy(() => impor
     body: `\n\n[Reinforcement — Auth (only if backend is connected)]
 Use ONLY the helpers exported from "@/integrations/backend/auth": useAuth(), signUpWithPassword, signInWithPassword, signInWithOtp, verifyOtp, verifySignupOtp, resendSignupOtp, resetPasswordForEmail, updatePassword, signOut. After signUpWithPassword, verify with verifySignupOtp (NOT verifyOtp). NEVER call supabase.auth.* directly. NEVER import from "@supabase/supabase-js". Read "src/components/examples/BACKEND.md" for full reference.`,
   },
+  // Fires when the user asked for auth / data / accounts / uploads / realtime
+  // BUT no backend is connected to this project. Triggers are matched in
+  // pickDynamicSnippets only when args.hasBackend === false. This is a
+  // POSITIVE instruction — we tell the model exactly what to do instead of
+  // hoping it remembers the buried PREREQUISITE GATING rule. Without this
+  // block the model has historically (a) bailed to prose and (b) emitted
+  // imports from "@/integrations/backend/*" that don't resolve.
+  noBackendGate: {
+    triggers: "always", // gating handled in pickDynamicSnippets
+    body: `\n\n[CRITICAL — No backend is connected to this project]
+The user asked for a feature that normally needs a backend (auth, accounts, login, persistent data, comments, uploads, realtime, etc.) — but THIS project has no backend yet.
+
+You MUST still call write_project (or patch_files). Never reply with prose. Never bail.
+
+What to build:
+- Scaffold the UI ONLY: forms, empty states, mock lists, disabled "Sign in" buttons, etc. Use realistic placeholder data inline (NOT from a database).
+- DO NOT import from "@/integrations/backend/*" — those files do not exist in this project and the build will fail.
+- DO NOT import "@supabase/supabase-js", do NOT call createClient, do NOT hardcode any keys or URLs.
+- DO NOT add any auth/data wiring. Leave a clear \`// TODO: connect backend\` comment where the wiring would go.
+
+What to say:
+- In "plan" and "summary", in plain friendly English, tell the user that you've built the UI and that to make it real (save data / let users sign in / etc.) they should tap the "Add backend" chip below the chat. Keep it warm, not technical.
+- Do NOT mention Supabase, edge functions, or any infra names — just "a backend".`,
+  },
   images: {
     triggers: /\b(image|photo|picture|hero|illustration|avatar|background|banner|cover|logo|gallery)\b/i,
     body: `\n\n[Reinforcement — Images]
