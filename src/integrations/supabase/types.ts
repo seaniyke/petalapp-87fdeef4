@@ -1990,12 +1990,12 @@ export type Database = {
           paystack_subscription_code: string | null
           pending_plan_code: string | null
           plan_code: string
-          price_id: string
+          price_id: string | null
           product_id: string | null
           provider: string
           status: string
           stripe_customer_id: string
-          stripe_subscription_id: string
+          stripe_subscription_id: string | null
           updated_at: string
           user_id: string
         }
@@ -2013,12 +2013,12 @@ export type Database = {
           paystack_subscription_code?: string | null
           pending_plan_code?: string | null
           plan_code: string
-          price_id: string
+          price_id?: string | null
           product_id?: string | null
           provider?: string
           status?: string
           stripe_customer_id: string
-          stripe_subscription_id: string
+          stripe_subscription_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2036,12 +2036,12 @@ export type Database = {
           paystack_subscription_code?: string | null
           pending_plan_code?: string | null
           plan_code?: string
-          price_id?: string
+          price_id?: string | null
           product_id?: string | null
           provider?: string
           status?: string
           stripe_customer_id?: string
-          stripe_subscription_id?: string
+          stripe_subscription_id?: string | null
           updated_at?: string
           user_id?: string
         }
