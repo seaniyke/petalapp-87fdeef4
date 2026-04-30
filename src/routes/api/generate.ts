@@ -1380,6 +1380,19 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // for this turn, Petal is fixing its own broken build. We log
               // the would-be amount for analytics but never debit the user.
               const priced = priceBuild(collected.usage);
+
+              // Backfill the usage tokens onto the ai_call_log row that
+              // `aiChatCompletions` inserted before the stream body was read.
+              // Without this, every streaming generate call shows NULL tokens
+              // and we can't distinguish "model returned a full project" from
+              // "model returned a one-line refusal".
+              void updateLastCallUsage({
+                feature: "generate",
+                model,
+                promptTokens: collected.usage?.prompt_tokens ?? null,
+                completionTokens: collected.usage?.completion_tokens ?? null,
+                totalTokens: collected.usage?.total_tokens ?? null,
+              });
               let finalCharged = 0;
               if (body.isAutoFix) {
                 console.log(
