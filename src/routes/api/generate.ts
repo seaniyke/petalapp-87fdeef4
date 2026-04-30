@@ -380,10 +380,14 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
 
 function addStructuredRetryInstruction<T extends Array<{ role: string; content: unknown }>>(
   messages: T,
-  args: { isInitial: boolean; problem: string },
+  args: { isInitial: boolean; problem: string; hasBackend?: boolean },
 ): T {
   const requiredTool = args.isInitial ? "write_project" : "patch_files";
-  const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field; keep files short and split large UI into components.`;
+  const backendHint =
+    args.hasBackend === false
+      ? ` This project has NO backend connected — DO NOT import from "@/integrations/backend/*" or "@supabase/supabase-js"; scaffold UI only with realistic placeholder data and tell the user in your "summary" to tap "Add backend" to wire it up.`
+      : "";
+  const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field; keep files short and split large UI into components.${backendHint}`;
   return messages.map((m, i) =>
     i === 0 && typeof m.content === "string"
       ? { ...m, content: `${m.content}${retryBlock}` }
@@ -792,6 +796,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                     messages: addStructuredRetryInstruction(chatMessages, {
                       isInitial,
                       problem: e instanceof Error ? e.message : "invalid structured response",
+                      hasBackend: Boolean(backend),
                     }),
                     tools: [tool],
                     tool_choice: { type: "function", function: { name: tool.function.name } },
