@@ -187,7 +187,6 @@ export const Route = createFileRoute("/api/billing/initialize")({
             // Check whether the stored plan matches the resolved price.
             let needsNewPlan = !storedCode;
             if (storedCode) {
-              const { fetchPlan } = await import("@/server/paystack.server");
               const existing = await fetchPlan(storedCode);
               if (
                 !existing ||
@@ -199,7 +198,6 @@ export const Route = createFileRoute("/api/billing/initialize")({
             }
 
             if (needsNewPlan) {
-              const { createPlan } = await import("@/server/paystack.server");
               const created = await createPlan({
                 name: planName,
                 amountMinor: price.amountMinor,
