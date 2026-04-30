@@ -696,12 +696,15 @@ function PlansPanel() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Plans</CardTitle>
-          <CardDescription>
-            Subscription plan tiers and their base USD price. Per-currency prices are derived from
-            the USD rate or a price override.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <div>
+            <CardTitle>Plans</CardTitle>
+            <CardDescription>
+              Subscription plan tiers and their base USD price. Per-currency prices are derived from
+              the USD rate or a price override.
+            </CardDescription>
+          </div>
+          <ProvisionPaystackPlansButton />
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -1392,5 +1395,35 @@ function AddonsPanel() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function ProvisionPaystackPlansButton() {
+  const [busy, setBusy] = useState(false);
+  async function run() {
+    setBusy(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not signed in");
+      const res = await fetch("/api/admin/paystack-plans", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || `Failed (${res.status})`);
+      const created = (json.created ?? []).length;
+      const skipped = (json.skipped ?? []).length;
+      toast.success(`Provisioned ${created} plan(s) on Paystack. Skipped: ${skipped}.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Button variant="outline" size="sm" onClick={run} disabled={busy}>
+      {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+      Provision Paystack plans
+    </Button>
   );
 }
