@@ -685,11 +685,28 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         const reasoningField =
           preset === "deep" ? { reasoning: { effort: "high" as const } } : {};
 
+        // Tier 7 — context-budget pre-check. Estimate the input token cost
+        // of the assembled messages and, if it exceeds the chosen model's
+        // safe window, either upgrade to a larger-context model or drop
+        // the oldest non-system messages until it fits. Eliminates silent
+        // context-overflow failures (truncated/empty completions).
+        const budget = applyContextBudget(chatMessages as BudgetMessage[], model);
+        if (budget.action !== "none") {
+          console.log(
+            `[context-budget] action=${budget.action} est=${budget.estimatedTokens} safe=${budget.safeInputTokens} dropped=${budget.droppedCount} model=${model}${budget.modelOverride ? ` → ${budget.modelOverride}` : ""}`,
+          );
+          if (budget.modelOverride) {
+            model = budget.modelOverride;
+            chosenBy = `${chosenBy}+ctx_upgrade`;
+          }
+        }
+        const finalMessages = budget.messages;
+
         const upstream = await aiChatCompletions({
           feature: "generate",
           body: {
             model,
-            messages: chatMessages,
+            messages: finalMessages,
             tools: [tool],
             tool_choice: { type: "function", function: { name: tool.function.name } },
             stream: true,
