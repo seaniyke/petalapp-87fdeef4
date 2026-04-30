@@ -3228,8 +3228,7 @@ function Builder() {
                     busy && friendlyError?.actionLabel === "Working on it";
                   if (isAutoFixing)
                     return "Petal is fixing the build — free · keep typing if you'd like";
-                  if (busy || discussBusy)
-                    return "Petal is working — your next message will queue";
+                  if (busy || discussBusy) return null;
                   if (pendingAttachments.length > 0)
                     return `${pendingAttachments.length} image${pendingAttachments.length > 1 ? "s" : ""} attached`;
                   if (mode === "discuss") return "Chat only · no file changes";
