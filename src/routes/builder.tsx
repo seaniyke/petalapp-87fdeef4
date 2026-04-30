@@ -1473,7 +1473,25 @@ function Builder() {
         if (controller.signal.aborted) return;
         const msg = e instanceof Error ? e.message : "Something went wrong.";
         setError(msg);
-        setFriendlyError(toFriendlyError(e));
+        // Pass full failure context so unmatched errors land in
+        // pipeline_failures with enough detail to debug — not just an
+        // empty `surface=unknown` row. Tail of the partial assistant text
+        // is the model's own apology when it bailed prose-only.
+        const tail = (partialAssistant || partialPlan || "").slice(-2000);
+        setFriendlyError(
+          toFriendlyError(e, {
+            surface: "generate",
+            projectId: proj.id,
+            model: opts.isAutoFix ? "smart" : deepThink ? "deep" : "smart",
+            streamTail: tail || null,
+            extra: {
+              had_partial_assistant: partialAssistant.length > 0,
+              had_plan: partialPlan.length > 0,
+              files_written_so_far: 0,
+              is_auto_fix: !!opts.isAutoFix,
+            },
+          }),
+        );
         setPhases((p) => markFailed(p));
 
         // Preserve whatever Petal had said before failing. Without this, the
