@@ -200,6 +200,55 @@ async function recordTelemetry(args: TelemetryArgs): Promise<void> {
   }
 }
 
+/**
+ * Backfill token usage onto the most recent ai_call_log row for a given
+ * feature/model. Called by streaming consumers (api/generate, api/discuss)
+ * AFTER the SSE body has been drained — at that point we know how many
+ * prompt/completion tokens the gateway reported in its final usage chunk,
+ * but `recordTelemetry` already inserted the row with NULLs because it
+ * fires the moment the upstream Response resolves (before the body is
+ * read). Without this update every streaming call shows NULL tokens in
+ * `ai_call_log`, which makes it impossible to tell whether the model
+ * actually generated content or returned a one-line refusal.
+ */
+export async function updateLastCallUsage(args: {
+  feature: AiFeature;
+  model: string | null;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
+}): Promise<void> {
+  if (!args.promptTokens && !args.completionTokens) return;
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Find the most recent row for this feature+model in the last 5 minutes
+    // (the row we just inserted from `aiChatCompletions`). Wider windows risk
+    // updating a stale row from a previous call that genuinely had no usage.
+    const since = new Date(Date.now() - 5 * 60_000).toISOString();
+    const { data: rows } = await supabaseAdmin
+      .from("ai_call_log")
+      .select("id")
+      .eq("feature", args.feature)
+      .eq("model", args.model)
+      .is("prompt_tokens", null)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const id = rows?.[0]?.id;
+    if (!id) return;
+    await supabaseAdmin
+      .from("ai_call_log")
+      .update({
+        prompt_tokens: args.promptTokens,
+        completion_tokens: args.completionTokens,
+        total_tokens: args.totalTokens,
+      })
+      .eq("id", id);
+  } catch (err) {
+    console.warn("[ai-provider] usage backfill failed", err);
+  }
+}
+
 // ---------------- Public API ----------------
 
 export interface AiCallMeta {
