@@ -44,6 +44,7 @@ ALLOWED FIXES:
 - Missing closing braces / semicolons that prevent parsing
 - Direct "react-router-dom" or "@supabase/supabase-js" imports → swap to "@/components/ui/router" or "@/integrations/backend/client"
 - Tailwind v3 directives (@tailwind base/components/utilities) inside src/styles.css → swap for @import "tailwindcss";
+- Tailwind v4 \`@theme { ... }\` block containing nested selectors (\`.dark { ... }\`, \`:root { ... }\`, \`@media (...)\`, or \`&:is(...)\`) → move those nested blocks OUTSIDE @theme. Inside @theme keep ONLY token declarations like \`--color-primary: oklch(...);\` or \`--radius: 0.5rem;\`. Class-based dark mode is already enabled at the top of styles.css via \`@custom-variant dark (&:where(.dark, .dark *));\` — do not redeclare it inside @theme.
 - Invalid lucide-react icon names
 - React.lazy(() => import("...")) used with a target file that only has named exports. Fix by adding \`export default ComponentName;\` to the target file OR by replacing lazy imports with eager named imports.
 
