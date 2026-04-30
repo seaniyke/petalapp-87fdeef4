@@ -1548,7 +1548,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // appear in many upstream-failure messages too. See
               // classifyRawError for the full rationale.
               const userCancelled = request.signal?.aborted === true;
-              const kind = userCancelled ? "user_aborted" : classifyRawError(raw);
+              const kind = userCancelled ? "aborted" : classifyRawError(raw);
               // Layer 5 — humanize the raw error before showing it. No credits
               // were taken — nothing to refund. The friendly rewrite gives the
               // user a clear next step (retry, simplify, top up, …) instead
