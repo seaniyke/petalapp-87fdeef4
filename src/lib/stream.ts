@@ -185,7 +185,7 @@ export async function streamGenerate(
             });
             break;
           case "error":
-            handlers.onError?.(evt.message, evt.suggestions);
+            handlers.onError?.(evt.message, evt.suggestions, evt.kind);
             break;
         }
       }
