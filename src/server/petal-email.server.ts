@@ -177,7 +177,7 @@ export async function addSuppression(args: {
       recipient_email: args.email.toLowerCase(),
       reason: args.reason,
       source_message_id: args.sourceMessageId ?? null,
-    },
+    } as never,
     { onConflict: "project_id,recipient_email" }
   );
 }
