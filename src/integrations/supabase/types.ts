@@ -1994,7 +1994,7 @@ export type Database = {
           product_id: string | null
           provider: string
           status: string
-          stripe_customer_id: string
+          stripe_customer_id: string | null
           stripe_subscription_id: string | null
           updated_at: string
           user_id: string
@@ -2017,7 +2017,7 @@ export type Database = {
           product_id?: string | null
           provider?: string
           status?: string
-          stripe_customer_id: string
+          stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
           user_id: string
@@ -2040,7 +2040,7 @@ export type Database = {
           product_id?: string | null
           provider?: string
           status?: string
-          stripe_customer_id?: string
+          stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
           user_id?: string
