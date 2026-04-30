@@ -10,7 +10,17 @@
  *  6. Top-up packs (dropdown + dynamic "Top up $X" button)
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Loader2, Plus, Sparkles, AlertTriangle } from "lucide-react";
+import { Check, Loader2, Plus, Sparkles, AlertTriangle, CreditCard, X } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Sheet,
   SheetContent,

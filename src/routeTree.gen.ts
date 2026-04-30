@@ -67,6 +67,7 @@ import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/publi
 import { Route as ApiPublicEmailSendRouteImport } from './routes/api/public/email/send'
 import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/api/public/cron/runtime-backend-hour'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
+import { Route as ApiBillingSubscriptionStatusRouteImport } from './routes/api/billing/subscription/status'
 import { Route as ApiBillingSubscriptionManageLinkRouteImport } from './routes/api/billing/subscription/manage-link'
 import { Route as ApiBillingSubscriptionCancelRouteImport } from './routes/api/billing/subscription/cancel'
 
@@ -365,6 +366,12 @@ const ApiPublicBuildsCallbackRoute = ApiPublicBuildsCallbackRouteImport.update({
   path: '/api/public/builds/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBillingSubscriptionStatusRoute =
+  ApiBillingSubscriptionStatusRouteImport.update({
+    id: '/api/billing/subscription/status',
+    path: '/api/billing/subscription/status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiBillingSubscriptionManageLinkRoute =
   ApiBillingSubscriptionManageLinkRouteImport.update({
     id: '/api/billing/subscription/manage-link',
@@ -430,6 +437,7 @@ export interface FileRoutesByFullPath {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
+  '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
@@ -492,6 +500,7 @@ export interface FileRoutesByTo {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
+  '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
@@ -555,6 +564,7 @@ export interface FileRoutesById {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
+  '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
@@ -619,6 +629,7 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/api/billing/subscription/cancel'
     | '/api/billing/subscription/manage-link'
+    | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/email/send'
@@ -681,6 +692,7 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/api/billing/subscription/cancel'
     | '/api/billing/subscription/manage-link'
+    | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/email/send'
@@ -743,6 +755,7 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/api/billing/subscription/cancel'
     | '/api/billing/subscription/manage-link'
+    | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/email/send'
@@ -805,6 +818,7 @@ export interface RootRouteChildren {
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiBillingSubscriptionCancelRoute: typeof ApiBillingSubscriptionCancelRoute
   ApiBillingSubscriptionManageLinkRoute: typeof ApiBillingSubscriptionManageLinkRoute
+  ApiBillingSubscriptionStatusRoute: typeof ApiBillingSubscriptionStatusRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
   ApiPublicCronRuntimeBackendHourRoute: typeof ApiPublicCronRuntimeBackendHourRoute
   ApiPublicEmailSendRoute: typeof ApiPublicEmailSendRoute
@@ -1224,6 +1238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBuildsCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/billing/subscription/status': {
+      id: '/api/billing/subscription/status'
+      path: '/api/billing/subscription/status'
+      fullPath: '/api/billing/subscription/status'
+      preLoaderRoute: typeof ApiBillingSubscriptionStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/billing/subscription/manage-link': {
       id: '/api/billing/subscription/manage-link'
       path: '/api/billing/subscription/manage-link'
@@ -1304,6 +1325,7 @@ const rootRouteChildren: RootRouteChildren = {
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiBillingSubscriptionCancelRoute: ApiBillingSubscriptionCancelRoute,
   ApiBillingSubscriptionManageLinkRoute: ApiBillingSubscriptionManageLinkRoute,
+  ApiBillingSubscriptionStatusRoute: ApiBillingSubscriptionStatusRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
   ApiPublicCronRuntimeBackendHourRoute: ApiPublicCronRuntimeBackendHourRoute,
   ApiPublicEmailSendRoute: ApiPublicEmailSendRoute,
