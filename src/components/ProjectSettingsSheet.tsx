@@ -182,6 +182,25 @@ export function ProjectSettingsSheet({
           </SheetDescription>
         </SheetHeader>
 
+        {/* Cloud entry — opens the per-project Cloud panel (AI usage,
+            database, users, storage, secrets, logs and danger zone). */}
+        <button
+          type="button"
+          onClick={() => setCloudOpen(true)}
+          className="mt-4 flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-left transition hover:border-primary/40 hover:bg-muted/60"
+        >
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background text-primary">
+            <Cloud className="h-4 w-4" />
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-medium">Petal Cloud</div>
+            <div className="text-xs text-muted-foreground">
+              AI usage, database, users, storage, secrets and more.
+            </div>
+          </div>
+          <span className="text-xs text-muted-foreground">Open</span>
+        </button>
+
         {/* Domains section */}
         <div id="settings-domains" className="scroll-mt-4">
           <DomainsSection
