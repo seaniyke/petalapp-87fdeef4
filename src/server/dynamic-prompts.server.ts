@@ -24,6 +24,7 @@ export type DynamicSnippetKey =
   | "tables"
   | "router"
   | "auth"
+  | "noBackendGate"
   | "images"
   | "tailwindv4"
   | "toast"
