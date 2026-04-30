@@ -161,7 +161,7 @@ export const Route = createFileRoute("/api/publish")({
         // Ownership check.
         const { data: project, error: projErr } = await supabaseAdmin
           .from("projects")
-          .select("id, owner_id, latest_build_id, published_build_id, published_visibility")
+          .select("id, owner_id, latest_build_id, published_build_id, published_visibility, hide_petal_badge")
           .eq("id", projectId)
           .maybeSingle();
         if (projErr) {
