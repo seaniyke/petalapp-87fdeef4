@@ -1361,8 +1361,9 @@ function Builder() {
               resultHandoff = handoff;
             },
 
-            onError: (m, sugg) => {
+            onError: (m, sugg, kind) => {
               streamError = m;
+              streamErrorKind = kind;
               if (sugg && sugg.length > 0) errorSuggestions = sugg;
             },
           },
