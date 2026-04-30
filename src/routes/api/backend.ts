@@ -90,7 +90,7 @@ async function handleStatus(userId: string, body: unknown): Promise<Response> {
   const { data, error } = await supabaseAdmin
     .from("project_backends")
     .select(
-      "status, provider, supabase_url, anon_key, error_message, supabase_project_ref, paused_at",
+      "status, provider, supabase_url, anon_key, error_message, supabase_project_ref, paused_at, provisioning_started_at",
     )
     .eq("project_id", parsed.data.projectId)
     .maybeSingle();
@@ -117,6 +117,7 @@ async function handleStatus(userId: string, body: unknown): Promise<Response> {
     errorMessage: data.error_message,
     supabaseProjectRef: data.supabase_project_ref,
     pausedAt: data.paused_at,
+    provisioningStartedAt: data.provisioning_started_at,
     graceUntil,
   });
 }
