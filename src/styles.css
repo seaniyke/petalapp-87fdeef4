@@ -56,15 +56,23 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   --font-display: "Fraunces", "DM Serif Display", Georgia, serif;
-  --font-sans: "Inter", "Geist", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* iOS-leaning sans stack: real SF Pro on Apple devices, Inter Tight elsewhere.
+     Inter Tight is a slightly narrower, more confident Inter — feels closer to
+     SF Pro than the standard Inter. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Tight",
+    "Inter", "Geist", system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", "Menlo", monospace;
 
-  --shadow-soft: 0 1px 2px oklch(0.2 0.04 30 / 0.04), 0 8px 24px oklch(0.2 0.04 30 / 0.06);
+  /* iOS-style surface shadows: soft, taller, with a faint inset top highlight. */
+  --shadow-soft: 0 1px 0 oklch(1 0 0 / 0.04) inset,
+    0 1px 2px oklch(0.2 0.04 30 / 0.05),
+    0 8px 32px -12px oklch(0.2 0.04 30 / 0.18);
   --shadow-glow: 0 20px 60px -20px oklch(0.7 0.15 25 / 0.35);
 }
 
 :root {
-  --radius: 0.875rem;
+  /* Bumped from 0.875rem (14px) to 1rem (16px) for iOS-style rounding. */
+  --radius: 1rem;
 
   /* Warm off-white canvas */
   --background: oklch(0.985 0.012 80);
@@ -162,15 +170,36 @@
   * {
     border-color: var(--color-border);
   }
+  /* iOS-feeling base typography:
+     - 15px base (was 14px) so the chrome feels less utilitarian without
+       bumping the whole Tailwind text-* scale.
+     - Negative tracking (-0.011em) is the single biggest "feels like SF Pro"
+       tweak. iOS UI text is consistently this tight at body sizes.
+     - 1.5 line-height for body, tightened for headlines below.
+     - text-rendering + cv11 enables tabular-friendly numerals via Inter Tight. */
+  html {
+    font-size: 15px;
+  }
   html, body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01", "ss03";
+    letter-spacing: -0.011em;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
-  h1, h2, h3 {
+  h1, h2, h3, h4 {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.022em;
+    line-height: 1.1;
+  }
+  /* Tighten tracking on larger UI text — gives buttons, labels, and big
+     numbers that confident iOS density. */
+  .text-lg, .text-xl, .text-2xl, .text-3xl, .text-4xl, .text-5xl {
+    letter-spacing: -0.018em;
   }
 }
 
