@@ -55,7 +55,11 @@ export function CloudUsersView({ projectId }: { projectId: string }) {
     <div className="space-y-3 p-4">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Users className="h-4 w-4" />
-        <span>{users.length} signups</span>
+        <span>
+          {users.length === 0
+            ? "No signups yet"
+            : `Showing ${users.length} most recent`}
+        </span>
       </div>
 
       {users.length === 0 ? (
