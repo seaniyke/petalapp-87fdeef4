@@ -170,15 +170,36 @@
   * {
     border-color: var(--color-border);
   }
+  /* iOS-feeling base typography:
+     - 15px base (was 14px) so the chrome feels less utilitarian without
+       bumping the whole Tailwind text-* scale.
+     - Negative tracking (-0.011em) is the single biggest "feels like SF Pro"
+       tweak. iOS UI text is consistently this tight at body sizes.
+     - 1.5 line-height for body, tightened for headlines below.
+     - text-rendering + cv11 enables tabular-friendly numerals via Inter Tight. */
+  html {
+    font-size: 15px;
+  }
   html, body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01", "ss03";
+    letter-spacing: -0.011em;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
-  h1, h2, h3 {
+  h1, h2, h3, h4 {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.022em;
+    line-height: 1.1;
+  }
+  /* Tighten tracking on larger UI text — gives buttons, labels, and big
+     numbers that confident iOS density. */
+  .text-lg, .text-xl, .text-2xl, .text-3xl, .text-4xl, .text-5xl {
+    letter-spacing: -0.018em;
   }
 }
 
