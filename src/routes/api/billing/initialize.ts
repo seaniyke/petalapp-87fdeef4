@@ -153,6 +153,37 @@ export const Route = createFileRoute("/api/billing/initialize")({
             price = await resolvePrice(parsed.purpose, parsed.itemCode, parsed.currency);
           }
 
+          // For plan checkouts, look up the per-currency Paystack plan code so
+          // Paystack auto-creates a subscription on charge.success and renews
+          // monthly. If we don't have a plan code yet (admin hasn't synced the
+          // currency), fail fast — we don't want a one-shot charge masquerading
+          // as a subscription.
+          let paystackPlanCode: string | undefined;
+          if (parsed.purpose === "plan") {
+            const col = `paystack_plan_code_${parsed.currency.toLowerCase()}` as
+              | "paystack_plan_code_ngn"
+              | "paystack_plan_code_ghs"
+              | "paystack_plan_code_kes"
+              | "paystack_plan_code_zar"
+              | "paystack_plan_code_usd";
+            const { data: planRow } = await supabaseAdmin
+              .from("billing_plans")
+              .select(col)
+              .eq("code", parsed.itemCode)
+              .maybeSingle();
+            const code = (planRow as Record<string, string | null> | null)?.[col] ?? null;
+            if (!code) {
+              return new Response(
+                JSON.stringify({
+                  error: `This plan isn't available in ${parsed.currency} yet. Pick a different currency or contact support.`,
+                  code: "plan_not_provisioned",
+                }),
+                { status: 400, headers: { "Content-Type": "application/json" } },
+              );
+            }
+            paystackPlanCode = code;
+          }
+
           const reference = `pt_${crypto.randomUUID().replace(/-/g, "")}`;
           const env = getEnvironment();
 
@@ -187,6 +218,7 @@ export const Route = createFileRoute("/api/billing/initialize")({
                 item_code: parsed.itemCode,
                 project_id: parsed.projectId ?? null,
               },
+              plan: paystackPlanCode,
             });
           } catch (e) {
             // Roll back the orphan pending row so the user can retry cleanly

@@ -26,6 +26,8 @@ type InitArgs = {
   reference: string;
   callbackUrl: string;
   metadata?: Record<string, unknown>;
+  /** Paystack plan code (PLN_xxx). When set, this transaction creates a subscription. */
+  plan?: string;
 };
 
 type InitResponse = {
@@ -56,6 +58,10 @@ export async function initializeTransaction(args: InitArgs): Promise<{
       reference: args.reference,
       callback_url: args.callbackUrl,
       metadata: args.metadata ?? {},
+      // When `plan` is set, Paystack overrides `amount` with the plan's price
+      // and creates a subscription on charge.success. We still pass amount as
+      // a sanity floor so test mode doesn't reject the request.
+      ...(args.plan ? { plan: args.plan } : {}),
     }),
   });
   const json = (await res.json()) as InitResponse;
@@ -132,4 +138,121 @@ export async function verifyWebhookSignature(
     diff |= expected.charCodeAt(i) ^ signatureHeader.charCodeAt(i);
   }
   return diff === 0;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Subscriptions
+// ──────────────────────────────────────────────────────────────────────────────
+
+type PaystackOk<T> = { status: boolean; message: string; data?: T };
+
+async function paystackGet<T>(path: string): Promise<T> {
+  const res = await fetch(`${PAYSTACK_API}${path}`, {
+    headers: { Authorization: `Bearer ${getSecret()}` },
+  });
+  const json = (await res.json()) as PaystackOk<T>;
+  if (!res.ok || !json.status || json.data === undefined) {
+    throw new Error(`Paystack GET ${path} failed: ${json.message || res.status}`);
+  }
+  return json.data;
+}
+
+async function paystackPost<T>(
+  path: string,
+  body: Record<string, unknown>,
+): Promise<T> {
+  const res = await fetch(`${PAYSTACK_API}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getSecret()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const json = (await res.json()) as PaystackOk<T>;
+  if (!res.ok || !json.status) {
+    throw new Error(`Paystack POST ${path} failed: ${json.message || res.status}`);
+  }
+  return (json.data ?? ({} as T)) as T;
+}
+
+export type CreatePlanArgs = {
+  name: string;
+  amountMinor: number;
+  currency: string;
+  /** monthly | annually | weekly | daily ... */
+  interval: string;
+};
+
+export async function createPlan(args: CreatePlanArgs): Promise<{ plan_code: string }> {
+  return paystackPost<{ plan_code: string }>("/plan", {
+    name: args.name,
+    amount: args.amountMinor,
+    currency: args.currency,
+    interval: args.interval,
+  });
+}
+
+export type PaystackSubscription = {
+  id: number;
+  subscription_code: string;
+  email_token: string;
+  status: string;
+  next_payment_date: string | null;
+  amount: number;
+  customer: { id: number; customer_code: string; email: string };
+  plan: { plan_code: string; interval: string; amount: number; currency: string };
+  authorization?: { authorization_code: string };
+};
+
+export async function fetchSubscription(code: string): Promise<PaystackSubscription> {
+  return paystackGet<PaystackSubscription>(`/subscription/${encodeURIComponent(code)}`);
+}
+
+/**
+ * Hosted page where the customer can swap card / cancel. Paystack tokenizes
+ * (and refunds) a small charge during card add.
+ */
+export async function getSubscriptionManageLink(code: string): Promise<string> {
+  const data = await paystackGet<{ link: string }>(
+    `/subscription/${encodeURIComponent(code)}/manage/link`,
+  );
+  return data.link;
+}
+
+/**
+ * Disable a subscription. Stays active until next_payment_date, then
+ * subscription.disable webhook fires.
+ */
+export async function disableSubscription(
+  code: string,
+  emailToken: string,
+): Promise<void> {
+  await paystackPost("/subscription/disable", { code, token: emailToken });
+}
+
+/**
+ * Verify variant that returns the full payload including authorization +
+ * customer + (optional) subscription block. Used by the webhook on the very
+ * first charge of a subscription, when subscription.create may arrive before
+ * we have all the auth/customer info we need on the subscriptions row.
+ */
+export type FullVerifiedTransaction = VerifiedTransaction & {
+  authorization?: { authorization_code: string };
+  customer: { email: string; customer_code?: string; id?: number };
+  plan_object?: { plan_code: string };
+};
+
+export async function verifyTransactionFull(
+  reference: string,
+): Promise<FullVerifiedTransaction | undefined> {
+  const res = await fetch(
+    `${PAYSTACK_API}/transaction/verify/${encodeURIComponent(reference)}`,
+    { headers: { Authorization: `Bearer ${getSecret()}` } },
+  );
+  const json = (await res.json()) as PaystackOk<FullVerifiedTransaction>;
+  if (!res.ok || !json.status || !json.data) {
+    throw new Error(`Paystack verify failed: ${json.message || res.status}`);
+  }
+  return json.data;
 }
