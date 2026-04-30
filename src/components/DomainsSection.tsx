@@ -436,9 +436,28 @@ function DomainRow({
               </a>
             )}
           </div>
-          {domain.error_message && (
-            <p className="mt-1 text-[11px] text-destructive">{domain.error_message}</p>
-          )}
+          {domain.error_message && (() => {
+            // "Setup pending" / "Zone not found yet" are transient post-purchase
+            // states, not failures — render them as info, not as a hard error.
+            const isPending =
+              domain.status !== "failed" &&
+              domain.status !== "offline" &&
+              (/setup pending|not found yet|in progress|initializing/i.test(domain.error_message));
+            const friendly = isPending
+              ? "Finishing setup — this usually takes a couple of minutes."
+              : domain.error_message;
+            return (
+              <p
+                className={
+                  isPending
+                    ? "mt-1 text-[11px] text-muted-foreground"
+                    : "mt-1 text-[11px] text-destructive"
+                }
+              >
+                {friendly}
+              </p>
+            );
+          })()}
         </div>
 
         <DropdownMenu>
