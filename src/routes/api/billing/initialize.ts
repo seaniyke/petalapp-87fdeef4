@@ -218,6 +218,7 @@ export const Route = createFileRoute("/api/billing/initialize")({
                 item_code: parsed.itemCode,
                 project_id: parsed.projectId ?? null,
               },
+              plan: paystackPlanCode,
             });
           } catch (e) {
             // Roll back the orphan pending row so the user can retry cleanly
