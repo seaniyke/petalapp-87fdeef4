@@ -340,10 +340,26 @@ function findUnterminatedString(src: string): string | null {
  * anywhere outside JSX as a defensible declaration site.
  */
 function findUndefinedComponents(src: string, clean: string): string[] {
-  const tagRe = /<([A-Z][A-Za-z0-9_]*)\b/g;
+  // Scan for `<Foo` occurrences while excluding TS-generic positions
+  // (preceded by an identifier-char, `]`, or `)`). Mirrors the disambiguation
+  // in jsxTagBalance — keep them in sync.
   const tags = new Set<string>();
-  let m: RegExpExecArray | null;
-  while ((m = tagRe.exec(clean))) tags.add(m[1]);
+  const n = clean.length;
+  for (let i = 0; i < n; i++) {
+    if (clean[i] !== "<") continue;
+    if (clean[i + 1] === "/") continue;
+    let j = i + 1;
+    const start = j;
+    while (j < n && /[A-Za-z0-9_]/.test(clean[j])) j++;
+    const name = clean.slice(start, j);
+    if (!name || !/^[A-Z]/.test(name)) continue;
+    // Look back past whitespace.
+    let p = i - 1;
+    while (p >= 0 && /\s/.test(clean[p])) p--;
+    const prev = p >= 0 ? clean[p] : undefined;
+    if (prev && /[A-Za-z0-9_$\])]/.test(prev)) continue; // generic
+    tags.add(name);
+  }
   if (tags.size === 0) return [];
 
   // Collect "declared" names from imports + local declarations.
