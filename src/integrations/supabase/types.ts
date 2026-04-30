@@ -987,6 +987,7 @@ export type Database = {
           created_at: string
           error_message: string | null
           id: string
+          idempotency_key: string | null
           metadata: Json
           project_id: string
           recipient_email: string
@@ -998,6 +999,7 @@ export type Database = {
           created_at?: string
           error_message?: string | null
           id?: string
+          idempotency_key?: string | null
           metadata?: Json
           project_id: string
           recipient_email: string
@@ -1009,6 +1011,7 @@ export type Database = {
           created_at?: string
           error_message?: string | null
           id?: string
+          idempotency_key?: string | null
           metadata?: Json
           project_id?: string
           recipient_email?: string
@@ -1083,6 +1086,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      petal_email_suppressions: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          reason: string
+          recipient_email: string
+          source_message_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          reason: string
+          recipient_email: string
+          source_message_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          reason?: string
+          recipient_email?: string
+          source_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "petal_email_suppressions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       petal_email_usage: {
         Row: {
@@ -2462,6 +2500,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      decrement_petal_email_usage: {
+        Args: { p_project_id: string }
+        Returns: undefined
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -2504,6 +2546,19 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_petal_email_usage: {
+        Args: {
+          p_daily_cap: number
+          p_monthly_cap: number
+          p_project_id: string
+        }
+        Returns: {
+          allowed: boolean
+          daily_used: number
+          monthly_used: number
+          reason: string
+        }[]
       }
       is_paid_plan: { Args: { _user_id: string }; Returns: boolean }
       move_to_dlq: {
