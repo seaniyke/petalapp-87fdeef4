@@ -71,6 +71,12 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
   const [currency, setCurrency] = useState<string>("USD");
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [selectedPackCode, setSelectedPackCode] = useState<string | null>(null);
+  const [subStatus, setSubStatus] = useState<{
+    hasPaystackSubscription: boolean;
+    cancelAtPeriodEnd: boolean;
+    nextPaymentDate: string | null;
+  } | null>(null);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const topupRef = useRef<HTMLDivElement | null>(null);
   const plansRef = useRef<HTMLDivElement | null>(null);
 
