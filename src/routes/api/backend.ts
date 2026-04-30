@@ -211,7 +211,32 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
     .update({ runtime_grace_until: null, runtime_paused: false })
     .eq("id", parsed.data.projectId);
 
-  // Fire-and-forget provisioning. UI polls via provision-status.
+  // CRITICAL: await the upstream-project create so the ref is persisted
+  // before the response returns. Background work in Workers gets killed once
+  // the response is sent, so without this we'd leave a wedged 'provisioning'
+  // row with no ref. If create fails, undo the row and surface the error.
+  try {
+    await ensureUpstreamProjectRef(parsed.data.projectId);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // ensureUpstreamProjectRef already marked the row 'failed' with an error
+    // message — but we want the user to be able to immediately re-click
+    // Enable, so delete the row entirely.
+    await supabaseAdmin
+      .from("project_backends")
+      .delete()
+      .eq("project_id", parsed.data.projectId);
+    return new Response(
+      JSON.stringify({
+        error: `Couldn't create your backend: ${msg.slice(0, 300)}`,
+        code: "provision_failed",
+      }),
+      { status: 502, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  // Best-effort poll-to-ready in the background. The UI also polls via
+  // provision-status, which self-heals if this is killed.
   provisionForProject(parsed.data.projectId).catch((e) =>
     console.error("[enable-managed] provision failed", e),
   );
