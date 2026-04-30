@@ -55,6 +55,13 @@ export class PipelineError extends Error {
   }
 }
 
+const GENERIC: FriendlyError = {
+  title: "Petal got a bit confused",
+  message: "Something didn't go right. Want to try that again?",
+  actionLabel: "Try again",
+  actionKind: "retry",
+};
+
 /**
  * Card lookup keyed on server-classified failure codes. Every `ErrorKind`
  * value MUST have an entry here.
