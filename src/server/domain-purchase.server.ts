@@ -122,7 +122,8 @@ export async function pollDomainRegistration(args: {
 }): Promise<{ status: string }> {
   const row = await loadById(args.rowId);
   if (!row) return { status: "missing" };
-  if (row.status === "active" || row.status === "failed" || row.status === "expired") {
+  if (row.status === "active" && row.connected_domain_id) return { status: "active" };
+  if (row.status === "failed" || row.status === "expired") {
     return { status: row.status };
   }
   if (row.status === "pending_payment") return { status: row.status };
@@ -183,10 +184,12 @@ async function finalizeSuccess(
 
   // Step A: point the newly-created zone at our SaaS edge.
   let zoneOk = false;
+  let setupError: string | null = null;
   try {
     await pointZoneAtSaas({ hostname: row.hostname });
     zoneOk = true;
   } catch (e) {
+    setupError = e instanceof Error ? e.message : "Zone setup failed";
     console.error("[domain] pointZoneAtSaas failed", row.hostname, e);
   }
 
@@ -211,6 +214,7 @@ async function finalizeSuccess(
         .single();
       connectedDomainId = pdRow?.id ?? null;
     } catch (e) {
+      setupError = e instanceof Error ? e.message : "Custom hostname setup failed";
       console.error("[domain] createCustomHostname failed", row.hostname, e);
     }
   }
@@ -218,13 +222,15 @@ async function finalizeSuccess(
   await supabaseAdmin
     .from("purchased_domains")
     .update({
-      status: "active",
+      status: connectedDomainId ? "active" : "polling",
       cf_state: "succeeded",
       registered_at: reg?.created_at ?? new Date().toISOString(),
       expires_at: reg?.expires_at ?? null,
       auto_renew: reg?.auto_renew ?? false,
       connected_domain_id: connectedDomainId,
-      error_message: null,
+      error_message: connectedDomainId
+        ? null
+        : `Domain registered; connection setup pending${setupError ? `: ${setupError}` : ""}`,
     })
     .eq("id", row.id);
 
