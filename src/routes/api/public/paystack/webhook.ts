@@ -232,7 +232,7 @@ async function handleSubscriptionCreate(payload: AnyEvent): Promise<void> {
       current_period_end: sub.next_payment_date ?? null,
       environment: getEnvironment(),
       updated_at: new Date().toISOString(),
-    },
+    } as never,
     { onConflict: "paystack_subscription_code" },
   );
 }
