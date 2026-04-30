@@ -21,9 +21,44 @@
  */
 
 import { aiChatCompletions } from "@/server/ai-provider.server";
+import type { ErrorKind } from "@/server/generate.server";
 
 const SELF_CHECK_MODEL = "google/gemini-3-flash-preview";
 const HUMANIZE_MODEL = "google/gemini-3-flash-preview";
+
+/* ──────────────────────────────────────────────────────────────────────
+ * 0. Server-side raw-error classifier
+ *
+ * Runs ONCE at the catch site, against the raw exception, BEFORE any
+ * humanization. Produces a stable structured `kind` the client uses to
+ * pick the right friendly card — no more regexing our own LLM-rewritten
+ * apology prose, which was the root cause of the "your message is too
+ * long" misclassification on tiny prompts.
+ *
+ * When in doubt, return "unknown". The client falls back to the generic
+ * card and reportPipelineFailure logs it so we can add a new branch.
+ * ────────────────────────────────────────────────────────────────────── */
+
+export function classifyRawError(rawMessage: string): ErrorKind {
+  const t = (rawMessage || "").toString();
+
+  // Order matters: more specific first.
+  if (/\baborted\b|cancell?ed/i.test(t)) return "aborted";
+  if (/\b401\b|unauthori[sz]ed|not signed in/i.test(t)) return "unauthorized";
+  if (/rate.?limit|\b429\b/i.test(t)) return "rate_limit";
+  if (/credits?.*(exhaust|out|empty|low)|\b402\b|insufficient.*(credit|balance)/i.test(t))
+    return "credits_exhausted";
+  if (/\b(50[234])\b|bad gateway|upstream|service unavailable|gateway timeout|AI gateway/i.test(t))
+    return "upstream_unavailable";
+  // The "model returned prose, not files" family — these are RAW pipeline
+  // strings (parseCollectedProject, write_project guard), NOT humanized
+  // copy. Humanized phrases like "hit a snag" do NOT belong here.
+  if (/invalid project data|did not return a project|returned no (files|ops)|tool_call.*missing|no write_project/i.test(t))
+    return "no_files_emitted";
+  return "unknown";
+}
+
+
 
 /* ──────────────────────────────────────────────────────────────────────
  * 1. Self-check on success
