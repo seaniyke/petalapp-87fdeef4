@@ -28,6 +28,75 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { freshenStaleYears } from "@/server/freshen-stale-years.server";
+import { postBuildToRailway } from "@/server/builder.server";
+import type { ProjectFile } from "@/server/generate.server";
+
+/**
+ * Best-effort: rewrite stale copyright years (e.g. "© 2024" → current year)
+ * across the project's stored files at publish time. If anything changed,
+ * persist the rewrites and ship a fresh build so visitors see current years.
+ *
+ * Why here: previously-shipped builds were generated before our defenses
+ * landed, so re-publishing alone wouldn't fix them. This catches them on the
+ * deliberate publish action without forcing the user to re-prompt.
+ *
+ * Silent on failure — publish never fails because of this pass.
+ */
+async function freshenAndReshipIfStale(
+  projectId: string,
+  hidePetalBadge: boolean,
+): Promise<void> {
+  try {
+    const { data: rows, error } = await supabaseAdmin
+      .from("project_files")
+      .select("path, content")
+      .eq("project_id", projectId);
+    if (error || !rows?.length) return;
+
+    const files: ProjectFile[] = rows.map((r) => ({ path: r.path, content: r.content }));
+    const { files: freshened, replacements } = freshenStaleYears(files);
+    if (replacements === 0) return;
+
+    // Persist only the files that actually changed.
+    const changed = freshened.filter((f, i) => f.content !== files[i].content);
+    for (const f of changed) {
+      await supabaseAdmin
+        .from("project_files")
+        .update({ content: f.content })
+        .eq("project_id", projectId)
+        .eq("path", f.path);
+    }
+
+    // Create a new build row + ship — re-uses the standard build pipeline so
+    // the deployed Cloudflare Pages project gets the fresh files.
+    const { data: build } = await supabaseAdmin
+      .from("project_builds")
+      .insert({ project_id: projectId, status: "pending" })
+      .select("id")
+      .single();
+    if (!build) return;
+    await supabaseAdmin
+      .from("projects")
+      .update({ latest_build_id: build.id })
+      .eq("id", projectId);
+
+    await postBuildToRailway({
+      projectId,
+      buildId: build.id,
+      files: freshened,
+      hideBadge: hidePetalBadge,
+    });
+    console.log(
+      `[publish] freshened ${replacements} stale year ref(s) for project=${projectId} (build=${build.id})`,
+    );
+  } catch (e) {
+    console.warn(
+      `[publish] year-freshen pass failed for project=${projectId}:`,
+      e instanceof Error ? e.message : String(e),
+    );
+  }
+}
 
 const VisibilitySchema = z.enum(["public", "private", "unpublished"]);
 
