@@ -64,6 +64,53 @@ export async function findZoneByName(name: string): Promise<{ id: string; name: 
   return result?.[0] ?? null;
 }
 
+/**
+ * Create a Cloudflare DNS zone in our account for `name`.
+ *
+ * Cloudflare Registrar does NOT auto-create a zone in your account when a
+ * domain is registered (the API returns `cloudflare_dns: false`). We have
+ * to provision the zone ourselves before any DNS work — including SaaS
+ * hostname routing — can happen.
+ *
+ * Idempotent: if the zone already exists in our account, we just return it.
+ * Requires the API token to have `Account → Zone: Edit`.
+ */
+export async function ensureZoneForRegistrarDomain(name: string): Promise<{
+  id: string;
+  name: string;
+  created: boolean;
+}> {
+  const existing = await findZoneByName(name);
+  if (existing) return { ...existing, created: false };
+
+  const { accountId } = getEnv();
+  try {
+    const result = await cfFetch<{ id: string; name: string }>("/zones", {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        account: { id: accountId },
+        type: "full",
+      }),
+    });
+    return { id: result.id, name: result.name, created: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // Race: another request created it between findZoneByName and POST.
+    if (/already exists|1061/i.test(msg)) {
+      const after = await findZoneByName(name);
+      if (after) return { ...after, created: false };
+    }
+    if (/zone\.create|permission/i.test(msg)) {
+      throw new Error(
+        `Couldn't create the DNS zone for ${name}. The Cloudflare API token is missing the "Account → Zone: Edit" permission.`,
+      );
+    }
+    throw e;
+  }
+}
+
+
 type DnsRecordType = "A" | "AAAA" | "CNAME" | "TXT" | "MX";
 
 type CfDnsRecord = { id: string; name: string; type: DnsRecordType; content: string };
