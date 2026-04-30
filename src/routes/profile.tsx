@@ -10,6 +10,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { AccountHubGrid } from "@/components/AccountHubGrid";
 import { BillingSheet } from "@/components/BillingSheet";
 import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
+import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
