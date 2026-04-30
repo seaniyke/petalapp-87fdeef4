@@ -10,7 +10,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { initializeTransaction, getEnvironment } from "@/server/paystack.server";
+import { initializeTransaction, getEnvironment, fetchPlan, createPlan } from "@/server/paystack.server";
 import { resolvePrice } from "@/server/billing-pricing.server";
 
 const SUPPORTED_CURRENCIES = ["NGN", "GHS", "KES", "ZAR", "USD"] as const;
