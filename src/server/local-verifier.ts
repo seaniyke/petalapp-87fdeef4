@@ -89,33 +89,115 @@ function stripNoise(src: string): string {
 }
 
 /** Count component-style JSX tags: <Card> vs </Card>. Lowercase tags (html) are ignored
- *  because they're rarely the truncation point and have many self-closing edge cases. */
+ *  because they're rarely the truncation point and have many self-closing edge cases.
+ *
+ *  Two classes of false-positive we explicitly defuse here:
+ *    1. TypeScript generics — `useState<Todo>(...)`, `Array<Foo>`, `Map<K,V>`,
+ *       `function f<T>()`, `interface X<T>`, `as Foo<Bar>`, `<T,>(x: T)`.
+ *       Generics are preceded by an identifier-char, `]`, `)`, or sit on a
+ *       generic arrow like `<T,>(`. JSX is preceded by `(`, `{`, `,`, `[`,
+ *       `=`, `?`, `:`, `&&`, `||`, `return`, `=>`, `>`, or start-of-line.
+ *    2. Self-closing tags whose attributes contain `=>` — the old regex used
+ *       `[^<>]` which excluded the `>` in arrow functions and stopped early.
+ *       We now walk tags character-by-character, tracking `{}` depth so
+ *       attribute expressions can hold any `<` / `>` they like.
+ */
 function jsxTagBalance(src: string): { open: Map<string, number>; close: Map<string, number> } {
   const open = new Map<string, number>();
   const close = new Map<string, number>();
-  // Self-closing: <Foo ... />
-  const selfClose = /<([A-Z][A-Za-z0-9_]*)\b[^<>]*\/>/g;
-  const opening = /<([A-Z][A-Za-z0-9_]*)\b[^<>]*?>/g;
-  const closing = /<\/([A-Z][A-Za-z0-9_]*)\s*>/g;
 
-  const selfNames = new Set<string>();
-  // Mark self-closing positions to subtract from the opener count.
-  let m: RegExpExecArray | null;
-  const selfCounts = new Map<string, number>();
-  while ((m = selfClose.exec(src))) {
-    selfCounts.set(m[1], (selfCounts.get(m[1]) ?? 0) + 1);
-    selfNames.add(m[1]);
+  // Identifier-ish chars that, when sitting immediately before `<`, indicate
+  // a TypeScript generic rather than a JSX tag.
+  const isGenericPrev = (ch: string | undefined) =>
+    !!ch && /[A-Za-z0-9_$\])]/.test(ch);
+  const isIdentChar = (ch: string | undefined) =>
+    !!ch && /[A-Za-z0-9_$]/.test(ch);
+
+  const n = src.length;
+  let i = 0;
+  while (i < n) {
+    if (src[i] !== "<") {
+      i++;
+      continue;
+    }
+
+    // Closing tag </Foo>
+    if (src[i + 1] === "/") {
+      const start = i + 2;
+      let j = start;
+      while (j < n && /[A-Za-z0-9_]/.test(src[j])) j++;
+      const name = src.slice(start, j);
+      // Skip whitespace then expect `>`
+      while (j < n && /\s/.test(src[j])) j++;
+      if (name && /^[A-Z]/.test(name) && src[j] === ">") {
+        close.set(name, (close.get(name) ?? 0) + 1);
+      }
+      i = j + 1;
+      continue;
+    }
+
+    // Opening or self-closing tag <Foo ...> / <Foo ... />
+    const start = i + 1;
+    let j = start;
+    while (j < n && /[A-Za-z0-9_]/.test(src[j])) j++;
+    const name = src.slice(start, j);
+    if (!name || !/^[A-Z]/.test(name)) {
+      i++;
+      continue;
+    }
+
+    // Generic-vs-JSX disambiguation. Look back past whitespace.
+    let p = i - 1;
+    while (p >= 0 && /\s/.test(src[p])) p--;
+    const prev = p >= 0 ? src[p] : undefined;
+    if (isGenericPrev(prev)) {
+      // Looks like `useState<Todo>` or `Array<Foo>` — not JSX.
+      i = j;
+      continue;
+    }
+
+    // Walk the tag body, tracking `{}` depth so attributes can hold any chars.
+    let k = j;
+    let depth = 0;
+    let selfClose = false;
+    let closed = false;
+    while (k < n) {
+      const ch = src[k];
+      if (ch === "{") depth++;
+      else if (ch === "}") depth = Math.max(0, depth - 1);
+      else if (depth === 0) {
+        if (ch === "/" && src[k + 1] === ">") {
+          selfClose = true;
+          closed = true;
+          k += 2;
+          break;
+        }
+        if (ch === ">") {
+          closed = true;
+          k += 1;
+          break;
+        }
+        if (ch === "<") {
+          // Malformed — bail so we don't infinite-loop.
+          break;
+        }
+      }
+      k++;
+    }
+    if (!closed) {
+      // Unterminated tag — likely truncated file. Don't double-count.
+      i = j;
+      continue;
+    }
+    if (!selfClose) {
+      open.set(name, (open.get(name) ?? 0) + 1);
+    }
+    // Self-closing tags are balanced by themselves — ignore.
+    i = k;
+    // Suppress unused-variable warning.
+    void isIdentChar;
   }
-  while ((m = opening.exec(src))) {
-    open.set(m[1], (open.get(m[1]) ?? 0) + 1);
-  }
-  while ((m = closing.exec(src))) {
-    close.set(m[1], (close.get(m[1]) ?? 0) + 1);
-  }
-  // Subtract self-closes from open (since regex `opening` also matches `<Foo />`).
-  for (const [name, c] of selfCounts) {
-    open.set(name, (open.get(name) ?? 0) - c);
-  }
+
   return { open, close };
 }
 
