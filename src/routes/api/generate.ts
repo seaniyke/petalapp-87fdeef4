@@ -23,7 +23,7 @@ import {
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
-import { aiChatCompletions } from "@/server/ai-provider.server";
+import { aiChatCompletions, updateLastCallUsage } from "@/server/ai-provider.server";
 import { priceBuild, BUILD_FLOOR } from "@/server/credit-pricing.server";
 import {
   loadProjectMemory,
@@ -84,6 +84,12 @@ type Body = {
 
 const MODEL_FAST = "google/gemini-3-flash-preview";
 const MODEL_BEST = "google/gemini-2.5-pro";
+/** Escalation model used when the primary returned prose / no tool call.
+ *  Different family from MODEL_BEST on purpose — retrying on the same model
+ *  that just refused to call the tool reproduces the refusal (telemetry:
+ *  Gemini 2.5 Pro is the model most prone to prose-only completions on
+ *  long implement turns). GPT-5 has the strongest tool-call discipline. */
+const MODEL_STRUCTURED_RETRY = "openai/gpt-5";
 /** Vision-capable model used whenever the latest turn carries image attachments. */
 const MODEL_VISION = "google/gemini-2.5-pro";
 
@@ -764,7 +770,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 const retry = await aiChatCompletions({
                   feature: "generate",
                   body: {
-                    model: MODEL_BEST,
+                    model: MODEL_STRUCTURED_RETRY,
                     messages: addStructuredRetryInstruction(chatMessages, {
                       isInitial,
                       problem: e instanceof Error ? e.message : "invalid structured response",
@@ -1374,6 +1380,19 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               // for this turn, Petal is fixing its own broken build. We log
               // the would-be amount for analytics but never debit the user.
               const priced = priceBuild(collected.usage);
+
+              // Backfill the usage tokens onto the ai_call_log row that
+              // `aiChatCompletions` inserted before the stream body was read.
+              // Without this, every streaming generate call shows NULL tokens
+              // and we can't distinguish "model returned a full project" from
+              // "model returned a one-line refusal".
+              void updateLastCallUsage({
+                feature: "generate",
+                model,
+                promptTokens: collected.usage?.prompt_tokens ?? null,
+                completionTokens: collected.usage?.completion_tokens ?? null,
+                totalTokens: collected.usage?.total_tokens ?? null,
+              });
               let finalCharged = 0;
               if (body.isAutoFix) {
                 console.log(
