@@ -10,6 +10,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { AccountHubGrid } from "@/components/AccountHubGrid";
 import { BillingSheet } from "@/components/BillingSheet";
 import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
+import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
@@ -31,6 +32,7 @@ function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [billingOpen, setBillingOpen] = useState(false);
   const [cloudOpen, setCloudOpen] = useState(false);
+  const [cloudPanelOpen, setCloudPanelOpen] = useState(false);
 
   useEffect(() => {
     if (!isReady) return;
@@ -159,6 +161,7 @@ function ProfilePage() {
         <AccountHubGrid
           onOpenBilling={() => setBillingOpen(true)}
           onOpenCloudBalance={() => setCloudOpen(true)}
+          onOpenCloud={() => setCloudPanelOpen(true)}
         />
       </div>
 
@@ -176,6 +179,14 @@ function ProfilePage() {
         onOpenBilling={() => {
           setCloudOpen(false);
           setBillingOpen(true);
+        }}
+      />
+      <CloudPanelSheet
+        open={cloudPanelOpen}
+        onOpenChange={setCloudPanelOpen}
+        onOpenBalance={() => {
+          setCloudPanelOpen(false);
+          setCloudOpen(true);
         }}
       />
     </div>

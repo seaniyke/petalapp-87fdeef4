@@ -4,15 +4,16 @@
  * (mounted by the parent route) via callback props.
  */
 import { Link } from "@tanstack/react-router";
-import { Sparkles, Wallet, FolderOpen, Settings, ArrowRight } from "lucide-react";
+import { Cloud, Sparkles, Wallet, FolderOpen, Settings, ArrowRight } from "lucide-react";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
 type Props = {
   onOpenBilling: () => void;
   onOpenCloudBalance: () => void;
+  onOpenCloud: () => void;
 };
 
-export function AccountHubGrid({ onOpenBilling, onOpenCloudBalance }: Props) {
+export function AccountHubGrid({ onOpenBilling, onOpenCloudBalance, onOpenCloud }: Props) {
   const { isAdmin } = useIsAdmin();
 
   return (
@@ -21,6 +22,12 @@ export function AccountHubGrid({ onOpenBilling, onOpenCloudBalance }: Props) {
         Account &amp; usage
       </h2>
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <CardButton
+          onClick={onOpenCloud}
+          icon={<Cloud className="h-5 w-5" />}
+          title="Cloud"
+          description="AI usage, database, users, storage, secrets and logs."
+        />
         <CardButton
           onClick={onOpenBilling}
           icon={<Sparkles className="h-5 w-5" />}
