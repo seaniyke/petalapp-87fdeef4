@@ -225,8 +225,20 @@ export function pickDynamicSnippets(args: {
   const matched: DynamicSnippetKey[] = [];
   // kitCore is always first — the baseline primitives every turn needs.
   matched.push("kitCore");
+
+  // No-backend gate: if the user mentioned a capability that needs a
+  // backend but none is connected, inject explicit "scaffold UI-only and
+  // tell the user to enable a backend" instructions. Without this the
+  // model either bails to prose or imports modules that don't exist.
+  const NEEDS_BACKEND_RX =
+    /\b(auth|login|log ?in|sign ?up|sign ?in|password|otp|magic link|account|protected route|profile|database|persist|save (data|users?|posts?|comments?|orders?)|crud|comments?|posts?|orders?|todo|notes?|messages?|chat|upload|file upload|avatar upload|attachment|storage|realtime|live (chat|update)|presence)\b/i;
+  if (!args.hasBackend && NEEDS_BACKEND_RX.test(haystack)) {
+    matched.push("noBackendGate");
+  }
+
   for (const key of Object.keys(SNIPPETS) as DynamicSnippetKey[]) {
     if (key === "kitCore") continue;
+    if (key === "noBackendGate") continue; // handled above
     if (key === "auth" && !args.hasBackend) continue;
     const def = SNIPPETS[key];
     if (def.triggers !== "always" && def.triggers.test(haystack)) {
@@ -234,8 +246,8 @@ export function pickDynamicSnippets(args: {
     }
   }
 
-  // Cap at 7 total (kitCore + 6 topical). Most turns hit 1-3 topical matches.
-  const picked = matched.slice(0, 7);
+  // Cap at 8 total (kitCore + noBackendGate + 6 topical).
+  const picked = matched.slice(0, 8);
   const text = picked.map((k) => SNIPPETS[k].body).join("");
   return { snippets: picked, text };
 }
