@@ -55,6 +55,7 @@ import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigge
 import { Route as ApiBuildsCallbackRouteImport } from './routes/api/builds/callback'
 import { Route as ApiBillingVerifyRouteImport } from './routes/api/billing/verify'
 import { Route as ApiBillingInitializeRouteImport } from './routes/api/billing/initialize'
+import { Route as ApiAdminPaystackPlansRouteImport } from './routes/api/admin/paystack-plans'
 import { Route as ApiAdminCreditsRouteImport } from './routes/api/admin/credits'
 import { Route as ApiAdminAiProvidersRouteImport } from './routes/api/admin/ai-providers'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -66,6 +67,8 @@ import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/publi
 import { Route as ApiPublicEmailSendRouteImport } from './routes/api/public/email/send'
 import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/api/public/cron/runtime-backend-hour'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
+import { Route as ApiBillingSubscriptionManageLinkRouteImport } from './routes/api/billing/subscription/manage-link'
+import { Route as ApiBillingSubscriptionCancelRouteImport } from './routes/api/billing/subscription/cancel'
 
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
@@ -297,6 +300,11 @@ const ApiBillingInitializeRoute = ApiBillingInitializeRouteImport.update({
   path: '/api/billing/initialize',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminPaystackPlansRoute = ApiAdminPaystackPlansRouteImport.update({
+  id: '/api/admin/paystack-plans',
+  path: '/api/admin/paystack-plans',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminCreditsRoute = ApiAdminCreditsRouteImport.update({
   id: '/api/admin/credits',
   path: '/api/admin/credits',
@@ -357,6 +365,18 @@ const ApiPublicBuildsCallbackRoute = ApiPublicBuildsCallbackRouteImport.update({
   path: '/api/public/builds/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBillingSubscriptionManageLinkRoute =
+  ApiBillingSubscriptionManageLinkRouteImport.update({
+    id: '/api/billing/subscription/manage-link',
+    path: '/api/billing/subscription/manage-link',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiBillingSubscriptionCancelRoute =
+  ApiBillingSubscriptionCancelRouteImport.update({
+    id: '/api/billing/subscription/cancel',
+    path: '/api/billing/subscription/cancel',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -394,6 +414,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
+  '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -407,6 +428,8 @@ export interface FileRoutesByFullPath {
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
+  '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
@@ -453,6 +476,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
+  '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -466,6 +490,8 @@ export interface FileRoutesByTo {
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
+  '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
@@ -513,6 +539,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
+  '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -526,6 +553,8 @@ export interface FileRoutesById {
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
+  '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
@@ -574,6 +603,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
+    | '/api/admin/paystack-plans'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/callback'
@@ -587,6 +617,8 @@ export interface FileRouteTypes {
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
+    | '/api/billing/subscription/cancel'
+    | '/api/billing/subscription/manage-link'
     | '/api/public/builds/callback'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/email/send'
@@ -633,6 +665,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
+    | '/api/admin/paystack-plans'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/callback'
@@ -646,6 +679,8 @@ export interface FileRouteTypes {
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
+    | '/api/billing/subscription/cancel'
+    | '/api/billing/subscription/manage-link'
     | '/api/public/builds/callback'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/email/send'
@@ -692,6 +727,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
+    | '/api/admin/paystack-plans'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/callback'
@@ -705,6 +741,8 @@ export interface FileRouteTypes {
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
+    | '/api/billing/subscription/cancel'
+    | '/api/billing/subscription/manage-link'
     | '/api/public/builds/callback'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/email/send'
@@ -752,6 +790,7 @@ export interface RootRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
   ApiAdminAiProvidersRoute: typeof ApiAdminAiProvidersRoute
   ApiAdminCreditsRoute: typeof ApiAdminCreditsRoute
+  ApiAdminPaystackPlansRoute: typeof ApiAdminPaystackPlansRoute
   ApiBillingInitializeRoute: typeof ApiBillingInitializeRoute
   ApiBillingVerifyRoute: typeof ApiBillingVerifyRoute
   ApiBuildsCallbackRoute: typeof ApiBuildsCallbackRoute
@@ -764,6 +803,8 @@ export interface RootRouteChildren {
   ApiRegistrarPurchaseRoute: typeof ApiRegistrarPurchaseRoute
   ApiRegistrarSearchRoute: typeof ApiRegistrarSearchRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiBillingSubscriptionCancelRoute: typeof ApiBillingSubscriptionCancelRoute
+  ApiBillingSubscriptionManageLinkRoute: typeof ApiBillingSubscriptionManageLinkRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
   ApiPublicCronRuntimeBackendHourRoute: typeof ApiPublicCronRuntimeBackendHourRoute
   ApiPublicEmailSendRoute: typeof ApiPublicEmailSendRoute
@@ -1099,6 +1140,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBillingInitializeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/paystack-plans': {
+      id: '/api/admin/paystack-plans'
+      path: '/api/admin/paystack-plans'
+      fullPath: '/api/admin/paystack-plans'
+      preLoaderRoute: typeof ApiAdminPaystackPlansRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/credits': {
       id: '/api/admin/credits'
       path: '/api/admin/credits'
@@ -1176,6 +1224,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBuildsCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/billing/subscription/manage-link': {
+      id: '/api/billing/subscription/manage-link'
+      path: '/api/billing/subscription/manage-link'
+      fullPath: '/api/billing/subscription/manage-link'
+      preLoaderRoute: typeof ApiBillingSubscriptionManageLinkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/billing/subscription/cancel': {
+      id: '/api/billing/subscription/cancel'
+      path: '/api/billing/subscription/cancel'
+      fullPath: '/api/billing/subscription/cancel'
+      preLoaderRoute: typeof ApiBillingSubscriptionCancelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1227,6 +1289,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
   ApiAdminAiProvidersRoute: ApiAdminAiProvidersRoute,
   ApiAdminCreditsRoute: ApiAdminCreditsRoute,
+  ApiAdminPaystackPlansRoute: ApiAdminPaystackPlansRoute,
   ApiBillingInitializeRoute: ApiBillingInitializeRoute,
   ApiBillingVerifyRoute: ApiBillingVerifyRoute,
   ApiBuildsCallbackRoute: ApiBuildsCallbackRoute,
@@ -1239,6 +1302,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiRegistrarPurchaseRoute: ApiRegistrarPurchaseRoute,
   ApiRegistrarSearchRoute: ApiRegistrarSearchRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiBillingSubscriptionCancelRoute: ApiBillingSubscriptionCancelRoute,
+  ApiBillingSubscriptionManageLinkRoute: ApiBillingSubscriptionManageLinkRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
   ApiPublicCronRuntimeBackendHourRoute: ApiPublicCronRuntimeBackendHourRoute,
   ApiPublicEmailSendRoute: ApiPublicEmailSendRoute,
