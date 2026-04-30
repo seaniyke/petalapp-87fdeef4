@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import {
   BookOpen,
+  Cloud,
   Database,
   Loader2,
   Save,
@@ -34,6 +35,8 @@ import { DomainsSection } from "@/components/DomainsSection";
 import { EmailSection } from "@/components/EmailSection";
 import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { LabsSection } from "@/components/LabsSection";
+import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
+import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { useWallet } from "@/hooks/use-wallet";
 import { Switch } from "@/components/ui/switch";
 import { builderDraftKeys, clearDraft, readDraft, writeDraft } from "@/lib/draft-storage";
