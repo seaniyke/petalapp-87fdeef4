@@ -515,7 +515,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               })}
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Plans don't auto-renew — pay each month to keep your credits.
+              Card-based payments auto-renew monthly. You can cancel anytime — access continues until the period ends.
             </p>
           </section>
 
