@@ -2,6 +2,10 @@
  * Cloud panel — Database view server functions.
  * Lists user tables in the project's managed Supabase backend with row
  * counts, and returns a small read-only sample of rows for a given table.
+ *
+ * We use PostgREST's OpenAPI document (Swagger 2.0 — `definitions` map) as
+ * a portable way to enumerate tables exposed via the REST API, then count
+ * rows with HEAD + Prefer: count=exact for the first dozen tables.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -9,7 +13,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   assertOwnsProject,
   getManagedBackendForProject,
-  makeManagedClient,
 } from "./cloud-managed-client.server";
 
 const ProjectInput = z.object({ projectId: z.string().uuid() });
@@ -45,19 +48,10 @@ export const listProjectTables = createServerFn({ method: "POST" })
       };
     }
 
-    const client = makeManagedClient(info);
-
-    // Use the Supabase Management-style SQL via PostgREST RPC isn't available
-    // by default, so we fall back to listing tables we can SELECT through the
-    // exposed REST API: introspect by querying information_schema is not
-    // exposed either. Best portable option: ask the storage of pg_meta-like
-    // endpoints. As a safe v1 we use `pg_catalog` via the rpc helper if
-    // present; otherwise return an empty list with a "not available" note.
     try {
-      // Try pg-meta style: many managed Supabase projects expose
-      // `pg_stat_user_tables` only via direct DB access. We approximate by
-      // listing tables in the public schema using the PostgREST root which
-      // returns an OpenAPI doc.
+      // PostgREST root returns its OpenAPI (Swagger 2.0) doc, which lists
+      // every table/view exposed via REST under `definitions`. RPCs appear
+      // as `rpc/<name>` and we filter them out.
       const res = await fetch(`${info.supabaseUrl}/rest/v1/`, {
         headers: {
           apikey: info.serviceRoleKey,
@@ -72,15 +66,14 @@ export const listProjectTables = createServerFn({ method: "POST" })
         definitions?: Record<string, unknown>;
       };
       const names = Object.keys(spec.definitions ?? {});
-      // Filter out PostgREST helper definitions.
       const tables: CloudTableSummary[] = names
-        .filter((n) => !n.startsWith("rpc_") && n !== "")
+        .filter((n) => !!n && !n.startsWith("rpc/") && !n.startsWith("rpc_"))
         .sort()
         .slice(0, 200)
         .map((name) => ({ schema: "public", name, rowEstimate: 0 }));
 
-      // Best-effort row counts using HEAD + Prefer: count=exact (capped to a
-      // few tables to keep latency sane).
+      // Best-effort row counts for the first dozen tables. Per-table failures
+      // are swallowed so one bad table doesn't blank out the whole list.
       const top = tables.slice(0, 12);
       await Promise.all(
         top.map(async (t) => {
@@ -111,8 +104,6 @@ export const listProjectTables = createServerFn({ method: "POST" })
       return { available: true, tables };
     } catch (e) {
       console.error("[cloud-database] list failed", e);
-      // Touch client to avoid unused-var lint
-      void client;
       return { available: true, tables: [] };
     }
   });
