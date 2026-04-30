@@ -1462,7 +1462,9 @@ function Builder() {
               if (r) setProject(r);
             })
             .catch((err: unknown) => {
-              setFriendlyError(toFriendlyError(err));
+              setFriendlyError(
+                toFriendlyError(err, { surface: "build", projectId: proj.id }),
+              );
               setPhases((p) => markFailed(p, "deploying"));
             });
         } catch (persistErr) {
