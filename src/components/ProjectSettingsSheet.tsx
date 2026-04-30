@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import {
   BookOpen,
+  Cloud,
   Database,
   Loader2,
   Save,
@@ -34,6 +35,8 @@ import { DomainsSection } from "@/components/DomainsSection";
 import { EmailSection } from "@/components/EmailSection";
 import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { LabsSection } from "@/components/LabsSection";
+import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
+import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { useWallet } from "@/hooks/use-wallet";
 import { Switch } from "@/components/ui/switch";
 import { builderDraftKeys, clearDraft, readDraft, writeDraft } from "@/lib/draft-storage";
@@ -95,6 +98,8 @@ export function ProjectSettingsSheet({
     return draft ?? (project.custom_instructions ?? "");
   });
   const [saving, setSaving] = useState(false);
+  const [cloudOpen, setCloudOpen] = useState(false);
+  const [balanceOpen, setBalanceOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -177,6 +182,25 @@ export function ProjectSettingsSheet({
           </SheetDescription>
         </SheetHeader>
 
+        {/* Cloud entry — opens the per-project Cloud panel (AI usage,
+            database, users, storage, secrets, logs and danger zone). */}
+        <button
+          type="button"
+          onClick={() => setCloudOpen(true)}
+          className="mt-4 flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-left transition hover:border-primary/40 hover:bg-muted/60"
+        >
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background text-primary">
+            <Cloud className="h-4 w-4" />
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-medium">Petal Cloud</div>
+            <div className="text-xs text-muted-foreground">
+              AI usage, database, users, storage, secrets and more.
+            </div>
+          </div>
+          <span className="text-xs text-muted-foreground">Open</span>
+        </button>
+
         {/* Domains section */}
         <div id="settings-domains" className="scroll-mt-4">
           <DomainsSection
@@ -244,6 +268,19 @@ export function ProjectSettingsSheet({
         {/* Labs toggles */}
         <LabsSection />
       </SheetContent>
+
+      {/* Per-project Cloud hub + Cloud & AI balance, mounted alongside the
+          settings sheet so they overlay cleanly. */}
+      <CloudPanelSheet
+        open={cloudOpen}
+        onOpenChange={setCloudOpen}
+        projectId={project.id}
+        onOpenBalance={() => {
+          setCloudOpen(false);
+          setBalanceOpen(true);
+        }}
+      />
+      <CloudBalanceSheet open={balanceOpen} onOpenChange={setBalanceOpen} />
     </Sheet>
   );
 }

@@ -1,18 +1,14 @@
 /**
- * CloudPanelSheet — workspace-level "Cloud" hub that mirrors the Lovable
- * mobile screens. A single right-side Sheet hosts a home list and pushes
- * to sub-views in place (iOS-style), with a back chevron in the header.
+ * CloudPanelSheet — Cloud hub mirroring the Lovable mobile screens.
+ * A right-side Sheet hosts a home list and pushes to sub-views in place
+ * (iOS-style), with a back chevron in the header.
  *
- * Sub-views:
- *  - ai          — full-fidelity AI usage analytics (CloudAiUsageView)
- *  - emails      — Petal Email management (placeholder pointing to settings)
- *  - database    — tables & rows in the project's managed backend (soon)
- *  - users       — auth users in the managed backend (soon)
- *  - storage     — buckets in the managed backend (soon)
- *  - secrets     — encrypted env vars (soon)
- *  - logs        — edge / db logs (soon)
- *  - advanced    — instance size + danger zone (soon)
- *  - balance     — opens the existing CloudBalanceSheet
+ * Two modes:
+ *  - Workspace mode (no projectId): shows AI usage across the workspace
+ *    + a link to the Cloud & AI balance sheet. Per-project views render
+ *    a "pick a project" prompt.
+ *  - Project mode (projectId set): all sub-views are scoped to that
+ *    project (database, users, storage, secrets, advanced, etc.).
  */
 import { useState } from "react";
 import {
@@ -35,8 +31,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
 import { CloudAiUsageView } from "@/components/cloud/CloudAiUsageView";
+import { CloudDatabaseView } from "@/components/cloud/CloudDatabaseView";
+import { CloudUsersView } from "@/components/cloud/CloudUsersView";
+import { CloudStorageView } from "@/components/cloud/CloudStorageView";
+import { CloudSecretsView } from "@/components/cloud/CloudSecretsView";
+import { CloudLogsView } from "@/components/cloud/CloudLogsView";
+import { CloudAdvancedView } from "@/components/cloud/CloudAdvancedView";
+import { CloudEmptyState } from "@/components/cloud/CloudEmptyState";
+import { EmailSection } from "@/components/EmailSection";
 
 type View =
   | "home"
@@ -54,9 +57,16 @@ type Props = {
   onOpenChange: (v: boolean) => void;
   /** Open the existing Cloud & AI balance sheet */
   onOpenBalance: () => void;
+  /** When set, sub-views are scoped to this project's managed backend. */
+  projectId?: string;
 };
 
-export function CloudPanelSheet({ open, onOpenChange, onOpenBalance }: Props) {
+export function CloudPanelSheet({
+  open,
+  onOpenChange,
+  onOpenBalance,
+  projectId,
+}: Props) {
   const [view, setView] = useState<View>("home");
 
   const handleOpenChange = (v: boolean) => {
@@ -106,79 +116,67 @@ export function CloudPanelSheet({ open, onOpenChange, onOpenBalance }: Props) {
         {view === "home" && (
           <CloudHome onNavigate={setView} onOpenBalance={onOpenBalance} />
         )}
+
         {view === "ai" && <CloudAiUsageView />}
-        {view === "emails" && (
-          <Placeholder
-            title="Emails"
-            description="Send branded emails from your domain. Manage Petal Email and your sender domain."
-            cta={{
-              label: "Open Petal Email settings",
-              hint: "Configure Petal Email from the project settings sheet.",
-            }}
-          />
-        )}
-        {view === "database" && (
-          <Placeholder
-            title="Database"
-            description="Browse tables and rows from your project's managed backend."
-            cta={{
-              label: "Coming soon",
-              hint: "Per-project table browser is in progress.",
-            }}
-          />
-        )}
-        {view === "users" && (
-          <Placeholder
-            title="Users"
-            description="View user data and configure how people sign in to your app."
-            cta={{
-              label: "Coming soon",
-              hint: "Auth users browser will land here next.",
-            }}
-          />
-        )}
-        {view === "storage" && (
-          <Placeholder
-            title="Storage"
-            description="View and manage files, images and documents."
-            cta={{
-              label: "Coming soon",
-              hint: "Bucket browser will land here next.",
-            }}
-          />
-        )}
-        {view === "secrets" && (
-          <Placeholder
-            title="Secrets"
-            description="Store and manage environment variables securely."
-            cta={{
-              label: "Coming soon",
-              hint: "Secret manager UI will land here next.",
-            }}
-          />
-        )}
-        {view === "logs" && (
-          <Placeholder
-            title="Logs"
-            description="Monitor application logs to debug issues."
-            cta={{
-              label: "Coming soon",
-              hint: "Edge function and database logs will land here next.",
-            }}
-          />
-        )}
-        {view === "advanced" && (
-          <Placeholder
-            title="Advanced settings"
-            description="Resize your instance or pause your backend."
-            cta={{
-              label: "Coming soon",
-              hint: "Instance sizing and danger-zone actions will land here.",
-            }}
-          />
-        )}
+
+        {view === "emails" &&
+          (projectId ? (
+            <div className="p-4">
+              <EmailSection projectId={projectId} />
+            </div>
+          ) : (
+            <NeedsProject view="emails" />
+          ))}
+
+        {view === "database" &&
+          (projectId ? (
+            <CloudDatabaseView projectId={projectId} />
+          ) : (
+            <NeedsProject view="database" />
+          ))}
+
+        {view === "users" &&
+          (projectId ? (
+            <CloudUsersView projectId={projectId} />
+          ) : (
+            <NeedsProject view="users" />
+          ))}
+
+        {view === "storage" &&
+          (projectId ? (
+            <CloudStorageView projectId={projectId} />
+          ) : (
+            <NeedsProject view="storage" />
+          ))}
+
+        {view === "secrets" &&
+          (projectId ? (
+            <CloudSecretsView projectId={projectId} />
+          ) : (
+            <NeedsProject view="secrets" />
+          ))}
+
+        {view === "logs" && <CloudLogsView />}
+
+        {view === "advanced" &&
+          (projectId ? (
+            <CloudAdvancedView projectId={projectId} />
+          ) : (
+            <NeedsProject view="advanced" />
+          ))}
       </SheetContent>
     </Sheet>
+  );
+}
+
+function NeedsProject({ view }: { view: string }) {
+  return (
+    <div className="p-4">
+      <CloudEmptyState
+        title="Open from a project"
+        description={`The ${view} view is per-project. Open Cloud from inside a project to manage its ${view}.`}
+      />
+    </div>
   );
 }
 
@@ -288,33 +286,5 @@ function Row({
         <ChevronRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
       )}
     </button>
-  );
-}
-
-function Placeholder({
-  title,
-  description,
-  cta,
-}: {
-  title: string;
-  description: string;
-  cta?: { label: string; hint: string };
-}) {
-  return (
-    <div className="space-y-4 p-4">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      </div>
-      {cta && (
-        <div className="rounded-2xl bg-muted/40 p-5">
-          <div className="text-sm font-medium">{cta.label}</div>
-          <p className="mt-1 text-xs text-muted-foreground">{cta.hint}</p>
-          <Button variant="outline" size="sm" disabled className="mt-3">
-            {cta.label}
-          </Button>
-        </div>
-      )}
-    </div>
   );
 }
