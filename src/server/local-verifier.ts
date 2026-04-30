@@ -367,6 +367,7 @@ function findUndefinedComponents(src: string, clean: string): string[] {
 
   // Imports: import X, {A, B as C}, * as NS from "..."
   const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
+  let m: RegExpExecArray | null;
   while ((m = importRe.exec(src))) {
     if (m[1]) declared.add(m[1]);
     if (m[3]) declared.add(m[3]);
