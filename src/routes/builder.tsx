@@ -345,6 +345,7 @@ function Builder() {
   // Whether this project already has a backend (BYO or managed). When unknown
   // we treat as "not connected" but suppress the chip until we've checked.
   const [hasBackend, setHasBackend] = useState<boolean | null>(null);
+  const backendReadyPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [hasDomain, setHasDomain] = useState<boolean | null>(null);
   // Per-message dismissal of the "Add backend" inline suggestion. Keyed by
   // assistant message index so dismissing once doesn't kill it forever.
@@ -916,6 +917,44 @@ function Builder() {
     setDismissedBackendChips(new Set());
     setDismissedDomainChips(new Set());
   }, [project?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (backendReadyPollRef.current) window.clearTimeout(backendReadyPollRef.current);
+    };
+  }, []);
+
+  const waitForBackendReadyAndResume = useCallback((projectId: string) => {
+    if (backendReadyPollRef.current) window.clearTimeout(backendReadyPollRef.current);
+    const startedAt = Date.now();
+    const tick = async () => {
+      try {
+        const next = await getManagedProvisionStatus(projectId);
+        if (next.status === "ready") {
+          setHasBackend(true);
+          const refreshed = await getProject(projectId);
+          if (refreshed) setProject(refreshed);
+          emitServiceEnabled({
+            projectId,
+            service: "backend",
+            label: "Managed backend",
+            summary: "Database, auth, and storage are ready.",
+          });
+          return;
+        }
+        if (next.status === "failed") {
+          toast.error(next.errorMessage || "Backend setup failed. Please try again.");
+          return;
+        }
+      } catch {
+        // keep polling through transient readiness checks
+      }
+      if (Date.now() - startedAt < 8 * 60 * 1000) {
+        backendReadyPollRef.current = window.setTimeout(tick, 5_000);
+      }
+    };
+    void tick();
+  }, []);
 
   // Mirror the composer text, queued messages, and pending attachments to
   // sessionStorage so a browser refresh inside /builder doesn't wipe them.
