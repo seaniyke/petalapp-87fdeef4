@@ -181,7 +181,7 @@ Use \`petal-image://<descriptive-prompt>\` for any AI-generated visual. Be SPECI
   tailwindv4: {
     triggers: /\b(theme|color|palette|brand color|dark mode|styles?\.css|@theme|tailwind)\b/i,
     body: `\n\n[Reinforcement — Tailwind v4 + styles.css]
-Tailwind v4 syntax ONLY: \`@import "tailwindcss";\` on line 1, \`@theme { --color-primary: oklch(...); --radius-lg: 0.75rem; }\`. NEVER use v3 \`@tailwind base/components/utilities\` directives — they are removed in v4 and abort the build. NEVER \`@apply\` an undefined class. When unsure, EMIT NOTHING for src/styles.css and let the scaffold's defaults win.`,
+Tailwind v4 syntax ONLY: \`@import "tailwindcss";\` on line 1, then \`@theme { --color-primary: oklch(...); --radius-lg: 0.75rem; }\`. CRITICAL: \`@theme { ... }\` accepts ONLY token declarations (\`--name: value;\`). NEVER nest selectors inside it — no \`.dark { ... }\`, \`:root { ... }\`, \`@media (...)\`, or \`&:is(...)\` inside @theme. Put \`:root { ... }\` and \`.dark { ... }\` blocks AFTER @theme at the top level. Class-based dark mode is enabled with \`@custom-variant dark (&:where(.dark, .dark *));\` BEFORE @theme — do not redeclare it inside. NEVER use v3 \`@tailwind base/components/utilities\` directives — they abort the build. NEVER \`@apply\` an undefined class. When unsure, EMIT NOTHING for src/styles.css and let the scaffold's defaults win.`,
   },
   toast: {
     triggers: /\b(toast|notification|alert message|success message|error message|snackbar|flash message)\b/i,

@@ -57,6 +57,43 @@ export function validateStylesCss(raw: string): ValidationResult {
     return { ok: false, reason: `unbalanced braces (${open} open vs ${close} close)` };
   }
 
+  // 2.5) Tailwind v4 `@theme { ... }` may contain ONLY token declarations
+  //      (`--name: value;`). Nested selectors like `.dark { ... }`,
+  //      `:root { ... }`, `&:is(...)`, or `@media (...)` inside `@theme`
+  //      abort the build with a confusing parser error. This is the most
+  //      common AI mistake on Tailwind v4 — flag it deterministically so the
+  //      autofix model gets a precise MUST-FIX entry instead of guessing.
+  {
+    const themeBlockRx = /@theme\s*\{/g;
+    let m: RegExpExecArray | null;
+    while ((m = themeBlockRx.exec(noStrings)) !== null) {
+      const start = m.index + m[0].length;
+      // Find matching closing brace, tracking nested depth.
+      let d = 1;
+      let end = -1;
+      for (let i = start; i < noStrings.length; i++) {
+        const ch = noStrings[i];
+        if (ch === "{") d++;
+        else if (ch === "}") {
+          d--;
+          if (d === 0) { end = i; break; }
+        }
+      }
+      if (end === -1) break; // brace-balance check above already covers this
+      const inner = noStrings.slice(start, end);
+      // Any `{` inside means a nested block exists — illegal in @theme.
+      if (inner.includes("{")) {
+        // Find the offending line for a clearer message.
+        const before = noStrings.slice(0, start + inner.indexOf("{"));
+        const lineNo = before.split("\n").length;
+        return {
+          ok: false,
+          reason: `nested block inside @theme { ... } on line ${lineNo} — Tailwind v4 only allows token declarations (\`--name: value;\`) inside @theme. Move .dark / :root / @media blocks OUTSIDE @theme.`,
+        };
+      }
+    }
+  }
+
   // 3) Top-level junk. Walk the file line by line, tracking nesting depth.
   //    When depth === 0, the only legal lines are: blank, line comments
   //    (handled by stripping), at-rules, selector lines (ending in `{` or
