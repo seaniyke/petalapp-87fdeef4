@@ -43,10 +43,10 @@ const MAX_LEN = 4000;
 
 const PLACEHOLDER = `Examples:
 
-• Always use a soft pastel palette and rounded corners.
-• This project is a private prototype for KeshPay — be conservative with changes.
-• Never add external auth providers without asking first.
-• Prefer plain CSS over heavy libraries.`;
+• Stick to a minimal black-and-white palette with one accent color.
+• This is an internal tool — keep flows short and skip onboarding.
+• Use shadcn components; don't pull in new UI libraries.
+• Always show empty states with a clear next action.`;
 
 type Props = {
   project: ProjectRow;
