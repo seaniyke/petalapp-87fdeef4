@@ -32,6 +32,7 @@ function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [billingOpen, setBillingOpen] = useState(false);
   const [cloudOpen, setCloudOpen] = useState(false);
+  const [cloudPanelOpen, setCloudPanelOpen] = useState(false);
 
   useEffect(() => {
     if (!isReady) return;
@@ -160,6 +161,7 @@ function ProfilePage() {
         <AccountHubGrid
           onOpenBilling={() => setBillingOpen(true)}
           onOpenCloudBalance={() => setCloudOpen(true)}
+          onOpenCloud={() => setCloudPanelOpen(true)}
         />
       </div>
 
@@ -177,6 +179,14 @@ function ProfilePage() {
         onOpenBilling={() => {
           setCloudOpen(false);
           setBillingOpen(true);
+        }}
+      />
+      <CloudPanelSheet
+        open={cloudPanelOpen}
+        onOpenChange={setCloudPanelOpen}
+        onOpenBalance={() => {
+          setCloudPanelOpen(false);
+          setCloudOpen(true);
         }}
       />
     </div>
