@@ -94,18 +94,17 @@ export function CloudPanelSheet({
       >
         <SheetHeader className="sticky top-0 z-10 border-b border-border/60 bg-background px-3 py-3">
           <div className="flex items-center justify-between">
-            {view === "home" ? (
-              <span className="w-9" />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setView("home")}
-                className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                aria-label="Back"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (view === "home") handleOpenChange(false);
+                else setView("home");
+              }}
+              className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              aria-label="Back"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
             <SheetTitle className="text-base font-semibold">
               {titleForView[view]}
             </SheetTitle>
