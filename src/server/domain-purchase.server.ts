@@ -173,14 +173,57 @@ export async function pollDomainRegistration(args: {
   return { status: row.status };
 }
 
+type ProjectDomainLink = { id: string; provider_hostname_id: string | null };
+
+async function ensureProjectDomainRow(row: Row): Promise<ProjectDomainLink | null> {
+  if (row.connected_domain_id) {
+    const { data } = await supabaseAdmin
+      .from("project_domains")
+      .select("id, provider_hostname_id")
+      .eq("id", row.connected_domain_id)
+      .maybeSingle();
+    if (data) return data as ProjectDomainLink;
+  }
+
+  const { data: existing } = await supabaseAdmin
+    .from("project_domains")
+    .select("id, provider_hostname_id")
+    .eq("hostname", row.hostname)
+    .maybeSingle();
+  if (existing) return existing as ProjectDomainLink;
+
+  const { data, error } = await supabaseAdmin
+    .from("project_domains")
+    .insert({
+      project_id: row.project_id,
+      hostname: row.hostname,
+      status: "verifying",
+      ssl_status: "initializing",
+      provider_hostname_id: null,
+      verification_txt_name: `_purchased.${row.hostname}`,
+      verification_txt_value: "Petal-managed — no DNS changes needed",
+      verification_records: [],
+      last_checked_at: new Date().toISOString(),
+      error_message: "Domain registered; connection setup is finishing automatically.",
+    })
+    .select("id, provider_hostname_id")
+    .single();
+
+  if (error) {
+    console.error("[domain] placeholder project_domain failed", row.hostname, error);
+    return null;
+  }
+  return data as ProjectDomainLink;
+}
+
 async function finalizeSuccess(
   row: Row,
   workflow: CfRegistrationWorkflow,
 ): Promise<{ status: string }> {
-  // Already finalized?
-  if (row.status === "active") return { status: "active" };
+  if (row.status === "active" && row.connected_domain_id) return { status: "active" };
 
   const reg = workflow.context?.registration;
+  const projectDomain = await ensureProjectDomainRow(row);
 
   // Step A: point the newly-created zone at our SaaS edge.
   let zoneOk = false;
@@ -194,47 +237,58 @@ async function finalizeSuccess(
   }
 
   // Step B: register the hostname on our SaaS zone so traffic routes to the project.
-  let connectedDomainId: string | null = row.connected_domain_id;
-  if (zoneOk && !connectedDomainId) {
+  let providerHostnameId: string | null = projectDomain?.provider_hostname_id ?? null;
+  if (zoneOk && projectDomain && !providerHostnameId) {
     try {
       const cfHostname = await createCustomHostname(row.hostname, { sslMethod: "http" });
-      const { data: pdRow } = await supabaseAdmin
+      providerHostnameId = cfHostname.id;
+      await supabaseAdmin
         .from("project_domains")
-        .insert({
-          project_id: row.project_id,
-          hostname: row.hostname,
+        .update({
           status: "verifying",
           ssl_status: cfHostname.ssl?.status ?? "initializing",
-          provider_hostname_id: cfHostname.id,
+          provider_hostname_id: providerHostnameId,
           verification_txt_name: `_purchased.${row.hostname}`,
-          verification_txt_value: "(petal-managed — no action needed)",
+          verification_txt_value: "Petal-managed — no DNS changes needed",
+          verification_records: [],
+          error_message: null,
           last_checked_at: new Date().toISOString(),
         })
-        .select("id")
-        .single();
-      connectedDomainId = pdRow?.id ?? null;
+        .eq("id", projectDomain.id);
     } catch (e) {
       setupError = e instanceof Error ? e.message : "Custom hostname setup failed";
       console.error("[domain] createCustomHostname failed", row.hostname, e);
     }
   }
 
+  if (projectDomain && !providerHostnameId) {
+    await supabaseAdmin
+      .from("project_domains")
+      .update({
+        status: "verifying",
+        ssl_status: "initializing",
+        error_message: `Domain registered; connection setup pending${setupError ? `: ${setupError}` : ""}`,
+        last_checked_at: new Date().toISOString(),
+      })
+      .eq("id", projectDomain.id);
+  }
+
   await supabaseAdmin
     .from("purchased_domains")
     .update({
-      status: connectedDomainId ? "active" : "polling",
+      status: providerHostnameId ? "active" : "polling",
       cf_state: "succeeded",
       registered_at: reg?.created_at ?? new Date().toISOString(),
       expires_at: reg?.expires_at ?? null,
       auto_renew: reg?.auto_renew ?? false,
-      connected_domain_id: connectedDomainId,
-      error_message: connectedDomainId
+      connected_domain_id: projectDomain?.id ?? null,
+      error_message: providerHostnameId
         ? null
         : `Domain registered; connection setup pending${setupError ? `: ${setupError}` : ""}`,
     })
     .eq("id", row.id);
 
-  return { status: "active" };
+  return { status: providerHostnameId ? "active" : "polling" };
 }
 
 /**
