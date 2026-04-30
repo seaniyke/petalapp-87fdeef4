@@ -1192,6 +1192,7 @@ function Builder() {
       let resultVerdict: string | undefined;
       let resultHandoff: ChatMessage["handoff"] | undefined;
       let streamError: string | null = null;
+      let streamErrorKind: import("@/server/generate.server").ErrorKind | undefined;
       let errorSuggestions: string[] = [];
       // Mirror of the streamingAssistant state we accumulate as deltas come in.
       // Kept locally so the catch/finally branches can read the latest value
