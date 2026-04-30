@@ -605,8 +605,6 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
     </>
   );
 }
-  );
-}
 
 // -------------------- Sub-components --------------------
 
