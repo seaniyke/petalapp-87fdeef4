@@ -155,7 +155,7 @@ export function EnableBackendFromCloudDialog({
                   </span>
                 </div>
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  ~$0.02/hr while running. Drains from your Cloud balance.
+                  Ready to power your project whenever you need it.
                 </p>
               </div>
 
