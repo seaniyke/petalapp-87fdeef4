@@ -19,6 +19,7 @@ import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
+  ensureUpstreamProjectRef,
   provisionForProject,
   refreshStatus,
   restoreForProject,
@@ -89,7 +90,7 @@ async function handleStatus(userId: string, body: unknown): Promise<Response> {
   const { data, error } = await supabaseAdmin
     .from("project_backends")
     .select(
-      "status, provider, supabase_url, anon_key, error_message, supabase_project_ref, paused_at",
+      "status, provider, supabase_url, anon_key, error_message, supabase_project_ref, paused_at, provisioning_started_at",
     )
     .eq("project_id", parsed.data.projectId)
     .maybeSingle();
@@ -116,6 +117,7 @@ async function handleStatus(userId: string, body: unknown): Promise<Response> {
     errorMessage: data.error_message,
     supabaseProjectRef: data.supabase_project_ref,
     pausedAt: data.paused_at,
+    provisioningStartedAt: data.provisioning_started_at,
     graceUntil,
   });
 }
@@ -210,7 +212,32 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
     .update({ runtime_grace_until: null, runtime_paused: false })
     .eq("id", parsed.data.projectId);
 
-  // Fire-and-forget provisioning. UI polls via provision-status.
+  // CRITICAL: await the upstream-project create so the ref is persisted
+  // before the response returns. Background work in Workers gets killed once
+  // the response is sent, so without this we'd leave a wedged 'provisioning'
+  // row with no ref. If create fails, undo the row and surface the error.
+  try {
+    await ensureUpstreamProjectRef(parsed.data.projectId);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // ensureUpstreamProjectRef already marked the row 'failed' with an error
+    // message — but we want the user to be able to immediately re-click
+    // Enable, so delete the row entirely.
+    await supabaseAdmin
+      .from("project_backends")
+      .delete()
+      .eq("project_id", parsed.data.projectId);
+    return new Response(
+      JSON.stringify({
+        error: `Couldn't create your backend: ${msg.slice(0, 300)}`,
+        code: "provision_failed",
+      }),
+      { status: 502, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  // Best-effort poll-to-ready in the background. The UI also polls via
+  // provision-status, which self-heals if this is killed.
   provisionForProject(parsed.data.projectId).catch((e) =>
     console.error("[enable-managed] provision failed", e),
   );
@@ -304,25 +331,61 @@ async function handleProvisionRetry(userId: string, body: unknown): Promise<Resp
   const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
   if (ownerErr) return ownerErr;
 
-  // Only allow retry from a failed state — otherwise we might double-create.
   const { data: row } = await supabaseAdmin
     .from("project_backends")
-    .select("status, provider")
+    .select("status, provider, supabase_project_ref, provisioning_started_at")
     .eq("project_id", parsed.data.projectId)
     .maybeSingle();
   if (!row || row.provider !== "managed_petal") {
     return new Response("No managed backend on this project", { status: 404 });
   }
-  if (row.status === "failed" || row.status === "paused") {
-    if (row.status === "paused") {
-      await restoreForProject(parsed.data.projectId);
-    } else {
-      await supabaseAdmin
-        .from("project_backends")
-        .update({ status: "provisioning", error_message: null })
-        .eq("project_id", parsed.data.projectId);
+
+  // Allowed retry conditions:
+  //   - failed: explicit retry
+  //   - paused: restore from paused state
+  //   - provisioning + no ref + > 60s old: stuck (Worker died before
+  //     persisting upstream ref). Self-heal by re-running ensure+poll.
+  //   - provisioning + has ref + > 5 min old: probably waiting on a slow
+  //     upstream — re-kick the poller. No double-create risk because we
+  //     have the ref.
+  const startedMs = row.provisioning_started_at
+    ? new Date(row.provisioning_started_at).getTime()
+    : 0;
+  const ageMs = startedMs ? Date.now() - startedMs : Infinity;
+  const stuckNoRef = row.status === "provisioning" && !row.supabase_project_ref && ageMs > 60_000;
+  const stuckWithRef = row.status === "provisioning" && !!row.supabase_project_ref && ageMs > 5 * 60_000;
+
+  if (row.status === "paused") {
+    await restoreForProject(parsed.data.projectId);
+  } else if (row.status === "failed" || stuckNoRef || stuckWithRef) {
+    await supabaseAdmin
+      .from("project_backends")
+      .update({
+        status: "provisioning",
+        error_message: null,
+        provisioning_started_at: new Date().toISOString(),
+      })
+      .eq("project_id", parsed.data.projectId);
+
+    // For the no-ref stuck case, await create so we surface failures.
+    if (stuckNoRef) {
+      try {
+        await ensureUpstreamProjectRef(parsed.data.projectId);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return new Response(
+          JSON.stringify({
+            error: `Couldn't create your backend: ${msg.slice(0, 300)}`,
+            code: "provision_failed",
+          }),
+          { status: 502, headers: { "Content-Type": "application/json" } },
+        );
+      }
     }
+  } else if (row.status === "provisioning") {
+    // Still within the warm-up window — just nudge the poller, no state change.
   }
+
   // Fire-and-forget; client polls for status.
   provisionForProject(parsed.data.projectId).catch((e) =>
     console.error("[backend retry] provision failed", e),

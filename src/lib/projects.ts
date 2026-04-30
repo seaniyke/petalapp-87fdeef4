@@ -12,6 +12,8 @@ export type ProjectBackend = {
   errorMessage: string | null;
   supabaseProjectRef?: string | null;
   pausedAt?: string | null;
+  /** ISO timestamp of when provisioning started (managed only). */
+  provisioningStartedAt?: string | null;
   /**
    * For managed backends only: when set, the project's Cloud balance has run
    * out and the backend will be paused after this timestamp unless the user
@@ -116,9 +118,13 @@ export function getManagedCredentials(projectId: string): Promise<ManagedCredent
 /**
  * Enable a Petal-managed backend funded by the user's Cloud balance.
  *
- * Server-side guard requires Cloud top-up balance ≥ $10. On 402 the server
- * returns a JSON body with `code: "topup_required"` and the current balance
- * so the UI can route straight to the Cloud top-up flow.
+ * Server-side guards:
+ *   - Free plan → 402 with `code: "plan_upgrade_required"`. UI opens BillingSheet.
+ *   - Paid plan + $0 balance → 402 with `code: "balance_empty"`. UI opens top-up.
+ *   - Upstream Supabase create fails → 502 with `code: "provision_failed"`.
+ *
+ * On success the row is `provisioning` and the upstream `supabase_project_ref`
+ * is already saved (awaited inline) — UI then polls `provision-status`.
  */
 export async function enableManagedBackend(
   projectId: string,
