@@ -696,12 +696,15 @@ function PlansPanel() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Plans</CardTitle>
-          <CardDescription>
-            Subscription plan tiers and their base USD price. Per-currency prices are derived from
-            the USD rate or a price override.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <div>
+            <CardTitle>Plans</CardTitle>
+            <CardDescription>
+              Subscription plan tiers and their base USD price. Per-currency prices are derived from
+              the USD rate or a price override.
+            </CardDescription>
+          </div>
+          <ProvisionPaystackPlansButton />
         </CardHeader>
         <CardContent>
           {loading ? (
