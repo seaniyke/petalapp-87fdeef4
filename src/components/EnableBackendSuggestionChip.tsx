@@ -16,6 +16,7 @@ type Props = {
   projectId: string;
   isPaidPlan?: boolean;
   reason?: string;
+  onEnabled?: () => void;
   /** Optional override: if provided, takes precedence over BillingSheet. */
   onUpgrade?: () => void;
   onDismiss: () => void;
@@ -25,6 +26,7 @@ export function EnableBackendSuggestionChip({
   projectId,
   isPaidPlan,
   reason,
+  onEnabled,
   onUpgrade,
   onDismiss,
 }: Props) {
@@ -71,6 +73,7 @@ export function EnableBackendSuggestionChip({
         open={enableOpen}
         onOpenChange={setEnableOpen}
         projectId={projectId}
+        onEnabled={onEnabled}
       />
       <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
     </>
