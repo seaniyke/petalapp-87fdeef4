@@ -7,9 +7,26 @@
  *  - No jargon: never expose "AI gateway", "502", "Cloudflare", "esbuild", etc.
  *  - Always end with a clear next step the user can take.
  *  - When unsure, fall back to a gentle generic message.
+ *
+ * Architecture (post-refactor):
+ *  We previously regexed the error TEXT to pick a friendly card. That broke
+ *  the moment `humanizeBuildError` (a tiny LLM rewriter) returned an apology
+ *  containing words like "too long", because the regex couldn't tell our own
+ *  rewritten prose apart from a real input-cap rejection.
+ *
+ *  The fix: classify at the SOURCE. The server runs `classifyRawError` on
+ *  the raw exception (before any LLM touches it) and ships a structured
+ *  `kind` field on the SSE error event. The client passes that `kind`
+ *  through `PipelineError` → `toFriendlyError`, which now looks up the
+ *  card in `KIND_TO_FRIENDLY` and never inspects humanized prose.
+ *
+ *  Regex PATTERNS still exist — but only for raw error sources that have
+ *  no `kind` (build-log failures, fetch network errors, JSON 400 bodies).
+ *  Never add a regex that matches LLM-generated text.
  */
 
 import { reportPipelineFailure, type FailureReportContext } from "./report-failure";
+import type { ErrorKind } from "@/server/generate.server";
 
 export type FriendlyError = {
   /** Short headline shown next to the warning icon. */
@@ -23,6 +40,74 @@ export type FriendlyError = {
   /** Original technical detail — hidden behind a "Show details" disclosure. */
   technicalDetail?: string;
 };
+
+/**
+ * Error subclass that carries the structured failure code from the server
+ * through the throw/catch boundary. Use this anywhere we need to surface a
+ * server-classified failure to the user without leaning on text matching.
+ */
+export class PipelineError extends Error {
+  readonly kind: ErrorKind;
+  constructor(message: string, kind: ErrorKind) {
+    super(message);
+    this.name = "PipelineError";
+    this.kind = kind;
+  }
+}
+
+/**
+ * Card lookup keyed on server-classified failure codes. Every `ErrorKind`
+ * value MUST have an entry here.
+ */
+const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
+  no_files_emitted: (raw) => ({
+    title: "Petal didn't make any edits this turn",
+    message:
+      "The AI replied without writing files. Tap below — Petal will retry on a stronger model that's better at finishing the job.",
+    actionLabel: "Retry on a stronger model",
+    actionKind: "retry",
+    technicalDetail: raw,
+  }),
+  rate_limit: (raw) => ({
+    title: "Petal needs a quick breather",
+    message: "We're getting a lot of requests right now. Try again in a moment.",
+    actionLabel: "Try again",
+    actionKind: "retry",
+    technicalDetail: raw,
+  }),
+  credits_exhausted: (raw) => ({
+    title: "Out of free generations",
+    message:
+      "We've used up today's free generations. Add credits in Settings → Workspace to keep going.",
+    actionLabel: "Try again",
+    actionKind: "retry",
+    technicalDetail: raw,
+  }),
+  upstream_unavailable: (raw) => ({
+    title: "The AI was briefly unreachable",
+    message:
+      "Petal couldn't reach the model just now — usually clears in a few seconds. Tap to try again.",
+    actionLabel: "Try again",
+    actionKind: "retry",
+    technicalDetail: raw,
+  }),
+  unauthorized: (raw) => ({
+    title: "You've been signed out",
+    message: "Please sign in again to continue.",
+    actionLabel: "Sign in",
+    actionKind: "dismiss",
+    technicalDetail: raw,
+  }),
+  aborted: (raw) => ({
+    title: "Stopped",
+    message: "You stopped Petal. Send another message when you're ready.",
+    actionLabel: "Dismiss",
+    actionKind: "dismiss",
+    technicalDetail: raw,
+  }),
+  unknown: (raw) => ({ ...GENERIC, technicalDetail: raw }),
+};
+
 
 const PATTERNS: Array<{
   test: RegExp;
