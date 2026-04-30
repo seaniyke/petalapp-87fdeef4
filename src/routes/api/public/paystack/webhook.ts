@@ -303,7 +303,7 @@ async function recordInvoice(payload: AnyEvent): Promise<void> {
       paid_at: d.paid_at ?? null,
       paystack_reference: d.transaction?.reference ?? null,
       event_payload: payload as unknown as Record<string, unknown>,
-    },
+    } as never,
     { onConflict: "invoice_code" },
   );
 
