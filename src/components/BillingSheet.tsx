@@ -98,6 +98,87 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
     if (wallet?.preferred_currency) setCurrency(wallet.preferred_currency);
   }, [wallet?.preferred_currency]);
 
+  // Load Paystack subscription status (so we can show Manage / Cancel controls).
+  useEffect(() => {
+    if (!open || !user) {
+      setSubStatus(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) return;
+        const res = await fetch("/api/billing/subscription/status", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          hasPaystackSubscription: boolean;
+          cancelAtPeriodEnd: boolean;
+          nextPaymentDate: string | null;
+        };
+        if (!cancelled) setSubStatus(json);
+      } catch (e) {
+        console.warn("[BillingSheet] subscription status failed", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, user]);
+
+  async function openManageCard() {
+    if (!user) return;
+    setBusyKey("sub:manage");
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Sign in required");
+      const res = await fetch("/api/billing/subscription/manage-link", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Could not open card management");
+      }
+      const json = (await res.json()) as { link?: string };
+      if (!json.link) throw new Error("No link returned");
+      window.open(json.link, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not open card management");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  async function cancelSubscription() {
+    if (!user) return;
+    setBusyKey("sub:cancel");
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Sign in required");
+      const res = await fetch("/api/billing/subscription/cancel", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Could not cancel");
+      }
+      toast.success("Subscription cancelled. You keep access until the period ends.");
+      setSubStatus((s) => (s ? { ...s, cancelAtPeriodEnd: true } : s));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not cancel subscription");
+    } finally {
+      setBusyKey(null);
+      setConfirmCancelOpen(false);
+    }
+  }
+
   const paid = useMemo(() => plans.filter((p) => p.code !== "free"), [plans]);
   const currentPlanCode = wallet?.plan_code ?? "free";
   const activeCurrency = useMemo(
