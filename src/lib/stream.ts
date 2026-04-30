@@ -52,7 +52,13 @@ type Handlers = {
       truncatedPaths?: string[];
     };
   }) => void;
-  onError?: (message: string, suggestions?: string[]) => void;
+  onError?: (
+    message: string,
+    suggestions?: string[],
+    /** Structured failure code from the server. Pass through to
+     *  toFriendlyError — do NOT regex the message. */
+    kind?: import("@/server/generate.server").ErrorKind,
+  ) => void;
 };
 
 /** Stream a generation request to /api/generate. Resolves once the stream ends. */
