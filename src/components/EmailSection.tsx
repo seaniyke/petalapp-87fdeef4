@@ -132,7 +132,7 @@ export function EmailSection({ projectId }: { projectId: string }) {
         <Mail className="h-4 w-4" /> Petal Email
       </h3>
       <p className="mb-4 text-xs text-muted-foreground">
-        Send emails from your app with one POST. Free 3,000/month, then $25/mo for 50,000.
+        Built-in email sending for your app. One endpoint, ready to go — no API keys, no third-party setup, no inbox to manage.
       </p>
 
       {loading ? (
@@ -140,7 +140,7 @@ export function EmailSection({ projectId }: { projectId: string }) {
       ) : !status?.enabled ? (
         <div className="rounded-lg border border-border bg-muted/30 p-4">
           <p className="mb-3 text-xs text-muted-foreground">
-            Sender: <code className="rounded bg-background px-1.5 py-0.5">noreply@buildwithpetal.com</code>
+            Sends from a Petal-owned address — fully verified, deliverability handled for you.
           </p>
           <Button size="sm" onClick={handleEnable} disabled={busy}>
             {busy ? "Enabling…" : "Enable Petal Email"}
