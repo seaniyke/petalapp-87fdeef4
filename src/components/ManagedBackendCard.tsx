@@ -320,13 +320,9 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
           <div className="flex-1 text-sm">
             <div className="flex items-center gap-2">
               <span className="font-medium">Petal Cloud connected</span>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                Managed
-              </span>
             </div>
             <div className="mt-0.5 text-xs text-muted-foreground">
-              Auth, database and file storage are live and wired into your app. Costs
-              drain from your Cloud balance hourly.
+              Auth, database and file storage are live and wired into your app.
             </div>
           </div>
         </div>
@@ -353,23 +349,6 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
             </Button>
           </div>
         )}
-
-        <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={handleDownload}
-            disabled={downloading}
-            className="inline-flex items-center gap-1.5 text-xs"
-          >
-            {downloading ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Download className="h-3 w-3" />
-            )}
-            Download credentials
-          </Button>
-        </div>
       </div>
       <RuntimeTopupModal
         open={topupOpen}
