@@ -297,6 +297,36 @@ async function handleVerify(userId: string, body: unknown): Promise<Response> {
     .select(DOMAIN_COLS)
     .single();
   if (error) return new Response(error.message, { status: 500 });
+
+  // Auto-promote a purchased Petal domain to primary when it first becomes
+  // active and the project doesn't already have a primary domain. This makes
+  // domains bought through Petal show up as the Website URL automatically —
+  // no extra "Set primary" click needed. We only do this for purchased
+  // domains so we don't override a user's intentional choice on manually-
+  // connected domains.
+  if (data && mapped.status === "active" && !data.is_primary) {
+    const { data: purchased } = await supabaseAdmin
+      .from("purchased_domains")
+      .select("id")
+      .eq("connected_domain_id", data.id)
+      .maybeSingle();
+    if (purchased) {
+      const { data: project } = await supabaseAdmin
+        .from("projects")
+        .select("primary_domain_id")
+        .eq("id", parsed.data.projectId)
+        .maybeSingle();
+      if (project && !project.primary_domain_id) {
+        await supabaseAdmin
+          .from("project_domains")
+          .update({ is_primary: true })
+          .eq("id", data.id);
+        // Reflect in the response payload so the UI sees it immediately.
+        (data as { is_primary: boolean }).is_primary = true;
+      }
+    }
+  }
+
   return Response.json(data);
 }
 
