@@ -88,7 +88,7 @@ function splitSegments(content: string): Segment[] {
 export function MarkdownMessage({ content, projectId }: { content: string; projectId?: string | null }) {
   const segments = splitSegments(content);
   return (
-    <div className="markdown prose prose-sm max-w-none text-sm leading-relaxed wrap-anywhere">
+    <div className="markdown prose prose-base max-w-none font-sans text-[15.5px] leading-[1.65] tracking-[-0.011em] text-foreground/95 wrap-anywhere [&_p]:my-2.5 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_ul]:my-2.5 [&_ol]:my-2.5 [&_li]:my-1 [&_h1]:font-display [&_h2]:font-display [&_h3]:font-display [&_h1]:tracking-[-0.022em] [&_h2]:tracking-[-0.022em] [&_h3]:tracking-[-0.022em] [&_strong]:font-semibold [&_strong]:text-foreground">
       {segments.map((seg, i) => {
         if (seg.kind === "suggest") {
           // Marketplace removed — drop the tag silently instead of rendering a card.
