@@ -58,6 +58,10 @@ export async function initializeTransaction(args: InitArgs): Promise<{
       reference: args.reference,
       callback_url: args.callbackUrl,
       metadata: args.metadata ?? {},
+      // When `plan` is set, Paystack overrides `amount` with the plan's price
+      // and creates a subscription on charge.success. We still pass amount as
+      // a sanity floor so test mode doesn't reject the request.
+      ...(args.plan ? { plan: args.plan } : {}),
     }),
   });
   const json = (await res.json()) as InitResponse;
