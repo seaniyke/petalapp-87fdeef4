@@ -698,14 +698,14 @@ function PlanCard({
       <Button
         size="sm"
         variant={isCurrent ? "secondary" : "default"}
-        disabled={disabled}
+        disabled={disabled || isCurrent}
         className="mt-4 w-full"
-        onClick={onClick}
+        onClick={isCurrent ? undefined : onClick}
       >
         {busy ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : isCurrent ? (
-          "Renew current plan"
+          "Current plan"
         ) : (
           `Upgrade to ${plan.name}`
         )}
