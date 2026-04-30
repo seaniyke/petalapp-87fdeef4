@@ -88,7 +88,7 @@ export function EnableBackendFromCloudDialog({
         service: "backend",
         label: "Managed backend",
         summary:
-          "Provisioning your database, auth, and storage. Drains from your Cloud balance hourly — top up anytime.",
+          "Provisioning your database, auth, and storage.",
       });
       onOpenChange(false);
       onEnabled?.();
@@ -119,7 +119,7 @@ export function EnableBackendFromCloudDialog({
               Enable managed backend
             </DialogTitle>
             <DialogDescription>
-              Database, auth and storage — billed hourly from your Cloud balance.
+              Database, auth and storage for your project.
             </DialogDescription>
           </DialogHeader>
 
