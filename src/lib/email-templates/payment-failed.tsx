@@ -20,6 +20,8 @@ interface Props {
   amountDisplay?: string;
   reference?: string;
   reason?: "failed" | "abandoned";
+  /** Optional Paystack hosted card-update link, set for renewal failures. */
+  manageLink?: string;
 }
 
 const PaymentFailedEmail = ({
@@ -27,13 +29,17 @@ const PaymentFailedEmail = ({
   amountDisplay,
   reference,
   reason = "failed",
+  manageLink,
 }: Props) => {
-  const heading =
-    reason === "abandoned"
+  const isRenewal = Boolean(manageLink);
+  const heading = isRenewal
+    ? "Update your card to keep your plan"
+    : reason === "abandoned"
       ? "Your payment didn't go through"
       : "We couldn't process your payment";
-  const intro =
-    reason === "abandoned"
+  const intro = isRenewal
+    ? `We tried to renew${itemLabel ? ` your ${itemLabel}` : " your subscription"} and your bank declined the charge. Update your card to keep your plan active.`
+    : reason === "abandoned"
       ? `Looks like the checkout was closed before it finished${itemLabel ? ` for ${itemLabel}` : ""}. No charge was made.`
       : `Your bank declined the charge${itemLabel ? ` for ${itemLabel}` : ""}. No funds left your account.`;
 
@@ -41,11 +47,13 @@ const PaymentFailedEmail = ({
     <PetalEmailLayout
       preview={`${heading} — try again on ${SITE_NAME}.`}
       heading={heading}
-      cta={{ label: "Try again", href: SITE_URL }}
+      cta={{ label: isRenewal ? "Update card" : "Try again", href: manageLink ?? SITE_URL }}
     >
       <Text style={text}>{intro}</Text>
       <Text style={text}>
-        You can retry from the same place you started — your cart is still waiting.
+        {isRenewal
+          ? "Tap the button above to add a new card on Paystack's secure page. Your plan stays paused until we can charge it."
+          : "You can retry from the same place you started — your cart is still waiting."}
       </Text>
 
       {(itemLabel || amountDisplay || reference) && (
