@@ -161,8 +161,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
             <div className="flex-1">
               <p className="text-sm font-medium">Add Petal Cloud backend</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Auth, database and file storage — fully managed by Petal. Funded by
-                your Cloud balance, no separate fee.
+                Auth, database and file storage — fully managed by Petal.
               </p>
             </div>
           </div>
