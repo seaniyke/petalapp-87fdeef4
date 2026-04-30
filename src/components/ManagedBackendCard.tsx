@@ -156,21 +156,15 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
     return (
       <>
         <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
-          <div className="flex items-start gap-2">
-            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Add Petal Cloud backend</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Auth, database and file storage — fully managed by Petal.
-              </p>
-            </div>
-          </div>
+          <p className="text-sm font-medium">Add Petal Cloud backend</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Auth, database and file storage — fully managed by Petal.
+          </p>
           <Button
             size="sm"
             onClick={() => setEnableOpen(true)}
-            className="mt-3 inline-flex items-center gap-1.5"
+            className="mt-3"
           >
-            <Sparkles className="h-3.5 w-3.5" />
             Enable Petal Cloud
           </Button>
         </div>
