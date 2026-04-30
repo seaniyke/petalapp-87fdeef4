@@ -1541,18 +1541,25 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               }
             } catch (e) {
               const raw = e instanceof Error ? e.message : "Generation failed.";
-              // Classify FIRST — against the raw exception, before any LLM
-              // touches it. This `kind` flows through SSE so the client can
-              // pick the right friendly card without regexing humanized prose.
-              const kind = classifyRawError(raw);
+              // Authoritative user-cancel signal: the underlying HTTP request
+              // was aborted by the client (tab closed, "Stop" button, network
+              // drop). This is the ONLY trustworthy source — we never infer
+              // user intent from prose like "aborted" / "cancelled", which
+              // appear in many upstream-failure messages too. See
+              // classifyRawError for the full rationale.
+              const userCancelled = request.signal?.aborted === true;
+              const kind = userCancelled ? "aborted" : classifyRawError(raw);
               // Layer 5 — humanize the raw error before showing it. No credits
               // were taken — nothing to refund. The friendly rewrite gives the
               // user a clear next step (retry, simplify, top up, …) instead
-              // of a stack-trace-flavored sentence.
-              const friendly = await humanizeBuildError({
-                rawMessage: raw,
-                brief: lastUserContent,
-              });
+              // of a stack-trace-flavored sentence. Skip humanization on a
+              // genuine user cancel — the client already knows what it did.
+              const friendly = userCancelled
+                ? { message: "You stopped Petal. Send a new message when you're ready.", suggestions: [] as string[] }
+                : await humanizeBuildError({
+                    rawMessage: raw,
+                    brief: lastUserContent,
+                  });
               controller.enqueue(
                 encoder.encode(
                   sse({
