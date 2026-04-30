@@ -594,6 +594,7 @@ function findUnresolvedImports(
   // entry exists yet (the kit injects them post-AI).
   const SCAFFOLD_PREFIXES = [
     "@/components/ui/",
+    "@/integrations/supabase/",
     "@/integrations/backend/",
     "@/integrations/lovable/",
     "@/lib/utils",
