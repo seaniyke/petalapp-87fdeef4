@@ -1,0 +1,26 @@
+{
+  "files": [
+    {
+      "path": "src/lib/posts.ts",
+      "content": "import type { ReactNode } from \"react\";\n\nexport interface Post {\n  slug: string;\n  title: string;\n  excerpt: string;\n  body: ReactNode;\n  publishedAt: string;\n}\n\nexport const POSTS: Post[] = [\n  {\n    slug: \"hello-world\",\n    title: \"Hello, world\",\n    excerpt: \"The first post on this brand-new blog.\",\n    body: \"Welcome. This is the first post on this brand-new blog.\",\n    publishedAt: \"2026-01-12\",\n  },\n  {\n    slug: \"on-writing\",\n    title: \"On writing\",\n    excerpt: \"A short note on why writing is worth the time.\",\n    body: \"Writing is thinking made visible.\",\n    publishedAt: \"2026-02-02\",\n  },\n];\n"
+    },
+    {
+      "path": "src/routes/index.tsx",
+      "content": "import { createFileRoute, Link } from \"@tanstack/react-router\";\nimport { POSTS } from \"@/lib/posts\";\nimport { Card, CardContent, CardHeader, CardTitle } from \"@/components/ui/card\";\n\nexport const Route = createFileRoute(\"/\")({\n  component: HomePage,\n  head: () => ({\n    meta: [\n      { title: \"My blog\" },\n      { name: \"description\", content: \"Notes, essays, and short reads.\" },\n    ],\n  }),\n});\n\nfunction HomePage() {\n  return (\n    <main className=\"mx-auto max-w-2xl p-6\">\n      <header className=\"mb-10\">\n        <h1 className=\"text-4xl font-bold tracking-tight\">My blog</h1>\n        <p className=\"mt-2 text-muted-foreground\">\n          Notes, essays, and short reads.\n        </p>\n      </header>\n      <ul className=\"space-y-4\">\n        {POSTS.map((p) => (\n          <li key={p.slug}>\n            <Link\n              to=\"/posts/$slug\"\n              params={{ slug: p.slug }}\n              className=\"block\"\n            >\n              <Card className=\"transition hover:bg-accent\">\n                <CardHeader>\n                  <CardTitle>{p.title}</CardTitle>\n                </CardHeader>\n                <CardContent className=\"text-sm text-muted-foreground\">\n                  {p.excerpt}\n                </CardContent>\n              </Card>\n            </Link>\n          </li>\n        ))}\n      </ul>\n    </main>\n  );\n}\n"
+    },
+    {
+      "path": "src/routes/posts.index.tsx",
+      "content": "import { createFileRoute, Link } from \"@tanstack/react-router\";\nimport { POSTS } from \"@/lib/posts\";\n\nexport const Route = createFileRoute(\"/posts/\")({\n  component: PostsIndex,\n  head: () => ({\n    meta: [\n      { title: \"All posts\" },\n      { name: \"description\", content: \"Every post on the blog.\" },\n    ],\n  }),\n});\n\nfunction PostsIndex() {\n  return (\n    <main className=\"mx-auto max-w-2xl p-6\">\n      <h1 className=\"mb-6 text-3xl font-bold tracking-tight\">All posts</h1>\n      <ul className=\"space-y-3\">\n        {POSTS.map((p) => (\n          <li key={p.slug}>\n            <Link\n              to=\"/posts/$slug\"\n              params={{ slug: p.slug }}\n              className=\"text-primary underline-offset-4 hover:underline\"\n            >\n              {p.title}\n            </Link>\n            <span className=\"ml-2 text-xs text-muted-foreground\">\n              {p.publishedAt}\n            </span>\n          </li>\n        ))}\n      </ul>\n    </main>\n  );\n}\n"
+    },
+    {
+      "path": "src/routes/posts.$slug.tsx",
+      "content": "import { createFileRoute, Link, notFound } from \"@tanstack/react-router\";\nimport { POSTS } from \"@/lib/posts\";\n\nexport const Route = createFileRoute(\"/posts/$slug\")({\n  component: PostDetail,\n  loader: ({ params }) => {\n    const post = POSTS.find((p) => p.slug === params.slug);\n    if (!post) throw notFound();\n    return { post };\n  },\n  head: ({ loaderData }) => ({\n    meta: [\n      { title: loaderData?.post.title ?? \"Post\" },\n      {\n        name: \"description\",\n        content: loaderData?.post.excerpt ?? \"A blog post.\",\n      },\n    ],\n  }),\n  notFoundComponent: () => (\n    <main className=\"mx-auto max-w-2xl p-6\">\n      <h1 className=\"text-3xl font-bold\">Post not found</h1>\n      <Link to=\"/\" className=\"text-primary hover:underline\">\n        Back home\n      </Link>\n    </main>\n  ),\n});\n\nfunction PostDetail() {\n  const { post } = Route.useLoaderData();\n  return (\n    <main className=\"mx-auto max-w-2xl p-6\">\n      <Link\n        to=\"/\"\n        className=\"text-sm text-muted-foreground hover:text-foreground\"\n      >\n        ← Back\n      </Link>\n      <article className=\"mt-4 prose prose-neutral dark:prose-invert\">\n        <h1>{post.title}</h1>\n        <p className=\"text-sm text-muted-foreground\">{post.publishedAt}</p>\n        <div>{post.body}</div>\n      </article>\n    </main>\n  );\n}\n"
+    }
+  ],
+  "changedPaths": [
+    "src/lib/posts.ts",
+    "src/routes/index.tsx",
+    "src/routes/posts.index.tsx",
+    "src/routes/posts.$slug.tsx"
+  ]
+}

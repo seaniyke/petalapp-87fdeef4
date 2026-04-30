@@ -110,10 +110,16 @@ export const Route = createFileRoute("/")({ component: () => <div /> });
     ["src/routes/index.tsx"],
   );
   const missingDeps = v.issues.filter((i) => i.kind === "missing-dep");
+  const missingSiblings = v.issues.filter((i) => i.kind === "missing-sibling");
   assert(
     "no missing-dep for @tanstack/react-router or zod",
     missingDeps.length === 0,
     JSON.stringify(missingDeps),
+  );
+  assert(
+    "no missing-sibling for @/integrations/supabase/client (scaffold alias)",
+    missingSiblings.length === 0,
+    JSON.stringify(missingSiblings),
   );
 
   // With a package.json that omits these, we DO want to flag them.
