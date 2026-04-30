@@ -217,11 +217,11 @@ async function handleSubscriptionCreate(payload: AnyEvent): Promise<void> {
   // Map Paystack plan_code back to our internal billing_plans.code.
   const planCode = await resolvePlanCodeFromPaystack(sub.plan?.plan_code ?? null);
 
-  await supabaseAdmin.from("subscriptions").upsert(
+  const { error: upsertErr } = await supabaseAdmin.from("subscriptions").upsert(
     {
       user_id: userId,
       provider: "paystack",
-      plan_code: planCode,
+      plan_code: planCode ?? "pro",
       status: "active",
       cancel_at_period_end: false,
       paystack_subscription_code: sub.subscription_code,
@@ -235,6 +235,10 @@ async function handleSubscriptionCreate(payload: AnyEvent): Promise<void> {
     } as never,
     { onConflict: "paystack_subscription_code" },
   );
+  if (upsertErr) {
+    console.error("[paystack webhook] subscription upsert failed", upsertErr);
+    throw new Error(`subscription upsert failed: ${upsertErr.message}`);
+  }
 }
 
 async function handleSubscriptionDisable(payload: AnyEvent): Promise<void> {
