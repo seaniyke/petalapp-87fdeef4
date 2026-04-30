@@ -770,7 +770,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 const retry = await aiChatCompletions({
                   feature: "generate",
                   body: {
-                    model: MODEL_BEST,
+                    model: MODEL_STRUCTURED_RETRY,
                     messages: addStructuredRetryInstruction(chatMessages, {
                       isInitial,
                       problem: e instanceof Error ? e.message : "invalid structured response",
