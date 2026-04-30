@@ -74,7 +74,7 @@ const PATTERNS: Array<{
     //      snag", "took longer than expected", "ran out of time").
     // Both mean the same thing: the model bailed without producing edits.
     // Treat them as one failure mode with a clear retry CTA.
-    test: /invalid project data|did not return a project|returned no (files|ops)|hit a snag|took (a bit )?longer than expected|ran out of (time|room)|tried to (rewrite|patch)/i,
+    test: /invalid project data|did not return a project|returned no (files|ops)|hit a snag|took (a bit )?longer than expected|ran out of (time|room)|wasn'?t able to finish|couldn'?t finish|tried to (rewrite|patch)/i,
     build: (raw) => ({
       title: "Petal didn't make any edits this turn",
       message:

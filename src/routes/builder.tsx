@@ -43,7 +43,7 @@ import {
 import { streamGenerate } from "@/lib/stream";
 import { streamTriage } from "@/lib/triage";
 import { requestDiscussion } from "@/lib/discuss";
-import { onServiceEnabled } from "@/lib/service-events";
+import { emitServiceEnabled, onServiceEnabled } from "@/lib/service-events";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useBuildActivity } from "@/hooks/use-build-activity";
@@ -130,7 +130,7 @@ import { detectAiFeatureIntentInTurn } from "@/lib/ai-feature-intent";
 import { detectStorageIntentInTurn } from "@/lib/storage-intent";
 import { detectRealtimeIntentInTurn } from "@/lib/realtime-intent";
 import { detectCronIntentInTurn } from "@/lib/cron-intent";
-import { getProjectBackend } from "@/lib/projects";
+import { getManagedProvisionStatus, getProjectBackend } from "@/lib/projects";
 import { listDomains } from "@/lib/domains";
 import { useWallet } from "@/hooks/use-wallet";
 import {
@@ -345,6 +345,7 @@ function Builder() {
   // Whether this project already has a backend (BYO or managed). When unknown
   // we treat as "not connected" but suppress the chip until we've checked.
   const [hasBackend, setHasBackend] = useState<boolean | null>(null);
+  const backendReadyPollRef = useRef<number | null>(null);
   const [hasDomain, setHasDomain] = useState<boolean | null>(null);
   // Per-message dismissal of the "Add backend" inline suggestion. Keyed by
   // assistant message index so dismissing once doesn't kill it forever.
@@ -916,6 +917,44 @@ function Builder() {
     setDismissedBackendChips(new Set());
     setDismissedDomainChips(new Set());
   }, [project?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (backendReadyPollRef.current) window.clearTimeout(backendReadyPollRef.current);
+    };
+  }, []);
+
+  const waitForBackendReadyAndResume = useCallback((projectId: string) => {
+    if (backendReadyPollRef.current) window.clearTimeout(backendReadyPollRef.current);
+    const startedAt = Date.now();
+    const tick = async () => {
+      try {
+        const next = await getManagedProvisionStatus(projectId);
+        if (next.status === "ready") {
+          setHasBackend(true);
+          const refreshed = await getProject(projectId);
+          if (refreshed) setProject(refreshed);
+          emitServiceEnabled({
+            projectId,
+            service: "backend",
+            label: "Managed backend",
+            summary: "Database, auth, and storage are ready.",
+          });
+          return;
+        }
+        if (next.status === "failed") {
+          toast.error(next.errorMessage || "Backend setup failed. Please try again.");
+          return;
+        }
+      } catch {
+        // keep polling through transient readiness checks
+      }
+      if (Date.now() - startedAt < 8 * 60 * 1000) {
+        backendReadyPollRef.current = window.setTimeout(tick, 5_000);
+      }
+    };
+    void tick();
+  }, []);
 
   // Mirror the composer text, queued messages, and pending attachments to
   // sessionStorage so a browser refresh inside /builder doesn't wipe them.
@@ -2528,6 +2567,7 @@ function Builder() {
                                 projectId={project.id}
                                 isPaidPlan={isPaidPlan}
                                 reason={intent.reason}
+                                onEnabled={() => waitForBackendReadyAndResume(project.id)}
                                 onUpgrade={() => setBillingOpen(true)}
                                 onDismiss={() =>
                                   setDismissedBackendChips((prev) => {
