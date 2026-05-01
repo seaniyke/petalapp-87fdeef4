@@ -63,6 +63,12 @@ type AuthCtx = {
   resendSignupOtp: (email: string) => Promise<{ error: Error | null }>;
   resetPasswordForEmail: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
+  /**
+   * Start a Google OAuth sign-in. The browser is redirected to Google,
+   * then back to \`window.location.origin\` (override with \`redirectTo\`).
+   * On return the auth state listener picks up the new session.
+   */
+  signInWithGoogle: (opts?: { redirectTo?: string }) => Promise<{ error: Error | null }>;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
