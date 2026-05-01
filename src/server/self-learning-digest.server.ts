@@ -31,6 +31,14 @@ export interface DigestPayload {
     buildSuccessRate: number | null;
     followupWasFixRate: number | null;
     avgAutofixCount: number | null;
+    /**
+     * Share of generate turns where the model never produced files — i.e.
+     * upstream timed out, returned empty, or the worker aborted before any
+     * write. Read from `pipeline_failures` (timeout-family signatures)
+     * normalized against total turns. Separate from verifier failures so
+     * "we ran out of time" doesn't get conflated with "we wrote bad code."
+     */
+    timeoutRate: number | null;
   };
 
   /** Top failure signatures from pipeline_failures (the "Petal got confused" branch). */
@@ -73,6 +81,7 @@ interface OutcomeRow {
   project_id: string | null;
   ai_call_id: string;
   created_at: string;
+  files_written: number | null;
 }
 
 interface FailureRow {
