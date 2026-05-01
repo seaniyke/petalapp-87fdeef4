@@ -1152,6 +1152,75 @@ export type Database = {
         }
         Relationships: []
       }
+      petal_self_learning_digests: {
+        Row: {
+          avg_autofix_count: number | null
+          build_success_rate: number | null
+          created_at: string
+          email_error: string | null
+          email_recipients: string[] | null
+          email_sent_at: string | null
+          followup_was_fix_rate: number | null
+          generated_at: string
+          id: string
+          model_breakdown: Json
+          payload: Json
+          period_date: string
+          recommendations: Json
+          top_failure_signatures: Json
+          top_reverted_prompts: Json
+          total_projects: number
+          total_turns: number
+          total_users: number
+          updated_at: string
+          verifier_pass_rate: number | null
+        }
+        Insert: {
+          avg_autofix_count?: number | null
+          build_success_rate?: number | null
+          created_at?: string
+          email_error?: string | null
+          email_recipients?: string[] | null
+          email_sent_at?: string | null
+          followup_was_fix_rate?: number | null
+          generated_at?: string
+          id?: string
+          model_breakdown?: Json
+          payload?: Json
+          period_date: string
+          recommendations?: Json
+          top_failure_signatures?: Json
+          top_reverted_prompts?: Json
+          total_projects?: number
+          total_turns?: number
+          total_users?: number
+          updated_at?: string
+          verifier_pass_rate?: number | null
+        }
+        Update: {
+          avg_autofix_count?: number | null
+          build_success_rate?: number | null
+          created_at?: string
+          email_error?: string | null
+          email_recipients?: string[] | null
+          email_sent_at?: string | null
+          followup_was_fix_rate?: number | null
+          generated_at?: string
+          id?: string
+          model_breakdown?: Json
+          payload?: Json
+          period_date?: string
+          recommendations?: Json
+          top_failure_signatures?: Json
+          top_reverted_prompts?: Json
+          total_projects?: number
+          total_turns?: number
+          total_users?: number
+          updated_at?: string
+          verifier_pass_rate?: number | null
+        }
+        Relationships: []
+      }
       pipeline_failures: {
         Row: {
           created_at: string
