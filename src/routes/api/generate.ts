@@ -887,7 +887,17 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   );
                 }
                 const safeOps = parsed.ops.filter((op) => !isProtectedPath(op.path));
-                nextFiles = applyOps(currentFiles, safeOps);
+                const patched = applyOps(currentFiles, safeOps);
+                // Heal-on-patch: re-apply the canonical scaffold to old saved
+                // projects whose `src/components/ui/*`, `package.json`, or
+                // backend kit files predate later kit upgrades. Without this,
+                // legacy projects keep failing builds with errors like
+                // "SelectTrigger is not exported by select.tsx" forever
+                // because `applyScaffoldKit` was only running on initial
+                // create + at build-trigger time.
+                nextFiles = applyScaffoldKit(patched, {
+                  backend: backend ?? undefined,
+                });
               }
               if (!nextFiles.some((f) => f.path === "index.html")) {
                 throw new Error("Project is missing index.html.");
