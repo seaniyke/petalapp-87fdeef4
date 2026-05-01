@@ -1,24 +1,61 @@
 /**
- * Project thumbnail used by the gallery and projects drawer.
+ * Project thumbnail used by the gallery, projects page, and projects drawer.
  *
- * We previously tried to mount a scaled-down iframe pointing at the deployed
- * URL, but cross-origin sandbox restrictions made the iframes render as broken
- * placeholders for most users. Instead we now render a stable, attractive
- * gradient tile with the project's initials — fast, deterministic, and works
- * for every project without an extra screenshot service.
+ * Behavior:
+ *   - If the project has a published URL (custom domain or
+ *     <slug>.buildwithpetal.com), we render a real screenshot using
+ *     Microlink's free screenshot endpoint. No API key required.
+ *   - If the screenshot fails to load OR the project hasn't been published
+ *     yet, we fall back to a deterministic gradient tile with the project's
+ *     initials — fast, attractive, and always works.
+ *
+ * Microlink free tier serves the image directly via:
+ *   https://api.microlink.io/?url=<URL>&screenshot=true&meta=false&embed=screenshot.url
+ * It caches results aggressively, so repeat visits are instant.
  */
+import { useState } from "react";
+import { PETAL_ROOT_DOMAIN } from "@/lib/petal-subdomain";
+
 export function ProjectThumbnail({
   projectId,
   className = "h-28",
   title,
+  subdomain,
+  customDomain,
+  publishedUrl,
 }: {
   projectId: string;
   className?: string;
   title?: string;
+  /** The project's claimed Petal subdomain slug, e.g. "my-app". */
+  subdomain?: string | null;
+  /** An active custom domain hostname, e.g. "example.com". */
+  customDomain?: string | null;
+  /** Explicit override — used by callers that already resolved the URL. */
+  publishedUrl?: string | null;
 }) {
-  // Pick one of a few gradient palettes deterministically from the projectId
-  // so the same project always gets the same look but different projects feel
-  // visually distinct in the grid.
+  const url = resolveLiveUrl({ subdomain, customDomain, publishedUrl });
+  const [failed, setFailed] = useState(false);
+  const showImage = url && !failed;
+
+  return (
+    <div className={`relative overflow-hidden ${className}`} aria-hidden>
+      {showImage ? (
+        <img
+          src={screenshotUrl(url)}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover object-top"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <Fallback projectId={projectId} title={title} />
+      )}
+    </div>
+  );
+}
+
+function Fallback({ projectId, title }: { projectId: string; title?: string }) {
   const palette = pickPalette(projectId);
   const initials = (title ?? "")
     .split(/\s+/)
@@ -29,9 +66,8 @@ export function ProjectThumbnail({
 
   return (
     <div
-      className={`relative overflow-hidden ${className}`}
+      className="absolute inset-0"
       style={{ background: palette.gradient }}
-      aria-hidden
     >
       <div className="absolute inset-0 bg-grain opacity-25" />
       <div className="absolute inset-0 grid place-items-center">
@@ -44,6 +80,37 @@ export function ProjectThumbnail({
       </div>
     </div>
   );
+}
+
+function resolveLiveUrl({
+  subdomain,
+  customDomain,
+  publishedUrl,
+}: {
+  subdomain?: string | null;
+  customDomain?: string | null;
+  publishedUrl?: string | null;
+}): string | null {
+  if (publishedUrl) return publishedUrl;
+  if (customDomain) return `https://${customDomain}`;
+  if (subdomain) return `https://${subdomain}.${PETAL_ROOT_DOMAIN}`;
+  return null;
+}
+
+function screenshotUrl(target: string): string {
+  // Microlink free endpoint — returns the screenshot image directly. We pass
+  // viewport sized for a nice card crop and a short waitUntil so SPAs render
+  // before the snapshot is taken.
+  const params = new URLSearchParams({
+    url: target,
+    screenshot: "true",
+    meta: "false",
+    embed: "screenshot.url",
+    "viewport.width": "1280",
+    "viewport.height": "800",
+    waitUntil: "networkidle0",
+  });
+  return `https://api.microlink.io/?${params.toString()}`;
 }
 
 const PALETTES = [
