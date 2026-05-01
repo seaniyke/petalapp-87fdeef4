@@ -169,9 +169,6 @@ function GalleryCard({
             </span>
           )}
         </div>
-        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-          {project.summary ?? "No description yet."}
-        </p>
         <div className="mt-auto flex items-center justify-between pt-3 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <GitFork className="h-3 w-3" />
