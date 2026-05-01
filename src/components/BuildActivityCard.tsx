@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
 import type { FriendlyError } from "@/lib/friendly-errors";
+import { PetalErrorCard } from "@/components/PetalErrorCard";
 
 /**
  * One entry in the real-time build pipeline timeline.
