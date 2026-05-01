@@ -497,7 +497,8 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         } catch {
           return new Response("Invalid JSON body", { status: 400 });
         }
-        const messages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
+        const rawMessages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
+        const messages = trimMessagesForGeneration(rawMessages);
         const currentFiles = Array.isArray(body.currentFiles) ? body.currentFiles : [];
         if (messages.length === 0) {
           return new Response("messages must not be empty", { status: 400 });
@@ -510,8 +511,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // unbounded LLM bill before we've spent the credit. Picked at 8000
         // chars (~2000 tokens) which is generous for any plausible prompt.
         const MAX_PROMPT_CHARS = 8000;
-        const lastUserMsg = [...messages].reverse().find((m) => m?.role === "user");
-        const lastContent = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
+        const lastContent = latestUserMessage(messages);
         if (lastContent.length > MAX_PROMPT_CHARS) {
           return new Response(
             JSON.stringify({
