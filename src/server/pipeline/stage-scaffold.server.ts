@@ -162,7 +162,9 @@ export async function runStageScaffold(args: {
       outcomes.push({ path: planned.path, ok: true });
     } else {
       const reason =
-        res.status === "fulfilled" ? res.value.reason : (res.reason as Error)?.message ?? "rejected";
+        res.status === "fulfilled"
+          ? (res.value as { ok: false; reason: string }).reason
+          : (res.reason as Error)?.message ?? "rejected";
       retryQueue.push(planned);
       outcomes.push({ path: planned.path, ok: false, reason: `first:${reason}` });
     }
@@ -188,7 +190,9 @@ export async function runStageScaffold(args: {
         if (outcomeIdx >= 0) outcomes[outcomeIdx] = { path: planned.path, ok: true, reason: "retried" };
       } else {
         const reason =
-          res.status === "fulfilled" ? res.value.reason : (res.reason as Error)?.message ?? "rejected";
+          res.status === "fulfilled"
+            ? (res.value as { ok: false; reason: string }).reason
+            : (res.reason as Error)?.message ?? "rejected";
         if (outcomeIdx >= 0) {
           outcomes[outcomeIdx] = {
             path: planned.path,
