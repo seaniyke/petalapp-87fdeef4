@@ -241,6 +241,7 @@ unless noted). Use whichever matches the user's flow — never call
 | \`resetPasswordForEmail(email)\` | Send a password-reset email. **Requires** a \`/reset-password\` view in the app — see below. |
 | \`updatePassword(newPassword)\` | Set a new password while a recovery session is active. Call this from the \`/reset-password\` view. |
 | \`signOut()\` | Sign the current user out. Returns \`void\`. |
+| \`signInWithGoogle({ redirectTo? })\` | Start Google OAuth. Returns \`{ error }\`. The browser navigates to Google and back; on return your \`onAuthStateChange\` listener (already wired in \`AuthProvider\`) sets the session. **Wire a "Continue with Google" button to this** instead of inventing your own provider call. |
 
 ### Password-reset wiring (mandatory if you call \`resetPasswordForEmail\`)
 
