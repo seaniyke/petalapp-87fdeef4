@@ -2649,8 +2649,12 @@ function Builder() {
                     <PetalErrorCard
                       error={m.error}
                       onRetry={
-                        isTail && m.error.actionKind === "retry" && lastUserPrompt
-                          ? retry
+                        isTail && m.error.actionKind === "retry"
+                          ? m.error.title?.startsWith("Build service")
+                            ? retryDeploy
+                            : lastUserPrompt
+                              ? retry
+                              : undefined
                           : undefined
                       }
                       onAskFix={
