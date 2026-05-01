@@ -179,7 +179,7 @@ export function CloudUsersView({ projectId }: { projectId: string }) {
           description={
             search
               ? "Try a different search."
-              : "Once people sign up, they'll appear here."
+              : "Petal hasn't set up sign-up for this project yet. Ask Petal in chat — e.g. ‘add email + Google sign-in’ — then signups will appear here."
           }
         />
       ) : (

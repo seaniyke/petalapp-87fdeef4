@@ -75,7 +75,7 @@ export function CloudDatabaseView({ projectId }: Props) {
       {tables && tables.length === 0 && (
         <CloudEmptyState
           title="No tables yet"
-          description="Once your app creates tables, they'll show up here."
+          description="Petal hasn't created any database tables for this project yet. Ask Petal in chat — e.g. ‘add a recipes table with title and ingredients’."
         />
       )}
       <div className="space-y-2">
