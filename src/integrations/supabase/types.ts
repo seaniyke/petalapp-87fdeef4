@@ -1167,6 +1167,7 @@ export type Database = {
           payload: Json
           period_date: string
           recommendations: Json
+          timeout_rate: number | null
           top_failure_signatures: Json
           top_reverted_prompts: Json
           total_projects: number
@@ -1189,6 +1190,7 @@ export type Database = {
           payload?: Json
           period_date: string
           recommendations?: Json
+          timeout_rate?: number | null
           top_failure_signatures?: Json
           top_reverted_prompts?: Json
           total_projects?: number
@@ -1211,6 +1213,7 @@ export type Database = {
           payload?: Json
           period_date?: string
           recommendations?: Json
+          timeout_rate?: number | null
           top_failure_signatures?: Json
           top_reverted_prompts?: Json
           total_projects?: number
