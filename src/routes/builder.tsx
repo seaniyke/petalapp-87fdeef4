@@ -537,14 +537,17 @@ function Builder() {
     return () => window.clearInterval(t);
   }, [isDeploying, effectiveBuildSnap?.observedAt]);
 
-  // Once we cross the 240s threshold, surface the friendly stalled card.
+  // Once we cross the 240s threshold, try to self-heal silently before
+  // showing the scary "deploy stalled" card. Most "stuck" deploys are a
+  // single dropped Railway callback — one silent retry resolves them
+  // without the user ever seeing a warning. Only if the *retried* build
+  // also crosses 240s do we surface the friendly card.
   // 240s gives Railway plenty of headroom on slow days (typical deploys are
-  // 16-25s but can legitimately spike to 60-120s under load) so we stop
-  // crying wolf at users whose build is actually fine.
-  // Critical safeguard: re-fetch the build row directly before showing the
-  // warning. If realtime missed the UPDATE and our local snapshot is stale,
-  // we'll see the row is already 'ready'/'failed' and bail out instead of
-  // scaring the user about a build that already finished.
+  // 16-25s but can legitimately spike to 60-120s under load).
+  // Critical safeguard: re-fetch the build row directly before acting. If
+  // realtime missed the UPDATE and our local snapshot is stale, the row may
+  // already be 'ready'/'failed' and we should bail out.
+  const silentDeployRetriedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!isDeploying || friendlyError || busy) return;
     if (deployElapsed < 240) return;
@@ -560,13 +563,22 @@ function Builder() {
       if (cancelled) return;
       // Build already finished — realtime/polling just missed it. Don't warn.
       if (data?.status === "ready" || data?.status === "failed") return;
+      // First stall on this build → silently retry once. The user sees the
+      // existing "Deploying" indicator continue without a scary card.
+      if (!silentDeployRetriedRef.current.has(buildId)) {
+        silentDeployRetriedRef.current.add(buildId);
+        retryDeploy();
+        return;
+      }
+      // Already retried this build silently and it stalled again → surface
+      // the friendly card so the user can retry manually or keep editing.
       setFriendlyError({
         title: "Publishing is taking longer than usual",
         message:
           "Your code is ready — the publishing service hasn't reported back yet. You can retry the deploy or keep editing while we wait.",
         actionLabel: "Retry deploy",
         actionKind: "retry",
-        technicalDetail: `Deploy elapsed ${deployElapsed}s with no callback`,
+        technicalDetail: `Deploy elapsed ${deployElapsed}s with no callback (after silent retry)`,
       });
     })();
     return () => { cancelled = true; };
