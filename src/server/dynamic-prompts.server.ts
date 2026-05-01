@@ -61,7 +61,8 @@ Other primitives exist (Tabs/Dialog/Sheet/Drawer/Select/Combobox/DatePicker/Cale
   // reverted by the file-budget gate. Reinforces the split-into-files
   // pattern WITH a concrete example so the model has a template to follow.
   fileBudget: {
-    triggers: /\b(landing|landing page|home ?page|dashboard|marketing site|portfolio|saas|product page|pricing page|about page|multi[- ]?page|site|website|several pages?|full app|complete app|app from scratch|build me an? app)\b/i,
+    triggers:
+      /\b(landing|landing page|home ?page|dashboard|marketing site|portfolio|saas|product page|pricing page|about page|multi[- ]?page|site|website|several pages?|full app|complete app|app from scratch|build me an? app)\b/i,
     body: `\n\n[Reinforcement — Split into small files]
 This turn looks like a multi-section page. The server enforces a hard 180-line / 6 KB cap per file (>280 lines is auto-reverted). To stay under it:
 - Build the page as a SHELL that composes sub-components — never a single 300-line file.
@@ -78,7 +79,8 @@ This turn looks like a multi-section page. The server enforces a hard 180-line /
 - The MOMENT a file you are writing crosses ~120 lines, stop and extract the next section into its own file before continuing.`,
   },
   layout: {
-    triggers: /\b(layout|page|section|hero|landing|grid|stack|inline|container|sidebar|header|footer|two[- ]column|split|columns?)\b/i,
+    triggers:
+      /\b(layout|page|section|hero|landing|grid|stack|inline|container|sidebar|header|footer|two[- ]column|split|columns?)\b/i,
     body: `\n\n[Reinforcement — Layout primitives]
 - <Container size="sm|md|lg|xl|full"> — outermost wrapper for every page section (default "lg").
 - <Stack gap={4} align="start|center|end|stretch" justify="..."> — vertical columns. <Inline gap={2} align wrap> — horizontal rows. Use these instead of writing flex/gap utility chains by hand.
@@ -119,7 +121,8 @@ Example:
   <BarChart data={[{x:"Mon", y:12}, {x:"Tue", y:18}]} color={2} />`,
   },
   forms: {
-    triggers: /\b(form|sign ?up|sign ?in|login|register|contact form|onboarding|wizard|multi-step|input field|validation)\b/i,
+    triggers:
+      /\b(form|sign ?up|sign ?in|login|register|contact form|onboarding|wizard|multi-step|input field|validation)\b/i,
     body: `\n\n[Reinforcement — Forms]
 Use the kit form helper, NEVER scattered useState for field values:
   import { useForm, Form, FormField } from "@/components/ui/form";
@@ -129,7 +132,8 @@ For arrays/async validation, graduate to react-hook-form (kit does NOT include i
 Also available: <Select options={[{label,value}]} placeholder onChange>, <Combobox options={[{label,value}]} value onChange placeholder searchPlaceholder emptyText> (use for 5+ options instead of styled <select>).`,
   },
   datetime: {
-    triggers: /\b(date picker|date input|calendar|appointment|booking|schedule|deadline|due date)\b/i,
+    triggers:
+      /\b(date picker|date input|calendar|appointment|booking|schedule|deadline|due date)\b/i,
     body: `\n\n[Reinforcement — Date / Calendar]
 NEVER use <input type="date">. Use the kit's <DatePicker value onChange placeholder> from "@/components/ui/date-picker". For raw inline month grids use <Calendar mode="single|range" selected onSelect>.`,
   },
@@ -139,13 +143,15 @@ NEVER use <input type="date">. Use the kit's <DatePicker value onChange placehol
 Use <Table>/<TableHeader>/<TableBody>/<TableRow>/<TableHead>/<TableCell>/<TableFooter>/<TableCaption> from "@/components/ui/table". For interactive features (sorting, filtering, pagination) wrap with hand-rolled state — the kit does NOT bundle tanstack-table. Reference: "src/components/examples/table-paginated.tsx".`,
   },
   router: {
-    triggers: /\b(multi-?page|pages?|route|navigation|nav bar|menu link|landing.*about|home.*pricing|several screens)\b/i,
+    triggers:
+      /\b(multi-?page|pages?|route|navigation|nav bar|menu link|landing.*about|home.*pricing|several screens)\b/i,
     body: `\n\n[Reinforcement — Routing]
 Multi-page apps MUST use "@/components/ui/router" (re-exports react-router-dom, including Router/Routes/Route and RouterProvider/createBrowserRouter/RouteObject). Prefer <Router><Routes><Route element={<Layout />}><Route path="/" element={<Home />} />…</Route></Routes></Router> in src/App.tsx, put pages in src/pages/<Name>.tsx. NEVER import from "react-router-dom" directly. NEVER use useState for "current page". NEVER use <a href="/x"> for in-app links — use <Link to="/x">.
 PAGE EXPORTS: prefer plain named exports + eager imports. React.lazy(() => import("@/pages/X")) only works if X also has \`export default\` — otherwise crashes at render with React error #306.`,
   },
   auth: {
-    triggers: /\b(auth|login|sign ?up|sign ?in|password|otp|magic link|user account|protected route)\b/i,
+    triggers:
+      /\b(auth|login|sign ?up|sign ?in|password|otp|magic link|user account|protected route)\b/i,
     body: `\n\n[Reinforcement — Auth (only if backend is connected)]
 Use ONLY the helpers exported from "@/integrations/backend/auth": useAuth(), signUpWithPassword, signInWithPassword, signInWithOtp, verifyOtp, verifySignupOtp, resendSignupOtp, resetPasswordForEmail, updatePassword, signOut, signInWithGoogle. After signUpWithPassword, verify with verifySignupOtp (NOT verifyOtp). For Google / "Continue with Google" / social login, call \`signInWithGoogle()\` from useAuth() — it returns \`{ error }\` and redirects the browser. NEVER call supabase.auth.signInWithOAuth directly. NEVER call supabase.auth.* directly. NEVER import from "@supabase/supabase-js". Read "src/components/examples/BACKEND.md" for full reference.`,
   },
@@ -174,7 +180,8 @@ What to say:
 - Do NOT mention Supabase, edge functions, or any infra names — just "a backend".`,
   },
   images: {
-    triggers: /\b(image|photo|picture|hero|illustration|avatar|background|banner|cover|logo|gallery)\b/i,
+    triggers:
+      /\b(image|photo|picture|hero|illustration|avatar|background|banner|cover|logo|gallery)\b/i,
     body: `\n\n[Reinforcement — Images]
 Use \`petal-image://<descriptive-prompt>\` for any AI-generated visual. Be SPECIFIC (e.g. "petal-image://cozy-coffee-shop-hero-warm-morning-light"). Max 6 unique placeholders per turn — extras silently fall back to picsum. NEVER use unsplash.com / placeholder.com / picsum.photos when petal-image:// fits. Fake testimonial avatars MAY use https://i.pravatar.cc/150?u=<seed>.`,
   },
@@ -184,7 +191,8 @@ Use \`petal-image://<descriptive-prompt>\` for any AI-generated visual. Be SPECI
 Tailwind v4 syntax ONLY: \`@import "tailwindcss";\` on line 1, then \`@theme { --color-primary: oklch(...); --radius-lg: 0.75rem; }\`. CRITICAL: \`@theme { ... }\` accepts ONLY token declarations (\`--name: value;\`). NEVER nest selectors inside it — no \`.dark { ... }\`, \`:root { ... }\`, \`@media (...)\`, or \`&:is(...)\` inside @theme. Put \`:root { ... }\` and \`.dark { ... }\` blocks AFTER @theme at the top level. Class-based dark mode is enabled with \`@custom-variant dark (&:where(.dark, .dark *));\` BEFORE @theme — do not redeclare it inside. NEVER use v3 \`@tailwind base/components/utilities\` directives — they abort the build. NEVER \`@apply\` an undefined class. When unsure, EMIT NOTHING for src/styles.css and let the scaffold's defaults win.`,
   },
   toast: {
-    triggers: /\b(toast|notification|alert message|success message|error message|snackbar|flash message)\b/i,
+    triggers:
+      /\b(toast|notification|alert message|success message|error message|snackbar|flash message)\b/i,
     body: `\n\n[Reinforcement — Toasts]
 Mount <Toaster /> ONCE in App.tsx (or main.tsx). Then call toast.success("Saved.") / toast.error("…") / toast("Default") from "@/components/ui/toast" anywhere. NEVER build a custom alert div for ephemeral feedback.`,
   },
@@ -195,7 +203,9 @@ function messageText(content: unknown): string {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
     return content
-      .map((p) => (typeof p === "object" && p && "text" in p ? String((p as { text: string }).text) : ""))
+      .map((p) =>
+        typeof p === "object" && p && "text" in p ? String((p as { text: string }).text) : "",
+      )
       .join(" ");
   }
   return "";
@@ -204,9 +214,9 @@ function messageText(content: unknown): string {
 /**
  * Pick reinforcement snippets that match the latest user turn.
  *
- * Always includes the "kitCore" baseline. Bias toward the LAST user
- * message (most recent intent) but also peek at the previous one for
- * context. Cap at 6 topical snippets to keep prompt size reasonable
+ * Always includes the "kitCore" baseline. Match ONLY the latest user
+ * message so stale requests in chat history don't silently expand the
+ * current scope. Cap at 6 topical snippets to keep prompt size reasonable
  * while still covering compound asks (e.g. "auth + dashboard with charts").
  */
 export function pickDynamicSnippets(args: {
@@ -215,12 +225,8 @@ export function pickDynamicSnippets(args: {
   /** When true, skip the auth block (no backend connected). */
   hasBackend: boolean;
 }): { snippets: DynamicSnippetKey[]; text: string } {
-  const userTurns = args.messages
-    .filter((m) => m.role === "user")
-    .slice(-2)
-    .map((m) => messageText(m.content))
-    .join(" ");
-  const haystack = userTurns.toLowerCase();
+  const latestUserTurn = [...args.messages].reverse().find((m) => m.role === "user");
+  const haystack = messageText(latestUserTurn?.content).toLowerCase();
 
   const matched: DynamicSnippetKey[] = [];
   // kitCore is always first — the baseline primitives every turn needs.
@@ -274,4 +280,3 @@ export function renderCurrentDateBlock(now: Date = new Date()): string {
 Today is ${human} (${iso}). The current year is ${year}.
 When writing footers, copyright notices ("© ${year}"), "last updated" labels, blog post dates, or any other user-facing date, use ${year} (or a sensible recent year). Never default to 2023 or 2024.`;
 }
-
