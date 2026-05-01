@@ -212,13 +212,25 @@ export function ProjectSettingsSheet({
           <span className="text-xs text-muted-foreground">Open</span>
         </button>
 
-        {/* Domains section */}
-        <div id="settings-domains" className="scroll-mt-4">
-          <DomainsSection
-            projectId={project.id}
-            hasPublishedBuild={!!project.latest_build_id}
-          />
-        </div>
+        {/* Domains — top-level entry (Lovable-style). Opens a dedicated
+            sub-sheet so users can find and manage domains in one tap. */}
+        <button
+          type="button"
+          onClick={() => setDomainsOpen(true)}
+          id="settings-domains"
+          className="mt-3 flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-left transition hover:border-primary/40 hover:bg-muted/60"
+        >
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background text-primary">
+            <Globe className="h-4 w-4" />
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-medium">Domains</div>
+            <div className="text-xs text-muted-foreground">
+              Buy a new domain or connect one you already own.
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
 
         {/* Backend section */}
         <div id="settings-backend" className="scroll-mt-4">
