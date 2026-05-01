@@ -2014,7 +2014,7 @@ function Builder() {
         if (r) setProject(r);
       })
       .catch((err: unknown) => {
-        setFriendlyError(
+        persistFriendlyError(
           toFriendlyError(err, { surface: "build", projectId: project.id }),
         );
         setPhases((p) => markFailed(p, "deploying"));
