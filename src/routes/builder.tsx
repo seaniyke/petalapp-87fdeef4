@@ -1194,6 +1194,7 @@ function Builder() {
       let resultHandoff: ChatMessage["handoff"] | undefined;
       let streamError: string | null = null;
       let streamErrorKind: import("@/server/generate.server").ErrorKind | undefined;
+      let streamErrorRaw: string | undefined;
       let errorSuggestions: string[] = [];
       // Mirror of the streamingAssistant state we accumulate as deltas come in.
       // Kept locally so the catch/finally branches can read the latest value
@@ -1362,9 +1363,10 @@ function Builder() {
               resultHandoff = handoff;
             },
 
-            onError: (m, sugg, kind) => {
+            onError: (m, sugg, kind, raw) => {
               streamError = m;
               streamErrorKind = kind;
+              streamErrorRaw = raw;
               if (sugg && sugg.length > 0) errorSuggestions = sugg;
             },
           },
@@ -1375,8 +1377,9 @@ function Builder() {
         if (streamError) {
           // Preserve the server-classified kind across the throw boundary so
           // toFriendlyError can render the right card without regexing the
-          // (humanized) message text.
-          throw new PipelineError(streamError, streamErrorKind ?? "unknown");
+          // (humanized) message text. Pass `raw` through too so unclassified
+          // failures land in pipeline_failures with the real exception text.
+          throw new PipelineError(streamError, streamErrorKind ?? "unknown", streamErrorRaw);
         }
         if (!resultFiles) throw new Error("No result returned.");
 
