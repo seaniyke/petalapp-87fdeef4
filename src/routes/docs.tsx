@@ -69,7 +69,7 @@ const sections: Section[] = [
           </li>
           <li>
             When you're happy, click <strong>Publish</strong> to take it live on a free
-            <code>*.lovable.app</code> URL.
+            <code>*.petalapp.com</code> URL.
           </li>
         </ol>
       </>
@@ -135,7 +135,7 @@ const sections: Section[] = [
           set up the calls for you.
         </p>
         <p>
-          Common use cases: chatbots, document Q&amp;A, sentiment detection, content generation,
+          Common use cases: chatbots, document Q&A, sentiment detection, content generation,
           translation, and image analysis. Usage runs on your Cloud + AI balance.
         </p>
       </>
@@ -143,14 +143,14 @@ const sections: Section[] = [
   },
   {
     id: "publish",
-    title: "Publishing &amp; updates",
+    title: "Publishing & updates",
     icon: Sparkles,
     blurb: "Take your app live and ship updates.",
     body: (
       <>
         <p>
           Click <strong>Publish</strong> in the builder to deploy. Your app gets a free
-          <code> *.lovable.app</code> subdomain immediately.
+          <code> *.petalapp.com</code> subdomain immediately.
         </p>
         <ul>
           <li><strong>Frontend changes</strong> require pressing "Update" in the publish dialog to go live.</li>
@@ -182,7 +182,7 @@ const sections: Section[] = [
   },
   {
     id: "auth-security",
-    title: "Auth &amp; security",
+    title: "Auth & security",
     icon: Shield,
     blurb: "Keep user data safe by default.",
     body: (
@@ -201,7 +201,7 @@ const sections: Section[] = [
   },
   {
     id: "billing",
-    title: "Plans &amp; billing",
+    title: "Plans & billing",
     icon: CreditCard,
     blurb: "How credits, plans, and runtime work.",
     body: (
@@ -220,7 +220,7 @@ const sections: Section[] = [
   },
   {
     id: "versioning",
-    title: "Versions &amp; rollback",
+    title: "Versions & rollback",
     icon: GitBranch,
     blurb: "Every change is a checkpoint you can revert.",
     body: (
