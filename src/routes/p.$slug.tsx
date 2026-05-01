@@ -147,6 +147,18 @@ function PublicPreview() {
               </div>
             )}
           </div>
+          {published.url && (
+            <a
+              href={published.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted"
+              title="Open live site in a new tab"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Open
+            </a>
+          )}
           <button
             onClick={() => setConfirmOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-xs font-medium text-background transition hover:brightness-110"
