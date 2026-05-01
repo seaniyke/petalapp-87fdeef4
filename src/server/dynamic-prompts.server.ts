@@ -15,6 +15,8 @@
  * primitives (Button/Card/Input/etc.) on every turn.
  */
 
+import { renderKitManifestBlock } from "./kit-manifest.server";
+
 export type DynamicSnippetKey =
   | "kitCore"
   | "fileBudget"
@@ -41,20 +43,13 @@ interface SnippetDef {
 }
 
 const SNIPPETS: Record<DynamicSnippetKey, SnippetDef> = {
-  // Always-on baseline. The 8-10 primitives every turn ends up using.
+  // Always-on baseline. Replaced at injection time with the auto-derived
+  // kit manifest (see renderKitManifestBlock) so new primitives become
+  // visible to the model the moment they ship in scaffold-kit.ts. The
+  // body here is a placeholder that gets swapped in pickDynamicSnippets.
   kitCore: {
     triggers: "always",
-    body: `\n\n[Kit — always available, import from "@/components/ui/*"]
-- <Button variant="default|destructive|outline|secondary|ghost|link" size="default|sm|lg|icon">
-- <Card>, <CardHeader>, <CardTitle>, <CardDescription>, <CardContent>, <CardFooter>
-- <Input>, <Textarea>, <Label htmlFor>
-- <Badge variant="default|secondary|destructive|outline">
-- <Separator orientation="horizontal|vertical">
-- <Skeleton>, <Avatar>/<AvatarImage>/<AvatarFallback>
-- <Alert variant>, <AlertTitle>, <AlertDescription>
-- cn() helper from "@/lib/utils" for conditional classes
-- Icons: lucide-react (NEVER emoji as functional icons)
-Other primitives exist (Tabs/Dialog/Sheet/Drawer/Select/Combobox/DatePicker/Calendar/Form/Chart/Table/DropdownMenu/Popover/Tooltip/Accordion/ScrollArea/Slider/Progress/Switch/Checkbox/RadioGroup/Container/Stack/Inline/Grid/Router/Toast/ThemeProvider/ThemeToggle) — they are documented further down ONLY when this turn's request matches them. If you need one that isn't documented, the import path is "@/components/ui/<kebab-name>".`,
+    body: "__KIT_MANIFEST_PLACEHOLDER__",
   },
   // Fires on multi-section / landing / dashboard / page-shaped requests —
   // the exact turns that historically blew past the 180-line cap and got
@@ -254,7 +249,16 @@ export function pickDynamicSnippets(args: {
 
   // Cap at 8 total (kitCore + noBackendGate + 6 topical).
   const picked = matched.slice(0, 8);
-  const text = picked.map((k) => SNIPPETS[k].body).join("");
+  const text = picked
+    .map((k) => {
+      const body = SNIPPETS[k].body;
+      // kitCore body is a placeholder — swap in the auto-derived manifest
+      // so new primitives become visible to the model the moment they
+      // ship in scaffold-kit.ts.
+      if (k === "kitCore") return renderKitManifestBlock();
+      return body;
+    })
+    .join("");
   return { snippets: picked, text };
 }
 

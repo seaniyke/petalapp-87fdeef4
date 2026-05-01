@@ -37,6 +37,7 @@ import {
 import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design-director.server";
 import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/self-recovery.server";
 import { pickDynamicSnippets, renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
+import { renderPetalCapabilitiesBlock } from "@/server/petal-capabilities.server";
 import { autofixFiles } from "@/server/stream-autofixer";
 import { runPostStreamAutofix } from "@/server/post-stream-autofix.server";
 import { fallbackEstimate } from "@/server/preflight-estimate.server";
@@ -666,6 +667,9 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
   });
 
   const dateBlock = renderCurrentDateBlock();
+  const capabilitiesBlock = renderPetalCapabilitiesBlock({
+    hasBackend: Boolean(backend),
+  });
 
   const chatMessages = [
     {
@@ -673,6 +677,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       content:
         baseSystem +
         dateBlock +
+        capabilitiesBlock +
         backendBlock +
         integrationsBlock +
         suggestionsBlock +

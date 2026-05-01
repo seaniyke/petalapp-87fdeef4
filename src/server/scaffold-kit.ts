@@ -3619,7 +3619,7 @@ export function BarChart({ data, color = 1, xAxis = true, className, ...props }:
  * told these exist and not to emit them; if it does, we replace them anyway
  * to keep the kit canonical.
  */
-const KIT: KitFile[] = [
+export const KIT_FILES: KitFile[] = [
   { path: "vite.config.ts", content: VITE_CONFIG, overwrite: true },
   { path: "petal-source-plugin.mjs", content: PETAL_SOURCE_PLUGIN, overwrite: true },
   { path: "tsconfig.json", content: TSCONFIG, overwrite: true },
@@ -3715,7 +3715,7 @@ const KIT: KitFile[] = [
  * side. Cost: ~10ms once per Worker isolate.
  */
 function verifyScaffoldIntegrity(): void {
-  const paths = new Set(KIT.map((k) => k.path));
+  const paths = new Set(KIT_FILES.map((k) => k.path));
   const importRe = /from\s+["']@\/([^"']+)["']/g;
   const candidates = (base: string) => [
     `src/${base}`,
@@ -3727,7 +3727,7 @@ function verifyScaffoldIntegrity(): void {
     `src/${base}/index.ts`,
   ];
   const failures: string[] = [];
-  for (const k of KIT) {
+  for (const k of KIT_FILES) {
     if (!/\.(tsx?|jsx?)$/.test(k.path)) continue;
     let m: RegExpExecArray | null;
     while ((m = importRe.exec(k.content))) {
@@ -3822,7 +3822,7 @@ export function applyScaffoldKit(
   const map = new Map<string, string>();
   for (const f of aiFiles) map.set(f.path, f.content);
 
-  for (const kit of KIT) {
+  for (const kit of KIT_FILES) {
     if (kit.overwrite || !map.has(kit.path)) {
       map.set(kit.path, kit.content);
     }
