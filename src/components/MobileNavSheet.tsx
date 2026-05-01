@@ -44,12 +44,12 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-[88vw] max-w-sm p-0">
+      <SheetContent side="left" className="flex w-[88vw] max-w-sm flex-col p-0">
         <SheetHeader className="border-b border-border/60 px-5 py-4">
           <SheetTitle className="text-left text-base">Menu</SheetTitle>
         </SheetHeader>
 
-        <div className="flex h-full flex-col overflow-y-auto pb-8">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-[max(2rem,env(safe-area-inset-bottom))]">
           {isReady && user && (
             <div className="border-b border-border/60 px-5 py-4">
               <p className="truncate text-xs uppercase tracking-wider text-muted-foreground">
