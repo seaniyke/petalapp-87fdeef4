@@ -130,9 +130,9 @@ function resolveModel(preset: ModelPreset, latestPrompt: string, fileCount: numb
 }
 
 function completionBudget(args: { isInitial: boolean; phase: Phase; hasVisionTurn: boolean }): number {
-  if (args.hasVisionTurn) return 6_000;
-  if (args.isInitial) return 8_000;
-  if (args.phase === "implement" || args.phase === "docs") return 5_500;
+  if (args.hasVisionTurn) return 8_000;
+  if (args.isInitial) return 12_000;
+  if (args.phase === "implement" || args.phase === "docs") return 7_000;
   return 6_500;
 }
 
