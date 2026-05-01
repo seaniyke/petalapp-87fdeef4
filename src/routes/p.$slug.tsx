@@ -1,15 +1,13 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { Sparkles, GitFork, ArrowUpRight, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Sparkles, GitFork, ArrowUpRight, Loader2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import {
   getProjectBySlug,
-  loadProjectFiles,
   remixProjectBySlug,
   type ProjectRow,
 } from "@/lib/projects";
-import type { ProjectFile } from "@/server/generate.server";
-import { buildPreviewDoc } from "@/lib/preview";
+import { resolvePublishedUrl, type PublishedUrlResult } from "@/lib/published-url";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
