@@ -14,6 +14,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as GalleryRouteImport } from './routes/gallery'
+import { Route as DocsRouteImport } from './routes/docs'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -95,6 +96,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const GalleryRoute = GalleryRouteImport.update({
   id: '/gallery',
   path: '/gallery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuilderRoute = BuilderRouteImport.update({
@@ -396,6 +402,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
@@ -460,6 +467,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
@@ -525,6 +533,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
@@ -591,6 +600,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/builder'
+    | '/docs'
     | '/gallery'
     | '/profile'
     | '/projects'
@@ -655,6 +665,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/builder'
+    | '/docs'
     | '/gallery'
     | '/profile'
     | '/projects'
@@ -719,6 +730,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/builder'
+    | '/docs'
     | '/gallery'
     | '/profile'
     | '/projects'
@@ -784,6 +796,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   BuilderRoute: typeof BuilderRoute
+  DocsRoute: typeof DocsRoute
   GalleryRoute: typeof GalleryRoute
   ProfileRoute: typeof ProfileRoute
   ProjectsRoute: typeof ProjectsRoute
@@ -879,6 +892,13 @@ declare module '@tanstack/react-router' {
       path: '/gallery'
       fullPath: '/gallery'
       preLoaderRoute: typeof GalleryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/builder': {
@@ -1299,6 +1319,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   BuilderRoute: BuilderRoute,
+  DocsRoute: DocsRoute,
   GalleryRoute: GalleryRoute,
   ProfileRoute: ProfileRoute,
   ProjectsRoute: ProjectsRoute,

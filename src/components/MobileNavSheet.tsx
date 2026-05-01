@@ -126,8 +126,9 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
           )}
 
           <Section title="Help">
-            <RowExternal
-              href="https://docs.lovable.dev/"
+            <RowLink
+              to="/docs"
+              onClick={close}
               icon={<BookOpen className="h-4 w-4" />}
               label="Documentation"
             />
