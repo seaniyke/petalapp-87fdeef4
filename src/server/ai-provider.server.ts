@@ -431,15 +431,26 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
  */
 const DEFAULT_TIMEOUT_MS = 25_000;
 const DEFAULT_STREAM_TIMEOUT_MS = 120_000;
+/**
+ * First-build streams need a longer ceiling. Initial scaffolds emit many
+ * files in one shot — the digest showed clusters of "operation aborted due
+ * to timeout" all on first generates. Worker wall budget is fine because
+ * we forward bytes as they arrive.
+ */
+const FIRST_BUILD_STREAM_TIMEOUT_MS = 240_000;
 
 function effectiveSignal(
   caller: AbortSignal | undefined,
-  isStreaming: boolean,
+  tier: AiCallTimeoutTier,
 ): AbortSignal {
-  const ms = isStreaming ? DEFAULT_STREAM_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
+  const ms =
+    tier === "stream_first_build"
+      ? FIRST_BUILD_STREAM_TIMEOUT_MS
+      : tier === "stream"
+        ? DEFAULT_STREAM_TIMEOUT_MS
+        : DEFAULT_TIMEOUT_MS;
   const timeout = AbortSignal.timeout(ms);
   if (!caller) return timeout;
-  // Combine — abort as soon as either fires.
   return AbortSignal.any([caller, timeout]);
 }
 
@@ -447,6 +458,7 @@ async function dispatch(
   provider: Provider,
   body: Record<string, unknown>,
   signal: AbortSignal | undefined,
+  tierOverride?: AiCallTimeoutTier,
 ): Promise<Response> {
   let url: string;
   let apiKey: string | undefined;
@@ -483,12 +495,14 @@ async function dispatch(
   }
 
   const isStreaming = outBody.stream === true;
+  const tier: AiCallTimeoutTier =
+    tierOverride ?? (isStreaming ? "stream" : "default");
 
   return fetch(url, {
     method: "POST",
     headers,
     body: JSON.stringify(outBody),
-    signal: effectiveSignal(signal, isStreaming),
+    signal: effectiveSignal(signal, tier),
   });
 }
 
