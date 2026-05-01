@@ -574,6 +574,14 @@ function Builder() {
   const isDeploying = effectiveBuildSnap?.status === "pending" || effectiveBuildSnap?.status === "building";
   const isLive = effectiveBuildSnap?.status === "ready";
 
+  // Single source of truth for "Petal is currently working." Used to gate
+  // EVERY actionable chip/card so users never see a button while a turn or
+  // deploy is still in flight (matches Lovable's behavior). Covers:
+  //   - busy: AI generation streaming
+  //   - discussBusy: Discuss/chat-only reply streaming
+  //   - isDeploying: Cloudflare deploy not yet ready/failed
+  const petalIsWorking = busy || discussBusy || isDeploying;
+
   // Long-wait escalation for the deploy phase. We escalate copy at 60s/90s
   // and surface a friendly "deploy stalled" card at 150s so the user always
   // has a way to retry or keep working — never a stranded spinner.
