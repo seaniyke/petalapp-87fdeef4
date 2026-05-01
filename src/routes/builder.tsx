@@ -448,6 +448,10 @@ function Builder() {
     attempts: 0,
     handledBuildIds: new Set(),
   });
+  const noEditRecoveryRef = useRef<{ projectId: string | null; attempts: number }>({
+    projectId: null,
+    attempts: 0,
+  });
   // When a user starts a new AI turn or retries a stalled deploy, the previous
   // `latest_build_id` is no longer the thing the chat should react to. Without
   // this, an old pending deploy can keep re-opening the "Publishing is taking
