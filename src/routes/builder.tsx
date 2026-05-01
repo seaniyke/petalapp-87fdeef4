@@ -1471,7 +1471,13 @@ function Builder() {
         if (!resultFiles) throw new Error("No result returned.");
 
         const files2: ProjectFile[] = resultFiles;
-        const summary2: string = resultSummary || "Updated the project.";
+        const rawSummary2: string = resultSummary || "Updated the project.";
+        // Backend-claim guardrail: if no migration files were emitted, strip
+        // any "I created your tables / wired sign-up" sentences from summary
+        // and recap so the chat doesn't promise something the user will then
+        // fail to find in the Cloud panel.
+        const summary2 = guardBackendClaims(rawSummary2, files2, "Updated the project.");
+        const safeRecap = guardBackendClaims(resultRecap, files2, "");
         noEditRecoveryRef.current.attempts = 0;
         // Persist the warm preamble alongside the technical summary so the
         // chat thread retains the human voice on refresh — without it, all
@@ -1484,7 +1490,7 @@ function Builder() {
           role: "assistant",
           content: combinedContent,
           plan: resultPlan,
-          recap: resultRecap,
+          recap: safeRecap || undefined,
           // Layer 5 — gap-driven follow-up chips. Empty array stays out of
           // the message so a clean build doesn't render an empty chip row.
           ...(resultSuggestions.length > 0 ? { suggestions: resultSuggestions } : {}),
