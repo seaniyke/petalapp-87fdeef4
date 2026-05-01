@@ -357,11 +357,7 @@ export type ChatMessage = {
    *  inline chip under the assistant message that pre-fills the composer
    *  with `suggestedPrompt` so the user can continue with one click. */
   handoff?: {
-    reason:
-      | "oversize_files"
-      | "incomplete_turn"
-      | "large_changeset"
-      | "unrecoverable_turn";
+    reason: "oversize_files" | "incomplete_turn" | "large_changeset" | "unrecoverable_turn";
     message: string;
     suggestedPrompt: string;
     detected?: {
@@ -380,7 +376,12 @@ export type FileOp =
   | { op: "update"; path: string; content: string }
   | { op: "delete"; path: string };
 
-export type WriteProjectArgs = { plan?: string; summary: string; recap?: string; files: ProjectFile[] };
+export type WriteProjectArgs = {
+  plan?: string;
+  summary: string;
+  recap?: string;
+  files: ProjectFile[];
+};
 export type PatchFilesArgs = { plan?: string; summary: string; recap?: string; ops: FileOp[] };
 
 /** Stream events emitted from /api/generate to the client. */
@@ -451,11 +452,7 @@ export type StreamEvent =
        * one click.
        */
       type: "continuation_handoff";
-      reason:
-        | "oversize_files"
-        | "incomplete_turn"
-        | "large_changeset"
-        | "unrecoverable_turn";
+      reason: "oversize_files" | "incomplete_turn" | "large_changeset" | "unrecoverable_turn";
       message: string;
       suggestedPrompt: string;
       /** Optional structured detail of what tripped the handoff. Used by the
@@ -511,9 +508,7 @@ export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
       const prev = map.get(op.path) ?? "";
       const { content, expanded, failed } = expandKeepMarkers(prev, op.content);
       if (expanded > 0 || failed > 0) {
-        console.log(
-          `[keep-existing] ${op.path}: expanded=${expanded} failed=${failed}`,
-        );
+        console.log(`[keep-existing] ${op.path}: expanded=${expanded} failed=${failed}`);
       }
       if (failed > 0 || /keep existing code/i.test(content)) {
         throw new Error(
