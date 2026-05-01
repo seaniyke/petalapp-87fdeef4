@@ -2529,6 +2529,30 @@ function Builder() {
               </div>
             )}
             {messages.map((m, i) => {
+              // Persisted "Petal got confused" cards: render as the iOS-style
+              // PetalErrorCard inline in the thread so the failure survives a
+              // refresh. Retry replays the most recent user prompt; ask-fix
+              // routes through the normal askPetalToFix flow.
+              if (m.role === "assistant" && m.error) {
+                const isTail = i === messages.length - 1;
+                return (
+                  <div key={i} className="flex justify-start">
+                    <PetalErrorCard
+                      error={m.error}
+                      onRetry={
+                        isTail && m.error.actionKind === "retry" && lastUserPrompt
+                          ? retry
+                          : undefined
+                      }
+                      onAskFix={
+                        isTail && m.error.actionKind === "ask-fix"
+                          ? askPetalToFix
+                          : undefined
+                      }
+                    />
+                  </div>
+                );
+              }
               // System notes (e.g. "Petal is auto-fixing the build — free")
               // render as a small centered chip, not a chat bubble — they're
               // status updates, not part of the conversation.
