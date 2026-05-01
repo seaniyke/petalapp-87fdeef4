@@ -233,7 +233,7 @@ export async function updateLastCallUsage(args: {
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(1);
-    q = args.model ? q.eq("model", args.model) : q.is("model", null);
+    if (args.model) q = q.eq("model", args.model);
     const { data: rows } = await q;
     const id = rows?.[0]?.id;
     if (!id) return;
@@ -247,6 +247,44 @@ export async function updateLastCallUsage(args: {
       .eq("id", id);
   } catch (err) {
     console.warn("[ai-provider] usage backfill failed", err);
+  }
+}
+
+/**
+ * Mark the most recent streaming AI call as failed when the HTTP response
+ * opened successfully but the body later timed out/errored while being read.
+ * Without this, router telemetry sees status=200 and keeps choosing a model
+ * that never actually completed the user's build.
+ */
+export async function markLastCallFailure(args: {
+  feature: AiFeature;
+  model: string | null;
+  status: number;
+  errorMessage: string;
+}): Promise<void> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const since = new Date(Date.now() - 5 * 60_000).toISOString();
+    let q = supabaseAdmin
+      .from("ai_call_log")
+      .select("id")
+      .eq("feature", args.feature)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    q = args.model ? q.eq("model", args.model) : q.is("model", null);
+    const { data: rows } = await q;
+    const id = rows?.[0]?.id;
+    if (!id) return;
+    await supabaseAdmin
+      .from("ai_call_log")
+      .update({
+        status: args.status,
+        error_message: args.errorMessage.slice(0, 500),
+      })
+      .eq("id", id);
+  } catch (err) {
+    console.warn("[ai-provider] failure backfill failed", err);
   }
 }
 
@@ -372,7 +410,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
  *
  * - Non-streaming: 25s. Plenty for short tool calls (classifier, director,
  *   self-check, autofix) but well under the worker's wall budget.
- * - Streaming: 90s. The big generate/discuss calls stream back and we
+ * - Streaming: 120s. The big generate/discuss calls stream back and we
  *   forward bytes as they arrive, so the worker doesn't burn CPU while
  *   waiting. Still bounded so a wedged stream can't run forever.
  *
@@ -380,7 +418,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
  * first wins (AbortSignal.any is supported in Workers + Node ≥ 20).
  */
 const DEFAULT_TIMEOUT_MS = 25_000;
-const DEFAULT_STREAM_TIMEOUT_MS = 90_000;
+const DEFAULT_STREAM_TIMEOUT_MS = 120_000;
 
 function effectiveSignal(
   caller: AbortSignal | undefined,

@@ -106,7 +106,7 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
   upstream_timeout: (raw) => ({
     title: "Petal ran out of time before saving changes",
     message:
-      "The AI took too long this turn — nothing was charged and no files were changed. Try again with a smaller, more focused ask (e.g. just the Google login button this turn, the dashboard counts next).",
+      "Petal took too long on this turn, so nothing was charged and no files were changed. I’ll retry with a tighter, safer build path.",
     actionLabel: "Try again",
     actionKind: "retry",
     technicalDetail: raw,

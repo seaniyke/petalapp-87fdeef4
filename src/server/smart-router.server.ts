@@ -70,9 +70,14 @@ let inflight: Promise<RouterSnapshot> | null = null;
 
 const DEFAULT_CONFIG: RouterConfig = {
   enabled: true,
-  explorationPct: 10,
-  minSamples: 5,
+  explorationPct: 0,
+  minSamples: 3,
   windowHours: 168,
+};
+
+const RELIABILITY_FLOOR = {
+  outcomeSamples: 3,
+  verifierPassRate: 0.3,
 };
 
 async function loadConfig(): Promise<RouterConfig> {
@@ -85,8 +90,8 @@ async function loadConfig(): Promise<RouterConfig> {
     if (!data) return DEFAULT_CONFIG;
     return {
       enabled: Boolean(data.enabled),
-      explorationPct: data.exploration_pct ?? DEFAULT_CONFIG.explorationPct,
-      minSamples: data.min_samples ?? DEFAULT_CONFIG.minSamples,
+    explorationPct: Math.min(data.exploration_pct ?? DEFAULT_CONFIG.explorationPct, 5),
+    minSamples: Math.max(3, data.min_samples ?? DEFAULT_CONFIG.minSamples),
       windowHours: data.window_hours ?? DEFAULT_CONFIG.windowHours,
     };
   } catch (e) {
@@ -205,7 +210,11 @@ function buildSnapshot(
         //     don't immediately get a "fix this" follow-up turn.
         const costScore = medianCostMicro / 1000 + 1; // micro → milli, +1
         const latencyPenalty = p50LatencyMs > 5000 ? 0.05 : 0;
-        const httpScore = successRate / costScore - latencyPenalty;
+        // Streaming failures can open as HTTP 200 and then die while reading
+        // the body. A later backfill marks those rows as 524; until then,
+        // very long p50s are a reliability smell, not a quality signal.
+        const timeoutPenalty = p50LatencyMs > 9000 ? 0.35 : p50LatencyMs > 7000 ? 0.15 : 0;
+        const httpScore = successRate / costScore - latencyPenalty - timeoutPenalty;
 
         let qualityMult = 1;
         if (outcomeSamples >= 3) {
@@ -217,7 +226,10 @@ function buildSnapshot(
           // permanently kill a model.
           qualityMult = Math.max(0.25, Math.min(1.5, qualityMult * 1.5));
         }
-        const score = httpScore * qualityMult;
+        const belowReliabilityFloor =
+          outcomeSamples >= RELIABILITY_FLOOR.outcomeSamples &&
+          (verifierPassRate ?? 1) < RELIABILITY_FLOOR.verifierPassRate;
+        const score = belowReliabilityFloor ? -1 : httpScore * qualityMult;
 
         stats.push({
           model,
@@ -426,7 +438,9 @@ export async function pickBestModel(args: PickArgs): Promise<PickResult> {
   // Exploit: best score from (feature, phase), then (feature), then default.
   const tryRanked = (stats: ModelStat[] | undefined): PickResult | null => {
     if (!stats || stats.length === 0) return null;
-    const eligible = stats.filter((s) => args.candidates.includes(s.model) && s.enoughData);
+    const eligible = stats.filter(
+      (s) => args.candidates.includes(s.model) && s.enoughData && s.score >= 0,
+    );
     if (eligible.length === 0) return null;
     const top = eligible[0];
     return { model: top.model, reason: "best_score", stat: top };

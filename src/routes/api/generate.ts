@@ -23,7 +23,11 @@ import {
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
-import { aiChatCompletions, updateLastCallUsage } from "@/server/ai-provider.server";
+import {
+  aiChatCompletions,
+  markLastCallFailure,
+  updateLastCallUsage,
+} from "@/server/ai-provider.server";
 import { priceBuild, BUILD_FLOOR } from "@/server/credit-pricing.server";
 import {
   loadProjectMemory,
@@ -122,6 +126,13 @@ function resolveModel(preset: ModelPreset, latestPrompt: string, fileCount: numb
   if (preset === "best") return MODEL_BEST;
   if (preset === "deep") return MODEL_BEST;
   return pickSmartModel(latestPrompt, fileCount);
+}
+
+function completionBudget(args: { isInitial: boolean; phase: Phase; hasVisionTurn: boolean }): number {
+  if (args.hasVisionTurn) return 6_000;
+  if (args.isInitial) return 8_000;
+  if (args.phase === "implement" || args.phase === "docs") return 5_500;
+  return 6_500;
 }
 
 function latestUserMessage(messages: ChatMessage[]): string {
@@ -702,6 +713,11 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
   let model: string;
   let chosenBy: string = "preset";
+  const maxCompletionTokens = completionBudget({
+    isInitial,
+    phase: phaseTag.phase,
+    hasVisionTurn,
+  });
   if (hasVisionTurn) {
     model = MODEL_VISION;
     chosenBy = "vision_pin";
@@ -709,36 +725,45 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
     // Phase tag overrides the keyword heuristic in smart mode.
     const phaseDefault = tier === "smart" ? MODEL_BEST : MODEL_FAST;
     chosenBy = "phase_router";
-    // Tier 4 — telemetry-driven router. Picks the historically
-    // best-performing model from the candidate set for this
-    // (feature, phase). Falls back to the phase default when
-    // disabled or when no candidate has enough samples yet.
-    try {
-      const pick = await pickBestModel({
-        feature: "generate",
-        phase: phaseTag.phase,
-        candidates: [MODEL_FAST, MODEL_BEST],
-        defaultModel: phaseDefault,
-      });
-      model = pick.model;
-      // Make telemetry honest: distinguish "smart router actively
-      // chose this" from "smart router had no data and fell back to
-      // the phase default".
-      if (pick.reason === "best_score" || pick.reason === "exploration") {
-        chosenBy = `smart_router:${pick.reason}`;
-      } else if (pick.reason === "no_data") {
-        chosenBy = "phase_router:no_router_data";
-      }
-      if (pick.stat) {
-        console.log(
-          `[smart-router] reason=${pick.reason} model=${pick.model} score=${pick.stat.score.toFixed(4)} succ=${(pick.stat.successRate * 100).toFixed(1)}% calls=${pick.stat.calls}`,
-        );
-      } else {
-        console.log(`[smart-router] reason=${pick.reason} model=${pick.model} (no stat)`);
-      }
-    } catch (e) {
-      console.warn("[smart-router] pick failed:", e);
+    if (tier === "cheap") {
+      // Implement/docs turns are mostly code-writing. Keep them on the
+      // faster model instead of letting stale HTTP-only telemetry route a
+      // tiny landing-page request to a slow reasoning model that may time out
+      // while streaming a long tool call.
       model = phaseDefault;
+      chosenBy = "phase_router:cheap_direct";
+    } else {
+      // Tier 4 — telemetry-driven router. Picks the historically
+      // best-performing model from the candidate set for this
+      // (feature, phase). Falls back to the phase default when
+      // disabled or when no candidate has enough samples yet.
+      try {
+        const pick = await pickBestModel({
+          feature: "generate",
+          phase: phaseTag.phase,
+          candidates: [MODEL_FAST, MODEL_BEST],
+          defaultModel: phaseDefault,
+        });
+        model = pick.model;
+        // Make telemetry honest: distinguish "smart router actively
+        // chose this" from "smart router had no data and fell back to
+        // the phase default".
+        if (pick.reason === "best_score" || pick.reason === "exploration") {
+          chosenBy = `smart_router:${pick.reason}`;
+        } else if (pick.reason === "no_data") {
+          chosenBy = "phase_router:no_router_data";
+        }
+        if (pick.stat) {
+          console.log(
+            `[smart-router] reason=${pick.reason} model=${pick.model} score=${pick.stat.score.toFixed(4)} succ=${(pick.stat.successRate * 100).toFixed(1)}% calls=${pick.stat.calls}`,
+          );
+        } else {
+          console.log(`[smart-router] reason=${pick.reason} model=${pick.model} (no stat)`);
+        }
+      } catch (e) {
+        console.warn("[smart-router] pick failed:", e);
+        model = phaseDefault;
+      }
     }
   } else {
     model = resolveModel(preset, lastUser, currentFiles.length);
@@ -777,6 +802,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       messages: finalMessages,
       tools: [tool],
       tool_choice: { type: "function", function: { name: tool.function.name } },
+      max_tokens: maxCompletionTokens,
       stream: true,
       ...reasoningField,
     },
@@ -862,6 +888,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               }),
               tools: [tool],
               tool_choice: { type: "function", function: { name: tool.function.name } },
+                max_tokens: maxCompletionTokens,
               stream: true,
             },
             meta: {
@@ -1661,6 +1688,14 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           stackHead: stack.slice(0, 500),
           projectId: body.projectId ?? null,
         });
+        if (!userCancelled) {
+          void markLastCallFailure({
+            feature: "generate",
+            model: typeof model === "string" ? model : null,
+            status: kind === "upstream_timeout" ? 524 : 599,
+            errorMessage: raw,
+          });
+        }
         // Persist the RAW failure directly server-side so
         // pipeline_failures.raw_message is ground truth (the client
         // path stores the humanized prose). Keyed by signature so we
