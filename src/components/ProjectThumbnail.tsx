@@ -1,97 +1,64 @@
-import { useEffect, useRef, useState } from "react";
-import { Loader2, ImageOff } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-
 /**
- * Renders a real screenshot of the project by mounting a scaled-down iframe
- * pointing at the latest deployed CDN preview (`project_builds.dist_path`).
- * The iframe only mounts once the card scrolls into view so we never run
- * dozens of preview contexts at once.
+ * Project thumbnail used by the gallery and projects drawer.
+ *
+ * We previously tried to mount a scaled-down iframe pointing at the deployed
+ * URL, but cross-origin sandbox restrictions made the iframes render as broken
+ * placeholders for most users. Instead we now render a stable, attractive
+ * gradient tile with the project's initials — fast, deterministic, and works
+ * for every project without an extra screenshot service.
  */
 export function ProjectThumbnail({
   projectId,
   className = "h-28",
+  title,
 }: {
   projectId: string;
   className?: string;
+  title?: string;
 }) {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [state, setState] = useState<"loading" | "ready" | "empty">("loading");
-  const [visible, setVisible] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
-      setVisible(true);
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) if (entry.isIntersecting) setVisible(true);
-      },
-      { rootMargin: "200px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!visible || previewUrl !== null || state !== "loading") return;
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from("project_builds")
-        .select("dist_path")
-        .eq("project_id", projectId)
-        .eq("status", "ready")
-        .not("dist_path", "is", null)
-        .order("ready_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (cancelled) return;
-      if (data?.dist_path) {
-        setPreviewUrl(data.dist_path);
-        setState("ready");
-      } else {
-        setState("empty");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [visible, projectId, previewUrl, state]);
+  // Pick one of a few gradient palettes deterministically from the projectId
+  // so the same project always gets the same look but different projects feel
+  // visually distinct in the grid.
+  const palette = pickPalette(projectId);
+  const initials = (title ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("") || "·";
 
   return (
-    <div ref={ref} className={`relative overflow-hidden bg-aurora ${className}`}>
-      <div className="absolute inset-0 bg-grain opacity-30" aria-hidden />
-      {visible && previewUrl ? (
+    <div
+      className={`relative overflow-hidden ${className}`}
+      style={{ background: palette.gradient }}
+      aria-hidden
+    >
+      <div className="absolute inset-0 bg-grain opacity-25" />
+      <div className="absolute inset-0 grid place-items-center">
         <div
-          className="pointer-events-none absolute left-0 top-0"
-          style={{
-            width: "1280px",
-            height: "800px",
-            transform: "scale(0.25)",
-            transformOrigin: "top left",
-          }}
+          className="grid h-14 w-14 place-items-center rounded-2xl bg-white/85 text-lg font-display text-foreground shadow-md backdrop-blur"
+          style={{ color: palette.ink }}
         >
-          <iframe
-            title="preview"
-            src={previewUrl}
-            sandbox="allow-scripts allow-same-origin"
-            loading="lazy"
-            className="h-full w-full border-0 bg-white"
-          />
+          {initials}
         </div>
-      ) : state === "empty" ? (
-        <div className="grid h-full place-items-center text-muted-foreground">
-          <ImageOff className="h-4 w-4" />
-        </div>
-      ) : (
-        <div className="grid h-full place-items-center">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        </div>
-      )}
+      </div>
     </div>
   );
+}
+
+const PALETTES = [
+  { gradient: "linear-gradient(135deg,#FFD8C2 0%,#F8B4A0 50%,#E59FB7 100%)", ink: "#5B2A3A" },
+  { gradient: "linear-gradient(135deg,#C7E7FF 0%,#A8C5FF 50%,#9D9BFF 100%)", ink: "#1F2960" },
+  { gradient: "linear-gradient(135deg,#FFE6A8 0%,#FFC176 50%,#F58A6A 100%)", ink: "#5A2B14" },
+  { gradient: "linear-gradient(135deg,#D6F1D8 0%,#9DD9C0 50%,#5FB4B5 100%)", ink: "#173E3D" },
+  { gradient: "linear-gradient(135deg,#F4E5FF 0%,#D9B8FF 50%,#A487E0 100%)", ink: "#3A1F66" },
+  { gradient: "linear-gradient(135deg,#FFE5EC 0%,#FFB5C5 50%,#FF7E9D 100%)", ink: "#5C1B30" },
+  { gradient: "linear-gradient(135deg,#E8E0D2 0%,#D6C4A1 50%,#B89C6A 100%)", ink: "#3F3115" },
+  { gradient: "linear-gradient(135deg,#D4F1F4 0%,#75CFB8 50%,#3B7A8A 100%)", ink: "#0E2F38" },
+];
+
+function pickPalette(seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return PALETTES[h % PALETTES.length];
 }
