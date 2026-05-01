@@ -571,9 +571,25 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           ? renderDesignDirectionBlock(designDirection)
           : "";
 
+        // Filter out files Petal manages itself before showing the project
+        // to the model. The AI never edits these (we drop ops that touch
+        // them), but feeding them back as context bloats the prompt by
+        // tens of KB on every patch turn — directly causing upstream
+        // generation timeouts on projects that accumulated many scaffold +
+        // example + backend files. We KEEP `package.json`, `index.html`,
+        // `src/main.tsx`, `src/App.tsx`, and anything else app-specific.
+        const isManagedScaffoldPath = (p: string): boolean =>
+          p.startsWith("src/components/ui/") ||
+          p.startsWith("src/components/examples/") ||
+          p.startsWith("src/integrations/backend/") ||
+          p === "vite.config.ts" ||
+          p === "tsconfig.json" ||
+          p === "src/lib/utils.ts" ||
+          p === "petal-source-plugin.mjs";
+        const promptFiles = currentFiles.filter((f) => !isManagedScaffoldPath(f.path));
         const filesContext = isInitial
           ? ""
-          : `\n\nCurrent project files:\n\n${currentFiles
+          : `\n\nCurrent project files (Petal-managed UI kit, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptFiles
               .map((f) => `--- ${f.path} ---\n${f.content}`)
               .join("\n\n")}`;
         const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
