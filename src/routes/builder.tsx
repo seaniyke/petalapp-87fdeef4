@@ -3053,33 +3053,50 @@ function Builder() {
             )}
             {/* Bridge state: busy but no streamed content yet. Without this
                 the chat goes blank for ~300ms after send while triage warms
-                up — which feels like a freeze. */}
+                up — which feels like a freeze. We distinguish "Thinking"
+                (still planning, no files touched, no active build phase)
+                from "Working" (files being written or a build phase is
+                active) so users can tell the two apart at a glance. */}
             {busy &&
               !streamingPreamble &&
               !streamingPlan &&
               !streamingAssistant &&
-              !streamingRecap && (
-                <div className="flex items-center gap-2 text-[13px]">
-                  <span className="petal-shimmer font-medium">Thinking</span>
-                </div>
-              )}
+              !streamingRecap && (() => {
+                const activePhase = phases.find((p) => p.status === "active");
+                const isWorking =
+                  filesWritten > 0 ||
+                  (activePhase && activePhase.id !== "thinking");
+                return (
+                  <div className="flex items-center gap-2 text-[13px]">
+                    <span className="petal-shimmer font-medium">
+                      {isWorking ? "Working" : "Thinking"}
+                    </span>
+                  </div>
+                );
+              })()}
             {/* Live, token-by-token reply while Petal works. Promoted to a real
                 message in `messages` once the run completes. */}
             {busy &&
               (streamingPreamble ||
                 streamingPlan ||
                 streamingAssistant ||
-                streamingRecap) && (
+                streamingRecap) && (() => {
+                const activePhase = phases.find((p) => p.status === "active");
+                const stageLabel = streamingRecap
+                  ? "Wrapping up"
+                  : streamingAssistant
+                    ? "Writing"
+                    : streamingPlan
+                      ? "Planning"
+                      : filesWritten > 0 ||
+                          (activePhase && activePhase.id !== "thinking")
+                        ? "Working"
+                        : "Thinking";
+                return (
               <div className="overflow-hidden wrap-anywhere text-[14.5px] leading-[1.65] text-foreground">
                 <div className="mb-2 flex items-center gap-2 text-[12.5px]">
                   <span className="petal-shimmer font-medium">
-                    {streamingRecap
-                      ? "Wrapping up"
-                      : streamingAssistant
-                        ? "Writing"
-                        : streamingPlan
-                          ? "Planning"
-                          : "Thinking"}
+                    {stageLabel}
                   </span>
                 </div>
                 <div className="space-y-2.5">
