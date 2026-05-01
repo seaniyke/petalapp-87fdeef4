@@ -828,7 +828,7 @@ function Builder() {
       if (busy) return;
       // Manual fallback after we've burned both auto-attempts, or when the
       // failed build was already present when the user opened the project.
-      setFriendlyError(friendlyBuildFailure(effectiveBuildSnap.errorMessage));
+      persistFriendlyError(friendlyBuildFailure(effectiveBuildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, project?.latest_build_id, project?.published_build_id, busy]);
