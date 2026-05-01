@@ -1612,7 +1612,7 @@ function Builder() {
           console.error(persistErr);
           toast.error("Generated, but couldn't save changes.");
           setPhases((p) => markFailed(p, "deploying"));
-          setFriendlyError(
+          persistFriendlyError(
             toFriendlyError(persistErr, { surface: "build", projectId: proj.id }),
           );
         }
