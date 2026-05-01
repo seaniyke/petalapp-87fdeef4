@@ -318,7 +318,7 @@ const STRUCTURED_PREFIX = "@@petal/v1:";
 function encodeAssistantContent(m: ChatMessage): string {
   if (
     m.role !== "assistant" ||
-    (!m.plan && !m.recap && !(m.suggestions && m.suggestions.length > 0))
+    (!m.plan && !m.recap && !(m.suggestions && m.suggestions.length > 0) && !m.error)
   ) {
     return m.content;
   }
@@ -327,6 +327,7 @@ function encodeAssistantContent(m: ChatMessage): string {
     plan: m.plan ?? null,
     recap: m.recap ?? null,
     suggestions: m.suggestions ?? null,
+    error: m.error ?? null,
   });
 }
 
@@ -338,6 +339,7 @@ function decodeAssistantContent(role: string, raw: string): ChatMessage {
         plan?: string | null;
         recap?: string | null;
         suggestions?: string[] | null;
+        error?: ChatMessage["error"] | null;
       };
       return {
         role: "assistant",
@@ -348,6 +350,7 @@ function decodeAssistantContent(role: string, raw: string): ChatMessage {
           Array.isArray(parsed.suggestions) && parsed.suggestions.length > 0
             ? parsed.suggestions.filter((s): s is string => typeof s === "string")
             : undefined,
+        error: parsed.error ?? undefined,
       };
     } catch {
       // Fall through to plain text on corrupt payload.
