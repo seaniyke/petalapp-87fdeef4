@@ -566,7 +566,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           ? await loadInstalledCodes(body.projectId)
           : new Set<string>();
         const integrationSuggestions = suggestIntegrations({
-          messages: body.messages ?? [],
+          messages,
           installedCodes,
         });
         const suggestionsBlock = renderSuggestionsBlock(integrationSuggestions);
@@ -597,15 +597,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // subsequent turns, the cached direction in project_memory is
         // honored automatically (pickDesignDirection short-circuits to it).
         // Patches skip the call entirely — the existing aesthetic wins.
-        const lastUserContent = (() => {
-          for (let i = messages.length - 1; i >= 0; i--) {
-            if (messages[i].role === "user") {
-              const c = messages[i].content;
-              return typeof c === "string" ? c : "";
-            }
-          }
-          return "";
-        })();
+        const lastUserContent = latestUserMessage(messages);
         const designDirection =
           isInitial && userJwt
             ? await pickDesignDirection({
@@ -634,10 +626,11 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           p === "tsconfig.json" ||
           p === "src/lib/utils.ts" ||
           p === "petal-source-plugin.mjs";
-        const promptFiles = currentFiles.filter((f) => !isManagedScaffoldPath(f.path));
+        const editablePromptFiles = currentFiles.filter((f) => !isManagedScaffoldPath(f.path));
+        const promptBudget = trimFilesForPrompt(editablePromptFiles);
         const filesContext = isInitial
           ? ""
-          : `\n\nCurrent project files (Petal-managed UI kit, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptFiles
+          : `\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Petal-managed UI kit, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
               .map((f) => `--- ${f.path} ---\n${f.content}`)
               .join("\n\n")}`;
         const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
