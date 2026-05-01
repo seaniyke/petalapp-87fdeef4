@@ -1070,6 +1070,10 @@ function Builder() {
          *  charge. The AI still receives the full error log as a user
          *  message so it can patch the actual cause. */
         isAutoFix?: boolean;
+        /** Internal recovery run after the model produced no usable edits.
+         *  Petal escalates automatically; the user should not have to pick a
+         *  stronger model manually. */
+        autoEscalate?: boolean;
         /** Internal auto-continue run (Petal picking the build back up after
          *  the user enables a service mid-flow, e.g. managed backend). The
          *  visible thread shows a friendly system note instead of the raw
@@ -1317,7 +1321,7 @@ function Builder() {
             // sending — they're UI-only, the AI shouldn't see them.
             messages: nextMessages.filter((m) => m.role !== "system"),
             currentFiles: files,
-            model: opts.isAutoFix ? "smart" : deepThink ? "deep" : "smart",
+            model: opts.autoEscalate ? "deep" : opts.isAutoFix ? "smart" : deepThink ? "deep" : "smart",
             customInstructions: proj.custom_instructions ?? undefined,
             projectId: proj.id,
             isAutoFix: opts.isAutoFix,
@@ -1581,7 +1585,7 @@ function Builder() {
           });
           setPhases(defaultPhases());
           setTimeout(() => {
-            void sendRef.current?.(text, { isRetry: true, forceBuild: true });
+            void sendRef.current?.(text, { isRetry: true, forceBuild: true, autoEscalate: true });
           }, 250);
           return;
         }
