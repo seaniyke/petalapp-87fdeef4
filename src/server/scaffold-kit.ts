@@ -3762,6 +3762,9 @@ const REQUIRED_DEPS: Record<string, string> = {
   "class-variance-authority": "^0.7.1",
   "lucide-react": "^0.460.0",
   "@radix-ui/react-slot": "^1.1.0",
+  // Required by the scaffolded shadcn-compatible Select. Without this,
+  // every CRUD app the LLM scaffolds breaks the moment it uses a dropdown.
+  "@radix-ui/react-select": "^2.1.2",
   sonner: "^1.7.0",
   "react-router-dom": "^6.28.0",
 };
