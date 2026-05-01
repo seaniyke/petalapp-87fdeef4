@@ -83,6 +83,10 @@ type Body = {
   isAutoFix?: boolean;
 };
 
+const PATCH_CONTEXT_FILE_LIMIT = 14;
+const PATCH_CONTEXT_CHAR_LIMIT = 42_000;
+const LARGE_FILE_CONTEXT_CHAR_LIMIT = 6_000;
+
 const MODEL_FAST = "google/gemini-3-flash-preview";
 const MODEL_BEST = "google/gemini-2.5-pro";
 /** Escalation model used when the primary returned prose / no tool call.
