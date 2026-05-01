@@ -145,7 +145,95 @@ export function validateStylesCss(raw: string): ValidationResult {
     }
   }
 
+  // 4) `@apply` referencing a class that is never defined.
+  //    Tailwind v4 aborts the entire build with "Cannot apply unknown utility
+  //    class `foo`" when an `@apply` references a custom class (e.g.
+  //    `neo-border`, `neo-card`, `glass-panel`) that wasn't registered via
+  //    `@utility` / `@layer utilities { .foo { … } }`. The model frequently
+  //    invents these for "neo-brutalist" / "glassmorphic" themes without
+  //    defining them. Catch it deterministically — the fallback then swaps
+  //    the broken stylesheet for the canonical scaffold.
+  {
+    const unknown = findUnknownAppliedClasses(noStrings);
+    if (unknown.length > 0) {
+      const sample = unknown.slice(0, 3).join("`, `");
+      const more = unknown.length > 3 ? ` (+${unknown.length - 3} more)` : "";
+      return {
+        ok: false,
+        reason: `\`@apply\` references undefined custom class(es): \`${sample}\`${more}. Define them with \`@utility ${unknown[0]} { … }\` (Tailwind v4) or use a built-in utility instead.`,
+      };
+    }
+  }
+
   return { ok: true };
+}
+
+/**
+ * Return the list of custom class names referenced by `@apply` that are NOT
+ * defined anywhere in the same stylesheet. We only flag identifiers that
+ * cannot possibly be a built-in Tailwind utility — i.e. multi-segment names
+ * with no recognized prefix. This keeps false positives near zero.
+ */
+function findUnknownAppliedClasses(src: string): string[] {
+  // Collect names defined locally, so user themes that DO declare their custom
+  // utilities don't trip the check.
+  const defined = new Set<string>();
+  // `.foo { … }` — selectors
+  for (const m of src.matchAll(/\.([a-zA-Z_][\w-]*)\s*[{,:]/g)) defined.add(m[1]);
+  // `@utility foo { … }` — Tailwind v4 custom utility
+  for (const m of src.matchAll(/@utility\s+([a-zA-Z_][\w-]*)/g)) defined.add(m[1]);
+
+  const unknown = new Set<string>();
+  // Capture the entire class list inside each `@apply …;`
+  for (const m of src.matchAll(/@apply\s+([^;}{]+)[;}]/g)) {
+    const tokens = m[1].trim().split(/\s+/);
+    for (const tokRaw of tokens) {
+      // Strip variant prefixes (`hover:`, `md:`, `dark:`, `group-hover:`, …)
+      // and leading `!` (important). The actual utility is the LAST segment.
+      const tok = tokRaw.replace(/^!/, "");
+      const segments = tok.split(":");
+      const util = segments[segments.length - 1];
+      if (!util) continue;
+      // If it's defined locally, it's fine.
+      if (defined.has(util)) continue;
+      // Heuristic: a custom (non-Tailwind) class typically uses two or more
+      // hyphenated segments AND does NOT start with a known utility prefix.
+      // Built-ins like `bg-red-500`, `text-foreground`, `rounded-lg`, `p-4`,
+      // `flex`, `grid-cols-3`, `border` all match a known prefix or are
+      // single-segment — so we leave them alone.
+      if (looksLikeBuiltInUtility(util)) continue;
+      unknown.add(util);
+    }
+  }
+  return Array.from(unknown);
+}
+
+/** Conservative allowlist — if uncertain, treat as built-in (no false positive). */
+function looksLikeBuiltInUtility(name: string): boolean {
+  // Single-token utilities (flex, grid, hidden, block, container, …) — assume built-in.
+  if (!name.includes("-")) return true;
+  // Known Tailwind prefixes. Anything starting with one of these is treated as
+  // a built-in utility — we don't try to validate the suffix.
+  const prefixes = [
+    "bg", "text", "border", "rounded", "shadow", "ring", "outline",
+    "p", "px", "py", "pt", "pb", "pl", "pr", "ps", "pe",
+    "m", "mx", "my", "mt", "mb", "ml", "mr", "ms", "me",
+    "w", "h", "min", "max", "size",
+    "flex", "grid", "col", "row", "gap", "space", "place", "items", "justify", "self", "content",
+    "font", "leading", "tracking", "decoration", "underline", "uppercase", "lowercase",
+    "opacity", "z", "top", "bottom", "left", "right", "inset", "translate", "rotate", "scale", "skew", "transform", "origin",
+    "transition", "duration", "delay", "ease", "animate",
+    "cursor", "select", "pointer", "overflow", "scroll", "snap", "touch", "resize",
+    "object", "fill", "stroke", "list",
+    "from", "via", "to",
+    "divide", "order", "basis", "shrink", "grow",
+    "backdrop", "blur", "brightness", "contrast", "grayscale", "invert", "saturate", "sepia", "drop",
+    "aspect", "table", "caret", "accent", "appearance",
+    "antialiased", "subpixel", "italic", "not", "sr",
+    "absolute", "relative", "fixed", "sticky", "static",
+  ];
+  const head = name.split("-")[0];
+  return prefixes.includes(head);
 }
 
 function truncate(s: string, n: number): string {
