@@ -301,11 +301,23 @@ export interface AiCallMeta {
   chosenBy?: string | null;
 }
 
+/**
+ * Per-call timeout tier:
+ *  - "default": non-streaming JSON call (25s)
+ *  - "stream": streaming call (120s) — covers normal generate/discuss turns
+ *  - "stream_first_build": initial scaffold streams (240s) — first build of a
+ *    project tends to emit many files in one turn; the 120s ceiling was
+ *    cutting these off mid-stream. Caller must explicitly opt in.
+ */
+export type AiCallTimeoutTier = "default" | "stream" | "stream_first_build";
+
 export interface AiCallOptions {
   feature: AiFeature;
   body: Record<string, unknown>;
   signal?: AbortSignal;
   meta?: AiCallMeta;
+  /** Optional timeout-tier override. Inferred from `body.stream` when omitted. */
+  timeoutTier?: AiCallTimeoutTier;
 }
 
 /**
