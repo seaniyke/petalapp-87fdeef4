@@ -1133,7 +1133,8 @@ function Builder() {
       } = {},
     ) => {
       const text = content.trim();
-      if (!text || busy) return;
+      const internalRetry = opts.isRetry || opts.isAutoFix || opts.isAutoContinue;
+      if (!text || (busy && !internalRetry)) return;
       const proj = await ensureProject();
       if (!proj) return;
       supersedeBuildId(proj.latest_build_id);
