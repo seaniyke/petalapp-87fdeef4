@@ -292,6 +292,41 @@ function Builder() {
   const [previewDevice, setPreviewDevice] = useState<"phone" | "tablet" | "desktop">("desktop");
   const [activityVisible, setActivityVisible] = useState(false);
   const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
+  // Wraps setFriendlyError + persists the error as an assistant message so the
+  // "Petal got confused" card survives a page refresh. Use this for genuine
+  // failures the user should still see after reload — NOT for transient
+  // self-healing toasts ("trying another way", "publishing taking longer",
+  // "auto-fixing build") which clear themselves.
+  const persistFriendlyError = useCallback(
+    (err: FriendlyError) => {
+      setFriendlyError(err);
+      const proj = projectRef.current;
+      if (!proj?.id) return;
+      const errMsg: ChatMessage = {
+        role: "assistant",
+        content: "",
+        error: {
+          title: err.title,
+          message: err.message,
+          actionLabel: err.actionLabel,
+          actionKind: err.actionKind,
+          technicalDetail: err.technicalDetail,
+        },
+      };
+      setMessages((prev) => {
+        // Avoid double-persisting the same error if it's already the tail.
+        const last = prev[prev.length - 1];
+        if (last?.error?.title === err.title && last?.error?.message === err.message) {
+          return prev;
+        }
+        return [...prev, errMsg];
+      });
+      void appendMessages(proj.id, [errMsg]).catch(() => {
+        /* best-effort — the live state still shows the card */
+      });
+    },
+    [],
+  );
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   // Build vs Discuss mode. Discuss = chat-only, no file changes (Base44/Lovable parity).
