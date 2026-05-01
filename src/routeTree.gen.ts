@@ -67,6 +67,7 @@ import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/em
 import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
 import { Route as ApiPublicEmailSendRouteImport } from './routes/api/public/email/send'
 import { Route as ApiPublicEmailResendWebhookRouteImport } from './routes/api/public/email/resend-webhook'
+import { Route as ApiPublicCronSelfLearningDigestRouteImport } from './routes/api/public/cron/self-learning-digest'
 import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/api/public/cron/runtime-backend-hour'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
 import { Route as ApiBillingSubscriptionStatusRouteImport } from './routes/api/billing/subscription/status'
@@ -368,6 +369,12 @@ const ApiPublicEmailResendWebhookRoute =
     path: '/api/public/email/resend-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronSelfLearningDigestRoute =
+  ApiPublicCronSelfLearningDigestRouteImport.update({
+    id: '/api/public/cron/self-learning-digest',
+    path: '/api/public/cron/self-learning-digest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronRuntimeBackendHourRoute =
   ApiPublicCronRuntimeBackendHourRouteImport.update({
     id: '/api/public/cron/runtime-backend-hour',
@@ -454,6 +461,7 @@ export interface FileRoutesByFullPath {
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
+  '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
@@ -519,6 +527,7 @@ export interface FileRoutesByTo {
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
+  '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
@@ -585,6 +594,7 @@ export interface FileRoutesById {
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
+  '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
@@ -652,6 +662,7 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
     | '/api/public/cron/runtime-backend-hour'
+    | '/api/public/cron/self-learning-digest'
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
     | '/api/public/paystack/webhook'
@@ -717,6 +728,7 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
     | '/api/public/cron/runtime-backend-hour'
+    | '/api/public/cron/self-learning-digest'
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
     | '/api/public/paystack/webhook'
@@ -782,6 +794,7 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
     | '/api/public/cron/runtime-backend-hour'
+    | '/api/public/cron/self-learning-digest'
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
     | '/api/public/paystack/webhook'
@@ -847,6 +860,7 @@ export interface RootRouteChildren {
   ApiBillingSubscriptionStatusRoute: typeof ApiBillingSubscriptionStatusRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
   ApiPublicCronRuntimeBackendHourRoute: typeof ApiPublicCronRuntimeBackendHourRoute
+  ApiPublicCronSelfLearningDigestRoute: typeof ApiPublicCronSelfLearningDigestRoute
   ApiPublicEmailResendWebhookRoute: typeof ApiPublicEmailResendWebhookRoute
   ApiPublicEmailSendRoute: typeof ApiPublicEmailSendRoute
   ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
@@ -1265,6 +1279,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicEmailResendWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/self-learning-digest': {
+      id: '/api/public/cron/self-learning-digest'
+      path: '/api/public/cron/self-learning-digest'
+      fullPath: '/api/public/cron/self-learning-digest'
+      preLoaderRoute: typeof ApiPublicCronSelfLearningDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/runtime-backend-hour': {
       id: '/api/public/cron/runtime-backend-hour'
       path: '/api/public/cron/runtime-backend-hour'
@@ -1370,6 +1391,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBillingSubscriptionStatusRoute: ApiBillingSubscriptionStatusRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
   ApiPublicCronRuntimeBackendHourRoute: ApiPublicCronRuntimeBackendHourRoute,
+  ApiPublicCronSelfLearningDigestRoute: ApiPublicCronSelfLearningDigestRoute,
   ApiPublicEmailResendWebhookRoute: ApiPublicEmailResendWebhookRoute,
   ApiPublicEmailSendRoute: ApiPublicEmailSendRoute,
   ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
