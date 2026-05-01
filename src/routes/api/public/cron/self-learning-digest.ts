@@ -72,7 +72,7 @@ async function runDigest(opts: { skipEmail?: boolean } = {}) {
   if (recipients.length === 0) {
     await supabaseAdmin
       .from("petal_self_learning_digests" as never)
-      .update({ email_error: "no admin recipients resolved" })
+      .update({ email_error: "no admin recipients resolved" } as never)
       .eq("id", row!.id);
     return { digest, rowId: row?.id ?? null, emailSent: false, recipients };
   }
@@ -81,7 +81,7 @@ async function runDigest(opts: { skipEmail?: boolean } = {}) {
   if (!apiKey) {
     await supabaseAdmin
       .from("petal_self_learning_digests" as never)
-      .update({ email_error: "RESEND_API_KEY not configured" })
+      .update({ email_error: "RESEND_API_KEY not configured" } as never)
       .eq("id", row!.id);
     return {
       digest,
