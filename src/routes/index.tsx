@@ -759,7 +759,12 @@ function Landing() {
                         className="group relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card/80 transition hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-[var(--shadow-soft)]"
                       >
                         <div className="relative">
-                          <ProjectThumbnail projectId={p.id} className="h-36 sm:h-40" />
+                          <ProjectThumbnail
+                            projectId={p.id}
+                            title={p.title}
+                            subdomain={p.subdomain}
+                            className="h-36 sm:h-40"
+                          />
                           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
                           <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground backdrop-blur">
                             <Globe className="h-3 w-3" /> Public
@@ -847,7 +852,12 @@ function Landing() {
                           className="group relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card/80 transition hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-[var(--shadow-soft)]"
                         >
                           <div className="relative">
-                            <ProjectThumbnail projectId={p.id} className="h-36 sm:h-40" />
+                            <ProjectThumbnail
+                              projectId={p.id}
+                              title={p.title}
+                              subdomain={p.subdomain}
+                              className="h-36 sm:h-40"
+                            />
                             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
                             <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground backdrop-blur">
                               {p.is_public ? (
