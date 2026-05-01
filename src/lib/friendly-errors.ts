@@ -80,6 +80,14 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
     actionKind: "retry",
     technicalDetail: raw,
   }),
+  truncated_response: (raw) => ({
+    title: "Petal's reply got cut off",
+    message:
+      "The model ran out of room mid-build before files were complete. Petal retries this with smaller chunks automatically.",
+    actionLabel: "Retry safely",
+    actionKind: "retry",
+    technicalDetail: raw,
+  }),
   rate_limit: (raw) => ({
     title: "Petal needs a quick breather",
     message: "We're getting a lot of requests right now. Try again in a moment.",
