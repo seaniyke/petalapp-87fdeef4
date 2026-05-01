@@ -15,6 +15,8 @@
  * primitives (Button/Card/Input/etc.) on every turn.
  */
 
+import { renderKitManifestBlock } from "./kit-manifest.server";
+
 export type DynamicSnippetKey =
   | "kitCore"
   | "fileBudget"
@@ -247,7 +249,16 @@ export function pickDynamicSnippets(args: {
 
   // Cap at 8 total (kitCore + noBackendGate + 6 topical).
   const picked = matched.slice(0, 8);
-  const text = picked.map((k) => SNIPPETS[k].body).join("");
+  const text = picked
+    .map((k) => {
+      const body = SNIPPETS[k].body;
+      // kitCore body is a placeholder — swap in the auto-derived manifest
+      // so new primitives become visible to the model the moment they
+      // ship in scaffold-kit.ts.
+      if (k === "kitCore") return renderKitManifestBlock();
+      return body;
+    })
+    .join("");
   return { snippets: picked, text };
 }
 
