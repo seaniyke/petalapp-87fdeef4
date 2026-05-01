@@ -130,9 +130,9 @@ function resolveModel(preset: ModelPreset, latestPrompt: string, fileCount: numb
 }
 
 function completionBudget(args: { isInitial: boolean; phase: Phase; hasVisionTurn: boolean }): number {
-  if (args.hasVisionTurn) return 6_000;
-  if (args.isInitial) return 8_000;
-  if (args.phase === "implement" || args.phase === "docs") return 5_500;
+  if (args.hasVisionTurn) return 8_000;
+  if (args.isInitial) return 12_000;
+  if (args.phase === "implement" || args.phase === "docs") return 7_000;
   return 6_500;
 }
 
@@ -216,9 +216,15 @@ async function authorize(request: Request): Promise<string | Response> {
 type ParsedTool = {
   name: "write_project" | "patch_files" | null;
   args: string;
+  /** Provider stop reason from the final stream chunk, e.g. `length` / `max_tokens`. */
+  finishReason: string | null;
   /** Token usage from the gateway (final SSE chunk usually carries it). */
   usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
 };
+
+function isTruncatedFinishReason(reason: string | null | undefined): boolean {
+  return /^(length|max_tokens)$/i.test(reason ?? "");
+}
 
 /** Parse a streamed OpenAI-style SSE body, emit summary deltas as they arrive,
  *  accumulate the tool-call arguments string, and return the parsed final args
@@ -231,7 +237,7 @@ async function relayAndCollect(
   const reader = upstream.body!.getReader();
   const decoder = new TextDecoder();
   let buf = "";
-  const tool: ParsedTool = { name: null, args: "", usage: null };
+  const tool: ParsedTool = { name: null, args: "", finishReason: null, usage: null };
   // Running prefixes of the structured narrative fields already streamed to
   // the client. We re-extract from `tool.args` on every chunk and emit only
   // the new tail, so the client renders a clean token-by-token feel.
@@ -290,7 +296,12 @@ async function relayAndCollect(
       if (usage && (usage.prompt_tokens || usage.completion_tokens)) {
         tool.usage = usage;
       }
-      const choice = (json as { choices?: Array<{ delta?: unknown }> })?.choices?.[0];
+      const topStopReason = (json as { stop_reason?: unknown; finish_reason?: unknown }).stop_reason ??
+        (json as { finish_reason?: unknown }).finish_reason;
+      if (typeof topStopReason === "string") tool.finishReason = topStopReason;
+      const choice = (json as { choices?: Array<{ delta?: unknown; finish_reason?: unknown; stop_reason?: unknown }> })?.choices?.[0];
+      const choiceFinishReason = choice?.finish_reason ?? choice?.stop_reason;
+      if (typeof choiceFinishReason === "string") tool.finishReason = choiceFinishReason;
       const delta = (choice as { delta?: { tool_calls?: unknown[] } })?.delta;
       const toolCalls = delta?.tool_calls as
         | Array<{ function?: { name?: string; arguments?: string } }>
@@ -410,6 +421,11 @@ type ParsedProjectPayload = {
 };
 
 function parseCollectedProject(collected: ParsedTool, isInitial: boolean): ParsedProjectPayload {
+  if (isTruncatedFinishReason(collected.finishReason)) {
+    throw new Error(
+      `AI response was cut off before it finished (${collected.finishReason}). Retrying with a smaller structured response.`,
+    );
+  }
   if (!collected.name || !collected.args) {
     throw new Error("AI did not return a project. Try rephrasing.");
   }
@@ -425,7 +441,12 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
     parsed = JSON.parse(collected.args) as ParsedProjectPayload["parsed"];
   } catch (e) {
     console.error("Failed to parse tool args", e, collected.args.slice(0, 500));
-    throw new Error("AI returned invalid project data.");
+    const looksCutOff = collected.args.length > 0 && !collected.args.trimEnd().endsWith("}");
+    throw new Error(
+      looksCutOff
+        ? "AI response was cut off before the project JSON finished. Retrying with smaller files."
+        : "AI returned invalid project data.",
+    );
   }
 
   if (collected.name === "write_project" && !parsed.files?.length) {
@@ -452,7 +473,7 @@ function addStructuredRetryInstruction<T extends Array<{ role: string; content: 
     args.hasBackend === false
       ? ` This project has NO backend connected — DO NOT import from "@/integrations/backend/*" or "@supabase/supabase-js"; scaffold UI only with realistic placeholder data and tell the user in your "summary" to tap "Add backend" to wire it up.`
       : "";
-  const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field; keep files short and split large UI into components.${backendHint}`;
+  const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field; keep files short and split large UI into components. If this is an initial app, build a focused MVP that works instead of a giant showcase: 4-8 app files max, no file over 140 lines, no long content blocks.${backendHint}`;
   return messages.map((m, i) =>
     i === 0 && typeof m.content === "string" ? { ...m, content: `${m.content}${retryBlock}` } : m,
   ) as T;
@@ -896,7 +917,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
               }),
               tools: [tool],
               tool_choice: { type: "function", function: { name: tool.function.name } },
-                max_tokens: maxCompletionTokens,
+              max_tokens: Math.max(maxCompletionTokens, isInitial ? 12_000 : 8_000),
               stream: true,
             },
             meta: {

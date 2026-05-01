@@ -1133,7 +1133,8 @@ function Builder() {
       } = {},
     ) => {
       const text = content.trim();
-      if (!text || busy) return;
+      const internalRetry = opts.isRetry || opts.isAutoFix || opts.isAutoContinue;
+      if (!text || (busy && !internalRetry)) return;
       const proj = await ensureProject();
       if (!proj) return;
       supersedeBuildId(proj.latest_build_id);
@@ -1253,10 +1254,10 @@ function Builder() {
         }
       }
 
-      // Fresh activity feed for this run — but DO NOT mount it yet. We mount
-      // the build phase card only after triage classifies this as a "build"
-      // turn, so a casual "hi" never triggers the deploy pipeline UI.
-      setPhases(defaultPhases());
+      // Fresh activity feed for this run — but DO NOT remount/reset it during
+      // an internal retry. Keeping the same card mounted avoids the visible
+      // flash users saw when Petal auto-recovered from no-file/cut-off streams.
+      if (!opts.isRetry) setPhases(defaultPhases());
       setDesignCaption("");
       setFilesWritten(0);
       setLatestPath(undefined);
@@ -1269,8 +1270,10 @@ function Builder() {
       setStreamingPlan("");
       setStreamingRecap("");
       setStreamingPreamble("");
-      setIntentBuild(false);
-      setActivityVisible(false);
+      if (!opts.isRetry) {
+        setIntentBuild(false);
+        setActivityVisible(false);
+      }
 
       let resultFiles: ProjectFile[] | null = null;
       let resultSummary = "";
@@ -1676,7 +1679,9 @@ function Builder() {
         if (controller.signal.aborted) return;
         const msg = e instanceof Error ? e.message : "Something went wrong.";
         setError(msg);
-        const isNoEditFailure = e instanceof PipelineError && e.kind === "no_files_emitted";
+        const isNoEditFailure =
+          e instanceof PipelineError &&
+          (e.kind === "no_files_emitted" || e.kind === "truncated_response");
         const isTransientGenerateFailure =
           e instanceof PipelineError
             ? e.kind === "upstream_timeout" || e.kind === "upstream_unavailable" || e.kind === "unknown"
@@ -1691,7 +1696,7 @@ function Builder() {
             actionLabel: "Working on it",
             actionKind: "dismiss",
           });
-          setPhases(defaultPhases());
+          setPhases(advanceTo(defaultPhases(), "thinking"));
           setTimeout(() => {
             void sendRef.current?.(text, {
               isRetry: true,
@@ -1712,7 +1717,7 @@ function Builder() {
             actionKind: "dismiss",
             technicalDetail: msg,
           });
-          setPhases(defaultPhases());
+          setPhases(advanceTo(defaultPhases(), "thinking"));
           setTimeout(() => {
             void sendRef.current?.(text, {
               isRetry: true,
