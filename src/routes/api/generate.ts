@@ -811,7 +811,48 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 });
                 if (!retry.ok || !retry.body) throw e;
                 collected = await relayAndCollect(retry, controller, encoder);
-                payload = parseCollectedProject(collected, isInitial);
+                try {
+                  payload = parseCollectedProject(collected, isInitial);
+                } catch (retryErr) {
+                  // Both attempts produced no tool call. Most common cause:
+                  // user asked for a backend-shaped feature on a project with
+                  // no backend connected. The system prompt asked the model
+                  // to scaffold UI-only, but the contradiction with auth/RLS
+                  // prose makes models freeze.
+                  //
+                  // Deterministic recovery: if `noBackendGate` was active,
+                  // emit a friendly summary directing the user to "Add
+                  // backend" instead of throwing. The chip below the
+                  // message is the actual remediation; the error card was
+                  // pure noise. No credits charged because no files written.
+                  if (isInitial && dynamic.snippets.includes("noBackendGate")) {
+                    const friendlySummary =
+                      "I'd love to build this, but it needs a backend to handle accounts, sign-in, and saving your data. Tap **Add backend** below this message to wire one up — it's a one-click step — and I'll pick up right where we left off and ship the full thing.";
+                    controller.enqueue(
+                      encoder.encode(
+                        sse({
+                          type: "summary_delta",
+                          delta: friendlySummary,
+                        }),
+                      ),
+                    );
+                    controller.enqueue(
+                      encoder.encode(
+                        sse({
+                          type: "result",
+                          files: currentFiles,
+                          summary: friendlySummary,
+                          plan: undefined,
+                          recap: undefined,
+                          creditsCharged: 0,
+                        }),
+                      ),
+                    );
+                    controller.close();
+                    return;
+                  }
+                  throw retryErr;
+                }
               }
 
               const { parsed, summary, plan, recap } = payload;
