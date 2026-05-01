@@ -103,6 +103,14 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
     actionKind: "retry",
     technicalDetail: raw,
   }),
+  upstream_timeout: (raw) => ({
+    title: "Petal ran out of time before saving changes",
+    message:
+      "The AI took too long this turn — nothing was charged and no files were changed. Try again with a smaller, more focused ask (e.g. just the Google login button this turn, the dashboard counts next).",
+    actionLabel: "Try again",
+    actionKind: "retry",
+    technicalDetail: raw,
+  }),
   unauthorized: (raw) => ({
     title: "You've been signed out",
     message: "Please sign in again to continue.",
