@@ -48,10 +48,15 @@ export type FriendlyError = {
  */
 export class PipelineError extends Error {
   readonly kind: ErrorKind;
-  constructor(message: string, kind: ErrorKind) {
+  /** Raw, un-humanized error string from the server (when available).
+   *  Used for telemetry — the `message` field carries humanized prose
+   *  so we keep the raw separately to avoid blinding root-cause analysis. */
+  readonly raw?: string;
+  constructor(message: string, kind: ErrorKind, raw?: string) {
     super(message);
     this.name = "PipelineError";
     this.kind = kind;
+    this.raw = raw;
   }
 }
 
