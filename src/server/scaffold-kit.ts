@@ -3727,7 +3727,7 @@ function verifyScaffoldIntegrity(): void {
     `src/${base}/index.ts`,
   ];
   const failures: string[] = [];
-  for (const k of KIT) {
+  for (const k of KIT_FILES) {
     if (!/\.(tsx?|jsx?)$/.test(k.path)) continue;
     let m: RegExpExecArray | null;
     while ((m = importRe.exec(k.content))) {
