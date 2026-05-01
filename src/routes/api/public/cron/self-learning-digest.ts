@@ -34,7 +34,7 @@ async function runDigest(opts: { skipEmail?: boolean } = {}) {
 
   // Upsert by period_date so reruns replace today's row instead of duplicating.
   const { data: row, error: upsertError } = await supabaseAdmin
-    .from("petal_self_learning_digests")
+    .from("petal_self_learning_digests" as never)
     .upsert(
       {
         period_date: digest.periodDate,
@@ -71,7 +71,7 @@ async function runDigest(opts: { skipEmail?: boolean } = {}) {
   const recipients = await resolveAdminRecipients();
   if (recipients.length === 0) {
     await supabaseAdmin
-      .from("petal_self_learning_digests")
+      .from("petal_self_learning_digests" as never)
       .update({ email_error: "no admin recipients resolved" })
       .eq("id", row!.id);
     return { digest, rowId: row?.id ?? null, emailSent: false, recipients };
@@ -80,7 +80,7 @@ async function runDigest(opts: { skipEmail?: boolean } = {}) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     await supabaseAdmin
-      .from("petal_self_learning_digests")
+      .from("petal_self_learning_digests" as never)
       .update({ email_error: "RESEND_API_KEY not configured" })
       .eq("id", row!.id);
     return {
@@ -123,7 +123,7 @@ async function runDigest(opts: { skipEmail?: boolean } = {}) {
   }
 
   await supabaseAdmin
-    .from("petal_self_learning_digests")
+    .from("petal_self_learning_digests" as never)
     .update({
       email_sent_at: emailError ? null : new Date().toISOString(),
       email_recipients: recipients,
