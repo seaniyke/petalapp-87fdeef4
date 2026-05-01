@@ -110,7 +110,7 @@ function ProjectsPage() {
 
         <div className="mt-10">
           {loading ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-2">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-44 animate-pulse rounded-2xl border border-border bg-card" />
               ))}
@@ -118,7 +118,7 @@ function ProjectsPage() {
           ) : projects.length === 0 ? (
             <EmptyState onCreate={handleCreate} />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-2">
               {projects.map((p) => (
                 <ProjectCard key={p.id} project={p} onDelete={() => setPendingDelete(p)} />
               ))}
