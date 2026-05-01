@@ -59,7 +59,7 @@ function GalleryPage() {
         </div>
 
         {loading ? (
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid grid-cols-2 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="h-64 animate-pulse rounded-2xl border border-border bg-card" />
             ))}
@@ -73,7 +73,7 @@ function GalleryPage() {
                 <h2 className="mb-4 inline-flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-muted-foreground">
                   <Star className="h-3.5 w-3.5 text-primary" /> Featured
                 </h2>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-2 gap-4">
                   {featured.map((p) => (
                     <GalleryCard key={p.id} project={p} isAdmin={isAdmin} onChange={refresh} />
                   ))}
@@ -87,7 +87,7 @@ function GalleryPage() {
                   Most remixed
                 </h2>
               )}
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-4">
                 {rest.map((p) => (
                   <GalleryCard key={p.id} project={p} isAdmin={isAdmin} onChange={refresh} />
                 ))}
