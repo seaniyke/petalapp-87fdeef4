@@ -63,6 +63,8 @@ import { pickBestModel } from "@/server/smart-router.server";
 import { recordAiOutcome } from "@/server/ai-outcomes.server";
 import { applyContextBudget, type BudgetMessage } from "@/server/context-budget.server";
 import { expandBriefIfVague } from "@/server/brief-expander.server";
+import { loadLabsFlagsForRequest } from "@/server/labs-flags.server";
+import { runStagedPipelineStream } from "@/server/pipeline/staged-orchestrator.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -652,6 +654,23 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           i === lastIdx ? { ...m, content: expansion.brief } : m,
         );
       }
+    }
+  }
+
+  // Staged pipeline (Labs). When the user has the staged_pipeline flag on,
+  // initial builds run through Plan → parallel-Scaffold → Wire-up instead
+  // of the monolithic write_project call. The orchestrator returns null
+  // on any pre-stream failure so we can fall through to the existing
+  // path with no behavior change for everyone else.
+  if (isInitial) {
+    const flags = await loadLabsFlagsForRequest(userJwt);
+    if (flags.staged_pipeline) {
+      const stagedResp = await runStagedPipelineStream({
+        brief: lastUserContent,
+        hasBackend: Boolean(backend),
+      });
+      if (stagedResp) return stagedResp;
+      console.warn("[staged] orchestrator returned null — falling back to monolithic path");
     }
   }
   const designDirection =
