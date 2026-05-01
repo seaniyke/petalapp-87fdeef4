@@ -194,9 +194,6 @@ function ProjectCard({ project, onDelete }: { project: ProjectRow; onDelete: () 
         </div>
         <div className="flex flex-1 flex-col p-4">
           <h3 className="truncate font-semibold">{project.title}</h3>
-          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-            {project.summary ?? "No description yet."}
-          </p>
           <div className="mt-auto pt-3 text-[11px] text-muted-foreground">
             Updated {new Date(project.updated_at).toLocaleDateString()}
           </div>
