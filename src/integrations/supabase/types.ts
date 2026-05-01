@@ -1445,6 +1445,44 @@ export type Database = {
         }
         Relationships: []
       }
+      project_backend_migrations: {
+        Row: {
+          applied_at: string
+          applied_status: string
+          content_hash: string
+          error_message: string | null
+          id: string
+          migration_path: string
+          project_id: string
+        }
+        Insert: {
+          applied_at?: string
+          applied_status: string
+          content_hash: string
+          error_message?: string | null
+          id?: string
+          migration_path: string
+          project_id: string
+        }
+        Update: {
+          applied_at?: string
+          applied_status?: string
+          content_hash?: string
+          error_message?: string | null
+          id?: string
+          migration_path?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_backend_migrations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_backends: {
         Row: {
           anon_key: string
