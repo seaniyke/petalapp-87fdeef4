@@ -62,6 +62,7 @@ import {
 import { pickBestModel } from "@/server/smart-router.server";
 import { recordAiOutcome } from "@/server/ai-outcomes.server";
 import { applyContextBudget, type BudgetMessage } from "@/server/context-budget.server";
+import { expandBriefIfVague } from "@/server/brief-expander.server";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -534,7 +535,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     return new Response("Invalid JSON body", { status: 400 });
   }
   const rawMessages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
-  const messages = trimMessagesForGeneration(rawMessages);
+  let messages = trimMessagesForGeneration(rawMessages);
   const currentFiles = Array.isArray(body.currentFiles) ? body.currentFiles : [];
   if (messages.length === 0) {
     return new Response("messages must not be empty", { status: 400 });
@@ -627,7 +628,32 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   // subsequent turns, the cached direction in project_memory is
   // honored automatically (pickDesignDirection short-circuits to it).
   // Patches skip the call entirely — the existing aesthetic wins.
-  const lastUserContent = latestUserMessage(messages);
+  let lastUserContent = latestUserMessage(messages);
+
+  // Brief expander — vague initial prompts ("surprise me", "build an app")
+  // are the dominant cause of `no_files_emitted` failures: the main model
+  // gets nothing concrete to scaffold and bails. We rewrite them into a
+  // concrete brief BEFORE the main call, server-side, with a tiny cheap
+  // model. Failure-tolerant: any error returns the original brief.
+  if (isInitial) {
+    const expansion = await expandBriefIfVague(lastUserContent);
+    if (expansion.expanded) {
+      lastUserContent = expansion.brief;
+      // Replace the last user message in `messages` so the main model sees
+      // the expanded brief, not the vague original.
+      const lastIdx = (() => {
+        for (let i = messages.length - 1; i >= 0; i--) {
+          if (messages[i].role === "user") return i;
+        }
+        return -1;
+      })();
+      if (lastIdx >= 0) {
+        messages = messages.map((m, i) =>
+          i === lastIdx ? { ...m, content: expansion.brief } : m,
+        );
+      }
+    }
+  }
   const designDirection =
     isInitial && userJwt
       ? await pickDesignDirection({

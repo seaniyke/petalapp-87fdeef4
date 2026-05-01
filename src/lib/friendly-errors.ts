@@ -73,9 +73,9 @@ const GENERIC: FriendlyError = {
  */
 const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
   no_files_emitted: (raw) => ({
-    title: "Petal couldn't finish that edit",
+    title: "Petal needs a bit more to go on",
     message:
-      "Petal didn't get usable edits back. It should retry automatically; if it still stops here, try again.",
+      "I couldn't tell what to build from that. Try describing the app in a sentence or two — what it does, who uses it, and one or two key features.",
     actionLabel: "Try again",
     actionKind: "retry",
     technicalDetail: raw,
