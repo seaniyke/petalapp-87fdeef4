@@ -1696,7 +1696,7 @@ function Builder() {
             actionLabel: "Working on it",
             actionKind: "dismiss",
           });
-          setPhases((p) => advanceTo(p, "thinking"));
+          setPhases(advanceTo(defaultPhases(), "thinking"));
           setTimeout(() => {
             void sendRef.current?.(text, {
               isRetry: true,
@@ -1717,7 +1717,7 @@ function Builder() {
             actionKind: "dismiss",
             technicalDetail: msg,
           });
-          setPhases((p) => advanceTo(p, "thinking"));
+          setPhases(advanceTo(defaultPhases(), "thinking"));
           setTimeout(() => {
             void sendRef.current?.(text, {
               isRetry: true,
