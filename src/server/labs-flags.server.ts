@@ -35,15 +35,26 @@ export async function loadLabsFlagsForRequest(jwt: string | null | undefined): P
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // Admin short-circuit (mirrors useLabsFlags). If the user is admin,
-    // every flag is on regardless of the row's contents.
+    // Admin short-circuit. Most experimental flags are auto-on for admins
+    // so they can dogfood, BUT `staged_pipeline` is explicit-opt-in only:
+    // it's an unfinished alternate codepath that has produced wrong-app
+    // outputs (e.g. a collage app for a "car rental" prompt). Until we're
+    // confident it's better than the monolithic path, admins must turn it
+    // on manually in Labs.
     const { data: claimsRow } = await supabase
       .from("user_roles")
       .select("role")
       .eq("role", "admin")
       .maybeSingle();
     if (claimsRow) {
-      return Object.fromEntries(ALL_FLAGS.map((f) => [f, true])) as LabsFlags;
+      const adminFlags = Object.fromEntries(
+        ALL_FLAGS.filter((f) => f !== "staged_pipeline").map((f) => [f, true]),
+      ) as LabsFlags;
+      // Still honor an explicit per-user staged_pipeline opt-in.
+      const { data: row } = await supabase.from("labs_flags").select("flags").maybeSingle();
+      const userFlags = (row?.flags ?? {}) as LabsFlags;
+      if (userFlags.staged_pipeline) adminFlags.staged_pipeline = true;
+      return adminFlags;
     }
 
     const { data, error } = await supabase
