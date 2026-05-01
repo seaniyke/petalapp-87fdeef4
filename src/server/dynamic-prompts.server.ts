@@ -41,20 +41,13 @@ interface SnippetDef {
 }
 
 const SNIPPETS: Record<DynamicSnippetKey, SnippetDef> = {
-  // Always-on baseline. The 8-10 primitives every turn ends up using.
+  // Always-on baseline. Replaced at injection time with the auto-derived
+  // kit manifest (see renderKitManifestBlock) so new primitives become
+  // visible to the model the moment they ship in scaffold-kit.ts. The
+  // body here is a placeholder that gets swapped in pickDynamicSnippets.
   kitCore: {
     triggers: "always",
-    body: `\n\n[Kit — always available, import from "@/components/ui/*"]
-- <Button variant="default|destructive|outline|secondary|ghost|link" size="default|sm|lg|icon">
-- <Card>, <CardHeader>, <CardTitle>, <CardDescription>, <CardContent>, <CardFooter>
-- <Input>, <Textarea>, <Label htmlFor>
-- <Badge variant="default|secondary|destructive|outline">
-- <Separator orientation="horizontal|vertical">
-- <Skeleton>, <Avatar>/<AvatarImage>/<AvatarFallback>
-- <Alert variant>, <AlertTitle>, <AlertDescription>
-- cn() helper from "@/lib/utils" for conditional classes
-- Icons: lucide-react (NEVER emoji as functional icons)
-Other primitives exist (Tabs/Dialog/Sheet/Drawer/Select/Combobox/DatePicker/Calendar/Form/Chart/Table/DropdownMenu/Popover/Tooltip/Accordion/ScrollArea/Slider/Progress/Switch/Checkbox/RadioGroup/Container/Stack/Inline/Grid/Router/Toast/ThemeProvider/ThemeToggle) — they are documented further down ONLY when this turn's request matches them. If you need one that isn't documented, the import path is "@/components/ui/<kebab-name>".`,
+    body: "__KIT_MANIFEST_PLACEHOLDER__",
   },
   // Fires on multi-section / landing / dashboard / page-shaped requests —
   // the exact turns that historically blew past the 180-line cap and got
