@@ -23,7 +23,11 @@ import {
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
-import { aiChatCompletions, updateLastCallUsage } from "@/server/ai-provider.server";
+import {
+  aiChatCompletions,
+  markLastCallFailure,
+  updateLastCallUsage,
+} from "@/server/ai-provider.server";
 import { priceBuild, BUILD_FLOOR } from "@/server/credit-pricing.server";
 import {
   loadProjectMemory,
@@ -122,6 +126,13 @@ function resolveModel(preset: ModelPreset, latestPrompt: string, fileCount: numb
   if (preset === "best") return MODEL_BEST;
   if (preset === "deep") return MODEL_BEST;
   return pickSmartModel(latestPrompt, fileCount);
+}
+
+function completionBudget(args: { isInitial: boolean; phase: Phase; hasVisionTurn: boolean }): number {
+  if (args.hasVisionTurn) return 6_000;
+  if (args.isInitial) return 8_000;
+  if (args.phase === "implement" || args.phase === "docs") return 5_500;
+  return 6_500;
 }
 
 function latestUserMessage(messages: ChatMessage[]): string {
