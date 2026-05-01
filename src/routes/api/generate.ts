@@ -1581,7 +1581,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                   );
                   void supabaseAdmin.from("pipeline_failures").insert({
                     project_id: body.projectId ?? null,
-                    user_id: userIdForBilling ?? null,
+                    user_id: userId ?? null,
                     surface: "generate-server",
                     raw_message: raw.slice(0, 4000),
                     signature: raw.slice(0, 200),
