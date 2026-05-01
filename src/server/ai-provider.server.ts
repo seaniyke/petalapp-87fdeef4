@@ -250,6 +250,44 @@ export async function updateLastCallUsage(args: {
   }
 }
 
+/**
+ * Mark the most recent streaming AI call as failed when the HTTP response
+ * opened successfully but the body later timed out/errored while being read.
+ * Without this, router telemetry sees status=200 and keeps choosing a model
+ * that never actually completed the user's build.
+ */
+export async function markLastCallFailure(args: {
+  feature: AiFeature;
+  model: string | null;
+  status: number;
+  errorMessage: string;
+}): Promise<void> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const since = new Date(Date.now() - 5 * 60_000).toISOString();
+    let q = supabaseAdmin
+      .from("ai_call_log")
+      .select("id")
+      .eq("feature", args.feature)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    q = args.model ? q.eq("model", args.model) : q.is("model", null);
+    const { data: rows } = await q;
+    const id = rows?.[0]?.id;
+    if (!id) return;
+    await supabaseAdmin
+      .from("ai_call_log")
+      .update({
+        status: args.status,
+        error_message: args.errorMessage.slice(0, 500),
+      })
+      .eq("id", id);
+  } catch (err) {
+    console.warn("[ai-provider] failure backfill failed", err);
+  }
+}
+
 // ---------------- Public API ----------------
 
 export interface AiCallMeta {
