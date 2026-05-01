@@ -124,9 +124,16 @@ export function ProjectSettingsSheet({
     }
   }, [value, project.custom_instructions, knowledgeKey]);
 
-  // Scroll to a requested section once the sheet is open.
+  // Scroll to a requested section once the sheet is open. Domains is a
+  // dedicated sub-sheet now (Lovable-style top-level entry), so route there
+  // directly instead of scrolling.
   useEffect(() => {
     if (!open || !scrollTo) return;
+    if (scrollTo === "domains") {
+      setDomainsOpen(true);
+      onScrollHandled?.();
+      return;
+    }
     const t = setTimeout(() => {
       const el = document.getElementById(`settings-${scrollTo}`);
       el?.scrollIntoView({ behavior: "smooth", block: "start" });
