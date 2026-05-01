@@ -394,7 +394,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
 
   const fallbackBody = { ...opts.body, model: fallback };
   const t1 = Date.now();
-  const retried = await dispatch(provider, fallbackBody, opts.signal);
+  const retried = await dispatch(provider, fallbackBody, opts.signal, opts.timeoutTier);
   const retryLatency = Date.now() - t1;
 
   void recordTelemetry({
