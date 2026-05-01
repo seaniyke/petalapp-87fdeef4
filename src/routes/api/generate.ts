@@ -1679,6 +1679,14 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           stackHead: stack.slice(0, 500),
           projectId: body.projectId ?? null,
         });
+        if (!userCancelled) {
+          void markLastCallFailure({
+            feature: "generate",
+            model: typeof model === "string" ? model : null,
+            status: kind === "upstream_timeout" ? 524 : 599,
+            errorMessage: raw,
+          });
+        }
         // Persist the RAW failure directly server-side so
         // pipeline_failures.raw_message is ground truth (the client
         // path stores the humanized prose). Keyed by signature so we
