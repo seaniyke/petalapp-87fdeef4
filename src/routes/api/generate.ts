@@ -713,6 +713,11 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
   let model: string;
   let chosenBy: string = "preset";
+  const maxCompletionTokens = completionBudget({
+    isInitial,
+    phase: phaseTag.phase,
+    hasVisionTurn,
+  });
   if (hasVisionTurn) {
     model = MODEL_VISION;
     chosenBy = "vision_pin";
@@ -788,6 +793,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       messages: finalMessages,
       tools: [tool],
       tool_choice: { type: "function", function: { name: tool.function.name } },
+      max_tokens: maxCompletionTokens,
       stream: true,
       ...reasoningField,
     },
@@ -873,6 +879,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               }),
               tools: [tool],
               tool_choice: { type: "function", function: { name: tool.function.name } },
+                max_tokens: maxCompletionTokens,
               stream: true,
             },
             meta: {
