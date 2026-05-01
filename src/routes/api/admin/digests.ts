@@ -6,15 +6,15 @@
  *
  * Actions (POST body `{ action: "..." }`):
  *   - "list": Returns the last 30 stored digests (id, period_date, totals).
- *   - "get": Returns one full stored digest by `id` or `period_date`.
+ *   - "get":  Returns one full stored digest by `id` or `period_date`.
  *   - "run_now": Builds + persists today's digest immediately (does NOT
- *     send email). Useful for "show me what tomorrow's email will look like".
+ *     send email). Useful to preview tomorrow's email.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { buildSelfLearningDigest } from "@/server/self-learning-digest.server";
 
-async function requireAdmin(req: Request): Promise<{ userId: string } | Response> {
+async function requireAdmin(req: Request): Promise<Response | { userId: string }> {
   const auth = req.headers.get("authorization");
   const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
   if (!token) return new Response("Unauthorized", { status: 401 });
@@ -48,8 +48,10 @@ export const Route = createFileRoute("/api/admin/digests")({
         try {
           if (body.action === "list") {
             const { data, error } = await supabaseAdmin
-              .from("petal_self_learning_digests")
-              .select("id, period_date, window_label, totals, created_at, sent_to_count")
+              .from("petal_self_learning_digests" as never)
+              .select(
+                "id, period_date, generated_at, total_turns, total_projects, total_users, verifier_pass_rate, build_success_rate, followup_was_fix_rate, email_sent_at, email_recipients, email_error",
+              )
               .order("period_date", { ascending: false })
               .limit(30);
             if (error) throw new Error(error.message);
@@ -57,32 +59,41 @@ export const Route = createFileRoute("/api/admin/digests")({
           }
 
           if (body.action === "get") {
-            let q = supabaseAdmin
-              .from("petal_self_learning_digests")
-              .select("*")
-              .limit(1);
-            if (body.id) q = q.eq("id", body.id);
-            else if (body.period_date) q = q.eq("period_date", body.period_date);
-            else return Response.json({ error: "id or period_date required" }, { status: 400 });
-            const { data, error } = await q.maybeSingle();
+            if (!body.id && !body.period_date) {
+              return Response.json({ error: "id or period_date required" }, { status: 400 });
+            }
+            const base = supabaseAdmin
+              .from("petal_self_learning_digests" as never)
+              .select("*");
+            const filtered = body.id
+              ? base.eq("id", body.id)
+              : base.eq("period_date", body.period_date as string);
+            const { data, error } = await filtered.maybeSingle();
             if (error) throw new Error(error.message);
             return Response.json({ digest: data });
           }
 
           if (body.action === "run_now") {
-            const payload = await buildSelfLearningDigest();
+            const digest = await buildSelfLearningDigest();
             const { data, error } = await supabaseAdmin
-              .from("petal_self_learning_digests")
+              .from("petal_self_learning_digests" as never)
               .upsert(
                 {
-                  period_date: payload.periodDate,
-                  window_label: payload.windowLabel,
-                  totals: payload.totals,
-                  top_failure_signatures: payload.topFailureSignatures,
-                  top_reverted_prompts: payload.topRevertedPrompts,
-                  model_breakdown: payload.modelBreakdown,
-                  recommendations: payload.recommendations,
-                },
+                  period_date: digest.periodDate,
+                  generated_at: new Date().toISOString(),
+                  total_turns: digest.totals.turns,
+                  total_projects: digest.totals.projects,
+                  total_users: digest.totals.users,
+                  verifier_pass_rate: digest.totals.verifierPassRate,
+                  build_success_rate: digest.totals.buildSuccessRate,
+                  followup_was_fix_rate: digest.totals.followupWasFixRate,
+                  avg_autofix_count: digest.totals.avgAutofixCount,
+                  top_failure_signatures: digest.topFailureSignatures,
+                  top_reverted_prompts: digest.topRevertedPrompts,
+                  model_breakdown: digest.modelBreakdown,
+                  recommendations: digest.recommendations,
+                  payload: digest as unknown as Record<string, unknown>,
+                } as never,
                 { onConflict: "period_date" },
               )
               .select()
