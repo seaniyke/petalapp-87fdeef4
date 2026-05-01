@@ -230,7 +230,12 @@ export async function installIntegration(args: {
         // managed-migrations runner. We run inline here so the user sees
         // the integration "just work" right after install.
         const { runQuery } = await import("@/server/supabase-mgmt.server");
-        const ref = backend.supabaseProjectRef ?? null;
+        const { data: backendRow } = await supabaseAdmin
+          .from("project_backends")
+          .select("supabase_project_ref")
+          .eq("project_id", args.projectId)
+          .maybeSingle();
+        const ref = backendRow?.supabase_project_ref ?? null;
         if (!ref) {
           migrationError = "Managed backend missing project ref — skipped.";
         } else {
