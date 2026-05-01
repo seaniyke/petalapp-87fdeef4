@@ -495,7 +495,7 @@ async function runFinalParseGuard(
   return repaired;
 }
 
-async function handleGenerateRequest(request: Request): Promise<Response> {
+async function handleGenerateRequestCore(request: Request): Promise<Response> {
   const authResult = await authorize(request);
   if (authResult instanceof Response) return authResult;
   const userId = authResult;
@@ -1771,6 +1771,65 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
+    },
+  });
+}
+
+async function handleGenerateRequest(request: Request): Promise<Response> {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let heartbeat: ReturnType<typeof setInterval> | null = null;
+      const emit = (event: StreamEvent) => controller.enqueue(encoder.encode(sse(event)));
+
+      try {
+        emit({ type: "phase", phase: "thinking" });
+        emit({ type: "status", message: "Starting your build…" });
+        heartbeat = setInterval(() => {
+          if (request.signal.aborted) return;
+          emit({ type: "status", message: "Still working — keeping the build connected…" });
+        }, 12_000);
+
+        const response = await handleGenerateRequestCore(request);
+        if (!response.ok || !response.body) {
+          const raw = await response.text().catch(() => `Request failed (${response.status})`);
+          emit({
+            type: "error",
+            message: raw || "Petal couldn't start that build. Please try again.",
+            kind: classifyRawError(raw),
+            raw: raw.slice(0, 500),
+          });
+          return;
+        }
+
+        const reader = response.body.getReader();
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          controller.enqueue(value);
+        }
+      } catch (e) {
+        const raw = e instanceof Error ? e.message : "Generation failed.";
+        emit({
+          type: "error",
+          message: "The connection dropped while Petal was building. Reconnecting and retrying is safe — no credits were charged for this failed attempt.",
+          kind: classifyRawError(raw),
+          raw: raw.slice(0, 500),
+        });
+      } finally {
+        if (heartbeat) clearInterval(heartbeat);
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
     },
   });
 }
