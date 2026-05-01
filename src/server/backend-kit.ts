@@ -138,6 +138,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       return { error: error ? new Error(error.message) : null };
     },
+    signInWithGoogle: async (opts) => {
+      const redirectTo =
+        opts?.redirectTo ??
+        (typeof window !== "undefined" ? window.location.origin : undefined);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo },
+      });
+      return { error: error ? new Error(error.message) : null };
+    },
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
