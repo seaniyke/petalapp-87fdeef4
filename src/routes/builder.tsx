@@ -496,6 +496,10 @@ function Builder() {
     projectId: null,
     attempts: 0,
   });
+  const transientGenerateRecoveryRef = useRef<{ projectId: string | null; attempts: number }>({
+    projectId: null,
+    attempts: 0,
+  });
   // When a user starts a new AI turn or retries a stalled deploy, the previous
   // `latest_build_id` is no longer the thing the chat should react to. Without
   // this, an old pending deploy can keep re-opening the "Publishing is taking
@@ -780,6 +784,9 @@ function Builder() {
     }
       if (noEditRecoveryRef.current.projectId !== project?.id) {
         noEditRecoveryRef.current = { projectId: project?.id ?? null, attempts: 0 };
+      }
+      if (transientGenerateRecoveryRef.current.projectId !== project?.id) {
+        transientGenerateRecoveryRef.current = { projectId: project?.id ?? null, attempts: 0 };
       }
 
     if (effectiveBuildSnap.status === "ready") {
