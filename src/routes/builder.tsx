@@ -1419,6 +1419,7 @@ function Builder() {
 
         const files2: ProjectFile[] = resultFiles;
         const summary2: string = resultSummary || "Updated the project.";
+        noEditRecoveryRef.current.attempts = 0;
         // Persist the warm preamble alongside the technical summary so the
         // chat thread retains the human voice on refresh — without it, all
         // we'd see in history is the dryer "Updated the project." line.
