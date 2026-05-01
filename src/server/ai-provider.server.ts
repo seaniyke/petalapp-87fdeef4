@@ -233,7 +233,7 @@ export async function updateLastCallUsage(args: {
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(1);
-    q = args.model ? q.eq("model", args.model) : q.is("model", null);
+    if (args.model) q = q.eq("model", args.model);
     const { data: rows } = await q;
     const id = rows?.[0]?.id;
     if (!id) return;
