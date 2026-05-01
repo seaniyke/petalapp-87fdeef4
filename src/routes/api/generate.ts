@@ -142,8 +142,8 @@ function trimMessagesForGeneration(messages: ChatMessage[]): ChatMessage[] {
     return -1;
   })();
   if (lastUserIdx < 0) return messages.slice(-4);
-  const recentContext = messages.slice(Math.max(0, lastUserIdx - 3), lastUserIdx);
-  return [...recentContext, messages[lastUserIdx]];
+  const previousUser = messages.slice(0, lastUserIdx).filter((m) => m.role === "user").slice(-1);
+  return [...previousUser, messages[lastUserIdx]];
 }
 
 function trimFilesForPrompt(files: ProjectFile[]): { files: ProjectFile[]; omitted: number } {
