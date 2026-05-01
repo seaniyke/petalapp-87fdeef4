@@ -1,61 +1,74 @@
-I’m sorry — you’re right to be angry. I dug into the live data and logs, and this is not just “your prompt was too big.” There are real Petal-side issues here.
+## Goal
 
-Do I know what the issue is? Yes.
+Yesterday's digest is dominated by stream timeouts on first-build scaffolds (book tracker, notes app, "DB + login"), not real code-quality regressions. We'll do three things:
 
-What I found:
+1. Investigate what actually timed out (data, not guesses).
+2. Raise the streaming timeout budget for first-build / heavy scaffold turns.
+3. Stop the digest from labeling timeouts as "verifier failures" so recommendations stop pointing at the wrong fix.
 
-1. Your latest “Add Google login and status counts dashboard” turns did not edit files at all.
-   - Production logs show repeated generation timeouts: `The operation was aborted due to timeout`.
-   - Because no file result came back, the UI fell through to the generic “Petal got a bit confused” card.
+---
 
-2. Your book-tracker project still contains an old broken generated `Select` component.
-   - The app imports `SelectTrigger`, `SelectContent`, `SelectItem`, and `SelectValue`.
-   - But the saved generated file only exports a simple native `Select`, so the build fails.
-   - I previously fixed Petal’s canonical scaffold, but patch turns are not reliably re-normalizing older saved projects, so this old generated project can remain poisoned.
+## 1. Investigate timeouts (data pull, no code changes)
 
-3. Google login is exposing a bigger gap.
-   - Your project’s backend is now ready.
-   - Petal tells the AI that backend/auth exists, but the generated-app auth helper currently covers email/password, OTP, password reset, and sign out — not a clean first-class Google sign-in helper.
-   - That makes “add Google login” more fragile than it should be: the model either times out while trying to work around it, or risks producing unsupported auth wiring.
+Pull from the last 72h:
 
-Plan to fix it properly:
+- `pipeline_failures` rows where `signature` matches `/timeout|aborted|no result returned/i` — group by model, surface, and whether `project_id` had any prior turns (proxy for "first build").
+- `ai_call_log` rows with `status = 524` or `status = 0` joined to their phase / promptChars — confirms whether timeouts cluster on big initial generations (high promptChars + scaffold phase) vs small follow-ups.
+- A spot-check of 3-5 specific timed-out turns end-to-end: phase classifier output, smart-router pick, model, latency at abort, file count emitted before abort.
 
-1. Make generated projects self-heal old scaffold files on every successful edit
-   - Re-apply the canonical generated-app scaffold after patch operations, not only on initial builds or publish/build trigger.
-   - This will update old saved generated files like `src/components/ui/select.tsx` and `package.json` so they include the correct Radix Select exports and dependency.
-   - Keep protected generated kit files managed by Petal so the AI cannot accidentally break them again.
+Outcome: a short written finding ("X of Y timeouts were first-build scaffolds on `gemini-2.5-pro`, abort fired at ~120s with ~N files already streamed") that justifies the budget change in step 2 and rules out other causes (e.g. model genuinely hanging, router mis-picking).
 
-2. Reduce generation timeouts by shrinking the prompt context
-   - Stop sending huge managed scaffold/reference files back to the AI as “current project files” during edit turns.
-   - Exclude generated kit/example/backend helper files from the model prompt while still keeping them in the real project file set for build/save.
-   - This directly targets the timeout loop: your book app has many scaffold/example files, and they are inflating the edit prompt even though the AI should not modify them.
+## 2. Raise first-build timeout budget
 
-3. Add a real Google sign-in helper to generated backend auth
-   - Extend the generated auth wrapper with a `signInWithGoogle()` helper and document it in the backend reference file Petal gives to the AI.
-   - Update the auth prompt rules so when a user asks for Google login, Petal uses the helper instead of inventing auth code.
-   - Ensure generated apps can show a Google button without directly hardcoding auth provider internals.
+Current state in `src/server/ai-provider.server.ts`:
 
-4. Improve timeout/error handling so users are not lied to
-   - Add a structured timeout failure type instead of classifying it as unknown.
-   - Replace “Petal got a bit confused” for this case with a specific message like “Petal ran out of time before saving changes,” with a safer retry path.
-   - Include useful technical detail behind “Show details” so this is diagnosable without guessing.
+```text
+DEFAULT_TIMEOUT_MS        = 25_000   // non-streaming
+DEFAULT_STREAM_TIMEOUT_MS = 120_000  // streaming
+```
 
-5. Make the current book-tracker recovery path safer
-   - After the system fixes, use a small focused recovery turn for the book tracker:
-     1. Normalize the scaffold/build files.
-     2. Add the Google login button using the new helper.
-     3. Add the dashboard status counts.
-     4. Only then continue with persisted books/RLS wiring if the schema still needs it.
-   - Avoid another large all-at-once prompt that can time out again.
+Change:
 
-6. Test the exact failure loop
-   - Re-run against the same signed-in user/project.
-   - Verify the saved/generated `select.tsx` exposes the expected exports.
-   - Verify `package.json` includes the Select dependency.
-   - Trigger the book app build and confirm the old `SelectTrigger is not exported` error is gone.
-   - Then test the smaller “Google login + dashboard counts” edit path.
+- Add a third tier: `FIRST_BUILD_STREAM_TIMEOUT_MS = 240_000` (4 min). Only used for the first generate turn on a project, or when the phase classifier reports `scaffold` / `initial_build`.
+- `effectiveSignal()` accepts an optional `kind: "default" | "stream" | "stream_first_build"` and picks the right ceiling.
+- Caller: `src/routes/api/generate.ts` passes the kind to `aiChatCompletions` based on (a) zero prior `messages` for the project, or (b) the existing phase classifier already producing a `scaffold`-like phase. We reuse what's already there — no new classifier pass.
+- Worker wall budget: 240s is still inside Cloudflare Worker streaming limits because we forward bytes as they arrive (the existing comment in `ai-provider.server.ts` already calls this out — the worker doesn't burn CPU while waiting).
 
-<lov-actions>
-  <lov-open-history>View History</lov-open-history>
-<lov-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</lov-link>
-</lov-actions>
+We are not touching the 25s non-streaming timeout or the 120s default streaming timeout. Only first-build streams get the longer ceiling.
+
+## 3. Fix digest classification
+
+Current state in `src/server/self-learning-digest.server.ts`:
+
+- `computeTotals` lumps every outcome where `local_verifier_pass !== true` into the verifier-pass-rate denominator, including outcomes that never produced files because the upstream timed out.
+- `computeRecommendations` then says "verifier pass rate is X% — add a dynamic-prompt snippet for the top failure." On a timeout-heavy day this advice is wrong.
+
+Changes:
+
+- New bucket in `DigestPayload.totals`: `timeoutRate` (share of generate turns where `pipeline_failures.signature` matches the timeout family OR `ai_call_log.status = 524`).
+- `verifierPassRate` is computed only over outcomes where the model actually produced output (i.e. `files_written > 0`). Outcomes with zero files are excluded from verifier numerator/denominator and counted under `timeoutRate` instead.
+- `computeRecommendations` gets a new branch: if `timeoutRate > 0.20`, the top recommendation becomes "Timeouts are the dominant failure today — investigate model latency / scaffold size before tuning prompts." The existing "add a dynamic-prompt snippet" branch only fires when `timeoutRate < 0.10` AND verifier pass rate is still low.
+- Email + `/admin/digest` page show the new metric as a fourth tile next to verifier / build / followup.
+
+Migration: add `timeout_rate numeric` column to `petal_self_learning_digests` (nullable, default null). No backfill — old rows just show `—`.
+
+## Files touched
+
+- `src/server/ai-provider.server.ts` — add third timeout tier, broaden `effectiveSignal` signature.
+- `src/routes/api/generate.ts` — pass first-build hint into `aiChatCompletions`.
+- `src/server/self-learning-digest.server.ts` — split timeout from verifier, rewrite recommendations branch, expose `timeoutRate`.
+- `src/routes/admin.digest.tsx` — render the new tile.
+- `src/routes/api/admin/digests.ts` — include `timeout_rate` in list/get projections.
+- New migration: add `timeout_rate` column to `petal_self_learning_digests`.
+
+## Out of scope
+
+- Smart-router weight changes (sample is too small — revisit after 2-3 days of cleaner digests).
+- Adding new dynamic-prompt snippets (no real recurring code-level signature exists today).
+- Touching the cron schedule, Vault secret, or Resend wiring.
+
+## What you'll see after this ships
+
+- Tomorrow's digest separates "we never finished generating" from "we generated wrong code." The verifier-pass-rate number stops being misleading.
+- First-build scaffolds for moderately complex apps (DB + auth, multi-page) stop hitting the 120s wall.
+- The "What to do tomorrow" section gives advice that matches the actual failure mode.
