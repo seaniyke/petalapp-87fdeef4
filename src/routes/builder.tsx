@@ -1253,10 +1253,10 @@ function Builder() {
         }
       }
 
-      // Fresh activity feed for this run — but DO NOT mount it yet. We mount
-      // the build phase card only after triage classifies this as a "build"
-      // turn, so a casual "hi" never triggers the deploy pipeline UI.
-      setPhases(defaultPhases());
+      // Fresh activity feed for this run — but DO NOT remount/reset it during
+      // an internal retry. Keeping the same card mounted avoids the visible
+      // flash users saw when Petal auto-recovered from no-file/cut-off streams.
+      if (!opts.isRetry) setPhases(defaultPhases());
       setDesignCaption("");
       setFilesWritten(0);
       setLatestPath(undefined);
@@ -1269,8 +1269,10 @@ function Builder() {
       setStreamingPlan("");
       setStreamingRecap("");
       setStreamingPreamble("");
-      setIntentBuild(false);
-      setActivityVisible(false);
+      if (!opts.isRetry) {
+        setIntentBuild(false);
+        setActivityVisible(false);
+      }
 
       let resultFiles: ProjectFile[] | null = null;
       let resultSummary = "";
