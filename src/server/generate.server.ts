@@ -486,6 +486,7 @@ export type ErrorKind =
   | "rate_limit"
   | "credits_exhausted"
   | "upstream_unavailable"
+  | "upstream_timeout"
   | "unauthorized"
   | "aborted"
   | "unknown";
