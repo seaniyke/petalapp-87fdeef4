@@ -734,6 +734,9 @@ function Builder() {
         handledBuildIds: new Set(),
       };
     }
+      if (noEditRecoveryRef.current.projectId !== project?.id) {
+        noEditRecoveryRef.current = { projectId: project?.id ?? null, attempts: 0 };
+      }
 
     if (effectiveBuildSnap.status === "ready") {
       setPhases((p) => completeThrough(p, "live"));
@@ -1565,6 +1568,22 @@ function Builder() {
         if (controller.signal.aborted) return;
         const msg = e instanceof Error ? e.message : "Something went wrong.";
         setError(msg);
+        const isNoEditFailure = e instanceof PipelineError && e.kind === "no_files_emitted";
+        if (isNoEditFailure && !opts.isAutoFix && noEditRecoveryRef.current.attempts < 1) {
+          noEditRecoveryRef.current.attempts += 1;
+          setActivityVisible(true);
+          setFriendlyError({
+            title: "Petal is trying another way",
+            message: "No action needed — Petal didn't get usable edits back, so it's retrying automatically.",
+            actionLabel: "Working on it",
+            actionKind: "dismiss",
+          });
+          setPhases(defaultPhases());
+          setTimeout(() => {
+            void sendRef.current?.(text, { isRetry: true, forceBuild: true });
+          }, 250);
+          return;
+        }
         // Pass full failure context so unmatched errors land in
         // pipeline_failures with enough detail to debug — not just an
         // empty `surface=unknown` row. Tail of the partial assistant text
