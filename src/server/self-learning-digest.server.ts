@@ -397,12 +397,31 @@ function computeRecommendations(args: {
 }): string[] {
   const out: string[] = [];
 
-  if (args.totals.turns === 0) {
+  if (args.totals.turns === 0 && (args.totals.timeoutRate ?? 0) === 0) {
     out.push("No generate turns in the last 24h — nothing to learn from yet.");
     return out;
   }
 
-  if (args.totals.verifierPassRate !== null && args.totals.verifierPassRate < 0.85) {
+  // Timeout-dominated days: surface this FIRST, before any prompt-snippet
+  // advice. A 120s upstream abort is not a code-quality problem; telling
+  // the operator to "add a dynamic-prompt snippet for the top failure" is
+  // wrong when the top failure is "operation aborted due to timeout."
+  const timeoutRate = args.totals.timeoutRate ?? 0;
+  if (timeoutRate >= 0.2) {
+    out.push(
+      `Timeouts are the dominant failure today (${(timeoutRate * 100).toFixed(1)}% of attempts). Investigate model latency and first-build scaffold size before tuning prompts — first-build streams now run on the 240s ceiling, so any new timeouts mean the model genuinely hung.`,
+    );
+  }
+
+  // Only suggest prompt-snippet work when the day is NOT timeout-dominated.
+  // Otherwise the verifier number is mostly noise from incomplete outputs.
+  const promptSnippetEligible = timeoutRate < 0.1;
+
+  if (
+    promptSnippetEligible &&
+    args.totals.verifierPassRate !== null &&
+    args.totals.verifierPassRate < 0.85
+  ) {
     out.push(
       `Verifier pass rate is ${(args.totals.verifierPassRate * 100).toFixed(1)}% — below the 85% target. Look at the top failure signatures and add a dynamic-prompt snippet for the top one.`,
     );
@@ -422,7 +441,7 @@ function computeRecommendations(args: {
   }
 
   const top = args.topFailureSignatures[0];
-  if (top && top.count >= 5) {
+  if (promptSnippetEligible && top && top.count >= 5) {
     out.push(
       `Top failure signature ("${top.signature}") hit ${top.count}× — codify a fix in dynamic-prompts or the verifier.`,
     );
