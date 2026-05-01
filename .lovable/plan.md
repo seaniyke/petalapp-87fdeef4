@@ -1,82 +1,61 @@
+I’m sorry — you’re right to be angry. I dug into the live data and logs, and this is not just “your prompt was too big.” There are real Petal-side issues here.
 
-## Yes — and here's how we do it without making things worse
+Do I know what the issue is? Yes.
 
-You asked two things: (a) make Petal genuinely capable of building real apps with very few errors, on par with the top AI builders, *without* the back-and-forth code thrash that introduces new bugs; and (b) refresh the Builder UI with premium fonts at ~14px and an iOS-style polish that feels bold, confident, and elegant.
+What I found:
 
-Both are doable. The honest constraint is this: build quality is not a single switch — it's a system. The Builder UI is a focused, contained change. So I'm proposing them as two tracks that ship independently.
+1. Your latest “Add Google login and status counts dashboard” turns did not edit files at all.
+   - Production logs show repeated generation timeouts: `The operation was aborted due to timeout`.
+   - Because no file result came back, the UI fell through to the generic “Petal got a bit confused” card.
 
----
+2. Your book-tracker project still contains an old broken generated `Select` component.
+   - The app imports `SelectTrigger`, `SelectContent`, `SelectItem`, and `SelectValue`.
+   - But the saved generated file only exports a simple native `Select`, so the build fails.
+   - I previously fixed Petal’s canonical scaffold, but patch turns are not reliably re-normalizing older saved projects, so this old generated project can remain poisoned.
 
-## Track A — Build quality (the real business)
+3. Google login is exposing a bigger gap.
+   - Your project’s backend is now ready.
+   - Petal tells the AI that backend/auth exists, but the generated-app auth helper currently covers email/password, OTP, password reset, and sign out — not a clean first-class Google sign-in helper.
+   - That makes “add Google login” more fragile than it should be: the model either times out while trying to work around it, or risks producing unsupported auth wiring.
 
-**Principle: do less, but verify more.** Most regressions in AI builders come from *post-generation patching* (auto-fixers stepping on each other, retries that silently rewrite working files, "smart" routers picking the wrong tier). The fix is not more cleverness — it's a stricter contract at each step and *one* source of truth per concern.
+Plan to fix it properly:
 
-### What I'd change, in priority order
+1. Make generated projects self-heal old scaffold files on every successful edit
+   - Re-apply the canonical generated-app scaffold after patch operations, not only on initial builds or publish/build trigger.
+   - This will update old saved generated files like `src/components/ui/select.tsx` and `package.json` so they include the correct Radix Select exports and dependency.
+   - Keep protected generated kit files managed by Petal so the AI cannot accidentally break them again.
 
-1. **Single autofix pass, not three.** Today we have `stream-autofixer.ts`, `post-stream-autofix.server.ts`, and per-tier fixers in `pipeline/tier-*`. They overlap. I'd consolidate to: stream → one verifier → at most one targeted repair attempt → stop. No silent retries that mutate user files.
+2. Reduce generation timeouts by shrinking the prompt context
+   - Stop sending huge managed scaffold/reference files back to the AI as “current project files” during edit turns.
+   - Exclude generated kit/example/backend helper files from the model prompt while still keeping them in the real project file set for build/save.
+   - This directly targets the timeout loop: your book app has many scaffold/example files, and they are inflating the edit prompt even though the AI should not modify them.
 
-2. **Make the verifier the gatekeeper, not a suggestion.** `local-verifier.ts` already does esbuild + render-risk + RLS sanity. Today some paths bypass it. Rule: *no file write reaches the user's project unless it passed verification or is explicitly marked "user override".*
+3. Add a real Google sign-in helper to generated backend auth
+   - Extend the generated auth wrapper with a `signInWithGoogle()` helper and document it in the backend reference file Petal gives to the AI.
+   - Update the auth prompt rules so when a user asks for Google login, Petal uses the helper instead of inventing auth code.
+   - Ensure generated apps can show a Google button without directly hardcoding auth provider internals.
 
-3. **Type-check parity with Lovable.** Add a tsc-noEmit pass on changed files only (incremental, ~1–2s) before commit. Catches the class of errors users hit most: bad imports, wrong props, missing exports.
+4. Improve timeout/error handling so users are not lied to
+   - Add a structured timeout failure type instead of classifying it as unknown.
+   - Replace “Petal got a bit confused” for this case with a specific message like “Petal ran out of time before saving changes,” with a safer retry path.
+   - Include useful technical detail behind “Show details” so this is diagnosable without guessing.
 
-4. **Stop the "smart router" from second-guessing itself.** `smart-router.server.ts` (495 lines) is where tier-mis-selection causes thrash. I'd add a *decision log* per turn (which tier, why, what evidence) so we can see — and the model can see in the next turn — why a choice was made. Reduces oscillation.
+5. Make the current book-tracker recovery path safer
+   - After the system fixes, use a small focused recovery turn for the book tracker:
+     1. Normalize the scaffold/build files.
+     2. Add the Google login button using the new helper.
+     3. Add the dashboard status counts.
+     4. Only then continue with persisted books/RLS wiring if the schema still needs it.
+   - Avoid another large all-at-once prompt that can time out again.
 
-5. **Render-risk and RLS linters become hard fails on Cloud writes.** Right now they warn. For anything touching `user_roles`, RLS policies, or auth flows, a lint fail blocks the write. This is the #1 source of "it built but nothing works" complaints.
+6. Test the exact failure loop
+   - Re-run against the same signed-in user/project.
+   - Verify the saved/generated `select.tsx` exposes the expected exports.
+   - Verify `package.json` includes the Select dependency.
+   - Trigger the book app build and confirm the old `SelectTrigger is not exported` error is gone.
+   - Then test the smaller “Google login + dashboard counts” edit path.
 
-6. **A small golden-app test suite.** 8–10 reference apps (todo, blog, chat, dashboard, marketplace, auth+roles, file upload, realtime, payments stub, email send). Run nightly. Any regression in build success rate is a release blocker. This is what separates the top-5 builders from everyone else — they have these and we don't.
-
-7. **Lovable-parity audit.** One pass through our generate prompt, scaffold kit, and examples pack to make sure naming, file layout, and conventions match what a Lovable user expects (route file conventions, `@/` imports, shadcn patterns, Cloud client usage). No surprises.
-
-### What I'd explicitly *not* do
-- No new "cleverness" layers. No new auto-fix tier. No new model router. The point is fewer moving parts, not more.
-- No big-bang rewrite of the pipeline. Each item above is independently shippable and reversible.
-
-### How we ship Track A without breaking anything
-Each item lands behind a flag (`labs.strict_verifier`, `labs.single_autofix`, etc.), runs in shadow mode for ~48h emitting telemetry, then flips on. The golden-app suite is the proof.
-
-**This is multi-week work.** I'd suggest we pick the top 2–3 items to start (I recommend #1, #2, #6) and treat the rest as a roadmap. Trying to do all seven in one pass would be the exact thrash you're warning against.
-
----
-
-## Track B — Builder UI refresh (iOS-styled, premium, confident)
-
-This one is concrete and contained. Today's Builder uses **Inter** (sans), **Fraunces** (display), **JetBrains Mono** at a `text-sm` (14px) / `text-xs` (12px) heavy mix. Headline brand is good; body in chrome and chat is too small and reads as utilitarian.
-
-### Typography — premium, iOS-feeling
-- **Body / UI:** swap **Inter** → **Inter Tight** as the primary, with **SF Pro Text** stack as the system fallback (`-apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Tight", system-ui`). On Apple devices users get real SF Pro for free — most "iOS premium" feel comes from this single decision.
-- **Display / headlines:** keep **Fraunces** — it's already our brand voice. Tighten tracking at large sizes.
-- **Mono:** keep **JetBrains Mono**.
-- **Base size:** raise from 14px (`text-sm`) to **15px** as the *new* `text-sm`, with `text-base` at **16px**. Most Builder chrome currently uses `text-xs` (12px) — those bump to **13px**. This is the "everything got slightly bigger and more readable" feel without breaking layouts.
-- **Letter-spacing:** add `-0.01em` to body, `-0.02em` to headlines (≥ text-xl). This is the single biggest "feels like iOS" tweak.
-- **Line-height:** body `1.5`, UI chrome `1.4`, headlines `1.1`.
-- **Weights:** standardize on 400 / 500 / 600 / 700 only. Drop ad-hoc 800/900.
-
-### iOS-style surface polish
-- **Corner radii:** raise `--radius` from `0.875rem` → `1rem` (16px). Sheets and cards go to `rounded-2xl` (20px). This alone reads as "iOS 17+".
-- **Blurs:** sheet/popover backdrops gain `backdrop-blur-xl` + `bg-card/85` for the frosted-glass look.
-- **Shadows:** softer, taller — `0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 32px -12px rgba(20,20,40,0.18)`.
-- **Buttons:** primary CTA gets a 1px inset highlight on top + a faint gradient (subtle, not glossy). `active:scale-[0.98]` already exists in places — apply consistently.
-- **Density:** chat composer, header, and sidebar get a 1–2px breathing-room bump. No new components.
-
-### Scope of Track B
-Only these files change:
-- `src/styles.css` — font variables, base size, radius, shadow tokens.
-- `src/routes/__root.tsx` — Google Fonts URL (add Inter Tight, drop unused weights).
-- `src/routes/builder.tsx` — replace `text-xs` → `text-[13px]` and `text-sm` → `text-[15px]` in chrome only (header, composer, sidebar, file tree, command palette). Chat message body stays at 15px for readability.
-- `src/components/CommandPalette.tsx`, `BuildActivityCard.tsx`, `HistoryPanel.tsx`, `BuilderActionsSheet.tsx` — same size bump.
-- No component logic changes. No prop changes. Pure visual.
-
-### Risk
-Low. All changes are CSS / class swaps. Reversible per-file. I'll spot-check the mobile viewport (you're on 430px right now) since slightly larger fonts can cause wrap on dense rows — I'll tighten padding where needed.
-
----
-
-## What I need from you
-
-Two questions before I start:
-
-1. **Track A scope for *this* session:** start with items #1 + #2 (consolidate autofix + make verifier the gatekeeper), or start with #6 (golden-app test suite) so we have a measurable baseline first? My recommendation is **#6 first** — without it we can't prove anything got better.
-
-2. **Track B:** ship the typography + radius + blur changes now in one pass, or stage it (typography first, then surfaces)?
-
-Once you answer, I'll switch to build mode and execute. I won't touch anything outside the agreed scope.
+<lov-actions>
+  <lov-open-history>View History</lov-open-history>
+<lov-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</lov-link>
+</lov-actions>
