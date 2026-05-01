@@ -537,24 +537,39 @@ function Builder() {
     return () => window.clearInterval(t);
   }, [isDeploying, effectiveBuildSnap?.observedAt]);
 
-  // Once we cross the 150s threshold, surface the friendly stalled card.
-  // The card lets the user Retry (re-trigger the build with the current
-  // files) or Keep editing (dismiss; if Railway eventually responds the
-  // status will still flip to ready in the background).
+  // Once we cross the 240s threshold, surface the friendly stalled card.
+  // 240s gives Railway plenty of headroom on slow days (typical deploys are
+  // 16-25s but can legitimately spike to 60-120s under load) so we stop
+  // crying wolf at users whose build is actually fine.
+  // Critical safeguard: re-fetch the build row directly before showing the
+  // warning. If realtime missed the UPDATE and our local snapshot is stale,
+  // we'll see the row is already 'ready'/'failed' and bail out instead of
+  // scaring the user about a build that already finished.
   useEffect(() => {
-    // Never stack a stale deploy warning on top of an active AI repair/build.
-    // The current turn supersedes the old deploy; if it still matters after
-    // Petal finishes, the non-superseded build watcher can surface it then.
     if (!isDeploying || friendlyError || busy) return;
-    if (deployElapsed < 150) return;
-    setFriendlyError({
-      title: "Publishing is taking longer than usual",
-      message:
-        "Your code is ready — the publishing service hasn't reported back yet. You can retry the deploy or keep editing while we wait.",
-      actionLabel: "Retry deploy",
-      actionKind: "retry",
-      technicalDetail: `Deploy elapsed ${deployElapsed}s with no callback`,
-    });
+    if (deployElapsed < 240) return;
+    const buildId = project?.latest_build_id;
+    if (!buildId) return;
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from("project_builds")
+        .select("status")
+        .eq("id", buildId)
+        .maybeSingle();
+      if (cancelled) return;
+      // Build already finished — realtime/polling just missed it. Don't warn.
+      if (data?.status === "ready" || data?.status === "failed") return;
+      setFriendlyError({
+        title: "Publishing is taking longer than usual",
+        message:
+          "Your code is ready — the publishing service hasn't reported back yet. You can retry the deploy or keep editing while we wait.",
+        actionLabel: "Retry deploy",
+        actionKind: "retry",
+        technicalDetail: `Deploy elapsed ${deployElapsed}s with no callback`,
+      });
+    })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deployElapsed, isDeploying, busy]);
 
