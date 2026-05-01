@@ -164,9 +164,8 @@ export const setProjectUserBan = createServerFn({ method: "POST" })
     // GoTrue accepts a duration string. "none" lifts the ban.
     const ban_duration = data.ban ? "876000h" : "none"; // ~100 years
     const { error } = await client.auth.admin.updateUserById(data.userUid, {
-      // @ts-expect-error — ban_duration is supported by GoTrue admin API
       ban_duration,
-    });
+    } as Parameters<typeof client.auth.admin.updateUserById>[1]);
     if (error) throw new Error(error.message);
     return { ok: true, banned: data.ban };
   });
