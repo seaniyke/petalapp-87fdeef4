@@ -41,6 +41,7 @@ import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
 import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
 import { Route as AdminFailuresRouteImport } from './routes/admin.failures'
+import { Route as AdminDigestRouteImport } from './routes/admin.digest'
 import { Route as AdminBillingRouteImport } from './routes/admin.billing'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -57,6 +58,7 @@ import { Route as ApiBuildsCallbackRouteImport } from './routes/api/builds/callb
 import { Route as ApiBillingVerifyRouteImport } from './routes/api/billing/verify'
 import { Route as ApiBillingInitializeRouteImport } from './routes/api/billing/initialize'
 import { Route as ApiAdminPaystackPlansRouteImport } from './routes/api/admin/paystack-plans'
+import { Route as ApiAdminDigestsRouteImport } from './routes/api/admin/digests'
 import { Route as ApiAdminCreditsRouteImport } from './routes/api/admin/credits'
 import { Route as ApiAdminAiProvidersRouteImport } from './routes/api/admin/ai-providers'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -234,6 +236,11 @@ const AdminFailuresRoute = AdminFailuresRouteImport.update({
   path: '/admin/failures',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminDigestRoute = AdminDigestRouteImport.update({
+  id: '/admin/digest',
+  path: '/admin/digest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminBillingRoute = AdminBillingRouteImport.update({
   id: '/admin/billing',
   path: '/admin/billing',
@@ -312,6 +319,11 @@ const ApiBillingInitializeRoute = ApiBillingInitializeRouteImport.update({
 const ApiAdminPaystackPlansRoute = ApiAdminPaystackPlansRouteImport.update({
   id: '/api/admin/paystack-plans',
   path: '/api/admin/paystack-plans',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminDigestsRoute = ApiAdminDigestsRouteImport.update({
+  id: '/api/admin/digests',
+  path: '/api/admin/digests',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminCreditsRoute = ApiAdminCreditsRouteImport.update({
@@ -417,6 +429,7 @@ export interface FileRoutesByFullPath {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/pipeline': typeof AdminPipelineRoute
@@ -442,6 +455,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
+  '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
@@ -483,6 +497,7 @@ export interface FileRoutesByTo {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/pipeline': typeof AdminPipelineRoute
@@ -508,6 +523,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
+  '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
@@ -550,6 +566,7 @@ export interface FileRoutesById {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/pipeline': typeof AdminPipelineRoute
@@ -575,6 +592,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
+  '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
@@ -618,6 +636,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
+    | '/admin/digest'
     | '/admin/failures'
     | '/admin/ledgers'
     | '/admin/pipeline'
@@ -643,6 +662,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
+    | '/api/admin/digests'
     | '/api/admin/paystack-plans'
     | '/api/billing/initialize'
     | '/api/billing/verify'
@@ -684,6 +704,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
+    | '/admin/digest'
     | '/admin/failures'
     | '/admin/ledgers'
     | '/admin/pipeline'
@@ -709,6 +730,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
+    | '/api/admin/digests'
     | '/api/admin/paystack-plans'
     | '/api/billing/initialize'
     | '/api/billing/verify'
@@ -750,6 +772,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
+    | '/admin/digest'
     | '/admin/failures'
     | '/admin/ledgers'
     | '/admin/pipeline'
@@ -775,6 +798,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
+    | '/api/admin/digests'
     | '/api/admin/paystack-plans'
     | '/api/billing/initialize'
     | '/api/billing/verify'
@@ -817,6 +841,7 @@ export interface RootRouteChildren {
   UnsubscribeRoute: typeof UnsubscribeRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminBillingRoute: typeof AdminBillingRoute
+  AdminDigestRoute: typeof AdminDigestRoute
   AdminFailuresRoute: typeof AdminFailuresRoute
   AdminLedgersRoute: typeof AdminLedgersRoute
   AdminPipelineRoute: typeof AdminPipelineRoute
@@ -842,6 +867,7 @@ export interface RootRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
   ApiAdminAiProvidersRoute: typeof ApiAdminAiProvidersRoute
   ApiAdminCreditsRoute: typeof ApiAdminCreditsRoute
+  ApiAdminDigestsRoute: typeof ApiAdminDigestsRoute
   ApiAdminPaystackPlansRoute: typeof ApiAdminPaystackPlansRoute
   ApiBillingInitializeRoute: typeof ApiBillingInitializeRoute
   ApiBillingVerifyRoute: typeof ApiBillingVerifyRoute
@@ -1097,6 +1123,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFailuresRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/digest': {
+      id: '/admin/digest'
+      path: '/admin/digest'
+      fullPath: '/admin/digest'
+      preLoaderRoute: typeof AdminDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/billing': {
       id: '/admin/billing'
       path: '/admin/billing'
@@ -1207,6 +1240,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/paystack-plans'
       fullPath: '/api/admin/paystack-plans'
       preLoaderRoute: typeof ApiAdminPaystackPlansRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/digests': {
+      id: '/api/admin/digests'
+      path: '/api/admin/digests'
+      fullPath: '/api/admin/digests'
+      preLoaderRoute: typeof ApiAdminDigestsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/credits': {
@@ -1348,6 +1388,7 @@ const rootRouteChildren: RootRouteChildren = {
   UnsubscribeRoute: UnsubscribeRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminBillingRoute: AdminBillingRoute,
+  AdminDigestRoute: AdminDigestRoute,
   AdminFailuresRoute: AdminFailuresRoute,
   AdminLedgersRoute: AdminLedgersRoute,
   AdminPipelineRoute: AdminPipelineRoute,
@@ -1373,6 +1414,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
   ApiAdminAiProvidersRoute: ApiAdminAiProvidersRoute,
   ApiAdminCreditsRoute: ApiAdminCreditsRoute,
+  ApiAdminDigestsRoute: ApiAdminDigestsRoute,
   ApiAdminPaystackPlansRoute: ApiAdminPaystackPlansRoute,
   ApiBillingInitializeRoute: ApiBillingInitializeRoute,
   ApiBillingVerifyRoute: ApiBillingVerifyRoute,

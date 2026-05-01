@@ -174,7 +174,12 @@ function ProjectCard({ project, onDelete }: { project: ProjectRow; onDelete: () 
         className="flex flex-1 flex-col"
       >
         <div className="relative">
-          <ProjectThumbnail projectId={project.id} className="h-28" />
+          <ProjectThumbnail
+            projectId={project.id}
+            title={project.title}
+            subdomain={project.subdomain}
+            className="h-28"
+          />
           <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-card/90 px-2 py-0.5 text-[10px] font-medium text-muted-foreground backdrop-blur">
             {project.is_public ? (
               <>
