@@ -1518,8 +1518,17 @@ function Builder() {
               setPhases((p) => markFailed(p, "deploying"));
             });
         } catch (persistErr) {
+          // If persistence fails BEFORE we can call triggerBuild, the
+          // "deploying" phase was already activated above (line ~1485) and
+          // would otherwise spin forever. Mark it failed and surface a
+          // friendly card so the user has a clear recovery path instead
+          // of a stuck spinner.
           console.error(persistErr);
           toast.error("Generated, but couldn't save changes.");
+          setPhases((p) => markFailed(p, "deploying"));
+          setFriendlyError(
+            toFriendlyError(persistErr, { surface: "build", projectId: proj.id }),
+          );
         }
       } catch (e) {
         if (controller.signal.aborted) return;
