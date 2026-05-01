@@ -496,6 +496,10 @@ function Builder() {
     projectId: null,
     attempts: 0,
   });
+  const transientGenerateRecoveryRef = useRef<{ projectId: string | null; attempts: number }>({
+    projectId: null,
+    attempts: 0,
+  });
   // When a user starts a new AI turn or retries a stalled deploy, the previous
   // `latest_build_id` is no longer the thing the chat should react to. Without
   // this, an old pending deploy can keep re-opening the "Publishing is taking
@@ -780,6 +784,9 @@ function Builder() {
     }
       if (noEditRecoveryRef.current.projectId !== project?.id) {
         noEditRecoveryRef.current = { projectId: project?.id ?? null, attempts: 0 };
+      }
+      if (transientGenerateRecoveryRef.current.projectId !== project?.id) {
+        transientGenerateRecoveryRef.current = { projectId: project?.id ?? null, attempts: 0 };
       }
 
     if (effectiveBuildSnap.status === "ready") {
@@ -1480,6 +1487,7 @@ function Builder() {
         const summary2 = guardBackendClaims(rawSummary2, files2, "Updated the project.");
         const safeRecap = guardBackendClaims(resultRecap, files2, "");
         noEditRecoveryRef.current.attempts = 0;
+        transientGenerateRecoveryRef.current.attempts = 0;
         // Persist the warm preamble alongside the technical summary so the
         // chat thread retains the human voice on refresh — without it, all
         // we'd see in history is the dryer "Updated the project." line.
@@ -1669,6 +1677,10 @@ function Builder() {
         const msg = e instanceof Error ? e.message : "Something went wrong.";
         setError(msg);
         const isNoEditFailure = e instanceof PipelineError && e.kind === "no_files_emitted";
+        const isTransientGenerateFailure =
+          e instanceof PipelineError
+            ? e.kind === "upstream_timeout" || e.kind === "upstream_unavailable" || e.kind === "unknown"
+            : /\b(load failed|failed to fetch|network error|fetch failed|request aborted)\b/i.test(msg);
         if (isNoEditFailure && !opts.isAutoFix && noEditRecoveryRef.current.attempts < 1) {
           noEditRecoveryRef.current.attempts += 1;
           setActivityVisible(true);
@@ -1678,6 +1690,27 @@ function Builder() {
               "No action needed — Petal didn't get usable edits back, so it's retrying automatically.",
             actionLabel: "Working on it",
             actionKind: "dismiss",
+          });
+          setPhases(defaultPhases());
+          setTimeout(() => {
+            void sendRef.current?.(text, {
+              isRetry: true,
+              forceBuild: true,
+              autoEscalate: true,
+            });
+          }, 250);
+          return;
+        }
+        if (isTransientGenerateFailure && !opts.isAutoFix && transientGenerateRecoveryRef.current.attempts < 1) {
+          transientGenerateRecoveryRef.current.attempts += 1;
+          setActivityVisible(true);
+          setFriendlyError({
+            title: "Petal is reconnecting",
+            message:
+              "The build connection dropped before changes were saved. No action needed — Petal is retrying once with a safer path.",
+            actionLabel: "Working on it",
+            actionKind: "dismiss",
+            technicalDetail: msg,
           });
           setPhases(defaultPhases());
           setTimeout(() => {
