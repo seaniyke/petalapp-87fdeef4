@@ -1678,7 +1678,9 @@ function Builder() {
         if (controller.signal.aborted) return;
         const msg = e instanceof Error ? e.message : "Something went wrong.";
         setError(msg);
-        const isNoEditFailure = e instanceof PipelineError && e.kind === "no_files_emitted";
+        const isNoEditFailure =
+          e instanceof PipelineError &&
+          (e.kind === "no_files_emitted" || e.kind === "truncated_response");
         const isTransientGenerateFailure =
           e instanceof PipelineError
             ? e.kind === "upstream_timeout" || e.kind === "upstream_unavailable" || e.kind === "unknown"
@@ -1693,7 +1695,7 @@ function Builder() {
             actionLabel: "Working on it",
             actionKind: "dismiss",
           });
-          setPhases(defaultPhases());
+          setPhases((p) => advanceTo(p, "thinking"));
           setTimeout(() => {
             void sendRef.current?.(text, {
               isRetry: true,
@@ -1714,7 +1716,7 @@ function Builder() {
             actionKind: "dismiss",
             technicalDetail: msg,
           });
-          setPhases(defaultPhases());
+          setPhases((p) => advanceTo(p, "thinking"));
           setTimeout(() => {
             void sendRef.current?.(text, {
               isRetry: true,
