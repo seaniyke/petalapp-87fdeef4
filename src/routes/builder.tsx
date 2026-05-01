@@ -2663,7 +2663,7 @@ function Builder() {
               // Only allow revert if Petal already replied to this user
               // message (so a snapshot exists) and we're not mid-generation.
               const hasReply = isUser && messages[i + 1]?.role === "assistant";
-              const canRevert = hasReply && !busy && !discussBusy;
+              const canRevert = hasReply && !petalIsWorking;
               return (
                 <div key={i} className={`group min-w-0 ${isUser ? "flex justify-end" : ""}`}>
                   <div
@@ -2718,7 +2718,7 @@ function Builder() {
                             yet) — once a build exists, suggestions are folded
                             into the "Keep building" action below to keep the
                             thread calm. */}
-                        {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !busy && !discussBusy && files.length === 0 && (
+                        {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && files.length === 0 && (
                           <div className="-mx-0.5 mt-1 flex flex-wrap gap-1.5">
                             {m.suggestions.map((s, si) => (
                               <button
@@ -3236,7 +3236,7 @@ function Builder() {
                       </button>
                     )}
                   </div>
-                  {m.role === "assistant" && i === lastDiscussIndex && !busy && !discussBusy && (
+                  {m.role === "assistant" && i === lastDiscussIndex && !petalIsWorking && (
                     <div className="mr-3 mt-3 flex flex-col items-stretch gap-1.5 sm:mr-6">
                       <button
                         onClick={applyDiscussedPlan}
