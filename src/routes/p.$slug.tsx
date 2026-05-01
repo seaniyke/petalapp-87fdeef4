@@ -102,72 +102,104 @@ function PublicPreview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return (
-    <div className="relative h-screen w-screen overflow-hidden bg-background">
-      {published.url ? (
-        <iframe
-          title={project.title}
-          sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin"
-          src={published.url}
-          className="h-full w-full border-0"
-        />
-      ) : (
-        <div className="grid h-full place-items-center px-6 text-center">
-          <div className="max-w-md space-y-3">
-            <h1 className="font-display text-2xl">Not published yet</h1>
-            <p className="text-sm text-muted-foreground">
-              This project doesn't have a live version to preview. You can still
-              remix it and publish your own copy.
-            </p>
-          </div>
-        </div>
-      )}
+  const initials = project.title
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("") || "P";
 
-      {/* Floating footer */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-4">
-        <div className="pointer-events-auto flex max-w-[640px] items-center gap-3 rounded-full border border-border bg-card/95 px-3 py-2 shadow-lg backdrop-blur">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs text-muted-foreground transition hover:text-foreground"
-            title="Made with Petal"
-          >
-            <span className="grid h-5 w-5 place-items-center rounded-md bg-primary text-primary-foreground">
-              <Sparkles className="h-3 w-3" />
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <Link to="/" className="inline-flex items-center gap-2 text-sm font-medium">
+            <span className="grid h-6 w-6 place-items-center rounded-md bg-primary text-primary-foreground">
+              <Sparkles className="h-3.5 w-3.5" />
             </span>
-            Made with Petal
+            Petal
           </Link>
-          <div className="h-4 w-px bg-border" />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium leading-tight">
+          <Link
+            to="/gallery"
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            ← Back to gallery
+          </Link>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-6 py-12">
+        <div className="grid gap-10 lg:grid-cols-[1fr,1.4fr] lg:items-start">
+          {/* Left: project meta */}
+          <div className="space-y-5">
+            <p className="text-xs font-medium uppercase tracking-wider text-primary">
+              Community project
+            </p>
+            <h1 className="font-display text-4xl leading-tight md:text-5xl">
               {project.title}
-            </div>
+            </h1>
             {project.summary && (
-              <div className="truncate text-[11px] text-muted-foreground leading-tight">
-                {project.summary}
+              <p className="text-base text-muted-foreground">{project.summary}</p>
+            )}
+
+            <div className="flex flex-wrap gap-3 pt-2">
+              {published.url ? (
+                <a
+                  href={published.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition hover:brightness-110"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open live site
+                </a>
+              ) : null}
+              <button
+                onClick={() => setConfirmOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:brightness-105"
+              >
+                <GitFork className="h-4 w-4" />
+                Remix this app
+              </button>
+            </div>
+
+            {published.display && (
+              <p className="pt-1 text-xs text-muted-foreground">
+                Live at{" "}
+                <span className="font-mono text-foreground/80">
+                  {published.display}
+                </span>
+              </p>
+            )}
+
+            <div className="rounded-2xl border border-border bg-card/50 p-4 text-xs text-muted-foreground">
+              Remixing creates a fresh copy under your account. The original
+              project is never modified.
+            </div>
+          </div>
+
+          {/* Right: hero artwork */}
+          <a
+            href={published.url ?? undefined}
+            target={published.url ? "_blank" : undefined}
+            rel="noopener noreferrer"
+            className="group relative block overflow-hidden rounded-3xl border border-border bg-aurora aspect-[4/3] shadow-[var(--shadow-soft)]"
+            aria-label={published.url ? `Open ${project.title} in a new tab` : project.title}
+          >
+            <div className="absolute inset-0 bg-grain opacity-30" aria-hidden />
+            <div className="absolute inset-0 grid place-items-center">
+              <div className="grid h-28 w-28 place-items-center rounded-3xl bg-card/80 backdrop-blur text-4xl font-display text-foreground shadow-lg">
+                {initials}
+              </div>
+            </div>
+            {published.url && (
+              <div className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full bg-foreground/90 px-3 py-1.5 text-xs font-medium text-background opacity-0 transition group-hover:opacity-100">
+                Open <ArrowUpRight className="h-3 w-3" />
               </div>
             )}
-          </div>
-          {published.url && (
-            <a
-              href={published.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted"
-              title="Open live site in a new tab"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              Open
-            </a>
-          )}
-          <button
-            onClick={() => setConfirmOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-xs font-medium text-background transition hover:brightness-110"
-          >
-            <GitFork className="h-3.5 w-3.5" />
-            Remix
-          </button>
+          </a>
         </div>
-      </div>
+      </main>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>
