@@ -410,7 +410,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
  *
  * - Non-streaming: 25s. Plenty for short tool calls (classifier, director,
  *   self-check, autofix) but well under the worker's wall budget.
- * - Streaming: 90s. The big generate/discuss calls stream back and we
+ * - Streaming: 120s. The big generate/discuss calls stream back and we
  *   forward bytes as they arrive, so the worker doesn't burn CPU while
  *   waiting. Still bounded so a wedged stream can't run forever.
  *
@@ -418,7 +418,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
  * first wins (AbortSignal.any is supported in Workers + Node ≥ 20).
  */
 const DEFAULT_TIMEOUT_MS = 25_000;
-const DEFAULT_STREAM_TIMEOUT_MS = 90_000;
+const DEFAULT_STREAM_TIMEOUT_MS = 120_000;
 
 function effectiveSignal(
   caller: AbortSignal | undefined,
