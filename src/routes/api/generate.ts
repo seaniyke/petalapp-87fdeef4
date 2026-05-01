@@ -917,7 +917,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
               }),
               tools: [tool],
               tool_choice: { type: "function", function: { name: tool.function.name } },
-                max_tokens: maxCompletionTokens,
+              max_tokens: Math.max(maxCompletionTokens, isInitial ? 12_000 : 8_000),
               stream: true,
             },
             meta: {
