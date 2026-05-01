@@ -111,7 +111,8 @@ export async function buildSelfLearningDigest(
   const failures = await fetchFailures(startIso, endIso);
   const userCount = await fetchUserCount(startIso, endIso);
 
-  const totals = computeTotals(outcomes, userCount);
+  const timeoutCount = countTimeoutFailures(failures);
+  const totals = computeTotals(outcomes, userCount, timeoutCount);
   const topFailureSignatures = computeTopSignatures(failures);
   const topRevertedPrompts = computeTopReverts(outcomes);
   const modelBreakdown = computeModelBreakdown(outcomes);
@@ -138,7 +139,7 @@ async function fetchOutcomes(startIso: string, endIso: string): Promise<OutcomeR
     const { data, error } = await supabaseAdmin
       .from("ai_call_outcomes")
       .select(
-        "model, local_verifier_pass, local_verifier_errors, autofix_count, build_status, user_followup_was_fix, project_id, ai_call_id, created_at",
+        "model, local_verifier_pass, local_verifier_errors, autofix_count, build_status, user_followup_was_fix, project_id, ai_call_id, created_at, files_written",
       )
       .gte("created_at", startIso)
       .lt("created_at", endIso)
