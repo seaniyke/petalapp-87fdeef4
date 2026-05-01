@@ -3494,37 +3494,8 @@ function Builder() {
                 </button>
               </div>
             </div>
-            {/* Live status line — Lovable-style ambient cue right under the
-                composer. Only renders while busy. The activity card has the
-                full timeline; this is the one-glance summary. */}
-            {(busy || discussBusy) && (() => {
-              const activePhase = phases.find((p) => p.status === "active");
-              const fileLabel = latestPath
-                ? latestPath.split("/").pop() ?? latestPath
-                : null;
-              let label: string;
-              if (discussBusy) label = "Petal is thinking…";
-              else if (filesWritten > 0 && fileLabel)
-                label = `Writing ${filesWritten} file${filesWritten === 1 ? "" : "s"} · ${fileLabel}`;
-              else if (filesWritten > 0)
-                label = `Writing ${filesWritten} file${filesWritten === 1 ? "" : "s"}…`;
-              else if (activePhase?.id === "thinking") label = "Petal is thinking…";
-              else if (activePhase?.id === "designing") label = "Designing…";
-              else if (activePhase?.id === "writing") label = "Writing code…";
-              else if (activePhase?.id === "polishing") label = "Polishing…";
-              else if (activePhase?.id === "deploying") label = "Deploying…";
-              else label = "Working…";
-              return (
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className="mt-1.5 flex items-center gap-1.5 px-1 text-[11.5px] text-muted-foreground"
-                >
-                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-foreground/50" />
-                  <span className="min-w-0 flex-1 truncate">{label}</span>
-                </div>
-              );
-            })()}
+            {/* Status line removed — the in-chat shimmer label
+                ("Thinking" / "Working") now conveys this directly. */}
             {/* Errors are shown inside <BuildActivityCard /> with friendly copy. */}
           </form>
         </aside>
