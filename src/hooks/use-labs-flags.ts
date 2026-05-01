@@ -21,6 +21,11 @@ export const LABS_FLAGS = {
     description:
       "Lets the chat assistant scaffold a Progressive Web App with manifest, offline cache, and push notifications when you ask for it.",
   },
+  staged_pipeline: {
+    title: "Staged build pipeline (experimental)",
+    description:
+      "New 3-stage build pipeline (plan → parallel scaffold → wire-up) that breaks each app into smaller, isolated AI calls. Reduces truncation and prose-only failures. Off by default while we measure it.",
+  },
 } as const;
 
 export type LabsFlagName = keyof typeof LABS_FLAGS;
