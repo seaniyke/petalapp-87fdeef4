@@ -127,6 +127,50 @@ function resolveModel(preset: ModelPreset, latestPrompt: string, fileCount: numb
   return pickSmartModel(latestPrompt, fileCount);
 }
 
+function latestUserMessage(messages: ChatMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "user") return messages[i].content ?? "";
+  }
+  return "";
+}
+
+function trimMessagesForGeneration(messages: ChatMessage[]): ChatMessage[] {
+  const lastUserIdx = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") return i;
+    }
+    return -1;
+  })();
+  if (lastUserIdx < 0) return messages.slice(-4);
+  const recentContext = messages.slice(Math.max(0, lastUserIdx - 3), lastUserIdx);
+  return [...recentContext, messages[lastUserIdx]];
+}
+
+function trimFilesForPrompt(files: ProjectFile[]): { files: ProjectFile[]; omitted: number } {
+  const rank = (path: string): number => {
+    if (path === "src/App.tsx") return 0;
+    if (path === "src/main.tsx") return 1;
+    if (path === "src/styles.css") return 2;
+    if (path.startsWith("src/pages/") || path.startsWith("src/routes/")) return 3;
+    if (path.startsWith("src/components/")) return 4;
+    if (path === "package.json" || path === "index.html") return 5;
+    return 9;
+  };
+  const picked: ProjectFile[] = [];
+  let used = 0;
+  for (const file of [...files].sort((a, b) => rank(a.path) - rank(b.path) || a.path.localeCompare(b.path))) {
+    if (picked.length >= PATCH_CONTEXT_FILE_LIMIT) break;
+    const content = file.content.length > LARGE_FILE_CONTEXT_CHAR_LIMIT
+      ? `${file.content.slice(0, LARGE_FILE_CONTEXT_CHAR_LIMIT)}\n\n/* ...trimmed for context budget... */`
+      : file.content;
+    const cost = file.path.length + content.length + 32;
+    if (picked.length > 0 && used + cost > PATCH_CONTEXT_CHAR_LIMIT) continue;
+    picked.push({ path: file.path, content });
+    used += cost;
+  }
+  return { files: picked, omitted: Math.max(0, files.length - picked.length) };
+}
+
 function sse(event: StreamEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;
 }
