@@ -22,8 +22,12 @@ export const Route = createFileRoute("/p/$slug")({
   loader: async ({ params }) => {
     const project = await getProjectBySlug(params.slug);
     if (!project || !project.is_public) throw notFound();
-    const files = await loadProjectFiles(project.id);
-    return { project, files };
+    const published = await resolvePublishedUrl(
+      project.id,
+      project.primary_domain_id ?? null,
+      project.published_build_id ?? null,
+    );
+    return { project, published };
   },
   head: ({ loaderData }) => {
     const title = loaderData?.project?.title ?? "Petal project";
@@ -57,12 +61,11 @@ export const Route = createFileRoute("/p/$slug")({
 });
 
 function PublicPreview() {
-  const { project, files } = Route.useLoaderData() as {
+  const { project, published } = Route.useLoaderData() as {
     project: ProjectRow;
-    files: ProjectFile[];
+    published: PublishedUrlResult;
   };
   const navigate = useNavigate();
-  const previewDoc = useMemo(() => buildPreviewDoc(files), [files]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [remixing, setRemixing] = useState(false);
 
