@@ -2748,8 +2748,7 @@ function Builder() {
                             app online…") — the app isn't actually ready yet. */}
                         {i === messages.length - 1 &&
                           !petalIsWorking &&
-                          files.length > 0 &&
-                          (!buildSnap || buildSnap.status === "ready" || buildSnap.status === "failed") && (
+                          files.length > 0 && (
                             <NextStepsCard
                               showPreviewAction={isMobile ? mobileTab !== "preview" : view !== "preview"}
                               onPreview={() => {
