@@ -69,7 +69,7 @@ const sections: Section[] = [
           </li>
           <li>
             When you're happy, click <strong>Publish</strong> to take it live on a free
-            <code>*.petalapp.com</code> URL.
+            <code>*.buildwithpetal.com</code> URL.
           </li>
         </ol>
       </>
@@ -150,7 +150,7 @@ const sections: Section[] = [
       <>
         <p>
           Click <strong>Publish</strong> in the builder to deploy. Your app gets a free
-          <code> *.petalapp.com</code> subdomain immediately.
+          <code> *.buildwithpetal.com</code> subdomain immediately.
         </p>
         <ul>
           <li><strong>Frontend changes</strong> require pressing "Update" in the publish dialog to go live.</li>
