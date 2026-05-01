@@ -330,6 +330,9 @@ function Builder() {
     },
     [],
   );
+  useEffect(() => {
+    projectIdRef.current = project?.id ?? null;
+  }, [project?.id]);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   // Build vs Discuss mode. Discuss = chat-only, no file changes (Base44/Lovable parity).
