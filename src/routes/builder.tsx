@@ -2732,10 +2732,17 @@ function Builder() {
                             "Keep building" action so the thread stays calm
                             and the user has one obvious place to look for
                             ideas. */}
+                        {/* Post-build "what's next?" card. Only on the latest
+                            assistant message, only when Petal is fully idle
+                            AND the deploy has reached a terminal state. We
+                            must not show "READY — WHAT'S NEXT?" while the
+                            Cloudflare deploy is still running ("Putting your
+                            app online…") — the app isn't actually ready yet. */}
                         {i === messages.length - 1 &&
                           !busy &&
                           !discussBusy &&
-                          files.length > 0 && (
+                          files.length > 0 &&
+                          (!buildSnap || buildSnap.status === "ready" || buildSnap.status === "failed") && (
                             <NextStepsCard
                               showPreviewAction={isMobile ? mobileTab !== "preview" : view !== "preview"}
                               onPreview={() => {
