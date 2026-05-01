@@ -725,6 +725,14 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
     // Phase tag overrides the keyword heuristic in smart mode.
     const phaseDefault = tier === "smart" ? MODEL_BEST : MODEL_FAST;
     chosenBy = "phase_router";
+    if (tier === "cheap") {
+      // Implement/docs turns are mostly code-writing. Keep them on the
+      // faster model instead of letting stale HTTP-only telemetry route a
+      // tiny landing-page request to a slow reasoning model that may time out
+      // while streaming a long tool call.
+      model = phaseDefault;
+      chosenBy = "phase_router:cheap_direct";
+    } else {
     // Tier 4 — telemetry-driven router. Picks the historically
     // best-performing model from the candidate set for this
     // (feature, phase). Falls back to the phase default when
@@ -755,6 +763,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
     } catch (e) {
       console.warn("[smart-router] pick failed:", e);
       model = phaseDefault;
+    }
     }
   } else {
     model = resolveModel(preset, lastUser, currentFiles.length);
