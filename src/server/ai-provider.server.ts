@@ -301,11 +301,23 @@ export interface AiCallMeta {
   chosenBy?: string | null;
 }
 
+/**
+ * Per-call timeout tier:
+ *  - "default": non-streaming JSON call (25s)
+ *  - "stream": streaming call (120s) — covers normal generate/discuss turns
+ *  - "stream_first_build": initial scaffold streams (240s) — first build of a
+ *    project tends to emit many files in one turn; the 120s ceiling was
+ *    cutting these off mid-stream. Caller must explicitly opt in.
+ */
+export type AiCallTimeoutTier = "default" | "stream" | "stream_first_build";
+
 export interface AiCallOptions {
   feature: AiFeature;
   body: Record<string, unknown>;
   signal?: AbortSignal;
   meta?: AiCallMeta;
+  /** Optional timeout-tier override. Inferred from `body.stream` when omitted. */
+  timeoutTier?: AiCallTimeoutTier;
 }
 
 /**
@@ -331,7 +343,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       : opts.body;
 
   const t0 = Date.now();
-  const primary = await dispatch(provider, body, opts.signal);
+  const primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
   const latency = Date.now() - t0;
 
   // Decide whether to retry on fallback model (same provider).
@@ -382,7 +394,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
 
   const fallbackBody = { ...opts.body, model: fallback };
   const t1 = Date.now();
-  const retried = await dispatch(provider, fallbackBody, opts.signal);
+  const retried = await dispatch(provider, fallbackBody, opts.signal, opts.timeoutTier);
   const retryLatency = Date.now() - t1;
 
   void recordTelemetry({
@@ -419,15 +431,26 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
  */
 const DEFAULT_TIMEOUT_MS = 25_000;
 const DEFAULT_STREAM_TIMEOUT_MS = 120_000;
+/**
+ * First-build streams need a longer ceiling. Initial scaffolds emit many
+ * files in one shot — the digest showed clusters of "operation aborted due
+ * to timeout" all on first generates. Worker wall budget is fine because
+ * we forward bytes as they arrive.
+ */
+const FIRST_BUILD_STREAM_TIMEOUT_MS = 240_000;
 
 function effectiveSignal(
   caller: AbortSignal | undefined,
-  isStreaming: boolean,
+  tier: AiCallTimeoutTier,
 ): AbortSignal {
-  const ms = isStreaming ? DEFAULT_STREAM_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
+  const ms =
+    tier === "stream_first_build"
+      ? FIRST_BUILD_STREAM_TIMEOUT_MS
+      : tier === "stream"
+        ? DEFAULT_STREAM_TIMEOUT_MS
+        : DEFAULT_TIMEOUT_MS;
   const timeout = AbortSignal.timeout(ms);
   if (!caller) return timeout;
-  // Combine — abort as soon as either fires.
   return AbortSignal.any([caller, timeout]);
 }
 
@@ -435,6 +458,7 @@ async function dispatch(
   provider: Provider,
   body: Record<string, unknown>,
   signal: AbortSignal | undefined,
+  tierOverride?: AiCallTimeoutTier,
 ): Promise<Response> {
   let url: string;
   let apiKey: string | undefined;
@@ -471,12 +495,14 @@ async function dispatch(
   }
 
   const isStreaming = outBody.stream === true;
+  const tier: AiCallTimeoutTier =
+    tierOverride ?? (isStreaming ? "stream" : "default");
 
   return fetch(url, {
     method: "POST",
     headers,
     body: JSON.stringify(outBody),
-    signal: effectiveSignal(signal, isStreaming),
+    signal: effectiveSignal(signal, tier),
   });
 }
 

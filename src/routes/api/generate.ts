@@ -811,6 +811,9 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       stream: true,
       ...reasoningField,
     },
+    // First-build scaffolds emit many files in one stream — give them the
+    // 240s ceiling instead of the default 120s. Patches keep the default.
+    timeoutTier: isInitial ? "stream_first_build" : "stream",
     meta: {
       phase: phaseTag.phase,
       promptChars: lastUserContent.length,

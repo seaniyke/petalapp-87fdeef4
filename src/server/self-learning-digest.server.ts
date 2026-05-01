@@ -31,6 +31,14 @@ export interface DigestPayload {
     buildSuccessRate: number | null;
     followupWasFixRate: number | null;
     avgAutofixCount: number | null;
+    /**
+     * Share of generate turns where the model never produced files — i.e.
+     * upstream timed out, returned empty, or the worker aborted before any
+     * write. Read from `pipeline_failures` (timeout-family signatures)
+     * normalized against total turns. Separate from verifier failures so
+     * "we ran out of time" doesn't get conflated with "we wrote bad code."
+     */
+    timeoutRate: number | null;
   };
 
   /** Top failure signatures from pipeline_failures (the "Petal got confused" branch). */
@@ -73,6 +81,7 @@ interface OutcomeRow {
   project_id: string | null;
   ai_call_id: string;
   created_at: string;
+  files_written: number | null;
 }
 
 interface FailureRow {
@@ -102,7 +111,8 @@ export async function buildSelfLearningDigest(
   const failures = await fetchFailures(startIso, endIso);
   const userCount = await fetchUserCount(startIso, endIso);
 
-  const totals = computeTotals(outcomes, userCount);
+  const timeoutCount = countTimeoutFailures(failures);
+  const totals = computeTotals(outcomes, userCount, timeoutCount);
   const topFailureSignatures = computeTopSignatures(failures);
   const topRevertedPrompts = computeTopReverts(outcomes);
   const modelBreakdown = computeModelBreakdown(outcomes);
@@ -129,7 +139,7 @@ async function fetchOutcomes(startIso: string, endIso: string): Promise<OutcomeR
     const { data, error } = await supabaseAdmin
       .from("ai_call_outcomes")
       .select(
-        "model, local_verifier_pass, local_verifier_errors, autofix_count, build_status, user_followup_was_fix, project_id, ai_call_id, created_at",
+        "model, local_verifier_pass, local_verifier_errors, autofix_count, build_status, user_followup_was_fix, project_id, ai_call_id, created_at, files_written",
       )
       .gte("created_at", startIso)
       .lt("created_at", endIso)
@@ -191,11 +201,36 @@ async function fetchUserCount(startIso: string, endIso: string): Promise<number>
   }
 }
 
+/**
+ * Failures whose signature/raw_message points at "we never finished
+ * generating" rather than "we generated wrong code." Matched against
+ * the patterns we actually see in `pipeline_failures` today (see the
+ * 72h investigation pull).
+ */
+const TIMEOUT_SIGNATURE_RE =
+  /timeout|aborted|no result returned|ran out of time|couldn't finish|hit a snag|took (a bit )?longer than expected|wasn't able to finish/i;
+
+function countTimeoutFailures(failures: FailureRow[]): number {
+  let n = 0;
+  for (const f of failures) {
+    const sig = `${f.signature ?? ""} ${f.raw_message ?? ""}`;
+    if (TIMEOUT_SIGNATURE_RE.test(sig)) n += 1;
+  }
+  return n;
+}
+
 function computeTotals(
   outcomes: OutcomeRow[],
   userCount: number,
+  timeoutCount: number,
 ): DigestPayload["totals"] {
   const turns = outcomes.length;
+  // Denominator for timeoutRate is "real attempts" — generate failures plus
+  // outcomes we recorded. Without outcomes (e.g. brand-new project), fall
+  // back to the failure count itself so the metric still has meaning.
+  const attempts = turns + timeoutCount;
+  const timeoutRate = attempts > 0 ? timeoutCount / attempts : null;
+
   if (turns === 0) {
     return {
       turns: 0,
@@ -205,10 +240,16 @@ function computeTotals(
       buildSuccessRate: null,
       followupWasFixRate: null,
       avgAutofixCount: null,
+      timeoutRate,
     };
   }
   const projects = new Set(outcomes.map((o) => o.project_id).filter(Boolean)).size;
-  const verifierKnown = outcomes.filter((o) => o.local_verifier_pass !== null);
+  // Verifier rate is only meaningful for outcomes where the model actually
+  // produced files. Outcomes with files_written = 0 mean the upstream
+  // bailed before writing — counting those as verifier failures conflates
+  // "didn't finish" with "wrote bad code" and triggers wrong recommendations.
+  const wroteFiles = outcomes.filter((o) => (o.files_written ?? 0) > 0);
+  const verifierKnown = wroteFiles.filter((o) => o.local_verifier_pass !== null);
   const verifierPass = verifierKnown.filter((o) => o.local_verifier_pass).length;
   const buildKnown = outcomes.filter(
     (o) => o.build_status === "ready" || o.build_status === "failed",
@@ -226,6 +267,7 @@ function computeTotals(
     buildSuccessRate: buildKnown.length ? buildPass / buildKnown.length : null,
     followupWasFixRate: followupKnown.length ? followupFix / followupKnown.length : null,
     avgAutofixCount: turns ? totalAutofix / turns : null,
+    timeoutRate,
   };
 }
 
@@ -355,12 +397,31 @@ function computeRecommendations(args: {
 }): string[] {
   const out: string[] = [];
 
-  if (args.totals.turns === 0) {
+  if (args.totals.turns === 0 && (args.totals.timeoutRate ?? 0) === 0) {
     out.push("No generate turns in the last 24h — nothing to learn from yet.");
     return out;
   }
 
-  if (args.totals.verifierPassRate !== null && args.totals.verifierPassRate < 0.85) {
+  // Timeout-dominated days: surface this FIRST, before any prompt-snippet
+  // advice. A 120s upstream abort is not a code-quality problem; telling
+  // the operator to "add a dynamic-prompt snippet for the top failure" is
+  // wrong when the top failure is "operation aborted due to timeout."
+  const timeoutRate = args.totals.timeoutRate ?? 0;
+  if (timeoutRate >= 0.2) {
+    out.push(
+      `Timeouts are the dominant failure today (${(timeoutRate * 100).toFixed(1)}% of attempts). Investigate model latency and first-build scaffold size before tuning prompts — first-build streams now run on the 240s ceiling, so any new timeouts mean the model genuinely hung.`,
+    );
+  }
+
+  // Only suggest prompt-snippet work when the day is NOT timeout-dominated.
+  // Otherwise the verifier number is mostly noise from incomplete outputs.
+  const promptSnippetEligible = timeoutRate < 0.1;
+
+  if (
+    promptSnippetEligible &&
+    args.totals.verifierPassRate !== null &&
+    args.totals.verifierPassRate < 0.85
+  ) {
     out.push(
       `Verifier pass rate is ${(args.totals.verifierPassRate * 100).toFixed(1)}% — below the 85% target. Look at the top failure signatures and add a dynamic-prompt snippet for the top one.`,
     );
@@ -380,7 +441,7 @@ function computeRecommendations(args: {
   }
 
   const top = args.topFailureSignatures[0];
-  if (top && top.count >= 5) {
+  if (promptSnippetEligible && top && top.count >= 5) {
     out.push(
       `Top failure signature ("${top.signature}") hit ${top.count}× — codify a fix in dynamic-prompts or the verifier.`,
     );
@@ -474,7 +535,8 @@ export function renderDigestHtml(d: DigestPayload): string {
         <td style="padding:4px 0;color:#666">Followup = fix</td><td style="text-align:right;font-weight:600">${pct(d.totals.followupWasFixRate)}</td>
       </tr>
       <tr>
-        <td style="padding:4px 0;color:#666">Avg autofix passes</td><td style="text-align:right;font-weight:600" colspan="5">${num(d.totals.avgAutofixCount)}</td>
+        <td style="padding:4px 0;color:#666">Timeouts</td><td style="text-align:right;font-weight:600">${pct(d.totals.timeoutRate)}</td>
+        <td style="padding:4px 0;color:#666">Avg autofix passes</td><td style="text-align:right;font-weight:600" colspan="3">${num(d.totals.avgAutofixCount)}</td>
       </tr>
     </table>
   </div>

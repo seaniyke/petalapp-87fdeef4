@@ -50,7 +50,7 @@ export const Route = createFileRoute("/api/admin/digests")({
             const { data, error } = await supabaseAdmin
               .from("petal_self_learning_digests" as never)
               .select(
-                "id, period_date, generated_at, total_turns, total_projects, total_users, verifier_pass_rate, build_success_rate, followup_was_fix_rate, email_sent_at, email_recipients, email_error",
+                "id, period_date, generated_at, total_turns, total_projects, total_users, verifier_pass_rate, build_success_rate, followup_was_fix_rate, timeout_rate, email_sent_at, email_recipients, email_error",
               )
               .order("period_date", { ascending: false })
               .limit(30);
@@ -88,6 +88,7 @@ export const Route = createFileRoute("/api/admin/digests")({
                   build_success_rate: digest.totals.buildSuccessRate,
                   followup_was_fix_rate: digest.totals.followupWasFixRate,
                   avg_autofix_count: digest.totals.avgAutofixCount,
+                  timeout_rate: digest.totals.timeoutRate,
                   top_failure_signatures: digest.topFailureSignatures,
                   top_reverted_prompts: digest.topRevertedPrompts,
                   model_breakdown: digest.modelBreakdown,

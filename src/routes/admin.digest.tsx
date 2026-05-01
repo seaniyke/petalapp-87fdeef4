@@ -30,6 +30,7 @@ type DigestSummary = {
   verifier_pass_rate: number | null;
   build_success_rate: number | null;
   followup_was_fix_rate: number | null;
+  timeout_rate: number | null;
   email_sent_at: string | null;
   email_recipients: string[] | null;
   email_error: string | null;
@@ -254,6 +255,7 @@ function AdminDigestPage() {
                   <Stat label="Verifier pass" value={pct(selected.verifier_pass_rate)} />
                   <Stat label="Build success" value={pct(selected.build_success_rate)} />
                   <Stat label="Follow-up was fix" value={pct(selected.followup_was_fix_rate)} />
+                  <Stat label="Timeouts" value={pct(selected.timeout_rate)} />
                   <Stat
                     label="Avg autofixes / turn"
                     value={selected.avg_autofix_count != null ? Number(selected.avg_autofix_count).toFixed(2) : "—"}
