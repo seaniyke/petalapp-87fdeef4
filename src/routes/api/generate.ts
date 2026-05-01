@@ -421,6 +421,11 @@ type ParsedProjectPayload = {
 };
 
 function parseCollectedProject(collected: ParsedTool, isInitial: boolean): ParsedProjectPayload {
+  if (isTruncatedFinishReason(collected.finishReason)) {
+    throw new Error(
+      `AI response was cut off before it finished (${collected.finishReason}). Retrying with a smaller structured response.`,
+    );
+  }
   if (!collected.name || !collected.args) {
     throw new Error("AI did not return a project. Try rephrasing.");
   }
@@ -436,7 +441,12 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
     parsed = JSON.parse(collected.args) as ParsedProjectPayload["parsed"];
   } catch (e) {
     console.error("Failed to parse tool args", e, collected.args.slice(0, 500));
-    throw new Error("AI returned invalid project data.");
+    const looksCutOff = collected.args.length > 0 && !collected.args.trimEnd().endsWith("}");
+    throw new Error(
+      looksCutOff
+        ? "AI response was cut off before the project JSON finished. Retrying with smaller files."
+        : "AI returned invalid project data.",
+    );
   }
 
   if (collected.name === "write_project" && !parsed.files?.length) {
