@@ -535,7 +535,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     return new Response("Invalid JSON body", { status: 400 });
   }
   const rawMessages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
-  const messages = trimMessagesForGeneration(rawMessages);
+  let messages = trimMessagesForGeneration(rawMessages);
   const currentFiles = Array.isArray(body.currentFiles) ? body.currentFiles : [];
   if (messages.length === 0) {
     return new Response("messages must not be empty", { status: 400 });
