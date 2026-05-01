@@ -147,7 +147,7 @@ PAGE EXPORTS: prefer plain named exports + eager imports. React.lazy(() => impor
   auth: {
     triggers: /\b(auth|login|sign ?up|sign ?in|password|otp|magic link|user account|protected route)\b/i,
     body: `\n\n[Reinforcement — Auth (only if backend is connected)]
-Use ONLY the helpers exported from "@/integrations/backend/auth": useAuth(), signUpWithPassword, signInWithPassword, signInWithOtp, verifyOtp, verifySignupOtp, resendSignupOtp, resetPasswordForEmail, updatePassword, signOut. After signUpWithPassword, verify with verifySignupOtp (NOT verifyOtp). NEVER call supabase.auth.* directly. NEVER import from "@supabase/supabase-js". Read "src/components/examples/BACKEND.md" for full reference.`,
+Use ONLY the helpers exported from "@/integrations/backend/auth": useAuth(), signUpWithPassword, signInWithPassword, signInWithOtp, verifyOtp, verifySignupOtp, resendSignupOtp, resetPasswordForEmail, updatePassword, signOut, signInWithGoogle. After signUpWithPassword, verify with verifySignupOtp (NOT verifyOtp). For Google / "Continue with Google" / social login, call \`signInWithGoogle()\` from useAuth() — it returns \`{ error }\` and redirects the browser. NEVER call supabase.auth.signInWithOAuth directly. NEVER call supabase.auth.* directly. NEVER import from "@supabase/supabase-js". Read "src/components/examples/BACKEND.md" for full reference.`,
   },
   // Fires when the user asked for auth / data / accounts / uploads / realtime
   // BUT no backend is connected to this project. Triggers are matched in

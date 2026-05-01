@@ -63,6 +63,12 @@ type AuthCtx = {
   resendSignupOtp: (email: string) => Promise<{ error: Error | null }>;
   resetPasswordForEmail: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
+  /**
+   * Start a Google OAuth sign-in. The browser is redirected to Google,
+   * then back to \`window.location.origin\` (override with \`redirectTo\`).
+   * On return the auth state listener picks up the new session.
+   */
+  signInWithGoogle: (opts?: { redirectTo?: string }) => Promise<{ error: Error | null }>;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -130,6 +136,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     updatePassword: async (newPassword) => {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
+      return { error: error ? new Error(error.message) : null };
+    },
+    signInWithGoogle: async (opts) => {
+      const redirectTo =
+        opts?.redirectTo ??
+        (typeof window !== "undefined" ? window.location.origin : undefined);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo },
+      });
       return { error: error ? new Error(error.message) : null };
     },
   };
@@ -225,6 +241,7 @@ unless noted). Use whichever matches the user's flow — never call
 | \`resetPasswordForEmail(email)\` | Send a password-reset email. **Requires** a \`/reset-password\` view in the app — see below. |
 | \`updatePassword(newPassword)\` | Set a new password while a recovery session is active. Call this from the \`/reset-password\` view. |
 | \`signOut()\` | Sign the current user out. Returns \`void\`. |
+| \`signInWithGoogle({ redirectTo? })\` | Start Google OAuth. Returns \`{ error }\`. The browser navigates to Google and back; on return your \`onAuthStateChange\` listener (already wired in \`AuthProvider\`) sets the session. **Wire a "Continue with Google" button to this** instead of inventing your own provider call. |
 
 ### Password-reset wiring (mandatory if you call \`resetPasswordForEmail\`)
 

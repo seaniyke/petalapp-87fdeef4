@@ -56,6 +56,13 @@ export function classifyRawError(rawMessage: string): ErrorKind {
   if (/rate.?limit|\b429\b/i.test(t)) return "rate_limit";
   if (/credits?.*(exhaust|out|empty|low)|\b402\b|insufficient.*(credit|balance)/i.test(t))
     return "credits_exhausted";
+  // Worker / fetch wall-clock timeout. AbortSignal.timeout fires a
+  // TimeoutError whose message is "The operation was aborted due to
+  // timeout"; some runtimes also surface "signal timed out". This is
+  // distinct from a true 504 Gateway Timeout (handled below) — the
+  // upstream never responded at all because we cancelled.
+  if (/operation was aborted due to timeout|signal timed out|\bTimeoutError\b|fetch.*timeout/i.test(t))
+    return "upstream_timeout";
   if (/\b(50[234])\b|bad gateway|upstream|service unavailable|gateway timeout|AI gateway/i.test(t))
     return "upstream_unavailable";
   // The "model returned prose, not files" family — these are RAW pipeline
