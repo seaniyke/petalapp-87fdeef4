@@ -574,6 +574,14 @@ function Builder() {
   const isDeploying = effectiveBuildSnap?.status === "pending" || effectiveBuildSnap?.status === "building";
   const isLive = effectiveBuildSnap?.status === "ready";
 
+  // Single source of truth for "Petal is currently working." Used to gate
+  // EVERY actionable chip/card so users never see a button while a turn or
+  // deploy is still in flight (matches Lovable's behavior). Covers:
+  //   - busy: AI generation streaming
+  //   - discussBusy: Discuss/chat-only reply streaming
+  //   - isDeploying: Cloudflare deploy not yet ready/failed
+  const petalIsWorking = busy || discussBusy || isDeploying;
+
   // Long-wait escalation for the deploy phase. We escalate copy at 60s/90s
   // and surface a friendly "deploy stalled" card at 150s so the user always
   // has a way to retry or keep working — never a stranded spinner.
@@ -2655,7 +2663,7 @@ function Builder() {
               // Only allow revert if Petal already replied to this user
               // message (so a snapshot exists) and we're not mid-generation.
               const hasReply = isUser && messages[i + 1]?.role === "assistant";
-              const canRevert = hasReply && !busy && !discussBusy;
+              const canRevert = hasReply && !petalIsWorking;
               return (
                 <div key={i} className={`group min-w-0 ${isUser ? "flex justify-end" : ""}`}>
                   <div
@@ -2710,7 +2718,7 @@ function Builder() {
                             yet) — once a build exists, suggestions are folded
                             into the "Keep building" action below to keep the
                             thread calm. */}
-                        {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !busy && !discussBusy && files.length === 0 && (
+                        {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && files.length === 0 && (
                           <div className="-mx-0.5 mt-1 flex flex-wrap gap-1.5">
                             {m.suggestions.map((s, si) => (
                               <button
@@ -2739,10 +2747,8 @@ function Builder() {
                             Cloudflare deploy is still running ("Putting your
                             app online…") — the app isn't actually ready yet. */}
                         {i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
-                          files.length > 0 &&
-                          (!buildSnap || buildSnap.status === "ready" || buildSnap.status === "failed") && (
+                          !petalIsWorking &&
+                          files.length > 0 && (
                             <NextStepsCard
                               showPreviewAction={isMobile ? mobileTab !== "preview" : view !== "preview"}
                               onPreview={() => {
@@ -2786,8 +2792,7 @@ function Builder() {
                             action and nothing happens. */}
                         {m.handoff &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy && (
+                          !petalIsWorking && (
                             <ContinueBuildingChip
                               message={m.handoff.message}
                               suggestedPrompt={m.handoff.suggestedPrompt}
@@ -2804,8 +2809,7 @@ function Builder() {
                             fires on either the user prompt or Petal's reply. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           hasBackend === false &&
                           !dismissedBackendChips.has(i) &&
                           (() => {
@@ -2834,8 +2838,7 @@ function Builder() {
                         {/* Domain suggestion — same rules as backend chip. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           hasDomain === false &&
                           !dismissedDomainChips.has(i) &&
                           (() => {
@@ -2869,8 +2872,7 @@ function Builder() {
                             sending needs a backend. Non-techie copy. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedEmailChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -2923,8 +2925,7 @@ function Builder() {
                             since checkout webhooks need somewhere to run. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedPaymentChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -2971,8 +2972,7 @@ function Builder() {
                         {/* SEO suggestion — pure frontend, no backend gate. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedSeoChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3001,8 +3001,7 @@ function Builder() {
                             Petal doesn't ask for an OpenAI key. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedAiFeatureChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3030,8 +3029,7 @@ function Builder() {
                         {/* Analytics suggestion — backend-first when no Cloud. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedAnalyticsChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3075,8 +3073,7 @@ function Builder() {
                         {/* Storage suggestion — backend-first when no Cloud. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedStorageChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3120,8 +3117,7 @@ function Builder() {
                         {/* Realtime suggestion — backend-first when no Cloud. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedRealtimeChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3165,8 +3161,7 @@ function Builder() {
                         {/* Cron suggestion — backend-first when no Cloud. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedCronChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3240,7 +3235,7 @@ function Builder() {
                       </button>
                     )}
                   </div>
-                  {m.role === "assistant" && i === lastDiscussIndex && !busy && !discussBusy && (
+                  {m.role === "assistant" && i === lastDiscussIndex && !petalIsWorking && (
                     <div className="mr-3 mt-3 flex flex-col items-stretch gap-1.5 sm:mr-6">
                       <button
                         onClick={applyDiscussedPlan}
