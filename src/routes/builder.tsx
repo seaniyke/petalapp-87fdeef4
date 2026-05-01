@@ -1509,7 +1509,46 @@ function Builder() {
         setStreamingRecap("");
         setStreamingPreamble("");
 
+        // Migration runner: if this turn emitted any supabase/migrations/*.sql
+        // files, apply them against the project's managed Supabase backend
+        // and append a follow-up assistant message with the result. Best-effort
+        // — failures here surface in chat but never abort the turn.
+        const turnProjectId = projectIdRef.current;
+        if (
+          turnProjectId &&
+          files2.some((f) => /^supabase\/migrations\/.+\.sql$/i.test(f.path))
+        ) {
+          void (async () => {
+            try {
+              const outcome = await runProjectMigrations({
+                data: { projectId: turnProjectId },
+              });
+              if (!outcome.ran) return; // no managed backend — silent no-op
+              if (outcome.applied.length === 0 && !outcome.failed) return;
+              let content: string;
+              if (outcome.failed) {
+                const okCount = outcome.applied.length;
+                const file = outcome.failed.path.split("/").pop();
+                const okPart =
+                  okCount > 0
+                    ? `Applied ${okCount} change${okCount === 1 ? "" : "s"}, but the next one (\`${file}\`) failed:`
+                    : `Couldn't apply \`${file}\`:`;
+                content = `${okPart}\n\n\`\`\`\n${outcome.failed.error.slice(0, 600)}\n\`\`\`\n\nAsk me to fix it and I'll emit a corrected migration.`;
+              } else {
+                const n = outcome.applied.length;
+                content = `Applied ${n} database change${n === 1 ? "" : "s"} to your backend. You can see the new tables under **Cloud → Database**.`;
+              }
+              const msg: ChatMessage = { role: "assistant", content };
+              setMessages((prev) => [...prev, msg]);
+              await appendMessages(turnProjectId, [msg]).catch(() => {});
+            } catch {
+              /* swallow — runner is best-effort */
+            }
+          })();
+        }
+
         // Compute final per-file line counts for the activity card. We only
+
         // surface counts for files Petal actually wrote in this run, so the
         // list matches what the user just saw stream in.
         setFinalFileLines(() => {
