@@ -473,6 +473,9 @@ export type StreamEvent =
        * site — never invent a new regex on humanized output.
        */
       kind?: ErrorKind;
+      /** Truncated raw exception text — for client-side telemetry only,
+       *  never shown to users. The friendly `message` is what renders. */
+      raw?: string;
     };
 
 /** Structured failure codes for SSE `error` events. Every value here MUST
