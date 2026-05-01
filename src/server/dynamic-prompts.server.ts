@@ -204,9 +204,9 @@ function messageText(content: unknown): string {
 /**
  * Pick reinforcement snippets that match the latest user turn.
  *
- * Always includes the "kitCore" baseline. Bias toward the LAST user
- * message (most recent intent) but also peek at the previous one for
- * context. Cap at 6 topical snippets to keep prompt size reasonable
+ * Always includes the "kitCore" baseline. Match ONLY the latest user
+ * message so stale requests in chat history don't silently expand the
+ * current scope. Cap at 6 topical snippets to keep prompt size reasonable
  * while still covering compound asks (e.g. "auth + dashboard with charts").
  */
 export function pickDynamicSnippets(args: {
@@ -215,12 +215,8 @@ export function pickDynamicSnippets(args: {
   /** When true, skip the auth block (no backend connected). */
   hasBackend: boolean;
 }): { snippets: DynamicSnippetKey[]; text: string } {
-  const userTurns = args.messages
-    .filter((m) => m.role === "user")
-    .slice(-2)
-    .map((m) => messageText(m.content))
-    .join(" ");
-  const haystack = userTurns.toLowerCase();
+  const latestUserTurn = [...args.messages].reverse().find((m) => m.role === "user");
+  const haystack = messageText(latestUserTurn?.content).toLowerCase();
 
   const matched: DynamicSnippetKey[] = [];
   // kitCore is always first — the baseline primitives every turn needs.
