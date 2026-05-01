@@ -58,6 +58,10 @@ type Handlers = {
     /** Structured failure code from the server. Pass through to
      *  toFriendlyError — do NOT regex the message. */
     kind?: import("@/server/generate.server").ErrorKind,
+    /** Raw, un-humanized error string from the server (when available).
+     *  Use this for telemetry / pipeline_failures so root-cause analysis
+     *  isn't blinded by LLM-rewritten apology copy. */
+    raw?: string,
   ) => void;
 };
 
