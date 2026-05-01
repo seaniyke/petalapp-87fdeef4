@@ -1072,7 +1072,7 @@ function Builder() {
         isAutoFix?: boolean;
         /** Internal recovery run after the model produced no usable edits.
          *  Petal escalates automatically; the user should not have to pick a
-         *  stronger model manually. */
+         *  different path manually. */
         autoEscalate?: boolean;
         /** Internal auto-continue run (Petal picking the build back up after
          *  the user enables a service mid-flow, e.g. managed backend). The
@@ -1321,7 +1321,13 @@ function Builder() {
             // sending — they're UI-only, the AI shouldn't see them.
             messages: nextMessages.filter((m) => m.role !== "system"),
             currentFiles: files,
-            model: opts.autoEscalate ? "deep" : opts.isAutoFix ? "smart" : deepThink ? "deep" : "smart",
+            model: opts.autoEscalate
+              ? "deep"
+              : opts.isAutoFix
+                ? "smart"
+                : deepThink
+                  ? "deep"
+                  : "smart",
             customInstructions: proj.custom_instructions ?? undefined,
             projectId: proj.id,
             isAutoFix: opts.isAutoFix,
@@ -1579,13 +1585,18 @@ function Builder() {
           setActivityVisible(true);
           setFriendlyError({
             title: "Petal is trying another way",
-            message: "No action needed — Petal didn't get usable edits back, so it's retrying automatically.",
+            message:
+              "No action needed — Petal didn't get usable edits back, so it's retrying automatically.",
             actionLabel: "Working on it",
             actionKind: "dismiss",
           });
           setPhases(defaultPhases());
           setTimeout(() => {
-            void sendRef.current?.(text, { isRetry: true, forceBuild: true, autoEscalate: true });
+            void sendRef.current?.(text, {
+              isRetry: true,
+              forceBuild: true,
+              autoEscalate: true,
+            });
           }, 250);
           return;
         }
