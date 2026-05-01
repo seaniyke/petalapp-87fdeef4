@@ -102,6 +102,7 @@ export function ProjectSettingsSheet({
   const [saving, setSaving] = useState(false);
   const [cloudOpen, setCloudOpen] = useState(false);
   const [balanceOpen, setBalanceOpen] = useState(false);
+  const [domainsOpen, setDomainsOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
