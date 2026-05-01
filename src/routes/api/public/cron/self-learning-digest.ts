@@ -36,6 +36,7 @@ async function runDigest(opts: { skipEmail?: boolean } = {}) {
   const { data: row, error: upsertError } = await supabaseAdmin
     .from("petal_self_learning_digests" as never)
     .upsert(
+      (
       {
         period_date: digest.periodDate,
         generated_at: new Date().toISOString(),
