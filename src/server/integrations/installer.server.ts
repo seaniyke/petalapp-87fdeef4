@@ -224,11 +224,23 @@ export async function installIntegration(args: {
     const sql = def.migration(ctx);
     if (sql) {
       try {
-        // Run via the project's own Postgres using the service role key
-        // we already store. This is intentionally a future hook — the
-        // current first-slice integrations (Resend, Plausible) don't use it.
-        // See managed-backend.server.ts for the migration runner.
-        migrationError = "Migration runner not wired yet — skipping.";
+        // Run via the project's managed Supabase using the Mgmt API.
+        // The integration's migration files are also written into
+        // project_files (above), so future re-applies go through the
+        // managed-migrations runner. We run inline here so the user sees
+        // the integration "just work" right after install.
+        const { runQuery } = await import("@/server/supabase-mgmt.server");
+        const { data: backendRow } = await supabaseAdmin
+          .from("project_backends")
+          .select("supabase_project_ref")
+          .eq("project_id", args.projectId)
+          .maybeSingle();
+        const ref = backendRow?.supabase_project_ref ?? null;
+        if (!ref) {
+          migrationError = "Managed backend missing project ref — skipped.";
+        } else {
+          await runQuery(ref, sql);
+        }
       } catch (e) {
         migrationError = e instanceof Error ? e.message : String(e);
       }

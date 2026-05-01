@@ -189,3 +189,21 @@ export async function deleteProject(ref: string): Promise<void> {
 export function projectUrl(ref: string): string {
   return `https://${ref}.supabase.co`;
 }
+
+/**
+ * Run an arbitrary SQL statement against a managed project's Postgres via the
+ * Mgmt API. Equivalent to the SQL editor — runs as the postgres role, so it
+ * can create tables, policies, functions, etc.
+ *
+ * Returns the rows array (empty for DDL). Throws with the upstream error
+ * message on failure so the caller can surface it in chat.
+ */
+export async function runQuery(
+  ref: string,
+  query: string,
+): Promise<unknown[]> {
+  const result = await mgmt<unknown>("POST", `/projects/${ref}/database/query`, {
+    query,
+  });
+  return Array.isArray(result) ? result : [];
+}
