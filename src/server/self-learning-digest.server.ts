@@ -535,7 +535,8 @@ export function renderDigestHtml(d: DigestPayload): string {
         <td style="padding:4px 0;color:#666">Followup = fix</td><td style="text-align:right;font-weight:600">${pct(d.totals.followupWasFixRate)}</td>
       </tr>
       <tr>
-        <td style="padding:4px 0;color:#666">Avg autofix passes</td><td style="text-align:right;font-weight:600" colspan="5">${num(d.totals.avgAutofixCount)}</td>
+        <td style="padding:4px 0;color:#666">Timeouts</td><td style="text-align:right;font-weight:600">${pct(d.totals.timeoutRate)}</td>
+        <td style="padding:4px 0;color:#666">Avg autofix passes</td><td style="text-align:right;font-weight:600" colspan="3">${num(d.totals.avgAutofixCount)}</td>
       </tr>
     </table>
   </div>
