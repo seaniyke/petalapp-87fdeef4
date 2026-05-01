@@ -70,9 +70,14 @@ let inflight: Promise<RouterSnapshot> | null = null;
 
 const DEFAULT_CONFIG: RouterConfig = {
   enabled: true,
-  explorationPct: 10,
-  minSamples: 5,
+  explorationPct: 0,
+  minSamples: 3,
   windowHours: 168,
+};
+
+const RELIABILITY_FLOOR = {
+  outcomeSamples: 3,
+  verifierPassRate: 0.3,
 };
 
 async function loadConfig(): Promise<RouterConfig> {
@@ -85,8 +90,8 @@ async function loadConfig(): Promise<RouterConfig> {
     if (!data) return DEFAULT_CONFIG;
     return {
       enabled: Boolean(data.enabled),
-      explorationPct: data.exploration_pct ?? DEFAULT_CONFIG.explorationPct,
-      minSamples: data.min_samples ?? DEFAULT_CONFIG.minSamples,
+    explorationPct: Math.min(data.exploration_pct ?? DEFAULT_CONFIG.explorationPct, 5),
+    minSamples: Math.max(3, data.min_samples ?? DEFAULT_CONFIG.minSamples),
       windowHours: data.window_hours ?? DEFAULT_CONFIG.windowHours,
     };
   } catch (e) {
