@@ -822,6 +822,19 @@ function Builder() {
       setPhases((p) => advanceTo(p, "deploying"));
     } else if (effectiveBuildSnap.status === "failed") {
       setPhases((p) => markFailed(p, "deploying"));
+
+      // Infrastructure failures (build service unreachable, Cloudflare 403,
+      // upstream 5xx) are NOT the user's code. Don't burn auto-fix attempts
+      // forwarding the raw error to the AI — there's nothing in the project
+      // files to fix. Show a calm "service is briefly unavailable" card and
+      // let the user retry the deploy when they're ready.
+      if (isInfrastructureBuildError(effectiveBuildSnap.errorMessage)) {
+        if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
+        if (busy) return;
+        persistFriendlyError(friendlyBuildServiceBusy(effectiveBuildSnap.errorMessage));
+        return;
+      }
+
       const shouldAutoFix =
         !!buildId &&
         startedBuildIdsRef.current.has(buildId) &&
