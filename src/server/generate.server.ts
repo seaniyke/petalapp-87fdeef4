@@ -496,6 +496,7 @@ export type StreamEvent =
  *  test in friendly-errors covers the round-trip. */
 export type ErrorKind =
   | "no_files_emitted"
+  | "truncated_response"
   | "rate_limit"
   | "credits_exhausted"
   | "upstream_unavailable"
