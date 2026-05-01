@@ -84,7 +84,7 @@ export async function expandBriefIfVague(input: string): Promise<BriefExpansion>
   const original = input;
   const trimmed = input.trim();
 
-  if (trimmed.length >= MIN_SPECIFIC_CHARS && !VAGUE_PATTERNS.some((re) => re.test(trimmed))) {
+  if (!VAGUE_PATTERNS.some((re) => re.test(trimmed))) {
     return { expanded: false, brief: input, original, reason: "skipped_specific" };
   }
   if (trimmed.length > MAX_TRIGGER_CHARS) {
