@@ -23,6 +23,7 @@ import {
 } from "@/server/integrations/auto-suggest.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import { renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
+import { renderPetalCapabilitiesBlock } from "@/server/petal-capabilities.server";
 
 type Body = {
   messages: ChatMessage[];
@@ -173,9 +174,12 @@ export const Route = createFileRoute("/api/discuss")({
           : "";
 
         const dateBlock = renderCurrentDateBlock();
+        const capabilitiesBlock = renderPetalCapabilitiesBlock({
+          hasBackend: Boolean(backend),
+        });
 
         const chatMessages = [
-          { role: "system", content: DISCUSS_SYSTEM_PROMPT + dateBlock + backendBlock + integrationsBlock + suggestionsBlock + knowledgeBlock + visionAddendum + filesContext },
+          { role: "system", content: DISCUSS_SYSTEM_PROMPT + dateBlock + capabilitiesBlock + backendBlock + integrationsBlock + suggestionsBlock + knowledgeBlock + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {
