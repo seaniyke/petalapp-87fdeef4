@@ -210,7 +210,11 @@ function buildSnapshot(
         //     don't immediately get a "fix this" follow-up turn.
         const costScore = medianCostMicro / 1000 + 1; // micro → milli, +1
         const latencyPenalty = p50LatencyMs > 5000 ? 0.05 : 0;
-        const httpScore = successRate / costScore - latencyPenalty;
+        // Streaming failures can open as HTTP 200 and then die while reading
+        // the body. A later backfill marks those rows as 524; until then,
+        // very long p50s are a reliability smell, not a quality signal.
+        const timeoutPenalty = p50LatencyMs > 9000 ? 0.35 : p50LatencyMs > 7000 ? 0.15 : 0;
+        const httpScore = successRate / costScore - latencyPenalty - timeoutPenalty;
 
         let qualityMult = 1;
         if (outcomeSamples >= 3) {
@@ -222,7 +226,10 @@ function buildSnapshot(
           // permanently kill a model.
           qualityMult = Math.max(0.25, Math.min(1.5, qualityMult * 1.5));
         }
-        const score = httpScore * qualityMult;
+        const belowReliabilityFloor =
+          outcomeSamples >= RELIABILITY_FLOOR.outcomeSamples &&
+          (verifierPassRate ?? 1) < RELIABILITY_FLOOR.verifierPassRate;
+        const score = belowReliabilityFloor ? -1 : httpScore * qualityMult;
 
         stats.push({
           model,
