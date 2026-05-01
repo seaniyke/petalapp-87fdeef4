@@ -36,7 +36,6 @@ async function runDigest(opts: { skipEmail?: boolean } = {}) {
   const { data: row, error: upsertError } = await supabaseAdmin
     .from("petal_self_learning_digests" as never)
     .upsert(
-      (
       {
         period_date: digest.periodDate,
         generated_at: new Date().toISOString(),
@@ -56,11 +55,11 @@ async function runDigest(opts: { skipEmail?: boolean } = {}) {
         email_sent_at: null,
         email_recipients: null,
         email_error: null,
-      },
+      } as never,
       { onConflict: "period_date" },
     )
     .select("id")
-    .single();
+    .single<{ id: string }>();
   if (upsertError) {
     throw new Error(`digest upsert failed: ${upsertError.message}`);
   }
