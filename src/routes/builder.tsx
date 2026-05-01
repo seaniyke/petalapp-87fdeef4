@@ -65,6 +65,7 @@ import {
   type FriendlyError,
 } from "@/lib/friendly-errors";
 import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivityCard";
+import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { NextStepsCard } from "@/components/NextStepsCard";
 
 
