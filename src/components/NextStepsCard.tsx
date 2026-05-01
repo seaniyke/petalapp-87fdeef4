@@ -40,7 +40,7 @@ export function NextStepsCard({
         <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
         Ready — what's next?
       </div>
-      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-1.5 @[26rem]:grid-cols-3">
         {showPreviewAction && (
           <button
             type="button"

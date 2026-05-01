@@ -133,8 +133,20 @@ export async function probePackages(
   const out = new Map<string, ExistenceVerdict>();
   const toProbe = new Set<string>();
   for (const raw of pkgs) {
+    // Node.js built-ins (`node:path`, `path`, `fs`, etc.) are not npm
+    // packages — the registry returns 404 and we'd wrongly flag them as
+    // hallucinated. Server runtime ships nodejs_compat, so they always
+    // resolve. Treat as exists.
+    if (raw.startsWith("node:") || NODE_BUILTIN_ROOTS.has(raw)) {
+      out.set(raw, "exists");
+      continue;
+    }
     const root = pkgRoot(raw);
     if (out.has(root)) continue;
+    if (root.startsWith("node:") || NODE_BUILTIN_ROOTS.has(root)) {
+      out.set(root, "exists");
+      continue;
+    }
     if (NEVER_PROBE.has(root)) {
       out.set(root, "exists");
       continue;
@@ -147,6 +159,16 @@ export async function probePackages(
   for (const [p, v] of probed) out.set(p, v);
   return out;
 }
+
+const NODE_BUILTIN_ROOTS = new Set<string>([
+  "assert", "async_hooks", "buffer", "child_process", "cluster", "console",
+  "constants", "crypto", "dgram", "diagnostics_channel", "dns", "domain",
+  "events", "fs", "http", "http2", "https", "inspector", "module", "net",
+  "os", "path", "perf_hooks", "process", "punycode", "querystring",
+  "readline", "repl", "stream", "string_decoder", "sys", "timers", "tls",
+  "trace_events", "tty", "url", "util", "v8", "vm", "wasi",
+  "worker_threads", "zlib",
+]);
 
 export interface PreflightResult {
   /** Issues to keep / surface to the rest of the pipeline. */

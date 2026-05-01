@@ -651,6 +651,14 @@ function findUnresolvedImports(
         continue;
       }
 
+      // Node.js built-in modules (e.g. `node:path`, `path`, `fs`, `crypto`).
+      // The server runtime ships nodejs_compat — these always resolve and
+      // never need to be in package.json. Treating them as missing causes
+      // the npm pre-flight to flag them as "hallucinated" (registry 404)
+      // and the import-stripper to silently delete them, breaking server
+      // functions that legitimately import Node built-ins.
+      if (isNodeBuiltin(spec)) continue;
+
       // Bare specifier → npm package.
       const root = pkgRoot(spec);
       if (!deps.has(root)) {
@@ -663,6 +671,28 @@ function findUnresolvedImports(
     }
   }
   return issues;
+}
+
+/**
+ * Node.js built-in modules supported by the Worker runtime (nodejs_compat).
+ * Accepts both bare (`path`) and prefixed (`node:path`) forms. Anything
+ * matching this set is always resolvable and must not be flagged as a
+ * missing dependency or hallucinated package.
+ */
+const NODE_BUILTINS = new Set<string>([
+  "assert", "async_hooks", "buffer", "child_process", "cluster", "console",
+  "constants", "crypto", "dgram", "diagnostics_channel", "dns", "domain",
+  "events", "fs", "fs/promises", "http", "http2", "https", "inspector",
+  "module", "net", "os", "path", "path/posix", "path/win32", "perf_hooks",
+  "process", "punycode", "querystring", "readline", "repl", "stream",
+  "stream/consumers", "stream/promises", "stream/web", "string_decoder",
+  "sys", "timers", "timers/promises", "tls", "trace_events", "tty", "url",
+  "util", "util/types", "v8", "vm", "wasi", "worker_threads", "zlib",
+]);
+
+function isNodeBuiltin(spec: string): boolean {
+  if (spec.startsWith("node:")) return true;
+  return NODE_BUILTINS.has(spec);
 }
 
 /**
