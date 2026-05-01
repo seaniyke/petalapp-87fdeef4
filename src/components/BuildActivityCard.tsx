@@ -153,7 +153,7 @@ export function BuildActivityCard({
 }: Props) {
   // Auto-collapse 3s after success.
   const [collapsed, setCollapsed] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
+  
   // While building, the steps list is hidden by default — competitors (Lovable,
   // Bolt, v0) all show a single calm evolving status line. Power users can
   // still expand for the full timeline.
