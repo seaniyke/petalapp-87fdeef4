@@ -292,6 +292,10 @@ function Builder() {
   const [previewDevice, setPreviewDevice] = useState<"phone" | "tablet" | "desktop">("desktop");
   const [activityVisible, setActivityVisible] = useState(false);
   const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
+  // Tracks the current project id for callbacks that fire outside React's
+  // render cycle (stream handlers, async catches) so we don't re-create them
+  // every time the project state object swaps reference.
+  const projectIdRef = useRef<string | null>(null);
   // Wraps setFriendlyError + persists the error as an assistant message so the
   // "Petal got confused" card survives a page refresh. Use this for genuine
   // failures the user should still see after reload — NOT for transient
@@ -300,8 +304,8 @@ function Builder() {
   const persistFriendlyError = useCallback(
     (err: FriendlyError) => {
       setFriendlyError(err);
-      const proj = projectRef.current;
-      if (!proj?.id) return;
+      const projId = projectIdRef.current;
+      if (!projId) return;
       const errMsg: ChatMessage = {
         role: "assistant",
         content: "",
@@ -314,14 +318,13 @@ function Builder() {
         },
       };
       setMessages((prev) => {
-        // Avoid double-persisting the same error if it's already the tail.
         const last = prev[prev.length - 1];
         if (last?.error?.title === err.title && last?.error?.message === err.message) {
           return prev;
         }
         return [...prev, errMsg];
       });
-      void appendMessages(proj.id, [errMsg]).catch(() => {
+      void appendMessages(projId, [errMsg]).catch(() => {
         /* best-effort — the live state still shows the card */
       });
     },
