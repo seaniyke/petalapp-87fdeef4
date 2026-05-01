@@ -1541,6 +1541,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               }
             } catch (e) {
               const raw = e instanceof Error ? e.message : "Generation failed.";
+              const stack = e instanceof Error ? e.stack ?? "" : "";
               // Authoritative user-cancel signal: the underlying HTTP request
               // was aborted by the client (tab closed, "Stop" button, network
               // drop). This is the ONLY trustworthy source — we never infer
@@ -1560,6 +1561,42 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                     rawMessage: raw,
                     brief: lastUserContent,
                   });
+              // Always log the raw server-side so we can root-cause without
+              // depending on client telemetry (which only sees the humanized
+              // copy). Cheap, fire-and-forget.
+              console.error("[/api/generate] turn failed", {
+                kind,
+                raw: raw.slice(0, 500),
+                stackHead: stack.slice(0, 500),
+                projectId: body.projectId ?? null,
+              });
+              // Persist the RAW failure directly server-side so
+              // pipeline_failures.raw_message is ground truth (the client
+              // path stores the humanized prose). Keyed by signature so we
+              // can group repeats. Best-effort — never blocks the SSE close.
+              if (!userCancelled) {
+                try {
+                  const { supabaseAdmin } = await import(
+                    "@/integrations/supabase/client.server"
+                  );
+                  void supabaseAdmin.from("pipeline_failures").insert({
+                    project_id: body.projectId ?? null,
+                    user_id: userIdForBilling ?? null,
+                    surface: "generate-server",
+                    raw_message: raw.slice(0, 4000),
+                    signature: raw.slice(0, 200),
+                    model: typeof model === "string" ? model : null,
+                    stream_tail: stack.slice(0, 2000),
+                    extra: {
+                      kind,
+                      humanized: friendly.message.slice(0, 240),
+                      had_partial_assistant: false,
+                    },
+                  });
+                } catch (loggingErr) {
+                  console.warn("[/api/generate] pipeline_failures insert failed", loggingErr);
+                }
+              }
               controller.enqueue(
                 encoder.encode(
                   sse({
@@ -1567,6 +1604,9 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                     message: friendly.message,
                     suggestions: friendly.suggestions,
                     kind,
+                    // Ship the raw alongside humanized copy so the client can
+                    // log it for telemetry but not show it to users.
+                    raw: raw.slice(0, 500),
                   }),
                 ),
               );
