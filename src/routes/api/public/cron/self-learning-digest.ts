@@ -128,7 +128,7 @@ async function runDigest(opts: { skipEmail?: boolean } = {}) {
       email_sent_at: emailError ? null : new Date().toISOString(),
       email_recipients: recipients,
       email_error: emailError,
-    })
+    } as never)
     .eq("id", row!.id);
 
   return {
