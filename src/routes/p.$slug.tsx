@@ -104,16 +104,22 @@ function PublicPreview() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-background">
-      {files.length > 0 ? (
+      {published.url ? (
         <iframe
           title={project.title}
-          sandbox="allow-scripts allow-forms allow-modals"
-          srcDoc={previewDoc}
+          sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin"
+          src={published.url}
           className="h-full w-full border-0"
         />
       ) : (
-        <div className="grid h-full place-items-center text-sm text-muted-foreground">
-          This project has no files yet.
+        <div className="grid h-full place-items-center px-6 text-center">
+          <div className="max-w-md space-y-3">
+            <h1 className="font-display text-2xl">Not published yet</h1>
+            <p className="text-sm text-muted-foreground">
+              This project doesn't have a live version to preview. You can still
+              remix it and publish your own copy.
+            </p>
+          </div>
         </div>
       )}
 
