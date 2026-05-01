@@ -3159,7 +3159,8 @@ function Builder() {
                   })()}
                 </div>
               </div>
-            )}
+                );
+              })()}
             {activityVisible && (
               <BuildActivityCard
                 phases={phases}
