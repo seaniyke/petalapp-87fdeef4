@@ -2747,8 +2747,7 @@ function Builder() {
                             Cloudflare deploy is still running ("Putting your
                             app online…") — the app isn't actually ready yet. */}
                         {i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           files.length > 0 &&
                           (!buildSnap || buildSnap.status === "ready" || buildSnap.status === "failed") && (
                             <NextStepsCard
@@ -2794,8 +2793,7 @@ function Builder() {
                             action and nothing happens. */}
                         {m.handoff &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy && (
+                          !petalIsWorking && (
                             <ContinueBuildingChip
                               message={m.handoff.message}
                               suggestedPrompt={m.handoff.suggestedPrompt}
@@ -2812,8 +2810,7 @@ function Builder() {
                             fires on either the user prompt or Petal's reply. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           hasBackend === false &&
                           !dismissedBackendChips.has(i) &&
                           (() => {
@@ -2842,8 +2839,7 @@ function Builder() {
                         {/* Domain suggestion — same rules as backend chip. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           hasDomain === false &&
                           !dismissedDomainChips.has(i) &&
                           (() => {
@@ -2877,8 +2873,7 @@ function Builder() {
                             sending needs a backend. Non-techie copy. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedEmailChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -2931,8 +2926,7 @@ function Builder() {
                             since checkout webhooks need somewhere to run. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedPaymentChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -2979,8 +2973,7 @@ function Builder() {
                         {/* SEO suggestion — pure frontend, no backend gate. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedSeoChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3009,8 +3002,7 @@ function Builder() {
                             Petal doesn't ask for an OpenAI key. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedAiFeatureChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3038,8 +3030,7 @@ function Builder() {
                         {/* Analytics suggestion — backend-first when no Cloud. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedAnalyticsChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3083,8 +3074,7 @@ function Builder() {
                         {/* Storage suggestion — backend-first when no Cloud. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedStorageChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3128,8 +3118,7 @@ function Builder() {
                         {/* Realtime suggestion — backend-first when no Cloud. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedRealtimeChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3173,8 +3162,7 @@ function Builder() {
                         {/* Cron suggestion — backend-first when no Cloud. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !busy &&
-                          !discussBusy &&
+                          !petalIsWorking &&
                           !dismissedCronChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
