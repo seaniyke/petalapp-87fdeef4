@@ -2,14 +2,27 @@
  * CloudDatabaseView — lists tables in the project's managed backend with
  * row-count estimates. Tap a table to see a small read-only sample.
  */
-import { useEffect, useState } from "react";
-import { Database, Loader2, ChevronRight, Table2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Database,
+  Loader2,
+  ChevronRight,
+  Table2,
+  History,
+  CheckCircle2,
+  AlertCircle,
+  RotateCw,
+} from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   listProjectTables,
   sampleProjectTable,
   type CloudTableSummary,
 } from "@/server/cloud-database.functions";
+import {
+  getMigrationHistory,
+  runProjectMigrations,
+} from "@/server/managed-migrations.functions";
 import { CloudEmptyState } from "./CloudEmptyState";
 
 type Props = { projectId: string };
