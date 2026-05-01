@@ -76,6 +76,21 @@ STYLES.CSS SAFETY RULES (Tailwind v4 aborts the build on ANY invalid CSS):
 - NEVER use \`@apply\` with a class that doesn't exist (e.g. \`@apply bg-brand-foo\` when \`brand-foo\` is not a defined token) — that also aborts the build.
 - When in doubt, EMIT NOTHING for src/styles.css and let the scaffold's default tokens win. Adding styles is optional.
 
+DECLARE-BEFORE-USE (the #1 cause of broken builds — read carefully):
+You are allowed and encouraged to invent names — custom Tailwind utilities, CSS variables, env vars, table names, image slugs, route paths, component names. What is NOT allowed is REFERENCING a name without also DEFINING it (or surfacing it to the user) in the same turn.
+
+For every name you invent, the file that USES it and the file that DECLARES it must both ship in this same response. Concretely:
+- Custom Tailwind utility class (e.g. \`neo-border\`, \`glass-panel\`, \`brutal-card\`) — if you write \`@apply neo-border\` or \`className="neo-border"\`, you MUST also add \`@utility neo-border { … }\` to \`src/styles.css\` in the same turn. Tailwind v4 has NO \`tailwind.config.js\` — \`theme.extend\` does not exist anymore.
+- Custom CSS variable (e.g. \`--color-brand\`) — declare it inside \`@theme { … }\` before referencing it as \`bg-brand\` or \`var(--color-brand)\`.
+- Custom font family — declare \`--font-display: "Playfair Display", serif;\` inside \`@theme\` AND add the \`<link>\` to \`index.html\` if it's a Google Font.
+- Component import (e.g. \`import { Hero } from "./Hero"\`) — the file \`./Hero.tsx\` must be emitted in this same turn, with a default or named export matching the import.
+- Route (e.g. \`<Link to="/pricing">\`) — \`src/pages/Pricing.tsx\` must exist and be wired in the router in the same turn.
+- Image asset path (e.g. \`/hero.jpg\`) — either use \`petal-image://…\` (auto-generated), or do not reference the path. Never invent a path under \`/public\` and assume someone will drop the file in.
+- Env var or API key (e.g. \`STRIPE_SECRET_KEY\`) — DO NOT silently \`process.env.X\`. If a feature genuinely needs a secret, say so plainly in "summary" so the user is asked to add it. Never write a fallback that pretends to work.
+- Database table or column — use the names that already exist in the project's schema section above. If the feature truly needs a new table, say so in "summary" instead of querying a table that doesn't exist.
+
+The rule of thumb: if a reviewer reading just this turn's files couldn't find where a name is defined, you invented it without disclosing it. Either ship the definition, or pick a name that already exists, or ask the user in "summary".
+
 IMAGES (use \`petal-image://\` for AI-generated visuals):
 - For ANY hero image, product photo, profile avatar, illustration, background, or marketing visual, use the \`petal-image://\` protocol. The server replaces each placeholder with a real AI-generated image after you finish, hosted on a stable CDN URL.
 - Syntax: \`petal-image://<descriptive-prompt>\`. The slug IS the prompt — write it like you'd describe the image to a designer. Use kebab-case or URL-encoded sentences. Examples:
@@ -204,6 +219,18 @@ STYLES.CSS SAFETY RULES (Tailwind v4 aborts the build on ANY invalid CSS):
 - Inside \`@theme { ... }\`, every line must be a valid token declaration like \`--color-primary: oklch(0.7 0.15 30);\` ending with \`;\`. NEVER leave bare numbers, words, or fragments — Tailwind will fail with "Invalid declaration".
 - NEVER \`@apply\` a class that isn't a real Tailwind utility or a token you defined. Unknown utilities abort the build.
 - If you don't NEED to change tokens, do NOT emit "src/styles.css" at all — leave the scaffold's defaults.
+
+DECLARE-BEFORE-USE (read carefully — this is the #1 source of broken edits):
+You may invent names — custom utilities, CSS variables, components, routes, image slugs. But every name you REFERENCE in this turn must also be DEFINED in this turn (or already exist in the project files shown above). No "I'll add it next turn".
+- Custom Tailwind utility (\`neo-border\`, \`glass-panel\`, …) → also emit \`@utility <name> { … }\` in \`src/styles.css\`. Tailwind v4 has NO \`tailwind.config.js\`.
+- Custom CSS variable → declare it inside \`@theme { … }\` first.
+- Component import → the imported file must be emitted in the same turn, with a matching export.
+- Route (\`<Link to="/x">\`) → the page file must exist and be wired in the router this turn.
+- Image path → use \`petal-image://…\` for new assets; never invent a \`/public/foo.jpg\` path.
+- Env var / secret → don't silently read \`process.env.X\`. Say in "summary" that the user needs to add it.
+- DB table / column → only use names that exist in the schema section above; otherwise say so in "summary".
+
+If a reviewer reading just THIS turn's files couldn't find where a name is defined, you invented it without disclosing it. Ship the definition, reuse an existing name, or call it out in "summary".
 
 IMAGES (use \`petal-image://\` for AI-generated visuals):
 - For ANY new hero image, product photo, illustration, background, or marketing visual, use the \`petal-image://<descriptive-prompt>\` protocol. The server replaces each placeholder with a real AI-generated image after you finish.
