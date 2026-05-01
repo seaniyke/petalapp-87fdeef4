@@ -3283,7 +3283,20 @@ function Builder() {
                 phases={phases}
                 isActive={busy || isDeploying}
                 isComplete={isLive}
-                error={friendlyError}
+                error={(() => {
+                  // Avoid double-rendering: if the tail message already shows
+                  // this same error (because persistFriendlyError appended it),
+                  // hide the BuildActivityCard's copy.
+                  if (!friendlyError) return null;
+                  const tail = messages[messages.length - 1];
+                  if (
+                    tail?.error?.title === friendlyError.title &&
+                    tail?.error?.message === friendlyError.message
+                  ) {
+                    return null;
+                  }
+                  return friendlyError;
+                })()}
                 designCaption={designCaption}
                 latestPath={latestPath}
                 filesWritten={filesWritten}
