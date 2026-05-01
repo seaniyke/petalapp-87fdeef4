@@ -13,6 +13,8 @@ import {
   Unplug,
   Sparkles,
   Lock,
+  Globe,
+  ChevronRight,
 } from "lucide-react";
 import {
   Sheet,
