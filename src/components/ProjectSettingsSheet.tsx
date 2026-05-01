@@ -13,6 +13,8 @@ import {
   Unplug,
   Sparkles,
   Lock,
+  Globe,
+  ChevronRight,
 } from "lucide-react";
 import {
   Sheet,
@@ -100,6 +102,7 @@ export function ProjectSettingsSheet({
   const [saving, setSaving] = useState(false);
   const [cloudOpen, setCloudOpen] = useState(false);
   const [balanceOpen, setBalanceOpen] = useState(false);
+  const [domainsOpen, setDomainsOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -121,9 +124,16 @@ export function ProjectSettingsSheet({
     }
   }, [value, project.custom_instructions, knowledgeKey]);
 
-  // Scroll to a requested section once the sheet is open.
+  // Scroll to a requested section once the sheet is open. Domains is a
+  // dedicated sub-sheet now (Lovable-style top-level entry), so route there
+  // directly instead of scrolling.
   useEffect(() => {
     if (!open || !scrollTo) return;
+    if (scrollTo === "domains") {
+      setDomainsOpen(true);
+      onScrollHandled?.();
+      return;
+    }
     const t = setTimeout(() => {
       const el = document.getElementById(`settings-${scrollTo}`);
       el?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -202,13 +212,25 @@ export function ProjectSettingsSheet({
           <span className="text-xs text-muted-foreground">Open</span>
         </button>
 
-        {/* Domains section */}
-        <div id="settings-domains" className="scroll-mt-4">
-          <DomainsSection
-            projectId={project.id}
-            hasPublishedBuild={!!project.latest_build_id}
-          />
-        </div>
+        {/* Domains — top-level entry (Lovable-style). Opens a dedicated
+            sub-sheet so users can find and manage domains in one tap. */}
+        <button
+          type="button"
+          onClick={() => setDomainsOpen(true)}
+          id="settings-domains"
+          className="mt-3 flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-left transition hover:border-primary/40 hover:bg-muted/60"
+        >
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background text-primary">
+            <Globe className="h-4 w-4" />
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-medium">Domains</div>
+            <div className="text-xs text-muted-foreground">
+              Buy a new domain or connect one you already own.
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
 
         {/* Backend section */}
         <div id="settings-backend" className="scroll-mt-4">
@@ -283,6 +305,27 @@ export function ProjectSettingsSheet({
       }}
     />
     <CloudBalanceSheet open={balanceOpen} onOpenChange={setBalanceOpen} />
+
+    {/* Dedicated Domains sheet — top-level entry, mirrors how Lovable
+        surfaces Domains as its own settings page. */}
+    <Sheet open={domainsOpen} onOpenChange={setDomainsOpen}>
+      <SheetContent side="right" className="flex w-full max-w-md flex-col p-0">
+        <SheetHeader className="border-b border-border px-6 py-4">
+          <SheetTitle className="flex items-center gap-2">
+            <Globe className="h-4 w-4" /> Domains
+          </SheetTitle>
+          <SheetDescription>
+            Manage your project's URLs and custom domains.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <DomainsSection
+            projectId={project.id}
+            hasPublishedBuild={!!project.latest_build_id}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
     </>
   );
 }
