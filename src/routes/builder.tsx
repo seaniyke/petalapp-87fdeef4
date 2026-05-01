@@ -60,6 +60,8 @@ import {
 import {
   autoFixingBuild,
   friendlyBuildFailure,
+  friendlyBuildServiceBusy,
+  isInfrastructureBuildError,
   toFriendlyError,
   PipelineError,
   type FriendlyError,
@@ -810,6 +812,24 @@ function Builder() {
       // by only running it when status is "ready" — failed builds take the
       // else-if branch below and never reach here.
       setFriendlyError(null);
+      // Also clear any persisted build-failure cards still pinned in the
+      // message thread from a previous failed attempt — showing
+      // "Petal couldn't auto-fix this one" or "Build service is briefly
+      // unavailable" right above "Your app is live" is contradictory UX
+      // (see image 2 of the user's bug report).
+      setMessages((prev) =>
+        prev.filter(
+          (m) =>
+            !(
+              m.role === "assistant" &&
+              m.error &&
+              (m.error.title?.startsWith("Petal couldn't auto-fix") ||
+                m.error.title?.startsWith("Build service") ||
+                m.error.title?.startsWith("A styling rule") ||
+                m.error.title?.startsWith("Publishing is taking"))
+            ),
+        ),
+      );
       // Note: we used to surface a "Changes ready to publish" toast here, but
       // it fired on every refresh / build completion and was more noise than
       // signal. Users can publish from the header button when ready.
@@ -820,6 +840,19 @@ function Builder() {
       setPhases((p) => advanceTo(p, "deploying"));
     } else if (effectiveBuildSnap.status === "failed") {
       setPhases((p) => markFailed(p, "deploying"));
+
+      // Infrastructure failures (build service unreachable, Cloudflare 403,
+      // upstream 5xx) are NOT the user's code. Don't burn auto-fix attempts
+      // forwarding the raw error to the AI — there's nothing in the project
+      // files to fix. Show a calm "service is briefly unavailable" card and
+      // let the user retry the deploy when they're ready.
+      if (isInfrastructureBuildError(effectiveBuildSnap.errorMessage)) {
+        if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
+        if (busy) return;
+        persistFriendlyError(friendlyBuildServiceBusy(effectiveBuildSnap.errorMessage));
+        return;
+      }
+
       const shouldAutoFix =
         !!buildId &&
         startedBuildIdsRef.current.has(buildId) &&
@@ -2634,8 +2667,12 @@ function Builder() {
                     <PetalErrorCard
                       error={m.error}
                       onRetry={
-                        isTail && m.error.actionKind === "retry" && lastUserPrompt
-                          ? retry
+                        isTail && m.error.actionKind === "retry"
+                          ? m.error.title?.startsWith("Build service")
+                            ? retryDeploy
+                            : lastUserPrompt
+                              ? retry
+                              : undefined
                           : undefined
                       }
                       onAskFix={
@@ -3403,14 +3440,17 @@ function Builder() {
                 deployElapsedSec={deployElapsed}
                 onStop={busy ? stopGeneration : undefined}
                 onRetry={
-                  // The "Publishing is taking longer" stall card retries the
-                  // deploy directly. Every other retryable error replays the
-                  // last user prompt through the AI.
+                  // The "Publishing is taking longer" stall card and the
+                  // "Build service is briefly unavailable" infra card both
+                  // retry the deploy directly. Every other retryable error
+                  // replays the last user prompt through the AI.
                   isDeploying && friendlyError?.title?.startsWith("Publishing is taking")
                     ? retryDeploy
-                    : lastUserPrompt
-                      ? retry
-                      : undefined
+                    : friendlyError?.title?.startsWith("Build service")
+                      ? retryDeploy
+                      : lastUserPrompt
+                        ? retry
+                        : undefined
                 }
                 onAskFix={askPetalToFix}
                 onDismissError={() => setFriendlyError(null)}

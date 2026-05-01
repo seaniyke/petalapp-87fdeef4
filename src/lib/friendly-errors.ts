@@ -355,3 +355,38 @@ export function friendlyBuildFailure(rawLog: string | null | undefined): Friendl
     technicalDetail: tail,
   };
 }
+
+/**
+ * Detect build failures that are NOT the user's code — they're infrastructure
+ * problems (build service unreachable, Cloudflare blocking, upstream 5xx).
+ * These should NEVER trigger the AI auto-fix loop, because there's nothing in
+ * the project files to fix. Instead we show a calm "service is busy, retry"
+ * card and let the user re-trigger the build manually.
+ */
+export function isInfrastructureBuildError(rawLog: string | null | undefined): boolean {
+  if (!rawLog) return false;
+  const s = rawLog.toLowerCase();
+  return (
+    s.includes("could not reach build service") ||
+    s.includes("builder rejected request") ||
+    s.includes("failed to reach builder") ||
+    s.includes("error code: 1000") ||
+    s.includes("error code: 1020") ||
+    s.includes("cloudflare") ||
+    /\b(403|429|502|503|504)\b/.test(s) && (s.includes("builder") || s.includes("build service") || s.includes("upstream"))
+  );
+}
+
+/** Friendly card for infrastructure build failures — no auto-fix, just retry. */
+export function friendlyBuildServiceBusy(rawLog: string | null | undefined): FriendlyError {
+  if (rawLog) console.warn("[petal] build service unavailable:", rawLog);
+  const tail = rawLog ? rawLog.split("\n").slice(-20).join("\n").slice(-1500) : undefined;
+  return {
+    title: "Build service is briefly unavailable",
+    message:
+      "This isn't a problem with your app — our build service didn't respond just now. Tap retry in a moment and it should go through.",
+    actionLabel: "Retry build",
+    actionKind: "retry",
+    technicalDetail: tail,
+  };
+}
