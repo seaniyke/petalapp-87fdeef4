@@ -733,37 +733,37 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       model = phaseDefault;
       chosenBy = "phase_router:cheap_direct";
     } else {
-    // Tier 4 — telemetry-driven router. Picks the historically
-    // best-performing model from the candidate set for this
-    // (feature, phase). Falls back to the phase default when
-    // disabled or when no candidate has enough samples yet.
-    try {
-      const pick = await pickBestModel({
-        feature: "generate",
-        phase: phaseTag.phase,
-        candidates: [MODEL_FAST, MODEL_BEST],
-        defaultModel: phaseDefault,
-      });
-      model = pick.model;
-      // Make telemetry honest: distinguish "smart router actively
-      // chose this" from "smart router had no data and fell back to
-      // the phase default".
-      if (pick.reason === "best_score" || pick.reason === "exploration") {
-        chosenBy = `smart_router:${pick.reason}`;
-      } else if (pick.reason === "no_data") {
-        chosenBy = "phase_router:no_router_data";
+      // Tier 4 — telemetry-driven router. Picks the historically
+      // best-performing model from the candidate set for this
+      // (feature, phase). Falls back to the phase default when
+      // disabled or when no candidate has enough samples yet.
+      try {
+        const pick = await pickBestModel({
+          feature: "generate",
+          phase: phaseTag.phase,
+          candidates: [MODEL_FAST, MODEL_BEST],
+          defaultModel: phaseDefault,
+        });
+        model = pick.model;
+        // Make telemetry honest: distinguish "smart router actively
+        // chose this" from "smart router had no data and fell back to
+        // the phase default".
+        if (pick.reason === "best_score" || pick.reason === "exploration") {
+          chosenBy = `smart_router:${pick.reason}`;
+        } else if (pick.reason === "no_data") {
+          chosenBy = "phase_router:no_router_data";
+        }
+        if (pick.stat) {
+          console.log(
+            `[smart-router] reason=${pick.reason} model=${pick.model} score=${pick.stat.score.toFixed(4)} succ=${(pick.stat.successRate * 100).toFixed(1)}% calls=${pick.stat.calls}`,
+          );
+        } else {
+          console.log(`[smart-router] reason=${pick.reason} model=${pick.model} (no stat)`);
+        }
+      } catch (e) {
+        console.warn("[smart-router] pick failed:", e);
+        model = phaseDefault;
       }
-      if (pick.stat) {
-        console.log(
-          `[smart-router] reason=${pick.reason} model=${pick.model} score=${pick.stat.score.toFixed(4)} succ=${(pick.stat.successRate * 100).toFixed(1)}% calls=${pick.stat.calls}`,
-        );
-      } else {
-        console.log(`[smart-router] reason=${pick.reason} model=${pick.model} (no stat)`);
-      }
-    } catch (e) {
-      console.warn("[smart-router] pick failed:", e);
-      model = phaseDefault;
-    }
     }
   } else {
     model = resolveModel(preset, lastUser, currentFiles.length);
