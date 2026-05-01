@@ -126,8 +126,9 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
           )}
 
           <Section title="Help">
-            <RowExternal
-              href="https://docs.lovable.dev/"
+            <RowLink
+              to="/docs"
+              onClick={close}
               icon={<BookOpen className="h-4 w-4" />}
               label="Documentation"
             />
@@ -198,7 +199,7 @@ function RowLink({
   icon,
   label,
 }: {
-  to: "/" | "/projects" | "/gallery" | "/profile" | "/admin";
+  to: "/" | "/projects" | "/gallery" | "/profile" | "/admin" | "/docs";
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
