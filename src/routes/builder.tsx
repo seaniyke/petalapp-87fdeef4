@@ -448,6 +448,10 @@ function Builder() {
     attempts: 0,
     handledBuildIds: new Set(),
   });
+  const noEditRecoveryRef = useRef<{ projectId: string | null; attempts: number }>({
+    projectId: null,
+    attempts: 0,
+  });
   // When a user starts a new AI turn or retries a stalled deploy, the previous
   // `latest_build_id` is no longer the thing the chat should react to. Without
   // this, an old pending deploy can keep re-opening the "Publishing is taking
@@ -730,6 +734,9 @@ function Builder() {
         handledBuildIds: new Set(),
       };
     }
+      if (noEditRecoveryRef.current.projectId !== project?.id) {
+        noEditRecoveryRef.current = { projectId: project?.id ?? null, attempts: 0 };
+      }
 
     if (effectiveBuildSnap.status === "ready") {
       setPhases((p) => completeThrough(p, "live"));
@@ -1063,6 +1070,10 @@ function Builder() {
          *  charge. The AI still receives the full error log as a user
          *  message so it can patch the actual cause. */
         isAutoFix?: boolean;
+        /** Internal recovery run after the model produced no usable edits.
+         *  Petal escalates automatically; the user should not have to pick a
+         *  different path manually. */
+        autoEscalate?: boolean;
         /** Internal auto-continue run (Petal picking the build back up after
          *  the user enables a service mid-flow, e.g. managed backend). The
          *  visible thread shows a friendly system note instead of the raw
@@ -1310,7 +1321,13 @@ function Builder() {
             // sending — they're UI-only, the AI shouldn't see them.
             messages: nextMessages.filter((m) => m.role !== "system"),
             currentFiles: files,
-            model: opts.isAutoFix ? "smart" : deepThink ? "deep" : "smart",
+            model: opts.autoEscalate
+              ? "deep"
+              : opts.isAutoFix
+                ? "smart"
+                : deepThink
+                  ? "deep"
+                  : "smart",
             customInstructions: proj.custom_instructions ?? undefined,
             projectId: proj.id,
             isAutoFix: opts.isAutoFix,
@@ -1412,6 +1429,7 @@ function Builder() {
 
         const files2: ProjectFile[] = resultFiles;
         const summary2: string = resultSummary || "Updated the project.";
+        noEditRecoveryRef.current.attempts = 0;
         // Persist the warm preamble alongside the technical summary so the
         // chat thread retains the human voice on refresh — without it, all
         // we'd see in history is the dryer "Updated the project." line.
@@ -1561,6 +1579,27 @@ function Builder() {
         if (controller.signal.aborted) return;
         const msg = e instanceof Error ? e.message : "Something went wrong.";
         setError(msg);
+        const isNoEditFailure = e instanceof PipelineError && e.kind === "no_files_emitted";
+        if (isNoEditFailure && !opts.isAutoFix && noEditRecoveryRef.current.attempts < 1) {
+          noEditRecoveryRef.current.attempts += 1;
+          setActivityVisible(true);
+          setFriendlyError({
+            title: "Petal is trying another way",
+            message:
+              "No action needed — Petal didn't get usable edits back, so it's retrying automatically.",
+            actionLabel: "Working on it",
+            actionKind: "dismiss",
+          });
+          setPhases(defaultPhases());
+          setTimeout(() => {
+            void sendRef.current?.(text, {
+              isRetry: true,
+              forceBuild: true,
+              autoEscalate: true,
+            });
+          }, 250);
+          return;
+        }
         // Pass full failure context so unmatched errors land in
         // pipeline_failures with enough detail to debug — not just an
         // empty `surface=unknown` row. Tail of the partial assistant text

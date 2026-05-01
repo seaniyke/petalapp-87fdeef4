@@ -73,10 +73,10 @@ const GENERIC: FriendlyError = {
  */
 const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
   no_files_emitted: (raw) => ({
-    title: "Petal didn't make any edits this turn",
+    title: "Petal couldn't finish that edit",
     message:
-      "The AI replied without writing files. Tap below — Petal will retry on a stronger model that's better at finishing the job.",
-    actionLabel: "Retry on a stronger model",
+      "Petal didn't get usable edits back. It should retry automatically; if it still stops here, try again.",
+    actionLabel: "Try again",
     actionKind: "retry",
     technicalDetail: raw,
   }),
