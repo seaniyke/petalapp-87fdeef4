@@ -259,8 +259,11 @@ export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): Frien
   }
 
   // 3. Unmatched — generic card + telemetry so we can rank real failure
-  //    modes that need a `kind`.
-  reportPipelineFailure(text, ctx);
+  //    modes that need a `kind`. Prefer the server-provided RAW string
+  //    (un-humanized) when available so pipeline_failures reflects the
+  //    actual exception, not LLM apology copy.
+  const reportText = raw instanceof PipelineError && raw.raw ? raw.raw : text;
+  reportPipelineFailure(reportText, ctx);
   return { ...GENERIC, technicalDetail: text };
 }
 
