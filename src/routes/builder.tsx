@@ -1377,8 +1377,9 @@ function Builder() {
         if (streamError) {
           // Preserve the server-classified kind across the throw boundary so
           // toFriendlyError can render the right card without regexing the
-          // (humanized) message text.
-          throw new PipelineError(streamError, streamErrorKind ?? "unknown");
+          // (humanized) message text. Pass `raw` through too so unclassified
+          // failures land in pipeline_failures with the real exception text.
+          throw new PipelineError(streamError, streamErrorKind ?? "unknown", streamErrorRaw);
         }
         if (!resultFiles) throw new Error("No result returned.");
 
