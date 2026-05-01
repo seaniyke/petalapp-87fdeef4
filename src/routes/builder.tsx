@@ -3418,14 +3418,17 @@ function Builder() {
                 deployElapsedSec={deployElapsed}
                 onStop={busy ? stopGeneration : undefined}
                 onRetry={
-                  // The "Publishing is taking longer" stall card retries the
-                  // deploy directly. Every other retryable error replays the
-                  // last user prompt through the AI.
+                  // The "Publishing is taking longer" stall card and the
+                  // "Build service is briefly unavailable" infra card both
+                  // retry the deploy directly. Every other retryable error
+                  // replays the last user prompt through the AI.
                   isDeploying && friendlyError?.title?.startsWith("Publishing is taking")
                     ? retryDeploy
-                    : lastUserPrompt
-                      ? retry
-                      : undefined
+                    : friendlyError?.title?.startsWith("Build service")
+                      ? retryDeploy
+                      : lastUserPrompt
+                        ? retry
+                        : undefined
                 }
                 onAskFix={askPetalToFix}
                 onDismissError={() => setFriendlyError(null)}
