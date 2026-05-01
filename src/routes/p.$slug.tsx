@@ -1,15 +1,13 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { Sparkles, GitFork, ArrowUpRight, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Sparkles, GitFork, ArrowUpRight, Loader2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import {
   getProjectBySlug,
-  loadProjectFiles,
   remixProjectBySlug,
   type ProjectRow,
 } from "@/lib/projects";
-import type { ProjectFile } from "@/server/generate.server";
-import { buildPreviewDoc } from "@/lib/preview";
+import { resolvePublishedUrl, type PublishedUrlResult } from "@/lib/published-url";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -24,8 +22,12 @@ export const Route = createFileRoute("/p/$slug")({
   loader: async ({ params }) => {
     const project = await getProjectBySlug(params.slug);
     if (!project || !project.is_public) throw notFound();
-    const files = await loadProjectFiles(project.id);
-    return { project, files };
+    const published = await resolvePublishedUrl(
+      project.id,
+      project.primary_domain_id ?? null,
+      project.published_build_id ?? null,
+    );
+    return { project, published };
   },
   head: ({ loaderData }) => {
     const title = loaderData?.project?.title ?? "Petal project";
@@ -59,12 +61,11 @@ export const Route = createFileRoute("/p/$slug")({
 });
 
 function PublicPreview() {
-  const { project, files } = Route.useLoaderData() as {
+  const { project, published } = Route.useLoaderData() as {
     project: ProjectRow;
-    files: ProjectFile[];
+    published: PublishedUrlResult;
   };
   const navigate = useNavigate();
-  const previewDoc = useMemo(() => buildPreviewDoc(files), [files]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [remixing, setRemixing] = useState(false);
 
@@ -103,16 +104,22 @@ function PublicPreview() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-background">
-      {files.length > 0 ? (
+      {published.url ? (
         <iframe
           title={project.title}
-          sandbox="allow-scripts allow-forms allow-modals"
-          srcDoc={previewDoc}
+          sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin"
+          src={published.url}
           className="h-full w-full border-0"
         />
       ) : (
-        <div className="grid h-full place-items-center text-sm text-muted-foreground">
-          This project has no files yet.
+        <div className="grid h-full place-items-center px-6 text-center">
+          <div className="max-w-md space-y-3">
+            <h1 className="font-display text-2xl">Not published yet</h1>
+            <p className="text-sm text-muted-foreground">
+              This project doesn't have a live version to preview. You can still
+              remix it and publish your own copy.
+            </p>
+          </div>
         </div>
       )}
 
@@ -140,6 +147,18 @@ function PublicPreview() {
               </div>
             )}
           </div>
+          {published.url && (
+            <a
+              href={published.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted"
+              title="Open live site in a new tab"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Open
+            </a>
+          )}
           <button
             onClick={() => setConfirmOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-xs font-medium text-background transition hover:brightness-110"
