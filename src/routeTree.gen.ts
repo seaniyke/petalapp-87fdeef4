@@ -57,6 +57,7 @@ import { Route as ApiBuildsCallbackRouteImport } from './routes/api/builds/callb
 import { Route as ApiBillingVerifyRouteImport } from './routes/api/billing/verify'
 import { Route as ApiBillingInitializeRouteImport } from './routes/api/billing/initialize'
 import { Route as ApiAdminPaystackPlansRouteImport } from './routes/api/admin/paystack-plans'
+import { Route as ApiAdminDigestsRouteImport } from './routes/api/admin/digests'
 import { Route as ApiAdminCreditsRouteImport } from './routes/api/admin/credits'
 import { Route as ApiAdminAiProvidersRouteImport } from './routes/api/admin/ai-providers'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -314,6 +315,11 @@ const ApiAdminPaystackPlansRoute = ApiAdminPaystackPlansRouteImport.update({
   path: '/api/admin/paystack-plans',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminDigestsRoute = ApiAdminDigestsRouteImport.update({
+  id: '/api/admin/digests',
+  path: '/api/admin/digests',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminCreditsRoute = ApiAdminCreditsRouteImport.update({
   id: '/api/admin/credits',
   path: '/api/admin/credits',
@@ -442,6 +448,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
+  '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
@@ -508,6 +515,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
+  '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
@@ -575,6 +583,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
+  '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
@@ -643,6 +652,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
+    | '/api/admin/digests'
     | '/api/admin/paystack-plans'
     | '/api/billing/initialize'
     | '/api/billing/verify'
@@ -709,6 +719,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
+    | '/api/admin/digests'
     | '/api/admin/paystack-plans'
     | '/api/billing/initialize'
     | '/api/billing/verify'
@@ -775,6 +786,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
+    | '/api/admin/digests'
     | '/api/admin/paystack-plans'
     | '/api/billing/initialize'
     | '/api/billing/verify'
@@ -842,6 +854,7 @@ export interface RootRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
   ApiAdminAiProvidersRoute: typeof ApiAdminAiProvidersRoute
   ApiAdminCreditsRoute: typeof ApiAdminCreditsRoute
+  ApiAdminDigestsRoute: typeof ApiAdminDigestsRoute
   ApiAdminPaystackPlansRoute: typeof ApiAdminPaystackPlansRoute
   ApiBillingInitializeRoute: typeof ApiBillingInitializeRoute
   ApiBillingVerifyRoute: typeof ApiBillingVerifyRoute
@@ -1209,6 +1222,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminPaystackPlansRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/digests': {
+      id: '/api/admin/digests'
+      path: '/api/admin/digests'
+      fullPath: '/api/admin/digests'
+      preLoaderRoute: typeof ApiAdminDigestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/credits': {
       id: '/api/admin/credits'
       path: '/api/admin/credits'
@@ -1373,6 +1393,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
   ApiAdminAiProvidersRoute: ApiAdminAiProvidersRoute,
   ApiAdminCreditsRoute: ApiAdminCreditsRoute,
+  ApiAdminDigestsRoute: ApiAdminDigestsRoute,
   ApiAdminPaystackPlansRoute: ApiAdminPaystackPlansRoute,
   ApiBillingInitializeRoute: ApiBillingInitializeRoute,
   ApiBillingVerifyRoute: ApiBillingVerifyRoute,
