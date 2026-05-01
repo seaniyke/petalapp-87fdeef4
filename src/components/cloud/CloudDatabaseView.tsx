@@ -2,14 +2,27 @@
  * CloudDatabaseView — lists tables in the project's managed backend with
  * row-count estimates. Tap a table to see a small read-only sample.
  */
-import { useEffect, useState } from "react";
-import { Database, Loader2, ChevronRight, Table2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Database,
+  Loader2,
+  ChevronRight,
+  Table2,
+  History,
+  CheckCircle2,
+  AlertCircle,
+  RotateCw,
+} from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   listProjectTables,
   sampleProjectTable,
   type CloudTableSummary,
 } from "@/server/cloud-database.functions";
+import {
+  getMigrationHistory,
+  runProjectMigrations,
+} from "@/server/managed-migrations.functions";
 import { CloudEmptyState } from "./CloudEmptyState";
 
 type Props = { projectId: string };
@@ -99,6 +112,124 @@ export function CloudDatabaseView({ projectId }: Props) {
           </button>
         ))}
       </div>
+      <MigrationHistory projectId={projectId} />
+    </div>
+  );
+}
+
+type HistoryEntry = {
+  path: string;
+  appliedAt: string;
+  status: "success" | "failed";
+  error: string | null;
+};
+
+function MigrationHistory({ projectId }: { projectId: string }) {
+  const fnHistory = useServerFn(getMigrationHistory);
+  const fnRun = useServerFn(runProjectMigrations);
+  const [entries, setEntries] = useState<HistoryEntry[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState(false);
+  const [retryMsg, setRetryMsg] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fnHistory({ data: { projectId } });
+      setEntries(res.entries);
+    } catch {
+      setEntries([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [fnHistory, projectId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const lastFailed = entries?.find((e) => e.status === "failed") ?? null;
+
+  async function retry() {
+    setRetrying(true);
+    setRetryMsg(null);
+    try {
+      const res = await fnRun({ data: { projectId } });
+      if (res.failed) {
+        setRetryMsg(`Still failing: ${res.failed.error}`);
+      } else if (res.applied.length > 0) {
+        setRetryMsg(`Applied ${res.applied.length} migration${res.applied.length === 1 ? "" : "s"}.`);
+      } else {
+        setRetryMsg("Nothing to apply — already up to date.");
+      }
+      await load();
+    } catch (e) {
+      setRetryMsg(e instanceof Error ? e.message : "Retry failed.");
+    } finally {
+      setRetrying(false);
+    }
+  }
+
+  if (loading) return null;
+  if (!entries || entries.length === 0) return null;
+
+  return (
+    <div className="mt-6 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <History className="h-4 w-4" />
+          <span>Migration history</span>
+        </div>
+        {lastFailed && (
+          <button
+            type="button"
+            disabled={retrying}
+            onClick={retry}
+            className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1 text-xs font-medium text-background transition active:scale-95 disabled:opacity-60"
+          >
+            {retrying ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <RotateCw className="h-3 w-3" />
+            )}
+            Retry
+          </button>
+        )}
+      </div>
+      {retryMsg && (
+        <div className="rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          {retryMsg}
+        </div>
+      )}
+      <ul className="overflow-hidden rounded-xl border border-border/60 bg-background/40">
+        {entries.map((e, i) => (
+          <li
+            key={`${e.path}-${e.appliedAt}-${i}`}
+            className="flex items-start gap-3 border-b border-border/40 px-3 py-2.5 last:border-b-0"
+          >
+            <div className="mt-0.5 shrink-0">
+              {e.status === "success" ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              ) : (
+                <AlertCircle className="h-4 w-4 text-destructive" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs font-medium" title={e.path}>
+                {e.path.replace(/^supabase\/migrations\//, "")}
+              </div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {new Date(e.appliedAt).toLocaleString()}
+              </div>
+              {e.error && (
+                <div className="mt-1 line-clamp-3 break-words text-xs text-destructive/90">
+                  {e.error}
+                </div>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
