@@ -812,6 +812,24 @@ function Builder() {
       // by only running it when status is "ready" — failed builds take the
       // else-if branch below and never reach here.
       setFriendlyError(null);
+      // Also clear any persisted build-failure cards still pinned in the
+      // message thread from a previous failed attempt — showing
+      // "Petal couldn't auto-fix this one" or "Build service is briefly
+      // unavailable" right above "Your app is live" is contradictory UX
+      // (see image 2 of the user's bug report).
+      setMessages((prev) =>
+        prev.filter(
+          (m) =>
+            !(
+              m.role === "assistant" &&
+              m.error &&
+              (m.error.title?.startsWith("Petal couldn't auto-fix") ||
+                m.error.title?.startsWith("Build service") ||
+                m.error.title?.startsWith("A styling rule") ||
+                m.error.title?.startsWith("Publishing is taking"))
+            ),
+        ),
+      );
       // Note: we used to surface a "Changes ready to publish" toast here, but
       // it fired on every refresh / build completion and was more noise than
       // signal. Users can publish from the header button when ready.
