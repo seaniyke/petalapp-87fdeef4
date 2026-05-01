@@ -201,11 +201,36 @@ async function fetchUserCount(startIso: string, endIso: string): Promise<number>
   }
 }
 
+/**
+ * Failures whose signature/raw_message points at "we never finished
+ * generating" rather than "we generated wrong code." Matched against
+ * the patterns we actually see in `pipeline_failures` today (see the
+ * 72h investigation pull).
+ */
+const TIMEOUT_SIGNATURE_RE =
+  /timeout|aborted|no result returned|ran out of time|couldn't finish|hit a snag|took (a bit )?longer than expected|wasn't able to finish/i;
+
+function countTimeoutFailures(failures: FailureRow[]): number {
+  let n = 0;
+  for (const f of failures) {
+    const sig = `${f.signature ?? ""} ${f.raw_message ?? ""}`;
+    if (TIMEOUT_SIGNATURE_RE.test(sig)) n += 1;
+  }
+  return n;
+}
+
 function computeTotals(
   outcomes: OutcomeRow[],
   userCount: number,
+  timeoutCount: number,
 ): DigestPayload["totals"] {
   const turns = outcomes.length;
+  // Denominator for timeoutRate is "real attempts" — generate failures plus
+  // outcomes we recorded. Without outcomes (e.g. brand-new project), fall
+  // back to the failure count itself so the metric still has meaning.
+  const attempts = turns + timeoutCount;
+  const timeoutRate = attempts > 0 ? timeoutCount / attempts : null;
+
   if (turns === 0) {
     return {
       turns: 0,
@@ -215,10 +240,16 @@ function computeTotals(
       buildSuccessRate: null,
       followupWasFixRate: null,
       avgAutofixCount: null,
+      timeoutRate,
     };
   }
   const projects = new Set(outcomes.map((o) => o.project_id).filter(Boolean)).size;
-  const verifierKnown = outcomes.filter((o) => o.local_verifier_pass !== null);
+  // Verifier rate is only meaningful for outcomes where the model actually
+  // produced files. Outcomes with files_written = 0 mean the upstream
+  // bailed before writing — counting those as verifier failures conflates
+  // "didn't finish" with "wrote bad code" and triggers wrong recommendations.
+  const wroteFiles = outcomes.filter((o) => (o.files_written ?? 0) > 0);
+  const verifierKnown = wroteFiles.filter((o) => o.local_verifier_pass !== null);
   const verifierPass = verifierKnown.filter((o) => o.local_verifier_pass).length;
   const buildKnown = outcomes.filter(
     (o) => o.build_status === "ready" || o.build_status === "failed",
@@ -236,6 +267,7 @@ function computeTotals(
     buildSuccessRate: buildKnown.length ? buildPass / buildKnown.length : null,
     followupWasFixRate: followupKnown.length ? followupFix / followupKnown.length : null,
     avgAutofixCount: turns ? totalAutofix / turns : null,
+    timeoutRate,
   };
 }
 
