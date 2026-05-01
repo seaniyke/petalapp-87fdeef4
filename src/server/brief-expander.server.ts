@@ -50,7 +50,11 @@ const MAX_TRIGGER_CHARS = 80;
 
 function looksVague(text: string): boolean {
   const trimmed = text.trim();
-  if (trimmed.length < MIN_SPECIFIC_CHARS) return true;
+  // CRITICAL: never trigger on length alone. "Build a car rental system"
+  // (26 chars) is short but specific — expanding it produces a totally
+  // different app (we shipped a collage app for that exact prompt). Only
+  // the explicit vague patterns ("surprise me", "build something", etc.)
+  // are allowed to trigger expansion.
   if (trimmed.length > MAX_TRIGGER_CHARS) return false;
   return VAGUE_PATTERNS.some((re) => re.test(trimmed));
 }
@@ -80,7 +84,7 @@ export async function expandBriefIfVague(input: string): Promise<BriefExpansion>
   const original = input;
   const trimmed = input.trim();
 
-  if (trimmed.length >= MIN_SPECIFIC_CHARS && !VAGUE_PATTERNS.some((re) => re.test(trimmed))) {
+  if (!VAGUE_PATTERNS.some((re) => re.test(trimmed))) {
     return { expanded: false, brief: input, original, reason: "skipped_specific" };
   }
   if (trimmed.length > MAX_TRIGGER_CHARS) {
