@@ -3053,33 +3053,50 @@ function Builder() {
             )}
             {/* Bridge state: busy but no streamed content yet. Without this
                 the chat goes blank for ~300ms after send while triage warms
-                up — which feels like a freeze. */}
+                up — which feels like a freeze. We distinguish "Thinking"
+                (still planning, no files touched, no active build phase)
+                from "Working" (files being written or a build phase is
+                active) so users can tell the two apart at a glance. */}
             {busy &&
               !streamingPreamble &&
               !streamingPlan &&
               !streamingAssistant &&
-              !streamingRecap && (
-                <div className="flex items-center gap-2 text-[13px]">
-                  <span className="petal-shimmer font-medium">Thinking</span>
-                </div>
-              )}
+              !streamingRecap && (() => {
+                const activePhase = phases.find((p) => p.status === "active");
+                const isWorking =
+                  filesWritten > 0 ||
+                  (activePhase && activePhase.id !== "thinking");
+                return (
+                  <div className="flex items-center gap-2 text-[13px]">
+                    <span className="petal-shimmer font-medium">
+                      {isWorking ? "Working" : "Thinking"}
+                    </span>
+                  </div>
+                );
+              })()}
             {/* Live, token-by-token reply while Petal works. Promoted to a real
                 message in `messages` once the run completes. */}
             {busy &&
               (streamingPreamble ||
                 streamingPlan ||
                 streamingAssistant ||
-                streamingRecap) && (
+                streamingRecap) && (() => {
+                const activePhase = phases.find((p) => p.status === "active");
+                const stageLabel = streamingRecap
+                  ? "Wrapping up"
+                  : streamingAssistant
+                    ? "Writing"
+                    : streamingPlan
+                      ? "Planning"
+                      : filesWritten > 0 ||
+                          (activePhase && activePhase.id !== "thinking")
+                        ? "Working"
+                        : "Thinking";
+                return (
               <div className="overflow-hidden wrap-anywhere text-[14.5px] leading-[1.65] text-foreground">
                 <div className="mb-2 flex items-center gap-2 text-[12.5px]">
                   <span className="petal-shimmer font-medium">
-                    {streamingRecap
-                      ? "Wrapping up"
-                      : streamingAssistant
-                        ? "Writing"
-                        : streamingPlan
-                          ? "Planning"
-                          : "Thinking"}
+                    {stageLabel}
                   </span>
                 </div>
                 <div className="space-y-2.5">
@@ -3142,7 +3159,8 @@ function Builder() {
                   })()}
                 </div>
               </div>
-            )}
+                );
+              })()}
             {activityVisible && (
               <BuildActivityCard
                 phases={phases}
@@ -3494,37 +3512,8 @@ function Builder() {
                 </button>
               </div>
             </div>
-            {/* Live status line — Lovable-style ambient cue right under the
-                composer. Only renders while busy. The activity card has the
-                full timeline; this is the one-glance summary. */}
-            {(busy || discussBusy) && (() => {
-              const activePhase = phases.find((p) => p.status === "active");
-              const fileLabel = latestPath
-                ? latestPath.split("/").pop() ?? latestPath
-                : null;
-              let label: string;
-              if (discussBusy) label = "Petal is thinking…";
-              else if (filesWritten > 0 && fileLabel)
-                label = `Writing ${filesWritten} file${filesWritten === 1 ? "" : "s"} · ${fileLabel}`;
-              else if (filesWritten > 0)
-                label = `Writing ${filesWritten} file${filesWritten === 1 ? "" : "s"}…`;
-              else if (activePhase?.id === "thinking") label = "Petal is thinking…";
-              else if (activePhase?.id === "designing") label = "Designing…";
-              else if (activePhase?.id === "writing") label = "Writing code…";
-              else if (activePhase?.id === "polishing") label = "Polishing…";
-              else if (activePhase?.id === "deploying") label = "Deploying…";
-              else label = "Working…";
-              return (
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className="mt-1.5 flex items-center gap-1.5 px-1 text-[11.5px] text-muted-foreground"
-                >
-                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-foreground/50" />
-                  <span className="min-w-0 flex-1 truncate">{label}</span>
-                </div>
-              );
-            })()}
+            {/* Status line removed — the in-chat shimmer label
+                ("Thinking" / "Working") now conveys this directly. */}
             {/* Errors are shown inside <BuildActivityCard /> with friendly copy. */}
           </form>
         </aside>
