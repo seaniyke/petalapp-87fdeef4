@@ -438,7 +438,9 @@ export async function pickBestModel(args: PickArgs): Promise<PickResult> {
   // Exploit: best score from (feature, phase), then (feature), then default.
   const tryRanked = (stats: ModelStat[] | undefined): PickResult | null => {
     if (!stats || stats.length === 0) return null;
-    const eligible = stats.filter((s) => args.candidates.includes(s.model) && s.enoughData);
+    const eligible = stats.filter(
+      (s) => args.candidates.includes(s.model) && s.enoughData && s.score >= 0,
+    );
     if (eligible.length === 0) return null;
     const top = eligible[0];
     return { model: top.model, reason: "best_score", stat: top };
