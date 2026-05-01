@@ -88,6 +88,7 @@ export const Route = createFileRoute("/api/admin/digests")({
                   build_success_rate: digest.totals.buildSuccessRate,
                   followup_was_fix_rate: digest.totals.followupWasFixRate,
                   avg_autofix_count: digest.totals.avgAutofixCount,
+                  timeout_rate: digest.totals.timeoutRate,
                   top_failure_signatures: digest.topFailureSignatures,
                   top_reverted_prompts: digest.topRevertedPrompts,
                   model_breakdown: digest.modelBreakdown,
