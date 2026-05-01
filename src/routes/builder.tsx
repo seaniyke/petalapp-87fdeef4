@@ -65,6 +65,7 @@ import {
   type FriendlyError,
 } from "@/lib/friendly-errors";
 import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivityCard";
+import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { NextStepsCard } from "@/components/NextStepsCard";
 
 
@@ -292,6 +293,47 @@ function Builder() {
   const [previewDevice, setPreviewDevice] = useState<"phone" | "tablet" | "desktop">("desktop");
   const [activityVisible, setActivityVisible] = useState(false);
   const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
+  // Tracks the current project id for callbacks that fire outside React's
+  // render cycle (stream handlers, async catches) so we don't re-create them
+  // every time the project state object swaps reference.
+  const projectIdRef = useRef<string | null>(null);
+  // Wraps setFriendlyError + persists the error as an assistant message so the
+  // "Petal got confused" card survives a page refresh. Use this for genuine
+  // failures the user should still see after reload — NOT for transient
+  // self-healing toasts ("trying another way", "publishing taking longer",
+  // "auto-fixing build") which clear themselves.
+  const persistFriendlyError = useCallback(
+    (err: FriendlyError) => {
+      setFriendlyError(err);
+      const projId = projectIdRef.current;
+      if (!projId) return;
+      const errMsg: ChatMessage = {
+        role: "assistant",
+        content: "",
+        error: {
+          title: err.title,
+          message: err.message,
+          actionLabel: err.actionLabel,
+          actionKind: err.actionKind,
+          technicalDetail: err.technicalDetail,
+        },
+      };
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.error?.title === err.title && last?.error?.message === err.message) {
+          return prev;
+        }
+        return [...prev, errMsg];
+      });
+      void appendMessages(projId, [errMsg]).catch(() => {
+        /* best-effort — the live state still shows the card */
+      });
+    },
+    [],
+  );
+  useEffect(() => {
+    projectIdRef.current = project?.id ?? null;
+  }, [project?.id]);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   // Build vs Discuss mode. Discuss = chat-only, no file changes (Base44/Lovable parity).
@@ -787,7 +829,7 @@ function Builder() {
       if (busy) return;
       // Manual fallback after we've burned both auto-attempts, or when the
       // failed build was already present when the user opened the project.
-      setFriendlyError(friendlyBuildFailure(effectiveBuildSnap.errorMessage));
+      persistFriendlyError(friendlyBuildFailure(effectiveBuildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, project?.latest_build_id, project?.published_build_id, busy]);
@@ -1557,7 +1599,7 @@ function Builder() {
               if (r) setProject(r);
             })
             .catch((err: unknown) => {
-              setFriendlyError(
+              persistFriendlyError(
                 toFriendlyError(err, { surface: "build", projectId: proj.id }),
               );
               setPhases((p) => markFailed(p, "deploying"));
@@ -1571,7 +1613,7 @@ function Builder() {
           console.error(persistErr);
           toast.error("Generated, but couldn't save changes.");
           setPhases((p) => markFailed(p, "deploying"));
-          setFriendlyError(
+          persistFriendlyError(
             toFriendlyError(persistErr, { surface: "build", projectId: proj.id }),
           );
         }
@@ -1605,7 +1647,7 @@ function Builder() {
         // empty `surface=unknown` row. Tail of the partial assistant text
         // is the model's own apology when it bailed prose-only.
         const tail = (partialAssistant || partialPlan || "").slice(-2000);
-        setFriendlyError(
+        persistFriendlyError(
           toFriendlyError(e, {
             surface: "generate",
             projectId: proj.id,
@@ -1973,7 +2015,7 @@ function Builder() {
         if (r) setProject(r);
       })
       .catch((err: unknown) => {
-        setFriendlyError(
+        persistFriendlyError(
           toFriendlyError(err, { surface: "build", projectId: project.id }),
         );
         setPhases((p) => markFailed(p, "deploying"));
@@ -2488,6 +2530,30 @@ function Builder() {
               </div>
             )}
             {messages.map((m, i) => {
+              // Persisted "Petal got confused" cards: render as the iOS-style
+              // PetalErrorCard inline in the thread so the failure survives a
+              // refresh. Retry replays the most recent user prompt; ask-fix
+              // routes through the normal askPetalToFix flow.
+              if (m.role === "assistant" && m.error) {
+                const isTail = i === messages.length - 1;
+                return (
+                  <div key={i} className="flex justify-start">
+                    <PetalErrorCard
+                      error={m.error}
+                      onRetry={
+                        isTail && m.error.actionKind === "retry" && lastUserPrompt
+                          ? retry
+                          : undefined
+                      }
+                      onAskFix={
+                        isTail && m.error.actionKind === "ask-fix"
+                          ? askPetalToFix
+                          : undefined
+                      }
+                    />
+                  </div>
+                );
+              }
               // System notes (e.g. "Petal is auto-fixing the build — free")
               // render as a small centered chip, not a chat bubble — they're
               // status updates, not part of the conversation.
@@ -3217,7 +3283,20 @@ function Builder() {
                 phases={phases}
                 isActive={busy || isDeploying}
                 isComplete={isLive}
-                error={friendlyError}
+                error={(() => {
+                  // Avoid double-rendering: if the tail message already shows
+                  // this same error (because persistFriendlyError appended it),
+                  // hide the BuildActivityCard's copy.
+                  if (!friendlyError) return null;
+                  const tail = messages[messages.length - 1];
+                  if (
+                    tail?.error?.title === friendlyError.title &&
+                    tail?.error?.message === friendlyError.message
+                  ) {
+                    return null;
+                  }
+                  return friendlyError;
+                })()}
                 designCaption={designCaption}
                 latestPath={latestPath}
                 filesWritten={filesWritten}
