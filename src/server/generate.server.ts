@@ -369,6 +369,16 @@ export type ChatMessage = {
    *  error — free"). Rendered as a small inline notice, never sent to the
    *  AI as part of the conversation. */
   system?: boolean;
+  /** Persisted "Petal got confused"-class failure card. When present the
+   *  message renders as the iOS-style PetalErrorCard inline in the thread,
+   *  so the failure survives a refresh. Never sent to the AI. */
+  error?: {
+    title: string;
+    message: string;
+    actionLabel: string;
+    actionKind: "retry" | "ask-fix" | "dismiss";
+    technicalDetail?: string;
+  };
 };
 
 export type FileOp =
