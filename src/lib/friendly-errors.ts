@@ -75,7 +75,7 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
   no_files_emitted: (raw) => ({
     title: "Petal couldn't finish that edit",
     message:
-      "Petal didn't get usable edits back. It should retry automatically; if it still stops here, try again and Petal will take a different path.",
+      "Petal didn't get usable edits back. It should retry automatically; if it still stops here, try again.",
     actionLabel: "Try again",
     actionKind: "retry",
     technicalDetail: raw,
