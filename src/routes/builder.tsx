@@ -1646,7 +1646,7 @@ function Builder() {
         // empty `surface=unknown` row. Tail of the partial assistant text
         // is the model's own apology when it bailed prose-only.
         const tail = (partialAssistant || partialPlan || "").slice(-2000);
-        setFriendlyError(
+        persistFriendlyError(
           toFriendlyError(e, {
             surface: "generate",
             projectId: proj.id,
