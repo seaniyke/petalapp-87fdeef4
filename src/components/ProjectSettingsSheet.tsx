@@ -305,6 +305,27 @@ export function ProjectSettingsSheet({
       }}
     />
     <CloudBalanceSheet open={balanceOpen} onOpenChange={setBalanceOpen} />
+
+    {/* Dedicated Domains sheet — top-level entry, mirrors how Lovable
+        surfaces Domains as its own settings page. */}
+    <Sheet open={domainsOpen} onOpenChange={setDomainsOpen}>
+      <SheetContent side="right" className="flex w-full max-w-md flex-col p-0">
+        <SheetHeader className="border-b border-border px-6 py-4">
+          <SheetTitle className="flex items-center gap-2">
+            <Globe className="h-4 w-4" /> Domains
+          </SheetTitle>
+          <SheetDescription>
+            Manage your project's URLs and custom domains.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <DomainsSection
+            projectId={project.id}
+            hasPublishedBuild={!!project.latest_build_id}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
     </>
   );
 }
