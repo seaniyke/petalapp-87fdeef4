@@ -10,6 +10,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   applyPendingMigrations,
   listMigrationHistory,
@@ -19,12 +20,7 @@ import {
 const ProjectIdSchema = z.object({ projectId: z.string().uuid() });
 
 async function assertOwns(
-  // Authenticated supabase client from middleware (RLS as user)
-  supabase: ReturnType<
-    typeof import("@/integrations/supabase/auth-middleware")["requireSupabaseAuth"] extends never
-      ? never
-      : any
-  >,
+  supabase: SupabaseClient,
   projectId: string,
   userId: string,
 ): Promise<void> {
