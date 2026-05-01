@@ -153,7 +153,7 @@ function GalleryCard({
       params={{ slug: project.slug }}
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]"
     >
-      <ProjectThumbnail projectId={project.id} className="h-40" />
+      <ProjectThumbnail projectId={project.id} title={project.title} className="h-40" />
 
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-3">
