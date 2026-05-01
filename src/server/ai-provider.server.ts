@@ -343,7 +343,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       : opts.body;
 
   const t0 = Date.now();
-  const primary = await dispatch(provider, body, opts.signal);
+  const primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
   const latency = Date.now() - t0;
 
   // Decide whether to retry on fallback model (same provider).
