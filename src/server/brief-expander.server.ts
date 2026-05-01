@@ -92,7 +92,7 @@ export async function expandBriefIfVague(input: string): Promise<BriefExpansion>
 
   try {
     const upstream = await aiChatCompletions({
-      feature: "brief_expander",
+      feature: "triage",
       body: {
         model: "google/gemini-2.5-flash-lite",
         messages: [
@@ -111,7 +111,7 @@ export async function expandBriefIfVague(input: string): Promise<BriefExpansion>
         max_tokens: 250,
         stream: false,
       },
-      timeoutTier: "fast",
+      timeoutTier: "default",
       meta: { phase: "plan", promptChars: trimmed.length },
     });
 
