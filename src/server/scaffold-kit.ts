@@ -3715,7 +3715,7 @@ export const KIT_FILES: KitFile[] = [
  * side. Cost: ~10ms once per Worker isolate.
  */
 function verifyScaffoldIntegrity(): void {
-  const paths = new Set(KIT.map((k) => k.path));
+  const paths = new Set(KIT_FILES.map((k) => k.path));
   const importRe = /from\s+["']@\/([^"']+)["']/g;
   const candidates = (base: string) => [
     `src/${base}`,
