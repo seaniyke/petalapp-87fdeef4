@@ -232,65 +232,12 @@ export function BuildActivityCard({
   // ─── Error state ─────────────────────────────────────────────────────────
   if (error) {
     return (
-      <div className="mr-6 rounded-2xl border border-amber-300/60 bg-amber-50/70 px-3.5 py-3 text-sm dark:border-amber-500/30 dark:bg-amber-950/30">
-        <div className="flex items-start gap-2.5">
-          <span className="text-base leading-none" aria-hidden>
-            {error.actionKind === "ask-fix" ? "🔧" : "😅"}
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="font-medium leading-tight text-foreground">{error.title}</div>
-            <div className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-              {error.message}
-            </div>
-            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-              {error.actionKind === "retry" && onRetry && (
-                <button
-                  type="button"
-                  onClick={onRetry}
-                  className="inline-flex items-center gap-1 rounded-md bg-foreground px-2.5 py-1 text-[11px] font-medium text-background transition hover:opacity-90"
-                >
-                  <RefreshCcw className="h-3 w-3" />
-                  {error.actionLabel}
-                </button>
-              )}
-              {error.actionKind === "ask-fix" && onAskFix && (
-                <button
-                  type="button"
-                  onClick={onAskFix}
-                  className="inline-flex items-center gap-1 rounded-md bg-foreground px-2.5 py-1 text-[11px] font-medium text-background transition hover:opacity-90"
-                >
-                  <Wrench className="h-3 w-3" />
-                  {error.actionLabel}
-                </button>
-              )}
-              {error.actionKind === "dismiss" && onDismissError && (
-                <button
-                  type="button"
-                  onClick={onDismissError}
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:text-foreground"
-                >
-                  <X className="h-3 w-3" />
-                  {error.actionLabel}
-                </button>
-              )}
-              {error.technicalDetail && (
-                <button
-                  type="button"
-                  onClick={() => setShowDetails((s) => !s)}
-                  className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                >
-                  {showDetails ? "Hide details" : "Show details"}
-                </button>
-              )}
-            </div>
-            {showDetails && error.technicalDetail && (
-              <pre className="mt-2 max-h-40 overflow-auto rounded-md border border-border/60 bg-card/60 p-2 text-[10px] leading-snug text-muted-foreground">
-                {error.technicalDetail}
-              </pre>
-            )}
-          </div>
-        </div>
-      </div>
+      <PetalErrorCard
+        error={error}
+        onRetry={onRetry}
+        onAskFix={onAskFix}
+        onDismiss={onDismissError}
+      />
     );
   }
 
