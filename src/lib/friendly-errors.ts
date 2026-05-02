@@ -251,6 +251,7 @@ const PATTERNS: Array<{
 export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): FriendlyError {
   const text =
     raw instanceof Error ? raw.message : typeof raw === "string" ? raw : JSON.stringify(raw);
+  const rawText = raw instanceof PipelineError && raw.raw ? raw.raw : text;
 
   // Always log the original for our own debugging.
   console.error("[petal] generation/build error:", raw);
@@ -269,8 +270,8 @@ export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): Frien
   // 2. Fall back to regex on RAW sources (build logs, fetch errors,
   //    JSON 400 bodies). Never matches humanized SSE prose.
   for (const p of PATTERNS) {
-    if (p.test.test(text)) {
-      return p.build(text);
+    if (p.test.test(rawText)) {
+      return p.build(rawText);
     }
   }
 
@@ -278,8 +279,7 @@ export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): Frien
   //    modes that need a `kind`. Prefer the server-provided RAW string
   //    (un-humanized) when available so pipeline_failures reflects the
   //    actual exception, not LLM apology copy.
-  const reportText = raw instanceof PipelineError && raw.raw ? raw.raw : text;
-  reportPipelineFailure(reportText, ctx);
+  reportPipelineFailure(rawText, ctx);
   return { ...GENERIC, technicalDetail: text };
 }
 
