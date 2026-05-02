@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import { getSupabaseAccessToken } from "@/lib/auth-token";
 import type { ChatMessage, ProjectFile, StreamEvent } from "@/server/generate.server";
 
