@@ -153,6 +153,17 @@ const PATTERNS: Array<{
   build: (raw: string) => FriendlyError;
 }> = [
   {
+    test: /\b(?:load failed|typeerror:\s*load failed|operation was aborted|lock:sb-.*auth-token|request stole it|error code:\s*1016)\b/i,
+    build: (raw) => ({
+      title: "Petal lost the connection for a moment",
+      message:
+        "This was a temporary connection issue, not a problem with your app. Tap retry and Petal will pick it back up safely.",
+      actionLabel: "Try again",
+      actionKind: "retry",
+      technicalDetail: raw,
+    }),
+  },
+  {
     // Server-side input cap rejection (JSON 400 from /api/generate or
     // /api/generate-image). Anchored to the exact wording emitted by those
     // routes so we never match humanized prose.
