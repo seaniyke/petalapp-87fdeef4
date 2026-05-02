@@ -153,6 +153,17 @@ const PATTERNS: Array<{
   build: (raw: string) => FriendlyError;
 }> = [
   {
+    test: /\b(?:load failed|typeerror:\s*load failed|operation was aborted|lock:sb-.*auth-token|request stole it|error code:\s*1016)\b/i,
+    build: (raw) => ({
+      title: "Petal lost the connection for a moment",
+      message:
+        "This was a temporary connection issue, not a problem with your app. Tap retry and Petal will pick it back up safely.",
+      actionLabel: "Try again",
+      actionKind: "retry",
+      technicalDetail: raw,
+    }),
+  },
+  {
     // Server-side input cap rejection (JSON 400 from /api/generate or
     // /api/generate-image). Anchored to the exact wording emitted by those
     // routes so we never match humanized prose.
@@ -251,6 +262,7 @@ const PATTERNS: Array<{
 export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): FriendlyError {
   const text =
     raw instanceof Error ? raw.message : typeof raw === "string" ? raw : JSON.stringify(raw);
+  const rawText = raw instanceof PipelineError && raw.raw ? raw.raw : text;
 
   // Always log the original for our own debugging.
   console.error("[petal] generation/build error:", raw);
@@ -269,8 +281,8 @@ export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): Frien
   // 2. Fall back to regex on RAW sources (build logs, fetch errors,
   //    JSON 400 bodies). Never matches humanized SSE prose.
   for (const p of PATTERNS) {
-    if (p.test.test(text)) {
-      return p.build(text);
+    if (p.test.test(rawText)) {
+      return p.build(rawText);
     }
   }
 
@@ -278,8 +290,7 @@ export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): Frien
   //    modes that need a `kind`. Prefer the server-provided RAW string
   //    (un-humanized) when available so pipeline_failures reflects the
   //    actual exception, not LLM apology copy.
-  const reportText = raw instanceof PipelineError && raw.raw ? raw.raw : text;
-  reportPipelineFailure(reportText, ctx);
+  reportPipelineFailure(rawText, ctx);
   return { ...GENERIC, technicalDetail: text };
 }
 
@@ -370,10 +381,12 @@ export function isInfrastructureBuildError(rawLog: string | null | undefined): b
     s.includes("could not reach build service") ||
     s.includes("builder rejected request") ||
     s.includes("failed to reach builder") ||
+    s.includes("operation was aborted") ||
     s.includes("error code: 1000") ||
+    s.includes("error code: 1016") ||
     s.includes("error code: 1020") ||
     s.includes("cloudflare") ||
-    /\b(403|429|502|503|504)\b/.test(s) && (s.includes("builder") || s.includes("build service") || s.includes("upstream"))
+    /\b(403|429|502|503|504|530)\b/.test(s) && (s.includes("builder") || s.includes("build service") || s.includes("upstream"))
   );
 }
 

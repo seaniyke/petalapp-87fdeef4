@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseAccessToken } from "@/lib/auth-token";
 import type { ChatMessage, ProjectFile, StreamEvent } from "@/server/generate.server";
 
 type Handlers = {
@@ -81,8 +81,7 @@ export async function streamGenerate(
   handlers: Handlers,
   signal?: AbortSignal,
 ): Promise<void> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
+  const token = await getSupabaseAccessToken();
   if (!token) throw new Error("Not signed in");
 
   let resp: Response;

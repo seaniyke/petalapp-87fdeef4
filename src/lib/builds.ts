@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseAccessToken } from "@/lib/auth-token";
 
 /**
  * Kick off a Cloudflare Pages build for the given project. Authenticated
@@ -11,8 +11,7 @@ export async function triggerBuild(projectId: string): Promise<{
   buildId: string;
   status: "pending" | "failed";
 }> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
+  const token = await getSupabaseAccessToken();
   if (!token) throw new Error("Not signed in");
 
   const resp = await fetch("/api/builds/trigger", {

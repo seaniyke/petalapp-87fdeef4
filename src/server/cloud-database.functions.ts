@@ -14,6 +14,7 @@ import {
   assertOwnsProject,
   getManagedBackendForProject,
 } from "./cloud-managed-client.server";
+import { runQuery } from "@/server/supabase-mgmt.server";
 
 const ProjectInput = z.object({ projectId: z.string().uuid() });
 
@@ -49,58 +50,25 @@ export const listProjectTables = createServerFn({ method: "POST" })
     }
 
     try {
-      // PostgREST root returns its OpenAPI (Swagger 2.0) doc, which lists
-      // every table/view exposed via REST under `definitions`. RPCs appear
-      // as `rpc/<name>` and we filter them out.
-      const res = await fetch(`${info.supabaseUrl}/rest/v1/`, {
-        headers: {
-          apikey: info.serviceRoleKey,
-          Authorization: `Bearer ${info.serviceRoleKey}`,
-          Accept: "application/openapi+json",
-        },
-      });
-      if (!res.ok) {
-        return { available: true, tables: [] };
-      }
-      const spec = (await res.json()) as {
-        definitions?: Record<string, unknown>;
-      };
-      const names = Object.keys(spec.definitions ?? {});
-      const tables: CloudTableSummary[] = names
-        .filter((n) => !!n && !n.startsWith("rpc/") && !n.startsWith("rpc_"))
-        .sort()
-        .slice(0, 200)
-        .map((name) => ({ schema: "public", name, rowEstimate: 0 }));
-
-      // Best-effort row counts for the first dozen tables. Per-table failures
-      // are swallowed so one bad table doesn't blank out the whole list.
-      const top = tables.slice(0, 12);
-      await Promise.all(
-        top.map(async (t) => {
-          try {
-            const r = await fetch(
-              `${info.supabaseUrl}/rest/v1/${encodeURIComponent(t.name)}?select=*`,
-              {
-                method: "HEAD",
-                headers: {
-                  apikey: info.serviceRoleKey,
-                  Authorization: `Bearer ${info.serviceRoleKey}`,
-                  Prefer: "count=exact",
-                  Range: "0-0",
-                },
-              },
-            );
-            const cr = r.headers.get("content-range");
-            if (cr) {
-              const total = Number(cr.split("/")[1]);
-              if (Number.isFinite(total)) t.rowEstimate = total;
-            }
-          } catch {
-            /* ignore per-table failure */
-          }
-        }),
-      );
-
+      if (!info.ref) return { available: true, tables: [] };
+      const rows = await runQuery(
+        info.ref,
+        `select c.relname as name, greatest(c.reltuples::bigint, 0) as row_estimate
+         from pg_class c
+         join pg_namespace n on n.oid = c.relnamespace
+         where n.nspname = 'public'
+           and c.relkind in ('r', 'p', 'v', 'm')
+           and c.relname not like 'pg_%'
+         order by c.relname
+         limit 200`,
+      ) as Array<{ name?: unknown; row_estimate?: unknown }>;
+      const tables: CloudTableSummary[] = rows
+        .map((r) => ({
+          schema: "public",
+          name: String(r.name ?? ""),
+          rowEstimate: Math.max(0, Number(r.row_estimate ?? 0) || 0),
+        }))
+        .filter((t) => t.name.length > 0);
       return { available: true, tables };
     } catch (e) {
       console.error("[cloud-database] list failed", e);
