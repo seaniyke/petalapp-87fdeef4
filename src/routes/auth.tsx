@@ -176,24 +176,6 @@ function AuthPage() {
     }
   }
 
-  async function handleGoogle() {
-    setBusy(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: postAuthUrl,
-      });
-      if (result.error) {
-        toast.error(result.error.message ?? "Could not sign in with Google");
-        setBusy(false);
-        return;
-      }
-      if (result.redirected) return;
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not sign in with Google");
-      setBusy(false);
-    }
-  }
-
   if (loading || user) {
     return (
       <div className="relative min-h-screen overflow-hidden bg-background">
@@ -282,24 +264,6 @@ function AuthPage() {
                 </div>
               </div>
             </div>
-          )}
-
-          {mode !== "forgot" && (
-            <>
-              <button
-                onClick={handleGoogle}
-                disabled={busy}
-                className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-background text-sm font-medium transition hover:bg-muted disabled:opacity-50"
-              >
-                <GoogleIcon /> Continue with Google
-              </button>
-
-              <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-wider text-muted-foreground">
-                <span className="h-px flex-1 bg-border" />
-                or
-                <span className="h-px flex-1 bg-border" />
-              </div>
-            </>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-3">
