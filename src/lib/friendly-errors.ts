@@ -381,10 +381,12 @@ export function isInfrastructureBuildError(rawLog: string | null | undefined): b
     s.includes("could not reach build service") ||
     s.includes("builder rejected request") ||
     s.includes("failed to reach builder") ||
+    s.includes("operation was aborted") ||
     s.includes("error code: 1000") ||
+    s.includes("error code: 1016") ||
     s.includes("error code: 1020") ||
     s.includes("cloudflare") ||
-    /\b(403|429|502|503|504)\b/.test(s) && (s.includes("builder") || s.includes("build service") || s.includes("upstream"))
+    /\b(403|429|502|503|504|530)\b/.test(s) && (s.includes("builder") || s.includes("build service") || s.includes("upstream"))
   );
 }
 
