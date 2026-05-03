@@ -28,6 +28,7 @@ export type CloudDatabaseResult = {
   available: boolean;
   reason?: "NO_BACKEND" | "NOT_READY" | "ERROR";
   tables: CloudTableSummary[];
+  authUserCount?: number;
 };
 
 export const listProjectTables = createServerFn({ method: "POST" })
