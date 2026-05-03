@@ -95,23 +95,52 @@ export async function postBuildToRailway(args: {
   // Strip trailing slash so we don't double-up on `/build`.
   const url = builderUrl.replace(/\/+$/, "") + "/build";
 
-  // Bound the request — Railway responds 202 in well under a second once warm.
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15_000);
+  // Bound the request. Railway responds 202 in well under a second once warm,
+  // but cold containers can take 10-20s to accept the connection. Allow one
+  // retry on transient network errors / aborts so a single cold start or
+  // dropped TCP connection doesn't surface as "Could not reach build service".
+  const attempt = async (timeoutMs: number): Promise<Response> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-petal-timestamp": timestamp,
+          "x-petal-signature": signature,
+        },
+        body,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  const isTransient = (err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    const name = err instanceof Error ? err.name : "";
+    return (
+      name === "AbortError" ||
+      /aborted|fetch failed|network|ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up|terminated/i.test(msg)
+    );
+  };
+
   let res: Response;
   try {
-    res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-petal-timestamp": timestamp,
-        "x-petal-signature": signature,
-      },
-      body,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
+    res = await attempt(45_000);
+  } catch (err) {
+    if (!isTransient(err)) throw err;
+    console.warn("[builder] first attempt failed, retrying once:", err instanceof Error ? err.message : err);
+    // Brief backoff to give Railway time to finish cold-starting.
+    await new Promise((r) => setTimeout(r, 1500));
+    try {
+      res = await attempt(60_000);
+    } catch (err2) {
+      const msg = err2 instanceof Error ? err2.message : String(err2);
+      throw new Error(`Builder unreachable after retry: ${msg}`);
+    }
   }
 
   if (!res.ok) {
