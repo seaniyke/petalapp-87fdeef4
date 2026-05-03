@@ -28,6 +28,7 @@ export type CloudDatabaseResult = {
   available: boolean;
   reason?: "NO_BACKEND" | "NOT_READY" | "ERROR";
   tables: CloudTableSummary[];
+  authUserCount?: number;
 };
 
 export const listProjectTables = createServerFn({ method: "POST" })
@@ -69,7 +70,17 @@ export const listProjectTables = createServerFn({ method: "POST" })
           rowEstimate: Math.max(0, Number(r.row_estimate ?? 0) || 0),
         }))
         .filter((t) => t.name.length > 0);
-      return { available: true, tables };
+      let authUserCount: number | undefined;
+      try {
+        const authRows = (await runQuery(
+          info.ref,
+          `select count(*)::bigint as n from auth.users`,
+        )) as Array<{ n?: unknown }>;
+        authUserCount = Math.max(0, Number(authRows[0]?.n ?? 0) || 0);
+      } catch {
+        /* non-fatal */
+      }
+      return { available: true, tables, authUserCount };
     } catch (e) {
       console.error("[cloud-database] list failed", e);
       return { available: true, tables: [] };

@@ -32,6 +32,7 @@ export function CloudDatabaseView({ projectId }: Props) {
   const [loading, setLoading] = useState(true);
   const [tables, setTables] = useState<CloudTableSummary[] | null>(null);
   const [available, setAvailable] = useState(true);
+  const [authUserCount, setAuthUserCount] = useState<number | undefined>(undefined);
   const [active, setActive] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export function CloudDatabaseView({ projectId }: Props) {
         if (cancelled) return;
         setAvailable(res.available);
         setTables(res.tables);
+        setAuthUserCount(res.authUserCount);
       })
       .catch(() => !cancelled && setAvailable(false))
       .finally(() => !cancelled && setLoading(false));
@@ -79,16 +81,28 @@ export function CloudDatabaseView({ projectId }: Props) {
     );
   }
 
+  const hasUsers = (authUserCount ?? 0) > 0;
+  const noTables = tables && tables.length === 0;
+
   return (
     <div className="space-y-3 p-4">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Database className="h-4 w-4" />
         <span>{tables?.length ?? 0} tables</span>
+        {hasUsers && (
+          <span className="ml-auto rounded-full bg-muted/60 px-2 py-0.5 text-xs">
+            {authUserCount} signed-up {authUserCount === 1 ? "user" : "users"} in Auth
+          </span>
+        )}
       </div>
-      {tables && tables.length === 0 && (
+      {noTables && (
         <CloudEmptyState
-          title="No tables yet"
-          description="Petal hasn't created any database tables for this project yet. Ask Petal in chat — e.g. ‘add a recipes table with title and ingredients’."
+          title={hasUsers ? "Auth is live — no app tables yet" : "No tables yet"}
+          description={
+            hasUsers
+              ? `Your backend is running and ${authUserCount} ${authUserCount === 1 ? "person has" : "people have"} signed up (stored privately in Auth). You haven't asked Petal to create any app tables yet — try: 'add a profiles table linked to auth users', or 'add a listings table with title, price and location'.`
+              : "Your backend is running but no app tables have been created. Ask Petal in chat — e.g. 'add a recipes table with title and ingredients'."
+          }
         />
       )}
       <div className="space-y-2">
