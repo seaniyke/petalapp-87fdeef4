@@ -2783,10 +2783,12 @@ function Builder() {
                             must not show "READY — WHAT'S NEXT?" while the
                             Cloudflare deploy is still running ("Putting your
                             app online…") — the app isn't actually ready yet. */}
-                        {i === messages.length - 1 &&
-                          !petalIsWorking &&
-                          files.length > 0 && (
-                            <NextStepsCard
+                         {i === messages.length - 1 &&
+                           !petalIsWorking &&
+                           files.length > 0 &&
+                           !m.handoff &&
+                           !m.error && (
+                             <NextStepsCard
                               showPreviewAction={isMobile ? mobileTab !== "preview" : view !== "preview"}
                               onPreview={() => {
                                 if (isMobile) setMobileTab("preview");
