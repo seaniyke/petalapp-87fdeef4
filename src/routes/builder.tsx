@@ -3718,6 +3718,9 @@ function Builder() {
                   // hide the BuildActivityCard's copy.
                   if (!friendlyError) return null;
                   const tail = messages[messages.length - 1];
+                  if (isDeploying && isBuildFailureCardTitle(friendlyError.title)) {
+                    return null;
+                  }
                   if (
                     tail?.error?.title === friendlyError.title &&
                     tail?.error?.message === friendlyError.message
@@ -3741,9 +3744,8 @@ function Builder() {
                 onStop={busy ? stopGeneration : undefined}
                 onRetry={
                   // The "Publishing is taking longer" stall card and the
-                  // "Build service is briefly unavailable" infra card both
-                  // retry the deploy directly. Every other retryable error
-                  // replays the last user prompt through the AI.
+                  // infra card both retry the deploy directly. Every other
+                  // retryable error replays the last user prompt through the AI.
                   isDeploying && friendlyError?.title?.startsWith("Publishing is taking")
                     ? retryDeploy
                     : friendlyError?.title?.startsWith("Build service")
