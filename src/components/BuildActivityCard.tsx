@@ -126,6 +126,10 @@ type Props = {
   /** Live pipeline timeline — server pushes one entry per recovery / verifier
    *  / autofix / image step. Rendered inside the expanded steps panel. */
   timelineEvents?: TimelineEntry[];
+  /** Credits actually charged for this turn (from the SSE result event).
+   *  Shown on the collapsed success line so users can see exactly what
+   *  this build cost. `0` is shown explicitly (free turns / auto-fix). */
+  creditsCharged?: number | null;
   onStop?: () => void;
   onRetry?: () => void;
   onAskFix?: () => void;
