@@ -258,6 +258,10 @@ function Builder() {
   // screen…"). When present, the activity card shows this instead of the
   // path-derived fallback. Cleared at the start of each turn.
   const [latestNarration, setLatestNarration] = useState<string | undefined>(undefined);
+  // Most recent agentic-loop progress string. Used as a fallback sub-caption
+  // when no model-written narration / path narration is more recent — keeps
+  // the activity card alive during silent verifier or autofix gaps.
+  const [latestCycleProgress, setLatestCycleProgress] = useState<string | undefined>(undefined);
   // Ordered, deduped list of every path Petal streams during the writing phase.
   // Drives the per-file progress list in BuildActivityCard.
   const [writtenPaths, setWrittenPaths] = useState<string[]>([]);
