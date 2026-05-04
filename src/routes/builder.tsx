@@ -1937,7 +1937,10 @@ function Builder() {
         setError(msg);
         const isNoEditFailure =
           e instanceof PipelineError &&
-          (e.kind === "no_files_emitted" || e.kind === "truncated_response");
+          (e.kind === "no_files_emitted" ||
+            e.kind === "no_edit_emitted" ||
+            e.kind === "generation_incomplete" ||
+            e.kind === "truncated_response");
         const isTransientGenerateFailure =
           e instanceof PipelineError
             ? e.kind === "upstream_timeout" || e.kind === "upstream_unavailable" || e.kind === "unknown"
