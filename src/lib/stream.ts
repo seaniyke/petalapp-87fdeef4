@@ -41,19 +41,8 @@ type Handlers = {
     count?: number;
     ts: number;
   }) => void;
-  onContinuationHandoff?: (handoff: {
-    reason:
-      | "oversize_files"
-      | "incomplete_turn"
-      | "large_changeset"
-      | "unrecoverable_turn";
-    message: string;
-    suggestedPrompt: string;
-    detected?: {
-      hallucinatedPackages?: string[];
-      truncatedPaths?: string[];
-    };
-  }) => void;
+  // NOTE: `onContinuationHandoff` was removed along with the
+  // Continue-building chip. The server no longer emits the event.
   onError?: (
     message: string,
     suggestions?: string[],
