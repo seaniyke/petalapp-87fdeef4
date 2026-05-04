@@ -211,3 +211,144 @@ export async function streamGenerate(
     throw e;
   }
 }
+
+/**
+ * Reattach to an in-flight turn via /api/turns/$id/events. Used when the
+ * user closes their phone or refreshes mid-build — the pipeline keeps
+ * running on the server, and this lets the UI silently rehydrate from the
+ * exact event sequence number it last saw.
+ *
+ * The server sends a `resume_start` event first (which we ignore for UI
+ * purposes), then replays missed events with their original `kind`s, then
+ * tails until a `done` event arrives. Reuses the same Handlers shape as
+ * streamGenerate so callers can pass the same callbacks.
+ */
+export async function streamResumeTurn(
+  turnId: string,
+  afterSeq: number,
+  handlers: Handlers,
+  signal?: AbortSignal,
+): Promise<void> {
+  const token = await getSupabaseAccessToken();
+  if (!token) throw new Error("Not signed in");
+
+  let resp: Response;
+  try {
+    resp = await fetch(`/api/turns/${turnId}/events?after=${afterSeq}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
+  } catch (e) {
+    if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
+    throw e;
+  }
+
+  if (!resp.ok || !resp.body) {
+    // 404 / 403 / 410 — caller treats as "no in-flight turn", nothing to do.
+    return;
+  }
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const parts = buf.split("\n\n");
+      buf = parts.pop() ?? "";
+      for (const block of parts) {
+        const line = block.split("\n").find((l) => l.startsWith("data:"));
+        if (!line) continue;
+        const payload = line.slice(5).trim();
+        if (!payload) continue;
+        let evt: { type: string } & Record<string, unknown>;
+        try {
+          evt = JSON.parse(payload);
+        } catch {
+          continue;
+        }
+        // Resume-only meta events that aren't part of StreamEvent.
+        if (evt.type === "resume_start" || evt.type === "resume_timeout") continue;
+        // Re-dispatch through the same switch by faking a StreamEvent.
+        switch (evt.type) {
+          case "status":
+            handlers.onStatus?.((evt.message as string) ?? "");
+            break;
+          case "plan_delta":
+            handlers.onPlanDelta?.((evt.delta as string) ?? "");
+            break;
+          case "summary_delta":
+            handlers.onSummaryDelta?.((evt.delta as string) ?? "");
+            break;
+          case "recap_delta":
+            handlers.onRecapDelta?.((evt.delta as string) ?? "");
+            break;
+          case "tool":
+            handlers.onTool?.(evt.name as "write_project" | "patch_files");
+            break;
+          case "phase":
+            handlers.onPhase?.(evt.phase as "thinking" | "designing" | "writing" | "polishing");
+            break;
+          case "design_vibe":
+            handlers.onDesignVibe?.((evt.vibe as string) ?? "", (evt.rationale as string) ?? "");
+            break;
+          case "file_progress":
+            handlers.onFileProgress?.(evt.written as number, evt.latestPath as string | undefined);
+            break;
+          case "file_complete":
+            handlers.onFileComplete?.(
+              evt.path as string,
+              evt.bytes as number,
+              evt.index as number,
+            );
+            break;
+          case "result":
+            handlers.onResult?.(
+              (evt.files as ProjectFile[]) ?? [],
+              (evt.summary as string) ?? "",
+              {
+                plan: evt.plan as string | undefined,
+                recap: evt.recap as string | undefined,
+                creditsCharged: evt.creditsCharged as number | undefined,
+              },
+            );
+            break;
+          case "timeline":
+            handlers.onTimeline?.({
+              step: evt.step as never,
+              outcome: evt.outcome as never,
+              message: (evt.message as string) ?? "",
+              count: evt.count as number | undefined,
+              ts: (evt.ts as number) ?? Date.now(),
+            });
+            break;
+          case "continuation_handoff":
+            handlers.onContinuationHandoff?.({
+              reason: evt.reason as never,
+              message: (evt.message as string) ?? "",
+              suggestedPrompt: (evt.suggestedPrompt as string) ?? "",
+              detected: evt.detected as never,
+            });
+            break;
+          case "error":
+            handlers.onError?.(
+              (evt.message as string) ?? "Build failed.",
+              evt.suggestions as string[] | undefined,
+              evt.kind as never,
+              evt.raw as string | undefined,
+            );
+            break;
+          case "done":
+            handlers.onDone?.((evt.status as "succeeded" | "failed" | "aborted") ?? "succeeded");
+            return;
+        }
+      }
+    }
+  } catch (e) {
+    if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
+    throw e;
+  }
+}
