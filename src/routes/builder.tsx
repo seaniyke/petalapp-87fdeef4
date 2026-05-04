@@ -1147,9 +1147,8 @@ function Builder() {
   // bubble from the exact event seq we last saw. No user action required.
   useEffect(() => {
     const projectId = project?.id;
-    const projectId = project?.id;
-    if (!projectId || bootstrapping) return;
-    const pid: string = projectId;
+    const pid = project?.id;
+    if (!pid || bootstrapping) return;
     let cancelled = false;
     let controller: AbortController | null = null;
 
