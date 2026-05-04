@@ -103,6 +103,9 @@ type Props = {
   designCaption?: string;
   /** Latest file written, shown next to the file counter. */
   latestPath?: string;
+  /** Model-written one-liner for the file currently being written
+   *  ("Building the photo upload screen"). Overrides path-derived narration. */
+  latestNarration?: string;
   /** Number of files written so far (during the writing phase). */
   filesWritten?: number;
   /** Ordered list of every file path written so far (deduped). */
