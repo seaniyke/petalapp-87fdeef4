@@ -127,12 +127,20 @@ export async function classifyPhase(prompt: string): Promise<PhaseTag> {
  * Map a phase to a model preference. The caller still gets to override
  * (e.g. vision turns force a vision model). "cheap" = fast/cheap,
  * "smart" = strong reasoning.
+ *
+ * Tuning note (2026-05-04): `implement` was previously "cheap" which sent
+ * almost every build through the flash model. That trades depth for speed
+ * and the verifier pass-rate slipped to ~66%. We now route `implement` to
+ * "smart" too — the smart router still falls back to fast when telemetry
+ * shows fast wins, but the *default* errs on the side of doing the work
+ * properly the first time (fewer auto-fix loops = fewer credits net).
+ * Only `docs` stays cheap because it's mostly prose.
  */
 export function modelTierForPhase(phase: Phase): "cheap" | "smart" {
   switch (phase) {
-    case "implement":
     case "docs":
       return "cheap";
+    case "implement":
     case "debug":
     case "refactor":
     case "plan":
