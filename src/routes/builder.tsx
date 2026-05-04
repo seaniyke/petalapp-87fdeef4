@@ -231,18 +231,17 @@ function Builder() {
       to: "/builder",
       search: {
         ...(searchId ? { id: searchId } : {}),
-        ...(initialPrompt ? { prompt: initialPrompt } : {}),
         ...(initialMode ? { mode: initialMode } : {}),
         ...(attachKey ? { attachKey } : {}),
       },
       replace: true,
     });
-  }, [topup, navigate, searchId, initialPrompt, initialMode, attachKey]);
+  }, [topup, navigate, searchId, initialMode, attachKey]);
 
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
-  const [input, setInput] = useState(initialPrompt ?? "");
+  const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [bootstrapping, setBootstrapping] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1278,7 +1277,9 @@ function Builder() {
 
   // Auto-send the prompt from the landing page once, after bootstrap.
   // Note: project may be null here when arriving with ?prompt but no ?id —
-  // send() will lazily create the project on first use.
+  // send() will lazily create the project on first use. After it fires, strip
+  // the prompt from the URL so refresh/return can never repopulate the composer
+  // with the original ask.
   useEffect(() => {
     if (
       !bootstrapping &&
@@ -1289,6 +1290,13 @@ function Builder() {
       initialSent.current = true;
       if (initialMode === "discuss") void discuss(initialPrompt);
       else void send(initialPrompt);
+      if (searchId) {
+        navigate({
+          to: "/builder",
+          search: { id: searchId, ...(initialMode ? { mode: initialMode } : {}), attachKey: undefined },
+          replace: true,
+        });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapping, initialPrompt]);
@@ -1306,7 +1314,7 @@ function Builder() {
       setProject(p);
       navigate({
         to: "/builder",
-        search: { id: p.id, prompt: initialPrompt, mode: initialMode, attachKey: undefined },
+        search: { id: p.id, mode: initialMode, attachKey: undefined },
         replace: true,
       });
       return p;
@@ -1314,7 +1322,7 @@ function Builder() {
       toast.error(e instanceof Error ? e.message : "Could not start project");
       return null;
     }
-  }, [isReady, user, project, navigate, initialPrompt]);
+  }, [isReady, user, project, navigate, initialMode]);
 
   const send = useCallback(
     async (
