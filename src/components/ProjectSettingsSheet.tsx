@@ -35,6 +35,7 @@ import {
 } from "@/lib/projects";
 import { DomainsSection } from "@/components/DomainsSection";
 import { EmailSection } from "@/components/EmailSection";
+import { MobileAppPanel } from "@/components/MobileAppPanel";
 import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { LabsSection } from "@/components/LabsSection";
 import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
@@ -242,6 +243,9 @@ export function ProjectSettingsSheet({
         <div id="settings-email" className="scroll-mt-4">
           <EmailSection projectId={project.id} />
         </div>
+
+        {/* Mobile app section (Tier 2 native shell) */}
+        <MobileAppPanel projectId={project.id} />
 
         <div id="settings-knowledge" className="mt-8 scroll-mt-4 border-t border-border pt-6">
           <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
