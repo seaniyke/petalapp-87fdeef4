@@ -1,14 +1,12 @@
 /**
- * MobileAppPanel — Tier 2 native shell setup + build dispatch.
+ * MobileAppPanel — Zero-config native shell setup + build dispatch.
  *
- * Surfaces inside ProjectSettingsSheet (anchor: #settings-mobile). Three
- * states:
- *  1. Free plan → upgrade nudge (mobile is paid-only, like backend/email/domain).
- *  2. Paid plan, no setup → bundle id + Codemagic app id form.
- *  3. Paid plan, set up → Build iOS / Build Android buttons + recent builds list.
+ * Petal owns the GitHub mirror + Codemagic app, so users just click
+ * "Build iOS" / "Build Android". No bundle id or Codemagic id needed.
  *
- * Builds are dispatched via the startMobileBuild server function which
- * already handles the wallet preflight (~$0.20 unsigned / $0.40 signed).
+ * States:
+ *  1. Free plan → upgrade nudge (mobile is paid-only).
+ *  2. Paid plan → Build iOS / Build Android buttons + recent builds list.
  */
 import { useEffect, useState } from "react";
 import { Apple, Loader2, Smartphone, Sparkles } from "lucide-react";
@@ -16,22 +14,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useWallet } from "@/hooks/use-wallet";
 import { BillingSheet } from "@/components/BillingSheet";
 import { supabase } from "@/integrations/supabase/client";
-import { setupMobileApp, startMobileBuild } from "@/server/mobile-builds.functions";
-
-const BUNDLE_ID_RE = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/;
-
-type MobileApp = {
-  id: string;
-  bundle_id: string;
-  codemagic_app_id: string;
-  workflow_id: string;
-  default_branch: string;
-};
+import {
+  getMobileAppStatus,
+  startMobileBuild,
+} from "@/server/mobile-builds.functions";
 
 type MobileBuild = {
   id: string;
@@ -41,6 +30,13 @@ type MobileBuild = {
   artifact_url: string | null;
   estimated_cost_usd: number;
   created_at: string;
+};
+
+type Status = {
+  provisioned: boolean;
+  bundleId: string;
+  githubRepo: string | null;
+  signing: { hasApple: boolean; hasAndroid: boolean };
 };
 
 const STATUS_COLOR: Record<MobileBuild["status"], string> = {
@@ -56,38 +52,30 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
 
   const [billingOpen, setBillingOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [app, setApp] = useState<MobileApp | null>(null);
+  const [status, setStatus] = useState<Status | null>(null);
   const [builds, setBuilds] = useState<MobileBuild[]>([]);
-
-  // Setup form state
-  const [bundleId, setBundleId] = useState("");
-  const [codemagicAppId, setCodemagicAppId] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  // Build dispatch state
   const [busyPlatform, setBusyPlatform] = useState<"ios" | "android" | null>(null);
 
-  const setupFn = useServerFn(setupMobileApp);
+  const statusFn = useServerFn(getMobileAppStatus);
   const startFn = useServerFn(startMobileBuild);
 
   async function refresh() {
     setLoading(true);
-    const [{ data: appRow }, { data: buildRows }] = await Promise.all([
-      supabase
-        .from("mobile_apps")
-        .select("id, bundle_id, codemagic_app_id, workflow_id, default_branch")
-        .eq("project_id", projectId)
-        .maybeSingle(),
-      supabase
-        .from("mobile_builds")
-        .select("id, platform, kind, status, artifact_url, estimated_cost_usd, created_at")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false })
-        .limit(5),
-    ]);
-    setApp((appRow as MobileApp | null) ?? null);
-    setBuilds((buildRows as MobileBuild[] | null) ?? []);
-    setLoading(false);
+    try {
+      const [s, { data: buildRows }] = await Promise.all([
+        statusFn({ data: { projectId } }),
+        supabase
+          .from("mobile_builds")
+          .select("id, platform, kind, status, artifact_url, estimated_cost_usd, created_at")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false })
+          .limit(5),
+      ]);
+      setStatus(s as Status);
+      setBuilds((buildRows as MobileBuild[] | null) ?? []);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -99,7 +87,6 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, isPaidPlan]);
 
-  // ---- Free plan: upgrade nudge (no top-up modal — paid-plan gated) ----
   if (!isPaidPlan) {
     return (
       <div id="settings-mobile" className="mt-8 scroll-mt-4 border-t border-border pt-6">
@@ -129,7 +116,6 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
     );
   }
 
-  // ---- Loading ----
   if (loading) {
     return (
       <div id="settings-mobile" className="mt-8 scroll-mt-4 border-t border-border pt-6">
@@ -143,85 +129,6 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
     );
   }
 
-  // ---- Setup form ----
-  async function onSetup(e: React.FormEvent) {
-    e.preventDefault();
-    if (!BUNDLE_ID_RE.test(bundleId)) {
-      toast.error("Bundle id must look like com.acme.todoapp");
-      return;
-    }
-    if (!codemagicAppId.trim()) {
-      toast.error("Enter the Codemagic app id from your Codemagic dashboard");
-      return;
-    }
-    setSaving(true);
-    try {
-      const res = await setupFn({
-        data: {
-          projectId,
-          bundleId: bundleId.trim(),
-          codemagicAppId: codemagicAppId.trim(),
-          workflowId: "petal-default",
-          defaultBranch: "main",
-        },
-      });
-      if (!res.ok) {
-        toast.error(res.message ?? "Couldn't set up mobile app");
-        return;
-      }
-      toast.success("Mobile app configured");
-      await refresh();
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (!app) {
-    return (
-      <div id="settings-mobile" className="mt-8 scroll-mt-4 border-t border-border pt-6">
-        <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
-          <Smartphone className="h-4 w-4" /> Mobile app
-        </h3>
-        <p className="mb-3 text-xs text-muted-foreground">
-          Enter your bundle id (reverse-DNS, e.g. <code>com.acme.todo</code>) and
-          the Codemagic app id Petal will build against.
-        </p>
-        <form onSubmit={onSetup} className="space-y-3">
-          <div>
-            <Label htmlFor="bundle-id" className="text-xs">Bundle id</Label>
-            <Input
-              id="bundle-id"
-              value={bundleId}
-              onChange={(e) => setBundleId(e.target.value)}
-              placeholder="com.acme.todo"
-              autoComplete="off"
-              spellCheck={false}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="codemagic-app-id" className="text-xs">
-              Codemagic app id
-            </Label>
-            <Input
-              id="codemagic-app-id"
-              value={codemagicAppId}
-              onChange={(e) => setCodemagicAppId(e.target.value)}
-              placeholder="6512ab…"
-              autoComplete="off"
-              spellCheck={false}
-              className="mt-1"
-            />
-          </div>
-          <Button type="submit" size="sm" disabled={saving}>
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Set up mobile app"}
-          </Button>
-        </form>
-      </div>
-    );
-  }
-
-  // ---- Build dispatch + history ----
   async function onBuild(platform: "ios" | "android") {
     setBusyPlatform(platform);
     try {
@@ -234,8 +141,8 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
           setBillingOpen(true);
         } else if (res.reason === "insufficient_balance") {
           toast.error("Top up your runtime balance to start a build");
-        } else if (res.reason === "mobile_app_not_setup") {
-          toast.error("Mobile app isn't set up yet");
+        } else if (res.reason === "signing_required") {
+          toast.error("Add a signing certificate to run a signed build");
         } else {
           toast.error(res.message ?? `Build failed (${res.reason})`);
         }
@@ -256,9 +163,11 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
         <Smartphone className="h-4 w-4" /> Mobile app
       </h3>
       <div className="mb-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs">
-        <div className="font-medium text-foreground">{app.bundle_id}</div>
+        <div className="font-medium text-foreground">{status?.bundleId}</div>
         <div className="text-muted-foreground">
-          Codemagic · {app.workflow_id} · {app.default_branch}
+          {status?.provisioned
+            ? "Managed by Petal · ready to build"
+            : "Will be provisioned on first build"}
         </div>
       </div>
 
