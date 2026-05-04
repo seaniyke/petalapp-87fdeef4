@@ -193,6 +193,23 @@ function useWebContainerSupported(): boolean {
 }
 type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
+function isBuildFailureCardTitle(title: string | undefined): boolean {
+  if (!title) return false;
+  return (
+    title.startsWith("Petal couldn't auto-fix") ||
+    title.startsWith("Build needs one more pass") ||
+    title.startsWith("Build service") ||
+    title.startsWith("A styling rule") ||
+    title.startsWith("Publishing is taking")
+  );
+}
+
+function removeBuildFailureCards(messages: ChatMessage[]): ChatMessage[] {
+  return messages.filter(
+    (m) => !(m.role === "assistant" && m.error && isBuildFailureCardTitle(m.error.title)),
+  );
+}
+
 export const Route = createFileRoute("/builder")({
   validateSearch: (search: Record<string, unknown>): {
     prompt?: string;
@@ -865,23 +882,9 @@ function Builder() {
       // else-if branch below and never reach here.
       setFriendlyError(null);
       // Also clear any persisted build-failure cards still pinned in the
-      // message thread from a previous failed attempt — showing
-      // "Petal couldn't auto-fix this one" or "Build service is briefly
-      // unavailable" right above "Your app is live" is contradictory UX
-      // (see image 2 of the user's bug report).
-      setMessages((prev) =>
-        prev.filter(
-          (m) =>
-            !(
-              m.role === "assistant" &&
-              m.error &&
-              (m.error.title?.startsWith("Petal couldn't auto-fix") ||
-                m.error.title?.startsWith("Build service") ||
-                m.error.title?.startsWith("A styling rule") ||
-                m.error.title?.startsWith("Publishing is taking"))
-            ),
-        ),
-      );
+      // message thread from a previous failed attempt — showing a failure card
+      // right above "Your app is live" is contradictory UX.
+      setMessages(removeBuildFailureCards);
       // Note: we used to surface a "Changes ready to publish" toast here, but
       // it fired on every refresh / build completion and was more noise than
       // signal. Users can publish from the header button when ready.
@@ -925,16 +928,17 @@ function Builder() {
         return () => clearTimeout(t);
       }
       if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
-      // Don't surface the "couldn't auto-fix" card while Petal is actively
-      // working — a run is in flight (manual or auto) and may still resolve
-      // the issue. Only show the manual fallback once Petal is idle.
-      if (busy) return;
-      // Manual fallback after we've burned both auto-attempts, or when the
-      // failed build was already present when the user opened the project.
+      // Don't surface the manual-fix card while Petal is actively working or
+      // while a replacement deploy has just been requested. The failed build
+      // row can arrive during that transition; showing that card beside
+      // "Putting your app online…" is the exact confusing state we're avoiding.
+      if (busy || awaitingBuild) return;
+      // Manual fallback after we've burned auto-attempts, or when the failed
+      // build was already present when the user opened the project.
       persistFriendlyError(friendlyBuildFailure(effectiveBuildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, project?.latest_build_id, project?.published_build_id, busy]);
+  }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, project?.latest_build_id, project?.published_build_id, busy, awaitingBuild]);
 
   // Auto-hide the success card a little after the app goes live so the chat
   // returns to a calm state. The card itself also self-collapses.
@@ -2357,6 +2361,7 @@ function Builder() {
     if (!project?.id) return;
     supersedeBuildId(project.latest_build_id);
     setFriendlyError(null);
+    setMessages(removeBuildFailureCards);
     setPhases((p) => advanceTo(p, "deploying"));
     setActivityVisible(true);
     setAwaitingBuild(true);
@@ -2379,6 +2384,7 @@ function Builder() {
   const askPetalToFix = useCallback(
     (opts: { isAuto?: boolean } = {}) => {
       setFriendlyError(null);
+      setMessages(removeBuildFailureCards);
       // Feed the actual build error/log back into the next prompt so the AI
       // can patch the real cause (this is what Lovable, Bolt and Base44 do).
       // The Railway callback already concatenates logs into error_message.
@@ -2893,6 +2899,7 @@ function Builder() {
               // refresh. Retry replays the most recent user prompt; ask-fix
               // routes through the normal askPetalToFix flow.
               if (m.role === "assistant" && m.error) {
+                if ((petalIsWorking || isLive) && isBuildFailureCardTitle(m.error.title)) return null;
                 const isTail = i === messages.length - 1;
                 return (
                   <div key={i} className="flex justify-start">
@@ -3704,7 +3711,7 @@ function Builder() {
             {activityVisible && (
               <BuildActivityCard
                 phases={phases}
-                isActive={busy || isDeploying}
+                isActive={busy || isDeploying || awaitingBuild}
                 isComplete={isLive}
                 error={(() => {
                   // Avoid double-rendering: if the tail message already shows
@@ -3712,6 +3719,9 @@ function Builder() {
                   // hide the BuildActivityCard's copy.
                   if (!friendlyError) return null;
                   const tail = messages[messages.length - 1];
+                  if ((petalIsWorking || isLive) && isBuildFailureCardTitle(friendlyError.title)) {
+                    return null;
+                  }
                   if (
                     tail?.error?.title === friendlyError.title &&
                     tail?.error?.message === friendlyError.message
@@ -3735,9 +3745,8 @@ function Builder() {
                 onStop={busy ? stopGeneration : undefined}
                 onRetry={
                   // The "Publishing is taking longer" stall card and the
-                  // "Build service is briefly unavailable" infra card both
-                  // retry the deploy directly. Every other retryable error
-                  // replays the last user prompt through the AI.
+                  // infra card both retry the deploy directly. Every other
+                  // retryable error replays the last user prompt through the AI.
                   isDeploying && friendlyError?.title?.startsWith("Publishing is taking")
                     ? retryDeploy
                     : friendlyError?.title?.startsWith("Build service")
