@@ -193,6 +193,23 @@ function useWebContainerSupported(): boolean {
 }
 type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
+function isBuildFailureCardTitle(title: string | undefined): boolean {
+  if (!title) return false;
+  return (
+    title.startsWith("Petal couldn't auto-fix") ||
+    title.startsWith("Build needs one more pass") ||
+    title.startsWith("Build service") ||
+    title.startsWith("A styling rule") ||
+    title.startsWith("Publishing is taking")
+  );
+}
+
+function removeBuildFailureCards(messages: ChatMessage[]): ChatMessage[] {
+  return messages.filter(
+    (m) => !(m.role === "assistant" && m.error && isBuildFailureCardTitle(m.error.title)),
+  );
+}
+
 export const Route = createFileRoute("/builder")({
   validateSearch: (search: Record<string, unknown>): {
     prompt?: string;
