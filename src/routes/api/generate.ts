@@ -1642,7 +1642,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             const reverifyPaths = nextFiles.map((f) => f.path);
             const localAgain = lvFn(nextFiles, reverifyPaths);
             const esbAgain = await verifyFilesEsbuild(nextFiles, reverifyPaths);
-            const stillBad = [
+            const rawStillBad = [
               ...localAgain.issues,
               ...esbAgain.issues.map((i) => ({
                 path: i.path,
@@ -1650,8 +1650,42 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
                 detail: `${i.message} (line ${i.line}:${i.column})`,
               })),
             ];
+            // Only loop on issues the autofix model is actually allowed
+            // to act on. Soft warnings and protected scaffold paths get
+            // filtered out — otherwise the model returns an empty fix
+            // list and we hard-stop on cycle 3 for nothing useful.
+            const FIXABLE_KINDS = new Set([
+              "truncation",
+              "unterminated-string",
+              "braces",
+              "jsx",
+              "parse",
+              "undefined",
+              "missing-dep",
+              "missing-export",
+              "missing-sibling",
+              "lazy-export",
+            ]);
+            const PROTECTED_PREFIXES = [
+              "src/components/ui/",
+              "src/components/examples/",
+              "src/integrations/backend/",
+            ];
+            const PROTECTED_PATHS = new Set([
+              "vite.config.ts",
+              "tsconfig.json",
+              "src/lib/utils.ts",
+            ]);
+            const isProtected = (p: string) =>
+              PROTECTED_PATHS.has(p) ||
+              PROTECTED_PREFIXES.some((pre) => p.startsWith(pre));
+            const stillBad = rawStillBad.filter(
+              (i) => FIXABLE_KINDS.has(i.kind) && !isProtected(i.path),
+            );
             if (stillBad.length === 0) {
-              console.log(`[agent-loop] converged after ${cyc} extra cycle(s)`);
+              console.log(
+                `[agent-loop] converged after ${cyc} extra cycle(s) (raw=${rawStillBad.length}, fixable=0)`,
+              );
               break;
             }
             const cycleNum = 3 + cyc;
