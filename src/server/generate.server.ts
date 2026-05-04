@@ -389,19 +389,11 @@ export type ChatMessage = {
    *  chip sends its label as the user's next turn. Used most often on
    *  "clarify" turns so users don't have to type a full answer. */
   suggestions?: string[];
-  /** Layer-B "Continue building" handoff. Server attaches this when the
-   *  pipeline deliberately stopped early at a safe boundary. Renders an
-   *  inline chip under the assistant message that pre-fills the composer
-   *  with `suggestedPrompt` so the user can continue with one click. */
-  handoff?: {
-    reason: "oversize_files" | "incomplete_turn" | "large_changeset" | "unrecoverable_turn";
-    message: string;
-    suggestedPrompt: string;
-    detected?: {
-      hallucinatedPackages?: string[];
-      truncatedPaths?: string[];
-    };
-  };
+  // NOTE: The legacy `handoff` field has been removed. It powered the
+  // "Continue building" chip which has been retired in favor of the
+  // simpler completion UI (recap + success line + backend chip).
+  // Historical messages persisted with a `handoff` payload are
+  // forward-compatible: the extra key is ignored at runtime.
   /** Marks an internal system note (e.g. "Petal is auto-fixing a build
    *  error — free"). Rendered as a small inline notice, never sent to the
    *  AI as part of the conversation. */
