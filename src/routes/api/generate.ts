@@ -500,7 +500,11 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
     );
   }
   if (!collected.name || !collected.args) {
-    throw new Error("AI did not return a project. Try rephrasing.");
+    throw new Error(
+      isInitial
+        ? "AI did not return a project. Try rephrasing."
+        : "AI did not return usable edits for this request.",
+    );
   }
   if (collected.name === "write_project" && !isInitial) {
     throw new Error("AI tried to rewrite the whole project. Edits must be incremental patches.");
@@ -518,7 +522,9 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
     throw new Error(
       looksCutOff
         ? "AI response was cut off before the project JSON finished. Retrying with smaller files."
-        : "AI returned invalid project data.",
+        : isInitial
+          ? "AI returned invalid project data."
+          : "AI returned invalid edit data.",
     );
   }
 
