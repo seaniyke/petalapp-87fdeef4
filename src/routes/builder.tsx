@@ -1709,6 +1709,10 @@ function Builder() {
 
           // Kick off a Cloudflare Pages build. Fire-and-forget — the activity
           // card subscribes to project_builds via useBuildActivity().
+          // Mark `awaitingBuild` BEFORE setBusy(false) lands so the
+          // post-build "READY — WHAT'S NEXT?" card never flashes in the gap
+          // between generation finishing and the deploy row appearing.
+          setAwaitingBuild(true);
           void triggerBuild(proj.id)
             .then(async (build) => {
               restoreBuildId(build.buildId);
@@ -1717,6 +1721,7 @@ function Builder() {
               if (r) setProject(r);
             })
             .catch((err: unknown) => {
+              setAwaitingBuild(false);
               persistFriendlyError(
                 toFriendlyError(err, { surface: "build", projectId: proj.id }),
               );
