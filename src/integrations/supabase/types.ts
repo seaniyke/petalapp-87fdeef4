@@ -2282,6 +2282,80 @@ export type Database = {
         }
         Relationships: []
       }
+      turn_events: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          payload: Json
+          seq: number
+          turn_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          payload?: Json
+          seq: number
+          turn_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          seq?: number
+          turn_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turn_events_turn_id_fkey"
+            columns: ["turn_id"]
+            isOneToOne: false
+            referencedRelation: "turns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      turns: {
+        Row: {
+          created_at: string
+          credits_charged: number | null
+          ended_at: string | null
+          error_message: string | null
+          id: string
+          last_seq: number
+          project_id: string
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits_charged?: number | null
+          ended_at?: string | null
+          error_message?: string | null
+          id?: string
+          last_seq?: number
+          project_id: string
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits_charged?: number | null
+          ended_at?: string | null
+          error_message?: string | null
+          id?: string
+          last_seq?: number
+          project_id?: string
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
