@@ -1303,10 +1303,9 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         // imports. We do this BEFORE continuation/esbuild so the parse
         // tier doesn't trip on identifiers that point at packages the
         // installer can never resolve. The replaced code is ugly on
-        // purpose; the Continue-building chip nudges the user to ask
-        // Petal to reimplement those sections cleanly.
+        // purpose to flag the bad sections clearly in the source — the
+        // user can ask Petal in a follow-up turn to reimplement them.
         if (localOut.preflightHallucinated.length > 0) {
-          handoffDetected.hallucinatedPackages = [...localOut.preflightHallucinated];
           const stripT0 = Date.now();
           const stripOut = stripHallucinatedImports(
             nextFiles,
