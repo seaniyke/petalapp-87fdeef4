@@ -119,6 +119,7 @@ import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
 import { EnableEmailSuggestionChip } from "@/components/EnableEmailSuggestionChip";
 import { EnablePaymentsSuggestionChip } from "@/components/EnablePaymentsSuggestionChip";
 import { EnableSeoSuggestionChip } from "@/components/EnableSeoSuggestionChip";
+import { AddPageSuggestionChip } from "@/components/AddPageSuggestionChip";
 import { EnableAnalyticsSuggestionChip } from "@/components/EnableAnalyticsSuggestionChip";
 import { EnableAiFeatureSuggestionChip } from "@/components/EnableAiFeatureSuggestionChip";
 import { EnableStorageSuggestionChip } from "@/components/EnableStorageSuggestionChip";
@@ -135,6 +136,7 @@ import { detectDomainIntentInTurn } from "@/lib/domain-intent";
 import { detectEmailIntentInTurn } from "@/lib/email-intent";
 import { detectPaymentIntentInTurn } from "@/lib/payment-intent";
 import { detectSeoIntentInTurn } from "@/lib/seo-intent";
+import { detectAddPageIntentInTurn } from "@/lib/add-page-intent";
 import { detectAnalyticsIntentInTurn } from "@/lib/analytics-intent";
 import { detectAiFeatureIntentInTurn } from "@/lib/ai-feature-intent";
 import { detectStorageIntentInTurn } from "@/lib/storage-intent";
@@ -422,6 +424,9 @@ function Builder() {
     () => new Set(),
   );
   const [dismissedSeoChips, setDismissedSeoChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedAddPageChips, setDismissedAddPageChips] = useState<Set<number>>(
     () => new Set(),
   );
   const [dismissedAnalyticsChips, setDismissedAnalyticsChips] = useState<Set<number>>(
