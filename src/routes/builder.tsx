@@ -255,6 +255,10 @@ function Builder() {
   const [filesWritten, setFilesWritten] = useState<number>(0);
   const [lastBuildCredits, setLastBuildCredits] = useState<number | null>(null);
   const [latestPath, setLatestPath] = useState<string | undefined>(undefined);
+  // Model-written sentence for the most recent file ("Building the upload
+  // screen…"). When present, the activity card shows this instead of the
+  // path-derived fallback. Cleared at the start of each turn.
+  const [latestNarration, setLatestNarration] = useState<string | undefined>(undefined);
   // Ordered, deduped list of every path Petal streams during the writing phase.
   // Drives the per-file progress list in BuildActivityCard.
   const [writtenPaths, setWrittenPaths] = useState<string[]>([]);
