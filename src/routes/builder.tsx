@@ -138,6 +138,7 @@ import { detectEmailIntentInTurn } from "@/lib/email-intent";
 import { detectPaymentIntentInTurn } from "@/lib/payment-intent";
 import { detectSeoIntentInTurn } from "@/lib/seo-intent";
 import { detectAddPageIntentInTurn } from "@/lib/add-page-intent";
+import { detectMobileIntentInTurn } from "@/lib/mobile-intent";
 import { detectAnalyticsIntentInTurn } from "@/lib/analytics-intent";
 import { detectAiFeatureIntentInTurn } from "@/lib/ai-feature-intent";
 import { detectStorageIntentInTurn } from "@/lib/storage-intent";
