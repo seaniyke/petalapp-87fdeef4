@@ -197,26 +197,32 @@ function sse(event: StreamEvent): string {
 }
 
 /**
- * Wrap a stream controller so every event enqueued is ALSO recorded to the
- * persistent turn_events log. This is the single tap that makes the build
- * survivable across client disconnects: the inner pipeline keeps shoving
- * events through `controller.enqueue(...)`, but each one is now also a row
- * in Postgres that a returning client can replay.
- *
- * The wrapper accepts the original `StreamEvent` shape (used in 30+ places
- * in this file) and returns the same enqueue/close API, so existing call
- * sites are untouched.
+ * Parse a chunk of bytes from the inner SSE stream and forward each event
+ * to a sink (typically: a turn recorder). Maintains a small buffer across
+ * chunks because SSE events can be split across reads. Defensive: bad
+ * lines are skipped, never thrown.
  */
-function makeRecordingEnqueue(
-  controller: ReadableStreamDefaultController<Uint8Array>,
-  encoder: TextEncoder,
-  recorder: TurnRecorderHandle | null,
-) {
-  return (event: StreamEvent) => {
-    controller.enqueue(encoder.encode(sse(event)));
-    if (recorder) {
-      const { type, ...rest } = event as { type: string } & Record<string, unknown>;
-      recorder.record(type, rest);
+function makeSseTap(onEvent: (type: string, payload: unknown) => void) {
+  let buf = "";
+  const decoder = new TextDecoder();
+  return (chunk: Uint8Array) => {
+    buf += decoder.decode(chunk, { stream: true });
+    const parts = buf.split("\n\n");
+    buf = parts.pop() ?? "";
+    for (const block of parts) {
+      const line = block.split("\n").find((l) => l.startsWith("data:"));
+      if (!line) continue;
+      const payload = line.slice(5).trim();
+      if (!payload) continue;
+      try {
+        const evt = JSON.parse(payload) as { type?: string } & Record<string, unknown>;
+        if (typeof evt.type === "string") {
+          const { type, ...rest } = evt;
+          onEvent(type, rest);
+        }
+      } catch {
+        /* skip malformed */
+      }
     }
   };
 }
