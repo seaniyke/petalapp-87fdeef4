@@ -53,8 +53,8 @@ export async function runContinuationTier(args: RunArgs): Promise<ContinuationTi
     } else if (contOut.result.notes.length) {
       console.warn("[continuation] no files completed:", contOut.result.notes.join("; "));
       // Continuation pass ran but couldn't finish — strongest signal we hit
-      // the model's output ceiling. Hand off (orchestrator decides whether
-      // to overwrite an existing handoffReason).
+      // the model's output ceiling. Surface the failure so telemetry can
+      // record it.
       requestHandoff = true;
     }
 
