@@ -28,7 +28,7 @@ import {
   markLastCallFailure,
   updateLastCallUsage,
 } from "@/server/ai-provider.server";
-import { priceBuild, priceTurn, BUILD_FLOOR } from "@/server/credit-pricing.server";
+import { priceTurn, BUILD_FLOOR } from "@/server/credit-pricing.server";
 import type { GatewayUsage } from "@/server/credit-pricing.server";
 import {
   loadProjectMemory,
