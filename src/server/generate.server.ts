@@ -432,6 +432,14 @@ export type StreamEvent =
   | { type: "design_vibe"; vibe: string; rationale: string }
   | { type: "file_progress"; written: number; latestPath?: string }
   | { type: "file_complete"; path: string; bytes: number; index: number }
+  /**
+   * One short, human sentence the model wrote in its OWN voice for the file
+   * it's about to start generating ("Building the photo upload screen…").
+   * Emitted exactly once per file, the moment the model's `narration` field
+   * for that file finishes streaming. The client uses it as the activity
+   * card's sub-caption, overriding the path-derived fallback.
+   */
+  | { type: "narration"; path: string; text: string }
   | {
       type: "result";
       files: ProjectFile[];
