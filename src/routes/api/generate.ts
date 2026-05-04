@@ -741,21 +741,23 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     }
   }
 
+  // Labs flags — loaded once per request so both the staged-pipeline
+  // gate (initial only) and the agentic-loop gate (post-stream autofix)
+  // see the same values without re-querying. Empty {} on failure.
+  const labsFlags = await loadLabsFlagsForRequest(userJwt);
+
   // Staged pipeline (Labs). When the user has the staged_pipeline flag on,
   // initial builds run through Plan → parallel-Scaffold → Wire-up instead
   // of the monolithic write_project call. The orchestrator returns null
   // on any pre-stream failure so we can fall through to the existing
   // path with no behavior change for everyone else.
-  if (isInitial) {
-    const flags = await loadLabsFlagsForRequest(userJwt);
-    if (flags.staged_pipeline) {
-      const stagedResp = await runStagedPipelineStream({
-        brief: lastUserContent,
-        hasBackend: Boolean(backend),
-      });
-      if (stagedResp) return stagedResp;
-      console.warn("[staged] orchestrator returned null — falling back to monolithic path");
-    }
+  if (isInitial && labsFlags.staged_pipeline) {
+    const stagedResp = await runStagedPipelineStream({
+      brief: lastUserContent,
+      hasBackend: Boolean(backend),
+    });
+    if (stagedResp) return stagedResp;
+    console.warn("[staged] orchestrator returned null — falling back to monolithic path");
   }
   const designDirection =
     isInitial && userJwt
@@ -1504,6 +1506,13 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           ...renderRiskIssues,
           ...rlsSanityIssues,
         ];
+        // Token usage from any user-billable agentic-loop fix cycles.
+        // Cycles 3..N (only when the `agent_loop` Labs flag is on) push
+        // their gateway usage here so the per-turn aggregator at the
+        // bottom of the handler can fold them into the single user
+        // charge. Cycle 2 (the default polish pass) stays on Petal's
+        // tab — it runs for everyone whether they asked for it or not.
+        const agentLoopUsages: Array<GatewayUsage | null> = [];
         if (autofixGateOpen) {
           // Cycle 2 = the polish pass. Brief intent ping so the activity
           // card narrates the gap instead of going silent for 5-10s while
@@ -1605,6 +1614,89 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           );
         }
 
+        // Agentic loop (Labs: agent_loop). Bounded multi-cycle pass that
+        // re-runs verifiers and feeds remaining issues back to the autofix
+        // model up to N times. Lets a single turn legitimately spend 2-3+
+        // minutes fixing its own mistakes without the user manually
+        // pressing "try to fix" — same shape as Lovable's long agent turns.
+        //
+        // Hard limits (defensive — a runaway turn must NOT exist):
+        //   - up to 3 extra cycles (cycles 3, 4, 5 in the SSE numbering)
+        //   - 90s wall-clock budget across all extra cycles combined
+        //   - stops the moment local + esbuild verifiers both pass
+        //   - stops if a cycle makes zero file changes (model gave up)
+        //
+        // Billing: cycles 3..N push usage into `agentLoopUsages` and are
+        // folded into the single user charge via priceTurn(). Cycle 2 (the
+        // default polish pass above) is still on Petal's tab.
+        if (labsFlags.agent_loop && !body.isAutoFix) {
+          const AGENT_LOOP_MAX_CYCLES = 3;
+          const AGENT_LOOP_WALL_MS = 90_000;
+          const loopT0 = Date.now();
+          const { verifyFilesLocal: lvFn } = await import("@/server/local-verifier");
+          for (let cyc = 0; cyc < AGENT_LOOP_MAX_CYCLES; cyc++) {
+            if (Date.now() - loopT0 > AGENT_LOOP_WALL_MS) {
+              console.log("[agent-loop] wall-time exhausted, stopping");
+              break;
+            }
+            const reverifyPaths = nextFiles.map((f) => f.path);
+            const localAgain = lvFn(nextFiles, reverifyPaths);
+            const esbAgain = await verifyFilesEsbuild(nextFiles, reverifyPaths);
+            const stillBad = [
+              ...localAgain.issues,
+              ...esbAgain.issues.map((i) => ({
+                path: i.path,
+                kind: "parse" as const,
+                detail: `${i.message} (line ${i.line}:${i.column})`,
+              })),
+            ];
+            if (stillBad.length === 0) {
+              console.log(`[agent-loop] converged after ${cyc} extra cycle(s)`);
+              break;
+            }
+            const cycleNum = 3 + cyc;
+            controller.enqueue(
+              encoder.encode(sse({ type: "cycle_start", cycle: cycleNum, intent: "fixing" })),
+            );
+            controller.enqueue(
+              encoder.encode(
+                sse({
+                  type: "cycle_progress",
+                  cycle: cycleNum,
+                  message: `Round ${cycleNum}: ${stillBad.length} issue${stillBad.length === 1 ? "" : "s"} remaining — refining.`,
+                }),
+              ),
+            );
+            const beforeHash = nextFiles.map((f) => f.path + ":" + f.content.length).join("|");
+            try {
+              const fixOut = await runPostStreamAutofix(nextFiles, stillBad);
+              nextFiles = fixOut.files;
+              if (fixOut.result.usage) agentLoopUsages.push(fixOut.result.usage);
+              const afterHash = nextFiles.map((f) => f.path + ":" + f.content.length).join("|");
+              const madeProgress = afterHash !== beforeHash;
+              controller.enqueue(
+                encoder.encode(
+                  sse({
+                    type: "cycle_end",
+                    cycle: cycleNum,
+                    outcome: madeProgress ? "retrying" : "hard-stop",
+                  }),
+                ),
+              );
+              if (!madeProgress) {
+                console.log(`[agent-loop] cycle ${cycleNum} made no changes, stopping`);
+                break;
+              }
+            } catch (e) {
+              console.warn(`[agent-loop] cycle ${cycleNum} threw:`, e);
+              controller.enqueue(
+                encoder.encode(sse({ type: "cycle_end", cycle: cycleNum, outcome: "hard-stop" })),
+              );
+              break;
+            }
+          }
+        }
+
         // Phase 4: resolve `petal-image://...` placeholders into real
         // AI-generated images uploaded to the public petal-images
         // bucket. Failures fall back to picsum so the build never
@@ -1677,7 +1769,10 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         // debit at end of turn. Internal QA cycles (post-stream autofix,
         // continuation, self-check) stay on Petal's tab and are NOT
         // appended here — same convention as `body.isAutoFix`.
-        const turnUsages: Array<GatewayUsage | null> = [collected.usage ?? null];
+        const turnUsages: Array<GatewayUsage | null> = [
+          collected.usage ?? null,
+          ...agentLoopUsages,
+        ];
         const priced = priceTurn(turnUsages);
 
         // Backfill the usage tokens onto the ai_call_log row that

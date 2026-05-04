@@ -19,6 +19,11 @@ export interface PostStreamFixResult {
   ran: boolean;
   fixedFiles: number;
   notes: string[];
+  /** Token usage from the autofix model call, when available. Surfaced so
+   *  callers running this pass inside a user-billable agentic loop can
+   *  fold it into the per-turn aggregate via priceTurn(). Internal QA
+   *  callers (default) ignore this and keep the call on Petal's tab. */
+  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
 }
 
 /** Decide whether to invoke the model based on heuristics. */
@@ -167,21 +172,23 @@ export async function runPostStreamAutofix(
     });
 
     if (!resp.ok) {
-      return { files, result: { ran: true, fixedFiles: 0, notes: [`autofix model HTTP ${resp.status}`] } };
+      return { files, result: { ran: true, fixedFiles: 0, notes: [`autofix model HTTP ${resp.status}`], usage: null } };
     }
 
     const data = (await resp.json()) as {
       choices?: { message?: { tool_calls?: { function?: { arguments?: string } }[] } }[];
+      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
     };
+    const usage = data.usage ?? null;
     const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    if (!args) return { files, result: { ran: true, fixedFiles: 0, notes: [] } };
+    if (!args) return { files, result: { ran: true, fixedFiles: 0, notes: [], usage } };
 
     const parsed = JSON.parse(args) as {
       fixes?: Array<{ path: string; content: string; reason: string }>;
     };
     const fixes = (parsed.fixes ?? []).filter((f) => !isProtected(f.path));
     if (fixes.length === 0) {
-      return { files, result: { ran: true, fixedFiles: 0, notes: [] } };
+      return { files, result: { ran: true, fixedFiles: 0, notes: [], usage } };
     }
 
     // Apply: replace existing files; ignore "create" since we only fix existing.
@@ -196,12 +203,12 @@ export async function runPostStreamAutofix(
     }
     return {
       files: Array.from(byPath.values()),
-      result: { ran: true, fixedFiles: count, notes },
+      result: { ran: true, fixedFiles: count, notes, usage },
     };
   } catch (e) {
     return {
       files,
-      result: { ran: true, fixedFiles: 0, notes: [`autofix model error: ${e instanceof Error ? e.message : "unknown"}`] },
+      result: { ran: true, fixedFiles: 0, notes: [`autofix model error: ${e instanceof Error ? e.message : "unknown"}`], usage: null },
     };
   }
 }
