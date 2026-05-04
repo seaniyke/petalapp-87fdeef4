@@ -1660,6 +1660,8 @@ function Builder() {
                 return curr;
               });
             },
+            onCycleProgress: (_cycle, message) => setLatestCycleProgress(message),
+            onCycleEnd: () => setLatestCycleProgress(undefined),
             onResult: (f, s, extras) => {
               resultFiles = f;
               resultSummary = s;
