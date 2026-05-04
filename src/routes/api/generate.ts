@@ -1639,7 +1639,15 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         // AUTO-FIX runs are also on Petal's tab — the user did not ask
         // for this turn, Petal is fixing its own broken build. We log
         // the would-be amount for analytics but never debit the user.
-        const priced = priceBuild(collected.usage);
+        // Aggregate every user-billable sub-call's token usage and price
+        // ONCE. Today this array holds just the main generate completion;
+        // when we add user-requested fix cycles inside the agentic loop,
+        // they push into `turnUsages` and the user still sees a single
+        // debit at end of turn. Internal QA cycles (post-stream autofix,
+        // continuation, self-check) stay on Petal's tab and are NOT
+        // appended here — same convention as `body.isAutoFix`.
+        const turnUsages: Array<GatewayUsage | null> = [collected.usage ?? null];
+        const priced = priceTurn(turnUsages);
 
         // Backfill the usage tokens onto the ai_call_log row that
         // `aiChatCompletions` inserted before the stream body was read.
