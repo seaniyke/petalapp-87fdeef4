@@ -1290,11 +1290,13 @@ function Builder() {
       initialSent.current = true;
       if (initialMode === "discuss") void discuss(initialPrompt);
       else void send(initialPrompt);
-      navigate({
-        to: "/builder",
-        search: { ...(searchId ? { id: searchId } : {}), ...(initialMode ? { mode: initialMode } : {}), attachKey: undefined },
-        replace: true,
-      });
+      if (searchId) {
+        navigate({
+          to: "/builder",
+          search: { id: searchId, ...(initialMode ? { mode: initialMode } : {}), attachKey: undefined },
+          replace: true,
+        });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapping, initialPrompt]);
