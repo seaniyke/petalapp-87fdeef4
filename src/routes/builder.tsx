@@ -483,7 +483,12 @@ function Builder() {
   // explicitly started are eligible. Old failed builds loaded from the DB must
   // never auto-run on page open, and retries are capped across the whole fix
   // chain (not reset for every new failed build id).
-  const MAX_AUTO_FIX_ATTEMPTS = 2;
+  // 2026-05-04: bumped 2 → 3. Auto-fix runs are FREE (charged to Petal, not
+  // the user — see api/generate.ts), so a third attempt costs the user
+  // nothing and meaningfully lifts the "shipped working code in one user
+  // turn" rate. Caps the runaway risk because each attempt also has to
+  // pass startedBuildIdsRef + handledBuildIds gating.
+  const MAX_AUTO_FIX_ATTEMPTS = 3;
   const startedBuildIdsRef = useRef<Set<string>>(new Set());
   const autoFixRef = useRef<{
     projectId: string | null;
