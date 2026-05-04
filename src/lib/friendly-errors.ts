@@ -289,7 +289,7 @@ export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): Frien
   //    from LLM-rewritten apology copy.
   if (raw instanceof PipelineError) {
     const builder = KIND_TO_FRIENDLY[raw.kind];
-    if (builder && raw.kind !== "unknown") return builder(text);
+    if (builder && raw.kind !== "unknown") return builder(rawText);
     // kind === "unknown" → fall through to regex/generic, and report so
     // we can add a new branch.
   }
