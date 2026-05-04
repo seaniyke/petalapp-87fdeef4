@@ -162,6 +162,15 @@ export async function streamGenerate(
           case "narration":
             handlers.onNarration?.(evt.path, evt.text);
             break;
+          case "cycle_start":
+            handlers.onCycleStart?.(evt.cycle, evt.intent);
+            break;
+          case "cycle_progress":
+            handlers.onCycleProgress?.(evt.cycle, evt.message);
+            break;
+          case "cycle_end":
+            handlers.onCycleEnd?.(evt.cycle, evt.outcome);
+            break;
           case "result":
             handlers.onResult?.(evt.files, evt.summary, {
               plan: evt.plan,
