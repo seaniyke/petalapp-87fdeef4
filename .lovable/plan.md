@@ -1,119 +1,88 @@
-# Plan — Wire the managed-backend migration runner
+## Goal
 
-## Why
+Petal currently optimises for speed and sometimes claims "done" before it really is. We want: **deeper builds, honest status, correct charging, healthy Cloud + AI**. Four focused fixes in one pass.
 
-Today, when Petal generates a backend feature ("add a dashboard", "add auth", "add a recipes table"), the model emits files into `project_files` — including `supabase/migrations/*.sql` — but **nothing ever applies that SQL against the user's managed Supabase project**. The Cloud panel (Database / Users) then correctly shows "no tables, no users", and the user feels lied to. The recap text used to make it worse by claiming "I created the users table" — that's now suppressed by `backend-claim-guard.ts`, but the underlying gap remains.
+---
 
-This plan wires the actual runner so that emitted migrations are executed against the project's managed Supabase, surfaced in the chat, and reflected in the Cloud panel.
+## 1. Depth over speed (build quality)
 
-## Scope (this plan only)
+Default model today is `google/gemini-3-flash-preview` with no reasoning effort. Flash is fast but shallow on multi-file edits → low verifier pass rate (66.7%, target 85%).
 
-In:
-- Detect newly emitted `supabase/migrations/*.sql` files at the end of a generate turn.
-- Execute them, in order, against the project's managed Postgres using stored credentials.
-- Track which migrations have already been applied (idempotency) so re-runs are safe.
-- Surface success / failure in the chat (replaces the current silent skip and the suppressed false claim).
-- Refresh the Cloud panel data so the new tables/users show up.
+**Changes**
+- In `src/server/ai-provider.server.ts` / `smart-router.server.ts`: promote default for the `generate` feature to `google/gemini-3.1-pro-preview` (or `google/gemini-2.5-pro` as fallback). Keep `flash-preview` only for `discuss` / `triage` / small clarify turns.
+- Pass `reasoning: { effort: "medium" }` for `generate` and `effort: "high"` for explicit "fix" / auto-fix turns.
+- Raise `MAX_AUTO_FIX_ATTEMPTS` from 2 → 3 in `src/routes/builder.tsx` and gate the 3rd attempt behind verifier-still-failing (not just build-failed) so we don't waste credits on infra blips.
+- In the dynamic prompt (`src/server/dynamic-prompts.server.ts`), add a "verify-before-claiming-done" snippet: the model must run through its own checklist (imports resolved, routes wired, RLS present when tables created) before emitting the recap.
 
-Out (follow-ups, not this plan):
-- Auto-generating migrations from natural language (the model already does this when prompted; we're only running what it emits).
-- A full migration UI (rollback, squash, edit). For now: append-only, applied in filename order.
-- Storage buckets / edge function deploys triggered from migrations.
+**Why this is safe**: pro models cost more per token but produce far fewer follow-up "fix" turns, so net credits/feature usually drop. We ship a tuning lever, not a fixed price hike.
 
-## Architecture
+---
 
-### 1. New table: `project_backend_migrations`
+## 2. Billing actually matches work done
 
-Tracks which `supabase/migrations/*.sql` files have been applied to which project's managed backend.
+Today every build charges between `BUILD_FLOOR=1.0` and `BUILD_CAP=6.0` based on tokens, plus a flat 1.0 for any discuss. Two real problems:
 
-```sql
-create table public.project_backend_migrations (
-  id uuid primary key default gen_random_uuid(),
-  project_id uuid not null references public.projects(id) on delete cascade,
-  migration_path text not null,          -- e.g. "supabase/migrations/20260501120000_recipes.sql"
-  content_hash text not null,            -- sha256 of file content at apply time
-  applied_at timestamptz not null default now(),
-  applied_status text not null,          -- 'success' | 'failed'
-  error_message text,
-  unique (project_id, migration_path)
-);
-alter table public.project_backend_migrations enable row level security;
-create policy "Owners read their migration history"
-  on public.project_backend_migrations for select
-  using (exists (select 1 from public.projects p
-                 where p.id = project_id and p.owner_id = auth.uid()));
--- Writes are server-only (service role bypasses RLS).
-```
+- **Failed turns still charge.** If the AI returns no usable files (`no_files_emitted`, `truncated_response`) we still consume the hold credit. That's the wallet-drain users feel.
+- **Auto-fix turns charge separately.** A user pays N times for what they perceive as one request.
 
-Why hash the content: if the model regenerates the same filename with different SQL, we treat it as a new migration that needs applying (we'll append, not retry — see "Failure model").
+**Changes (in `src/routes/api/generate.ts` + `credit-pricing.server.ts`)**
+- On `PipelineError` of kind `no_files_emitted | truncated_response | upstream_timeout | upstream_unavailable`: **refund the hold in full**. Add a `billing_event` row marked `refunded_failed_turn` for audit.
+- Tag auto-fix turns (`is_auto_fix=true` already exists in telemetry) and **discount them 50%** — they're the system's responsibility, not the user's.
+- Add a "max charge per user-initiated turn" cap that includes its auto-fixes (e.g. cap the *aggregate* at `BUILD_CAP` × 1.5), so a runaway 3-fix loop can't cost 18 credits.
+- Surface the actual charge per turn in the chat ("This turn cost 2.4 credits") behind the existing `PreflightCostChip` style, only when > 1.0.
 
-### 2. New runner: `src/server/managed-migrations.server.ts`
+---
 
-```ts
-export async function applyPendingMigrations(projectId: string): Promise<{
-  applied: { path: string }[];
-  skipped: { path: string; reason: "already-applied" }[];
-  failed: { path: string; error: string } | null;  // first failure stops the run
-}>
-```
+## 3. Cloud + AI health
 
-Steps:
-1. Look up `project_backends` row. If `provider !== 'managed_petal'` or `status !== 'ready'`, return `{ applied: [], skipped: [], failed: null }` (nothing to do — the user doesn't have a managed backend yet).
-2. Read all `project_files` where `path LIKE 'supabase/migrations/%.sql'`, ordered by `path` (filenames are timestamp-prefixed).
-3. Diff against `project_backend_migrations` for this project. A file is "pending" if `(project_id, migration_path)` isn't in the table OR the stored `content_hash` differs from the current hash.
-4. For each pending file, in order:
-   - Execute the SQL using the Supabase Management API's "Run query" endpoint (`POST /v1/projects/{ref}/database/query`) with the access token from `SUPABASE_MGMT_API_TOKEN`. This is the same surface `supabase-mgmt.server.ts` already uses, so no new auth plumbing.
-   - On success: insert a row into `project_backend_migrations` with `applied_status='success'`.
-   - On failure: insert with `applied_status='failed'` + `error_message`, then **stop** (don't apply later migrations on top of a broken DB). Return `failed`.
-5. Return the summary.
+User reports Cloud / AI "may not be working as it should." We need a real check, not a guess.
 
-Why the Mgmt API and not a direct `pg` connection from the Worker: the Worker SSR runtime doesn't ship `pg` cleanly, and we already have the Mgmt token wired for project provisioning. Mgmt API "Run query" supports arbitrary SQL with service-role-equivalent privileges.
+**Changes**
+- Add an admin route `/admin/health` (or extend `admin.index.tsx`) that runs four probes server-side and shows pass/fail + latency:
+  1. Lovable AI gateway: 1-token ping to `google/gemini-3-flash-preview` and `google/gemini-3.1-pro-preview`.
+  2. Lovable Cloud (Supabase Management API): `cloud_status` + `auth.users` count for a known project.
+  3. Builder service (Railway): `GET /healthz` with the same retry policy `builder.server.ts` uses.
+  4. AI Gateway 402/429 rate over last hour (read from `ai_call_log`).
+- Wire the existing `friendly-errors.ts` so when any of these is degraded, *all* builder errors get a calmer banner: "Lovable AI is degraded right now — your turn was not charged" instead of "Petal got confused".
+- For ordinary users: add a passive yellow strip on the builder header when health < 100% in the last 5 min, so they understand it's not their app.
 
-### 3. Hook into the generate pipeline
+---
 
-In `src/server/generate.server.ts`, at the end of a successful turn (right after files are written and before the recap is finalized):
+## 4. Honest "Thinking → Working → Done"
 
-- Call `applyPendingMigrations(projectId)`.
-- Append the result to the chat as a structured assistant message (uses the existing `STRUCTURED_PREFIX` JSON envelope already extended for `error`):
-  - All success → "Applied N database changes to your backend." (small inline summary card)
-  - Partial → "Applied N changes. The next one (`<path>`) failed: <error>. Fix it in chat and I'll retry."
-  - Nothing pending → no message.
-- Drop the corresponding sentence from `backend-claim-guard.ts`'s strip list **only when** `applyPendingMigrations` reports success — i.e. the guard now consults the runner's result instead of just file presence. Concretely: `emittedRealBackend(files)` becomes `appliedRealBackend(projectId, runResult)`.
+Today the labels exist (`Thinking`, `Working`, `Writing`, `Wrapping up`) but two bugs remain:
 
-### 4. Surface in the Cloud panel
+- The recap text the model writes ("I've added X, Y, Z") streams in **before** files are saved and **before** the build is even queued, so users see "I've done it" while the deploy is still pending.
+- `awaitingBuild` clears on *any* build status, including `failed`, so "Done" can flash before the failure card.
 
-`CloudDatabaseView.tsx` and `CloudUsersView.tsx` already query the live managed Supabase via `cloud-database.functions.ts` / `cloud-users.functions.ts`. After the migration runs, those endpoints will naturally return the new tables/rows. The only UI change:
+**Changes (in `src/routes/builder.tsx` + `MarkdownMessage`)**
+- Suppress assistant past-tense recap text from rendering until **all three** are true: `filesSaved`, `triggerBuild` returned a buildId, and the build row's status is `ready`. Until then, replace past-tense verbs in the streamed recap with present-progressive on the client (already half-done in `sanitizeNarrative` — extend it).
+- Introduce a single state machine `petalState ∈ {idle, thinking, working, deploying, done, failed}` derived from existing flags, and drive every chip / banner from it. Removes the current scattered booleans.
+- Only show the "READY — WHAT'S NEXT?" / `NextStepsCard` when `petalState === "done"` AND the latest build is `ready` AND no `friendlyError` is set. Currently it can race in during `awaitingBuild` flicker.
+- Add an explicit "Done" pill with checkmark in the activity card that only appears once the build is `ready`, so users have an unambiguous completion signal.
 
-- Add a "Migration history" small section under the Database view, sourced from `project_backend_migrations` (last 10, with status pill). This makes "what did Petal actually run?" answerable without leaving the panel.
-- Replace the "no tables yet — ask Petal" empty state CTA with a smarter version: if `project_backend_migrations` has any `failed` row, show that error inline with a "Retry" button that calls a new server fn `retryFailedMigrations(projectId)` (just calls `applyPendingMigrations` again).
+---
 
-### 5. Failure model
+## Out of scope
 
-- Migrations are append-only. We never re-run a `success` row. If the model regenerates the same filename with different SQL, we treat it as a **new pending migration** (because the hash changed) and apply it on top. The model is responsible for writing forward-compatible SQL (`alter table ... add column if not exists`, etc.) — the system prompt in `generate.server.ts` already nudges this; we'll add a one-line reinforcement.
-- A `failed` migration blocks all later ones for that project until either (a) the user asks Petal to fix it (next turn emits a new migration with a later timestamp that supersedes it), or (b) the user clicks Retry in the Cloud panel after manually fixing state.
-- We never run destructive SQL silently — but we also don't try to parse SQL to classify it. The user's project, the user's data; Petal does what it's told.
+- Re-architecting the pipeline tiers
+- Switching AI providers
+- New billing plans / refund flows beyond per-turn refunds
 
-## Files to add / change
+---
 
-New:
-- `supabase/migrations/<ts>_project_backend_migrations.sql` (the table above)
-- `src/server/managed-migrations.server.ts` (runner)
-- `src/server/managed-migrations.functions.ts` (server fn: `retryFailedMigrations`, `listMigrationHistory`)
-- `src/components/cloud/CloudMigrationHistory.tsx` (small list inside the Database view)
+## Files I'll touch
 
-Changed:
-- `src/server/generate.server.ts` — call runner, append structured chat message
-- `src/server/integrations/installer.server.ts` — replace the "Migration runner not wired yet — skipping." stub with a call into the new runner (so paid integrations like Resend that ship a migration also benefit)
-- `src/lib/backend-claim-guard.ts` — accept a `migrationRunResult` and only strip claims if no migration was actually applied this turn
-- `src/components/cloud/CloudDatabaseView.tsx` — mount `<CloudMigrationHistory />` and the "failed migration" inline error+Retry
+- `src/server/ai-provider.server.ts`, `src/server/smart-router.server.ts` — model defaults + reasoning
+- `src/server/generate.server.ts`, `src/server/dynamic-prompts.server.ts` — verify-before-done snippet
+- `src/routes/api/generate.ts`, `src/server/credit-pricing.server.ts` — refunds + auto-fix discount + aggregate cap
+- `src/routes/admin.index.tsx` (+ new `src/server/health-check.server.ts`) — health probes
+- `src/lib/friendly-errors.ts` — degraded-service messaging
+- `src/routes/builder.tsx`, `src/lib/sanitize-narrative.ts`, `src/components/BuildActivityCard.tsx`, `src/components/NextStepsCard.tsx` — single state machine + honest "done"
 
-## Rollout
+## Verification before I hand back
 
-1. Ship the table + runner behind a per-project feature check (`labs_flags.managed_migrations_enabled`, default off).
-2. Enable for the reporting user's project first, watch one real generate turn end-to-end via `pipeline_telemetry`.
-3. Flip the default to on once we've seen a clean success and a clean failure (induced) round-trip.
-
-## Open questions (worth confirming before implementing)
-
-- Mgmt API rate limits on "Run query" — fine for our volume but worth a 1-line guard (sequential per project, no parallel runs for the same `project_id`).
-- Should the runner also pick up `supabase/seed.sql` if present? Leaning **no** for v1 — seeds are easy to make destructive on re-run. Revisit when a user asks.
+1. Trigger a build with a deliberately broken prompt → confirm wallet is refunded and the chat shows "not charged".
+2. Trigger a normal build → confirm chat shows `Thinking → Working → Deploying → Done` in order, recap appears only after `Done`.
+3. Open `/admin/health` → all four probes green; force one off and confirm header banner appears.
+4. Run a 2-file feature add with the new pro default + reasoning and confirm verifier passes on first try (target: > 85%).

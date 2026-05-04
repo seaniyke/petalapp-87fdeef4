@@ -126,6 +126,10 @@ type Props = {
   /** Live pipeline timeline — server pushes one entry per recovery / verifier
    *  / autofix / image step. Rendered inside the expanded steps panel. */
   timelineEvents?: TimelineEntry[];
+  /** Credits actually charged for this turn (from the SSE result event).
+   *  Shown on the collapsed success line so users can see exactly what
+   *  this build cost. `0` is shown explicitly (free turns / auto-fix). */
+  creditsCharged?: number | null;
   onStop?: () => void;
   onRetry?: () => void;
   onAskFix?: () => void;
@@ -146,6 +150,7 @@ export function BuildActivityCard({
   fileChanges,
   deployElapsedSec,
   timelineEvents,
+  creditsCharged,
   onStop,
   onRetry,
   onAskFix,
@@ -213,11 +218,24 @@ export function BuildActivityCard({
 
   // ─── Collapsed success state ─────────────────────────────────────────────
   if (collapsed && isComplete && !error) {
+    // Format cost like "0.4 credits" / "1 credit" / "Free" so users see
+    // exactly what this turn cost without having to open billing.
+    const costLabel =
+      typeof creditsCharged === "number"
+        ? creditsCharged === 0
+          ? "Free"
+          : `${creditsCharged === 1 ? "1 credit" : `${creditsCharged.toFixed(creditsCharged < 10 ? 1 : 0)} credits`}`
+        : null;
     return (
       <div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-1.5 text-xs">
         <span className="inline-flex items-center gap-1.5 font-medium text-foreground/80">
           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" aria-hidden />
           Your app is live · built in {elapsed}s
+          {costLabel && (
+            <span className="ml-1 rounded-full bg-muted/70 px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
+              {costLabel}
+            </span>
+          )}
         </span>
         <button
           type="button"

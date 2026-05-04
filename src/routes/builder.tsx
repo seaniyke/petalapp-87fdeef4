@@ -483,7 +483,12 @@ function Builder() {
   // explicitly started are eligible. Old failed builds loaded from the DB must
   // never auto-run on page open, and retries are capped across the whole fix
   // chain (not reset for every new failed build id).
-  const MAX_AUTO_FIX_ATTEMPTS = 2;
+  // 2026-05-04: bumped 2 → 3. Auto-fix runs are FREE (charged to Petal, not
+  // the user — see api/generate.ts), so a third attempt costs the user
+  // nothing and meaningfully lifts the "shipped working code in one user
+  // turn" rate. Caps the runaway risk because each attempt also has to
+  // pass startedBuildIdsRef + handledBuildIds gating.
+  const MAX_AUTO_FIX_ATTEMPTS = 3;
   const startedBuildIdsRef = useRef<Set<string>>(new Set());
   const autoFixRef = useRef<{
     projectId: string | null;
@@ -2817,8 +2822,18 @@ function Builder() {
                             must not show "READY — WHAT'S NEXT?" while the
                             Cloudflare deploy is still running ("Putting your
                             app online…") — the app isn't actually ready yet. */}
+                         {/* Honest "done": only show "READY — what's next?"
+                             when (a) Petal is fully idle, (b) we have a
+                             successful build row (`isLive`), and (c) no
+                             friendly error is still pinned. Without the
+                             `isLive` check the card flashes in for the
+                             gap between generation and the deploy
+                             starting, which reads like "I'm done!" before
+                             the app is actually live. */}
                          {i === messages.length - 1 &&
                            !petalIsWorking &&
+                           isLive &&
+                           !friendlyError &&
                            files.length > 0 &&
                            !m.handoff &&
                            !m.error && (
@@ -3472,6 +3487,7 @@ function Builder() {
                 completedPaths={completedPaths}
                 finalFileLines={finalFileLines}
                 timelineEvents={timelineEvents}
+                creditsCharged={lastBuildCredits}
                 fileChanges={fileChanges}
                 deployElapsedSec={deployElapsed}
                 onStop={busy ? stopGeneration : undefined}

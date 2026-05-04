@@ -19,6 +19,7 @@ import { renderKitManifestBlock } from "./kit-manifest.server";
 
 export type DynamicSnippetKey =
   | "kitCore"
+  | "verifyBeforeDone"
   | "fileBudget"
   | "charts"
   | "forms"
@@ -50,6 +51,22 @@ const SNIPPETS: Record<DynamicSnippetKey, SnippetDef> = {
   kitCore: {
     triggers: "always",
     body: "__KIT_MANIFEST_PLACEHOLDER__",
+  },
+  // Always-on. Pushes the model to be thorough rather than fast: do the
+  // mental walk-through BEFORE writing the recap, and never claim work is
+  // "done" if any obvious gap remains. Targeted at the verifier-pass-rate
+  // gap (~66% → 85%) and the "Petal said it's done but it's not" UX bug.
+  verifyBeforeDone: {
+    triggers: "always",
+    body: `\n\n[Reinforcement — Verify before claiming done]
+Before you emit the recap (the past-tense "I added / wired up / shipped" sentence the user reads), mentally walk the change end-to-end:
+1. Every NEW import resolves to a file you just wrote OR a package already in package.json. No imports of files you forgot to create. No npm packages you didn't install.
+2. Every NEW route is reachable: linked from somewhere the user can click, AND its file actually exists at the path the route claims.
+3. Every NEW table has RLS enabled in the same migration AND at least one policy that lets the intended user read/write it. No "I created the table" without policies.
+4. Every NEW form has BOTH a submit handler AND a visible success/error state. No dead buttons.
+5. Every state change the user requested is observable in the UI — not just stored in state.
+If ANY of these is missing, FIX IT in this same turn instead of writing the recap. The recap must describe what is actually true after this turn lands. "I added a profiles page" must mean the page renders, is linked, and shows real data — not just that a file was created.
+Speed is not a virtue here. A turn that takes 10s longer but ships working code is worth far more than a turn that streams fast and leaves the user with broken links.`,
   },
   // Fires on multi-section / landing / dashboard / page-shaped requests —
   // the exact turns that historically blew past the 180-line cap and got
@@ -242,13 +259,15 @@ export function pickDynamicSnippets(args: {
     if (key === "noBackendGate") continue; // handled above
     if (key === "auth" && !args.hasBackend) continue;
     const def = SNIPPETS[key];
-    if (def.triggers !== "always" && def.triggers.test(haystack)) {
+    // "always" snippets are baseline reinforcements (e.g. verifyBeforeDone)
+    // and ALWAYS go in. Topical snippets only fire on a keyword match.
+    if (def.triggers === "always" || def.triggers.test(haystack)) {
       matched.push(key);
     }
   }
 
-  // Cap at 8 total (kitCore + noBackendGate + 6 topical).
-  const picked = matched.slice(0, 8);
+  // Cap at 9 total (kitCore + verifyBeforeDone + noBackendGate + 6 topical).
+  const picked = matched.slice(0, 9);
   const text = picked
     .map((k) => {
       const body = SNIPPETS[k].body;
