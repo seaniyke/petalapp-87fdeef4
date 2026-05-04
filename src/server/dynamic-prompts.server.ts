@@ -19,6 +19,7 @@ import { renderKitManifestBlock } from "./kit-manifest.server";
 
 export type DynamicSnippetKey =
   | "kitCore"
+  | "verifyBeforeDone"
   | "fileBudget"
   | "charts"
   | "forms"
