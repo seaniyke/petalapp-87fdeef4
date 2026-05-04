@@ -208,7 +208,7 @@ export async function runPostStreamAutofix(
   } catch (e) {
     return {
       files,
-      result: { ran: true, fixedFiles: 0, notes: [`autofix model error: ${e instanceof Error ? e.message : "unknown"}`] },
+      result: { ran: true, fixedFiles: 0, notes: [`autofix model error: ${e instanceof Error ? e.message : "unknown"}`], usage: null },
     };
   }
 }
