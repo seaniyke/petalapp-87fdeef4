@@ -1532,6 +1532,15 @@ function Builder() {
               streamErrorRaw = raw;
               if (sugg && sugg.length > 0) errorSuggestions = sugg;
             },
+            onTurnId: (turnId) => {
+              // Persist immediately so a tab-close in the next 200ms still
+              // lets us reconnect on return. Keyed per-project so opening a
+              // different project doesn't see a stale id.
+              persistTurnId(proj.id, turnId);
+            },
+            onDone: () => {
+              clearPersistedTurnId(proj.id);
+            },
           },
           controller.signal,
         );
