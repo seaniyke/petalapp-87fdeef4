@@ -13,6 +13,12 @@ type Handlers = {
   onFileComplete?: (path: string, bytes: number, index: number) => void;
   /** Model-written one-liner about the file it's about to build. */
   onNarration?: (path: string, text: string) => void;
+  /** Agentic-loop cycle started (initial write or a bounded fix round). */
+  onCycleStart?: (cycle: number, intent: "writing" | "fixing" | "verifying") => void;
+  /** Live "what's happening right now" string between file events. */
+  onCycleProgress?: (cycle: number, message: string) => void;
+  /** Cycle resolved — clean, retrying, or hit a hard stop. */
+  onCycleEnd?: (cycle: number, outcome: "clean" | "retrying" | "hard-stop") => void;
   onResult?: (
     files: ProjectFile[],
     summary: string,
@@ -155,6 +161,15 @@ export async function streamGenerate(
             break;
           case "narration":
             handlers.onNarration?.(evt.path, evt.text);
+            break;
+          case "cycle_start":
+            handlers.onCycleStart?.(evt.cycle, evt.intent);
+            break;
+          case "cycle_progress":
+            handlers.onCycleProgress?.(evt.cycle, evt.message);
+            break;
+          case "cycle_end":
+            handlers.onCycleEnd?.(evt.cycle, evt.outcome);
             break;
           case "result":
             handlers.onResult?.(evt.files, evt.summary, {

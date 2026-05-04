@@ -28,7 +28,8 @@ import {
   markLastCallFailure,
   updateLastCallUsage,
 } from "@/server/ai-provider.server";
-import { priceBuild, BUILD_FLOOR } from "@/server/credit-pricing.server";
+import { priceTurn, BUILD_FLOOR } from "@/server/credit-pricing.server";
+import type { GatewayUsage } from "@/server/credit-pricing.server";
 import {
   loadProjectMemory,
   renderMemoryBlock,
@@ -1159,6 +1160,22 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           return { ...f, content: STYLES_CSS };
         });
 
+        // Cycle 1 transitions from "writing" → "verifying". The activity
+        // card uses this to keep the sub-caption alive while the verifier
+        // tiers run silently for a few seconds.
+        controller.enqueue(
+          encoder.encode(sse({ type: "cycle_start", cycle: 1, intent: "verifying" })),
+        );
+        controller.enqueue(
+          encoder.encode(
+            sse({
+              type: "cycle_progress",
+              cycle: 1,
+              message: "Checking the files Petal just wrote for build errors…",
+            }),
+          ),
+        );
+
         // Tier 2.4 — server-side file budget gate. Reject any file
         // that blew past the hard ceiling (> 280 lines or > 10 KB)
         // and revert it to its prior content. Files in the soft band
@@ -1488,6 +1505,21 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           ...rlsSanityIssues,
         ];
         if (autofixGateOpen) {
+          // Cycle 2 = the polish pass. Brief intent ping so the activity
+          // card narrates the gap instead of going silent for 5-10s while
+          // the autofix model thinks.
+          controller.enqueue(
+            encoder.encode(sse({ type: "cycle_start", cycle: 2, intent: "fixing" })),
+          );
+          controller.enqueue(
+            encoder.encode(
+              sse({
+                type: "cycle_progress",
+                cycle: 2,
+                message: `Petal noticed ${combinedAutofixIssues.length} thing${combinedAutofixIssues.length === 1 ? "" : "s"} to polish — patching now.`,
+              }),
+            ),
+          );
           const fixT0 = Date.now();
           try {
             const fixOut = await runPostStreamAutofix(nextFiles, combinedAutofixIssues);
@@ -1638,7 +1670,15 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         // AUTO-FIX runs are also on Petal's tab — the user did not ask
         // for this turn, Petal is fixing its own broken build. We log
         // the would-be amount for analytics but never debit the user.
-        const priced = priceBuild(collected.usage);
+        // Aggregate every user-billable sub-call's token usage and price
+        // ONCE. Today this array holds just the main generate completion;
+        // when we add user-requested fix cycles inside the agentic loop,
+        // they push into `turnUsages` and the user still sees a single
+        // debit at end of turn. Internal QA cycles (post-stream autofix,
+        // continuation, self-check) stay on Petal's tab and are NOT
+        // appended here — same convention as `body.isAutoFix`.
+        const turnUsages: Array<GatewayUsage | null> = [collected.usage ?? null];
+        const priced = priceTurn(turnUsages);
 
         // Backfill the usage tokens onto the ai_call_log row that
         // `aiChatCompletions` inserted before the stream body was read.
@@ -1679,6 +1719,13 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
 
         // (Legacy `continuation_handoff` SSE emit removed along with the
         // Continue-building chip.)
+
+        // Cycle 1 wraps cleanly. The activity card uses this to switch the
+        // sub-caption back to the success line instead of leaving the last
+        // verifier message on screen.
+        controller.enqueue(
+          encoder.encode(sse({ type: "cycle_end", cycle: 1, outcome: "clean" })),
+        );
 
         controller.enqueue(
           encoder.encode(
@@ -1885,13 +1932,30 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      let heartbeat: ReturnType<typeof setInterval> | null = null;
+      let pingTimer: ReturnType<typeof setInterval> | null = null;
+      let statusTimer: ReturnType<typeof setInterval> | null = null;
+      // Track when we last sent ANY bytes downstream so the status ticker
+      // only chimes in during real silent gaps (verifier / autofix /
+      // continuation passes), not on top of streaming model output.
+      let lastByteAt = Date.now();
+      // Rotating phrases keep the line feeling alive instead of looping the
+      // same "Still working…" forever. The model + path narration takes
+      // priority — these only fire when nothing else has spoken in 14s.
+      const STATUS_ROTATION = [
+        "Still working — Petal is keeping the build connected.",
+        "Reviewing the pieces and checking for build errors…",
+        "Almost there — verifying everything compiles before shipping.",
+        "Polishing the last few details — won't be much longer.",
+      ];
+      let statusIdx = 0;
+
       const recordEvent = recorder
         ? makeSseTap((type, payload) => recorder!.record(type, payload))
         : null;
       const emit = (event: StreamEvent) => {
         const bytes = encoder.encode(sse(event));
         controller.enqueue(bytes);
+        lastByteAt = Date.now();
         if (recordEvent) recordEvent(bytes);
       };
 
@@ -1906,10 +1970,32 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         }
         emit({ type: "phase", phase: "thinking" });
         emit({ type: "status", message: "Starting your build…" });
-        heartbeat = setInterval(() => {
+
+        // Transport keep-alive: a comment line (`:` prefix) every 8s.
+        // EventSource consumers ignore comment lines entirely, so this
+        // never reaches the UI — it just stops Cloudflare / proxies from
+        // closing an "idle" stream during legit long verifier passes.
+        pingTimer = setInterval(() => {
           if (request.signal.aborted) return;
-          emit({ type: "status", message: "Still working — keeping the build connected…" });
-        }, 12_000);
+          try {
+            controller.enqueue(encoder.encode(": ping\n\n"));
+          } catch {
+            /* controller may have closed mid-tick */
+          }
+        }, 8_000);
+
+        // User-visible heartbeat: rotates phrasing and only fires after
+        // 14s of silence so it never overwrites real model narration or
+        // file events. Picks the next line in STATUS_ROTATION each tick.
+        statusTimer = setInterval(() => {
+          if (request.signal.aborted) return;
+          if (Date.now() - lastByteAt < 14_000) return;
+          emit({
+            type: "status",
+            message: STATUS_ROTATION[statusIdx % STATUS_ROTATION.length],
+          });
+          statusIdx++;
+        }, 14_000);
 
         const response = await handleGenerateRequestCore(request);
         if (!response.ok || !response.body) {
@@ -1930,6 +2016,8 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           const { value, done } = await reader.read();
           if (done) break;
           controller.enqueue(value);
+          // Inner-stream bytes count as activity too — silences the ticker.
+          lastByteAt = Date.now();
           if (recordEvent) recordEvent(value);
         }
       } catch (e) {
@@ -1943,7 +2031,8 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           raw: raw.slice(0, 500),
         });
       } finally {
-        if (heartbeat) clearInterval(heartbeat);
+        if (pingTimer) clearInterval(pingTimer);
+        if (statusTimer) clearInterval(statusTimer);
         // Always emit a terminal `done` event so resumers know to stop tailing.
         try {
           emit({ type: "done", status: terminalStatus });

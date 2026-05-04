@@ -1,88 +1,115 @@
 ## Goal
 
-Petal currently optimises for speed and sometimes claims "done" before it really is. We want: **deeper builds, honest status, correct charging, healthy Cloud + AI**. Four focused fixes in one pass.
+Match Lovable's ability to run a single user turn for 2+ minutes without breaking the connection or the user's trust, while charging fairly for the actual work done. Three coordinated changes.
 
 ---
 
-## 1. Depth over speed (build quality)
+## 1. Agentic loop (replace one-shot + post-passes with bounded cycles)
 
-Default model today is `google/gemini-3-flash-preview` with no reasoning effort. Flash is fast but shallow on multi-file edits → low verifier pass rate (66.7%, target 85%).
+Today `/api/generate` does **one big completion → verifier tiers → optional 1-round autofix → done**. The continuation tier (`tier-continuation.ts`) and post-stream autofix (`post-stream-autofix.server.ts`) already exist but each runs at most once. We convert this into a bounded **agent loop** owned by the staged orchestrator.
 
-**Changes**
-- In `src/server/ai-provider.server.ts` / `smart-router.server.ts`: promote default for the `generate` feature to `google/gemini-3.1-pro-preview` (or `google/gemini-2.5-pro` as fallback). Keep `flash-preview` only for `discuss` / `triage` / small clarify turns.
-- Pass `reasoning: { effort: "medium" }` for `generate` and `effort: "high"` for explicit "fix" / auto-fix turns.
-- Raise `MAX_AUTO_FIX_ATTEMPTS` from 2 → 3 in `src/routes/builder.tsx` and gate the 3rd attempt behind verifier-still-failing (not just build-failed) so we don't waste credits on infra blips.
-- In the dynamic prompt (`src/server/dynamic-prompts.server.ts`), add a "verify-before-claiming-done" snippet: the model must run through its own checklist (imports resolved, routes wired, RLS present when tables created) before emitting the recap.
+**Loop shape (per user turn):**
 
-**Why this is safe**: pro models cost more per token but produce far fewer follow-up "fix" turns, so net credits/feature usually drop. We ship a tuning lever, not a fixed price hike.
+```text
+cycle 1: plan + write   → verify (esbuild, render-risk, rls, file-budget, local)
+                          if clean → exit
+                          else     → cycle 2
+cycle N: targeted fix   → verify
+                          exit when clean OR limits hit
+```
 
----
+**Limits (hard stops, whichever first):**
+- `MAX_CYCLES = 6` (cycle 1 is the initial write; up to 5 fix cycles)
+- `MAX_WALL_MS = 180_000` (3 min — gives Lovable-like 2m17s headroom)
+- `MAX_TOTAL_COMPLETION_TOKENS = 40_000` per turn
 
-## 2. Billing actually matches work done
+**Cycle picker (which model for which cycle):**
+- Cycle 1: existing `resolveModel(...)` (smart/best/etc.)
+- Fix cycles: prefer `MODEL_FAST` (gemini-3-flash-preview); escalate to `MODEL_BEST` only if the same error class repeats twice or if the verifier flags >5 files
+- Reuses existing `recordAiOutcome` so the smart router learns from cycle outcomes
 
-Today every build charges between `BUILD_FLOOR=1.0` and `BUILD_CAP=6.0` based on tokens, plus a flat 1.0 for any discuss. Two real problems:
-
-- **Failed turns still charge.** If the AI returns no usable files (`no_files_emitted`, `truncated_response`) we still consume the hold credit. That's the wallet-drain users feel.
-- **Auto-fix turns charge separately.** A user pays N times for what they perceive as one request.
-
-**Changes (in `src/routes/api/generate.ts` + `credit-pricing.server.ts`)**
-- On `PipelineError` of kind `no_files_emitted | truncated_response | upstream_timeout | upstream_unavailable`: **refund the hold in full**. Add a `billing_event` row marked `refunded_failed_turn` for audit.
-- Tag auto-fix turns (`is_auto_fix=true` already exists in telemetry) and **discount them 50%** — they're the system's responsibility, not the user's.
-- Add a "max charge per user-initiated turn" cap that includes its auto-fixes (e.g. cap the *aggregate* at `BUILD_CAP` × 1.5), so a runaway 3-fix loop can't cost 18 credits.
-- Surface the actual charge per turn in the chat ("This turn cost 2.4 credits") behind the existing `PreflightCostChip` style, only when > 1.0.
-
----
-
-## 3. Cloud + AI health
-
-User reports Cloud / AI "may not be working as it should." We need a real check, not a guess.
-
-**Changes**
-- Add an admin route `/admin/health` (or extend `admin.index.tsx`) that runs four probes server-side and shows pass/fail + latency:
-  1. Lovable AI gateway: 1-token ping to `google/gemini-3-flash-preview` and `google/gemini-3.1-pro-preview`.
-  2. Lovable Cloud (Supabase Management API): `cloud_status` + `auth.users` count for a known project.
-  3. Builder service (Railway): `GET /healthz` with the same retry policy `builder.server.ts` uses.
-  4. AI Gateway 402/429 rate over last hour (read from `ai_call_log`).
-- Wire the existing `friendly-errors.ts` so when any of these is degraded, *all* builder errors get a calmer banner: "Lovable AI is degraded right now — your turn was not charged" instead of "Petal got confused".
-- For ordinary users: add a passive yellow strip on the builder header when health < 100% in the last 5 min, so they understand it's not their app.
+**Files touched:**
+- `src/server/pipeline/staged-orchestrator.server.ts` — wrap stages in a loop, accumulate `usage` from each sub-call
+- `src/server/pipeline/tier-continuation.ts` — drop the "run once" guard; let the orchestrator decide
+- `src/server/post-stream-autofix.server.ts` — same; expose as a callable cycle, not a one-shot epilogue
+- `src/routes/api/generate.ts` — replace the inline "verify → autofix once → done" block with `runAgenticLoop(...)`
 
 ---
 
-## 4. Honest "Thinking → Working → Done"
+## 2. SSE heartbeats + silent-gap narration
 
-Today the labels exist (`Thinking`, `Working`, `Writing`, `Wrapping up`) but two bugs remain:
+There's already a 12 s heartbeat in the outer wrapper (`generate.ts` line 1909) but it emits the same string repeatedly and **only fires while the inner pipeline holds the stream silent**. Two problems:
+- Repeated identical status feels like a stuck spinner, not progress
+- The new agent loop has 5–10 second silent gaps during verifier/fix cycles where users see nothing
 
-- The recap text the model writes ("I've added X, Y, Z") streams in **before** files are saved and **before** the build is even queued, so users see "I've done it" while the deploy is still pending.
-- `awaitingBuild` clears on *any* build status, including `failed`, so "Done" can flash before the failure card.
+**Changes:**
 
-**Changes (in `src/routes/builder.tsx` + `MarkdownMessage`)**
-- Suppress assistant past-tense recap text from rendering until **all three** are true: `filesSaved`, `triggerBuild` returned a buildId, and the build row's status is `ready`. Until then, replace past-tense verbs in the streamed recap with present-progressive on the client (already half-done in `sanitizeNarrative` — extend it).
-- Introduce a single state machine `petalState ∈ {idle, thinking, working, deploying, done, failed}` derived from existing flags, and drive every chip / banner from it. Removes the current scattered booleans.
-- Only show the "READY — WHAT'S NEXT?" / `NextStepsCard` when `petalState === "done"` AND the latest build is `ready` AND no `friendlyError` is set. Currently it can race in during `awaitingBuild` flicker.
-- Add an explicit "Done" pill with checkmark in the activity card that only appears once the build is `ready`, so users have an unambiguous completion signal.
+a) **Cycle narration events.** Add new `StreamEvent` types:
+   - `cycle_start` — `{ cycle: number, intent: "writing"|"fixing"|"verifying" }`
+   - `cycle_progress` — short human strings like "Checking imports across 12 files…", "Re-running esbuild…", "Patching 2 files Petal noticed had broken JSX…"
+   - `cycle_end` — `{ cycle, outcome: "clean"|"retrying"|"hard-stop" }`
+
+b) **Heartbeat upgrade.** Replace the static "Still working…" with a rotating, intent-aware ticker driven by the current cycle's intent. The interval stays at 12 s but the message reflects the actual phase. Add `: ping\n\n` SSE comments every 8 s as the **transport** keep-alive (passes through proxies without touching the UI).
+
+c) **Activity card consumer.** `BuildActivityCard.tsx` already prioritises model narration → derived narration → file counts. Insert `cycle_progress` strings between path narrations so the card never sits silent for >12 s.
+
+**Files touched:**
+- `src/server/generate.server.ts` — extend `StreamEvent` union
+- `src/routes/api/generate.ts` — emit `cycle_*` events from the loop; rewrite heartbeat
+- `src/components/BuildActivityCard.tsx` — render `cycle_progress` as the live sub-caption when present
 
 ---
 
-## Out of scope
+## 3. Per-turn usage aggregation + redesigned cap
 
-- Re-architecting the pipeline tiers
-- Switching AI providers
-- New billing plans / refund flows beyond per-turn refunds
+Today `priceBuild()` is called **once** with the gateway's `usage` from the single completion. With cycles, we'd either undercharge (sum nothing) or nickel-and-dime (charge per cycle). The fix is to aggregate then charge once.
+
+**Changes to `src/server/credit-pricing.server.ts`:**
+- New helper `priceTurn(usages: GatewayUsage[]): PricedBuild` — sums prompt + completion tokens across all cycles, then runs the same formula
+- Bump `BUILD_CAP` from `6.0` → `12.0` (Lovable's 2.40 for ~2m17s suggests our token-rate math is in the right ballpark; the cap just needs room for legit long turns)
+- Keep `BUILD_FLOOR = 1.0`, `BUILD_HOLD = 1.0`, `MISSING_USAGE_FALLBACK = 1.0`
+
+**Changes to `src/routes/api/generate.ts`:**
+- Replace the single `priceBuild(collected.usage)` call (line 1641) with `priceTurn(turnUsages)` where `turnUsages` is the array the orchestrator returns
+- Internal autofix cycles triggered by Petal's own mistakes (e.g. continuation tier rerunning because cycle 1 truncated) are **excluded** from the user's bill — they go to the same "isAutoFix" exemption already wired in
+- User-requested fix cycles (e.g. model retried because verifier found a real bug in user-requested code) **are** billed
+
+**Telemetry:** `pipeline-telemetry.server.ts` already records per-step events. Add `cycle_count` and `total_completion_tokens` fields to the turn summary so we can watch the cost distribution after rollout.
 
 ---
 
-## Files I'll touch
+## Out of scope (deliberately)
 
-- `src/server/ai-provider.server.ts`, `src/server/smart-router.server.ts` — model defaults + reasoning
-- `src/server/generate.server.ts`, `src/server/dynamic-prompts.server.ts` — verify-before-done snippet
-- `src/routes/api/generate.ts`, `src/server/credit-pricing.server.ts` — refunds + auto-fix discount + aggregate cap
-- `src/routes/admin.index.tsx` (+ new `src/server/health-check.server.ts`) — health probes
-- `src/lib/friendly-errors.ts` — degraded-service messaging
-- `src/routes/builder.tsx`, `src/lib/sanitize-narrative.ts`, `src/components/BuildActivityCard.tsx`, `src/components/NextStepsCard.tsx` — single state machine + honest "done"
+- No model swap. Same Lovable AI gateway, same supported models.
+- No new UI screens. Reuses `BuildActivityCard`, recap line, backend chip.
+- No DB schema changes. `priceTurn` writes the same single `spendCredit` row.
+- No change to `/api/discuss` or `/api/coach` — chat-only paths are still flat.
 
-## Verification before I hand back
+---
 
-1. Trigger a build with a deliberately broken prompt → confirm wallet is refunded and the chat shows "not charged".
-2. Trigger a normal build → confirm chat shows `Thinking → Working → Deploying → Done` in order, recap appears only after `Done`.
-3. Open `/admin/health` → all four probes green; force one off and confirm header banner appears.
-4. Run a 2-file feature add with the new pro default + reasoning and confirm verifier passes on first try (target: > 85%).
+## Risks + mitigations
+
+| Risk | Mitigation |
+|---|---|
+| Loop runs forever on a flaky model | Hard `MAX_CYCLES` and `MAX_WALL_MS`; reaching either emits a friendly "Petal stopped after N attempts — try again or break this into a smaller step" |
+| Cap raise lets a runaway cost a user $$ | Cap is in **credits**, not tokens. 12 credits ≈ same as 2 long discusses today. We'll watch `cycle_count` telemetry for a week before considering further raises |
+| Heartbeat spam in console | Use `: ping` SSE comments (ignored by EventSource consumers) for transport keep-alive; only emit `cycle_progress` when something actually changed |
+| Existing handoff/continuation telemetry double-counts | Keep `requestHandoff` flag for telemetry only (already noted in `tier-continuation.ts`); don't surface to UI |
+
+---
+
+## Rollout
+
+1. Land changes behind `LABS_AGENT_LOOP` flag (already have `loadLabsFlagsForRequest`)
+2. Internal dogfood: I run it on Petal itself + 2 fresh projects
+3. Compare `cycle_count` / total credits / wall time vs current baseline
+4. Flip default to on once p95 wall time < 90 s and p95 credits < 5
+
+---
+
+## What "done" looks like
+
+- A user prompt that today truncates after one big completion now silently runs 2–3 cycles and ships clean code
+- The activity card narrates every 5–10 s through the whole turn — never silent for >12 s
+- Charged credits scale with actual tokens spent across all cycles, capped at 12.0
+- Free internal autofix cycles still cost the user nothing

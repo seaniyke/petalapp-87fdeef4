@@ -106,6 +106,10 @@ type Props = {
   /** Model-written one-liner for the file currently being written
    *  ("Building the photo upload screen"). Overrides path-derived narration. */
   latestNarration?: string;
+  /** Most recent agentic-loop progress string (verifier / fix gap narration).
+   *  Used as a fallback sub-caption so the card never sits silent during
+   *  the 5-10s pauses between file streaming and the next visible event. */
+  latestCycleProgress?: string;
   /** Number of files written so far (during the writing phase). */
   filesWritten?: number;
   /** Ordered list of every file path written so far (deduped). */
@@ -148,6 +152,7 @@ export function BuildActivityCard({
   designCaption,
   latestPath,
   latestNarration,
+  latestCycleProgress,
   filesWritten,
   writtenPaths,
   completedPaths,
@@ -202,11 +207,13 @@ export function BuildActivityCard({
     //   1. Model-written narration for the current file (warmest, most
     //      specific — Petal's actual voice).
     //   2. Path-derived narration (deterministic fallback).
-    //   3. File count (last resort so the line never goes silent).
+    //   3. Agentic-loop cycle progress (verifier / fix gap narration).
+    //   4. File count (last resort so the line never goes silent).
     const modelLine = latestNarration?.trim();
     const derived = pathToNarration(latestPath);
     if (modelLine) subCaption = modelLine;
     else if (derived) subCaption = derived;
+    else if (latestCycleProgress) subCaption = latestCycleProgress;
     else if (filesWritten && filesWritten > 0)
       subCaption = `${filesWritten} file${filesWritten === 1 ? "" : "s"} so far`;
   } else if (currentPhase?.id === "deploying" && typeof deployElapsedSec === "number") {
@@ -227,6 +234,11 @@ export function BuildActivityCard({
     currentPhase.reassurance
   ) {
     subCaption = currentPhase.reassurance;
+  }
+  // Final fallback: if any phase is silent and a cycle progress line
+  // arrived in the last few seconds, surface it instead of going blank.
+  if (!subCaption && isActive && latestCycleProgress) {
+    subCaption = latestCycleProgress;
   }
 
   // ─── Collapsed success state ─────────────────────────────────────────────
