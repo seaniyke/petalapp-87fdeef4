@@ -200,6 +200,28 @@ Hash anchors (#section) are allowed ONLY for in-page scrolling within a single l
 
 In your chat reply: when you scaffold multiple pages, briefly tell the user which pages were created (e.g. "I built /, /about, /services, /pricing, and /contact — say the word and I'll add a /blog or /faq page too"). This teaches users that Petal builds real multi-page sites, not one-pagers.`,
   },
+  // Mobile-app intent. Petal wraps the web app in a Capacitor shell (hidden
+  // from the user) and offloads native builds to a remote runner. The model
+  // should NOT add Capacitor/RN imports speculatively, and should NOT promise
+  // App Store publishing in code — that lives in the MobileAppPanel UI flow,
+  // gated behind a paid plan. Instead: confirm the intent in plain language
+  // and tell the user to click "Set it up" on the chip below the reply.
+  mobileApp: {
+    triggers:
+      /\b(mobile app|native app|ios app|android app|app store|play store|push notif|testflight|apk|ipa|aab|capacitor|react native|wrap (?:as|in)(?: a)? (?:mobile|native) app|turn (?:this|it) into (?:a )?(?:mobile|native|phone) app)\b/i,
+    body: `\n\n[Reinforcement — Mobile app requests]
+If the user asks for a real mobile app (App Store / Play Store presence, push notifications, "install on my phone", signed builds), DO NOT:
+- Install @capacitor/* or react-native packages on your own.
+- Scaffold android/ or ios/ folders.
+- Promise that "I shipped it to the App Store" — you didn't.
+
+Instead:
+- Confirm in plain language that Petal can wrap this app for iOS + Android (cloud builds, no Mac needed).
+- Tell the user to click "Set it up" on the suggestion chip that will appear under your reply — that's where the real flow lives (bundle id, signing, build queue).
+- Continue making the WEB app excellent in this turn (responsive layout, large tap targets ≥44px, no hover-only affordances, viewport meta in head). A great responsive web app IS the mobile app — Capacitor is just the shell.
+
+Why: native shell setup (signing keys, bundle ids, App Store Connect API) is paid-plan-gated infrastructure, not a code change. Trying to do it inline produces broken installs and confused users.`,
+  },
   charts: {
     triggers: /\b(chart|graph|bar chart|line chart|area chart|analytics dashboard|kpi|metric)\b/i,
     body: `\n\n[Reinforcement — Charts]
