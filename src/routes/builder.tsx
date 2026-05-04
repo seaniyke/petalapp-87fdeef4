@@ -3211,8 +3211,15 @@ function Builder() {
                                 reason={intent.reason}
                                 needsBackendFirst={needsBackendFirst}
                                 onOpenPayments={() => {
-                                  setSettingsScrollTo("payments");
-                                  setSettingsOpen(true);
+                                  const prompt = intent.reason
+                                    ? `Enable payments for "${intent.reason}" using Lovable's built-in payments. Recommend the right provider and set it up end-to-end — no manual API keys.`
+                                    : `Enable payments for this project using Lovable's built-in payments. Recommend the right provider and set it up end-to-end — no manual API keys.`;
+                                  setDismissedPaymentChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  });
+                                  void send(prompt, { forceBuild: true });
                                 }}
                                 onSetupBackend={() => {
                                   setDismissedBackendChips((prev) => {
