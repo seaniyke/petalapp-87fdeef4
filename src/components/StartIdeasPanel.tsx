@@ -106,6 +106,20 @@ const IDEAS: StartIdea[] = [
     Icon: Music,
     accent: "lilac",
   },
+  {
+    title: "Mobile habit tracker (iOS + Android)",
+    prompt:
+      "A native-feel mobile habit tracker I can ship to the App Store and Play Store — bottom tab bar, daily streaks, push notification reminders, and a clean splash screen. Build it as a real iOS and Android app.",
+    Icon: Smartphone,
+    accent: "pink",
+  },
+  {
+    title: "Mobile gratitude journal",
+    prompt:
+      "A native-feel mobile gratitude journal app — write a daily entry, see past entries in a calendar, get a gentle evening push notification. Ship as iOS and Android.",
+    Icon: Bell,
+    accent: "mint",
+  },
 ];
 
 const ACCENT_BG: Record<StartIdea["accent"], string> = {
