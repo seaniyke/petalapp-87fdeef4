@@ -442,6 +442,20 @@ export type StreamEvent =
    * card's sub-caption, overriding the path-derived fallback.
    */
   | { type: "narration"; path: string; text: string }
+  /**
+   * Agentic-loop cycle markers. A "cycle" is one round of write-or-fix +
+   * verify within a single user turn. Cycle 1 is the initial generation;
+   * cycles 2..N are bounded fix passes. The activity card uses these to
+   * keep the sub-caption alive during otherwise-silent verifier gaps.
+   *
+   *   cycle_start    — fired when a new round begins
+   *   cycle_progress — short, human "what's happening right now" string;
+   *                    can fire many times per cycle
+   *   cycle_end      — fired when the round resolves
+   */
+  | { type: "cycle_start"; cycle: number; intent: "writing" | "fixing" | "verifying" }
+  | { type: "cycle_progress"; cycle: number; message: string }
+  | { type: "cycle_end"; cycle: number; outcome: "clean" | "retrying" | "hard-stop" }
   | {
       type: "result";
       files: ProjectFile[];
