@@ -1492,7 +1492,7 @@ function Builder() {
       // follow-up chips to the assistant message and on error suggestions.
       let resultSuggestions: string[] = [];
       let resultVerdict: string | undefined;
-      let resultHandoff: ChatMessage["handoff"] | undefined;
+      // (resultHandoff removed along with the Continue-building chip.)
       let streamError: string | null = null;
       let streamErrorKind: import("@/server/generate.server").ErrorKind | undefined;
       let streamErrorRaw: string | undefined;
