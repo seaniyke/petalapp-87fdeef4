@@ -80,8 +80,8 @@ export async function runContinuationTier(args: RunArgs): Promise<ContinuationTi
       message: "Continuation pass errored — falling back to autofix",
       ts: Date.now(),
     });
-    // On thrown error, original behavior also did NOT set handoffReason —
-    // keep that exact contract.
+    // On thrown error, do NOT flag requestHandoff — keep the original
+    // contract so error-path telemetry isn't double-counted.
     return { files, requestHandoff: false, emit };
   }
 }
