@@ -207,11 +207,13 @@ export function BuildActivityCard({
     //   1. Model-written narration for the current file (warmest, most
     //      specific — Petal's actual voice).
     //   2. Path-derived narration (deterministic fallback).
-    //   3. File count (last resort so the line never goes silent).
+    //   3. Agentic-loop cycle progress (verifier / fix gap narration).
+    //   4. File count (last resort so the line never goes silent).
     const modelLine = latestNarration?.trim();
     const derived = pathToNarration(latestPath);
     if (modelLine) subCaption = modelLine;
     else if (derived) subCaption = derived;
+    else if (latestCycleProgress) subCaption = latestCycleProgress;
     else if (filesWritten && filesWritten > 0)
       subCaption = `${filesWritten} file${filesWritten === 1 ? "" : "s"} so far`;
   } else if (currentPhase?.id === "deploying" && typeof deployElapsedSec === "number") {
