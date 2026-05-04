@@ -26,6 +26,9 @@ import {
   Lock,
   Plus,
   Sparkles,
+  Smartphone,
+  Apple,
+  Bot,
 } from "lucide-react";
 
 type ProjectFilter = "all" | "recent" | "public";
@@ -899,6 +902,95 @@ function Landing() {
         <>
       <section id="showcase" className="relative -mt-8 px-4 pb-16 sm:-mt-16 sm:px-6 sm:pb-24">
         <SampleAppShowcase />
+      </section>
+
+      {/* Mobile — Ship to iOS & Android */}
+      <section id="mobile" className="px-4 py-16 sm:px-6 sm:py-24">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-12">
+            <div>
+              <p className="text-sm font-medium uppercase tracking-wider text-primary">
+                Mobile, included
+              </p>
+              <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">
+                Ship to the App Store and Play Store.
+              </h2>
+              <p className="mt-4 text-base text-muted-foreground sm:text-lg">
+                Every Petal app is mobile-ready. When you're happy with it, ask
+                Petal to package it as a real iOS or Android app — signed,
+                store-ready, no Mac or Xcode required. Builds run in the cloud
+                and land in your project as a download link.
+              </p>
+              <ul className="mt-6 space-y-3 text-sm">
+                <li className="flex items-start gap-3">
+                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-coral/30">
+                    <Apple className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <strong>iOS .ipa</strong> — TestFlight-ready, signed with your
+                    Apple credentials we keep encrypted.
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-mint">
+                    <Bot className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <strong>Android .aab / .apk</strong> — upload straight to
+                    Google Play or sideload to test.
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-butter">
+                    <Smartphone className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <strong>Native feel</strong> — push notifications, app icon,
+                    splash screen, safe-area, bottom tabs.
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Phone mockup */}
+            <div className="relative mx-auto w-full max-w-[280px]">
+              <div className="relative rounded-[2.5rem] border-[10px] border-foreground/90 bg-background shadow-[var(--shadow-soft)]">
+                <div className="absolute left-1/2 top-2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-foreground/90" />
+                <div className="aspect-[9/19] overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-coral/20 via-butter to-mint/40 p-4 pt-10">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-semibold">Your app</div>
+                    <div className="h-2 w-2 rounded-full bg-coral" />
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <div className="h-20 rounded-2xl bg-background/80 p-3">
+                      <div className="h-2 w-1/2 rounded bg-foreground/20" />
+                      <div className="mt-2 h-2 w-3/4 rounded bg-foreground/10" />
+                      <div className="mt-2 h-2 w-2/3 rounded bg-foreground/10" />
+                    </div>
+                    <div className="h-16 rounded-2xl bg-background/80 p-3">
+                      <div className="h-2 w-2/5 rounded bg-foreground/20" />
+                      <div className="mt-2 h-2 w-3/4 rounded bg-foreground/10" />
+                    </div>
+                    <div className="h-16 rounded-2xl bg-background/80 p-3">
+                      <div className="h-2 w-1/3 rounded bg-foreground/20" />
+                      <div className="mt-2 h-2 w-1/2 rounded bg-foreground/10" />
+                    </div>
+                  </div>
+                  {/* Bottom tab bar */}
+                  <div className="absolute inset-x-4 bottom-4 flex items-center justify-around rounded-2xl bg-background/90 px-4 py-2 backdrop-blur">
+                    <div className="h-5 w-5 rounded-md bg-coral/60" />
+                    <div className="h-5 w-5 rounded-md bg-foreground/15" />
+                    <div className="h-5 w-5 rounded-md bg-foreground/15" />
+                    <div className="h-5 w-5 rounded-md bg-foreground/15" />
+                  </div>
+                </div>
+              </div>
+              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-foreground px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-background">
+                Built with Petal
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Features */}

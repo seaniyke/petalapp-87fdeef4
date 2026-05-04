@@ -1,4 +1,4 @@
-import { Sparkles, Calendar, ListTodo, Camera, Users, Coffee, Music, ChartBar, Layers, BookOpen, Briefcase, Building2 } from "lucide-react";
+import { Sparkles, Calendar, ListTodo, Camera, Users, Coffee, Music, ChartBar, Layers, BookOpen, Briefcase, Building2, Smartphone, Bell } from "lucide-react";
 
 /**
  * Curated starter prompts surfaced under the landing-page composer.
@@ -105,6 +105,20 @@ const IDEAS: StartIdea[] = [
       "A playful 'pick your mood' page that recommends a playlist style — 4 mood tiles, a generated playlist name, and a vibe description.",
     Icon: Music,
     accent: "lilac",
+  },
+  {
+    title: "Mobile habit tracker (iOS + Android)",
+    prompt:
+      "A native-feel mobile habit tracker I can ship to the App Store and Play Store — bottom tab bar, daily streaks, push notification reminders, and a clean splash screen. Build it as a real iOS and Android app.",
+    Icon: Smartphone,
+    accent: "pink",
+  },
+  {
+    title: "Mobile gratitude journal",
+    prompt:
+      "A native-feel mobile gratitude journal app — write a daily entry, see past entries in a calendar, get a gentle evening push notification. Ship as iOS and Android.",
+    Icon: Bell,
+    accent: "mint",
   },
 ];
 

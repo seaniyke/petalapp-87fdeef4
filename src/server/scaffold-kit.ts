@@ -20,6 +20,7 @@ import { EXAMPLES_PACK } from "./examples-pack";
 import { PETAL_SOURCE_PLUGIN } from "./petal-source-plugin";
 import { KIT_BLOCK_FILES } from "./scaffold-kit-blocks";
 import { KIT_BLOCK_FILES_2 } from "./scaffold-kit-blocks-2";
+import { KIT_BLOCK_FILES_MOBILE } from "./scaffold-kit-mobile";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
@@ -3712,6 +3713,10 @@ export const KIT_FILES: KitFile[] = [
   // section variants + page-assembly examples (saas/editorial/ecommerce/
   // agency/app-shell/blog) showing the model how to compose full pages.
   ...KIT_BLOCK_FILES_2,
+  // Mobile-feel primitives: SafeArea/MobileHeader/BottomTabBar/PullToRefresh
+  // + MobileScreen wrapper + ExampleMobileApp shell. Use when the user asks
+  // for a native iOS/Android app (Petal ships as Capacitor under the hood).
+  ...KIT_BLOCK_FILES_MOBILE,
 ];
 
 /**
