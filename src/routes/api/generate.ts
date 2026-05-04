@@ -1911,7 +1911,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // Announce the turn id FIRST so the client can persist it locally
         // and use it to reconnect if the tab/phone is closed mid-build.
         if (recorder) {
-          emit({ type: "turn_id", turnId: recorder.turnId } as unknown as StreamEvent);
+          emit({ type: "turn_id", turnId: recorder.turnId });
         }
         emit({ type: "phase", phase: "thinking" });
         emit({ type: "status", message: "Starting your build…" });
@@ -1955,7 +1955,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         if (heartbeat) clearInterval(heartbeat);
         // Always emit a terminal `done` event so resumers know to stop tailing.
         try {
-          emit({ type: "done", status: terminalStatus } as unknown as StreamEvent);
+          emit({ type: "done", status: terminalStatus });
         } catch {
           /* controller may already be closed */
         }
