@@ -3477,6 +3477,7 @@ function Builder() {
                 completedPaths={completedPaths}
                 finalFileLines={finalFileLines}
                 timelineEvents={timelineEvents}
+                creditsCharged={lastBuildCredits}
                 fileChanges={fileChanges}
                 deployElapsedSec={deployElapsed}
                 onStop={busy ? stopGeneration : undefined}
