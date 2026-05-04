@@ -2257,13 +2257,17 @@ function Builder() {
       { role: "assistant", content: "↩️ Restored a previous version." },
     ]);
     setHistoryKey((k) => k + 1);
+    setAwaitingBuild(true);
     void triggerBuild(project.id)
       .then(async (build) => {
         startedBuildIdsRef.current.add(build.buildId);
         const r = await getProject(project.id);
         if (r) setProject(r);
       })
-      .catch((err: unknown) => console.error("triggerBuild failed", err));
+      .catch((err: unknown) => {
+        setAwaitingBuild(false);
+        console.error("triggerBuild failed", err);
+      });
   }
 
   const activeContent = files.find((f) => f.path === activeFile)?.content ?? "";
