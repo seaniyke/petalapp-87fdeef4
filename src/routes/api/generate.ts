@@ -1614,6 +1614,89 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           );
         }
 
+        // Agentic loop (Labs: agent_loop). Bounded multi-cycle pass that
+        // re-runs verifiers and feeds remaining issues back to the autofix
+        // model up to N times. Lets a single turn legitimately spend 2-3+
+        // minutes fixing its own mistakes without the user manually
+        // pressing "try to fix" — same shape as Lovable's long agent turns.
+        //
+        // Hard limits (defensive — a runaway turn must NOT exist):
+        //   - up to 3 extra cycles (cycles 3, 4, 5 in the SSE numbering)
+        //   - 90s wall-clock budget across all extra cycles combined
+        //   - stops the moment local + esbuild verifiers both pass
+        //   - stops if a cycle makes zero file changes (model gave up)
+        //
+        // Billing: cycles 3..N push usage into `agentLoopUsages` and are
+        // folded into the single user charge via priceTurn(). Cycle 2 (the
+        // default polish pass above) is still on Petal's tab.
+        if (labsFlags.agent_loop && !body.isAutoFix) {
+          const AGENT_LOOP_MAX_CYCLES = 3;
+          const AGENT_LOOP_WALL_MS = 90_000;
+          const loopT0 = Date.now();
+          const { verifyFilesLocal: lvFn } = await import("@/server/local-verifier");
+          for (let cyc = 0; cyc < AGENT_LOOP_MAX_CYCLES; cyc++) {
+            if (Date.now() - loopT0 > AGENT_LOOP_WALL_MS) {
+              console.log("[agent-loop] wall-time exhausted, stopping");
+              break;
+            }
+            const reverifyPaths = nextFiles.map((f) => f.path);
+            const localAgain = lvFn(nextFiles, reverifyPaths);
+            const esbAgain = await verifyFilesEsbuild(nextFiles, reverifyPaths);
+            const stillBad = [
+              ...localAgain.issues,
+              ...esbAgain.issues.map((i) => ({
+                path: i.path,
+                kind: "parse" as const,
+                detail: `${i.message} (line ${i.line}:${i.column})`,
+              })),
+            ];
+            if (stillBad.length === 0) {
+              console.log(`[agent-loop] converged after ${cyc} extra cycle(s)`);
+              break;
+            }
+            const cycleNum = 3 + cyc;
+            controller.enqueue(
+              encoder.encode(sse({ type: "cycle_start", cycle: cycleNum, intent: "fixing" })),
+            );
+            controller.enqueue(
+              encoder.encode(
+                sse({
+                  type: "cycle_progress",
+                  cycle: cycleNum,
+                  message: `Round ${cycleNum}: ${stillBad.length} issue${stillBad.length === 1 ? "" : "s"} remaining — refining.`,
+                }),
+              ),
+            );
+            const beforeHash = nextFiles.map((f) => f.path + ":" + f.content.length).join("|");
+            try {
+              const fixOut = await runPostStreamAutofix(nextFiles, stillBad);
+              nextFiles = fixOut.files;
+              if (fixOut.result.usage) agentLoopUsages.push(fixOut.result.usage);
+              const afterHash = nextFiles.map((f) => f.path + ":" + f.content.length).join("|");
+              const madeProgress = afterHash !== beforeHash;
+              controller.enqueue(
+                encoder.encode(
+                  sse({
+                    type: "cycle_end",
+                    cycle: cycleNum,
+                    outcome: madeProgress ? "retrying" : "hard-stop",
+                  }),
+                ),
+              );
+              if (!madeProgress) {
+                console.log(`[agent-loop] cycle ${cycleNum} made no changes, stopping`);
+                break;
+              }
+            } catch (e) {
+              console.warn(`[agent-loop] cycle ${cycleNum} threw:`, e);
+              controller.enqueue(
+                encoder.encode(sse({ type: "cycle_end", cycle: cycleNum, outcome: "hard-stop" })),
+              );
+              break;
+            }
+          }
+        }
+
         // Phase 4: resolve `petal-image://...` placeholders into real
         // AI-generated images uploaded to the public petal-images
         // bucket. Failures fall back to picsum so the build never
