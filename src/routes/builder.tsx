@@ -231,18 +231,17 @@ function Builder() {
       to: "/builder",
       search: {
         ...(searchId ? { id: searchId } : {}),
-        ...(initialPrompt ? { prompt: initialPrompt } : {}),
         ...(initialMode ? { mode: initialMode } : {}),
         ...(attachKey ? { attachKey } : {}),
       },
       replace: true,
     });
-  }, [topup, navigate, searchId, initialPrompt, initialMode, attachKey]);
+  }, [topup, navigate, searchId, initialMode, attachKey]);
 
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
-  const [input, setInput] = useState(initialPrompt ?? "");
+  const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [bootstrapping, setBootstrapping] = useState(true);
   const [error, setError] = useState<string | null>(null);
