@@ -35,6 +35,7 @@ import {
 } from "@/lib/projects";
 import { DomainsSection } from "@/components/DomainsSection";
 import { EmailSection } from "@/components/EmailSection";
+import { MobileAppPanel } from "@/components/MobileAppPanel";
 import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { LabsSection } from "@/components/LabsSection";
 import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
