@@ -521,7 +521,7 @@ export const upsertSigningProfile = createServerFn({ method: "POST" })
 
     const { data: row, error } = await supabaseAdmin
       .from("mobile_signing_profiles")
-      .upsert(update, { onConflict: "project_id" })
+      .upsert(update as never, { onConflict: "project_id" })
       .select("id")
       .single();
     if (error || !row) {
