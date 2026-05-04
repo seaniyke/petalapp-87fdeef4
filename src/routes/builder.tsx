@@ -3248,6 +3248,33 @@ function Builder() {
                               />
                             );
                           })()}
+                        {/* Add-page suggestion — nudges users toward true
+                            multi-page sites (separate routes, real SSR/SEO)
+                            when their message implies extra pages. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !petalIsWorking &&
+                          !dismissedAddPageChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectAddPageIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            return (
+                              <AddPageSuggestionChip
+                                reason={intent.reason}
+                                onPrefill={(p) => setInput(p)}
+                                onDismiss={() =>
+                                  setDismissedAddPageChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
                         {/* AI-feature suggestion — pitches the gateway so
                             Petal doesn't ask for an OpenAI key. */}
                         {project &&
