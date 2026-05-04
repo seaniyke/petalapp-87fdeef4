@@ -617,9 +617,9 @@ async function runFinalParseGuard(
   changedPaths: string[],
   controller: ReadableStreamDefaultController<Uint8Array>,
   encoder: TextEncoder,
-): Promise<ProjectFile[]> {
+): Promise<{ ok: true; files: ProjectFile[] } | { ok: false; detail: string }> {
   const finalVerdict = await verifyFilesEsbuild(files, changedPaths);
-  if (finalVerdict.ok) return files;
+  if (finalVerdict.ok) return { ok: true, files };
 
   console.warn(
     `[final-parse-guard] ${finalVerdict.issues.length} issue(s) after autofix:`,
@@ -644,9 +644,12 @@ async function runFinalParseGuard(
       .slice(0, 3)
       .map((i) => `${i.path}:${i.line}:${i.column} ${i.message}`)
       .join("; ");
-    throw new Error(`Final syntax check failed after repair: ${detail}`);
+    // Don't throw — let the caller revert to the prior good files
+    // and reply conversationally. A failed final-parse is NOT an
+    // infra error; it just means this turn's edits weren't safe.
+    return { ok: false, detail };
   }
-  return repaired;
+  return { ok: true, files: repaired };
 }
 
 async function handleGenerateRequestCore(request: Request): Promise<Response> {
