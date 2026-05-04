@@ -882,23 +882,9 @@ function Builder() {
       // else-if branch below and never reach here.
       setFriendlyError(null);
       // Also clear any persisted build-failure cards still pinned in the
-      // message thread from a previous failed attempt — showing
-      // "Petal couldn't auto-fix this one" or "Build service is briefly
-      // unavailable" right above "Your app is live" is contradictory UX
-      // (see image 2 of the user's bug report).
-      setMessages((prev) =>
-        prev.filter(
-          (m) =>
-            !(
-              m.role === "assistant" &&
-              m.error &&
-              (m.error.title?.startsWith("Petal couldn't auto-fix") ||
-                m.error.title?.startsWith("Build service") ||
-                m.error.title?.startsWith("A styling rule") ||
-                m.error.title?.startsWith("Publishing is taking"))
-            ),
-        ),
-      );
+      // message thread from a previous failed attempt — showing a failure card
+      // right above "Your app is live" is contradictory UX.
+      setMessages(removeBuildFailureCards);
       // Note: we used to surface a "Changes ready to publish" toast here, but
       // it fired on every refresh / build completion and was more noise than
       // signal. Users can publish from the header button when ready.
@@ -942,12 +928,13 @@ function Builder() {
         return () => clearTimeout(t);
       }
       if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
-      // Don't surface the "couldn't auto-fix" card while Petal is actively
-      // working — a run is in flight (manual or auto) and may still resolve
-      // the issue. Only show the manual fallback once Petal is idle.
-      if (busy) return;
-      // Manual fallback after we've burned both auto-attempts, or when the
-      // failed build was already present when the user opened the project.
+      // Don't surface the manual-fix card while Petal is actively working or
+      // while a deploy is still visible. The failed build row can arrive during
+      // the transition into a retry/new deploy; showing that card beside
+      // "Putting your app online…" is the exact confusing state we're avoiding.
+      if (busy || activityVisible) return;
+      // Manual fallback after we've burned auto-attempts, or when the failed
+      // build was already present when the user opened the project.
       persistFriendlyError(friendlyBuildFailure(effectiveBuildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
