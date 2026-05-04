@@ -120,6 +120,7 @@ import { EnableEmailSuggestionChip } from "@/components/EnableEmailSuggestionChi
 import { EnablePaymentsSuggestionChip } from "@/components/EnablePaymentsSuggestionChip";
 import { EnableSeoSuggestionChip } from "@/components/EnableSeoSuggestionChip";
 import { AddPageSuggestionChip } from "@/components/AddPageSuggestionChip";
+import { EnableMobileSuggestionChip } from "@/components/EnableMobileSuggestionChip";
 import { EnableAnalyticsSuggestionChip } from "@/components/EnableAnalyticsSuggestionChip";
 import { EnableAiFeatureSuggestionChip } from "@/components/EnableAiFeatureSuggestionChip";
 import { EnableStorageSuggestionChip } from "@/components/EnableStorageSuggestionChip";
@@ -137,6 +138,7 @@ import { detectEmailIntentInTurn } from "@/lib/email-intent";
 import { detectPaymentIntentInTurn } from "@/lib/payment-intent";
 import { detectSeoIntentInTurn } from "@/lib/seo-intent";
 import { detectAddPageIntentInTurn } from "@/lib/add-page-intent";
+import { detectMobileIntentInTurn } from "@/lib/mobile-intent";
 import { detectAnalyticsIntentInTurn } from "@/lib/analytics-intent";
 import { detectAiFeatureIntentInTurn } from "@/lib/ai-feature-intent";
 import { detectStorageIntentInTurn } from "@/lib/storage-intent";
@@ -392,6 +394,7 @@ function Builder() {
     | "storage"
     | "realtime"
     | "cron"
+    | "mobile"
     | null
   >(null);
   // Mobile builder menu (bottom sheet) + dependent dialogs.
@@ -427,6 +430,9 @@ function Builder() {
     () => new Set(),
   );
   const [dismissedAddPageChips, setDismissedAddPageChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedMobileChips, setDismissedMobileChips] = useState<Set<number>>(
     () => new Set(),
   );
   const [dismissedAnalyticsChips, setDismissedAnalyticsChips] = useState<Set<number>>(
@@ -3267,6 +3273,36 @@ function Builder() {
                                 onPrefill={(p) => setInput(p)}
                                 onDismiss={() =>
                                   setDismissedAddPageChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
+                        {/* Mobile-app suggestion — paid-plan gated. Opens the
+                            project settings sheet to the (forthcoming) Mobile
+                            section. Free users see Upgrade, never a top-up. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !petalIsWorking &&
+                          !dismissedMobileChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectMobileIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            return (
+                              <EnableMobileSuggestionChip
+                                reason={intent.reason}
+                                onOpenMobile={() => {
+                                  setSettingsScrollTo("mobile");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={() =>
+                                  setDismissedMobileChips((prev) => {
                                     const next = new Set(prev);
                                     next.add(i);
                                     return next;
