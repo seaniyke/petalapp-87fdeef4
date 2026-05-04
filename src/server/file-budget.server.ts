@@ -135,68 +135,7 @@ export function enforceFileBudgets(
   return out;
 }
 
-/**
- * Build the human-readable handoff message + suggested next-turn prompt
- * shown in the "Continue building" chip when Layer B fires.
- */
-export function buildHandoffPrompt(
-  reason:
-    | "oversize_files"
-    | "incomplete_turn"
-    | "large_changeset"
-    | "unrecoverable_turn",
-  rejections: FileBudgetIssue[],
-  detected?: {
-    hallucinatedPackages?: string[];
-    truncatedPaths?: string[];
-  },
-): { message: string; suggestedPrompt: string } {
-  if (reason === "oversize_files" && rejections.length > 0) {
-    const names = rejections
-      .map((r) => r.path.split("/").pop() ?? r.path)
-      .slice(0, 3)
-      .join(", ");
-    return {
-      message: `Your ${names} got large — let's finish in the next message so nothing breaks.`,
-      suggestedPrompt: `Continue building. Split ${names} into smaller sub-components (Hero, Features, CTA, Footer, etc.) under src/components/ and import them. Keep every file under 180 lines.`,
-    };
-  }
-  if (reason === "unrecoverable_turn") {
-    const pkgs = detected?.hallucinatedPackages ?? [];
-    const truncs = detected?.truncatedPaths ?? [];
-    const bits: string[] = [];
-    if (pkgs.length) {
-      bits.push(
-        `removed ${pkgs.length} unknown package${pkgs.length === 1 ? "" : "s"} (${pkgs.slice(0, 3).join(", ")})`,
-      );
-    }
-    if (truncs.length) {
-      const names = truncs
-        .map((p) => p.split("/").pop() ?? p)
-        .slice(0, 3)
-        .join(", ");
-      bits.push(`one file got cut off (${names})`);
-    }
-    const detail = bits.length ? ` — ${bits.join(" and ")}` : "";
-    const fixHint = pkgs.length
-      ? `Replace any usage of ${pkgs.slice(0, 3).join(", ")} with native React + existing UI primitives. `
-      : "";
-    const truncHint = truncs.length
-      ? `Re-emit the full contents of ${truncs.slice(0, 3).map((p) => p.split("/").pop() ?? p).join(", ")} from scratch. `
-      : "";
-    return {
-      message: `I had to stop early${detail}. Tap Continue and I'll finish cleanly.`,
-      suggestedPrompt: `Continue and fix the issues from the last turn. ${fixHint}${truncHint}Keep every file under 180 lines.`,
-    };
-  }
-  if (reason === "incomplete_turn") {
-    return {
-      message: "I had to stop early to keep things stable — pick up where we left off?",
-      suggestedPrompt: "Continue from where you left off — finish any incomplete pages or components.",
-    };
-  }
-  return {
-    message: "That was a big change — let's keep going in the next message.",
-    suggestedPrompt: "Continue building from here. Add the next page or polish what we just shipped.",
-  };
-}
+// `buildHandoffPrompt` was removed along with the Continue-building chip.
+// File-budget enforcement still runs (oversize files are reverted via
+// `enforceFileBudgets`), it just no longer emits a user-facing handoff.
+
