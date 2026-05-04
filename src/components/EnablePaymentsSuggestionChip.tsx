@@ -58,7 +58,7 @@ export function EnablePaymentsSuggestionChip({
     <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5">
       <CreditCard className="h-3.5 w-3.5 shrink-0 text-primary" />
       <span className="min-w-0 flex-1 text-[12px] leading-snug text-foreground">
-        Take payments{reason ? ` for "${reason}"` : ""} — Petal scaffolds checkout and stores your provider key securely.
+        Take payments{reason ? ` for "${reason}"` : ""} — Petal sets up checkout with built-in payments. No API keys needed.
       </span>
       <button
         type="button"
