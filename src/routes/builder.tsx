@@ -1146,8 +1146,8 @@ function Builder() {
   // silently reattach to /api/turns/$id/events and rehydrate the streaming
   // bubble from the exact event seq we last saw. No user action required.
   useEffect(() => {
-    const pid = project?.id;
-    if (!pid || bootstrapping) return;
+    if (!project?.id || bootstrapping) return;
+    const pid: string = project.id;
     let cancelled = false;
     let controller: AbortController | null = null;
 
