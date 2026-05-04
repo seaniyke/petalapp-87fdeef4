@@ -79,7 +79,7 @@ export const Route = createFileRoute("/api/public/mobile/callback")({
 
         const { error } = await supabaseAdmin
           .from("mobile_builds")
-          .update(update)
+          .update(update as never)
           .eq("codemagic_build_id", codemagicBuildId);
         if (error) {
           console.error("[mobile/callback] update failed", error);
