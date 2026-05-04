@@ -291,9 +291,14 @@ export const WRITE_PROJECT_TOOL = {
             type: "object",
             properties: {
               path: { type: "string", description: "Relative file path, e.g. index.html" },
+              narration: {
+                type: "string",
+                description:
+                  "ONE short, warm, present-continuous sentence (max ~12 words, no trailing period) describing what this file is for, written in your own voice as if speaking to the user. Examples: 'Building the photo upload screen', 'Wiring up the analyze endpoint', 'Setting up the database tables'. Streamed live to the user the moment you finish writing this field, BEFORE the file content streams. ALWAYS place this field BEFORE `content` so the user hears what's coming before the body arrives.",
+              },
               content: { type: "string", description: "Full text content of the file." },
             },
-            required: ["path", "content"],
+            required: ["path", "narration", "content"],
             additionalProperties: false,
           },
         },
