@@ -1,4 +1,4 @@
-import { Sparkles, Calendar, ListTodo, Camera, Users, Coffee, Music, ChartBar, Layers, BookOpen, Briefcase, Building2, Smartphone, Bell } from "lucide-react";
+import { Sparkles, Calendar, ListTodo, Camera, Users, Coffee, Music, ChartBar, Layers, BookOpen, Briefcase, Building2, Smartphone, Bell, CreditCard } from "lucide-react";
 
 /**
  * Curated starter prompts surfaced under the landing-page composer.
@@ -63,6 +63,13 @@ const IDEAS: StartIdea[] = [
       "A small SaaS marketing site with proper pages: home, /features, /pricing (3 tiers), /faq, and a /blog index with /blog/$slug detail routes. Modern dev-tool vibe.",
     Icon: Building2,
     accent: "sky",
+  },
+  {
+    title: "Full SaaS product (auth + billing)",
+    prompt:
+      "A complete SaaS product: marketing landing page, email + Google sign-in, a logged-in dashboard with user-scoped data (RLS), a 3-tier Stripe subscription paywall, account settings, and transactional emails. Build the smallest end-to-end slice first — auth, paywall, and one core feature working together.",
+    Icon: CreditCard,
+    accent: "lilac",
   },
   {
     title: "Pomodoro timer",
