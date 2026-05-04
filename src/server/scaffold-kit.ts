@@ -3713,6 +3713,10 @@ export const KIT_FILES: KitFile[] = [
   // section variants + page-assembly examples (saas/editorial/ecommerce/
   // agency/app-shell/blog) showing the model how to compose full pages.
   ...KIT_BLOCK_FILES_2,
+  // Mobile-feel primitives: SafeArea/MobileHeader/BottomTabBar/PullToRefresh
+  // + MobileScreen wrapper + ExampleMobileApp shell. Use when the user asks
+  // for a native iOS/Android app (Petal ships as Capacitor under the hood).
+  ...KIT_BLOCK_FILES_MOBILE,
 ];
 
 /**
