@@ -56,7 +56,6 @@ import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import {
   checkFileBudgets,
   enforceFileBudgets,
-  buildHandoffPrompt,
   type FileBudgetIssue,
 } from "@/server/file-budget.server";
 import { pickBestModel } from "@/server/smart-router.server";
