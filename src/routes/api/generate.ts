@@ -493,6 +493,46 @@ type ParsedProjectPayload = {
   recap?: string;
 };
 
+/**
+ * Emit a conversational AI reply WITHOUT failing the turn — used as the
+ * deterministic fallback whenever generation can't safely produce edits.
+ *
+ * The user sees a normal Petal message with a friendly explanation and
+ * suggested next step (NOT a red error card). No credits are charged
+ * because no files were written / changed. Cleanly closes the SSE stream.
+ *
+ * Use this for:
+ *   - patch_files emitted with empty ops (model said "nothing to change")
+ *   - both stream + structured retry returned no usable edits
+ *   - final-parse-guard couldn't repair after autofix
+ *
+ * Anything that's a genuine infra failure (upstream timeout, gateway 5xx,
+ * provider auth) still throws and goes through the outer humanized error
+ * path — those are real errors and the error card is appropriate there.
+ */
+function emitConversationalFallback(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+  args: { summary: string; files: ProjectFile[] },
+): void {
+  controller.enqueue(
+    encoder.encode(sse({ type: "summary_delta", delta: args.summary })),
+  );
+  controller.enqueue(
+    encoder.encode(
+      sse({
+        type: "result",
+        files: args.files,
+        summary: args.summary,
+        plan: undefined,
+        recap: undefined,
+        creditsCharged: 0,
+      }),
+    ),
+  );
+  controller.close();
+}
+
 function parseCollectedProject(collected: ParsedTool, isInitial: boolean): ParsedProjectPayload {
   if (isTruncatedFinishReason(collected.finishReason)) {
     throw new Error(
