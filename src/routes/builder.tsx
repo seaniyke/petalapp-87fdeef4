@@ -576,13 +576,32 @@ function Builder() {
   const isDeploying = effectiveBuildSnap?.status === "pending" || effectiveBuildSnap?.status === "building";
   const isLive = effectiveBuildSnap?.status === "ready";
 
+  // Bridge state for the brief gap between "generation finished" and the
+  // moment a fresh build row first shows up in `useBuildActivity`. Without
+  // this, `petalIsWorking` flips false for ~hundreds of ms and the
+  // "READY — WHAT'S NEXT?" card flashes in, then disappears the instant
+  // `isDeploying` becomes true. Set true when we kick off triggerBuild,
+  // cleared as soon as the build row is observed in any state, with a
+  // safety timeout so a missing row never wedges the UI.
+  const [awaitingBuild, setAwaitingBuild] = useState(false);
+  useEffect(() => {
+    if (!awaitingBuild) return;
+    if (effectiveBuildSnap?.status) {
+      setAwaitingBuild(false);
+      return;
+    }
+    const t = window.setTimeout(() => setAwaitingBuild(false), 10000);
+    return () => window.clearTimeout(t);
+  }, [awaitingBuild, effectiveBuildSnap?.status]);
+
   // Single source of truth for "Petal is currently working." Used to gate
   // EVERY actionable chip/card so users never see a button while a turn or
   // deploy is still in flight (matches Lovable's behavior). Covers:
   //   - busy: AI generation streaming
   //   - discussBusy: Discuss/chat-only reply streaming
   //   - isDeploying: Cloudflare deploy not yet ready/failed
-  const petalIsWorking = busy || discussBusy || isDeploying;
+  //   - awaitingBuild: post-generation, pre-deploy bridge (no flash)
+  const petalIsWorking = busy || discussBusy || isDeploying || awaitingBuild;
 
   // Long-wait escalation for the deploy phase. We escalate copy at 60s/90s
   // and surface a friendly "deploy stalled" card at 150s so the user always
@@ -1690,6 +1709,10 @@ function Builder() {
 
           // Kick off a Cloudflare Pages build. Fire-and-forget — the activity
           // card subscribes to project_builds via useBuildActivity().
+          // Mark `awaitingBuild` BEFORE setBusy(false) lands so the
+          // post-build "READY — WHAT'S NEXT?" card never flashes in the gap
+          // between generation finishing and the deploy row appearing.
+          setAwaitingBuild(true);
           void triggerBuild(proj.id)
             .then(async (build) => {
               restoreBuildId(build.buildId);
@@ -1698,6 +1721,7 @@ function Builder() {
               if (r) setProject(r);
             })
             .catch((err: unknown) => {
+              setAwaitingBuild(false);
               persistFriendlyError(
                 toFriendlyError(err, { surface: "build", projectId: proj.id }),
               );
@@ -2088,13 +2112,17 @@ function Builder() {
       setHistoryKey((k) => k + 1);
       setRevertPreview(null);
       toast.success("Reverted");
+      setAwaitingBuild(true);
       void triggerBuild(project.id)
         .then(async (build) => {
           startedBuildIdsRef.current.add(build.buildId);
           const r = await getProject(project.id);
           if (r) setProject(r);
         })
-        .catch((err: unknown) => console.error("triggerBuild failed", err));
+        .catch((err: unknown) => {
+          setAwaitingBuild(false);
+          console.error("triggerBuild failed", err);
+        });
     } catch (e) {
       console.error(e);
       toast.error(e instanceof Error ? e.message : "Couldn't revert");
@@ -2133,6 +2161,7 @@ function Builder() {
     setFriendlyError(null);
     setPhases((p) => advanceTo(p, "deploying"));
     setActivityVisible(true);
+    setAwaitingBuild(true);
     void triggerBuild(project.id)
       .then(async (build) => {
         restoreBuildId(build.buildId);
@@ -2141,6 +2170,7 @@ function Builder() {
         if (r) setProject(r);
       })
       .catch((err: unknown) => {
+        setAwaitingBuild(false);
         persistFriendlyError(
           toFriendlyError(err, { surface: "build", projectId: project.id }),
         );
@@ -2227,13 +2257,17 @@ function Builder() {
       { role: "assistant", content: "↩️ Restored a previous version." },
     ]);
     setHistoryKey((k) => k + 1);
+    setAwaitingBuild(true);
     void triggerBuild(project.id)
       .then(async (build) => {
         startedBuildIdsRef.current.add(build.buildId);
         const r = await getProject(project.id);
         if (r) setProject(r);
       })
-      .catch((err: unknown) => console.error("triggerBuild failed", err));
+      .catch((err: unknown) => {
+        setAwaitingBuild(false);
+        console.error("triggerBuild failed", err);
+      });
   }
 
   const activeContent = files.find((f) => f.path === activeFile)?.content ?? "";
