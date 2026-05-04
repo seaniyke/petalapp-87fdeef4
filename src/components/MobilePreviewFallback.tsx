@@ -111,12 +111,12 @@ export function MobilePreviewFallback({
       });
     }, 5_000);
 
-    // Stuck-build detector. If the build has been pending > 5 min, surface
+    // Stuck-build detector. If the build has been pending/building > 5 min, surface
     // an actionable error instead of an infinite spinner. We rely on
     // `created_at` so a freshly-created build still gets the full 5 min.
     const stuckTimer = window.setInterval(() => {
       setBuild((prev) => {
-        if (!prev || prev.status !== "pending") {
+        if (!prev || (prev.status !== "pending" && prev.status !== "building")) {
           setPendingTooLong(false);
           return prev;
         }
