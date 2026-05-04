@@ -1720,6 +1720,13 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         // (Legacy `continuation_handoff` SSE emit removed along with the
         // Continue-building chip.)
 
+        // Cycle 1 wraps cleanly. The activity card uses this to switch the
+        // sub-caption back to the success line instead of leaving the last
+        // verifier message on screen.
+        controller.enqueue(
+          encoder.encode(sse({ type: "cycle_end", cycle: 1, outcome: "clean" })),
+        );
+
         controller.enqueue(
           encoder.encode(
             sse({
