@@ -1621,7 +1621,10 @@ function Builder() {
             onFileProgress: (n, path) => {
               setFilesWritten(n);
               if (path) {
-                setLatestPath(path);
+                setLatestPath((prev) => {
+                  if (prev !== path) setLatestNarration(undefined);
+                  return path;
+                });
                 // Append to ordered, deduped list so the user sees each file
                 // appear in the activity card as Petal writes it.
                 setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
@@ -1635,6 +1638,12 @@ function Builder() {
                 const next = new Set(prev);
                 next.add(path);
                 return next;
+              });
+            },
+            onNarration: (path, text) => {
+              setLatestPath((curr) => {
+                if (curr === path || curr === undefined) setLatestNarration(text);
+                return curr;
               });
             },
             onResult: (f, s, extras) => {
