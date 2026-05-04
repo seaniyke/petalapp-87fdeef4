@@ -1154,7 +1154,7 @@ function Builder() {
 
     function attemptResume() {
       if (cancelled) return;
-      const persisted = readPersistedTurn(projectId);
+      const persisted = readPersistedTurn(pid);
       if (!persisted) return;
       // If a brand-new send is already running in this tab, don't double up.
       if (abortRef.current) return;
@@ -1178,17 +1178,17 @@ function Builder() {
           },
           onPlanDelta: (d) => {
             seq += 1;
-            bumpTurnSeq(projectId, seq);
+            bumpTurnSeq(pid, seq);
             setStreamingPlan((s) => s + d);
           },
           onSummaryDelta: (d) => {
             seq += 1;
-            bumpTurnSeq(projectId, seq);
+            bumpTurnSeq(pid, seq);
             setStreamingAssistant((s) => s + d);
           },
           onRecapDelta: (d) => {
             seq += 1;
-            bumpTurnSeq(projectId, seq);
+            bumpTurnSeq(pid, seq);
             setStreamingRecap((s) => s + d);
           },
           onFileProgress: (n, path) => {
@@ -1210,13 +1210,13 @@ function Builder() {
             setTimelineEvents((prev) => (prev.length >= 30 ? prev : [...prev, entry]));
           },
           onDone: async () => {
-            clearPersistedTurnId(projectId);
+            clearPersistedTurnId(pid);
             // Refresh files + messages from the source of truth so the
             // resumed UI matches whatever the pipeline actually persisted.
             try {
               const [fs, ms] = await Promise.all([
-                loadProjectFiles(projectId),
-                loadProjectMessages(projectId),
+                loadProjectFiles(pid),
+                loadProjectMessages(pid),
               ]);
               if (cancelled) return;
               setFiles(fs);
