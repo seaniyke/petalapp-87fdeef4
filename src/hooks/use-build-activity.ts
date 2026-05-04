@@ -87,6 +87,28 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       if (data) apply(data);
     };
 
+    const fetchProjectLatestBuild = async () => {
+      const { data: current } = await supabase
+        .from("project_builds")
+        .select("project_id")
+        .eq("id", latestBuildId)
+        .maybeSingle();
+      if (!current?.project_id) return;
+      const { data: project } = await supabase
+        .from("projects")
+        .select("latest_build_id")
+        .eq("id", current.project_id)
+        .maybeSingle();
+      const newestId = project?.latest_build_id;
+      if (!newestId || newestId === latestBuildId) return;
+      const { data: latest } = await supabase
+        .from("project_builds")
+        .select("status, dist_path, error_message")
+        .eq("id", newestId)
+        .maybeSingle();
+      if (latest) apply(latest);
+    };
+
     void fetchOnce();
 
     // Realtime is the primary signal; polling is a fallback for environments
@@ -117,6 +139,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       const elapsed = Date.now() - startedAt;
       if (terminalSince != null && Date.now() - terminalSince > 30_000) return;
       void fetchOnce();
+      if (elapsed > 15_000 && terminalSince == null) void fetchProjectLatestBuild();
       // Slow the cadence after the deploy window.
       if (elapsed > 90_000 && terminalSince == null) {
         // no-op — interval already runs at base cadence; we just gate the call.
