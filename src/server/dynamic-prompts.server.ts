@@ -259,13 +259,15 @@ export function pickDynamicSnippets(args: {
     if (key === "noBackendGate") continue; // handled above
     if (key === "auth" && !args.hasBackend) continue;
     const def = SNIPPETS[key];
-    if (def.triggers !== "always" && def.triggers.test(haystack)) {
+    // "always" snippets are baseline reinforcements (e.g. verifyBeforeDone)
+    // and ALWAYS go in. Topical snippets only fire on a keyword match.
+    if (def.triggers === "always" || def.triggers.test(haystack)) {
       matched.push(key);
     }
   }
 
-  // Cap at 8 total (kitCore + noBackendGate + 6 topical).
-  const picked = matched.slice(0, 8);
+  // Cap at 9 total (kitCore + verifyBeforeDone + noBackendGate + 6 topical).
+  const picked = matched.slice(0, 9);
   const text = picked
     .map((k) => {
       const body = SNIPPETS[k].body;
