@@ -411,6 +411,35 @@ async function relayAndCollect(
             );
           }
 
+          // Emit one NARRATION event per file, the moment the model's
+          // `narration` field for that file finishes streaming. We instruct
+          // the model to place `narration` BEFORE `content`, so this event
+          // typically fires *before* the file body even starts streaming —
+          // giving the user a real, model-written sentence about what's
+          // about to be built. Falls back gracefully when missing (the
+          // client uses path-derived narration instead).
+          NARRATION_RE.lastIndex = 0;
+          let nm: RegExpExecArray | null;
+          while ((nm = NARRATION_RE.exec(tool.args)) !== null) {
+            const narrationEnd = nm.index;
+            let text = nm[1];
+            try { text = JSON.parse(`"${nm[1]}"`); } catch { /* keep raw */ }
+            let owner: string | undefined;
+            for (let i = pathMatches.length - 1; i >= 0; i--) {
+              if (pathMatches[i].index < narrationEnd) {
+                owner = pathMatches[i].path;
+                break;
+              }
+            }
+            if (!owner || narratedPaths.has(owner)) continue;
+            const trimmed = String(text).trim().replace(/\s+/g, " ").slice(0, 120);
+            if (!trimmed) continue;
+            narratedPaths.add(owner);
+            controller.enqueue(
+              encoder.encode(sse({ type: "narration", path: owner, text: trimmed })),
+            );
+          }
+
           // Emit `file_complete` for each file whose `"content": "…"` string
           // has fully closed in the buffer. This is the v0-style perceived
           // latency win: the client can flip a file's status to "done" the
