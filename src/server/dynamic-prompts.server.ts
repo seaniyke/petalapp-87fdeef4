@@ -36,7 +36,8 @@ export type DynamicSnippetKey =
   | "navigation"
   | "feedback"
   | "sections"
-  | "multiPage";
+  | "multiPage"
+  | "mobileApp";
 
 interface SnippetDef {
   /** Substrings that trigger this snippet (lowercased match against prompt). */
