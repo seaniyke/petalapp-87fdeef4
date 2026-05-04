@@ -1729,8 +1729,7 @@ function Builder() {
           // Layer 5 — gap-driven follow-up chips. Empty array stays out of
           // the message so a clean build doesn't render an empty chip row.
           ...(resultSuggestions.length > 0 ? { suggestions: resultSuggestions } : {}),
-          // Layer-B "Continue building" handoff payload (optional).
-          ...(resultHandoff ? { handoff: resultHandoff } : {}),
+          // (handoff payload removed.)
         };
         setFiles(files2);
         setActiveFile((prev) => prev ?? "index.html");
