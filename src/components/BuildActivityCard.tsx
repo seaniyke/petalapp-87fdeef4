@@ -152,6 +152,7 @@ export function BuildActivityCard({
   designCaption,
   latestPath,
   latestNarration,
+  latestCycleProgress,
   filesWritten,
   writtenPaths,
   completedPaths,
