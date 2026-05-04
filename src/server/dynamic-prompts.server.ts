@@ -35,7 +35,8 @@ export type DynamicSnippetKey =
   | "overlays"
   | "navigation"
   | "feedback"
-  | "sections";
+  | "sections"
+  | "multiPage";
 
 interface SnippetDef {
   /** Substrings that trigger this snippet (lowercased match against prompt). */
