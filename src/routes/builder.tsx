@@ -114,7 +114,7 @@ import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
-import { ContinueBuildingChip } from "@/components/ContinueBuildingChip";
+// ContinueBuildingChip removed — see retired completion-UI cleanup.
 import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
 import { EnableEmailSuggestionChip } from "@/components/EnableEmailSuggestionChip";
 import { EnablePaymentsSuggestionChip } from "@/components/EnablePaymentsSuggestionChip";
