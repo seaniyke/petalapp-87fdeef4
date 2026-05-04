@@ -576,13 +576,32 @@ function Builder() {
   const isDeploying = effectiveBuildSnap?.status === "pending" || effectiveBuildSnap?.status === "building";
   const isLive = effectiveBuildSnap?.status === "ready";
 
+  // Bridge state for the brief gap between "generation finished" and the
+  // moment a fresh build row first shows up in `useBuildActivity`. Without
+  // this, `petalIsWorking` flips false for ~hundreds of ms and the
+  // "READY — WHAT'S NEXT?" card flashes in, then disappears the instant
+  // `isDeploying` becomes true. Set true when we kick off triggerBuild,
+  // cleared as soon as the build row is observed in any state, with a
+  // safety timeout so a missing row never wedges the UI.
+  const [awaitingBuild, setAwaitingBuild] = useState(false);
+  useEffect(() => {
+    if (!awaitingBuild) return;
+    if (effectiveBuildSnap?.status) {
+      setAwaitingBuild(false);
+      return;
+    }
+    const t = window.setTimeout(() => setAwaitingBuild(false), 10000);
+    return () => window.clearTimeout(t);
+  }, [awaitingBuild, effectiveBuildSnap?.status]);
+
   // Single source of truth for "Petal is currently working." Used to gate
   // EVERY actionable chip/card so users never see a button while a turn or
   // deploy is still in flight (matches Lovable's behavior). Covers:
   //   - busy: AI generation streaming
   //   - discussBusy: Discuss/chat-only reply streaming
   //   - isDeploying: Cloudflare deploy not yet ready/failed
-  const petalIsWorking = busy || discussBusy || isDeploying;
+  //   - awaitingBuild: post-generation, pre-deploy bridge (no flash)
+  const petalIsWorking = busy || discussBusy || isDeploying || awaitingBuild;
 
   // Long-wait escalation for the deploy phase. We escalate copy at 60s/90s
   // and surface a friendly "deploy stalled" card at 150s so the user always
