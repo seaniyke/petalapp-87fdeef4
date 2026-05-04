@@ -244,6 +244,9 @@ export function ProjectSettingsSheet({
           <EmailSection projectId={project.id} />
         </div>
 
+        {/* Mobile app section (Tier 2 native shell) */}
+        <MobileAppPanel projectId={project.id} />
+
         <div id="settings-knowledge" className="mt-8 scroll-mt-4 border-t border-border pt-6">
           <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
             <BookOpen className="h-4 w-4" /> Project Knowledge
