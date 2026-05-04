@@ -2161,6 +2161,7 @@ function Builder() {
     setFriendlyError(null);
     setPhases((p) => advanceTo(p, "deploying"));
     setActivityVisible(true);
+    setAwaitingBuild(true);
     void triggerBuild(project.id)
       .then(async (build) => {
         restoreBuildId(build.buildId);
@@ -2169,6 +2170,7 @@ function Builder() {
         if (r) setProject(r);
       })
       .catch((err: unknown) => {
+        setAwaitingBuild(false);
         persistFriendlyError(
           toFriendlyError(err, { surface: "build", projectId: project.id }),
         );
