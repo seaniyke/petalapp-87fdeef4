@@ -394,6 +394,7 @@ function Builder() {
     | "storage"
     | "realtime"
     | "cron"
+    | "mobile"
     | null
   >(null);
   // Mobile builder menu (bottom sheet) + dependent dialogs.
