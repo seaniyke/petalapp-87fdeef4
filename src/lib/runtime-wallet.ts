@@ -125,6 +125,7 @@ export async function fetchRuntimeUsageSplit(userId: string): Promise<RuntimeUsa
   const { data } = await supabase
     .from("runtime_ledger")
     .select("meter, delta_cents")
+    .eq("user_id", userId)
     .lt("delta_cents", 0)
     .gte("created_at", startOfMonth.toISOString());
 

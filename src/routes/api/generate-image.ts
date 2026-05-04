@@ -21,8 +21,8 @@ import { spendCredit, checkCreditBalance } from "@/server/credits.server";
 import { chargeRuntime } from "@/server/runtime-wallet.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-/** End-user runtime image generation cost in USD cents (2¢/image). */
-const RUNTIME_IMAGE_CENTS = 2;
+/** End-user runtime image generation cost in USD cents (5¢/image; cost ~2¢). */
+const RUNTIME_IMAGE_CENTS = 5;
 
 type Body = {
   prompt?: string;

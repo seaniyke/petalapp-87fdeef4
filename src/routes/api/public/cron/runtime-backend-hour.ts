@@ -18,8 +18,9 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { chargeRuntime } from "@/server/runtime-wallet.server";
 import { pauseForProject } from "@/server/managed-backend.server";
 
-/** USD cents charged per active backend per hour. */
-const BACKEND_HOUR_CENTS = 2;
+/** USD cents charged per active backend per hour. 4¢/hr ≈ $29/mo full-time;
+ * underlying managed Supabase costs ~$10/mo so we keep ~65% margin. */
+const BACKEND_HOUR_CENTS = 4;
 
 function unauthorized() {
   return new Response("Unauthorized", { status: 401 });
