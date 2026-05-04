@@ -196,6 +196,31 @@ function sse(event: StreamEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;
 }
 
+/**
+ * Wrap a stream controller so every event enqueued is ALSO recorded to the
+ * persistent turn_events log. This is the single tap that makes the build
+ * survivable across client disconnects: the inner pipeline keeps shoving
+ * events through `controller.enqueue(...)`, but each one is now also a row
+ * in Postgres that a returning client can replay.
+ *
+ * The wrapper accepts the original `StreamEvent` shape (used in 30+ places
+ * in this file) and returns the same enqueue/close API, so existing call
+ * sites are untouched.
+ */
+function makeRecordingEnqueue(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+  recorder: TurnRecorderHandle | null,
+) {
+  return (event: StreamEvent) => {
+    controller.enqueue(encoder.encode(sse(event)));
+    if (recorder) {
+      const { type, ...rest } = event as { type: string } & Record<string, unknown>;
+      recorder.record(type, rest);
+    }
+  };
+}
+
 async function authorize(request: Request): Promise<string | Response> {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
