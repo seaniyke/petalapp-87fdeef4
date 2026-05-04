@@ -26,6 +26,9 @@ import {
   Lock,
   Plus,
   Sparkles,
+  Smartphone,
+  Apple,
+  Bot,
 } from "lucide-react";
 
 type ProjectFilter = "all" | "recent" | "public";
