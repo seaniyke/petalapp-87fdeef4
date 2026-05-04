@@ -123,7 +123,32 @@ NEVER hand-roll overlays with fixed positioning.`,
     body: `\n\n[Reinforcement — Feedback primitives]
 - <Progress value={0..100}> — determinate bar.
 - <Skeleton> — loading placeholder shape.
-- <Switch checked onChange>, <Checkbox checked onChange>, <Slider min max step value onChange>, <RadioGroup value onValueChange>/<RadioGroupItem value>.`,
+- <Switch checked onChange>, <Checkbox checked onChange>, <Slider min max step value onChange>, <RadioGroup value onValueChange>/<RadioGroupItem value>.
+- <EmptyState icon={Inbox} title description action> — use for any zero-data list / table / panel. NEVER ship a bare "Nothing here yet."`,
+  },
+  // Fires on landing/marketing/page-shaped requests. Pushes the model toward
+  // composing sections from "@/components/blocks/*" instead of inventing
+  // section layouts from scratch — which is the root cause of "every Petal
+  // site looks the same" (LLMs default to centered hero + 3-card grid).
+  sections: {
+    triggers:
+      /\b(landing|landing page|home ?page|marketing site|hero|features?|testimonials?|pricing|faq|call to action|cta|footer|portfolio|agency|product page|saas|about page)\b/i,
+    body: `\n\n[Reinforcement — Section blocks (the look-different fix)]
+Compose pages by picking ONE variant per section from "@/components/blocks/*". Do NOT hand-roll a hero, feature grid, or pricing table from scratch — pick a block, then theme it via className.
+
+Available section blocks (Phase 1):
+- Hero: <HeroCentered>, <HeroSplitImage>, <HeroEditorial>
+- Features: <FeaturesGrid3>, <FeaturesBento>, <FeaturesAlternatingRows>
+
+Composition rules — read carefully, this is the difference between forgettable and memorable:
+1. MIX variants across a single page. Do NOT use all "centered" variants together. Pair an editorial hero with an alternating-rows features section; pair a split-image hero with a bento grid; etc.
+2. Match block variant to the Design Direction vibe:
+   - editorial / brutalist / agency / portfolio → HeroEditorial + FeaturesAlternatingRows
+   - playful / maximalist / consumer launch → HeroCentered (with GradientBlob) + FeaturesBento
+   - SaaS product / dev tools → HeroSplitImage + FeaturesGrid3 (or Bento for differentiation)
+3. Supporting atoms exist for the spaces between blocks: <Section eyebrow title description> for any custom section, <Marquee> for logo strips, <Stat> for KPI bands, <Timeline> for changelog/process, <Rating> for testimonials, <FeatureIcon> for inline marks, <GradientBlob>/<GradientText> for controlled accents, <Prose> for long-form copy, <Divider label> for separators.
+4. Each block accepts \`className\`. If the vibe calls for sharper corners, swap rounded-2xl for rounded-none via className. If it calls for serif headings, override font-family in styles.css and the blocks will inherit.
+5. NEVER reinvent a section the kit already provides. If you find yourself writing \`<section><div className="grid grid-cols-3">…three cards…</div></section>\`, stop and use <FeaturesGrid3> instead.`,
   },
   charts: {
     triggers: /\b(chart|graph|bar chart|line chart|area chart|analytics dashboard|kpi|metric)\b/i,
