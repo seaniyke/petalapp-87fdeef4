@@ -1154,7 +1154,24 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             backend: backend ?? undefined,
           });
         } else {
-          if (!Array.isArray(parsed.ops)) throw new Error("AI returned no ops.");
+          // Empty / missing ops on an edit turn = the model decided
+          // there was nothing safe to change. Reply conversationally
+          // instead of throwing a red error card. Same treatment when
+          // every op the model proposed touched a protected path and
+          // got filtered out below.
+          if (!Array.isArray(parsed.ops) || parsed.ops.length === 0) {
+            console.warn(
+              `[generate] patch_files returned ${Array.isArray(parsed.ops) ? "empty" : "missing"} ops — replying conversationally`,
+            );
+            emitConversationalFallback(controller, encoder, {
+              files: currentFiles,
+              summary:
+                summary && summary !== "Updated the project."
+                  ? summary
+                  : "I looked at this and didn't see a clear change to make. Could you point me at the specific element or behavior you want adjusted? Even a one-liner like 'make the hero headline bigger' helps me lock onto the right spot.",
+            });
+            return;
+          }
           // Defense-in-depth: reject patches that touch the canonical UI kit
           // or scaffold config files. The AI should never need to.
           const PROTECTED = ["vite.config.ts", "tsconfig.json", "src/lib/utils.ts"];
@@ -1171,6 +1188,16 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             );
           }
           const safeOps = parsed.ops.filter((op) => !isProtectedPath(op.path));
+          if (safeOps.length === 0) {
+            // Every op was protected-path-only. Same conversational
+            // fallback: nothing safe to apply, no credits charged.
+            emitConversationalFallback(controller, encoder, {
+              files: currentFiles,
+              summary:
+                "The change you asked for would touch files I keep reserved for the framework (the UI kit / build config). I can do this a different way — tell me the user-visible behavior you want and I'll wire it up in app code instead.",
+            });
+            return;
+          }
           const patched = applyOps(currentFiles, safeOps);
           // Heal-on-patch: re-apply the canonical scaffold to old saved
           // projects whose `src/components/ui/*`, `package.json`, or
