@@ -14,13 +14,18 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-export type LabsFlagName = "integrations_marketplace" | "pwa_template" | "staged_pipeline";
+export type LabsFlagName =
+  | "integrations_marketplace"
+  | "pwa_template"
+  | "staged_pipeline"
+  | "agent_loop";
 export type LabsFlags = Partial<Record<LabsFlagName, boolean>>;
 
 const ALL_FLAGS: LabsFlagName[] = [
   "integrations_marketplace",
   "pwa_template",
   "staged_pipeline",
+  "agent_loop",
 ];
 
 export async function loadLabsFlagsForRequest(jwt: string | null | undefined): Promise<LabsFlags> {
