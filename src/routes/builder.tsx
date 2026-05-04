@@ -1277,7 +1277,9 @@ function Builder() {
 
   // Auto-send the prompt from the landing page once, after bootstrap.
   // Note: project may be null here when arriving with ?prompt but no ?id —
-  // send() will lazily create the project on first use.
+  // send() will lazily create the project on first use. After it fires, strip
+  // the prompt from the URL so refresh/return can never repopulate the composer
+  // with the original ask.
   useEffect(() => {
     if (
       !bootstrapping &&
@@ -1288,6 +1290,11 @@ function Builder() {
       initialSent.current = true;
       if (initialMode === "discuss") void discuss(initialPrompt);
       else void send(initialPrompt);
+      navigate({
+        to: "/builder",
+        search: { ...(searchId ? { id: searchId } : {}), ...(initialMode ? { mode: initialMode } : {}), attachKey: undefined },
+        replace: true,
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapping, initialPrompt]);
@@ -1305,7 +1312,7 @@ function Builder() {
       setProject(p);
       navigate({
         to: "/builder",
-        search: { id: p.id, prompt: initialPrompt, mode: initialMode, attachKey: undefined },
+        search: { id: p.id, mode: initialMode, attachKey: undefined },
         replace: true,
       });
       return p;
@@ -1313,7 +1320,7 @@ function Builder() {
       toast.error(e instanceof Error ? e.message : "Could not start project");
       return null;
     }
-  }, [isReady, user, project, navigate, initialPrompt]);
+  }, [isReady, user, project, navigate, initialMode]);
 
   const send = useCallback(
     async (
