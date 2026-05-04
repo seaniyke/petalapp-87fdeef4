@@ -315,14 +315,7 @@ export async function streamResumeTurn(
               ts: (evt.ts as number) ?? Date.now(),
             });
             break;
-          case "continuation_handoff":
-            handlers.onContinuationHandoff?.({
-              reason: evt.reason as never,
-              message: (evt.message as string) ?? "",
-              suggestedPrompt: (evt.suggestedPrompt as string) ?? "",
-              detected: evt.detected as never,
-            });
-            break;
+          // continuation_handoff event removed (no-op).
           case "error":
             handlers.onError?.(
               (evt.message as string) ?? "Build failed.",
