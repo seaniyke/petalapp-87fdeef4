@@ -1506,6 +1506,13 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           ...renderRiskIssues,
           ...rlsSanityIssues,
         ];
+        // Token usage from any user-billable agentic-loop fix cycles.
+        // Cycles 3..N (only when the `agent_loop` Labs flag is on) push
+        // their gateway usage here so the per-turn aggregator at the
+        // bottom of the handler can fold them into the single user
+        // charge. Cycle 2 (the default polish pass) stays on Petal's
+        // tab — it runs for everyone whether they asked for it or not.
+        const agentLoopUsages: Array<GatewayUsage | null> = [];
         if (autofixGateOpen) {
           // Cycle 2 = the polish pass. Brief intent ping so the activity
           // card narrates the gap instead of going silent for 5-10s while
