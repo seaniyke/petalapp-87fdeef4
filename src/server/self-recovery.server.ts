@@ -72,7 +72,8 @@ export function classifyRawError(rawMessage: string): ErrorKind {
   // The "model returned prose, not files" family — these are RAW pipeline
   // strings (parseCollectedProject, write_project guard), NOT humanized
   // copy. Humanized phrases like "hit a snag" do NOT belong here.
-  if (/returned no ops|patch_files|edits must be incremental patches/i.test(t)) return "no_edit_emitted";
+  if (/returned no ops|usable edits|invalid edit data|patch_files|edits must be incremental patches/i.test(t))
+    return "no_edit_emitted";
   if (/invalid project data|did not return a project|returned no files|tool_call.*missing|no write_project/i.test(t))
     return "no_files_emitted";
   return "unknown";
