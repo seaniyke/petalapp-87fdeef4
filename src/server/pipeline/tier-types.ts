@@ -11,9 +11,9 @@
  *   - Behavior preservation: events are appended in the same order the
  *     old inline code emitted them. Diffing a turn before/after is trivial.
  *   - Testability: each tier is unit-testable with plain inputs/outputs.
- *   - No hidden state: the orchestrator still owns `nextFiles`,
- *     `handoffReason`, etc. Tiers either return updated values or hint
- *     the orchestrator to mutate them (e.g. `setHandoffReasonIfUnset`).
+ *   - No hidden state: the orchestrator still owns `nextFiles` and the
+ *     pipeline-level outcome flags. Tiers either return updated values
+ *     or hint the orchestrator to mutate them (e.g. `requestHandoff`).
  */
 
 import type { StreamEvent, ProjectFile } from "@/server/generate.server";
