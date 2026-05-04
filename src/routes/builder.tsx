@@ -929,16 +929,16 @@ function Builder() {
       }
       if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
       // Don't surface the manual-fix card while Petal is actively working or
-      // while a deploy is still visible. The failed build row can arrive during
-      // the transition into a retry/new deploy; showing that card beside
+      // while a replacement deploy has just been requested. The failed build
+      // row can arrive during that transition; showing that card beside
       // "Putting your app online…" is the exact confusing state we're avoiding.
-      if (busy || activityVisible) return;
+      if (busy || awaitingBuild) return;
       // Manual fallback after we've burned auto-attempts, or when the failed
       // build was already present when the user opened the project.
       persistFriendlyError(friendlyBuildFailure(effectiveBuildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, project?.latest_build_id, project?.published_build_id, busy]);
+  }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, project?.latest_build_id, project?.published_build_id, busy, awaitingBuild]);
 
   // Auto-hide the success card a little after the app goes live so the chat
   // returns to a calm state. The card itself also self-collapses.
