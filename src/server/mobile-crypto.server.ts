@@ -38,9 +38,15 @@ function getMasterKeyBytes(): Uint8Array {
 }
 
 async function deriveProjectKey(projectId: string): Promise<CryptoKey> {
+  // Copy into fresh ArrayBuffers so the WebCrypto types accept us under
+  // strict TS (Uint8Array<ArrayBufferLike> is not BufferSource-compatible
+  // with the strictest lib.dom typings).
+  const masterBytes = getMasterKeyBytes();
+  const masterBuf = new ArrayBuffer(masterBytes.byteLength);
+  new Uint8Array(masterBuf).set(masterBytes);
   const master = await crypto.subtle.importKey(
     "raw",
-    getMasterKeyBytes(),
+    masterBuf,
     { name: "HKDF" },
     false,
     ["deriveKey"],
@@ -81,9 +87,13 @@ export async function decryptForProject(
   if (parts.length !== 3 || parts[0] !== "v1") {
     throw new Error("Unsupported signing ciphertext format");
   }
-  const iv = b64uToBytes(parts[1]);
-  const ct = b64uToBytes(parts[2]);
+  const ivBytes = b64uToBytes(parts[1]);
+  const ctBytes = b64uToBytes(parts[2]);
+  const ivBuf = new ArrayBuffer(ivBytes.byteLength);
+  new Uint8Array(ivBuf).set(ivBytes);
+  const ctBuf = new ArrayBuffer(ctBytes.byteLength);
+  new Uint8Array(ctBuf).set(ctBytes);
   const key = await deriveProjectKey(projectId);
-  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: ivBuf }, key, ctBuf);
   return new TextDecoder().decode(pt);
 }
