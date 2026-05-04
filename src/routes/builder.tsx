@@ -344,6 +344,10 @@ function Builder() {
         if (last?.error?.title === err.title && last?.error?.message === err.message) {
           return prev;
         }
+        const recentDuplicate = prev
+          .slice(-8)
+          .some((m) => m.error?.title === err.title && m.error?.message === err.message);
+        if (recentDuplicate) return prev;
         return [...prev, errMsg];
       });
       void appendMessages(projId, [errMsg]).catch(() => {
