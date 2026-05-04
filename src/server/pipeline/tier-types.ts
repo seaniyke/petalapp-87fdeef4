@@ -38,7 +38,8 @@ export interface LocalVerifyTierOutput {
 export interface ContinuationTierOutput {
   /** Updated file map after the continuation pass (or unchanged on failure). */
   files: ProjectFile[];
-  /** True if the orchestrator should set handoffReason="incomplete_turn" when it isn't already set. */
+  /** True if the continuation pass had to give up. Used by telemetry only
+   *  (the legacy user-facing handoff event has been removed). */
   requestHandoff: boolean;
   emit: EmitList;
 }
