@@ -171,10 +171,9 @@ export const startMobileBuild = createServerFn({ method: "POST" })
     const charge = await chargeRuntime({
       userId,
       projectId: data.projectId,
-      meter: "topup", // TODO: add a dedicated `mobile_build` meter to the enum.
+      meter: "mobile_build",
       cents,
       metadata: {
-        kind: "mobile_build",
         platform,
         build_kind: kind,
         codemagic_build_id: codemagicBuildId,

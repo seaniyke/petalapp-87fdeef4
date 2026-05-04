@@ -17,6 +17,7 @@ export type RuntimeMeter =
   | "image_gen"
   | "app_ai"
   | "domain"
+  | "mobile_build"
   | "topup"
   | "free_grant"
   | "admin_adjust";
