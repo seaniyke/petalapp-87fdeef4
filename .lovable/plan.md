@@ -1,115 +1,94 @@
-## Goal
+## Why Petal-built sites look the same
 
-Match Lovable's ability to run a single user turn for 2+ minutes without breaking the connection or the user's trust, while charging fairly for the actual work done. Three coordinated changes.
+I traced this through `scaffold-kit.ts`, `examples-pack.ts`, `dynamic-prompts.server.ts`, `kit-manifest.server.ts`, and `design-director.server.ts`. The cause is **not** missing primitives — we already ship ~40 shadcn primitives + layout helpers (Container/Stack/Inline/Grid) + chart + theme. It's three other things:
 
----
+1. **The kit ships atoms, not sections.** Lovable, v0, and shadcn-blocks/shadcnblocks (898+ marketing blocks) ship *composed sections* — Hero, Features, Testimonials, Pricing, FAQ, CTA, Footer, Bento, Stats, Logo Cloud — with multiple visual variants each. Petal ships only the lego bricks. The model has to invent the section layout from scratch every turn, and LLMs converge on the same "centered hero + 3-up feature grid + cards" because that's the training-data mode.
+2. **Examples-pack has section examples but they're variant-poor.** We have exactly one Hero Centered Gradient, one Hero Split Screenshot, one Logo Cloud, one Feature Band, one Pricing 3-tier. No editorial hero, no asymmetric hero, no bento, no stats band, no testimonials wall, no FAQ accordion, no CTA banner, no footer variants. So even when the model reaches for an example, the *shape* is the same.
+3. **Design Director picks a vibe but the kit can't execute it.** The director may say "brutalist-mono" or "warm-editorial", but every section block the model can reach for is the same neutral SaaS card. We need block variants tagged by vibe so the director's choice actually changes the output shape.
 
-## 1. Agentic loop (replace one-shot + post-passes with bounded cycles)
+## What to build
 
-Today `/api/generate` does **one big completion → verifier tiers → optional 1-round autofix → done**. The continuation tier (`tier-continuation.ts`) and post-stream autofix (`post-stream-autofix.server.ts`) already exist but each runs at most once. We convert this into a bounded **agent loop** owned by the staged orchestrator.
+### A. Add ~12 missing UI primitives (atoms)
 
-**Loop shape (per user turn):**
+Things real apps need that we don't ship today, causing the model to hand-roll them inconsistently:
 
-```text
-cycle 1: plan + write   → verify (esbuild, render-risk, rls, file-budget, local)
-                          if clean → exit
-                          else     → cycle 2
-cycle N: targeted fix   → verify
-                          exit when clean OR limits hit
-```
+- `marquee.tsx` — horizontal logo/testimonial scroller (extremely common, currently faked badly)
+- `kbd.tsx` — keyboard shortcut pill
+- `code-block.tsx` — syntax-styled `<pre>` with copy button (devtool/landing pages)
+- `empty-state.tsx` — icon + title + description + action (we have one example, no primitive)
+- `stat.tsx` — big number + label + trend chip (KPI atom)
+- `timeline.tsx` — vertical event list with dots/connector
+- `feature-icon.tsx` — bordered/tinted icon tile in 3 variants
+- `gradient-text.tsx` + `gradient-blob.tsx` — controlled gradient utilities (stops the model rolling random `bg-gradient-to-br` chains)
+- `section.tsx` — `<Section eyebrow title description align>` wrapper that standardizes section headers
+- `divider.tsx` — labeled divider
+- `rating.tsx` — star rating
+- `prose.tsx` — typography wrapper for long-form content (blog posts)
 
-**Limits (hard stops, whichever first):**
-- `MAX_CYCLES = 6` (cycle 1 is the initial write; up to 5 fix cycles)
-- `MAX_WALL_MS = 180_000` (3 min — gives Lovable-like 2m17s headroom)
-- `MAX_TOTAL_COMPLETION_TOKENS = 40_000` per turn
+### B. Add a "blocks" layer (composed sections, the real fix)
 
-**Cycle picker (which model for which cycle):**
-- Cycle 1: existing `resolveModel(...)` (smart/best/etc.)
-- Fix cycles: prefer `MODEL_FAST` (gemini-3-flash-preview); escalate to `MODEL_BEST` only if the same error class repeats twice or if the verifier flags >5 files
-- Reuses existing `recordAiOutcome` so the smart router learns from cycle outcomes
+Create `src/components/blocks/*` in the scaffold, plus a parallel index in `examples-pack.ts`. **Each section gets 3 variants** so the director's vibe choice has somewhere to land:
 
-**Files touched:**
-- `src/server/pipeline/staged-orchestrator.server.ts` — wrap stages in a loop, accumulate `usage` from each sub-call
-- `src/server/pipeline/tier-continuation.ts` — drop the "run once" guard; let the orchestrator decide
-- `src/server/post-stream-autofix.server.ts` — same; expose as a callable cycle, not a one-shot epilogue
-- `src/routes/api/generate.ts` — replace the inline "verify → autofix once → done" block with `runAgenticLoop(...)`
-
----
-
-## 2. SSE heartbeats + silent-gap narration
-
-There's already a 12 s heartbeat in the outer wrapper (`generate.ts` line 1909) but it emits the same string repeatedly and **only fires while the inner pipeline holds the stream silent**. Two problems:
-- Repeated identical status feels like a stuck spinner, not progress
-- The new agent loop has 5–10 second silent gaps during verifier/fix cycles where users see nothing
-
-**Changes:**
-
-a) **Cycle narration events.** Add new `StreamEvent` types:
-   - `cycle_start` — `{ cycle: number, intent: "writing"|"fixing"|"verifying" }`
-   - `cycle_progress` — short human strings like "Checking imports across 12 files…", "Re-running esbuild…", "Patching 2 files Petal noticed had broken JSX…"
-   - `cycle_end` — `{ cycle, outcome: "clean"|"retrying"|"hard-stop" }`
-
-b) **Heartbeat upgrade.** Replace the static "Still working…" with a rotating, intent-aware ticker driven by the current cycle's intent. The interval stays at 12 s but the message reflects the actual phase. Add `: ping\n\n` SSE comments every 8 s as the **transport** keep-alive (passes through proxies without touching the UI).
-
-c) **Activity card consumer.** `BuildActivityCard.tsx` already prioritises model narration → derived narration → file counts. Insert `cycle_progress` strings between path narrations so the card never sits silent for >12 s.
-
-**Files touched:**
-- `src/server/generate.server.ts` — extend `StreamEvent` union
-- `src/routes/api/generate.ts` — emit `cycle_*` events from the loop; rewrite heartbeat
-- `src/components/BuildActivityCard.tsx` — render `cycle_progress` as the live sub-caption when present
-
----
-
-## 3. Per-turn usage aggregation + redesigned cap
-
-Today `priceBuild()` is called **once** with the gateway's `usage` from the single completion. With cycles, we'd either undercharge (sum nothing) or nickel-and-dime (charge per cycle). The fix is to aggregate then charge once.
-
-**Changes to `src/server/credit-pricing.server.ts`:**
-- New helper `priceTurn(usages: GatewayUsage[]): PricedBuild` — sums prompt + completion tokens across all cycles, then runs the same formula
-- Bump `BUILD_CAP` from `6.0` → `12.0` (Lovable's 2.40 for ~2m17s suggests our token-rate math is in the right ballpark; the cap just needs room for legit long turns)
-- Keep `BUILD_FLOOR = 1.0`, `BUILD_HOLD = 1.0`, `MISSING_USAGE_FALLBACK = 1.0`
-
-**Changes to `src/routes/api/generate.ts`:**
-- Replace the single `priceBuild(collected.usage)` call (line 1641) with `priceTurn(turnUsages)` where `turnUsages` is the array the orchestrator returns
-- Internal autofix cycles triggered by Petal's own mistakes (e.g. continuation tier rerunning because cycle 1 truncated) are **excluded** from the user's bill — they go to the same "isAutoFix" exemption already wired in
-- User-requested fix cycles (e.g. model retried because verifier found a real bug in user-requested code) **are** billed
-
-**Telemetry:** `pipeline-telemetry.server.ts` already records per-step events. Add `cycle_count` and `total_completion_tokens` fields to the turn summary so we can watch the cost distribution after rollout.
-
----
-
-## Out of scope (deliberately)
-
-- No model swap. Same Lovable AI gateway, same supported models.
-- No new UI screens. Reuses `BuildActivityCard`, recap line, backend chip.
-- No DB schema changes. `priceTurn` writes the same single `spendCredit` row.
-- No change to `/api/discuss` or `/api/coach` — chat-only paths are still flat.
-
----
-
-## Risks + mitigations
-
-| Risk | Mitigation |
+| Section | Variants |
 |---|---|
-| Loop runs forever on a flaky model | Hard `MAX_CYCLES` and `MAX_WALL_MS`; reaching either emits a friendly "Petal stopped after N attempts — try again or break this into a smaller step" |
-| Cap raise lets a runaway cost a user $$ | Cap is in **credits**, not tokens. 12 credits ≈ same as 2 long discusses today. We'll watch `cycle_count` telemetry for a week before considering further raises |
-| Heartbeat spam in console | Use `: ping` SSE comments (ignored by EventSource consumers) for transport keep-alive; only emit `cycle_progress` when something actually changed |
-| Existing handoff/continuation telemetry double-counts | Keep `requestHandoff` flag for telemetry only (already noted in `tier-continuation.ts`); don't surface to UI |
+| Hero | `hero-centered`, `hero-split-image`, `hero-editorial` (asymmetric, oversized type) |
+| Features | `features-grid-3`, `features-bento`, `features-alternating-rows` |
+| Stats | `stats-band`, `stats-grid`, `stats-with-chart` |
+| Testimonials | `testimonials-cards`, `testimonials-marquee`, `testimonials-quote-hero` |
+| Pricing | (keep 3-tier + comparison) add `pricing-single-product` |
+| FAQ | `faq-accordion`, `faq-two-column` |
+| CTA | `cta-centered`, `cta-split`, `cta-gradient-band` |
+| Footer | `footer-columns`, `footer-minimal`, `footer-newsletter` |
+| Logo Cloud | `logos-grid`, `logos-marquee` |
+| Header/Nav | `nav-bar`, `nav-with-cta`, `nav-with-search` |
 
----
+Each block ≤120 lines (within file-budget cap), uses kit primitives, accepts `className` for vibe-driven overrides.
 
-## Rollout
+### C. Wire the new surface into the prompts
 
-1. Land changes behind `LABS_AGENT_LOOP` flag (already have `loadLabsFlagsForRequest`)
-2. Internal dogfood: I run it on Petal itself + 2 fresh projects
-3. Compare `cycle_count` / total credits / wall time vs current baseline
-4. Flip default to on once p95 wall time < 90 s and p95 credits < 5
+Three prompt-side changes so the model actually *uses* this:
 
----
+1. **Kit manifest auto-derive already exists** (`kit-manifest.server.ts`) — it will pick up the new primitives automatically. Extend it to also enumerate `src/components/blocks/*` so the model sees `<HeroEditorial />`, `<FeaturesBento />`, etc., as first-class.
+2. **Add a new `sections` snippet in `dynamic-prompts.server.ts`** triggered by `/landing|home|page|hero|features|pricing|testimonial|faq|cta|footer/` that says: "Compose pages by picking ONE variant per section from `@/components/blocks/*`. Do not hand-roll a hero — pick `HeroCentered`, `HeroSplitImage`, or `HeroEditorial`. Mix variants across sections — do not use all 'centered' variants on the same page."
+3. **Bridge Design Director → block selection.** In `design-director.server.ts`'s `renderDesignDirectionBlock`, append a "block picks" hint table mapping vibe → preferred variants:
+   - `warm-editorial` → `HeroEditorial`, `FeaturesAlternatingRows`, `TestimonialsQuoteHero`, `FooterMinimal`
+   - `brutalist-mono` → `HeroEditorial`, `FeaturesBento`, `StatsBand` (no rounded), `FooterColumns`
+   - `playful-maximalist` → `HeroCentered` w/ gradient blob, `FeaturesBento`, `TestimonialsMarquee`
+   - `swiss-grid` → `HeroSplitImage`, `FeaturesGrid3`, `StatsGrid`, `FooterColumns`
+   - default → mix any
 
-## What "done" looks like
+### D. Examples-pack additions
 
-- A user prompt that today truncates after one big completion now silently runs 2–3 cycles and ships clean code
-- The activity card narrates every 5–10 s through the whole turn — never silent for >12 s
-- Charged credits scale with actual tokens spent across all cycles, capped at 12.0
-- Free internal autofix cycles still cost the user nothing
+Add ~10 example files demonstrating *page assembly* (not just sections) so the model sees the composition pattern:
+- `landing-saas-product.tsx` (Nav + HeroSplit + LogosMarquee + FeaturesBento + Pricing + FAQ + CTA + Footer)
+- `landing-editorial-portfolio.tsx`
+- `landing-ecommerce-single-product.tsx`
+- `landing-agency-services.tsx`
+- `app-shell-with-sidebar.tsx`
+- `marketing-blog-index.tsx` + `blog-post-detail.tsx`
+
+### E. Out of scope on purpose
+
+- No new dependencies (no embla beyond what carousel already pulls, no framer-motion mandatory). Keep edge-runtime safe.
+- Not adding Three.js / 3D / fancy WebGL — Worker-incompat and bundle bloat.
+- Not pulling in shadcn-blocks copy-paste wholesale — license-mixed and many depend on Next.js.
+
+## Technical details
+
+**File budget impact.** `scaffold-kit.ts` is already 3,846 lines. Adding ~12 atoms (~30 lines each) + ~25 blocks (~80 lines each) ≈ +2,400 lines → ~6,300 lines total. Still bundled server-side, no runtime impact. We can split into `scaffold-kit-blocks.ts` to keep diffs reviewable.
+
+**Kit manifest extension.** Today it parses `src/components/ui/*.tsx`. Update `getKitManifest()` and `renderKitManifestBlock()` to also walk `src/components/blocks/*.tsx`, with a separate header in the rendered block ("Section blocks — prefer these over hand-rolling").
+
+**File-budget gate.** `fileBudget` snippet allows ≤180 lines/6 KB. All new blocks designed under 120 lines so model can copy-with-edits without tripping the gate.
+
+**Backward compatibility.** All new files are `overwrite: true` additions; nothing replaces existing kit files. Old projects regenerated will gain the blocks for free on next turn.
+
+**Variant naming convention.** `<Section><Variant>` PascalCase, default export per file: `HeroEditorial.tsx` exports `HeroEditorial`. Matches kit-manifest extractor's existing regex (no parser change needed).
+
+## Phasing
+
+1. **Phase 1 (this PR):** atoms (A) + 3 hero variants + 3 features variants + sections snippet + manifest extension. Smallest change that proves the pattern end-to-end.
+2. **Phase 2:** remaining blocks (testimonials/pricing/FAQ/CTA/footer/nav) + page-assembly examples.
+3. **Phase 3:** Design Director → block-pick hints, plus a small eval that renders 5 prompts and checks the diff in chosen blocks across vibes.
+
+Want me to proceed with Phase 1, or should I bundle Phase 1+2 in one go?

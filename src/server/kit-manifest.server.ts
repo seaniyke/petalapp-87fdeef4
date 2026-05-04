@@ -46,31 +46,52 @@ function extractExports(source: string): string[] {
  * Render the kit manifest as a compact prompt block. Listed alphabetically
  * by file so diffs across versions stay readable in logs.
  */
+/**
+ * Render the kit manifest as a compact prompt block. Listed alphabetically
+ * by file so diffs across versions stay readable in logs.
+ *
+ * Two sections:
+ *  - Primitives — atoms under @/components/ui/*
+ *  - Section blocks — composed sections under @/components/blocks/*
+ *
+ * The model should reach for a section block FIRST when laying out a
+ * landing/marketing page, and only drop to primitives when no block fits.
+ */
 export function renderKitManifestBlock(): string {
   if (cached) return cached;
 
-  const entries: ManifestEntry[] = [];
+  const primitives: ManifestEntry[] = [];
+  const blocks: ManifestEntry[] = [];
   for (const f of KIT_FILES) {
-    if (!f.path.startsWith("src/components/ui/")) continue;
+    const isPrimitive = f.path.startsWith("src/components/ui/");
+    const isBlock = f.path.startsWith("src/components/blocks/");
+    if (!isPrimitive && !isBlock) continue;
     if (!/\.(tsx?|jsx?)$/.test(f.path)) continue;
     const exports = extractExports(f.content);
     if (exports.length === 0) continue;
     const importPath = f.path
       .replace(/^src\//, "@/")
       .replace(/\.(tsx?|jsx?)$/, "");
-    entries.push({ importPath, exports });
+    (isBlock ? blocks : primitives).push({ importPath, exports });
   }
 
-  entries.sort((a, b) => a.importPath.localeCompare(b.importPath));
+  primitives.sort((a, b) => a.importPath.localeCompare(b.importPath));
+  blocks.sort((a, b) => a.importPath.localeCompare(b.importPath));
 
-  const lines = entries.map(
-    (e) => `- ${e.importPath} → ${e.exports.join(", ")}`,
-  );
+  const primLines = primitives.map((e) => `- ${e.importPath} → ${e.exports.join(", ")}`);
+  const blockLines = blocks.map((e) => `- ${e.importPath} → ${e.exports.join(", ")}`);
 
-  cached = `\n\n[Kit manifest — auto-derived from the scaffold; these are the ONLY @/components/ui/* modules that exist]
-Every entry below ships in every project. Import from the exact path shown. Do NOT invent new @/components/ui/* paths — if a primitive isn't listed, it doesn't exist.
+  const blockSection = blockLines.length
+    ? `\n\n[Section blocks — composed page sections; PREFER these over hand-rolling a new <section><h2>… layout]
+Each block accepts \`className\` for vibe-driven overrides. Mix variants across a page (don't use all "centered" variants on the same page).
 
-${lines.join("\n")}
+${blockLines.join("\n")}`
+    : "";
+
+  cached = `\n\n[Kit manifest — auto-derived from the scaffold; these are the ONLY @/components/ui/* and @/components/blocks/* modules that exist]
+Every entry below ships in every project. Import from the exact path shown. Do NOT invent new @/components/ui/* or @/components/blocks/* paths — if a primitive isn't listed, it doesn't exist.
+
+${primLines.join("\n")}${blockSection}
 
 Helpers: cn() from "@/lib/utils". Icons: lucide-react. NEVER emoji as functional icons.`;
 
@@ -84,7 +105,9 @@ Helpers: cn() from "@/lib/utils". Icons: lucide-react. NEVER emoji as functional
 export function getKitManifest(): ManifestEntry[] {
   const out: ManifestEntry[] = [];
   for (const f of KIT_FILES) {
-    if (!f.path.startsWith("src/components/ui/")) continue;
+    const isPrimitive = f.path.startsWith("src/components/ui/");
+    const isBlock = f.path.startsWith("src/components/blocks/");
+    if (!isPrimitive && !isBlock) continue;
     if (!/\.(tsx?|jsx?)$/.test(f.path)) continue;
     const exports = extractExports(f.content);
     if (exports.length === 0) continue;
