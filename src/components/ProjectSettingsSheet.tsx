@@ -71,8 +71,9 @@ type Props = {
    | "ai"
    | "storage"
    | "realtime"
-   | "cron"
-   | null;
+    | "cron"
+    | "mobile"
+    | null;
   onScrollHandled?: () => void;
 };
 
