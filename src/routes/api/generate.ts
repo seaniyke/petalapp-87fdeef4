@@ -1353,27 +1353,9 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           model,
         });
         nextFiles = contOut.files;
-        if (contOut.requestHandoff) {
-          // Capture which files we couldn't recover for the chip.
-          const truncated = Array.from(
-            new Set(
-              localVerdict.issues
-                .filter((i) => ["truncation", "unterminated-string", "braces"].includes(i.kind))
-                .map((i) => i.path),
-            ),
-          );
-          if (truncated.length) handoffDetected.truncatedPaths = truncated;
-          if (!handoffReason) {
-            handoffReason = handoffDetected.hallucinatedPackages?.length
-              ? "unrecoverable_turn"
-              : "incomplete_turn";
-          } else if (
-            handoffReason === "large_changeset" &&
-            handoffDetected.hallucinatedPackages?.length
-          ) {
-            handoffReason = "unrecoverable_turn";
-          }
-        }
+        // (Legacy handoff-state population removed. `contOut.requestHandoff`
+        // still drives the telemetry outcome below — that's all it's used
+        // for now.)
         for (const ev of contOut.emit) {
           controller.enqueue(encoder.encode(sse(ev)));
         }
