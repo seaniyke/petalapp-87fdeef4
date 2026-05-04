@@ -389,19 +389,11 @@ export type ChatMessage = {
    *  chip sends its label as the user's next turn. Used most often on
    *  "clarify" turns so users don't have to type a full answer. */
   suggestions?: string[];
-  /** Layer-B "Continue building" handoff. Server attaches this when the
-   *  pipeline deliberately stopped early at a safe boundary. Renders an
-   *  inline chip under the assistant message that pre-fills the composer
-   *  with `suggestedPrompt` so the user can continue with one click. */
-  handoff?: {
-    reason: "oversize_files" | "incomplete_turn" | "large_changeset" | "unrecoverable_turn";
-    message: string;
-    suggestedPrompt: string;
-    detected?: {
-      hallucinatedPackages?: string[];
-      truncatedPaths?: string[];
-    };
-  };
+  // NOTE: The legacy `handoff` field has been removed. It powered the
+  // "Continue building" chip which has been retired in favor of the
+  // simpler completion UI (recap + success line + backend chip).
+  // Historical messages persisted with a `handoff` payload are
+  // forward-compatible: the extra key is ignored at runtime.
   /** Marks an internal system note (e.g. "Petal is auto-fixing a build
    *  error — free"). Rendered as a small inline notice, never sent to the
    *  AI as part of the conversation. */
@@ -496,28 +488,8 @@ export type StreamEvent =
       /** Server timestamp when this step finished. */
       ts: number;
     }
-  | {
-      /**
-       * Layer-B "Continue building" handoff. Emitted at most once per turn,
-       * AFTER all repair tiers run, when we deliberately stopped early at
-       * a safe boundary (oversize files reverted, continuation pass
-       * couldn't finish, or the changeset was unusually large). The client
-       * renders an inline chip under the assistant message that pre-fills
-       * the composer with `suggestedPrompt` so the user can continue with
-       * one click.
-       */
-      type: "continuation_handoff";
-      reason: "oversize_files" | "incomplete_turn" | "large_changeset" | "unrecoverable_turn";
-      message: string;
-      suggestedPrompt: string;
-      /** Optional structured detail of what tripped the handoff. Used by the
-       *  client to render specifics (hallucinated package names, truncated
-       *  file paths) so the user knows *what* to continue fixing. */
-      detected?: {
-        hallucinatedPackages?: string[];
-        truncatedPaths?: string[];
-      };
-    }
+  // NOTE: The legacy `continuation_handoff` event has been removed along
+  // with the Continue-building chip. The server no longer emits it.
   | {
       type: "error";
       message: string;

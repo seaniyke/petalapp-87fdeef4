@@ -11,9 +11,9 @@
  *   - Behavior preservation: events are appended in the same order the
  *     old inline code emitted them. Diffing a turn before/after is trivial.
  *   - Testability: each tier is unit-testable with plain inputs/outputs.
- *   - No hidden state: the orchestrator still owns `nextFiles`,
- *     `handoffReason`, etc. Tiers either return updated values or hint
- *     the orchestrator to mutate them (e.g. `setHandoffReasonIfUnset`).
+ *   - No hidden state: the orchestrator still owns `nextFiles` and the
+ *     pipeline-level outcome flags. Tiers either return updated values
+ *     or hint the orchestrator to mutate them (e.g. `requestHandoff`).
  */
 
 import type { StreamEvent, ProjectFile } from "@/server/generate.server";
@@ -38,7 +38,8 @@ export interface LocalVerifyTierOutput {
 export interface ContinuationTierOutput {
   /** Updated file map after the continuation pass (or unchanged on failure). */
   files: ProjectFile[];
-  /** True if the orchestrator should set handoffReason="incomplete_turn" when it isn't already set. */
+  /** True if the continuation pass had to give up. Used by telemetry only
+   *  (the legacy user-facing handoff event has been removed). */
   requestHandoff: boolean;
   emit: EmitList;
 }

@@ -7,9 +7,9 @@
  * Behavior preservation:
  *   - Same trigger condition (any of: truncation, unterminated-string, braces).
  *   - Returned files reflect the continuation pass output.
- *   - When the pass ran but produced zero completed files, the orchestrator
- *     should set handoffReason="incomplete_turn" if it isn't already set —
- *     we surface this via `requestHandoff: true` instead of mutating shared state.
+ *   - When the pass ran but produced zero completed files, we surface
+ *     `requestHandoff: true` so the orchestrator can record a "failed"
+ *     telemetry outcome for this turn.
  *   - Errors are caught and reported as a "failed" timeline (same as before).
  */
 
@@ -53,8 +53,8 @@ export async function runContinuationTier(args: RunArgs): Promise<ContinuationTi
     } else if (contOut.result.notes.length) {
       console.warn("[continuation] no files completed:", contOut.result.notes.join("; "));
       // Continuation pass ran but couldn't finish — strongest signal we hit
-      // the model's output ceiling. Hand off (orchestrator decides whether
-      // to overwrite an existing handoffReason).
+      // the model's output ceiling. Surface the failure so telemetry can
+      // record it.
       requestHandoff = true;
     }
 
@@ -80,8 +80,8 @@ export async function runContinuationTier(args: RunArgs): Promise<ContinuationTi
       message: "Continuation pass errored — falling back to autofix",
       ts: Date.now(),
     });
-    // On thrown error, original behavior also did NOT set handoffReason —
-    // keep that exact contract.
+    // On thrown error, do NOT flag requestHandoff — keep the original
+    // contract so error-path telemetry isn't double-counted.
     return { files, requestHandoff: false, emit };
   }
 }

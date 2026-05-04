@@ -41,19 +41,8 @@ type Handlers = {
     count?: number;
     ts: number;
   }) => void;
-  onContinuationHandoff?: (handoff: {
-    reason:
-      | "oversize_files"
-      | "incomplete_turn"
-      | "large_changeset"
-      | "unrecoverable_turn";
-    message: string;
-    suggestedPrompt: string;
-    detected?: {
-      hallucinatedPackages?: string[];
-      truncatedPaths?: string[];
-    };
-  }) => void;
+  // NOTE: `onContinuationHandoff` was removed along with the
+  // Continue-building chip. The server no longer emits the event.
   onError?: (
     message: string,
     suggestions?: string[],
@@ -191,14 +180,7 @@ export async function streamGenerate(
               ts: evt.ts,
             });
             break;
-          case "continuation_handoff":
-            handlers.onContinuationHandoff?.({
-              reason: evt.reason,
-              message: evt.message,
-              suggestedPrompt: evt.suggestedPrompt,
-              detected: evt.detected,
-            });
-            break;
+          // continuation_handoff event removed (no-op).
           case "error":
             handlers.onError?.(evt.message, evt.suggestions, evt.kind, evt.raw);
             break;
@@ -333,14 +315,7 @@ export async function streamResumeTurn(
               ts: (evt.ts as number) ?? Date.now(),
             });
             break;
-          case "continuation_handoff":
-            handlers.onContinuationHandoff?.({
-              reason: evt.reason as never,
-              message: (evt.message as string) ?? "",
-              suggestedPrompt: (evt.suggestedPrompt as string) ?? "",
-              detected: evt.detected as never,
-            });
-            break;
+          // continuation_handoff event removed (no-op).
           case "error":
             handlers.onError?.(
               (evt.message as string) ?? "Build failed.",

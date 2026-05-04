@@ -56,7 +56,6 @@ import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import {
   checkFileBudgets,
   enforceFileBudgets,
-  buildHandoffPrompt,
   type FileBudgetIssue,
 } from "@/server/file-budget.server";
 import { pickBestModel } from "@/server/smart-router.server";
@@ -1222,27 +1221,11 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           ),
         );
 
-        // Track Layer-B handoff triggers as the pipeline runs. Emitted
-        // as a single `continuation_handoff` event right before `result`.
-        let handoffReason:
-          | "oversize_files"
-          | "incomplete_turn"
-          | "large_changeset"
-          | "unrecoverable_turn"
-          | null = budgetRejections.length > 0 ? "oversize_files" : null;
-        // Detected detail attached to the handoff event so the chip can
-        // tell the user *what* tripped the stop (hallucinated packages,
-        // truncated files). Populated as the relevant tiers run.
-        const handoffDetected: {
-          hallucinatedPackages?: string[];
-          truncatedPaths?: string[];
-        } = {};
-        // Heuristic: an unusually large changeset is itself a truncation
-        // risk. Encourage stopping at a clean boundary even when nothing
-        // technically failed.
-        if (!handoffReason && budgetChangedPaths.length >= 8) {
-          handoffReason = "large_changeset";
-        }
+        // The legacy "Continue building" handoff machinery
+        // (handoffReason / handoffDetected / continuation_handoff event)
+        // has been removed along with the chip. Tiers below still report
+        // pipeline outcomes via telemetry but no longer mutate any
+        // handoff state.
 
         // Tier 2 — stream-time autofixer (regex pass, <10ms total).
         // Repairs known footguns BEFORE the build/image steps run.
@@ -1320,10 +1303,9 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         // imports. We do this BEFORE continuation/esbuild so the parse
         // tier doesn't trip on identifiers that point at packages the
         // installer can never resolve. The replaced code is ugly on
-        // purpose; the Continue-building chip nudges the user to ask
-        // Petal to reimplement those sections cleanly.
+        // purpose to flag the bad sections clearly in the source — the
+        // user can ask Petal in a follow-up turn to reimplement them.
         if (localOut.preflightHallucinated.length > 0) {
-          handoffDetected.hallucinatedPackages = [...localOut.preflightHallucinated];
           const stripT0 = Date.now();
           const stripOut = stripHallucinatedImports(
             nextFiles,
@@ -1356,11 +1338,8 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             );
           }
           // Hallucinations are unrecoverable for THIS turn — even after
-          // stripping, the user needs to reimplement those sections.
-          // Surface the handoff so they get a clear next step.
-          if (!handoffReason || handoffReason === "large_changeset") {
-            handoffReason = "unrecoverable_turn";
-          }
+          // stripping, the user may need to reimplement those sections in
+          // a follow-up turn. (Legacy handoff signalling removed.)
         }
 
         // Tier 2.6 — TRUE truncation recovery. If the local verifier
@@ -1374,27 +1353,9 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           model,
         });
         nextFiles = contOut.files;
-        if (contOut.requestHandoff) {
-          // Capture which files we couldn't recover for the chip.
-          const truncated = Array.from(
-            new Set(
-              localVerdict.issues
-                .filter((i) => ["truncation", "unterminated-string", "braces"].includes(i.kind))
-                .map((i) => i.path),
-            ),
-          );
-          if (truncated.length) handoffDetected.truncatedPaths = truncated;
-          if (!handoffReason) {
-            handoffReason = handoffDetected.hallucinatedPackages?.length
-              ? "unrecoverable_turn"
-              : "incomplete_turn";
-          } else if (
-            handoffReason === "large_changeset" &&
-            handoffDetected.hallucinatedPackages?.length
-          ) {
-            handoffReason = "unrecoverable_turn";
-          }
-        }
+        // (Legacy handoff-state population removed. `contOut.requestHandoff`
+        // still drives the telemetry outcome below — that's all it's used
+        // for now.)
         for (const ev of contOut.emit) {
           controller.enqueue(encoder.encode(sse(ev)));
         }
@@ -1716,30 +1677,8 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           }
         }
 
-        // Layer-B "Continue building" handoff. Emitted at most once
-        // per turn, AFTER all repair tiers, BEFORE the result event so
-        // the client can attach it to this assistant message.
-        if (handoffReason) {
-          const hasDetected =
-            (handoffDetected.hallucinatedPackages?.length ?? 0) > 0 ||
-            (handoffDetected.truncatedPaths?.length ?? 0) > 0;
-          const { message: handoffMessage, suggestedPrompt } = buildHandoffPrompt(
-            handoffReason,
-            budgetRejections,
-            hasDetected ? handoffDetected : undefined,
-          );
-          controller.enqueue(
-            encoder.encode(
-              sse({
-                type: "continuation_handoff",
-                reason: handoffReason,
-                message: handoffMessage,
-                suggestedPrompt,
-                ...(hasDetected ? { detected: handoffDetected } : {}),
-              }),
-            ),
-          );
-        }
+        // (Legacy `continuation_handoff` SSE emit removed along with the
+        // Continue-building chip.)
 
         controller.enqueue(
           encoder.encode(

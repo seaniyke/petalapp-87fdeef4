@@ -114,7 +114,7 @@ import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
-import { ContinueBuildingChip } from "@/components/ContinueBuildingChip";
+// ContinueBuildingChip removed — see retired completion-UI cleanup.
 import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
 import { EnableEmailSuggestionChip } from "@/components/EnableEmailSuggestionChip";
 import { EnablePaymentsSuggestionChip } from "@/components/EnablePaymentsSuggestionChip";
@@ -1492,7 +1492,7 @@ function Builder() {
       // follow-up chips to the assistant message and on error suggestions.
       let resultSuggestions: string[] = [];
       let resultVerdict: string | undefined;
-      let resultHandoff: ChatMessage["handoff"] | undefined;
+      // (resultHandoff removed along with the Continue-building chip.)
       let streamError: string | null = null;
       let streamErrorKind: import("@/server/generate.server").ErrorKind | undefined;
       let streamErrorRaw: string | undefined;
@@ -1673,11 +1673,7 @@ function Builder() {
                 prev.length >= 30 ? prev : [...prev, entry],
               );
             },
-            onContinuationHandoff: (handoff) => {
-              // Layer-B handoff — server stopped early at a safe boundary.
-              // Stash so we can attach to the assistant message below.
-              resultHandoff = handoff;
-            },
+            // onContinuationHandoff removed — Continue-building chip retired.
 
             onError: (m, sugg, kind, raw) => {
               streamError = m;
@@ -1733,8 +1729,7 @@ function Builder() {
           // Layer 5 — gap-driven follow-up chips. Empty array stays out of
           // the message so a clean build doesn't render an empty chip row.
           ...(resultSuggestions.length > 0 ? { suggestions: resultSuggestions } : {}),
-          // Layer-B "Continue building" handoff payload (optional).
-          ...(resultHandoff ? { handoff: resultHandoff } : {}),
+          // (handoff payload removed.)
         };
         setFiles(files2);
         setActiveFile((prev) => prev ?? "index.html");
@@ -2997,7 +2992,7 @@ function Builder() {
                            isLive &&
                            !friendlyError &&
                            files.length > 0 &&
-                           !m.handoff &&
+                           // (m.handoff guard removed — handoff was retired.)
                            !m.error && (
                              <NextStepsCard
                               showPreviewAction={isMobile ? mobileTab !== "preview" : view !== "preview"}
