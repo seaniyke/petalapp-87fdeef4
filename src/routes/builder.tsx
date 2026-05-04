@@ -1137,6 +1137,126 @@ function Builder() {
     else clearDraft(key);
   }, [project, pendingAttachments]);
 
+  // ── Silent auto-reconnect for an in-flight turn ───────────────────────────
+  //
+  // Root-cause fix for "user closes phone mid-build, comes back, sees nothing
+  // happening". The pipeline is server-owned: it keeps running and writing to
+  // turn_events even when the SSE connection dies. On project mount (and tab
+  // visibility return), if we have a persisted turn id for this project, we
+  // silently reattach to /api/turns/$id/events and rehydrate the streaming
+  // bubble from the exact event seq we last saw. No user action required.
+  useEffect(() => {
+    const projectId = project?.id;
+    if (!projectId || bootstrapping) return;
+    let cancelled = false;
+    let controller: AbortController | null = null;
+
+    function attemptResume() {
+      if (cancelled) return;
+      const persisted = readPersistedTurn(projectId);
+      if (!persisted) return;
+      // If a brand-new send is already running in this tab, don't double up.
+      if (abortRef.current) return;
+
+      controller = new AbortController();
+      abortRef.current = controller;
+
+      // Lightweight handlers: we hydrate the streaming UI surfaces but don't
+      // try to rebuild the full turn state machine. On the terminal `done`
+      // event we refresh files from the database (the pipeline persists them
+      // server-side), so the user sees the finished result without any
+      // manual click.
+      let seq = persisted.lastSeq;
+      void streamResumeTurn(
+        persisted.turnId,
+        persisted.lastSeq,
+        {
+          onPhase: (phase) => {
+            setPhases((p) => advanceTo(p, phase));
+            setActivityVisible(true);
+          },
+          onPlanDelta: (d) => {
+            seq += 1;
+            bumpTurnSeq(projectId, seq);
+            setStreamingPlan((s) => s + d);
+          },
+          onSummaryDelta: (d) => {
+            seq += 1;
+            bumpTurnSeq(projectId, seq);
+            setStreamingAssistant((s) => s + d);
+          },
+          onRecapDelta: (d) => {
+            seq += 1;
+            bumpTurnSeq(projectId, seq);
+            setStreamingRecap((s) => s + d);
+          },
+          onFileProgress: (n, path) => {
+            setFilesWritten(n);
+            if (path) {
+              setLatestPath(path);
+              setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
+            }
+          },
+          onFileComplete: (path) => {
+            setCompletedPaths((prev) => {
+              if (prev.has(path)) return prev;
+              const next = new Set(prev);
+              next.add(path);
+              return next;
+            });
+          },
+          onTimeline: (entry) => {
+            setTimelineEvents((prev) => (prev.length >= 30 ? prev : [...prev, entry]));
+          },
+          onDone: async () => {
+            clearPersistedTurnId(projectId);
+            // Refresh files + messages from the source of truth so the
+            // resumed UI matches whatever the pipeline actually persisted.
+            try {
+              const [fs, ms] = await Promise.all([
+                loadProjectFiles(projectId),
+                loadProjectMessages(projectId),
+              ]);
+              if (cancelled) return;
+              setFiles(fs);
+              setMessages(ms);
+              setStreamingPlan("");
+              setStreamingAssistant("");
+              setStreamingRecap("");
+            } catch {
+              /* non-fatal */
+            }
+          },
+        },
+        controller.signal,
+      ).catch(() => {
+        // Resume is best-effort. Silent failure leaves the user in the
+        // same state they would have been in without auto-reconnect.
+      }).finally(() => {
+        if (abortRef.current === controller) abortRef.current = null;
+      });
+    }
+
+    attemptResume();
+
+    // Also re-attempt when the tab returns to focus (mobile users locking
+    // and unlocking the phone). If the previous resume already finished
+    // and cleared localStorage, this is a no-op.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") attemptResume();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      // Don't abort `controller` here — leaving a project should let the
+      // resume finish in the background harmlessly. AbortController is
+      // garbage-collected with the closure.
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id, bootstrapping]);
+
 
   // Auto-send the prompt from the landing page once, after bootstrap.
   // Note: project may be null here when arriving with ?prompt but no ?id —
