@@ -1853,7 +1853,27 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           );
         }
 
-        nextFiles = await runFinalParseGuard(nextFiles, earlyChangedPaths, controller, encoder);
+        const guardOut = await runFinalParseGuard(
+          nextFiles,
+          earlyChangedPaths,
+          controller,
+          encoder,
+        );
+        if (!guardOut.ok) {
+          // Final-parse-guard couldn't repair this turn's edits. Revert
+          // to the prior good files and reply conversationally — no
+          // credits charged because nothing safe was written.
+          console.warn(
+            `[final-parse-guard] reverting turn — unrepairable: ${guardOut.detail}`,
+          );
+          emitConversationalFallback(controller, encoder, {
+            files: currentFiles,
+            summary:
+              "I drafted the change but it didn't pass my final safety check, so I rolled it back to keep your app building. Want me to try a smaller version of the same change, or break it into a couple of steps?",
+          });
+          return;
+        }
+        nextFiles = guardOut.files;
 
         // Charge ONCE, after the build succeeds. Cost is computed from
         // the MAIN generate call's token usage only — `collected.usage`
