@@ -132,23 +132,40 @@ NEVER hand-roll overlays with fixed positioning.`,
   // site looks the same" (LLMs default to centered hero + 3-card grid).
   sections: {
     triggers:
-      /\b(landing|landing page|home ?page|marketing site|hero|features?|testimonials?|pricing|faq|call to action|cta|footer|portfolio|agency|product page|saas|about page)\b/i,
+      /\b(landing|landing page|home ?page|marketing site|hero|features?|testimonials?|pricing|faq|call to action|cta|footer|nav|navbar|header|portfolio|agency|product page|saas|about page|blog|stats|kpi)\b/i,
     body: `\n\n[Reinforcement — Section blocks (the look-different fix)]
-Compose pages by picking ONE variant per section from "@/components/blocks/*". Do NOT hand-roll a hero, feature grid, or pricing table from scratch — pick a block, then theme it via className.
+Compose pages by picking ONE variant per section from "@/components/blocks/*". Do NOT hand-roll a hero, feature grid, pricing card, FAQ, CTA, footer, or nav from scratch — pick a block, theme it via className.
 
-Available section blocks (Phase 1):
+Available section blocks:
+- Nav: <NavBar>, <NavWithCta>, <NavWithSearch>
 - Hero: <HeroCentered>, <HeroSplitImage>, <HeroEditorial>
+- Logos: <LogosGrid>, <LogosMarquee>
 - Features: <FeaturesGrid3>, <FeaturesBento>, <FeaturesAlternatingRows>
+- Stats: <StatsBand>, <StatsGrid>, <StatsWithChart>
+- Testimonials: <TestimonialsCards>, <TestimonialsMarquee>, <TestimonialsQuoteHero>
+- Pricing: <PricingSingleProduct> (3-tier and comparison table examples in examples-pack)
+- FAQ: <FaqAccordion>, <FaqTwoColumn>
+- CTA: <CtaCentered>, <CtaSplit>, <CtaGradientBand>
+- Footer: <FooterColumns>, <FooterMinimal>, <FooterNewsletter>
 
-Composition rules — read carefully, this is the difference between forgettable and memorable:
-1. MIX variants across a single page. Do NOT use all "centered" variants together. Pair an editorial hero with an alternating-rows features section; pair a split-image hero with a bento grid; etc.
-2. Match block variant to the Design Direction vibe:
-   - editorial / brutalist / agency / portfolio → HeroEditorial + FeaturesAlternatingRows
-   - playful / maximalist / consumer launch → HeroCentered (with GradientBlob) + FeaturesBento
-   - SaaS product / dev tools → HeroSplitImage + FeaturesGrid3 (or Bento for differentiation)
-3. Supporting atoms exist for the spaces between blocks: <Section eyebrow title description> for any custom section, <Marquee> for logo strips, <Stat> for KPI bands, <Timeline> for changelog/process, <Rating> for testimonials, <FeatureIcon> for inline marks, <GradientBlob>/<GradientText> for controlled accents, <Prose> for long-form copy, <Divider label> for separators.
-4. Each block accepts \`className\`. If the vibe calls for sharper corners, swap rounded-2xl for rounded-none via className. If it calls for serif headings, override font-family in styles.css and the blocks will inherit.
-5. NEVER reinvent a section the kit already provides. If you find yourself writing \`<section><div className="grid grid-cols-3">…three cards…</div></section>\`, stop and use <FeaturesGrid3> instead.`,
+Reference page assemblies — READ ONE before composing a similar page:
+- src/components/examples/landing-saas-product.tsx — SaaS / dev tools / B2B
+- src/components/examples/landing-editorial-portfolio.tsx — agency / studio / portfolio
+- src/components/examples/landing-ecommerce-single-product.tsx — D2C / lifetime deal / single SKU
+- src/components/examples/landing-agency-services.tsx — services firm
+- src/components/examples/app-shell-with-sidebar.tsx — authenticated app interior
+- src/components/examples/blog-index.tsx + blog-post-detail.tsx — content / writing site
+
+Composition rules — this is the difference between forgettable and memorable:
+1. MIX variants across a single page. Do NOT use all "centered" variants together. Pair an editorial hero with alternating-rows features; pair a split-image hero with a bento grid.
+2. Match variants to the Design Direction vibe:
+   - editorial / brutalist / agency / portfolio → NavBar + HeroEditorial + FeaturesAlternatingRows + TestimonialsQuoteHero + CtaSplit + FooterMinimal
+   - playful / maximalist / consumer launch → NavWithCta + HeroCentered (GradientBlob) + FeaturesBento + TestimonialsMarquee + CtaGradientBand + FooterNewsletter
+   - SaaS product / dev tools → NavWithCta + HeroSplitImage + LogosMarquee + FeaturesBento + StatsBand + TestimonialsCards + PricingSingleProduct + FaqAccordion + CtaCentered + FooterColumns
+   - docs / dashboard / app interior → NavWithSearch + content + EmptyState
+3. Supporting atoms for spaces between blocks: <Section eyebrow title description>, <Marquee>, <Stat>, <Timeline>, <Rating>, <FeatureIcon>, <GradientBlob>/<GradientText>, <Prose>, <Divider label>, <EmptyState>.
+4. Each block accepts \`className\`. Sharper corners → override rounded-2xl. Different type → override in styles.css and blocks inherit.
+5. NEVER reinvent a section the kit already provides. If you're writing \`<section><div className="grid grid-cols-3">…three cards…</div></section>\`, stop and use <FeaturesGrid3>. If you're writing a sticky <header> with mobile toggle, use <NavWithCta>. If you're writing a footer with link columns, use <FooterColumns>.`,
   },
   charts: {
     triggers: /\b(chart|graph|bar chart|line chart|area chart|analytics dashboard|kpi|metric)\b/i,
