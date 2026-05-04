@@ -164,6 +164,9 @@ export async function streamGenerate(
           case "file_complete":
             handlers.onFileComplete?.(evt.path, evt.bytes, evt.index);
             break;
+          case "narration":
+            handlers.onNarration?.(evt.path, evt.text);
+            break;
           case "result":
             handlers.onResult?.(evt.files, evt.summary, {
               plan: evt.plan,
