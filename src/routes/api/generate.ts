@@ -1769,7 +1769,10 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         // debit at end of turn. Internal QA cycles (post-stream autofix,
         // continuation, self-check) stay on Petal's tab and are NOT
         // appended here — same convention as `body.isAutoFix`.
-        const turnUsages: Array<GatewayUsage | null> = [collected.usage ?? null];
+        const turnUsages: Array<GatewayUsage | null> = [
+          collected.usage ?? null,
+          ...agentLoopUsages,
+        ];
         const priced = priceTurn(turnUsages);
 
         // Backfill the usage tokens onto the ai_call_log row that
