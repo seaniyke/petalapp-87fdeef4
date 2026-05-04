@@ -19,6 +19,7 @@ import { backendKit, BACKEND_DEPS } from "./backend-kit";
 import { EXAMPLES_PACK } from "./examples-pack";
 import { PETAL_SOURCE_PLUGIN } from "./petal-source-plugin";
 import { KIT_BLOCK_FILES } from "./scaffold-kit-blocks";
+import { KIT_BLOCK_FILES_2 } from "./scaffold-kit-blocks-2";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
@@ -3707,6 +3708,10 @@ export const KIT_FILES: KitFile[] = [
   // pages stop converging on the same centered-hero + 3-card layout.
   // Defined in a separate module so this file stays reviewable.
   ...KIT_BLOCK_FILES,
+  // Phase-2 expansion: testimonials/pricing/FAQ/CTA/footer/nav/logos/stats
+  // section variants + page-assembly examples (saas/editorial/ecommerce/
+  // agency/app-shell/blog) showing the model how to compose full pages.
+  ...KIT_BLOCK_FILES_2,
 ];
 
 /**
