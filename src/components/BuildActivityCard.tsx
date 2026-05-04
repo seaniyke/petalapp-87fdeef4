@@ -309,19 +309,26 @@ export function BuildActivityCard({
       {stepsOpen && (
         <div className="border-t border-border/50">
           <ol className="space-y-1.5 px-3 py-2.5">
-            {phases.map((p) => (
-              <PhaseRow
-                key={p.id}
-                phase={p}
-                designCaption={p.id === "designing" ? designCaption : undefined}
-                filesWritten={p.id === "writing" ? filesWritten : undefined}
-                latestPath={p.id === "writing" ? latestPath : undefined}
-                writtenPaths={p.id === "writing" ? writtenPaths : undefined}
-                completedPaths={p.id === "writing" ? completedPaths : undefined}
-                finalFileLines={p.id === "writing" ? finalFileLines : undefined}
-                fileChanges={p.id === "writing" ? fileChanges : undefined}
-              />
-            ))}
+            {phases
+              // Hide the synthetic "live" row from the expanded list. It's
+              // always either redundant with the collapsed success state
+              // ("Your app is live · built in Xs") or — worse — renders its
+              // friendly headline while the row is still pending, making it
+              // look like the app is live before the deploy actually finishes.
+              .filter((p) => p.id !== "live")
+              .map((p) => (
+                <PhaseRow
+                  key={p.id}
+                  phase={p}
+                  designCaption={p.id === "designing" ? designCaption : undefined}
+                  filesWritten={p.id === "writing" ? filesWritten : undefined}
+                  latestPath={p.id === "writing" ? latestPath : undefined}
+                  writtenPaths={p.id === "writing" ? writtenPaths : undefined}
+                  completedPaths={p.id === "writing" ? completedPaths : undefined}
+                  finalFileLines={p.id === "writing" ? finalFileLines : undefined}
+                  fileChanges={p.id === "writing" ? fileChanges : undefined}
+                />
+              ))}
           </ol>
           {timelineEvents && timelineEvents.length > 0 && (
             <div className="border-t border-border/40 px-3 py-2.5">
