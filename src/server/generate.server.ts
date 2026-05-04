@@ -488,28 +488,8 @@ export type StreamEvent =
       /** Server timestamp when this step finished. */
       ts: number;
     }
-  | {
-      /**
-       * Layer-B "Continue building" handoff. Emitted at most once per turn,
-       * AFTER all repair tiers run, when we deliberately stopped early at
-       * a safe boundary (oversize files reverted, continuation pass
-       * couldn't finish, or the changeset was unusually large). The client
-       * renders an inline chip under the assistant message that pre-fills
-       * the composer with `suggestedPrompt` so the user can continue with
-       * one click.
-       */
-      type: "continuation_handoff";
-      reason: "oversize_files" | "incomplete_turn" | "large_changeset" | "unrecoverable_turn";
-      message: string;
-      suggestedPrompt: string;
-      /** Optional structured detail of what tripped the handoff. Used by the
-       *  client to render specifics (hallucinated package names, truncated
-       *  file paths) so the user knows *what* to continue fixing. */
-      detected?: {
-        hallucinatedPackages?: string[];
-        truncatedPaths?: string[];
-      };
-    }
+  // NOTE: The legacy `continuation_handoff` event has been removed along
+  // with the Continue-building chip. The server no longer emits it.
   | {
       type: "error";
       message: string;
