@@ -1505,6 +1505,21 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           ...rlsSanityIssues,
         ];
         if (autofixGateOpen) {
+          // Cycle 2 = the polish pass. Brief intent ping so the activity
+          // card narrates the gap instead of going silent for 5-10s while
+          // the autofix model thinks.
+          controller.enqueue(
+            encoder.encode(sse({ type: "cycle_start", cycle: 2, intent: "fixing" })),
+          );
+          controller.enqueue(
+            encoder.encode(
+              sse({
+                type: "cycle_progress",
+                cycle: 2,
+                message: `Petal noticed ${combinedAutofixIssues.length} thing${combinedAutofixIssues.length === 1 ? "" : "s"} to polish — patching now.`,
+              }),
+            ),
+          );
           const fixT0 = Date.now();
           try {
             const fixOut = await runPostStreamAutofix(nextFiles, combinedAutofixIssues);
