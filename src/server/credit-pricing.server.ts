@@ -84,3 +84,20 @@ export function priceBuild(usage: GatewayUsage | null | undefined): PricedBuild 
     completionTokens,
   };
 }
+
+/**
+ * Sum prompt + completion tokens across every sub-call (cycle) of a single
+ * user turn, then run the same formula. Charged ONCE at end of turn so
+ * users see one debit, not N. Internal autofix cycles MUST be excluded by
+ * the caller before passing into this — same convention as `body.isAutoFix`.
+ */
+export function priceTurn(usages: Array<GatewayUsage | null | undefined>): PricedBuild {
+  let prompt = 0;
+  let completion = 0;
+  for (const u of usages) {
+    if (!u) continue;
+    prompt += Math.max(0, Math.floor(u.prompt_tokens ?? 0));
+    completion += Math.max(0, Math.floor(u.completion_tokens ?? 0));
+  }
+  return priceBuild({ prompt_tokens: prompt, completion_tokens: completion });
+}
