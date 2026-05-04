@@ -1677,30 +1677,8 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           }
         }
 
-        // Layer-B "Continue building" handoff. Emitted at most once
-        // per turn, AFTER all repair tiers, BEFORE the result event so
-        // the client can attach it to this assistant message.
-        if (handoffReason) {
-          const hasDetected =
-            (handoffDetected.hallucinatedPackages?.length ?? 0) > 0 ||
-            (handoffDetected.truncatedPaths?.length ?? 0) > 0;
-          const { message: handoffMessage, suggestedPrompt } = buildHandoffPrompt(
-            handoffReason,
-            budgetRejections,
-            hasDetected ? handoffDetected : undefined,
-          );
-          controller.enqueue(
-            encoder.encode(
-              sse({
-                type: "continuation_handoff",
-                reason: handoffReason,
-                message: handoffMessage,
-                suggestedPrompt,
-                ...(hasDetected ? { detected: handoffDetected } : {}),
-              }),
-            ),
-          );
-        }
+        // (Legacy `continuation_handoff` SSE emit removed along with the
+        // Continue-building chip.)
 
         controller.enqueue(
           encoder.encode(
