@@ -2112,13 +2112,17 @@ function Builder() {
       setHistoryKey((k) => k + 1);
       setRevertPreview(null);
       toast.success("Reverted");
+      setAwaitingBuild(true);
       void triggerBuild(project.id)
         .then(async (build) => {
           startedBuildIdsRef.current.add(build.buildId);
           const r = await getProject(project.id);
           if (r) setProject(r);
         })
-        .catch((err: unknown) => console.error("triggerBuild failed", err));
+        .catch((err: unknown) => {
+          setAwaitingBuild(false);
+          console.error("triggerBuild failed", err);
+        });
     } catch (e) {
       console.error(e);
       toast.error(e instanceof Error ? e.message : "Couldn't revert");
