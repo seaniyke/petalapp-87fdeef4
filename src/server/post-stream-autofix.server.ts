@@ -19,6 +19,11 @@ export interface PostStreamFixResult {
   ran: boolean;
   fixedFiles: number;
   notes: string[];
+  /** Token usage from the autofix model call, when available. Surfaced so
+   *  callers running this pass inside a user-billable agentic loop can
+   *  fold it into the per-turn aggregate via priceTurn(). Internal QA
+   *  callers (default) ignore this and keep the call on Petal's tab. */
+  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
 }
 
 /** Decide whether to invoke the model based on heuristics. */
