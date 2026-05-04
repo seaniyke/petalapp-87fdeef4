@@ -3004,28 +3004,11 @@ function Builder() {
                             </CollapsibleSegment>
                           );
                         })()}
-                        {/* Layer-B "Continue building" handoff chip. Server
-                            attaches when it deliberately stops early at a
-                            safe boundary. Pre-fills the composer (no
-                            auto-submit) so the user stays in control. */}
-                        {/* Only show the handoff chip on the latest assistant
-                            message AND when Petal is fully idle. Showing a
-                            "Continue" button while another turn is still
-                            streaming is confusing — users tap it expecting
-                            action and nothing happens. */}
-                        {m.handoff &&
-                          i === messages.length - 1 &&
-                          !petalIsWorking && (
-                            <ContinueBuildingChip
-                              message={m.handoff.message}
-                              suggestedPrompt={m.handoff.suggestedPrompt}
-                              detected={m.handoff.detected}
-                              onContinue={(prompt) => {
-                                setInput(prompt);
-                                composerTextareaRef.current?.focus();
-                              }}
-                            />
-                          )}
+                        {/* "Continue in next message" handoff chip removed —
+                            it created completion-screen redundancy alongside
+                            the recap and "Your app is live" success line.
+                            The user can simply ask for the next step in the
+                            composer; no chip needed. */}
                         {/* "You'll need a backend" inline suggestion. Only on
                             the most recent assistant message, only when no
                             backend exists yet, and only when the heuristic
