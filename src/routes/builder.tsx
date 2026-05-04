@@ -1197,7 +1197,12 @@ function Builder() {
           onFileProgress: (n, path) => {
             setFilesWritten(n);
             if (path) {
-              setLatestPath(path);
+              setLatestPath((prev) => {
+                // Reset narration when we move to a new file so the old
+                // sentence doesn't linger on the new path.
+                if (prev !== path) setLatestNarration(undefined);
+                return path;
+              });
               setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
             }
           },
@@ -1207,6 +1212,15 @@ function Builder() {
               const next = new Set(prev);
               next.add(path);
               return next;
+            });
+          },
+          onNarration: (path, text) => {
+            // Only adopt narration for the currently-streaming file. Late
+            // narrations for earlier files are dropped to keep the caption
+            // truthful about what's on screen right now.
+            setLatestPath((curr) => {
+              if (curr === path || curr === undefined) setLatestNarration(text);
+              return curr;
             });
           },
           onTimeline: (entry) => {
