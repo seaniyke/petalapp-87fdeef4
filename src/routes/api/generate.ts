@@ -1109,44 +1109,37 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           try {
             payload = parseCollectedProject(collected, isInitial);
           } catch (retryErr) {
-            // Both attempts produced no tool call. Most common cause:
-            // user asked for a backend-shaped feature on a project with
-            // no backend connected. The system prompt asked the model
-            // to scaffold UI-only, but the contradiction with auth/RLS
-            // prose makes models freeze.
+            // Both attempts failed to produce usable tool output.
             //
-            // Deterministic recovery: if `noBackendGate` was active,
-            // emit a friendly summary directing the user to "Add
-            // backend" instead of throwing. The chip below the
-            // message is the actual remediation; the error card was
-            // pure noise. No credits charged because no files written.
+            // Special case: initial build with `noBackendGate` active —
+            // the model froze on the auth/RLS contradiction. Steer the
+            // user to "Add backend" with a friendly message.
             if (isInitial && dynamic.snippets.includes("noBackendGate")) {
-              const friendlySummary =
-                "I'd love to build this, but it needs a backend to handle accounts, sign-in, and saving your data. Tap **Add backend** below this message to wire one up — it's a one-click step — and I'll pick up right where we left off and ship the full thing.";
-              controller.enqueue(
-                encoder.encode(
-                  sse({
-                    type: "summary_delta",
-                    delta: friendlySummary,
-                  }),
-                ),
-              );
-              controller.enqueue(
-                encoder.encode(
-                  sse({
-                    type: "result",
-                    files: currentFiles,
-                    summary: friendlySummary,
-                    plan: undefined,
-                    recap: undefined,
-                    creditsCharged: 0,
-                  }),
-                ),
-              );
-              controller.close();
+              emitConversationalFallback(controller, encoder, {
+                files: currentFiles,
+                summary:
+                  "I'd love to build this, but it needs a backend to handle accounts, sign-in, and saving your data. Tap **Add backend** below this message to wire one up — it's a one-click step — and I'll pick up right where we left off and ship the full thing.",
+              });
               return;
             }
-            throw retryErr;
+
+            // Generic case (the one users were hitting): the model didn't
+            // emit a usable patch after two passes. NOT a real error —
+            // the most likely causes are an ambiguous request or the
+            // model deciding the existing code already does what was
+            // asked. Reply conversationally instead of throwing a red
+            // error card.
+            console.warn(
+              "[generate] both attempts produced no usable output, falling back conversationally:",
+              retryErr instanceof Error ? retryErr.message : String(retryErr),
+            );
+            emitConversationalFallback(controller, encoder, {
+              files: currentFiles,
+              summary: isInitial
+                ? "I had trouble turning that into a working starter app on this pass. Could you tell me a bit more about what kind of app you're picturing — even one sentence about the main thing it should do helps me get going."
+                : "I took a careful look but couldn't pin down a safe change for this one. Could you point me at the specific element or behavior you want adjusted? A quick note like 'make the header sticky' or 'change the CTA color to teal' is usually enough.",
+            });
+            return;
           }
         }
 
