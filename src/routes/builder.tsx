@@ -340,14 +340,14 @@ function Builder() {
         },
       };
       setMessages((prev) => {
+        // Guard against double-fire of the same error in a single tick
+        // (e.g. a retry path that signals failure twice). Anything older
+        // than the immediate previous message is a legitimately new
+        // failure and should be shown — we no longer suppress it.
         const last = prev[prev.length - 1];
         if (last?.error?.title === err.title && last?.error?.message === err.message) {
           return prev;
         }
-        const recentDuplicate = prev
-          .slice(-8)
-          .some((m) => m.error?.title === err.title && m.error?.message === err.message);
-        if (recentDuplicate) return prev;
         return [...prev, errMsg];
       });
       void appendMessages(projId, [errMsg]).catch(() => {
