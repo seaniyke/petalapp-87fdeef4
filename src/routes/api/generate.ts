@@ -529,6 +529,21 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
     throw new Error("AI returned no ops.");
   }
 
+  // The model is instructed to include a `narration` string per file/op for
+  // live UI commentary. We've already streamed those to the client during
+  // relayAndCollect — strip them now so downstream code (writers, autofix,
+  // verifier, persistence) sees the canonical { path, content } shape.
+  if (parsed.files) {
+    parsed.files = parsed.files.map((f) => ({ path: f.path, content: f.content }));
+  }
+  if (parsed.ops) {
+    parsed.ops = parsed.ops.map((o) =>
+      o.content === undefined
+        ? { op: o.op, path: o.path }
+        : { op: o.op, path: o.path, content: o.content },
+    );
+  }
+
   return {
     parsed,
     summary: parsed.summary?.trim() || "Updated the project.",
