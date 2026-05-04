@@ -516,7 +516,14 @@ export type StreamEvent =
       /** Truncated raw exception text — for client-side telemetry only,
        *  never shown to users. The friendly `message` is what renders. */
       raw?: string;
-    };
+    }
+  /** Sent ONCE at the very start of every turn so the client can persist
+   *  the id locally and use it to silently reconnect after a tab close,
+   *  refresh, or device switch (see /api/turns/$id/events). */
+  | { type: "turn_id"; turnId: string }
+  /** Sent ONCE at the end of every turn (success, failure, or abort) so
+   *  resumers know to stop tailing turn_events and unwind UI state. */
+  | { type: "done"; status: "succeeded" | "failed" | "aborted" };
 
 /** Structured failure codes for SSE `error` events. Every value here MUST
  *  have a matching entry in `KIND_TO_FRIENDLY` on the client; the smoke
