@@ -2899,7 +2899,7 @@ function Builder() {
               // refresh. Retry replays the most recent user prompt; ask-fix
               // routes through the normal askPetalToFix flow.
               if (m.role === "assistant" && m.error) {
-                if (isDeploying && isBuildFailureCardTitle(m.error.title)) return null;
+                if ((petalIsWorking || isLive) && isBuildFailureCardTitle(m.error.title)) return null;
                 const isTail = i === messages.length - 1;
                 return (
                   <div key={i} className="flex justify-start">
@@ -3711,7 +3711,7 @@ function Builder() {
             {activityVisible && (
               <BuildActivityCard
                 phases={phases}
-                isActive={busy || isDeploying}
+                isActive={busy || isDeploying || awaitingBuild}
                 isComplete={isLive}
                 error={(() => {
                   // Avoid double-rendering: if the tail message already shows
@@ -3719,7 +3719,7 @@ function Builder() {
                   // hide the BuildActivityCard's copy.
                   if (!friendlyError) return null;
                   const tail = messages[messages.length - 1];
-                  if (isDeploying && isBuildFailureCardTitle(friendlyError.title)) {
+                  if ((petalIsWorking || isLive) && isBuildFailureCardTitle(friendlyError.title)) {
                     return null;
                   }
                   if (
