@@ -235,6 +235,11 @@ export function BuildActivityCard({
   ) {
     subCaption = currentPhase.reassurance;
   }
+  // Final fallback: if any phase is silent and a cycle progress line
+  // arrived in the last few seconds, surface it instead of going blank.
+  if (!subCaption && isActive && latestCycleProgress) {
+    subCaption = latestCycleProgress;
+  }
 
   // ─── Collapsed success state ─────────────────────────────────────────────
   if (collapsed && isComplete && !error) {
