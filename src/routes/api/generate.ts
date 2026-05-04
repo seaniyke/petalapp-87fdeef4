@@ -1894,13 +1894,30 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      let heartbeat: ReturnType<typeof setInterval> | null = null;
+      let pingTimer: ReturnType<typeof setInterval> | null = null;
+      let statusTimer: ReturnType<typeof setInterval> | null = null;
+      // Track when we last sent ANY bytes downstream so the status ticker
+      // only chimes in during real silent gaps (verifier / autofix /
+      // continuation passes), not on top of streaming model output.
+      let lastByteAt = Date.now();
+      // Rotating phrases keep the line feeling alive instead of looping the
+      // same "Still working…" forever. The model + path narration takes
+      // priority — these only fire when nothing else has spoken in 14s.
+      const STATUS_ROTATION = [
+        "Still working — Petal is keeping the build connected.",
+        "Reviewing the pieces and checking for build errors…",
+        "Almost there — verifying everything compiles before shipping.",
+        "Polishing the last few details — won't be much longer.",
+      ];
+      let statusIdx = 0;
+
       const recordEvent = recorder
         ? makeSseTap((type, payload) => recorder!.record(type, payload))
         : null;
       const emit = (event: StreamEvent) => {
         const bytes = encoder.encode(sse(event));
         controller.enqueue(bytes);
+        lastByteAt = Date.now();
         if (recordEvent) recordEvent(bytes);
       };
 
@@ -1915,10 +1932,32 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         }
         emit({ type: "phase", phase: "thinking" });
         emit({ type: "status", message: "Starting your build…" });
-        heartbeat = setInterval(() => {
+
+        // Transport keep-alive: a comment line (`:` prefix) every 8s.
+        // EventSource consumers ignore comment lines entirely, so this
+        // never reaches the UI — it just stops Cloudflare / proxies from
+        // closing an "idle" stream during legit long verifier passes.
+        pingTimer = setInterval(() => {
           if (request.signal.aborted) return;
-          emit({ type: "status", message: "Still working — keeping the build connected…" });
-        }, 12_000);
+          try {
+            controller.enqueue(encoder.encode(": ping\n\n"));
+          } catch {
+            /* controller may have closed mid-tick */
+          }
+        }, 8_000);
+
+        // User-visible heartbeat: rotates phrasing and only fires after
+        // 14s of silence so it never overwrites real model narration or
+        // file events. Picks the next line in STATUS_ROTATION each tick.
+        statusTimer = setInterval(() => {
+          if (request.signal.aborted) return;
+          if (Date.now() - lastByteAt < 14_000) return;
+          emit({
+            type: "status",
+            message: STATUS_ROTATION[statusIdx % STATUS_ROTATION.length],
+          });
+          statusIdx++;
+        }, 14_000);
 
         const response = await handleGenerateRequestCore(request);
         if (!response.ok || !response.body) {
@@ -1939,6 +1978,8 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           const { value, done } = await reader.read();
           if (done) break;
           controller.enqueue(value);
+          // Inner-stream bytes count as activity too — silences the ticker.
+          lastByteAt = Date.now();
           if (recordEvent) recordEvent(value);
         }
       } catch (e) {
@@ -1952,7 +1993,8 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           raw: raw.slice(0, 500),
         });
       } finally {
-        if (heartbeat) clearInterval(heartbeat);
+        if (pingTimer) clearInterval(pingTimer);
+        if (statusTimer) clearInterval(statusTimer);
         // Always emit a terminal `done` event so resumers know to stop tailing.
         try {
           emit({ type: "done", status: terminalStatus });
