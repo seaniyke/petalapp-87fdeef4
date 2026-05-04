@@ -291,9 +291,14 @@ export const WRITE_PROJECT_TOOL = {
             type: "object",
             properties: {
               path: { type: "string", description: "Relative file path, e.g. index.html" },
+              narration: {
+                type: "string",
+                description:
+                  "ONE short, warm, present-continuous sentence (max ~12 words, no trailing period) describing what this file is for, written in your own voice as if speaking to the user. Examples: 'Building the photo upload screen', 'Wiring up the analyze endpoint', 'Setting up the database tables'. Streamed live to the user the moment you finish writing this field, BEFORE the file content streams. ALWAYS place this field BEFORE `content` so the user hears what's coming before the body arrives.",
+              },
               content: { type: "string", description: "Full text content of the file." },
             },
-            required: ["path", "content"],
+            required: ["path", "narration", "content"],
             additionalProperties: false,
           },
         },
@@ -335,6 +340,11 @@ export const PATCH_FILES_TOOL = {
             properties: {
               op: { type: "string", enum: ["create", "update", "delete"] },
               path: { type: "string", description: "Relative file path." },
+              narration: {
+                type: "string",
+                description:
+                  "ONE short, warm, present-continuous sentence (max ~12 words, no trailing period) describing what this change is, in your own voice. Examples: 'Tightening the upload button styling', 'Fixing the empty-state copy', 'Adding the new results route'. Required for create/update; omit for delete. ALWAYS place this field BEFORE `content` so it streams to the user before the file body.",
+              },
               content: {
                 type: "string",
                 description: "Full file contents. Required for create/update, omit for delete.",
@@ -432,6 +442,14 @@ export type StreamEvent =
   | { type: "design_vibe"; vibe: string; rationale: string }
   | { type: "file_progress"; written: number; latestPath?: string }
   | { type: "file_complete"; path: string; bytes: number; index: number }
+  /**
+   * One short, human sentence the model wrote in its OWN voice for the file
+   * it's about to start generating ("Building the photo upload screen…").
+   * Emitted exactly once per file, the moment the model's `narration` field
+   * for that file finishes streaming. The client uses it as the activity
+   * card's sub-caption, overriding the path-derived fallback.
+   */
+  | { type: "narration"; path: string; text: string }
   | {
       type: "result";
       files: ProjectFile[];

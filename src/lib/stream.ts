@@ -11,6 +11,8 @@ type Handlers = {
   onDesignVibe?: (vibe: string, rationale: string) => void;
   onFileProgress?: (written: number, latestPath?: string) => void;
   onFileComplete?: (path: string, bytes: number, index: number) => void;
+  /** Model-written one-liner about the file it's about to build. */
+  onNarration?: (path: string, text: string) => void;
   onResult?: (
     files: ProjectFile[],
     summary: string,
@@ -162,6 +164,9 @@ export async function streamGenerate(
           case "file_complete":
             handlers.onFileComplete?.(evt.path, evt.bytes, evt.index);
             break;
+          case "narration":
+            handlers.onNarration?.(evt.path, evt.text);
+            break;
           case "result":
             handlers.onResult?.(evt.files, evt.summary, {
               plan: evt.plan,
@@ -304,6 +309,9 @@ export async function streamResumeTurn(
               evt.bytes as number,
               evt.index as number,
             );
+            break;
+          case "narration":
+            handlers.onNarration?.((evt.path as string) ?? "", (evt.text as string) ?? "");
             break;
           case "result":
             handlers.onResult?.(

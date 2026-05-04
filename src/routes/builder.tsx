@@ -255,6 +255,10 @@ function Builder() {
   const [filesWritten, setFilesWritten] = useState<number>(0);
   const [lastBuildCredits, setLastBuildCredits] = useState<number | null>(null);
   const [latestPath, setLatestPath] = useState<string | undefined>(undefined);
+  // Model-written sentence for the most recent file ("Building the upload
+  // screen…"). When present, the activity card shows this instead of the
+  // path-derived fallback. Cleared at the start of each turn.
+  const [latestNarration, setLatestNarration] = useState<string | undefined>(undefined);
   // Ordered, deduped list of every path Petal streams during the writing phase.
   // Drives the per-file progress list in BuildActivityCard.
   const [writtenPaths, setWrittenPaths] = useState<string[]>([]);
@@ -1193,7 +1197,12 @@ function Builder() {
           onFileProgress: (n, path) => {
             setFilesWritten(n);
             if (path) {
-              setLatestPath(path);
+              setLatestPath((prev) => {
+                // Reset narration when we move to a new file so the old
+                // sentence doesn't linger on the new path.
+                if (prev !== path) setLatestNarration(undefined);
+                return path;
+              });
               setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
             }
           },
@@ -1203,6 +1212,15 @@ function Builder() {
               const next = new Set(prev);
               next.add(path);
               return next;
+            });
+          },
+          onNarration: (path, text) => {
+            // Only adopt narration for the currently-streaming file. Late
+            // narrations for earlier files are dropped to keep the caption
+            // truthful about what's on screen right now.
+            setLatestPath((curr) => {
+              if (curr === path || curr === undefined) setLatestNarration(text);
+              return curr;
             });
           },
           onTimeline: (entry) => {
@@ -1603,7 +1621,10 @@ function Builder() {
             onFileProgress: (n, path) => {
               setFilesWritten(n);
               if (path) {
-                setLatestPath(path);
+                setLatestPath((prev) => {
+                  if (prev !== path) setLatestNarration(undefined);
+                  return path;
+                });
                 // Append to ordered, deduped list so the user sees each file
                 // appear in the activity card as Petal writes it.
                 setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
@@ -1617,6 +1638,12 @@ function Builder() {
                 const next = new Set(prev);
                 next.add(path);
                 return next;
+              });
+            },
+            onNarration: (path, text) => {
+              setLatestPath((curr) => {
+                if (curr === path || curr === undefined) setLatestNarration(text);
+                return curr;
               });
             },
             onResult: (f, s, extras) => {
@@ -3600,6 +3627,7 @@ function Builder() {
                 })()}
                 designCaption={designCaption}
                 latestPath={latestPath}
+                latestNarration={latestNarration}
                 filesWritten={filesWritten}
                 writtenPaths={writtenPaths}
                 completedPaths={completedPaths}

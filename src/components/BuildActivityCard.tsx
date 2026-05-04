@@ -103,6 +103,9 @@ type Props = {
   designCaption?: string;
   /** Latest file written, shown next to the file counter. */
   latestPath?: string;
+  /** Model-written one-liner for the file currently being written
+   *  ("Building the photo upload screen"). Overrides path-derived narration. */
+  latestNarration?: string;
   /** Number of files written so far (during the writing phase). */
   filesWritten?: number;
   /** Ordered list of every file path written so far (deduped). */
@@ -144,6 +147,7 @@ export function BuildActivityCard({
   error,
   designCaption,
   latestPath,
+  latestNarration,
   filesWritten,
   writtenPaths,
   completedPaths,
@@ -194,12 +198,15 @@ export function BuildActivityCard({
   if (currentPhase?.id === "designing" && designCaption) {
     subCaption = designCaption;
   } else if (currentPhase?.id === "writing") {
-    // Talk to the user as we work — translate the raw path being written
-    // ("src/routes/diagnose.tsx") into a warm sentence ("Building the
-    // diagnose page"). Falls back to a file count if we don't have a path
-    // yet, so the line never goes silent.
-    const narration = pathToNarration(latestPath);
-    if (narration) subCaption = narration;
+    // Talk to the user as we work. Priority:
+    //   1. Model-written narration for the current file (warmest, most
+    //      specific — Petal's actual voice).
+    //   2. Path-derived narration (deterministic fallback).
+    //   3. File count (last resort so the line never goes silent).
+    const modelLine = latestNarration?.trim();
+    const derived = pathToNarration(latestPath);
+    if (modelLine) subCaption = modelLine;
+    else if (derived) subCaption = derived;
     else if (filesWritten && filesWritten > 0)
       subCaption = `${filesWritten} file${filesWritten === 1 ? "" : "s"} so far`;
   } else if (currentPhase?.id === "deploying" && typeof deployElapsedSec === "number") {

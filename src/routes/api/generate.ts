@@ -287,9 +287,18 @@ async function relayAndCollect(
   // fires exactly once even though we re-scan the cumulative buffer.
   const completedPaths = new Set<string>();
   let completedCount = 0;
+  // Track which file paths have already had their NARRATION sentence
+  // forwarded to the client. Each file emits its narration exactly once,
+  // the moment the model finishes writing its `narration` string — which
+  // we instruct the model to place BEFORE `content`, so users hear what
+  // Petal is about to build *before* the file body streams.
+  const narratedPaths = new Set<string>();
 
   // Matches a completed `"path": "<value>"` occurrence (handles escaped chars).
   const PATH_RE = /"path"\s*:\s*"((?:\\.|[^"\\])*)"/g;
+  // Matches a completed `"narration": "<value>"` occurrence — same closing
+  // lookahead trick as content so we only fire when the string has closed.
+  const NARRATION_RE = /"narration"\s*:\s*"((?:\\.|[^"\\])*)"(?=\s*[,}])/g;
   // Matches a completed `"content": "<value>"` occurrence — the trailing
   // lookahead `[,}]` guarantees the JSON string actually closed (not just
   // a `\"` mid-stream). We pair each match with the most recent path that
@@ -402,6 +411,35 @@ async function relayAndCollect(
             );
           }
 
+          // Emit one NARRATION event per file, the moment the model's
+          // `narration` field for that file finishes streaming. We instruct
+          // the model to place `narration` BEFORE `content`, so this event
+          // typically fires *before* the file body even starts streaming —
+          // giving the user a real, model-written sentence about what's
+          // about to be built. Falls back gracefully when missing (the
+          // client uses path-derived narration instead).
+          NARRATION_RE.lastIndex = 0;
+          let nm: RegExpExecArray | null;
+          while ((nm = NARRATION_RE.exec(tool.args)) !== null) {
+            const narrationEnd = nm.index;
+            let text = nm[1];
+            try { text = JSON.parse(`"${nm[1]}"`); } catch { /* keep raw */ }
+            let owner: string | undefined;
+            for (let i = pathMatches.length - 1; i >= 0; i--) {
+              if (pathMatches[i].index < narrationEnd) {
+                owner = pathMatches[i].path;
+                break;
+              }
+            }
+            if (!owner || narratedPaths.has(owner)) continue;
+            const trimmed = String(text).trim().replace(/\s+/g, " ").slice(0, 120);
+            if (!trimmed) continue;
+            narratedPaths.add(owner);
+            controller.enqueue(
+              encoder.encode(sse({ type: "narration", path: owner, text: trimmed })),
+            );
+          }
+
           // Emit `file_complete` for each file whose `"content": "…"` string
           // has fully closed in the buffer. This is the v0-style perceived
           // latency win: the client can flip a file's status to "done" the
@@ -489,6 +527,20 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
   }
   if (collected.name === "patch_files" && !Array.isArray(parsed.ops)) {
     throw new Error("AI returned no ops.");
+  }
+
+  // The model is instructed to include a `narration` string per file/op for
+  // live UI commentary. We've already streamed those to the client during
+  // relayAndCollect — strip them now so downstream code (writers, autofix,
+  // verifier, persistence) sees the canonical FileOp / ProjectFile shape.
+  if (parsed.files) {
+    parsed.files = parsed.files.map((f) => ({ path: f.path, content: f.content }));
+  }
+  if (parsed.ops) {
+    parsed.ops = parsed.ops.map((o) => {
+      const { narration: _drop, ...rest } = o as FileOp & { narration?: string };
+      return rest as FileOp;
+    });
   }
 
   return {
