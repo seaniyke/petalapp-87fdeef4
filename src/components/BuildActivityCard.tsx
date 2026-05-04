@@ -147,6 +147,7 @@ export function BuildActivityCard({
   error,
   designCaption,
   latestPath,
+  latestNarration,
   filesWritten,
   writtenPaths,
   completedPaths,
