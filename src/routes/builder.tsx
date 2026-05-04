@@ -3641,6 +3641,7 @@ function Builder() {
                 designCaption={designCaption}
                 latestPath={latestPath}
                 latestNarration={latestNarration}
+                latestCycleProgress={latestCycleProgress}
                 filesWritten={filesWritten}
                 writtenPaths={writtenPaths}
                 completedPaths={completedPaths}
