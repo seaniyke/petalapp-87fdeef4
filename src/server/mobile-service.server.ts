@@ -35,6 +35,12 @@ export interface MobileBuildRequest {
   workflowId: string;
   /** Branch to build from. Defaults to `main`. */
   branch?: string;
+  /**
+   * Decrypted signing materials when kind=="signed". Plumbed through as
+   * Codemagic environment variables so the workflow can write them to disk
+   * and feed fastlane / gradle. Empty/undefined for unsigned builds.
+   */
+  signingEnv?: Record<string, string>;
 }
 
 export interface MobileBuildResult {
@@ -46,6 +52,11 @@ export interface MobileBuildResult {
 
 export interface BuildProvider {
   name: "codemagic";
+  /** Petal-owned: create a Codemagic app pointing at our mirror repo. */
+  createApp(args: {
+    projectId: string;
+    githubFullName: string;
+  }): Promise<{ codemagicAppId: string }>;
   startBuild(req: MobileBuildRequest): Promise<MobileBuildResult>;
   getBuild(id: string): Promise<MobileBuildResult>;
 }
@@ -107,21 +118,50 @@ async function codemagicFetch(path: string, init: RequestInit = {}): Promise<Res
 export const codemagicProvider: BuildProvider = {
   name: "codemagic",
 
+  /**
+   * Create a Codemagic app pointing at the Petal-owned GitHub mirror repo.
+   * Codemagic uses the repo's `codemagic.yaml` to discover workflows, so as
+   * long as the mirror contains that file (we commit it on first push) the
+   * `petal-default` / `petal-default-signed` workflows are auto-registered.
+   *
+   * Idempotent at the call site: callers should check mobile_apps for an
+   * existing codemagic_app_id before invoking this.
+   */
+  async createApp({ projectId, githubFullName }) {
+    const res = await codemagicFetch("/apps", {
+      method: "POST",
+      body: JSON.stringify({
+        repositoryUrl: `https://github.com/${githubFullName}`,
+      }),
+    });
+    const data = (await res.json()) as { _id?: string; appId?: string };
+    const codemagicAppId = data._id ?? data.appId ?? "";
+    if (!codemagicAppId) {
+      throw new Error(`Codemagic /apps returned no app id for ${githubFullName}`);
+    }
+    console.log(
+      `[mobile] codemagic app created project=${projectId} app=${codemagicAppId}`,
+    );
+    return { codemagicAppId };
+  },
+
   async startBuild(req) {
+    const baseVars = {
+      PETAL_PROJECT_ID: req.projectId,
+      PETAL_BUNDLE_ID: req.bundleId,
+      PETAL_PLATFORM: req.platform,
+      PETAL_BUILD_KIND: req.kind,
+    } as Record<string, string>;
+    const variables = req.signingEnv
+      ? { ...baseVars, ...req.signingEnv }
+      : baseVars;
     const res = await codemagicFetch("/builds", {
       method: "POST",
       body: JSON.stringify({
         appId: req.codemagicAppId,
         workflowId: req.workflowId,
         branch: req.branch ?? "main",
-        environment: {
-          variables: {
-            PETAL_PROJECT_ID: req.projectId,
-            PETAL_BUNDLE_ID: req.bundleId,
-            PETAL_PLATFORM: req.platform,
-            PETAL_BUILD_KIND: req.kind,
-          },
-        },
+        environment: { variables },
       }),
     });
     const data = (await res.json()) as { buildId?: string; _id?: string };

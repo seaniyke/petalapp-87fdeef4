@@ -734,35 +734,44 @@ export type Database = {
       }
       mobile_apps: {
         Row: {
-          bundle_id: string
-          codemagic_app_id: string
+          bundle_id: string | null
+          codemagic_app_id: string | null
           created_at: string
           default_branch: string
+          github_default_branch: string
+          github_repo: string | null
           id: string
           latest_build_id: string | null
           project_id: string
+          signing_profile_id: string | null
           updated_at: string
           workflow_id: string
         }
         Insert: {
-          bundle_id: string
-          codemagic_app_id: string
+          bundle_id?: string | null
+          codemagic_app_id?: string | null
           created_at?: string
           default_branch?: string
+          github_default_branch?: string
+          github_repo?: string | null
           id?: string
           latest_build_id?: string | null
           project_id: string
+          signing_profile_id?: string | null
           updated_at?: string
           workflow_id?: string
         }
         Update: {
-          bundle_id?: string
-          codemagic_app_id?: string
+          bundle_id?: string | null
+          codemagic_app_id?: string | null
           created_at?: string
           default_branch?: string
+          github_default_branch?: string
+          github_repo?: string | null
           id?: string
           latest_build_id?: string | null
           project_id?: string
+          signing_profile_id?: string | null
           updated_at?: string
           workflow_id?: string
         }
@@ -790,6 +799,7 @@ export type Database = {
           mobile_app_id: string
           platform: string
           project_id: string
+          signing_profile_id: string | null
           started_at: string | null
           status: string
           updated_at: string
@@ -808,6 +818,7 @@ export type Database = {
           mobile_app_id: string
           platform: string
           project_id: string
+          signing_profile_id?: string | null
           started_at?: string | null
           status?: string
           updated_at?: string
@@ -826,6 +837,7 @@ export type Database = {
           mobile_app_id?: string
           platform?: string
           project_id?: string
+          signing_profile_id?: string | null
           started_at?: string | null
           status?: string
           updated_at?: string
@@ -840,6 +852,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mobile_signing_profiles: {
+        Row: {
+          android_key_alias: string | null
+          android_key_password_ciphertext: string | null
+          android_keystore_ciphertext: string | null
+          android_keystore_password_ciphertext: string | null
+          android_play_service_account_ciphertext: string | null
+          apple_app_store_connect_issuer_id: string | null
+          apple_app_store_connect_key_ciphertext: string | null
+          apple_app_store_connect_key_id: string | null
+          apple_bundle_id: string | null
+          apple_p12_ciphertext: string | null
+          apple_p12_password_ciphertext: string | null
+          apple_provisioning_profile_ciphertext: string | null
+          apple_team_id: string | null
+          created_at: string
+          id: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          android_key_alias?: string | null
+          android_key_password_ciphertext?: string | null
+          android_keystore_ciphertext?: string | null
+          android_keystore_password_ciphertext?: string | null
+          android_play_service_account_ciphertext?: string | null
+          apple_app_store_connect_issuer_id?: string | null
+          apple_app_store_connect_key_ciphertext?: string | null
+          apple_app_store_connect_key_id?: string | null
+          apple_bundle_id?: string | null
+          apple_p12_ciphertext?: string | null
+          apple_p12_password_ciphertext?: string | null
+          apple_provisioning_profile_ciphertext?: string | null
+          apple_team_id?: string | null
+          created_at?: string
+          id?: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          android_key_alias?: string | null
+          android_key_password_ciphertext?: string | null
+          android_keystore_ciphertext?: string | null
+          android_keystore_password_ciphertext?: string | null
+          android_play_service_account_ciphertext?: string | null
+          apple_app_store_connect_issuer_id?: string | null
+          apple_app_store_connect_key_ciphertext?: string | null
+          apple_app_store_connect_key_id?: string | null
+          apple_bundle_id?: string | null
+          apple_p12_ciphertext?: string | null
+          apple_p12_password_ciphertext?: string | null
+          apple_provisioning_profile_ciphertext?: string | null
+          apple_team_id?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       page_views: {
         Row: {
