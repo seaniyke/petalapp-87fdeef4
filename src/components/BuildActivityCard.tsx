@@ -193,7 +193,12 @@ export function BuildActivityCard({
   if (currentPhase?.id === "designing" && designCaption) {
     subCaption = designCaption;
   } else if (currentPhase?.id === "writing") {
-    if (latestPath) subCaption = latestPath;
+    // Talk to the user as we work — translate the raw path being written
+    // ("src/routes/diagnose.tsx") into a warm sentence ("Building the
+    // diagnose page"). Falls back to a file count if we don't have a path
+    // yet, so the line never goes silent.
+    const narration = pathToNarration(latestPath);
+    if (narration) subCaption = narration;
     else if (filesWritten && filesWritten > 0)
       subCaption = `${filesWritten} file${filesWritten === 1 ? "" : "s"} so far`;
   } else if (currentPhase?.id === "deploying" && typeof deployElapsedSec === "number") {
