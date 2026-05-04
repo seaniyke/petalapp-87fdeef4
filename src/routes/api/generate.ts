@@ -741,21 +741,23 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     }
   }
 
+  // Labs flags — loaded once per request so both the staged-pipeline
+  // gate (initial only) and the agentic-loop gate (post-stream autofix)
+  // see the same values without re-querying. Empty {} on failure.
+  const labsFlags = await loadLabsFlagsForRequest(userJwt);
+
   // Staged pipeline (Labs). When the user has the staged_pipeline flag on,
   // initial builds run through Plan → parallel-Scaffold → Wire-up instead
   // of the monolithic write_project call. The orchestrator returns null
   // on any pre-stream failure so we can fall through to the existing
   // path with no behavior change for everyone else.
-  if (isInitial) {
-    const flags = await loadLabsFlagsForRequest(userJwt);
-    if (flags.staged_pipeline) {
-      const stagedResp = await runStagedPipelineStream({
-        brief: lastUserContent,
-        hasBackend: Boolean(backend),
-      });
-      if (stagedResp) return stagedResp;
-      console.warn("[staged] orchestrator returned null — falling back to monolithic path");
-    }
+  if (isInitial && labsFlags.staged_pipeline) {
+    const stagedResp = await runStagedPipelineStream({
+      brief: lastUserContent,
+      hasBackend: Boolean(backend),
+    });
+    if (stagedResp) return stagedResp;
+    console.warn("[staged] orchestrator returned null — falling back to monolithic path");
   }
   const designDirection =
     isInitial && userJwt
