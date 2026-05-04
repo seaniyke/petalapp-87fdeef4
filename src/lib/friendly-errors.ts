@@ -334,9 +334,9 @@ export function autoFixingBuild(attempt: number): FriendlyError {
 }
 
 /** Friendly copy specifically for a failed Cloudflare Pages build, shown
- *  AFTER the two free auto-fix attempts have been exhausted. At this
- *  point the user has to opt in to a manual fix (which IS charged like a
- *  normal build prompt) or open Discuss mode to investigate.
+ *  AFTER Petal's free auto-fix attempts have been exhausted. At this
+ *  point the user has to opt in to another manual fix pass or open Discuss
+ *  mode to investigate.
  *
  *  We pass the raw log into the friendly error so the user can read it
  *  under "Show details" — and `askPetalToFix` in builder.tsx forwards the
@@ -366,7 +366,7 @@ export function friendlyBuildFailure(rawLog: string | null | undefined): Friendl
     return {
       title: "A styling rule isn't quite right",
       message:
-        "Petal already tried two free fixes and the build is still failing on a stylesheet issue. Tap below to try one more targeted fix.",
+        "Petal tried free fixes, but the latest build still has a stylesheet error. Tap below to run one more targeted pass.",
       actionLabel: "Try one more fix",
       actionKind: "ask-fix",
       technicalDetail: tail,
@@ -374,9 +374,9 @@ export function friendlyBuildFailure(rawLog: string | null | undefined): Friendl
   }
 
   return {
-    title: "Petal couldn't auto-fix this one",
+    title: "Build needs one more pass",
     message:
-      "Two free fix attempts didn't resolve the build. Tap below to try one more pass with the latest error log, or open Discuss mode to investigate together.",
+      "Petal tried free fixes, but the latest build still has an error. Tap below to run one more targeted pass with the latest log, or open Discuss mode to investigate together.",
     actionLabel: "Try one more fix",
     actionKind: "ask-fix",
     technicalDetail: tail,
