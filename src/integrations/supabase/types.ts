@@ -732,6 +732,115 @@ export type Database = {
           },
         ]
       }
+      mobile_apps: {
+        Row: {
+          bundle_id: string
+          codemagic_app_id: string
+          created_at: string
+          default_branch: string
+          id: string
+          latest_build_id: string | null
+          project_id: string
+          updated_at: string
+          workflow_id: string
+        }
+        Insert: {
+          bundle_id: string
+          codemagic_app_id: string
+          created_at?: string
+          default_branch?: string
+          id?: string
+          latest_build_id?: string | null
+          project_id: string
+          updated_at?: string
+          workflow_id?: string
+        }
+        Update: {
+          bundle_id?: string
+          codemagic_app_id?: string
+          created_at?: string
+          default_branch?: string
+          id?: string
+          latest_build_id?: string | null
+          project_id?: string
+          updated_at?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mobile_apps_latest_build_fk"
+            columns: ["latest_build_id"]
+            isOneToOne: false
+            referencedRelation: "mobile_builds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mobile_builds: {
+        Row: {
+          actual_cost_usd: number | null
+          artifact_url: string | null
+          codemagic_build_id: string | null
+          created_at: string
+          error_message: string | null
+          estimated_cost_usd: number
+          finished_at: string | null
+          id: string
+          kind: string
+          mobile_app_id: string
+          platform: string
+          project_id: string
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actual_cost_usd?: number | null
+          artifact_url?: string | null
+          codemagic_build_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          estimated_cost_usd?: number
+          finished_at?: string | null
+          id?: string
+          kind: string
+          mobile_app_id: string
+          platform: string
+          project_id: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actual_cost_usd?: number | null
+          artifact_url?: string | null
+          codemagic_build_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          estimated_cost_usd?: number
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          mobile_app_id?: string
+          platform?: string
+          project_id?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mobile_builds_mobile_app_id_fkey"
+            columns: ["mobile_app_id"]
+            isOneToOne: false
+            referencedRelation: "mobile_apps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       page_views: {
         Row: {
           country: string | null
