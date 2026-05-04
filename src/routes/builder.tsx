@@ -1226,6 +1226,8 @@ function Builder() {
               return curr;
             });
           },
+          onCycleProgress: (_cycle, message) => setLatestCycleProgress(message),
+          onCycleEnd: () => setLatestCycleProgress(undefined),
           onTimeline: (entry) => {
             setTimelineEvents((prev) => (prev.length >= 30 ? prev : [...prev, entry]));
           },
