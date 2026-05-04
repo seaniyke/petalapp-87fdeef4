@@ -1221,27 +1221,11 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           ),
         );
 
-        // Track Layer-B handoff triggers as the pipeline runs. Emitted
-        // as a single `continuation_handoff` event right before `result`.
-        let handoffReason:
-          | "oversize_files"
-          | "incomplete_turn"
-          | "large_changeset"
-          | "unrecoverable_turn"
-          | null = budgetRejections.length > 0 ? "oversize_files" : null;
-        // Detected detail attached to the handoff event so the chip can
-        // tell the user *what* tripped the stop (hallucinated packages,
-        // truncated files). Populated as the relevant tiers run.
-        const handoffDetected: {
-          hallucinatedPackages?: string[];
-          truncatedPaths?: string[];
-        } = {};
-        // Heuristic: an unusually large changeset is itself a truncation
-        // risk. Encourage stopping at a clean boundary even when nothing
-        // technically failed.
-        if (!handoffReason && budgetChangedPaths.length >= 8) {
-          handoffReason = "large_changeset";
-        }
+        // The legacy "Continue building" handoff machinery
+        // (handoffReason / handoffDetected / continuation_handoff event)
+        // has been removed along with the chip. Tiers below still report
+        // pipeline outcomes via telemetry but no longer mutate any
+        // handoff state.
 
         // Tier 2 — stream-time autofixer (regex pass, <10ms total).
         // Repairs known footguns BEFORE the build/image steps run.
