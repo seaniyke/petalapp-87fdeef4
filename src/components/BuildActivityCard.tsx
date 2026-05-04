@@ -351,40 +351,63 @@ export function BuildActivityCard({
       </div>
       {stepsOpen && (
         <div className="border-t border-border/50">
-          <ol className="space-y-1.5 px-3 py-2.5">
-            {phases
-              // Hide the synthetic "live" row from the expanded list. It's
-              // always either redundant with the collapsed success state
-              // ("Your app is live · built in Xs") or — worse — renders its
-              // friendly headline while the row is still pending, making it
-              // look like the app is live before the deploy actually finishes.
-              .filter((p) => p.id !== "live")
-              .map((p) => (
-                <PhaseRow
-                  key={p.id}
-                  phase={p}
-                  designCaption={p.id === "designing" ? designCaption : undefined}
-                  filesWritten={p.id === "writing" ? filesWritten : undefined}
-                  latestPath={p.id === "writing" ? latestPath : undefined}
-                  writtenPaths={p.id === "writing" ? writtenPaths : undefined}
-                  completedPaths={p.id === "writing" ? completedPaths : undefined}
-                  finalFileLines={p.id === "writing" ? finalFileLines : undefined}
-                  fileChanges={p.id === "writing" ? fileChanges : undefined}
-                />
-              ))}
-          </ol>
-          {timelineEvents && timelineEvents.length > 0 && (
-            <div className="border-t border-border/40 px-3 py-2.5">
-              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Build pipeline
-              </div>
-              <ol className="space-y-1">
-                {timelineEvents.map((e, i) => (
-                  <TimelineRow key={`${e.step}-${e.ts}-${i}`} entry={e} />
-                ))}
-              </ol>
-            </div>
-          )}
+          {(() => {
+            // Only surface phases that have actually started (active / done /
+            // failed). Showing every pending phase up-front looked like a
+            // canned 5-step script ("Reading… Designing… Writing… Adding
+            // finishing touches… Putting your app online…") that duplicated
+            // the header and ran ahead of reality. The real-time signal is
+            // `timelineEvents` plus the active phase row — pending rows
+            // only appear once they actually begin.
+            const startedPhases = phases.filter(
+              (p) => p.id !== "live" && p.status !== "pending",
+            );
+            const hasContent =
+              startedPhases.length > 0 ||
+              (timelineEvents && timelineEvents.length > 0);
+            if (!hasContent) {
+              return (
+                <div className="px-3 py-2 text-[11.5px] text-muted-foreground/70">
+                  Petal will list each step here as it happens.
+                </div>
+              );
+            }
+            return (
+              <>
+                {startedPhases.length > 0 && (
+                  <ol className="space-y-1.5 px-3 py-2.5">
+                    {startedPhases.map((p) => (
+                      <PhaseRow
+                        key={p.id}
+                        phase={p}
+                        designCaption={p.id === "designing" ? designCaption : undefined}
+                        filesWritten={p.id === "writing" ? filesWritten : undefined}
+                        latestPath={p.id === "writing" ? latestPath : undefined}
+                        writtenPaths={p.id === "writing" ? writtenPaths : undefined}
+                        completedPaths={p.id === "writing" ? completedPaths : undefined}
+                        finalFileLines={p.id === "writing" ? finalFileLines : undefined}
+                        fileChanges={p.id === "writing" ? fileChanges : undefined}
+                      />
+                    ))}
+                  </ol>
+                )}
+                {timelineEvents && timelineEvents.length > 0 && (
+                  <div
+                    className={`px-3 py-2.5 ${startedPhases.length > 0 ? "border-t border-border/40" : ""}`}
+                  >
+                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                      Build pipeline
+                    </div>
+                    <ol className="space-y-1">
+                      {timelineEvents.map((e, i) => (
+                        <TimelineRow key={`${e.step}-${e.ts}-${i}`} entry={e} />
+                      ))}
+                    </ol>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
     </div>
