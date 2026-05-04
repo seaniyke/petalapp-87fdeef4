@@ -1160,6 +1160,22 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           return { ...f, content: STYLES_CSS };
         });
 
+        // Cycle 1 transitions from "writing" → "verifying". The activity
+        // card uses this to keep the sub-caption alive while the verifier
+        // tiers run silently for a few seconds.
+        controller.enqueue(
+          encoder.encode(sse({ type: "cycle_start", cycle: 1, intent: "verifying" })),
+        );
+        controller.enqueue(
+          encoder.encode(
+            sse({
+              type: "cycle_progress",
+              cycle: 1,
+              message: "Checking the files Petal just wrote for build errors…",
+            }),
+          ),
+        );
+
         // Tier 2.4 — server-side file budget gate. Reject any file
         // that blew past the hard ceiling (> 280 lines or > 10 KB)
         // and revert it to its prior content. Files in the soft band
