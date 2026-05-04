@@ -1673,11 +1673,7 @@ function Builder() {
                 prev.length >= 30 ? prev : [...prev, entry],
               );
             },
-            onContinuationHandoff: (handoff) => {
-              // Layer-B handoff — server stopped early at a safe boundary.
-              // Stash so we can attach to the assistant message below.
-              resultHandoff = handoff;
-            },
+            // onContinuationHandoff removed — Continue-building chip retired.
 
             onError: (m, sugg, kind, raw) => {
               streamError = m;
