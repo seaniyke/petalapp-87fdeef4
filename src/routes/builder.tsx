@@ -40,7 +40,13 @@ import {
   type ChatAttachment,
   MAX_ATTACHMENTS_PER_MESSAGE,
 } from "@/lib/attachments";
-import { streamGenerate } from "@/lib/stream";
+import { streamGenerate, streamResumeTurn } from "@/lib/stream";
+import {
+  persistTurnId,
+  clearPersistedTurnId,
+  readPersistedTurn,
+  bumpTurnSeq,
+} from "@/lib/turn-persistence";
 import { streamTriage } from "@/lib/triage";
 import { requestDiscussion } from "@/lib/discuss";
 import { emitServiceEnabled, onServiceEnabled } from "@/lib/service-events";
