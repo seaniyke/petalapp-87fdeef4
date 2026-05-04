@@ -24,7 +24,11 @@ export const BUILD_FLOOR = 1.0; // minimum charged after true-up
 export const BUILD_BASE = 0.5; // additive base before token weighting
 export const PROMPT_RATE = 0.03; // credits per 1k input tokens
 export const COMPLETION_RATE = 0.15; // credits per 1k output tokens
-export const BUILD_CAP = 6.0; // max credits per single build
+// Bumped 2026-05 to 12.0 to leave headroom for multi-cycle agentic turns
+// (plan: a 2m+ turn that legitimately runs 3-5 verifier/fix cycles can
+// price out at 8-10 credits with the same per-token formula). The cap is
+// still in CREDITS, not tokens — a runaway is bounded.
+export const BUILD_CAP = 12.0; // max credits per single user turn
 export const MISSING_USAGE_FALLBACK = 1.0; // when gateway omits usage data
 
 export type GatewayUsage = {
