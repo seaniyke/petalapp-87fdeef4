@@ -26,7 +26,7 @@ const STRONG_SIGNALS: RegExp[] = [
   /\bits own page\b/i,
   /\bnew page\b/i,
   /\badd (?:an?|another) page\b/i,
-  /\b/(?:about|pricing|contact|blog|faq|services|portfolio|team|careers)\b/i,
+  /\/(?:about|pricing|contact|blog|faq|services|portfolio|team|careers)\b/i,
 ];
 
 const MIN_LENGTH = 6;
