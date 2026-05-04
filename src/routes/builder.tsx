@@ -1484,6 +1484,8 @@ function Builder() {
       setDesignCaption("");
       setFilesWritten(0);
       setLatestPath(undefined);
+      setLatestNarration(undefined);
+      setLatestCycleProgress(undefined);
       setWrittenPaths([]);
       setCompletedPaths(new Set());
       setFinalFileLines({});
