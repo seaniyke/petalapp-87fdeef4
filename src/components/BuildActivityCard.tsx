@@ -106,6 +106,10 @@ type Props = {
   /** Model-written one-liner for the file currently being written
    *  ("Building the photo upload screen"). Overrides path-derived narration. */
   latestNarration?: string;
+  /** Most recent agentic-loop progress string (verifier / fix gap narration).
+   *  Used as a fallback sub-caption so the card never sits silent during
+   *  the 5-10s pauses between file streaming and the next visible event. */
+  latestCycleProgress?: string;
   /** Number of files written so far (during the writing phase). */
   filesWritten?: number;
   /** Ordered list of every file path written so far (deduped). */
