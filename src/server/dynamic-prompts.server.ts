@@ -35,7 +35,8 @@ export type DynamicSnippetKey =
   | "overlays"
   | "navigation"
   | "feedback"
-  | "sections";
+  | "sections"
+  | "multiPage";
 
 interface SnippetDef {
   /** Substrings that trigger this snippet (lowercased match against prompt). */
@@ -166,6 +167,37 @@ Composition rules — this is the difference between forgettable and memorable:
 3. Supporting atoms for spaces between blocks: <Section eyebrow title description>, <Marquee>, <Stat>, <Timeline>, <Rating>, <FeatureIcon>, <GradientBlob>/<GradientText>, <Prose>, <Divider label>, <EmptyState>.
 4. Each block accepts \`className\`. Sharper corners → override rounded-2xl. Different type → override in styles.css and blocks inherit.
 5. NEVER reinvent a section the kit already provides. If you're writing \`<section><div className="grid grid-cols-3">…three cards…</div></section>\`, stop and use <FeaturesGrid3>. If you're writing a sticky <header> with mobile toggle, use <NavWithCta>. If you're writing a footer with link columns, use <FooterColumns>.`,
+  },
+  // Fires on landing/marketing/site requests. The default failure mode for
+  // AI builders is "stuff everything onto index.tsx with hash anchors" —
+  // which kills SSR per-page metadata, makes deep links unshareable, and
+  // teaches users that Petal only does one-pagers. TanStack Start's
+  // file-based routing makes proper multi-page trivial; this snippet tells
+  // the model to USE it and to TELL the user it did.
+  multiPage: {
+    triggers:
+      /\b(site|website|landing|marketing|portfolio|agency|consultancy|saas|studio|business|brand|services|about|pricing|contact|blog|faq|case stud|product page)\b/i,
+    body: `\n\n[Reinforcement — Prefer real pages over one long scroll]
+If the brief implies multiple sections that could each stand alone (Services, About, Contact, Pricing, Blog, FAQ, Case Studies, Portfolio, Team, Careers), scaffold them as SEPARATE TanStack routes under src/routes/ — not as <section id="..."> blocks on a single index page with hash-anchor nav.
+
+Why this matters (don't skip):
+- Each route gets its own SSR <head> (title, description, og:title, og:description) — hash anchors all share the home page metadata, which makes them invisible to Google and identical when shared on social.
+- Deep links like /pricing or /case-studies/$slug actually work — users can bookmark and share them.
+- Adding a new page later becomes "create one file" instead of "refactor a 600-line index".
+
+Default decomposition for marketing/business sites:
+- src/routes/index.tsx — home (hero + brief highlights + CTA only; do NOT cram every section here)
+- src/routes/about.tsx
+- src/routes/services.tsx (or features.tsx for product sites)
+- src/routes/pricing.tsx (when relevant)
+- src/routes/contact.tsx
+- src/routes/blog.index.tsx + src/routes/blog.$slug.tsx (when blog requested)
+
+Each route file MUST set its own head() with route-specific title + description + og:title + og:description. Do NOT copy the home page metadata into child routes.
+
+Hash anchors (#section) are allowed ONLY for in-page scrolling within a single long page (e.g. a TOC inside a docs page). They are NEVER the primary cross-section nav.
+
+In your chat reply: when you scaffold multiple pages, briefly tell the user which pages were created (e.g. "I built /, /about, /services, /pricing, and /contact — say the word and I'll add a /blog or /faq page too"). This teaches users that Petal builds real multi-page sites, not one-pagers.`,
   },
   charts: {
     triggers: /\b(chart|graph|bar chart|line chart|area chart|analytics dashboard|kpi|metric)\b/i,

@@ -1,4 +1,4 @@
-import { Sparkles, Calendar, ListTodo, Camera, Users, Coffee, Music, ChartBar } from "lucide-react";
+import { Sparkles, Calendar, ListTodo, Camera, Users, Coffee, Music, ChartBar, Layers, BookOpen, Briefcase, Building2 } from "lucide-react";
 
 /**
  * Curated starter prompts surfaced under the landing-page composer.
@@ -37,11 +37,32 @@ const IDEAS: StartIdea[] = [
     accent: "butter",
   },
   {
-    title: "Coffee shop site",
+    title: "Coffee shop site (multi-page)",
     prompt:
-      "A warm one-page site for an independent coffee shop called Petal & Bean — hero, menu, our story, and visit-us section with a map.",
+      "A warm site for an independent coffee shop called Petal & Bean — separate pages for Home, Menu, Our Story, and Visit Us (with a map). Real /menu, /story and /visit routes, linked from a sticky nav.",
     Icon: Coffee,
     accent: "butter",
+  },
+  {
+    title: "Yoga studio (4 pages)",
+    prompt:
+      "A 4-page site for a neighborhood yoga studio: home, /classes (with weekly schedule), /instructors (bios + photos), and /contact (form + map). Calm editorial vibe.",
+    Icon: Layers,
+    accent: "mint",
+  },
+  {
+    title: "Consultancy + case studies",
+    prompt:
+      "A consultancy website with separate pages for home, /services, /case-studies (index page) plus /case-studies/$slug detail pages, and /about. Confident, editorial tone.",
+    Icon: Briefcase,
+    accent: "lilac",
+  },
+  {
+    title: "SaaS marketing site",
+    prompt:
+      "A small SaaS marketing site with proper pages: home, /features, /pricing (3 tiers), /faq, and a /blog index with /blog/$slug detail routes. Modern dev-tool vibe.",
+    Icon: Building2,
+    accent: "sky",
   },
   {
     title: "Pomodoro timer",
@@ -58,11 +79,18 @@ const IDEAS: StartIdea[] = [
     accent: "pink",
   },
   {
-    title: "Photo portfolio",
+    title: "Photo portfolio (multi-page)",
     prompt:
-      "A clean photographer's portfolio with a masonry gallery, 3 collections, an about page, and a contact form.",
+      "A photographer's portfolio with separate pages: home (masonry preview), /gallery (3 collections each on their own /gallery/$slug page), /about, and /contact form.",
     Icon: Camera,
     accent: "sky",
+  },
+  {
+    title: "Writer's blog",
+    prompt:
+      "A minimalist writer's blog: home with featured posts, /blog index of all posts, /blog/$slug post detail with prose styling, and a short /about page.",
+    Icon: BookOpen,
+    accent: "butter",
   },
   {
     title: "Team standup board",
