@@ -344,6 +344,10 @@ function Builder() {
         if (last?.error?.title === err.title && last?.error?.message === err.message) {
           return prev;
         }
+        const recentDuplicate = prev
+          .slice(-8)
+          .some((m) => m.error?.title === err.title && m.error?.message === err.message);
+        if (recentDuplicate) return prev;
         return [...prev, errMsg];
       });
       void appendMessages(projId, [errMsg]).catch(() => {
@@ -1937,7 +1941,10 @@ function Builder() {
         setError(msg);
         const isNoEditFailure =
           e instanceof PipelineError &&
-          (e.kind === "no_files_emitted" || e.kind === "truncated_response");
+          (e.kind === "no_files_emitted" ||
+            e.kind === "no_edit_emitted" ||
+            e.kind === "generation_incomplete" ||
+            e.kind === "truncated_response");
         const isTransientGenerateFailure =
           e instanceof PipelineError
             ? e.kind === "upstream_timeout" || e.kind === "upstream_unavailable" || e.kind === "unknown"

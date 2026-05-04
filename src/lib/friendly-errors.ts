@@ -80,6 +80,22 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
     actionKind: "retry",
     technicalDetail: raw,
   }),
+  no_edit_emitted: (raw) => ({
+    title: "Petal didn’t apply the change",
+    message:
+      "Your request was clear, but Petal didn’t return usable edits. I’ll retry it with a stricter path instead of asking you to explain again.",
+    actionLabel: "Retry the edit",
+    actionKind: "retry",
+    technicalDetail: raw,
+  }),
+  generation_incomplete: (raw) => ({
+    title: "Petal didn’t finish the update",
+    message:
+      "Petal started the work but the generated files didn’t pass the final check. I’ll retry with a safer, smaller update.",
+    actionLabel: "Retry safely",
+    actionKind: "retry",
+    technicalDetail: raw,
+  }),
   truncated_response: (raw) => ({
     title: "Petal's reply got cut off",
     message:
@@ -273,7 +289,7 @@ export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): Frien
   //    from LLM-rewritten apology copy.
   if (raw instanceof PipelineError) {
     const builder = KIND_TO_FRIENDLY[raw.kind];
-    if (builder && raw.kind !== "unknown") return builder(text);
+    if (builder && raw.kind !== "unknown") return builder(rawText);
     // kind === "unknown" → fall through to regex/generic, and report so
     // we can add a new branch.
   }

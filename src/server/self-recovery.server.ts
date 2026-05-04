@@ -67,10 +67,14 @@ export function classifyRawError(rawMessage: string): ErrorKind {
     return "upstream_unavailable";
   if (/response was cut off|cut off before|finish(ed)? reason.*(length|max_tokens)|max_tokens|truncated.*json|unexpected end of json/i.test(t))
     return "truncated_response";
+  if (/staged_pipeline:|final syntax check failed|final parse guard|safety check|verifier|esbuild_parse_failed|local_verifier_fatal/i.test(t))
+    return "generation_incomplete";
   // The "model returned prose, not files" family — these are RAW pipeline
   // strings (parseCollectedProject, write_project guard), NOT humanized
   // copy. Humanized phrases like "hit a snag" do NOT belong here.
-  if (/invalid project data|did not return a project|returned no (files|ops)|tool_call.*missing|no write_project/i.test(t))
+  if (/returned no ops|usable edits|invalid edit data|patch_files|edits must be incremental patches/i.test(t))
+    return "no_edit_emitted";
+  if (/invalid project data|did not return a project|returned no files|tool_call.*missing|no write_project/i.test(t))
     return "no_files_emitted";
   return "unknown";
 }
