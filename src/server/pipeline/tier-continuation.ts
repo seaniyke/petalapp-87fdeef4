@@ -7,9 +7,9 @@
  * Behavior preservation:
  *   - Same trigger condition (any of: truncation, unterminated-string, braces).
  *   - Returned files reflect the continuation pass output.
- *   - When the pass ran but produced zero completed files, the orchestrator
- *     should set handoffReason="incomplete_turn" if it isn't already set —
- *     we surface this via `requestHandoff: true` instead of mutating shared state.
+ *   - When the pass ran but produced zero completed files, we surface
+ *     `requestHandoff: true` so the orchestrator can record a "failed"
+ *     telemetry outcome for this turn.
  *   - Errors are caught and reported as a "failed" timeline (same as before).
  */
 
