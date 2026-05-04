@@ -68,6 +68,7 @@ import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/em
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiTurnsIdEventsRouteImport } from './routes/api/turns.$id.events'
 import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
+import { Route as ApiPublicMobileCallbackRouteImport } from './routes/api/public/mobile/callback'
 import { Route as ApiPublicEmailSendRouteImport } from './routes/api/public/email/send'
 import { Route as ApiPublicEmailResendWebhookRouteImport } from './routes/api/public/email/resend-webhook'
 import { Route as ApiPublicCronSelfLearningDigestRouteImport } from './routes/api/public/cron/self-learning-digest'
@@ -376,6 +377,11 @@ const ApiPublicPaystackWebhookRoute =
     path: '/api/public/paystack/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicMobileCallbackRoute = ApiPublicMobileCallbackRouteImport.update({
+  id: '/api/public/mobile/callback',
+  path: '/api/public/mobile/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicEmailSendRoute = ApiPublicEmailSendRouteImport.update({
   id: '/api/public/email/send',
   path: '/api/public/email/send',
@@ -484,6 +490,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
+  '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -553,6 +560,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
+  '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -623,6 +631,7 @@ export interface FileRoutesById {
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
+  '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -694,6 +703,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/self-learning-digest'
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
+    | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/turns/$id/events'
     | '/lovable/email/auth/preview'
@@ -763,6 +773,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/self-learning-digest'
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
+    | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/turns/$id/events'
     | '/lovable/email/auth/preview'
@@ -832,6 +843,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/self-learning-digest'
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
+    | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/turns/$id/events'
     | '/lovable/email/auth/preview'
@@ -901,6 +913,7 @@ export interface RootRouteChildren {
   ApiPublicCronSelfLearningDigestRoute: typeof ApiPublicCronSelfLearningDigestRoute
   ApiPublicEmailResendWebhookRoute: typeof ApiPublicEmailResendWebhookRoute
   ApiPublicEmailSendRoute: typeof ApiPublicEmailSendRoute
+  ApiPublicMobileCallbackRoute: typeof ApiPublicMobileCallbackRoute
   ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
   ApiTurnsIdEventsRoute: typeof ApiTurnsIdEventsRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -1325,6 +1338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaystackWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/mobile/callback': {
+      id: '/api/public/mobile/callback'
+      path: '/api/public/mobile/callback'
+      fullPath: '/api/public/mobile/callback'
+      preLoaderRoute: typeof ApiPublicMobileCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/email/send': {
       id: '/api/public/email/send'
       path: '/api/public/email/send'
@@ -1456,6 +1476,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronSelfLearningDigestRoute: ApiPublicCronSelfLearningDigestRoute,
   ApiPublicEmailResendWebhookRoute: ApiPublicEmailResendWebhookRoute,
   ApiPublicEmailSendRoute: ApiPublicEmailSendRoute,
+  ApiPublicMobileCallbackRoute: ApiPublicMobileCallbackRoute,
   ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
   ApiTurnsIdEventsRoute: ApiTurnsIdEventsRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
