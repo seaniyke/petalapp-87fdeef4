@@ -5,7 +5,7 @@
  *  - `petal-default`           — unsigned preview build (sideload .ipa /
  *    direct-install .apk). No signing materials needed.
  *  - `petal-default-signed`    — store-ready signed build. Reads
- *    APPLE_*/ ANDROID_* / APP_STORE_CONNECT_* / PLAY_SERVICE_ACCOUNT_JSON
+ *    APPLE_x / ANDROID_x / APP_STORE_CONNECT_x / PLAY_SERVICE_ACCOUNT_JSON
  *    env vars (set by startMobileBuild from the project's encrypted
  *    signing profile) and runs fastlane / gradle accordingly.
  *
