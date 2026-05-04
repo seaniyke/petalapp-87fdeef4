@@ -129,4 +129,20 @@ workflows:
     artifacts:
       - "*.ipa"
       - "*.aab"
+    publishing:
+      scripts:
+        - name: Notify Petal
+          when: always
+          script: |
+            STATUS="succeeded"
+            if [ "$CM_BUILD_STEP_STATUS" != "success" ] && [ "$CM_BUILD_STEP_STATUS" != "" ]; then STATUS="failed"; fi
+            ARTIFACT_URL=$(echo "$CM_ARTIFACT_LINKS" | python3 -c "import sys,json;d=json.load(sys.stdin) if sys.stdin.readable() else [];print((d[0].get('url','') if d else ''))" 2>/dev/null || echo "")
+            BODY=$(printf '{"codemagicBuildId":"%s","status":"%s","artifactUrl":"%s"}' "$CM_BUILD_ID" "$STATUS" "$ARTIFACT_URL")
+            TS=$(date +%s)
+            SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$PETAL_WEBHOOK_SECRET" -hex | awk '{print $2}')
+            curl -fsS -X POST "$PETAL_CALLBACK_URL" \
+              -H "Content-Type: application/json" \
+              -H "x-petal-timestamp: $TS" \
+              -H "x-petal-signature: $SIG" \
+              --data "$BODY" || true
 `;
