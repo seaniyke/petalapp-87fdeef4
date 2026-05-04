@@ -2992,7 +2992,7 @@ function Builder() {
                            isLive &&
                            !friendlyError &&
                            files.length > 0 &&
-                           !m.handoff &&
+                           // (m.handoff guard removed — handoff was retired.)
                            !m.error && (
                              <NextStepsCard
                               showPreviewAction={isMobile ? mobileTab !== "preview" : view !== "preview"}
