@@ -63,6 +63,13 @@ type Handlers = {
      *  isn't blinded by LLM-rewritten apology copy. */
     raw?: string,
   ) => void;
+  /** Fired once at the very start of every turn. The client should persist
+   *  this id (e.g. to localStorage keyed by projectId) so it can silently
+   *  reconnect via /api/turns/$id/events after a tab close or refresh. */
+  onTurnId?: (turnId: string) => void;
+  /** Fired once at the end of every turn (success, failure, or abort).
+   *  The client should clear any persisted turn_id on receipt. */
+  onDone?: (status: "succeeded" | "failed" | "aborted") => void;
 };
 
 /** Stream a generation request to /api/generate. Resolves once the stream ends. */
