@@ -13,6 +13,12 @@ type Handlers = {
   onFileComplete?: (path: string, bytes: number, index: number) => void;
   /** Model-written one-liner about the file it's about to build. */
   onNarration?: (path: string, text: string) => void;
+  /** Agentic-loop cycle started (initial write or a bounded fix round). */
+  onCycleStart?: (cycle: number, intent: "writing" | "fixing" | "verifying") => void;
+  /** Live "what's happening right now" string between file events. */
+  onCycleProgress?: (cycle: number, message: string) => void;
+  /** Cycle resolved — clean, retrying, or hit a hard stop. */
+  onCycleEnd?: (cycle: number, outcome: "clean" | "retrying" | "hard-stop") => void;
   onResult?: (
     files: ProjectFile[],
     summary: string,
