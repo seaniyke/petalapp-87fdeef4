@@ -1,4 +1,4 @@
-import { Sparkles, Calendar, ListTodo, Camera, Users, Coffee, Music, ChartBar, Layers, BookOpen, Briefcase, Building2 } from "lucide-react";
+import { Sparkles, Calendar, ListTodo, Camera, Users, Coffee, Music, ChartBar, Layers, BookOpen, Briefcase, Building2, Smartphone, Bell } from "lucide-react";
 
 /**
  * Curated starter prompts surfaced under the landing-page composer.
