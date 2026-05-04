@@ -2822,8 +2822,18 @@ function Builder() {
                             must not show "READY — WHAT'S NEXT?" while the
                             Cloudflare deploy is still running ("Putting your
                             app online…") — the app isn't actually ready yet. */}
+                         {/* Honest "done": only show "READY — what's next?"
+                             when (a) Petal is fully idle, (b) we have a
+                             successful build row (`isLive`), and (c) no
+                             friendly error is still pinned. Without the
+                             `isLive` check the card flashes in for the
+                             gap between generation and the deploy
+                             starting, which reads like "I'm done!" before
+                             the app is actually live. */}
                          {i === messages.length - 1 &&
                            !petalIsWorking &&
+                           isLive &&
+                           !friendlyError &&
                            files.length > 0 &&
                            !m.handoff &&
                            !m.error && (
