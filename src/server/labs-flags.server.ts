@@ -52,13 +52,19 @@ export async function loadLabsFlagsForRequest(jwt: string | null | undefined): P
       .eq("role", "admin")
       .maybeSingle();
     if (claimsRow) {
+      // Most experimental flags are auto-on for admins so they can dogfood,
+      // BUT `staged_pipeline` and `agent_loop` are explicit-opt-in only:
+      // both are unfinished alternate codepaths. Until they're proven
+      // better than the monolithic path, admins must turn them on
+      // manually in Labs.
+      const optInOnly = new Set<LabsFlagName>(["staged_pipeline", "agent_loop"]);
       const adminFlags = Object.fromEntries(
-        ALL_FLAGS.filter((f) => f !== "staged_pipeline").map((f) => [f, true]),
+        ALL_FLAGS.filter((f) => !optInOnly.has(f)).map((f) => [f, true]),
       ) as LabsFlags;
-      // Still honor an explicit per-user staged_pipeline opt-in.
       const { data: row } = await supabase.from("labs_flags").select("flags").maybeSingle();
       const userFlags = (row?.flags ?? {}) as LabsFlags;
       if (userFlags.staged_pipeline) adminFlags.staged_pipeline = true;
+      if (userFlags.agent_loop) adminFlags.agent_loop = true;
       return adminFlags;
     }
 
