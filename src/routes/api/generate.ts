@@ -1874,13 +1874,45 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
 }
 
 async function handleGenerateRequest(request: Request): Promise<Response> {
+  // Peek auth + projectId so we can open a `turns` row BEFORE the inner
+  // pipeline starts streaming. The inner core also reads the body, so we
+  // clone the request to avoid consuming it twice.
+  let recorder: TurnRecorderHandle | null = null;
+  const clone = request.clone();
+  try {
+    const peekAuth = await authorize(clone);
+    if (typeof peekAuth === "string") {
+      const peekBody = (await clone.json().catch(() => null)) as Body | null;
+      if (peekBody?.projectId) {
+        recorder = await startTurn({ projectId: peekBody.projectId, userId: peekAuth });
+      }
+    }
+  } catch {
+    // Recording is best-effort. Never block the build because of it.
+  }
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let heartbeat: ReturnType<typeof setInterval> | null = null;
-      const emit = (event: StreamEvent) => controller.enqueue(encoder.encode(sse(event)));
+      const recordEvent = recorder
+        ? makeSseTap((type, payload) => recorder!.record(type, payload))
+        : null;
+      const emit = (event: StreamEvent) => {
+        const bytes = encoder.encode(sse(event));
+        controller.enqueue(bytes);
+        if (recordEvent) recordEvent(bytes);
+      };
+
+      let terminalStatus: "succeeded" | "failed" | "aborted" = "succeeded";
+      let terminalError: string | null = null;
 
       try {
+        // Announce the turn id FIRST so the client can persist it locally
+        // and use it to reconnect if the tab/phone is closed mid-build.
+        if (recorder) {
+          emit({ type: "turn_id", turnId: recorder.turnId } as unknown as StreamEvent);
+        }
         emit({ type: "phase", phase: "thinking" });
         emit({ type: "status", message: "Starting your build…" });
         heartbeat = setInterval(() => {
@@ -1891,6 +1923,8 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         const response = await handleGenerateRequestCore(request);
         if (!response.ok || !response.body) {
           const raw = await response.text().catch(() => `Request failed (${response.status})`);
+          terminalStatus = "failed";
+          terminalError = raw.slice(0, 500);
           emit({
             type: "error",
             message: raw || "Petal couldn't start that build. Please try again.",
@@ -1905,9 +1939,12 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           const { value, done } = await reader.read();
           if (done) break;
           controller.enqueue(value);
+          if (recordEvent) recordEvent(value);
         }
       } catch (e) {
         const raw = e instanceof Error ? e.message : "Generation failed.";
+        terminalStatus = request.signal.aborted ? "aborted" : "failed";
+        terminalError = raw.slice(0, 500);
         emit({
           type: "error",
           message: "The connection dropped while Petal was building. Reconnecting and retrying is safe — no credits were charged for this failed attempt.",
@@ -1916,6 +1953,17 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         });
       } finally {
         if (heartbeat) clearInterval(heartbeat);
+        // Always emit a terminal `done` event so resumers know to stop tailing.
+        try {
+          emit({ type: "done", status: terminalStatus } as unknown as StreamEvent);
+        } catch {
+          /* controller may already be closed */
+        }
+        if (recorder) {
+          // Fire-and-forget the finalize: we don't want to delay closing the
+          // user-facing stream. The pipeline already ran to completion server-side.
+          void recorder.finish(terminalStatus, { errorMessage: terminalError });
+        }
         controller.close();
       }
     },
