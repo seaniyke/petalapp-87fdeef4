@@ -150,6 +150,7 @@ export function BuildActivityCard({
   fileChanges,
   deployElapsedSec,
   timelineEvents,
+  creditsCharged,
   onStop,
   onRetry,
   onAskFix,
