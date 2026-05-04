@@ -1338,11 +1338,8 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             );
           }
           // Hallucinations are unrecoverable for THIS turn — even after
-          // stripping, the user needs to reimplement those sections.
-          // Surface the handoff so they get a clear next step.
-          if (!handoffReason || handoffReason === "large_changeset") {
-            handoffReason = "unrecoverable_turn";
-          }
+          // stripping, the user may need to reimplement those sections in
+          // a follow-up turn. (Legacy handoff signalling removed.)
         }
 
         // Tier 2.6 — TRUE truncation recovery. If the local verifier
