@@ -180,14 +180,7 @@ export async function streamGenerate(
               ts: evt.ts,
             });
             break;
-          case "continuation_handoff":
-            handlers.onContinuationHandoff?.({
-              reason: evt.reason,
-              message: evt.message,
-              suggestedPrompt: evt.suggestedPrompt,
-              detected: evt.detected,
-            });
-            break;
+          // continuation_handoff event removed (no-op).
           case "error":
             handlers.onError?.(evt.message, evt.suggestions, evt.kind, evt.raw);
             break;
