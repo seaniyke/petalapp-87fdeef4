@@ -493,6 +493,46 @@ type ParsedProjectPayload = {
   recap?: string;
 };
 
+/**
+ * Emit a conversational AI reply WITHOUT failing the turn — used as the
+ * deterministic fallback whenever generation can't safely produce edits.
+ *
+ * The user sees a normal Petal message with a friendly explanation and
+ * suggested next step (NOT a red error card). No credits are charged
+ * because no files were written / changed. Cleanly closes the SSE stream.
+ *
+ * Use this for:
+ *   - patch_files emitted with empty ops (model said "nothing to change")
+ *   - both stream + structured retry returned no usable edits
+ *   - final-parse-guard couldn't repair after autofix
+ *
+ * Anything that's a genuine infra failure (upstream timeout, gateway 5xx,
+ * provider auth) still throws and goes through the outer humanized error
+ * path — those are real errors and the error card is appropriate there.
+ */
+function emitConversationalFallback(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+  args: { summary: string; files: ProjectFile[] },
+): void {
+  controller.enqueue(
+    encoder.encode(sse({ type: "summary_delta", delta: args.summary })),
+  );
+  controller.enqueue(
+    encoder.encode(
+      sse({
+        type: "result",
+        files: args.files,
+        summary: args.summary,
+        plan: undefined,
+        recap: undefined,
+        creditsCharged: 0,
+      }),
+    ),
+  );
+  controller.close();
+}
+
 function parseCollectedProject(collected: ParsedTool, isInitial: boolean): ParsedProjectPayload {
   if (isTruncatedFinishReason(collected.finishReason)) {
     throw new Error(
@@ -577,9 +617,9 @@ async function runFinalParseGuard(
   changedPaths: string[],
   controller: ReadableStreamDefaultController<Uint8Array>,
   encoder: TextEncoder,
-): Promise<ProjectFile[]> {
+): Promise<{ ok: true; files: ProjectFile[] } | { ok: false; detail: string }> {
   const finalVerdict = await verifyFilesEsbuild(files, changedPaths);
-  if (finalVerdict.ok) return files;
+  if (finalVerdict.ok) return { ok: true, files };
 
   console.warn(
     `[final-parse-guard] ${finalVerdict.issues.length} issue(s) after autofix:`,
@@ -604,9 +644,12 @@ async function runFinalParseGuard(
       .slice(0, 3)
       .map((i) => `${i.path}:${i.line}:${i.column} ${i.message}`)
       .join("; ");
-    throw new Error(`Final syntax check failed after repair: ${detail}`);
+    // Don't throw — let the caller revert to the prior good files
+    // and reply conversationally. A failed final-parse is NOT an
+    // infra error; it just means this turn's edits weren't safe.
+    return { ok: false, detail };
   }
-  return repaired;
+  return { ok: true, files: repaired };
 }
 
 async function handleGenerateRequestCore(request: Request): Promise<Response> {
@@ -1069,44 +1112,37 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           try {
             payload = parseCollectedProject(collected, isInitial);
           } catch (retryErr) {
-            // Both attempts produced no tool call. Most common cause:
-            // user asked for a backend-shaped feature on a project with
-            // no backend connected. The system prompt asked the model
-            // to scaffold UI-only, but the contradiction with auth/RLS
-            // prose makes models freeze.
+            // Both attempts failed to produce usable tool output.
             //
-            // Deterministic recovery: if `noBackendGate` was active,
-            // emit a friendly summary directing the user to "Add
-            // backend" instead of throwing. The chip below the
-            // message is the actual remediation; the error card was
-            // pure noise. No credits charged because no files written.
+            // Special case: initial build with `noBackendGate` active —
+            // the model froze on the auth/RLS contradiction. Steer the
+            // user to "Add backend" with a friendly message.
             if (isInitial && dynamic.snippets.includes("noBackendGate")) {
-              const friendlySummary =
-                "I'd love to build this, but it needs a backend to handle accounts, sign-in, and saving your data. Tap **Add backend** below this message to wire one up — it's a one-click step — and I'll pick up right where we left off and ship the full thing.";
-              controller.enqueue(
-                encoder.encode(
-                  sse({
-                    type: "summary_delta",
-                    delta: friendlySummary,
-                  }),
-                ),
-              );
-              controller.enqueue(
-                encoder.encode(
-                  sse({
-                    type: "result",
-                    files: currentFiles,
-                    summary: friendlySummary,
-                    plan: undefined,
-                    recap: undefined,
-                    creditsCharged: 0,
-                  }),
-                ),
-              );
-              controller.close();
+              emitConversationalFallback(controller, encoder, {
+                files: currentFiles,
+                summary:
+                  "I'd love to build this, but it needs a backend to handle accounts, sign-in, and saving your data. Tap **Add backend** below this message to wire one up — it's a one-click step — and I'll pick up right where we left off and ship the full thing.",
+              });
               return;
             }
-            throw retryErr;
+
+            // Generic case (the one users were hitting): the model didn't
+            // emit a usable patch after two passes. NOT a real error —
+            // the most likely causes are an ambiguous request or the
+            // model deciding the existing code already does what was
+            // asked. Reply conversationally instead of throwing a red
+            // error card.
+            console.warn(
+              "[generate] both attempts produced no usable output, falling back conversationally:",
+              retryErr instanceof Error ? retryErr.message : String(retryErr),
+            );
+            emitConversationalFallback(controller, encoder, {
+              files: currentFiles,
+              summary: isInitial
+                ? "I had trouble turning that into a working starter app on this pass. Could you tell me a bit more about what kind of app you're picturing — even one sentence about the main thing it should do helps me get going."
+                : "I took a careful look but couldn't pin down a safe change for this one. Could you point me at the specific element or behavior you want adjusted? A quick note like 'make the header sticky' or 'change the CTA color to teal' is usually enough.",
+            });
+            return;
           }
         }
 
@@ -1121,7 +1157,24 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             backend: backend ?? undefined,
           });
         } else {
-          if (!Array.isArray(parsed.ops)) throw new Error("AI returned no ops.");
+          // Empty / missing ops on an edit turn = the model decided
+          // there was nothing safe to change. Reply conversationally
+          // instead of throwing a red error card. Same treatment when
+          // every op the model proposed touched a protected path and
+          // got filtered out below.
+          if (!Array.isArray(parsed.ops) || parsed.ops.length === 0) {
+            console.warn(
+              `[generate] patch_files returned ${Array.isArray(parsed.ops) ? "empty" : "missing"} ops — replying conversationally`,
+            );
+            emitConversationalFallback(controller, encoder, {
+              files: currentFiles,
+              summary:
+                summary && summary !== "Updated the project."
+                  ? summary
+                  : "I looked at this and didn't see a clear change to make. Could you point me at the specific element or behavior you want adjusted? Even a one-liner like 'make the hero headline bigger' helps me lock onto the right spot.",
+            });
+            return;
+          }
           // Defense-in-depth: reject patches that touch the canonical UI kit
           // or scaffold config files. The AI should never need to.
           const PROTECTED = ["vite.config.ts", "tsconfig.json", "src/lib/utils.ts"];
@@ -1138,6 +1191,16 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             );
           }
           const safeOps = parsed.ops.filter((op) => !isProtectedPath(op.path));
+          if (safeOps.length === 0) {
+            // Every op was protected-path-only. Same conversational
+            // fallback: nothing safe to apply, no credits charged.
+            emitConversationalFallback(controller, encoder, {
+              files: currentFiles,
+              summary:
+                "The change you asked for would touch files I keep reserved for the framework (the UI kit / build config). I can do this a different way — tell me the user-visible behavior you want and I'll wire it up in app code instead.",
+            });
+            return;
+          }
           const patched = applyOps(currentFiles, safeOps);
           // Heal-on-patch: re-apply the canonical scaffold to old saved
           // projects whose `src/components/ui/*`, `package.json`, or
@@ -1790,7 +1853,27 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           );
         }
 
-        nextFiles = await runFinalParseGuard(nextFiles, earlyChangedPaths, controller, encoder);
+        const guardOut = await runFinalParseGuard(
+          nextFiles,
+          earlyChangedPaths,
+          controller,
+          encoder,
+        );
+        if (!guardOut.ok) {
+          // Final-parse-guard couldn't repair this turn's edits. Revert
+          // to the prior good files and reply conversationally — no
+          // credits charged because nothing safe was written.
+          console.warn(
+            `[final-parse-guard] reverting turn — unrepairable: ${guardOut.detail}`,
+          );
+          emitConversationalFallback(controller, encoder, {
+            files: currentFiles,
+            summary:
+              "I drafted the change but it didn't pass my final safety check, so I rolled it back to keep your app building. Want me to try a smaller version of the same change, or break it into a couple of steps?",
+          });
+          return;
+        }
+        nextFiles = guardOut.files;
 
         // Charge ONCE, after the build succeeds. Cost is computed from
         // the MAIN generate call's token usage only — `collected.usage`
