@@ -2899,6 +2899,7 @@ function Builder() {
               // refresh. Retry replays the most recent user prompt; ask-fix
               // routes through the normal askPetalToFix flow.
               if (m.role === "assistant" && m.error) {
+                if (isDeploying && isBuildFailureCardTitle(m.error.title)) return null;
                 const isTail = i === messages.length - 1;
                 return (
                   <div key={i} className="flex justify-start">
