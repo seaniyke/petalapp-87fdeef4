@@ -2361,6 +2361,7 @@ function Builder() {
     if (!project?.id) return;
     supersedeBuildId(project.latest_build_id);
     setFriendlyError(null);
+    setMessages(removeBuildFailureCards);
     setPhases((p) => advanceTo(p, "deploying"));
     setActivityVisible(true);
     setAwaitingBuild(true);
@@ -2383,6 +2384,7 @@ function Builder() {
   const askPetalToFix = useCallback(
     (opts: { isAuto?: boolean } = {}) => {
       setFriendlyError(null);
+      setMessages(removeBuildFailureCards);
       // Feed the actual build error/log back into the next prompt so the AI
       // can patch the real cause (this is what Lovable, Bolt and Base44 do).
       // The Railway callback already concatenates logs into error_message.
