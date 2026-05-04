@@ -3280,6 +3280,36 @@ function Builder() {
                               />
                             );
                           })()}
+                        {/* Mobile-app suggestion — paid-plan gated. Opens the
+                            project settings sheet to the (forthcoming) Mobile
+                            section. Free users see Upgrade, never a top-up. */}
+                        {project &&
+                          i === messages.length - 1 &&
+                          !petalIsWorking &&
+                          !dismissedMobileChips.has(i) &&
+                          (() => {
+                            const prevUser = messages[i - 1]?.role === "user"
+                              ? messages[i - 1]?.content
+                              : null;
+                            const intent = detectMobileIntentInTurn(prevUser, m.content);
+                            if (!intent.detected) return null;
+                            return (
+                              <EnableMobileSuggestionChip
+                                reason={intent.reason}
+                                onOpenMobile={() => {
+                                  setSettingsScrollTo("mobile");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={() =>
+                                  setDismissedMobileChips((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(i);
+                                    return next;
+                                  })
+                                }
+                              />
+                            );
+                          })()}
                         {/* AI-feature suggestion — pitches the gateway so
                             Petal doesn't ask for an OpenAI key. */}
                         {project &&
