@@ -11,6 +11,8 @@ type Handlers = {
   onDesignVibe?: (vibe: string, rationale: string) => void;
   onFileProgress?: (written: number, latestPath?: string) => void;
   onFileComplete?: (path: string, bytes: number, index: number) => void;
+  /** Model-written one-liner about the file it's about to build. */
+  onNarration?: (path: string, text: string) => void;
   onResult?: (
     files: ProjectFile[],
     summary: string,
