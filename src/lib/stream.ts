@@ -197,6 +197,12 @@ export async function streamGenerate(
           case "error":
             handlers.onError?.(evt.message, evt.suggestions, evt.kind, evt.raw);
             break;
+          case "turn_id":
+            handlers.onTurnId?.(evt.turnId);
+            break;
+          case "done":
+            handlers.onDone?.(evt.status);
+            break;
         }
       }
     }
