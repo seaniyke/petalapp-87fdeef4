@@ -3627,6 +3627,7 @@ function Builder() {
                 })()}
                 designCaption={designCaption}
                 latestPath={latestPath}
+                latestNarration={latestNarration}
                 filesWritten={filesWritten}
                 writtenPaths={writtenPaths}
                 completedPaths={completedPaths}
