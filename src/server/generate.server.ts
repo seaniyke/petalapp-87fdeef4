@@ -340,6 +340,11 @@ export const PATCH_FILES_TOOL = {
             properties: {
               op: { type: "string", enum: ["create", "update", "delete"] },
               path: { type: "string", description: "Relative file path." },
+              narration: {
+                type: "string",
+                description:
+                  "ONE short, warm, present-continuous sentence (max ~12 words, no trailing period) describing what this change is, in your own voice. Examples: 'Tightening the upload button styling', 'Fixing the empty-state copy', 'Adding the new results route'. Required for create/update; omit for delete. ALWAYS place this field BEFORE `content` so it streams to the user before the file body.",
+              },
               content: {
                 type: "string",
                 description: "Full file contents. Required for create/update, omit for delete.",
