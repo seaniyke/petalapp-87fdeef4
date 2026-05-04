@@ -120,6 +120,7 @@ import { EnableEmailSuggestionChip } from "@/components/EnableEmailSuggestionChi
 import { EnablePaymentsSuggestionChip } from "@/components/EnablePaymentsSuggestionChip";
 import { EnableSeoSuggestionChip } from "@/components/EnableSeoSuggestionChip";
 import { AddPageSuggestionChip } from "@/components/AddPageSuggestionChip";
+import { EnableMobileSuggestionChip } from "@/components/EnableMobileSuggestionChip";
 import { EnableAnalyticsSuggestionChip } from "@/components/EnableAnalyticsSuggestionChip";
 import { EnableAiFeatureSuggestionChip } from "@/components/EnableAiFeatureSuggestionChip";
 import { EnableStorageSuggestionChip } from "@/components/EnableStorageSuggestionChip";
@@ -427,6 +428,9 @@ function Builder() {
     () => new Set(),
   );
   const [dismissedAddPageChips, setDismissedAddPageChips] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [dismissedMobileChips, setDismissedMobileChips] = useState<Set<number>>(
     () => new Set(),
   );
   const [dismissedAnalyticsChips, setDismissedAnalyticsChips] = useState<Set<number>>(
