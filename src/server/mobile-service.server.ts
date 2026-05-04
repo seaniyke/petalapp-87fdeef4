@@ -146,11 +146,15 @@ export const codemagicProvider: BuildProvider = {
   },
 
   async startBuild(req) {
+    const callbackBase =
+      process.env.PETAL_PUBLIC_BASE_URL ?? "https://buildwithpetal.com";
     const baseVars = {
       PETAL_PROJECT_ID: req.projectId,
       PETAL_BUNDLE_ID: req.bundleId,
       PETAL_PLATFORM: req.platform,
       PETAL_BUILD_KIND: req.kind,
+      PETAL_CALLBACK_URL: `${callbackBase}/api/public/mobile/callback`,
+      PETAL_WEBHOOK_SECRET: process.env.MOBILE_CODEMAGIC_WEBHOOK_SECRET ?? "",
     } as Record<string, string>;
     const variables = req.signingEnv
       ? { ...baseVars, ...req.signingEnv }
