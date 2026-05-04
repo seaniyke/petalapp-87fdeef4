@@ -287,9 +287,18 @@ async function relayAndCollect(
   // fires exactly once even though we re-scan the cumulative buffer.
   const completedPaths = new Set<string>();
   let completedCount = 0;
+  // Track which file paths have already had their NARRATION sentence
+  // forwarded to the client. Each file emits its narration exactly once,
+  // the moment the model finishes writing its `narration` string — which
+  // we instruct the model to place BEFORE `content`, so users hear what
+  // Petal is about to build *before* the file body streams.
+  const narratedPaths = new Set<string>();
 
   // Matches a completed `"path": "<value>"` occurrence (handles escaped chars).
   const PATH_RE = /"path"\s*:\s*"((?:\\.|[^"\\])*)"/g;
+  // Matches a completed `"narration": "<value>"` occurrence — same closing
+  // lookahead trick as content so we only fire when the string has closed.
+  const NARRATION_RE = /"narration"\s*:\s*"((?:\\.|[^"\\])*)"(?=\s*[,}])/g;
   // Matches a completed `"content": "<value>"` occurrence — the trailing
   // lookahead `[,}]` guarantees the JSON string actually closed (not just
   // a `\"` mid-stream). We pair each match with the most recent path that
