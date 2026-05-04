@@ -310,6 +310,9 @@ export async function streamResumeTurn(
               evt.index as number,
             );
             break;
+          case "narration":
+            handlers.onNarration?.((evt.path as string) ?? "", (evt.text as string) ?? "");
+            break;
           case "result":
             handlers.onResult?.(
               (evt.files as ProjectFile[]) ?? [],
