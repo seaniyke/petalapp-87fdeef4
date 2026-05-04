@@ -68,7 +68,7 @@ export async function runStagedPipelineStream(args: {
                 type: "error",
                 message:
                   "Petal couldn't finish writing the files this turn. Try again — usually a one-time hiccup.",
-                kind: "no_files_emitted",
+                kind: "generation_incomplete",
                 raw: `staged_pipeline:scaffold_failed:${scaffold.reason}`,
               }),
             ),
@@ -109,7 +109,7 @@ export async function runStagedPipelineStream(args: {
                 type: "error",
                 message:
                   "Petal built the files but they didn't pass the safety check. Try again with a slightly clearer prompt.",
-                kind: "no_files_emitted",
+                kind: "generation_incomplete",
                 raw: `staged_pipeline:wireup_failed:${wireup.reason}`,
               }),
             ),
