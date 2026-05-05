@@ -582,10 +582,17 @@ export type ErrorKind =
  *   - tiny files (≤ 60 lines)
  *   - JSON / config / styles
  */
-const REPLACE_GATE_MIN_LINES = 60;
-const REPLACE_GATE_OVERLAP_RATIO = 0.7;
-const REPLACE_MAX_SEARCH_LINES = 60;
-const REPLACE_MAX_SEARCH_BYTES = 2048;
+// Gates are intentionally LENIENT: they exist to catch the worst failure
+// mode (model echoes the entire file back essentially unchanged, then
+// truncates) without punishing legitimate edits. Real edits — e.g. adding
+// responsive className modifiers across a whole component — keep most lines
+// trimmed-identical but still need to ship. We only reject near-perfect
+// echoes (>= 92% overlap) and replace ops large enough to risk mid-stream
+// truncation (> 160 lines / > 8 KB).
+const REPLACE_GATE_MIN_LINES = 80;
+const REPLACE_GATE_OVERLAP_RATIO = 0.92;
+const REPLACE_MAX_SEARCH_LINES = 160;
+const REPLACE_MAX_SEARCH_BYTES = 8192;
 
 function shouldRequireReplaceOp(prev: string, next: string, path: string): boolean {
   if (!prev) return false;
