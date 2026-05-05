@@ -103,5 +103,22 @@ const shortNext = applyOps(shortFiles, [
 ] as FileOp[]);
 assert("update gate skips short files", shortNext[0]?.content.includes("c = 3"));
 
+// Workstream A.2 — replace_too_large gate
+const bigBody = Array.from({ length: 80 }, (_, i) => `// region line ${i}`).join("\n");
+const bigFile: ProjectFile[] = [{ path: "src/region.ts", content: bigBody + "\nconst tail = 1;" }];
+try {
+  applyOps(bigFile, [
+    { op: "replace", path: "src/region.ts", search: bigBody, replace: "// shrunk" },
+  ] as FileOp[]);
+  assert("replace gate rejects oversized search snippets", false);
+} catch (e) {
+  const msg = e instanceof Error ? e.message : String(e);
+  assert(
+    "replace gate rejects oversized search snippets",
+    msg.startsWith("replace_too_large"),
+    msg,
+  );
+}
+
 console.log(`\n${failed === 0 ? "✓ all assertions passed" : `✗ ${failed} assertion(s) failed`}`);
 process.exit(failed === 0 ? 0 : 1);
