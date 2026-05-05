@@ -33,7 +33,8 @@ export type TemplateKey =
   | "community-forum"
   | "podcast"
   | "nonprofit"
-  | "ai-chat-app";
+  | "ai-chat-app"
+  | "ecommerce-store";
 
 export interface TemplateSpec {
   key: TemplateKey;
