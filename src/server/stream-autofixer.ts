@@ -16,7 +16,7 @@
  * issues" status in the chat.
  */
 
-import * as LucideReact from "lucide-react";
+import dynamicIconImports from "lucide-react/dynamicIconImports.mjs";
 import type { ProjectFile } from "@/server/generate.server";
 
 export interface AutofixReport {
@@ -25,18 +25,23 @@ export interface AutofixReport {
 }
 
 /**
- * Build the valid lucide icon set DYNAMICALLY from the actually-installed
- * lucide-react package. This is the only source of truth that won't drift
- * as lucide adds/removes icons. Strip the `Icon` suffixed aliases — the AI
- * imports the bare PascalCase names. Filter to PascalCase identifiers only.
+ * Build the valid lucide icon set DYNAMICALLY from lucide-react's official
+ * names manifest. This is the only source of truth that won't drift as
+ * lucide adds/removes icons. The manifest ships kebab-case names; convert
+ * to PascalCase to match how the AI imports them.
  */
 const VALID_LUCIDE_ICONS: Set<string> = (() => {
   const set = new Set<string>();
-  for (const name of Object.keys(LucideReact)) {
-    if (!/^[A-Z][A-Za-z0-9]*$/.test(name)) continue;
-    if (name.endsWith("Icon") && name !== "Icon") continue;
-    set.add(name);
+  const names = (dynamicIconImports as Record<string, unknown>) ?? {};
+  for (const kebab of Object.keys(names)) {
+    const pascal = kebab
+      .split("-")
+      .map((p) => (p ? p[0].toUpperCase() + p.slice(1) : p))
+      .join("");
+    if (pascal) set.add(pascal);
   }
+  // Aliases / categories not in the manifest but exported by lucide-react.
+  set.add("Icon");
   return set;
 })();
 
