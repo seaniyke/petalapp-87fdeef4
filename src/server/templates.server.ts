@@ -34,7 +34,12 @@ export type TemplateKey =
   | "podcast"
   | "nonprofit"
   | "ai-chat-app"
-  | "ecommerce-store";
+  | "ecommerce-store"
+  | "ai-image-generator"
+  | "link-in-bio"
+  | "waitlist-launch"
+  | "agency-studio"
+  | "booking-appointments";
 
 export interface TemplateSpec {
   key: TemplateKey;
@@ -186,6 +191,46 @@ export const TEMPLATES: Record<TemplateKey, TemplateSpec> = {
     blocks: ["Hero", "FilterBar", "ProductCard", "Gallery", "PricingTable", "CheckoutSummary", "OrderConfirmation", "Newsletter", "FooterSection"],
     features: ["hero with featured collection + shop CTA", "product grid with category filters", "product detail with gallery, variant picker (size/color), add-to-cart", "slide-out cart with quantities + subtotal", "checkout form (placeholder if no payments) + order confirmation"],
     keywords: [/e-?commerce/, /online (store|shop)/, /\bstore\b/, /\bshop\b/, /storefront/, /sell (products?|merch|clothing|shoes|apparel)/, /shopify/, /merch (store|shop)/, /\bcatalog\b/, /\bcart\b.*\bcheckout\b/],
+  },
+  "ai-image-generator": {
+    key: "ai-image-generator",
+    description: "AI image generation app: prompt composer, generation gallery, image detail, history, settings.",
+    routes: ["/", "/generate", "/gallery", "/images/$id", "/history", "/settings", "/auth/sign-in"],
+    blocks: ["Hero", "PromptCard", "Gallery", "EmptyState", "SidebarShell", "SignInCard"],
+    features: ["bold hero with prompt input + sample outputs", "generate page with prompt, style presets, aspect ratio, generate button", "result gallery with masonry grid", "image detail with prompt + download/regenerate", "personal history sidebar"],
+    keywords: [/image (generator|generation)/, /text.?to.?image/, /ai art/, /generative (art|image)/, /midjourney|dall.?e|stable diffusion|flux/i, /prompt.?to.?image/],
+  },
+  "link-in-bio": {
+    key: "link-in-bio",
+    description: "Mobile-first link-in-bio profile: avatar header, vertical link buttons, social icons, theme toggle.",
+    routes: ["/", "/$username", "/edit", "/analytics", "/auth/sign-in"],
+    blocks: ["ProfileHeader", "LinkButton", "SocialRow", "EmptyState", "MobileNav", "SignInCard"],
+    features: ["centered avatar + name + bio", "stack of large tappable link buttons", "social icon row", "edit page with drag-to-reorder links", "simple click analytics"],
+    keywords: [/link.?in.?bio/, /linktree/i, /bio (page|link)/, /creator profile/, /social links page/, /\bbeacons\b/i],
+  },
+  "waitlist-launch": {
+    key: "waitlist-launch",
+    description: "Pre-launch waitlist page: bold hero, email capture, social proof counter, referral share, FAQ.",
+    routes: ["/", "/thanks", "/refer/$code", "/admin"],
+    blocks: ["Hero", "Newsletter", "StatCard", "TestimonialGrid", "FaqAccordion", "FooterSection"],
+    features: ["full-bleed hero with one email field + join CTA", "live waitlist counter + social proof", "thank-you page with referral link to climb the list", "FAQ + simple admin list of signups"],
+    keywords: [/waitlist/, /coming soon/, /pre.?launch/, /early access/, /launch (page|site)/, /signup page/, /beta access/],
+  },
+  "agency-studio": {
+    key: "agency-studio",
+    description: "Creative agency / studio site: bold hero, services, selected work case studies, team, contact.",
+    routes: ["/", "/work", "/work/$slug", "/services", "/about", "/contact"],
+    blocks: ["Hero", "WorkGrid", "CaseStudy", "ServiceCard", "TeamGrid", "ContactForm", "FooterSection"],
+    features: ["statement hero with agency tagline", "selected work grid with hover reveal", "case study with problem/process/outcome + images", "services list with deliverables", "team grid + contact form"],
+    keywords: [/agency/, /studio site/, /design studio/, /creative studio/, /branding agency/, /web studio/, /production house/, /consultancy site/],
+  },
+  "booking-appointments": {
+    key: "booking-appointments",
+    description: "Service booking site: services list, calendar with time slots, booking form, confirmation, my bookings.",
+    routes: ["/", "/services", "/book/$serviceId", "/confirmation/$id", "/bookings", "/auth/sign-in"],
+    blocks: ["Hero", "ServiceCard", "Calendar", "BookingForm", "OrderConfirmation", "SignInCard"],
+    features: ["hero with book-now CTA", "services with duration + price", "calendar picker with available time slots", "booking form (name/email/notes) + confirmation", "my bookings list with cancel/reschedule"],
+    keywords: [/booking/, /appointment/, /calendly/i, /schedule (a|an) (call|appointment|consultation)/, /salon booking/, /barber booking/, /clinic booking/, /tutor booking/, /reservation system/],
   },
 };
 

@@ -31,7 +31,12 @@ export type ThemeKey =
   | "paper-craft"
   | "luxury-gold"
   | "kids-playful"
-  | "medical-clean";
+  | "medical-clean"
+  | "vibrant-gradient"
+  | "y2k-bubble"
+  | "earthy-organic"
+  | "noir-mono"
+  | "retro-arcade";
 
 export interface ThemeSpec {
   /** Internal name. NEVER surfaced to the user. */
@@ -464,6 +469,131 @@ export const THEMES: Record<ThemeKey, ThemeSpec> = {
       "--radius": "0.625rem",
     },
   },
+  "vibrant-gradient": {
+    key: "vibrant-gradient",
+    description: "Bold magenta→violet→cyan gradients on near-black, oversized display type, neon glow accents.",
+    fitsWhen: "AI tools, creator tools, generative apps, music apps, modern consumer launches",
+    display_font: "Bricolage Grotesque",
+    body_font: "Inter",
+    tokens: {
+      "--background": "oklch(0.12 0.03 280)",
+      "--foreground": "oklch(0.97 0.01 280)",
+      "--card": "oklch(0.16 0.04 285)",
+      "--card-foreground": "oklch(0.97 0.01 280)",
+      "--primary": "oklch(0.7 0.27 320)",
+      "--primary-foreground": "oklch(0.12 0.03 280)",
+      "--secondary": "oklch(0.22 0.05 285)",
+      "--secondary-foreground": "oklch(0.97 0.01 280)",
+      "--muted": "oklch(0.2 0.04 285)",
+      "--muted-foreground": "oklch(0.7 0.04 280)",
+      "--accent": "oklch(0.78 0.2 200)",
+      "--accent-foreground": "oklch(0.12 0.03 280)",
+      "--border": "oklch(0.28 0.05 285)",
+      "--input": "oklch(0.22 0.04 285)",
+      "--ring": "oklch(0.7 0.27 320)",
+      "--radius": "1rem",
+    },
+  },
+  "y2k-bubble": {
+    key: "y2k-bubble",
+    description: "Glossy bubble pinks + chrome silver, rounded everything, playful Y2K nostalgia.",
+    fitsWhen: "gen-z social, dating, fashion, beauty, music fan sites, fun consumer apps",
+    display_font: "Climate Crisis",
+    body_font: "DM Sans",
+    tokens: {
+      "--background": "oklch(0.97 0.02 340)",
+      "--foreground": "oklch(0.2 0.05 320)",
+      "--card": "oklch(1 0 0)",
+      "--card-foreground": "oklch(0.2 0.05 320)",
+      "--primary": "oklch(0.72 0.22 350)",
+      "--primary-foreground": "oklch(0.99 0.01 340)",
+      "--secondary": "oklch(0.92 0.05 340)",
+      "--secondary-foreground": "oklch(0.25 0.06 320)",
+      "--muted": "oklch(0.94 0.03 340)",
+      "--muted-foreground": "oklch(0.5 0.05 320)",
+      "--accent": "oklch(0.78 0.16 250)",
+      "--accent-foreground": "oklch(0.99 0.01 340)",
+      "--border": "oklch(0.88 0.04 340)",
+      "--input": "oklch(0.92 0.03 340)",
+      "--ring": "oklch(0.72 0.22 350)",
+      "--radius": "1.5rem",
+    },
+  },
+  "earthy-organic": {
+    key: "earthy-organic",
+    description: "Warm sage, terracotta, sand, and bone palette with humanist serif headings.",
+    fitsWhen: "wellness, skincare, sustainability, slow brands, herbal, yoga, plant shops",
+    display_font: "Cormorant Garamond",
+    body_font: "Inter",
+    tokens: {
+      "--background": "oklch(0.96 0.02 75)",
+      "--foreground": "oklch(0.22 0.03 50)",
+      "--card": "oklch(0.98 0.015 75)",
+      "--card-foreground": "oklch(0.22 0.03 50)",
+      "--primary": "oklch(0.45 0.08 145)",
+      "--primary-foreground": "oklch(0.97 0.02 75)",
+      "--secondary": "oklch(0.9 0.03 75)",
+      "--secondary-foreground": "oklch(0.25 0.03 50)",
+      "--muted": "oklch(0.92 0.025 75)",
+      "--muted-foreground": "oklch(0.45 0.03 60)",
+      "--accent": "oklch(0.6 0.14 40)",
+      "--accent-foreground": "oklch(0.97 0.02 75)",
+      "--border": "oklch(0.86 0.025 75)",
+      "--input": "oklch(0.9 0.025 75)",
+      "--ring": "oklch(0.45 0.08 145)",
+      "--radius": "0.5rem",
+    },
+  },
+  "noir-mono": {
+    key: "noir-mono",
+    description: "Pure black + off-white, mono display type, single razor-thin red accent — editorial fashion noir.",
+    fitsWhen: "fashion, photography, luxury streetwear, art galleries, agencies, film",
+    display_font: "JetBrains Mono",
+    body_font: "Inter",
+    tokens: {
+      "--background": "oklch(0.08 0 0)",
+      "--foreground": "oklch(0.96 0 0)",
+      "--card": "oklch(0.12 0 0)",
+      "--card-foreground": "oklch(0.96 0 0)",
+      "--primary": "oklch(0.96 0 0)",
+      "--primary-foreground": "oklch(0.08 0 0)",
+      "--secondary": "oklch(0.18 0 0)",
+      "--secondary-foreground": "oklch(0.96 0 0)",
+      "--muted": "oklch(0.16 0 0)",
+      "--muted-foreground": "oklch(0.65 0 0)",
+      "--accent": "oklch(0.6 0.22 27)",
+      "--accent-foreground": "oklch(0.96 0 0)",
+      "--border": "oklch(0.22 0 0)",
+      "--input": "oklch(0.18 0 0)",
+      "--ring": "oklch(0.6 0.22 27)",
+      "--radius": "0rem",
+    },
+  },
+  "retro-arcade": {
+    key: "retro-arcade",
+    description: "Pixel-grid dark with electric purple + lime + hot-pink CRT accents, pixel display font.",
+    fitsWhen: "gaming, esports, retro tech, indie games, hackathons, dev portfolios",
+    display_font: "Press Start 2P",
+    body_font: "Inter",
+    tokens: {
+      "--background": "oklch(0.14 0.04 280)",
+      "--foreground": "oklch(0.95 0.02 280)",
+      "--card": "oklch(0.18 0.05 280)",
+      "--card-foreground": "oklch(0.95 0.02 280)",
+      "--primary": "oklch(0.78 0.24 140)",
+      "--primary-foreground": "oklch(0.14 0.04 280)",
+      "--secondary": "oklch(0.24 0.06 290)",
+      "--secondary-foreground": "oklch(0.95 0.02 280)",
+      "--muted": "oklch(0.22 0.05 285)",
+      "--muted-foreground": "oklch(0.7 0.04 280)",
+      "--accent": "oklch(0.7 0.26 340)",
+      "--accent-foreground": "oklch(0.14 0.04 280)",
+      "--border": "oklch(0.3 0.06 285)",
+      "--input": "oklch(0.22 0.05 285)",
+      "--ring": "oklch(0.78 0.24 140)",
+      "--radius": "0.25rem",
+    },
+  },
 };
 
 /** Render the theme catalog so the Design Director can pick one. */
@@ -498,6 +628,8 @@ export function pickThemeForBrief(brief: string): ThemeKey {
     "neo-brutalist": 0, "glass-morphism": 0, "terminal-green": 0,
     "sunset-gradient": 0, "nordic-minimal": 0, "cyberpunk-neon": 0,
     "paper-craft": 0, "luxury-gold": 0, "kids-playful": 0, "medical-clean": 0,
+    "vibrant-gradient": 0, "y2k-bubble": 0, "earthy-organic": 0,
+    "noir-mono": 0, "retro-arcade": 0,
   };
   const bumps: Array<[ThemeKey, RegExp[]]> = [
     ["editorial", [/blog|essay|magazine|journal|portfolio|writer|book|publication|newsletter|reader/]],
@@ -516,6 +648,11 @@ export function pickThemeForBrief(brief: string): ThemeKey {
     ["luxury-gold", [/luxury|jewelry|watch|fashion house|private bank|members club|hospitality|atelier/]],
     ["kids-playful", [/kid|child|toddler|toy|school|camp|family|learning game|under.?\d/]],
     ["medical-clean", [/health|medical|clinic|telemedicine|telehealth|fitness|mental health|insurance|biotech|pharma|patient|wellness/]],
+    ["vibrant-gradient", [/ai (app|tool|generator)|image generator|prompt|generative|creator tool|music app|midjourney|runway|suno/]],
+    ["y2k-bubble", [/y2k|bubblegum|early 2000s|2000s|fan site|stan|k.?pop|cute social|aesthetic app/]],
+    ["earthy-organic", [/wellness|skincare|sustainab|eco|organic|herbal|yoga|plant|botanical|slow living|farm to table/]],
+    ["noir-mono", [/photography|photographer|fashion|streetwear|agency|film studio|art gallery|noir|monochrome/]],
+    ["retro-arcade", [/arcade|retro game|pixel|8.?bit|16.?bit|game jam|hackathon|game studio|indie game/]],
   ];
   for (const [k, regs] of bumps) for (const r of regs) if (r.test(b)) score[k] += 2;
   let best: ThemeKey = "saas-cool";
