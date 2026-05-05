@@ -63,7 +63,7 @@ try {
 }
 
 // Workstream A — surgical-edit gate
-const longPrev = Array.from({ length: 80 }, (_, i) => `const lineNumber${i} = ${i};`).join("\n");
+const longPrev = Array.from({ length: 120 }, (_, i) => `const lineNumber${i} = ${i};`).join("\n");
 const longFiles: ProjectFile[] = [
   { path: "src/big.tsx", content: longPrev },
 ];
@@ -83,8 +83,8 @@ try {
   );
 }
 
-// Genuine large rewrite (only 20% overlap) should still be accepted.
-const partialRewrite = Array.from({ length: 80 }, (_, i) =>
+// Genuine large rewrite (only ~13% overlap) should still be accepted.
+const partialRewrite = Array.from({ length: 120 }, (_, i) =>
   i < 16 ? `const lineNumber${i} = ${i};` : `const renamed_${i} = ${i * 2};`,
 ).join("\n");
 const accepted = applyOps(longFiles, [
