@@ -32,6 +32,12 @@ import {
   renderThemeTokensBlock,
   type ThemeKey,
 } from "@/server/themes.server";
+import {
+  TEMPLATES,
+  pickTemplateForBrief,
+  renderTemplatePlanBlock,
+  type TemplateKey,
+} from "@/server/templates.server";
 
 const DIRECTOR_MODEL = "google/gemini-3-flash-preview";
 
