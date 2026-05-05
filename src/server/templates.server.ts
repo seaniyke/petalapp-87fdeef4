@@ -179,6 +179,14 @@ export const TEMPLATES: Record<TemplateKey, TemplateSpec> = {
     features: ["sidebar with conversation history", "streaming chat UI with markdown rendering", "prompt library / templates", "model + settings panel"],
     keywords: [/\bai\b chat/, /chatbot/, /\bllm\b/, /\bgpt\b/, /assistant app/, /copilot/, /chatgpt clone/i],
   },
+  "ecommerce-store": {
+    key: "ecommerce-store",
+    description: "Single-vendor online store: product catalog, product detail with variants, cart, checkout, order confirmation.",
+    routes: ["/", "/shop", "/products/$slug", "/cart", "/checkout", "/orders/$id", "/auth/sign-in"],
+    blocks: ["Hero", "FilterBar", "ProductCard", "Gallery", "PricingTable", "CheckoutSummary", "OrderConfirmation", "Newsletter", "FooterSection"],
+    features: ["hero with featured collection + shop CTA", "product grid with category filters", "product detail with gallery, variant picker (size/color), add-to-cart", "slide-out cart with quantities + subtotal", "checkout form (placeholder if no payments) + order confirmation"],
+    keywords: [/e-?commerce/, /online (store|shop)/, /\bstore\b/, /\bshop\b/, /storefront/, /sell (products?|merch|clothing|shoes|apparel)/, /shopify/, /merch (store|shop)/, /\bcatalog\b/, /\bcart\b.*\bcheckout\b/],
+  },
 };
 
 /** Render the template catalog so the design director / brief expander can pick one. */
