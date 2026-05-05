@@ -656,7 +656,10 @@ function addStructuredRetryInstruction<T extends Array<{ role: string; content: 
     args.hasBackend === false
       ? ` This project has NO backend connected — DO NOT import from "@/integrations/backend/*" or "@supabase/supabase-js"; scaffold UI only with realistic placeholder data and tell the user in your "summary" to tap "Add backend" to wire it up.`
       : "";
-  const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field. For edit turns, prefer exact \`replace\` ops for small changes instead of resending whole files. Keep files short and split large UI into components. If this is an initial app, build a focused MVP that works instead of a giant showcase: 4-8 app files max, no file over 140 lines, no long content blocks.${backendHint}`;
+  const chunkHint = args.problem.startsWith("replace_too_large")
+    ? " Split the change into MULTIPLE small \`replace\` ops, each with a \`search\` snippet under ~60 lines / 2 KB. Target one logical region per op."
+    : "";
+  const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field. For edit turns, prefer exact \`replace\` ops for small changes instead of resending whole files.${chunkHint} Keep files short and split large UI into components. If this is an initial app, build a focused MVP that works instead of a giant showcase: 4-8 app files max, no file over 140 lines, no long content blocks.${backendHint}`;
   return messages.map((m, i) =>
     i === 0 && typeof m.content === "string" ? { ...m, content: `${m.content}${retryBlock}` } : m,
   ) as T;
@@ -1265,10 +1268,11 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             // do ONE structured retry asking the model to re-emit the
             // change as `replace` ops. If that retry also fails, fall
             // through to the conversational fallback rather than throw.
-            if (msg.startsWith("must_use_replace")) {
-              console.warn("[generate] must_use_replace gate fired — retrying with replace hint");
+            if (msg.startsWith("must_use_replace") || msg.startsWith("replace_too_large")) {
+              const gateLabel = msg.startsWith("replace_too_large") ? "replace_too_large" : "must_use_replace";
+              console.warn(`[generate] ${gateLabel} gate fired — retrying with chunked-replace hint`);
               controller.enqueue(
-                encoder.encode(sse({ type: "status", message: "Reshaping the edit to be safer…" })),
+                encoder.encode(sse({ type: "status", message: "Splitting the edit into smaller, safer chunks…" })),
               );
               const retry = await aiChatCompletions({
                 feature: "generate",
@@ -1289,7 +1293,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
                   phase: phaseTag.phase,
                   promptChars: lastUserContent.length,
                   hadAttachments: hasVisionTurn,
-                  chosenBy: "must_use_replace_retry",
+                  chosenBy: gateLabel + "_retry",
                 },
               });
               if (!retry.ok || !retry.body) {

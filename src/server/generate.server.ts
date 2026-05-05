@@ -171,10 +171,15 @@ Each operation is one of:
 
 EDIT COMPLETENESS REQUIREMENT (critical):
 - HARD RULE: for ANY existing file longer than ~60 lines, you MUST use \`replace\` ops with a unique snippet. Do NOT resend the whole file via \`update\` if you're keeping most of it. The server REJECTS such ops with a "must_use_replace" error and forces a retry — wasting the user's time and tokens.
+- CHUNK LARGE EDITS: when an edit touches multiple regions of one file, emit MULTIPLE small \`replace\` ops (one per region) instead of a single mega-replace. Keep each \`search\` snippet under ~60 lines / ~2 KB. The server REJECTS oversized snippets with a "replace_too_large" error.
 - Use \`update\` ONLY when (a) the file is short, (b) you are genuinely rewriting the whole file from scratch, or (c) the change touches > 30% of the lines.
 - Every "update" op MUST contain the complete, final contents of that file.
 - NEVER write placeholders such as "// ... keep existing code", "{/* ... keep existing code */}", "same as before", "rest unchanged", or ellipses standing in for code.
 - If you use \`update\` and omit imports, opening JSX, hooks, helper functions, or closing tags, the app will fail. For large files, use \`replace\` or create a smaller extracted component instead.
+
+BRAND-NAME GUARDRAIL (the generated app belongs to the USER, not Petal):
+- NEVER write the strings "Lovable", "Lovable Cloud", "Lovable AI", "Petal", or "Petal Cloud" into the user's app code, copy, comments, page titles, alt text, toasts, or error messages. The end-user of the generated app should never see those words.
+- When you need to refer to the project's backend in code or copy, call it "the backend", "your account", or use the app's own brand. The infrastructure is invisible.
 
 REUSE-FIRST PROTOCOL (most important rule):
 The kit at "@/components/ui/*" provides ~30 components (Button, Card, Input, Textarea, Label, Badge, Dialog, Sheet, Drawer, Select, Combobox, DatePicker, Calendar, Form, Chart, Table, Tabs, Accordion, DropdownMenu, Popover, Tooltip, Toast, Switch, Checkbox, Slider, Progress, Avatar, Alert, Skeleton, Separator, ScrollArea, Container, Stack, Inline, Grid, Router, ThemeProvider/Toggle). If you find yourself styling a primitive HTML element to look like a UI control, STOP and import the kit equivalent. Specific signatures relevant to THIS turn appear in the [Reinforcement — ...] sections appended below.
@@ -579,6 +584,8 @@ export type ErrorKind =
  */
 const REPLACE_GATE_MIN_LINES = 60;
 const REPLACE_GATE_OVERLAP_RATIO = 0.7;
+const REPLACE_MAX_SEARCH_LINES = 60;
+const REPLACE_MAX_SEARCH_BYTES = 2048;
 
 function shouldRequireReplaceOp(prev: string, next: string, path: string): boolean {
   if (!prev) return false;
@@ -628,6 +635,17 @@ export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
       }
       if (!op.search) {
         throw new Error(`AI returned an empty search snippet for ${op.path}.`);
+      }
+      // Workstream A.2 — chunked-replace gate. A single replace op whose
+      // `search` snippet is huge (~> 60 lines OR > 2 KB) is the same
+      // failure mode as `must_use_replace`: the model is trying to swap
+      // a giant region in one shot and will truncate mid-stream. Force
+      // it to split into multiple smaller replace ops.
+      const searchLines = op.search.split("\n").length;
+      if (searchLines > REPLACE_MAX_SEARCH_LINES || op.search.length > REPLACE_MAX_SEARCH_BYTES) {
+        throw new Error(
+          `replace_too_large: ${op.path} replace op covers ${searchLines} lines / ${op.search.length} bytes. Split this into multiple smaller \`replace\` ops, each targeting one logical region (~< 60 lines / 2 KB per op).`,
+        );
       }
       const first = prev.indexOf(op.search);
       if (first === -1) {

@@ -28,10 +28,14 @@ import { aiChatCompletions } from "@/server/ai-provider.server";
 import {
   THEMES,
   pickThemeForBrief,
-  renderThemeCatalog,
   renderThemeTokensBlock,
   type ThemeKey,
 } from "@/server/themes.server";
+import {
+  pickTemplateForBrief,
+  renderTemplatePlanBlock,
+  type TemplateKey,
+} from "@/server/templates.server";
 
 const DIRECTOR_MODEL = "google/gemini-3-flash-preview";
 
@@ -54,6 +58,8 @@ export type DesignDirection = {
   design_moves: string[];
   /** Hidden theme key — drives concrete oklch tokens. Never surfaced to the user. */
   theme?: ThemeKey;
+  /** Hidden template key — drives the route + section plan. Never surfaced to the user. */
+  template?: TemplateKey | null;
 };
 
 const DIRECTOR_SYSTEM = `You are Petal's Design Director. Before the builder writes any code, you commit to ONE bold, specific visual direction for the app.
@@ -116,6 +122,7 @@ const DIRECTOR_TOOL = {
 export function renderDesignDirectionBlock(d: DesignDirection): string {
   const moves = d.design_moves.map((m) => `  - ${m}`).join("\n");
   const themeBlock = d.theme ? renderThemeTokensBlock(d.theme) : "";
+  const templateBlock = d.template ? renderTemplatePlanBlock(d.template) : "";
   return (
     `\n\n### Design Direction (committed before this build — execute it with conviction)\n` +
     `- vibe: ${d.vibe}\n` +
@@ -126,7 +133,8 @@ export function renderDesignDirectionBlock(d: DesignDirection): string {
     `- motion: ${d.motion}${d.motion === "expressive" ? " (use framer-motion for the hero entrance)" : ""}\n` +
     `- design moves to land:\n${moves}\n` +
     `Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.\n` +
-    themeBlock
+    themeBlock +
+    templateBlock
   );
 }
 
@@ -266,6 +274,12 @@ export async function pickDesignDirection(args: {
     // renderThemeTokensBlock().
     if (!parsed.theme || !(parsed.theme in THEMES)) {
       parsed.theme = pickThemeForBrief(trimmedBrief);
+    }
+    // Workstream C2: assign a hidden template key from the brief so the
+    // builder model scaffolds the right routes/sections instead of
+    // defaulting to a generic landing page.
+    if (parsed.template === undefined) {
+      parsed.template = pickTemplateForBrief(trimmedBrief);
     }
     direction = parsed;
   } catch (e) {
