@@ -31,7 +31,12 @@ export type ThemeKey =
   | "paper-craft"
   | "luxury-gold"
   | "kids-playful"
-  | "medical-clean";
+  | "medical-clean"
+  | "vibrant-gradient"
+  | "y2k-bubble"
+  | "earthy-organic"
+  | "noir-mono"
+  | "retro-arcade";
 
 export interface ThemeSpec {
   /** Internal name. NEVER surfaced to the user. */
