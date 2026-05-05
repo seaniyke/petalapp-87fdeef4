@@ -61,8 +61,8 @@ export class PipelineError extends Error {
 }
 
 const GENERIC: FriendlyError = {
-  title: "Petal got a bit confused",
-  message: "Something didn't go right. Want to try that again?",
+  title: "Petal hit a build issue",
+  message: "Petal couldn't finish this pass safely. Retry and it will use a narrower edit path instead of guessing.",
   actionLabel: "Try again",
   actionKind: "retry",
 };
