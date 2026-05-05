@@ -1065,6 +1065,10 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     // First-build scaffolds emit many files in one stream — give them the
     // 240s ceiling instead of the default 120s. Patches keep the default.
     timeoutTier: isInitial ? "stream_first_build" : "stream",
+    // Propagate client-cancel: if the user closes the tab / hits Stop, the
+    // SSE Response is aborted and we want the upstream provider call to
+    // stop too — otherwise it runs (and bills) until the wall-clock cap.
+    signal: request.signal,
     meta: {
       phase: phaseTag.phase,
       promptChars: lastUserContent.length,
