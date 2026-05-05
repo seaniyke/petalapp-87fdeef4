@@ -261,6 +261,12 @@ export async function pickDesignDirection(args: {
     ) {
       return null;
     }
+    // Workstream C1: assign a hidden theme key from the brief if the
+    // model didn't pick one. Drives concrete oklch tokens via
+    // renderThemeTokensBlock().
+    if (!parsed.theme || !(parsed.theme in THEMES)) {
+      parsed.theme = pickThemeForBrief(trimmedBrief);
+    }
     direction = parsed;
   } catch (e) {
     console.warn("[design-director] threw:", e);
