@@ -1290,7 +1290,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
                   phase: phaseTag.phase,
                   promptChars: lastUserContent.length,
                   hadAttachments: hasVisionTurn,
-                  chosenBy: "must_use_replace_retry",
+                  chosenBy: gateLabel + "_retry",
                 },
               });
               if (!retry.ok || !retry.body) {
