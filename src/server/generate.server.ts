@@ -634,6 +634,17 @@ export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
       if (!op.search) {
         throw new Error(`AI returned an empty search snippet for ${op.path}.`);
       }
+      // Workstream A.2 — chunked-replace gate. A single replace op whose
+      // `search` snippet is huge (~> 60 lines OR > 2 KB) is the same
+      // failure mode as `must_use_replace`: the model is trying to swap
+      // a giant region in one shot and will truncate mid-stream. Force
+      // it to split into multiple smaller replace ops.
+      const searchLines = op.search.split("\n").length;
+      if (searchLines > REPLACE_MAX_SEARCH_LINES || op.search.length > REPLACE_MAX_SEARCH_BYTES) {
+        throw new Error(
+          `replace_too_large: ${op.path} replace op covers ${searchLines} lines / ${op.search.length} bytes. Split this into multiple smaller \`replace\` ops, each targeting one logical region (~< 60 lines / 2 KB per op).`,
+        );
+      }
       const first = prev.indexOf(op.search);
       if (first === -1) {
         throw new Error(`AI replace snippet did not match ${op.path}.`);
