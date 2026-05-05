@@ -369,7 +369,7 @@ async function relayAndCollect(
       if (timer) clearTimeout(timer);
     }
     if (done) break;
-    buf += decoder.decode(value, { stream: true });
+    buf += decoder.decode(value as Uint8Array, { stream: true });
     const lines = buf.split("\n");
     buf = lines.pop() ?? "";
     for (const raw of lines) {
