@@ -628,6 +628,8 @@ export function pickThemeForBrief(brief: string): ThemeKey {
     "neo-brutalist": 0, "glass-morphism": 0, "terminal-green": 0,
     "sunset-gradient": 0, "nordic-minimal": 0, "cyberpunk-neon": 0,
     "paper-craft": 0, "luxury-gold": 0, "kids-playful": 0, "medical-clean": 0,
+    "vibrant-gradient": 0, "y2k-bubble": 0, "earthy-organic": 0,
+    "noir-mono": 0, "retro-arcade": 0,
   };
   const bumps: Array<[ThemeKey, RegExp[]]> = [
     ["editorial", [/blog|essay|magazine|journal|portfolio|writer|book|publication|newsletter|reader/]],
@@ -646,6 +648,11 @@ export function pickThemeForBrief(brief: string): ThemeKey {
     ["luxury-gold", [/luxury|jewelry|watch|fashion house|private bank|members club|hospitality|atelier/]],
     ["kids-playful", [/kid|child|toddler|toy|school|camp|family|learning game|under.?\d/]],
     ["medical-clean", [/health|medical|clinic|telemedicine|telehealth|fitness|mental health|insurance|biotech|pharma|patient|wellness/]],
+    ["vibrant-gradient", [/ai (app|tool|generator)|image generator|prompt|generative|creator tool|music app|midjourney|runway|suno/]],
+    ["y2k-bubble", [/y2k|bubblegum|early 2000s|2000s|fan site|stan|k.?pop|cute social|aesthetic app/]],
+    ["earthy-organic", [/wellness|skincare|sustainab|eco|organic|herbal|yoga|plant|botanical|slow living|farm to table/]],
+    ["noir-mono", [/photography|photographer|fashion|streetwear|agency|film studio|art gallery|noir|monochrome/]],
+    ["retro-arcade", [/arcade|retro game|pixel|8.?bit|16.?bit|game jam|hackathon|game studio|indie game/]],
   ];
   for (const [k, regs] of bumps) for (const r of regs) if (r.test(b)) score[k] += 2;
   let best: ThemeKey = "saas-cool";
