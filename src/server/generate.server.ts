@@ -479,6 +479,7 @@ export type StreamEvent =
       plan?: string;
       recap?: string;
       creditsCharged?: number;
+      noFileChanges?: boolean;
     }
   | {
       type: "self_check";
