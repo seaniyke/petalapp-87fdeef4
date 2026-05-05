@@ -115,6 +115,7 @@ const DIRECTOR_TOOL = {
 /** Render a Design Direction as a compact prompt block. */
 export function renderDesignDirectionBlock(d: DesignDirection): string {
   const moves = d.design_moves.map((m) => `  - ${m}`).join("\n");
+  const themeBlock = d.theme ? renderThemeTokensBlock(d.theme) : "";
   return (
     `\n\n### Design Direction (committed before this build — execute it with conviction)\n` +
     `- vibe: ${d.vibe}\n` +
@@ -124,7 +125,8 @@ export function renderDesignDirectionBlock(d: DesignDirection): string {
     `- density: ${d.density}\n` +
     `- motion: ${d.motion}${d.motion === "expressive" ? " (use framer-motion for the hero entrance)" : ""}\n` +
     `- design moves to land:\n${moves}\n` +
-    `Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.\n`
+    `Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.\n` +
+    themeBlock
   );
 }
 
