@@ -135,7 +135,8 @@ export function renderDesignDirectionBlock(d: DesignDirection): string {
     `- motion: ${d.motion}${d.motion === "expressive" ? " (use framer-motion for the hero entrance)" : ""}\n` +
     `- design moves to land:\n${moves}\n` +
     `Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.\n` +
-    themeBlock
+    themeBlock +
+    templateBlock
   );
 }
 
