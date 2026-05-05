@@ -104,7 +104,7 @@ const shortNext = applyOps(shortFiles, [
 assert("update gate skips short files", shortNext[0]?.content.includes("c = 3"));
 
 // Workstream A.2 — replace_too_large gate
-const bigBody = Array.from({ length: 80 }, (_, i) => `// region line ${i}`).join("\n");
+const bigBody = Array.from({ length: 200 }, (_, i) => `// region line ${i}`).join("\n");
 const bigFile: ProjectFile[] = [{ path: "src/region.ts", content: bigBody + "\nconst tail = 1;" }];
 try {
   applyOps(bigFile, [
