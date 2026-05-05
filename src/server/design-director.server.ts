@@ -277,6 +277,12 @@ export async function pickDesignDirection(args: {
     if (!parsed.theme || !(parsed.theme in THEMES)) {
       parsed.theme = pickThemeForBrief(trimmedBrief);
     }
+    // Workstream C2: assign a hidden template key from the brief so the
+    // builder model scaffolds the right routes/sections instead of
+    // defaulting to a generic landing page.
+    if (parsed.template === undefined) {
+      parsed.template = pickTemplateForBrief(trimmedBrief);
+    }
     direction = parsed;
   } catch (e) {
     console.warn("[design-director] threw:", e);
