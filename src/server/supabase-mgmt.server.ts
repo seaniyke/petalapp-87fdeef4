@@ -7,7 +7,7 @@
  *
  * Auth: a Personal Access Token from a Supabase org admin, stored as
  * PETAL_MGMT_PAT (we can't use SUPABASE_* — that prefix is reserved by the
- * Lovable Cloud secrets manager).
+ * Petal Cloud secrets manager).
  *
  * Docs: https://api.supabase.com/api/v1
  */
