@@ -339,7 +339,7 @@ export const PATCH_FILES_TOOL = {
           items: {
             type: "object",
             properties: {
-              op: { type: "string", enum: ["create", "update", "delete"] },
+              op: { type: "string", enum: ["create", "update", "replace", "delete"] },
               path: { type: "string", description: "Relative file path." },
               narration: {
                 type: "string",
@@ -349,6 +349,14 @@ export const PATCH_FILES_TOOL = {
               content: {
                 type: "string",
                 description: "Full file contents. Required for create/update, omit for delete.",
+              },
+              search: {
+                type: "string",
+                description: "Exact existing snippet to replace. Required for replace ops only.",
+              },
+              replace: {
+                type: "string",
+                description: "Replacement snippet. Required for replace ops only.",
               },
             },
             required: ["op", "path"],
