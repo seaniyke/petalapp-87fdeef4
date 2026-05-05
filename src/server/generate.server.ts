@@ -164,22 +164,23 @@ INCREMENTAL EDIT PROTOCOL (mandatory):
 - NEVER emit ops for files under "src/components/ui/*", "src/components/examples/*", "vite.config.ts", "tsconfig.json", or "src/lib/utils.ts" — these are managed by the scaffold and the server will drop those ops. The "examples/*" files are read-only reference patterns (Dialog+Sheet+Tabs+Table compositions, plus "examples/LAYOUT.md" — a full tutorial on Container/Stack/Inline/Grid layout primitives) that you may READ and copy into NEW feature components under "src/components/" (NOT under examples/), but never modify in place.
 
 Each operation is one of:
-- { "op": "update", "path": "...", "content": "FULL new contents of the file" }
+- { "op": "replace", "path": "...", "search": "EXACT existing code", "replace": "new code" } — BEST for small edits inside an existing file. `search` must appear exactly once.
+- { "op": "update", "path": "...", "content": "FULL new contents of the file" } — use only when replace is not enough.
 - { "op": "create", "path": "...", "content": "FULL contents of the new file" }
 - { "op": "delete", "path": "..." }
 
-COMPLETE-FILE REQUIREMENT (critical):
+EDIT COMPLETENESS REQUIREMENT (critical):
+- For small changes, prefer `replace` with a precise snippet from the current file. This avoids resending giant files and is safer after the first generation.
 - Every "update" op MUST contain the complete, final contents of that file.
 - NEVER write placeholders such as "// ... keep existing code", "{/* ... keep existing code */}", "same as before", "rest unchanged", or ellipses standing in for code.
-- If you omit imports, opening JSX, hooks, helper functions, or closing tags, the app will fail. Re-emit the entire file you are changing, even when the edit is small.
-- For large files, prefer changing a smaller extracted component or creating a new component file, then update the parent file completely.
+- If you use `update` and omit imports, opening JSX, hooks, helper functions, or closing tags, the app will fail. For large files, use `replace` or create a smaller extracted component instead.
 
 REUSE-FIRST PROTOCOL (most important rule):
 The kit at "@/components/ui/*" provides ~30 components (Button, Card, Input, Textarea, Label, Badge, Dialog, Sheet, Drawer, Select, Combobox, DatePicker, Calendar, Form, Chart, Table, Tabs, Accordion, DropdownMenu, Popover, Tooltip, Toast, Switch, Checkbox, Slider, Progress, Avatar, Alert, Skeleton, Separator, ScrollArea, Container, Stack, Inline, Grid, Router, ThemeProvider/Toggle). If you find yourself styling a primitive HTML element to look like a UI control, STOP and import the kit equivalent. Specific signatures relevant to THIS turn appear in the [Reinforcement — ...] sections appended below.
 
 Hard rules:
 - DO NOT include unchanged files. Only emit operations for files you actually create, modify, or delete.
-- For "update" and "create", "content" must be the COMPLETE file contents. No placeholders, no abbreviated code, no keep-existing markers.
+- For "replace", "search" must be copied exactly from the current file and must occur once. For "update" and "create", "content" must be the COMPLETE file contents. No placeholders, no abbreviated code, no keep-existing markers.
 - DO NOT modify files under "src/components/ui/*" — that's the canonical UI kit. If you need a component the kit doesn't have, create a NEW file under "src/components/" (not under ui/).
 - DO NOT modify "vite.config.ts", "tsconfig.json", or "src/lib/utils.ts" unless absolutely necessary.
 - MUST use Tailwind utility classes. NEVER inline \`style={{}}\` (except dynamic values) or custom CSS classes.
