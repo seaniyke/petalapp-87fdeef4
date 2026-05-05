@@ -60,6 +60,8 @@ export type DesignDirection = {
   design_moves: string[];
   /** Hidden theme key — drives concrete oklch tokens. Never surfaced to the user. */
   theme?: ThemeKey;
+  /** Hidden template key — drives the route + section plan. Never surfaced to the user. */
+  template?: TemplateKey | null;
 };
 
 const DIRECTOR_SYSTEM = `You are Petal's Design Director. Before the builder writes any code, you commit to ONE bold, specific visual direction for the app.
