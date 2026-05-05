@@ -584,6 +584,8 @@ export type ErrorKind =
  */
 const REPLACE_GATE_MIN_LINES = 60;
 const REPLACE_GATE_OVERLAP_RATIO = 0.7;
+const REPLACE_MAX_SEARCH_LINES = 60;
+const REPLACE_MAX_SEARCH_BYTES = 2048;
 
 function shouldRequireReplaceOp(prev: string, next: string, path: string): boolean {
   if (!prev) return false;
