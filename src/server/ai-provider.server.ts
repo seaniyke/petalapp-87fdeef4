@@ -430,13 +430,21 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
  * first wins (AbortSignal.any is supported in Workers + Node ≥ 20).
  */
 const DEFAULT_TIMEOUT_MS = 25_000;
-const DEFAULT_STREAM_TIMEOUT_MS = 120_000;
 /**
- * First-build streams need a longer ceiling. Initial scaffolds emit many
- * files in one shot — the digest showed clusters of "operation aborted due
- * to timeout" all on first generates. Worker wall budget is fine because
- * we forward bytes as they arrive.
+ * Hard wall-clock ceiling for streamed turns. This is a safety net for the
+ * pathological case where the upstream never responds at all — in normal
+ * operation the per-turn idle-timeout watchdog in `relayAndCollect` is what
+ * actually catches a wedged provider, and lets in-progress streams that
+ * keep emitting bytes run to completion.
+ *
+ * 120s was killing legitimate edit turns mid-stream (deep-reasoning models
+ * with non-trivial file context routinely take 90–150s to finish). Raising
+ * this to 240s — same as first build — closes the gap without inflating
+ * the recovery window for genuinely hung providers (the idle watchdog
+ * cancels those in 75s regardless of this value).
  */
+const DEFAULT_STREAM_TIMEOUT_MS = 240_000;
+/** Initial scaffolds get the same ceiling. Kept named for clarity. */
 const FIRST_BUILD_STREAM_TIMEOUT_MS = 240_000;
 
 function effectiveSignal(

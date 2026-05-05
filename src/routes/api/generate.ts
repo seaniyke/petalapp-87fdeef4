@@ -284,6 +284,14 @@ function isTruncatedFinishReason(reason: string | null | undefined): boolean {
 /** Parse a streamed OpenAI-style SSE body, emit summary deltas as they arrive,
  *  accumulate the tool-call arguments string, and return the parsed final args
  *  along with any `usage` payload the gateway emitted. */
+/**
+ * Idle-timeout watchdog (ms). If the upstream stream stops producing bytes
+ * for this long, we cancel the read and surface an upstream_timeout. This
+ * is the real liveness check for streamed turns — wall-clock timeouts in
+ * `aiChatCompletions` are just the last-resort safety net.
+ */
+const STREAM_IDLE_TIMEOUT_MS = 75_000;
+
 async function relayAndCollect(
   upstream: Response,
   controller: ReadableStreamDefaultController<Uint8Array>,
@@ -337,9 +345,31 @@ async function relayAndCollect(
   };
 
   while (true) {
-    const { value, done } = await reader.read();
+    // Race the next chunk read against an idle-timeout. If the upstream
+    // goes silent for STREAM_IDLE_TIMEOUT_MS the provider is wedged —
+    // cancel the reader and throw a classifiable timeout. This replaces
+    // the old behaviour of relying solely on the wall-clock ceiling,
+    // which would also kill streams that were happily producing bytes.
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const idle = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error("operation was aborted due to timeout (stream idle)"));
+      }, STREAM_IDLE_TIMEOUT_MS);
+    });
+    let value: Uint8Array | undefined;
+    let done = false;
+    try {
+      const result = await Promise.race([reader.read(), idle]);
+      value = result.value;
+      done = result.done;
+    } catch (e) {
+      try { await reader.cancel(); } catch { /* ignore */ }
+      throw e;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
     if (done) break;
-    buf += decoder.decode(value, { stream: true });
+    buf += decoder.decode(value as Uint8Array, { stream: true });
     const lines = buf.split("\n");
     buf = lines.pop() ?? "";
     for (const raw of lines) {
@@ -1035,6 +1065,10 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     // First-build scaffolds emit many files in one stream — give them the
     // 240s ceiling instead of the default 120s. Patches keep the default.
     timeoutTier: isInitial ? "stream_first_build" : "stream",
+    // Propagate client-cancel: if the user closes the tab / hits Stop, the
+    // SSE Response is aborted and we want the upstream provider call to
+    // stop too — otherwise it runs (and bills) until the wall-clock cap.
+    signal: request.signal,
     meta: {
       phase: phaseTag.phase,
       promptChars: lastUserContent.length,
@@ -1120,6 +1154,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
               max_tokens: Math.max(maxCompletionTokens, isInitial ? 12_000 : 8_000),
               stream: true,
             },
+            signal: request.signal,
             meta: {
               phase: phaseTag.phase,
               promptChars: lastUserContent.length,
