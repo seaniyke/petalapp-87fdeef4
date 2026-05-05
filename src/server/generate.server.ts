@@ -164,22 +164,23 @@ INCREMENTAL EDIT PROTOCOL (mandatory):
 - NEVER emit ops for files under "src/components/ui/*", "src/components/examples/*", "vite.config.ts", "tsconfig.json", or "src/lib/utils.ts" — these are managed by the scaffold and the server will drop those ops. The "examples/*" files are read-only reference patterns (Dialog+Sheet+Tabs+Table compositions, plus "examples/LAYOUT.md" — a full tutorial on Container/Stack/Inline/Grid layout primitives) that you may READ and copy into NEW feature components under "src/components/" (NOT under examples/), but never modify in place.
 
 Each operation is one of:
-- { "op": "update", "path": "...", "content": "FULL new contents of the file" }
+- { "op": "replace", "path": "...", "search": "EXACT existing code", "replace": "new code" } — BEST for small edits inside an existing file. \`search\` must appear exactly once.
+- { "op": "update", "path": "...", "content": "FULL new contents of the file" } — use only when replace is not enough.
 - { "op": "create", "path": "...", "content": "FULL contents of the new file" }
 - { "op": "delete", "path": "..." }
 
-COMPLETE-FILE REQUIREMENT (critical):
+EDIT COMPLETENESS REQUIREMENT (critical):
+- For small changes, prefer \`replace\` with a precise snippet from the current file. This avoids resending giant files and is safer after the first generation.
 - Every "update" op MUST contain the complete, final contents of that file.
 - NEVER write placeholders such as "// ... keep existing code", "{/* ... keep existing code */}", "same as before", "rest unchanged", or ellipses standing in for code.
-- If you omit imports, opening JSX, hooks, helper functions, or closing tags, the app will fail. Re-emit the entire file you are changing, even when the edit is small.
-- For large files, prefer changing a smaller extracted component or creating a new component file, then update the parent file completely.
+- If you use \`update\` and omit imports, opening JSX, hooks, helper functions, or closing tags, the app will fail. For large files, use \`replace\` or create a smaller extracted component instead.
 
 REUSE-FIRST PROTOCOL (most important rule):
 The kit at "@/components/ui/*" provides ~30 components (Button, Card, Input, Textarea, Label, Badge, Dialog, Sheet, Drawer, Select, Combobox, DatePicker, Calendar, Form, Chart, Table, Tabs, Accordion, DropdownMenu, Popover, Tooltip, Toast, Switch, Checkbox, Slider, Progress, Avatar, Alert, Skeleton, Separator, ScrollArea, Container, Stack, Inline, Grid, Router, ThemeProvider/Toggle). If you find yourself styling a primitive HTML element to look like a UI control, STOP and import the kit equivalent. Specific signatures relevant to THIS turn appear in the [Reinforcement — ...] sections appended below.
 
 Hard rules:
 - DO NOT include unchanged files. Only emit operations for files you actually create, modify, or delete.
-- For "update" and "create", "content" must be the COMPLETE file contents. No placeholders, no abbreviated code, no keep-existing markers.
+- For "replace", "search" must be copied exactly from the current file and must occur once. For "update" and "create", "content" must be the COMPLETE file contents. No placeholders, no abbreviated code, no keep-existing markers.
 - DO NOT modify files under "src/components/ui/*" — that's the canonical UI kit. If you need a component the kit doesn't have, create a NEW file under "src/components/" (not under ui/).
 - DO NOT modify "vite.config.ts", "tsconfig.json", or "src/lib/utils.ts" unless absolutely necessary.
 - MUST use Tailwind utility classes. NEVER inline \`style={{}}\` (except dynamic values) or custom CSS classes.
@@ -338,7 +339,7 @@ export const PATCH_FILES_TOOL = {
           items: {
             type: "object",
             properties: {
-              op: { type: "string", enum: ["create", "update", "delete"] },
+              op: { type: "string", enum: ["create", "update", "replace", "delete"] },
               path: { type: "string", description: "Relative file path." },
               narration: {
                 type: "string",
@@ -348,6 +349,14 @@ export const PATCH_FILES_TOOL = {
               content: {
                 type: "string",
                 description: "Full file contents. Required for create/update, omit for delete.",
+              },
+              search: {
+                type: "string",
+                description: "Exact existing snippet to replace. Required for replace ops only.",
+              },
+              replace: {
+                type: "string",
+                description: "Replacement snippet. Required for replace ops only.",
               },
             },
             required: ["op", "path"],
@@ -413,6 +422,7 @@ export type ChatMessage = {
 export type FileOp =
   | { op: "create"; path: string; content: string }
   | { op: "update"; path: string; content: string }
+  | { op: "replace"; path: string; search: string; replace: string }
   | { op: "delete"; path: string };
 
 export type WriteProjectArgs = {
@@ -546,7 +556,8 @@ export type ErrorKind =
   | "unknown";
 
 /** Apply a list of file operations to a current set of files.
- *  "update" ops must contain complete, valid file contents. Legacy
+ *  "replace" ops are exact one-shot textual edits. "update" ops must
+ *  contain complete, valid file contents. Legacy
  *  "// ... keep existing code ..." markers are expanded only when they can be
  *  anchored safely; otherwise we reject the patch before broken half-files can
  *  be saved or deployed. */
@@ -567,6 +578,22 @@ export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
         );
       }
       map.set(op.path, content);
+    } else if (op.op === "replace") {
+      const prev = map.get(op.path);
+      if (typeof prev !== "string") {
+        throw new Error(`AI tried to replace text in missing file ${op.path}.`);
+      }
+      if (!op.search) {
+        throw new Error(`AI returned an empty search snippet for ${op.path}.`);
+      }
+      const first = prev.indexOf(op.search);
+      if (first === -1) {
+        throw new Error(`AI replace snippet did not match ${op.path}.`);
+      }
+      if (prev.indexOf(op.search, first + op.search.length) !== -1) {
+        throw new Error(`AI replace snippet matched more than once in ${op.path}.`);
+      }
+      map.set(op.path, prev.slice(0, first) + op.replace + prev.slice(first + op.search.length));
     } else {
       // create — never run the expander (no original to splice from).
       map.set(op.path, op.content);

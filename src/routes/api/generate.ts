@@ -89,9 +89,10 @@ type Body = {
   isAutoFix?: boolean;
 };
 
-const PATCH_CONTEXT_FILE_LIMIT = 14;
-const PATCH_CONTEXT_CHAR_LIMIT = 42_000;
-const LARGE_FILE_CONTEXT_CHAR_LIMIT = 6_000;
+const PATCH_CONTEXT_FILE_LIMIT = 24;
+const PATCH_CONTEXT_CHAR_LIMIT = 70_000;
+const LARGE_FILE_CONTEXT_CHAR_LIMIT = 10_000;
+const RELEVANT_FILE_CONTEXT_CHAR_LIMIT = 18_000;
 
 const MODEL_FAST = "google/gemini-3-flash-preview";
 const MODEL_BEST = "google/gemini-2.5-pro";
@@ -164,25 +165,44 @@ function trimMessagesForGeneration(messages: ChatMessage[]): ChatMessage[] {
   return [...previousContext, latest];
 }
 
-function trimFilesForPrompt(files: ProjectFile[]): { files: ProjectFile[]; omitted: number } {
+function trimFilesForPrompt(
+  files: ProjectFile[],
+  latestPrompt = "",
+): { files: ProjectFile[]; omitted: number } {
+  const terms = latestPrompt
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 4 && !/^(please|make|change|update|build|create|this|that|with|from|into|app)$/i.test(w))
+    .slice(0, 18);
+  const isPromptRelevant = (file: ProjectFile): boolean => {
+    if (terms.length === 0) return false;
+    const haystack = `${file.path}\n${file.content.slice(0, 24_000)}`.toLowerCase();
+    return terms.some((term) => haystack.includes(term));
+  };
   const rank = (path: string): number => {
     if (path === "src/App.tsx") return 0;
     if (path === "src/main.tsx") return 1;
     if (path === "src/styles.css") return 2;
-    if (path.startsWith("src/pages/") || path.startsWith("src/routes/")) return 3;
-    if (path.startsWith("src/components/")) return 4;
-    if (path === "package.json" || path === "index.html") return 5;
+    if (path.startsWith("src/pages/") || path.startsWith("src/routes/")) return 4;
+    if (path.startsWith("src/components/")) return 5;
+    if (path === "package.json" || path === "index.html") return 6;
     return 9;
   };
   const picked: ProjectFile[] = [];
   let used = 0;
   for (const file of [...files].sort(
-    (a, b) => rank(a.path) - rank(b.path) || a.path.localeCompare(b.path),
+    (a, b) =>
+      (isPromptRelevant(a) ? 3 : rank(a.path)) - (isPromptRelevant(b) ? 3 : rank(b.path)) ||
+      rank(a.path) - rank(b.path) ||
+      a.path.localeCompare(b.path),
   )) {
     if (picked.length >= PATCH_CONTEXT_FILE_LIMIT) break;
+    const limit = isPromptRelevant(file)
+      ? RELEVANT_FILE_CONTEXT_CHAR_LIMIT
+      : LARGE_FILE_CONTEXT_CHAR_LIMIT;
     const content =
-      file.content.length > LARGE_FILE_CONTEXT_CHAR_LIMIT
-        ? `${file.content.slice(0, LARGE_FILE_CONTEXT_CHAR_LIMIT)}\n\n/* ...trimmed for context budget... */`
+      file.content.length > limit
+        ? `${file.content.slice(0, limit)}\n\n/* ...trimmed for context budget... */`
         : file.content;
     const cost = file.path.length + content.length + 32;
     if (picked.length > 0 && used + cost > PATCH_CONTEXT_CHAR_LIMIT) continue;
@@ -606,7 +626,7 @@ function addStructuredRetryInstruction<T extends Array<{ role: string; content: 
     args.hasBackend === false
       ? ` This project has NO backend connected — DO NOT import from "@/integrations/backend/*" or "@supabase/supabase-js"; scaffold UI only with realistic placeholder data and tell the user in your "summary" to tap "Add backend" to wire it up.`
       : "";
-  const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field; keep files short and split large UI into components. If this is an initial app, build a focused MVP that works instead of a giant showcase: 4-8 app files max, no file over 140 lines, no long content blocks.${backendHint}`;
+  const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field. For edit turns, prefer exact \`replace\` ops for small changes instead of resending whole files. Keep files short and split large UI into components. If this is an initial app, build a focused MVP that works instead of a giant showcase: 4-8 app files max, no file over 140 lines, no long content blocks.${backendHint}`;
   return messages.map((m, i) =>
     i === 0 && typeof m.content === "string" ? { ...m, content: `${m.content}${retryBlock}` } : m,
   ) as T;
@@ -835,7 +855,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     p === "src/lib/utils.ts" ||
     p === "petal-source-plugin.mjs";
   const editablePromptFiles = currentFiles.filter((f) => !isManagedScaffoldPath(f.path));
-  const promptBudget = trimFilesForPrompt(editablePromptFiles);
+  const promptBudget = trimFilesForPrompt(editablePromptFiles, lastUserContent);
   const filesContext = isInitial
     ? ""
     : `\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Petal-managed UI kit, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
