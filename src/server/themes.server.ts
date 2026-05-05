@@ -495,14 +495,27 @@ export function pickThemeForBrief(brief: string): ThemeKey {
   const score: Record<ThemeKey, number> = {
     editorial: 0, "saas-cool": 0, "warm-brand": 0,
     brutalist: 0, "soft-pastel": 0, "mono-dark": 0,
+    "neo-brutalist": 0, "glass-morphism": 0, "terminal-green": 0,
+    "sunset-gradient": 0, "nordic-minimal": 0, "cyberpunk-neon": 0,
+    "paper-craft": 0, "luxury-gold": 0, "kids-playful": 0, "medical-clean": 0,
   };
   const bumps: Array<[ThemeKey, RegExp[]]> = [
     ["editorial", [/blog|essay|magazine|journal|portfolio|writer|book|publication|newsletter|reader/]],
     ["saas-cool", [/saas|dashboard|admin|crm|api|developer|productivity|analytics|b2b|tool|workflow/]],
-    ["warm-brand", [/restaurant|cafe|coffee|bakery|wine|hotel|spa|wellness|salon|beauty|food|menu|recipe/]],
-    ["brutalist", [/music|club|festival|zine|indie|studio|gallery|underground|experimental/]],
-    ["soft-pastel", [/kid|child|education|learn|habit|journal|wellness|meditation|cute|family|parenting/]],
-    ["mono-dark", [/\bai\b|gpt|llm|crypto|web3|nft|gaming|audio|video|cinem|founder|launch/]],
+    ["warm-brand", [/restaurant|cafe|coffee|bakery|wine|hotel|spa|salon|beauty|food|menu|recipe/]],
+    ["brutalist", [/music|club|festival|zine|gallery|underground|experimental/]],
+    ["soft-pastel", [/journaling|meditation|cute|gentle|calm|breathe|mindful/]],
+    ["mono-dark", [/\bai\b|gpt|llm|crypto|web3|nft|audio|video|cinem|founder|launch/]],
+    ["neo-brutalist", [/indie|side project|maker|no-code|nocode|product hunt|launch page|founder/]],
+    ["glass-morphism", [/wallet|fintech|finance|banking|premium|apple|ios|sleek/]],
+    ["terminal-green", [/cli|terminal|hacker|developer tool|devtool|security|infosec|sysadmin|ssh/]],
+    ["sunset-gradient", [/dating|social|creator|influencer|lifestyle|travel|summer|gen.?z|tiktok/]],
+    ["nordic-minimal", [/minimal|scandinavi|nordic|architecture|interior|premium ecommerce|design tool/]],
+    ["cyberpunk-neon", [/gaming|esports|web3|nft|streetwear|nightlife|club night|edgy|neon/]],
+    ["paper-craft", [/stationery|recipe|crafts|storybook|wedding|illustrator|knitting|scrapbook/]],
+    ["luxury-gold", [/luxury|jewelry|watch|fashion house|private bank|members club|hospitality|atelier/]],
+    ["kids-playful", [/kid|child|toddler|toy|school|camp|family|learning game|under.?\d/]],
+    ["medical-clean", [/health|medical|clinic|telemedicine|telehealth|fitness|mental health|insurance|biotech|pharma|patient|wellness/]],
   ];
   for (const [k, regs] of bumps) for (const r of regs) if (r.test(b)) score[k] += 2;
   let best: ThemeKey = "saas-cool";
