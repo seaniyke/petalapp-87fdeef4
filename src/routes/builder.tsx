@@ -3598,13 +3598,14 @@ function Builder() {
                 <span className="petal-shimmer font-medium">{streamingService}</span>
               </div>
             )}
-            {/* Bridge state: busy but no streamed content yet. Without this
-                the chat goes blank for ~300ms after send while triage warms
-                up — which feels like a freeze. We distinguish "Thinking"
-                (still planning, no files touched, no active build phase)
-                from "Working" (files being written or a build phase is
-                active) so users can tell the two apart at a glance. */}
+            {/* Bridge state: busy but no streamed content yet AND no activity
+                card visible (it would otherwise duplicate its header). The
+                activity card already shows "Reading the request…" / "Writing
+                the code…" with rich sub-captions, so we only need this tiny
+                shimmer when the card is hidden — e.g. the first ~300ms after
+                send while triage warms up. */}
             {busy &&
+              !activityVisible &&
               !streamingPreamble &&
               !streamingPlan &&
               !streamingAssistant &&

@@ -63,7 +63,7 @@ try {
 }
 
 // Workstream A — surgical-edit gate
-const longPrev = Array.from({ length: 80 }, (_, i) => `const lineNumber${i} = ${i};`).join("\n");
+const longPrev = Array.from({ length: 120 }, (_, i) => `const lineNumber${i} = ${i};`).join("\n");
 const longFiles: ProjectFile[] = [
   { path: "src/big.tsx", content: longPrev },
 ];
@@ -83,8 +83,8 @@ try {
   );
 }
 
-// Genuine large rewrite (only 20% overlap) should still be accepted.
-const partialRewrite = Array.from({ length: 80 }, (_, i) =>
+// Genuine large rewrite (only ~13% overlap) should still be accepted.
+const partialRewrite = Array.from({ length: 120 }, (_, i) =>
   i < 16 ? `const lineNumber${i} = ${i};` : `const renamed_${i} = ${i * 2};`,
 ).join("\n");
 const accepted = applyOps(longFiles, [
@@ -104,7 +104,7 @@ const shortNext = applyOps(shortFiles, [
 assert("update gate skips short files", shortNext[0]?.content.includes("c = 3"));
 
 // Workstream A.2 — replace_too_large gate
-const bigBody = Array.from({ length: 80 }, (_, i) => `// region line ${i}`).join("\n");
+const bigBody = Array.from({ length: 200 }, (_, i) => `// region line ${i}`).join("\n");
 const bigFile: ProjectFile[] = [{ path: "src/region.ts", content: bigBody + "\nconst tail = 1;" }];
 try {
   applyOps(bigFile, [

@@ -359,8 +359,12 @@ export function BuildActivityCard({
             // the header and ran ahead of reality. The real-time signal is
             // `timelineEvents` plus the active phase row — pending rows
             // only appear once they actually begin.
+            // Skip "live" (it's the success state, not a step) AND skip the
+            // currently-active phase — it already appears as the header row,
+            // so listing it again duplicates the same "Reading your request…"
+            // line inside the expanded steps panel.
             const startedPhases = phases.filter(
-              (p) => p.id !== "live" && p.status !== "pending",
+              (p) => p.id !== "live" && p.status !== "pending" && p.status !== "active",
             );
             const hasContent =
               startedPhases.length > 0 ||
