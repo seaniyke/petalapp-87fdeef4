@@ -170,8 +170,8 @@ Each operation is one of:
 - { "op": "delete", "path": "..." }
 
 EDIT COMPLETENESS REQUIREMENT (critical):
-- HARD RULE: for ANY existing file longer than ~60 lines, you MUST use \`replace\` ops with a unique snippet. Do NOT resend the whole file via \`update\` if you're keeping most of it. The server REJECTS such ops with a "must_use_replace" error and forces a retry — wasting the user's time and tokens.
-- CHUNK LARGE EDITS: when an edit touches multiple regions of one file, emit MULTIPLE small \`replace\` ops (one per region) instead of a single mega-replace. Keep each \`search\` snippet under ~60 lines / ~2 KB. The server REJECTS oversized snippets with a "replace_too_large" error.
+- HARD RULE: for ANY existing file longer than ~80 lines, prefer \`replace\` ops with a unique snippet over re-emitting the whole file via \`update\`. The server REJECTS \`update\` ops that re-send a long file essentially unchanged (>= 92% lines identical) — wasting the user's time and tokens.
+- CHUNK LARGE EDITS: when an edit touches multiple regions of one file, emit MULTIPLE small \`replace\` ops (one per region) instead of a single mega-replace. Keep each \`search\` snippet under ~160 lines / ~8 KB. The server REJECTS oversized snippets with a "replace_too_large" error.
 - Use \`update\` ONLY when (a) the file is short, (b) you are genuinely rewriting the whole file from scratch, or (c) the change touches > 30% of the lines.
 - Every "update" op MUST contain the complete, final contents of that file.
 - NEVER write placeholders such as "// ... keep existing code", "{/* ... keep existing code */}", "same as before", "rest unchanged", or ellipses standing in for code.
