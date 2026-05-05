@@ -1265,7 +1265,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             // do ONE structured retry asking the model to re-emit the
             // change as `replace` ops. If that retry also fails, fall
             // through to the conversational fallback rather than throw.
-            if (msg.startsWith("must_use_replace")) {
+            if (msg.startsWith("must_use_replace") || msg.startsWith("replace_too_large")) {
               console.warn("[generate] must_use_replace gate fired — retrying with replace hint");
               controller.enqueue(
                 encoder.encode(sse({ type: "status", message: "Reshaping the edit to be safer…" })),
