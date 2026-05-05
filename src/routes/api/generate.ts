@@ -581,7 +581,6 @@ function emitConversationalFallback(
       }),
     ),
   );
-  controller.close();
 }
 
 function parseCollectedProject(collected: ParsedTool, isInitial: boolean): ParsedProjectPayload {
@@ -1113,7 +1112,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
       });
       try {
         controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
-        controller.enqueue(encoder.encode(sse({ type: "status", message: "Thinking…" })));
+        controller.enqueue(encoder.encode(sse({ type: "status", message: "Reading your request and choosing the safest edit path…" })));
         if (designDirection) {
           controller.enqueue(
             encoder.encode(
@@ -2318,7 +2317,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           emit({ type: "turn_id", turnId: recorder.turnId });
         }
         emit({ type: "phase", phase: "thinking" });
-        emit({ type: "status", message: "Starting your build…" });
+        emit({ type: "status", message: "Opening the project and preparing the edit…" });
 
         // Transport keep-alive: a comment line (`:` prefix) every 8s.
         // EventSource consumers ignore comment lines entirely, so this
