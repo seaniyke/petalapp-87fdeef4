@@ -1750,6 +1750,32 @@ function Builder() {
         }
         if (!resultFiles) throw new Error("No result returned.");
 
+        if (resultNoFileChanges) {
+          const fallbackText = guardBackendClaims(resultSummary || "I couldn't find a safe file change for that turn.", resultFiles, "I couldn't find a safe file change for that turn.");
+          const preambleText = partialPreamble.trim();
+          const assistantMsg: ChatMessage = {
+            role: "assistant",
+            content: preambleText ? `${preambleText}\n\n${fallbackText}` : fallbackText,
+            plan: resultPlan,
+            recap: resultRecap,
+          };
+          noEditRecoveryRef.current.attempts = 0;
+          transientGenerateRecoveryRef.current.attempts = 0;
+          setMessages((prev) => [...prev, assistantMsg]);
+          setStreamingAssistant("");
+          setStreamingPlan("");
+          setStreamingRecap("");
+          setStreamingPreamble("");
+          setLatestCycleProgress(undefined);
+          setLastUserPrompt(null);
+          setPhases((p) => completeThrough(p, "polishing"));
+          setActivityVisible(false);
+          await appendMessages(proj.id, [assistantMsg]).catch((persistErr) => {
+            console.warn("Could not persist no-change assistant reply:", persistErr);
+          });
+          return;
+        }
+
         const files2: ProjectFile[] = resultFiles;
         const rawSummary2: string = resultSummary || "Updated the project.";
         // Backend-claim guardrail: if no migration files were emitted, strip
