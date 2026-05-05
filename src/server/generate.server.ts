@@ -651,7 +651,7 @@ export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
       const searchLines = op.search.split("\n").length;
       if (searchLines > REPLACE_MAX_SEARCH_LINES || op.search.length > REPLACE_MAX_SEARCH_BYTES) {
         throw new Error(
-          `replace_too_large: ${op.path} replace op covers ${searchLines} lines / ${op.search.length} bytes. Split this into multiple smaller \`replace\` ops, each targeting one logical region (~< 60 lines / 2 KB per op).`,
+          `replace_too_large: ${op.path} replace op covers ${searchLines} lines / ${op.search.length} bytes. Split this into multiple smaller \`replace\` ops, each targeting one logical region (~< 160 lines / 8 KB per op).`,
         );
       }
       const first = prev.indexOf(op.search);
