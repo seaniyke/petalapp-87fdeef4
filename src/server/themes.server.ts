@@ -502,7 +502,7 @@ export function pickThemeForBrief(brief: string): ThemeKey {
   const bumps: Array<[ThemeKey, RegExp[]]> = [
     ["editorial", [/blog|essay|magazine|journal|portfolio|writer|book|publication|newsletter|reader/]],
     ["saas-cool", [/saas|dashboard|admin|crm|api|developer|productivity|analytics|b2b|tool|workflow/]],
-    ["warm-brand", [/restaurant|cafe|coffee|bakery|wine|hotel|spa|salon|beauty|food|menu|recipe/]],
+    ["warm-brand", [/restaurant|cafe|coffee|bakery|wine|hotel|spa|salon|beauty|food|menu|recipe|boutique|merch|apparel|clothing|shoes|jewelry shop|gift shop|store|shop|ecommerce|e-commerce|storefront/]],
     ["brutalist", [/music|club|festival|zine|gallery|underground|experimental/]],
     ["soft-pastel", [/journaling|meditation|cute|gentle|calm|breathe|mindful/]],
     ["mono-dark", [/\bai\b|gpt|llm|crypto|web3|nft|audio|video|cinem|founder|launch/]],
