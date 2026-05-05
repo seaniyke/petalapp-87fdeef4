@@ -16,6 +16,7 @@
  * issues" status in the chat.
  */
 
+import * as LucideReact from "lucide-react";
 import type { ProjectFile } from "@/server/generate.server";
 
 export interface AutofixReport {
@@ -23,39 +24,24 @@ export interface AutofixReport {
   notes: string[];
 }
 
-/** Subset of valid lucide-react icon names (PascalCase). Source: lucide-react v0.5x. */
-const VALID_LUCIDE_ICONS = new Set([
-  // common navigation
-  "Home", "Menu", "X", "ChevronDown", "ChevronUp", "ChevronLeft", "ChevronRight",
-  "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "ExternalLink", "MoreHorizontal", "MoreVertical",
-  // common actions
-  "Plus", "Minus", "Edit", "Edit2", "Edit3", "Trash", "Trash2", "Save", "Copy", "Check", "CheckCircle", "CheckCircle2",
-  "Search", "Settings", "Settings2", "Filter", "RefreshCw", "RotateCw", "Download", "Upload", "Share", "Share2", "Send",
-  // user/account
-  "User", "Users", "UserPlus", "UserCheck", "UserX", "LogIn", "LogOut", "Lock", "Unlock", "Key", "Shield", "ShieldCheck",
-  // content
-  "FileText", "File", "Folder", "FolderOpen", "Image", "ImageIcon", "Video", "Camera", "Mic", "Music", "Headphones",
-  // commerce
-  "ShoppingCart", "ShoppingBag", "CreditCard", "DollarSign", "Tag", "Gift", "Package", "Truck", "Receipt",
-  // social/comms
-  "Mail", "MessageCircle", "MessageSquare", "Phone", "Bell", "BellRing", "Heart", "Star", "ThumbsUp", "ThumbsDown",
-  // status
-  "AlertCircle", "AlertTriangle", "Info", "HelpCircle", "Loader", "Loader2", "Zap", "Sparkles", "Eye", "EyeOff",
-  // layout
-  "LayoutGrid", "LayoutList", "LayoutDashboard", "Sidebar", "Columns", "Rows", "Maximize", "Minimize",
-  // time/calendar
-  "Calendar", "CalendarDays", "Clock", "Timer", "Hourglass",
-  // arrows/charts
-  "TrendingUp", "TrendingDown", "BarChart", "BarChart2", "BarChart3", "LineChart", "PieChart", "Activity",
-  // theme
-  "Sun", "Moon", "SunMoon", "Monitor", "Smartphone", "Laptop",
-  // other common
-  "Globe", "Map", "MapPin", "Navigation", "Wifi", "Battery", "Bluetooth", "Code", "Terminal", "Database",
-  "Cloud", "CloudUpload", "CloudDownload", "Cpu", "HardDrive", "Server", "Layers", "Box", "Boxes", "Briefcase",
-  "Bookmark", "BookOpen", "Book", "Coffee", "Pizza", "Utensils", "Award", "Trophy", "Flag", "Flame", "Leaf",
-  "Github", "Twitter", "Facebook", "Linkedin", "Instagram", "Youtube", "Slack", "Chrome", "Apple",
-  "Play", "Pause", "SkipBack", "SkipForward", "Volume2", "VolumeX", "Repeat", "Shuffle", "Rewind", "FastForward",
-]);
+/**
+ * Build the valid lucide icon set DYNAMICALLY from the actually-installed
+ * lucide-react package. This is the only source of truth that won't drift
+ * as lucide adds/removes icons. Strip the `Icon` suffixed aliases — the AI
+ * imports the bare PascalCase names. Filter to PascalCase identifiers only.
+ */
+const VALID_LUCIDE_ICONS: Set<string> = (() => {
+  const set = new Set<string>();
+  for (const name of Object.keys(LucideReact)) {
+    if (!/^[A-Z][A-Za-z0-9]*$/.test(name)) continue;
+    if (name.endsWith("Icon") && name !== "Icon") continue;
+    set.add(name);
+  }
+  return set;
+})();
+
+/** Always-present safe fallback icon. */
+const FALLBACK_ICON = "Circle";
 
 /** Common typo → canonical mapping for icons we frequently see broken. */
 const ICON_REPAIR_MAP: Record<string, string> = {
