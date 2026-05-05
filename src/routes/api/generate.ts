@@ -657,12 +657,23 @@ function addStructuredRetryInstruction<T extends Array<{ role: string; content: 
       ? ` This project has NO backend connected — DO NOT import from "@/integrations/backend/*" or "@supabase/supabase-js"; scaffold UI only with realistic placeholder data and tell the user in your "summary" to tap "Add backend" to wire it up.`
       : "";
   const chunkHint = args.problem.startsWith("replace_too_large")
-    ? " Split the change into MULTIPLE small \`replace\` ops, each with a \`search\` snippet under ~60 lines / 2 KB. Target one logical region per op."
+    ? " Split the change into MULTIPLE small \`replace\` ops, each with a \`search\` snippet under ~160 lines / 8 KB. Target one logical region per op."
     : "";
   const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field. For edit turns, prefer exact \`replace\` ops for small changes instead of resending whole files.${chunkHint} Keep files short and split large UI into components. If this is an initial app, build a focused MVP that works instead of a giant showcase: 4-8 app files max, no file over 140 lines, no long content blocks.${backendHint}`;
   return messages.map((m, i) =>
     i === 0 && typeof m.content === "string" ? { ...m, content: `${m.content}${retryBlock}` } : m,
   ) as T;
+}
+
+function isRetryablePatchApplyError(message: string): boolean {
+  return (
+    message.startsWith("must_use_replace") ||
+    message.startsWith("replace_too_large") ||
+    /AI replace snippet (?:did not match|matched more than once)/i.test(message) ||
+    /AI tried to replace text in missing file/i.test(message) ||
+    /AI returned an empty search snippet/i.test(message) ||
+    /AI returned an incomplete placeholder patch/i.test(message)
+  );
 }
 
 async function runFinalParseGuard(
@@ -1264,17 +1275,18 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             patched = applyOps(currentFiles, safeOps);
           } catch (applyErr) {
             const msg = applyErr instanceof Error ? applyErr.message : String(applyErr);
-            // Workstream A: surgical-edit gate. Run a bounded chunked-replace
-            // loop, not a single retry: large edits may need 2-3 progressively
-            // smaller replace batches before they become safely applicable.
-            if (msg.startsWith("must_use_replace") || msg.startsWith("replace_too_large")) {
+            // Surgical edit recovery. Run a bounded retry loop for every
+            // apply-time patch problem the model can realistically correct:
+            // oversized replace, whole-file echo, stale search snippets,
+            // ambiguous snippets, missing target files, or placeholder patches.
+            if (isRetryablePatchApplyError(msg)) {
               let retryProblem = msg;
               let applied = false;
               for (let attempt = 1; attempt <= 3; attempt++) {
                 const gateLabel = retryProblem.startsWith("replace_too_large") ? "replace_too_large" : "must_use_replace";
-                console.warn(`[generate] ${gateLabel} gate fired — chunked retry ${attempt}/3`);
+                console.warn(`[generate] patch apply failed (${gateLabel}) — targeted retry ${attempt}/3`);
                 controller.enqueue(
-                  encoder.encode(sse({ type: "status", message: attempt === 1 ? "Splitting the edit into smaller, safer chunks…" : `Trying chunk ${attempt} with narrower edit targets…` })),
+                  encoder.encode(sse({ type: "status", message: attempt === 1 ? "Retargeting the edit against the current files…" : `Trying a narrower edit pass (${attempt}/3)…` })),
                 );
                 const retry = await aiChatCompletions({
                   feature: "generate",
@@ -1315,7 +1327,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
                 } catch (retryErr) {
                   retryProblem = retryErr instanceof Error ? retryErr.message : String(retryErr);
                   console.warn(`[generate] chunked retry ${attempt}/3 failed:`, retryProblem);
-                  if (!retryProblem.startsWith("must_use_replace") && !retryProblem.startsWith("replace_too_large")) break;
+                  if (!isRetryablePatchApplyError(retryProblem)) break;
                 }
               }
               if (!applied) {

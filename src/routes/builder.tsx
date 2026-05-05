@@ -196,6 +196,14 @@ type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 function isBuildFailureCardTitle(title: string | undefined): boolean {
   if (!title) return false;
   return (
+    title.startsWith("Petal got a bit confused") ||
+    title.startsWith("Petal hit a build issue") ||
+    title.startsWith("Petal didn’t apply the change") ||
+    title.startsWith("Petal didn't apply the change") ||
+    title.startsWith("Petal didn’t finish the update") ||
+    title.startsWith("Petal's reply got cut off") ||
+    title.startsWith("Petal is trying another way") ||
+    title.startsWith("Petal is reconnecting") ||
     title.startsWith("Petal couldn't auto-fix") ||
     title.startsWith("Build needs one more pass") ||
     title.startsWith("Build service") ||
