@@ -21,7 +21,17 @@ export type ThemeKey =
   | "warm-brand"
   | "brutalist"
   | "soft-pastel"
-  | "mono-dark";
+  | "mono-dark"
+  | "neo-brutalist"
+  | "glass-morphism"
+  | "terminal-green"
+  | "sunset-gradient"
+  | "nordic-minimal"
+  | "cyberpunk-neon"
+  | "paper-craft"
+  | "luxury-gold"
+  | "kids-playful"
+  | "medical-clean";
 
 export interface ThemeSpec {
   /** Internal name. NEVER surfaced to the user. */
