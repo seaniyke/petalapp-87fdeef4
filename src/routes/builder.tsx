@@ -1201,6 +1201,10 @@ function Builder() {
             setPhases((p) => advanceTo(p, phase));
             setActivityVisible(true);
           },
+          onStatus: (message) => {
+            setLatestCycleProgress(sanitizeNarrative(message));
+            setActivityVisible(true);
+          },
           onPlanDelta: (d) => {
             seq += 1;
             bumpTurnSeq(pid, seq);
@@ -1523,6 +1527,7 @@ function Builder() {
       let resultSummary = "";
       let resultPlan: string | undefined;
       let resultRecap: string | undefined;
+      let resultNoFileChanges = false;
       // Layer 5 — populated by onSelfCheck so we can attach gap-driven
       // follow-up chips to the assistant message and on error suggestions.
       let resultSuggestions: string[] = [];
@@ -1634,6 +1639,9 @@ function Builder() {
             onPhase: (phase: PhaseId) => {
               setPhases((p) => advanceTo(p, phase));
             },
+            onStatus: (message) => {
+              setLatestCycleProgress(sanitizeNarrative(message));
+            },
             onPlanDelta: (d) => {
               partialPlan += d;
               setStreamingPlan((s) => s + d);
@@ -1688,6 +1696,7 @@ function Builder() {
               resultSummary = s;
               resultPlan = extras?.plan;
               resultRecap = extras?.recap;
+              resultNoFileChanges = extras?.noFileChanges === true;
               if (typeof extras?.creditsCharged === "number") {
                 setLastBuildCredits(extras.creditsCharged);
               }
