@@ -855,7 +855,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     p === "src/lib/utils.ts" ||
     p === "petal-source-plugin.mjs";
   const editablePromptFiles = currentFiles.filter((f) => !isManagedScaffoldPath(f.path));
-  const promptBudget = trimFilesForPrompt(editablePromptFiles);
+  const promptBudget = trimFilesForPrompt(editablePromptFiles, lastUserContent);
   const filesContext = isInitial
     ? ""
     : `\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Petal-managed UI kit, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
