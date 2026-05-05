@@ -62,8 +62,6 @@ try {
   assert("replace op rejects ambiguous snippets", true);
 }
 
-console.log(`\n${failed === 0 ? "✓ all assertions passed" : `✗ ${failed} assertion(s) failed`}`);
-process.exit(failed === 0 ? 0 : 1);
 // Workstream A — surgical-edit gate
 const longPrev = Array.from({ length: 80 }, (_, i) => `const lineNumber${i} = ${i};`).join("\n");
 const longFiles: ProjectFile[] = [
