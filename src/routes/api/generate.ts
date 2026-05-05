@@ -577,10 +577,10 @@ function emitConversationalFallback(
         plan: undefined,
         recap: undefined,
         creditsCharged: 0,
+        noFileChanges: true,
       }),
     ),
   );
-  controller.close();
 }
 
 function parseCollectedProject(collected: ParsedTool, isInitial: boolean): ParsedProjectPayload {
@@ -1112,7 +1112,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
       });
       try {
         controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
-        controller.enqueue(encoder.encode(sse({ type: "status", message: "Thinking…" })));
+        controller.enqueue(encoder.encode(sse({ type: "status", message: "Reading your request and choosing the safest edit path…" })));
         if (designDirection) {
           controller.enqueue(
             encoder.encode(
@@ -1204,7 +1204,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           }
         }
 
-        const { parsed, summary, plan, recap } = payload;
+        let { parsed, summary, plan, recap } = payload;
         let nextFiles: ProjectFile[];
         if (collected.name === "write_project") {
           if (!parsed.files?.length) throw new Error("AI returned no files.");
@@ -1259,59 +1259,66 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             });
             return;
           }
-          let patched: ProjectFile[];
+          let patched: ProjectFile[] | null = null;
           try {
             patched = applyOps(currentFiles, safeOps);
           } catch (applyErr) {
             const msg = applyErr instanceof Error ? applyErr.message : String(applyErr);
-            // Workstream A: surgical-edit gate. On must_use_replace,
-            // do ONE structured retry asking the model to re-emit the
-            // change as `replace` ops. If that retry also fails, fall
-            // through to the conversational fallback rather than throw.
+            // Workstream A: surgical-edit gate. Run a bounded chunked-replace
+            // loop, not a single retry: large edits may need 2-3 progressively
+            // smaller replace batches before they become safely applicable.
             if (msg.startsWith("must_use_replace") || msg.startsWith("replace_too_large")) {
-              const gateLabel = msg.startsWith("replace_too_large") ? "replace_too_large" : "must_use_replace";
-              console.warn(`[generate] ${gateLabel} gate fired — retrying with chunked-replace hint`);
-              controller.enqueue(
-                encoder.encode(sse({ type: "status", message: "Splitting the edit into smaller, safer chunks…" })),
-              );
-              const retry = await aiChatCompletions({
-                feature: "generate",
-                body: {
-                  model: MODEL_STRUCTURED_RETRY,
-                  messages: addStructuredRetryInstruction(chatMessages, {
-                    isInitial,
-                    problem: msg,
-                    hasBackend: Boolean(backend),
-                  }),
-                  tools: [tool],
-                  tool_choice: { type: "function", function: { name: tool.function.name } },
-                  max_tokens: Math.max(maxCompletionTokens, 8_000),
-                  stream: true,
-                },
-                signal: request.signal,
-                meta: {
-                  phase: phaseTag.phase,
-                  promptChars: lastUserContent.length,
-                  hadAttachments: hasVisionTurn,
-                  chosenBy: gateLabel + "_retry",
-                },
-              });
-              if (!retry.ok || !retry.body) {
-                emitConversationalFallback(controller, encoder, {
-                  files: currentFiles,
-                  summary:
-                    "I tried to make that edit but couldn't pin it down to a safe spot in the file. Could you tell me which section or wording to change?",
+              let retryProblem = msg;
+              let applied = false;
+              for (let attempt = 1; attempt <= 3; attempt++) {
+                const gateLabel = retryProblem.startsWith("replace_too_large") ? "replace_too_large" : "must_use_replace";
+                console.warn(`[generate] ${gateLabel} gate fired — chunked retry ${attempt}/3`);
+                controller.enqueue(
+                  encoder.encode(sse({ type: "status", message: attempt === 1 ? "Splitting the edit into smaller, safer chunks…" : `Trying chunk ${attempt} with narrower edit targets…` })),
+                );
+                const retry = await aiChatCompletions({
+                  feature: "generate",
+                  body: {
+                    model: MODEL_STRUCTURED_RETRY,
+                    messages: addStructuredRetryInstruction(chatMessages, {
+                      isInitial,
+                      problem: retryProblem,
+                      hasBackend: Boolean(backend),
+                    }),
+                    tools: [tool],
+                    tool_choice: { type: "function", function: { name: tool.function.name } },
+                    max_tokens: Math.max(maxCompletionTokens, 8_000),
+                    stream: true,
+                  },
+                  signal: request.signal,
+                  meta: {
+                    phase: phaseTag.phase,
+                    promptChars: lastUserContent.length,
+                    hadAttachments: hasVisionTurn,
+                    chosenBy: `${gateLabel}_retry_${attempt}`,
+                  },
                 });
-                return;
+                if (!retry.ok || !retry.body) break;
+                const retryCollected = await relayAndCollect(retry, controller, encoder);
+                try {
+                  const retryPayload = parseCollectedProject(retryCollected, isInitial);
+                  if (!retryPayload.parsed.ops?.length) throw new Error("retry returned no ops");
+                  const retrySafeOps = retryPayload.parsed.ops.filter((op) => !isProtectedPath(op.path));
+                  patched = applyOps(currentFiles, retrySafeOps);
+                  collected = retryCollected;
+                  parsed = retryPayload.parsed;
+                  summary = retryPayload.summary;
+                  plan = retryPayload.plan;
+                  recap = retryPayload.recap;
+                  applied = true;
+                  break;
+                } catch (retryErr) {
+                  retryProblem = retryErr instanceof Error ? retryErr.message : String(retryErr);
+                  console.warn(`[generate] chunked retry ${attempt}/3 failed:`, retryProblem);
+                  if (!retryProblem.startsWith("must_use_replace") && !retryProblem.startsWith("replace_too_large")) break;
+                }
               }
-              const retryCollected = await relayAndCollect(retry, controller, encoder);
-              try {
-                const retryPayload = parseCollectedProject(retryCollected, isInitial);
-                if (!retryPayload.parsed.ops?.length) throw new Error("retry returned no ops");
-                const retrySafeOps = retryPayload.parsed.ops.filter((op) => !isProtectedPath(op.path));
-                patched = applyOps(currentFiles, retrySafeOps);
-              } catch (retryErr) {
-                console.warn("[generate] must_use_replace retry failed:", retryErr);
+              if (!applied) {
                 emitConversationalFallback(controller, encoder, {
                   files: currentFiles,
                   summary:
@@ -1323,6 +1330,8 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
               throw applyErr;
             }
           }
+          if (!patched) throw new Error("Patch did not produce files.");
+
           // Heal-on-patch: re-apply the canonical scaffold to old saved
           // projects whose `src/components/ui/*`, `package.json`, or
           // backend kit files predate later kit upgrades. Without this,
@@ -2308,7 +2317,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           emit({ type: "turn_id", turnId: recorder.turnId });
         }
         emit({ type: "phase", phase: "thinking" });
-        emit({ type: "status", message: "Starting your build…" });
+        emit({ type: "status", message: "Opening the project and preparing the edit…" });
 
         // Transport keep-alive: a comment line (`:` prefix) every 8s.
         // EventSource consumers ignore comment lines entirely, so this

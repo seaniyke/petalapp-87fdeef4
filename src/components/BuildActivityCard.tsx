@@ -235,9 +235,10 @@ export function BuildActivityCard({
   ) {
     subCaption = currentPhase.reassurance;
   }
-  // Final fallback: if any phase is silent and a cycle progress line
-  // arrived in the last few seconds, surface it instead of going blank.
-  if (!subCaption && isActive && latestCycleProgress) {
+  // Final fallback: if the server has a fresh progress line, surface it.
+  // This intentionally overrides the canned long-wait reassurance during
+  // thinking/polishing so users see what Petal is actually doing now.
+  if (isActive && latestCycleProgress && (!subCaption || currentPhase?.id === "thinking" || currentPhase?.id === "polishing")) {
     subCaption = latestCycleProgress;
   }
 
@@ -372,7 +373,7 @@ export function BuildActivityCard({
             if (!hasContent) {
               return (
                 <div className="px-3 py-2 text-[11.5px] text-muted-foreground/70">
-                  Petal will list each step here as it happens.
+                  {latestCycleProgress || "Petal will list each step here as it happens."}
                 </div>
               );
             }
