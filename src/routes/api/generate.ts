@@ -1266,9 +1266,10 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             // change as `replace` ops. If that retry also fails, fall
             // through to the conversational fallback rather than throw.
             if (msg.startsWith("must_use_replace") || msg.startsWith("replace_too_large")) {
-              console.warn("[generate] must_use_replace gate fired — retrying with replace hint");
+              const gateLabel = msg.startsWith("replace_too_large") ? "replace_too_large" : "must_use_replace";
+              console.warn(`[generate] ${gateLabel} gate fired — retrying with chunked-replace hint`);
               controller.enqueue(
-                encoder.encode(sse({ type: "status", message: "Reshaping the edit to be safer…" })),
+                encoder.encode(sse({ type: "status", message: "Splitting the edit into smaller, safer chunks…" })),
               );
               const retry = await aiChatCompletions({
                 feature: "generate",
