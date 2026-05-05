@@ -102,3 +102,6 @@ const shortNext = applyOps(shortFiles, [
   { op: "update", path: "src/small.ts", content: shortPrev + "export const c = 3;\n" },
 ] as FileOp[]);
 assert("update gate skips short files", shortNext[0]?.content.includes("c = 3"));
+
+console.log(`\n${failed === 0 ? "✓ all assertions passed" : `✗ ${failed} assertion(s) failed`}`);
+process.exit(failed === 0 ? 0 : 1);
