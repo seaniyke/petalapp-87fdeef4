@@ -16,6 +16,8 @@
  * issues" status in the chat.
  */
 
+// @ts-expect-error — lucide-react ships this manifest without a .d.ts entry.
+import dynamicIconImports from "lucide-react/dynamicIconImports.mjs";
 import type { ProjectFile } from "@/server/generate.server";
 
 export interface AutofixReport {
@@ -23,39 +25,29 @@ export interface AutofixReport {
   notes: string[];
 }
 
-/** Subset of valid lucide-react icon names (PascalCase). Source: lucide-react v0.5x. */
-const VALID_LUCIDE_ICONS = new Set([
-  // common navigation
-  "Home", "Menu", "X", "ChevronDown", "ChevronUp", "ChevronLeft", "ChevronRight",
-  "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "ExternalLink", "MoreHorizontal", "MoreVertical",
-  // common actions
-  "Plus", "Minus", "Edit", "Edit2", "Edit3", "Trash", "Trash2", "Save", "Copy", "Check", "CheckCircle", "CheckCircle2",
-  "Search", "Settings", "Settings2", "Filter", "RefreshCw", "RotateCw", "Download", "Upload", "Share", "Share2", "Send",
-  // user/account
-  "User", "Users", "UserPlus", "UserCheck", "UserX", "LogIn", "LogOut", "Lock", "Unlock", "Key", "Shield", "ShieldCheck",
-  // content
-  "FileText", "File", "Folder", "FolderOpen", "Image", "ImageIcon", "Video", "Camera", "Mic", "Music", "Headphones",
-  // commerce
-  "ShoppingCart", "ShoppingBag", "CreditCard", "DollarSign", "Tag", "Gift", "Package", "Truck", "Receipt",
-  // social/comms
-  "Mail", "MessageCircle", "MessageSquare", "Phone", "Bell", "BellRing", "Heart", "Star", "ThumbsUp", "ThumbsDown",
-  // status
-  "AlertCircle", "AlertTriangle", "Info", "HelpCircle", "Loader", "Loader2", "Zap", "Sparkles", "Eye", "EyeOff",
-  // layout
-  "LayoutGrid", "LayoutList", "LayoutDashboard", "Sidebar", "Columns", "Rows", "Maximize", "Minimize",
-  // time/calendar
-  "Calendar", "CalendarDays", "Clock", "Timer", "Hourglass",
-  // arrows/charts
-  "TrendingUp", "TrendingDown", "BarChart", "BarChart2", "BarChart3", "LineChart", "PieChart", "Activity",
-  // theme
-  "Sun", "Moon", "SunMoon", "Monitor", "Smartphone", "Laptop",
-  // other common
-  "Globe", "Map", "MapPin", "Navigation", "Wifi", "Battery", "Bluetooth", "Code", "Terminal", "Database",
-  "Cloud", "CloudUpload", "CloudDownload", "Cpu", "HardDrive", "Server", "Layers", "Box", "Boxes", "Briefcase",
-  "Bookmark", "BookOpen", "Book", "Coffee", "Pizza", "Utensils", "Award", "Trophy", "Flag", "Flame", "Leaf",
-  "Github", "Twitter", "Facebook", "Linkedin", "Instagram", "Youtube", "Slack", "Chrome", "Apple",
-  "Play", "Pause", "SkipBack", "SkipForward", "Volume2", "VolumeX", "Repeat", "Shuffle", "Rewind", "FastForward",
-]);
+/**
+ * Build the valid lucide icon set DYNAMICALLY from lucide-react's official
+ * names manifest. This is the only source of truth that won't drift as
+ * lucide adds/removes icons. The manifest ships kebab-case names; convert
+ * to PascalCase to match how the AI imports them.
+ */
+const VALID_LUCIDE_ICONS: Set<string> = (() => {
+  const set = new Set<string>();
+  const names = (dynamicIconImports as Record<string, unknown>) ?? {};
+  for (const kebab of Object.keys(names)) {
+    const pascal = kebab
+      .split("-")
+      .map((p) => (p ? p[0].toUpperCase() + p.slice(1) : p))
+      .join("");
+    if (pascal) set.add(pascal);
+  }
+  // Aliases / categories not in the manifest but exported by lucide-react.
+  set.add("Icon");
+  return set;
+})();
+
+/** Always-present safe fallback icon. */
+const FALLBACK_ICON = "Circle";
 
 /** Common typo → canonical mapping for icons we frequently see broken. */
 const ICON_REPAIR_MAP: Record<string, string> = {
@@ -97,33 +89,62 @@ const ICON_REPAIR_MAP: Record<string, string> = {
 };
 
 function fixLucideIcons(content: string, report: AutofixReport): string {
-  // Match: import { A, B as C, D } from "lucide-react";
-  return content.replace(
+  // Track every rename we apply so we can rewrite the same identifiers
+  // throughout the rest of the file (JSX usages, type refs, etc.).
+  const renames = new Map<string, string>();
+
+  let next = content.replace(
     /import\s*\{([^}]+)\}\s*from\s*["']lucide-react["']/g,
-    (whole, names: string) => {
+    (_whole, names: string) => {
       const parts = names.split(",").map((s) => s.trim()).filter(Boolean);
-      let changed = false;
-      const fixedParts = parts.map((p) => {
-        // Handle "Foo as Bar" → keep alias, fix only Foo
-        const aliasMatch = p.match(/^(\w+)(\s+as\s+\w+)$/);
-        const original = aliasMatch ? aliasMatch[1] : p;
-        const aliasSuffix = aliasMatch ? aliasMatch[2] : "";
-        if (VALID_LUCIDE_ICONS.has(original)) return p;
-        const repair = ICON_REPAIR_MAP[original];
-        if (repair) {
-          changed = true;
+      const seenLocals = new Set<string>();
+      const fixedParts: string[] = [];
+      for (const p of parts) {
+        // Handle "Foo as Bar" — local name is Bar, import name is Foo.
+        const aliasMatch = p.match(/^(\w+)\s+as\s+(\w+)$/);
+        const importName = aliasMatch ? aliasMatch[1] : p;
+        const localName = aliasMatch ? aliasMatch[2] : p;
+
+        let resolved: string | null = null;
+        if (VALID_LUCIDE_ICONS.has(importName)) {
+          resolved = importName;
+        } else if (ICON_REPAIR_MAP[importName] && VALID_LUCIDE_ICONS.has(ICON_REPAIR_MAP[importName])) {
+          resolved = ICON_REPAIR_MAP[importName];
           report.fixedCount++;
-          report.notes.push(`lucide icon ${original} → ${repair}`);
-          return `${repair}${aliasSuffix}`;
+          report.notes.push(`lucide icon ${importName} → ${resolved}`);
+        } else {
+          // Unknown icon — guarantee the build by aliasing FALLBACK_ICON
+          // to the local name the file already uses. This way every JSX
+          // <LocalName /> still resolves without rewriting JSX.
+          resolved = FALLBACK_ICON;
+          report.fixedCount++;
+          report.notes.push(`lucide icon ${importName} not found → aliased ${FALLBACK_ICON} as ${localName}`);
         }
-        // Unknown but not in our repair map — leave it (may exist in newer
-        // lucide; better to let the build catch a true miss than silently swap).
-        return p;
-      });
-      if (!changed) return whole;
+
+        // Re-emit as `Resolved as LocalName` (or bare `Resolved` when they match).
+        const emitLocal = localName;
+        const entry = resolved === emitLocal ? resolved : `${resolved} as ${emitLocal}`;
+
+        // De-dupe: if we already emitted this local name, skip the duplicate
+        // (would happen if two unknown icons both map to FALLBACK_ICON).
+        if (seenLocals.has(emitLocal)) continue;
+        seenLocals.add(emitLocal);
+        fixedParts.push(entry);
+
+        if (importName !== resolved && importName === localName) {
+          renames.set(importName, resolved);
+        }
+      }
       return `import { ${fixedParts.join(", ")} } from "lucide-react"`;
     },
   );
+
+  // Rewrite identifier usages for non-aliased renames (`Foo` → `Bar`) so any
+  // JSX/type references still compile.
+  for (const [from, to] of renames) {
+    next = next.replace(new RegExp(`\\b${from}\\b`, "g"), to);
+  }
+  return next;
 }
 
 function fixBadImports(content: string, report: AutofixReport): string {
