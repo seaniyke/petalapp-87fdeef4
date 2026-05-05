@@ -1154,6 +1154,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
               max_tokens: Math.max(maxCompletionTokens, isInitial ? 12_000 : 8_000),
               stream: true,
             },
+            signal: request.signal,
             meta: {
               phase: phaseTag.phase,
               promptChars: lastUserContent.length,
