@@ -1,54 +1,91 @@
-# Multi-Page Website Discoverability
+# Plan: Three upgrades to Petal's generation pipeline
 
-Petal already builds true multi-page sites — every file in `src/routes/` becomes a real URL with its own SSR, `<head>`, and OG tags, and the Phase 2 prompt rules already tell the model to prefer separate routes over hash anchors. The gap is **users don't know to ask**. They land on the composer, type "build me a coffee shop site", and accept whatever comes back as one page.
+Three independent workstreams. Each ships value on its own; together they sharply reduce first-turn failures and the "doesn't look designed / can't edit again" complaints.
 
-This plan closes that gap in three small, independent surfaces. No backend changes, no new dependencies.
+---
 
-## What we're building
+## A. Force `replace` ops for non-trivial existing files
 
-### 1. Starter prompts that lead with "pages"
+**Goal:** stop the model from rewriting whole files for tiny edits — the root cause of timeouts, truncated streams, and "AI did not return usable edits".
 
-`src/components/StartIdeasPanel.tsx` already curates landing-screen prompts. Today they describe a single-page site ("a warm one-page site for…"). We add a new category — **"Multi-page site"** — with 3–4 prompts that explicitly mention pages, e.g.
+**Where it lands:** `src/server/generate.server.ts`, `src/routes/api/generate.ts`, system prompt + retry refinement.
 
-- "A 4-page site for a yoga studio: home, classes, instructors, and contact."
-- "A consultancy site with home, services, case studies (with detail pages), and about."
-- "A small SaaS marketing site: home, features, pricing, FAQ, and a /blog with post detail pages."
-- "A photographer portfolio: home, gallery, about, and a contact page with form."
+**Mechanism:**
+1. Add a server-side gate in `applyOps` (and the streaming validator that wraps it): if a `write` op targets an **existing** file whose prior content is > 60 lines AND the new content keeps > 70% of the original verbatim, reject the op with a structured error: `must_use_replace`.
+2. The retry loop already exists — feed that error back into the model with the offending path, the prior content, and an explicit instruction: "Re-emit this change as one or more `replace` ops."
+3. Tighten the system prompt: replace the soft "prefer replace" wording with a hard rule + concrete examples. New files and full redesigns still use `write`.
+4. Telemetry: count `must_use_replace` rejections per turn so we can tune the 60-line / 70% thresholds from `admin.pipeline`.
+5. Extend `src/server/__tests__/apply-ops.test.ts` with cases covering the new gate.
 
-We also retitle one or two existing entries so the word "page" / "/about" / "/pricing" appears in the visible label, not just the description. Goal: the user *sees* the multi-page option before typing.
+**Outcome:** edits to large files (landing pages, dashboards, route files) become surgical by default. Token use per edit turn drops dramatically; idle-timeout failures effectively disappear for edit turns.
 
-### 2. In-builder "Add a page" suggestion chip
+---
 
-Following the existing `EnableXSuggestionChip` pattern (see `EnableSeoSuggestionChip.tsx`), add **`AddPageSuggestionChip.tsx`**. It surfaces inline in the builder when:
+## B. Expand the block library
 
-- The project has only `index.tsx` (and maybe `__root.tsx`) under `src/routes/`, AND
-- The user's last 1–2 messages mention pages, sections, navigation, "menu", "about us", "pricing", "contact", "blog", or similar.
+**Goal:** give the model a wider vocabulary of pre-shaped, design-consistent blocks so it composes pages instead of inventing layout from scratch each turn.
 
-Copy: *"Petal can split this into proper pages — better SEO, shareable URLs, real navigation. Want an About, Pricing, or Contact page?"* with a primary action "Add a page" that opens a tiny chooser (About / Pricing / Contact / Blog / FAQ / custom) and dispatches a prebuilt prompt to the composer.
+**Where it lands:** new files under `src/server/scaffold-kit-blocks-3.ts` (and a small refactor of `kit-manifest.server.ts` to register them).
 
-This reuses the same dismiss/persist mechanics as the other suggestion chips so it doesn't nag.
+**Block categories to add (priority order):**
+1. **Auth blocks** — `SignInCard`, `SignUpCard`, `ForgotPasswordCard`, `OtpVerifyCard`. All pre-wired to Lovable Cloud auth so the model never hand-writes auth wiring again.
+2. **Data display** — `EmptyState`, `StatCard`, `KpiGrid`, `ComparisonTable`, `PricingTable`, `ActivityFeed`.
+3. **Forms** — `MultiStepWizard`, `FileUploadDropzone`, `OtpInputGroup`, `InlineEditField`.
+4. **Dashboard shell** — `SidebarShell` (collapsible nav + topbar + Outlet), `SectionHeader`, `FilterBar`.
+5. **Commerce** — `ProductCard`, `CartLineItem`, `CheckoutSummary`, `OrderConfirmation`.
 
-### 3. Prompt-side nudge so the model offers it unprompted
+**Ground rules for every block:**
+- Single file, ≤ 180 lines (respects `file-budget.server.ts`).
+- Uses only existing shadcn/ui primitives + Tailwind tokens — no new deps.
+- Theme-token driven (no hardcoded colors) so themes from workstream C apply automatically.
+- Documented in the kit manifest with a one-line "use when…" hint the model reads at planning time.
 
-In `src/server/dynamic-prompts.server.ts`, add a small snippet (triggered on landing/marketing/agency/portfolio/saas keywords) that tells the model: *if the brief implies multiple sections that could stand alone (services, about, contact, pricing, blog), proactively scaffold them as separate routes and mention in the chat reply which pages were created and that more can be added.*
+**Outcome:** higher visual quality on first turn, fewer hallucinated layouts, more predictable file shapes (which makes workstream A's `replace` ops succeed more often).
 
-This is the highest-leverage of the three — it makes every generation teach the user what's possible.
+---
 
-## What we're NOT doing
+## C. Hidden themes + templates system
 
-- **No PWA changes.** Per your call, PWA stays exactly where it is — manifest-only, opt-in, no default behavior change.
-- **No route inspector / pages panel UI** in this pass. The chip + prompts cover discoverability. A full panel can come later if usage data shows it's needed.
-- **No changes to routing itself** — TanStack file-based routing already does everything required.
+**Goal:** first-turn output looks intentional and on-brief, without surfacing "we picked template X" to the user.
 
-## Files touched
+### C1. Themes (palette + type pairings)
 
-- `src/components/StartIdeasPanel.tsx` — add multi-page category + prompts
-- `src/components/AddPageSuggestionChip.tsx` — new, mirrors `EnableSeoSuggestionChip`
-- `src/routes/builder.tsx` (or wherever suggestion chips are wired) — detection + render
-- `src/server/dynamic-prompts.server.ts` — new `multiPage` snippet with keyword triggers
+**Where it lands:** `src/server/themes.server.ts` (new), consumed by `design-director.server.ts`.
 
-## Tier 2 (native shell) — separate plan
+- Define 6 named themes internally: `editorial`, `saas-cool`, `warm-brand`, `brutalist`, `soft-pastel`, `mono-dark`.
+- Each theme is a struct: HSL token map for `--background`, `--foreground`, `--primary`, `--accent`, `--muted`, plus radius scale and a font pairing (heading/body from the existing Google Fonts allow-list).
+- Design Director picks one theme based on brief keywords + audience hints already in the triage `meta`. The chosen theme is written into `src/styles.css` as token values; the model never sees the theme name in user-facing copy.
+- Override path: if the user states brand colors, those win and the theme becomes a starting point, not a constraint.
 
-You said yes to attempting Tier 2. I'm keeping it out of this plan because it's a much bigger surface (build infra, signing, EAS-style cloud builds, App Store flow) and will need its own scoping pass. Once this discoverability plan ships, I'll come back with a dedicated Tier 2 plan covering: which runtime (almost certainly Capacitor under the hood despite the preference, with full justification of why no npm-only alternative exists), the cloud build pipeline, signing/cert handling, and the in-Petal UX for "Wrap as native app".
+### C2. Templates (full app starters)
 
-Approve this and I'll implement the three changes above in one pass.
+**Where it lands:** `src/server/templates/` directory, registry in `src/server/templates/index.ts`, integration in `src/server/brief-expander.server.ts`.
+
+- Six starter templates: `saas-landing`, `marketplace`, `dashboard-app`, `blog`, `portfolio`, `mobile-social`.
+- Each template = a small set of route files + components + a recommended theme.
+- Brief expander scores the user's idea against template descriptors and picks the best match (or `none` → fall through to current behavior).
+- Scaffold copies the template files in BEFORE the model's first turn. The model's job becomes: customize copy, swap imagery, adjust accents — not build from zero.
+- Strictly invisible: no template name in chat, no "starter" badge, no comments referencing the template in generated code.
+
+**Outcome:** dramatically better first impression, fewer "this looks generic / unfinished" turns, and far less first-turn token spend (which also reduces timeouts).
+
+---
+
+## Sequencing
+
+1. **A first** (smallest blast radius, biggest reliability win) — ~1 turn.
+2. **B second** (additive, no risk to existing flows) — ~1–2 turns, can ship categories incrementally.
+3. **C last** (touches design director + brief expander, benefits compound on top of A and B) — ~2 turns: themes, then templates.
+
+## Out of scope (intentionally)
+
+- No changes to billing, auth, or wallet logic.
+- No user-facing UI for picking themes/templates — strictly internal.
+- No new third-party deps.
+- KeshPay rules remain ignored per project memory.
+
+## Risks & mitigations
+
+- **Over-aggressive replace gate** could block legitimate large rewrites → tunable thresholds + telemetry from day one.
+- **Template mismatch** could feel worse than no template → confidence threshold; fall back to scaffold when score is low.
+- **Theme clash with user brand** → user-specified colors always override theme tokens.
