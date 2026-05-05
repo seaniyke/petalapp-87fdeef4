@@ -83,33 +83,62 @@ const ICON_REPAIR_MAP: Record<string, string> = {
 };
 
 function fixLucideIcons(content: string, report: AutofixReport): string {
-  // Match: import { A, B as C, D } from "lucide-react";
-  return content.replace(
+  // Track every rename we apply so we can rewrite the same identifiers
+  // throughout the rest of the file (JSX usages, type refs, etc.).
+  const renames = new Map<string, string>();
+
+  let next = content.replace(
     /import\s*\{([^}]+)\}\s*from\s*["']lucide-react["']/g,
-    (whole, names: string) => {
+    (_whole, names: string) => {
       const parts = names.split(",").map((s) => s.trim()).filter(Boolean);
-      let changed = false;
-      const fixedParts = parts.map((p) => {
-        // Handle "Foo as Bar" → keep alias, fix only Foo
-        const aliasMatch = p.match(/^(\w+)(\s+as\s+\w+)$/);
-        const original = aliasMatch ? aliasMatch[1] : p;
-        const aliasSuffix = aliasMatch ? aliasMatch[2] : "";
-        if (VALID_LUCIDE_ICONS.has(original)) return p;
-        const repair = ICON_REPAIR_MAP[original];
-        if (repair) {
-          changed = true;
+      const seenLocals = new Set<string>();
+      const fixedParts: string[] = [];
+      for (const p of parts) {
+        // Handle "Foo as Bar" — local name is Bar, import name is Foo.
+        const aliasMatch = p.match(/^(\w+)\s+as\s+(\w+)$/);
+        const importName = aliasMatch ? aliasMatch[1] : p;
+        const localName = aliasMatch ? aliasMatch[2] : p;
+
+        let resolved: string | null = null;
+        if (VALID_LUCIDE_ICONS.has(importName)) {
+          resolved = importName;
+        } else if (ICON_REPAIR_MAP[importName] && VALID_LUCIDE_ICONS.has(ICON_REPAIR_MAP[importName])) {
+          resolved = ICON_REPAIR_MAP[importName];
           report.fixedCount++;
-          report.notes.push(`lucide icon ${original} → ${repair}`);
-          return `${repair}${aliasSuffix}`;
+          report.notes.push(`lucide icon ${importName} → ${resolved}`);
+        } else {
+          // Unknown icon — guarantee the build by aliasing FALLBACK_ICON
+          // to the local name the file already uses. This way every JSX
+          // <LocalName /> still resolves without rewriting JSX.
+          resolved = FALLBACK_ICON;
+          report.fixedCount++;
+          report.notes.push(`lucide icon ${importName} not found → aliased ${FALLBACK_ICON} as ${localName}`);
         }
-        // Unknown but not in our repair map — leave it (may exist in newer
-        // lucide; better to let the build catch a true miss than silently swap).
-        return p;
-      });
-      if (!changed) return whole;
+
+        // Re-emit as `Resolved as LocalName` (or bare `Resolved` when they match).
+        const emitLocal = localName;
+        const entry = resolved === emitLocal ? resolved : `${resolved} as ${emitLocal}`;
+
+        // De-dupe: if we already emitted this local name, skip the duplicate
+        // (would happen if two unknown icons both map to FALLBACK_ICON).
+        if (seenLocals.has(emitLocal)) continue;
+        seenLocals.add(emitLocal);
+        fixedParts.push(entry);
+
+        if (importName !== resolved && importName === localName) {
+          renames.set(importName, resolved);
+        }
+      }
       return `import { ${fixedParts.join(", ")} } from "lucide-react"`;
     },
   );
+
+  // Rewrite identifier usages for non-aliased renames (`Foo` → `Bar`) so any
+  // JSX/type references still compile.
+  for (const [from, to] of renames) {
+    next = next.replace(new RegExp(`\\b${from}\\b`, "g"), to);
+  }
+  return next;
 }
 
 function fixBadImports(content: string, report: AutofixReport): string {
