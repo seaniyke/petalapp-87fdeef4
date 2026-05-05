@@ -1260,7 +1260,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             });
             return;
           }
-          let patched: ProjectFile[];
+          let patched: ProjectFile[] | null = null;
           try {
             patched = applyOps(currentFiles, safeOps);
           } catch (applyErr) {
@@ -1331,6 +1331,8 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
               throw applyErr;
             }
           }
+          if (!patched) throw new Error("Patch did not produce files.");
+
           // Heal-on-patch: re-apply the canonical scaffold to old saved
           // projects whose `src/components/ui/*`, `package.json`, or
           // backend kit files predate later kit upgrades. Without this,
