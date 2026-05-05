@@ -1265,54 +1265,61 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             patched = applyOps(currentFiles, safeOps);
           } catch (applyErr) {
             const msg = applyErr instanceof Error ? applyErr.message : String(applyErr);
-            // Workstream A: surgical-edit gate. On must_use_replace,
-            // do ONE structured retry asking the model to re-emit the
-            // change as `replace` ops. If that retry also fails, fall
-            // through to the conversational fallback rather than throw.
+            // Workstream A: surgical-edit gate. Run a bounded chunked-replace
+            // loop, not a single retry: large edits may need 2-3 progressively
+            // smaller replace batches before they become safely applicable.
             if (msg.startsWith("must_use_replace") || msg.startsWith("replace_too_large")) {
-              const gateLabel = msg.startsWith("replace_too_large") ? "replace_too_large" : "must_use_replace";
-              console.warn(`[generate] ${gateLabel} gate fired — retrying with chunked-replace hint`);
-              controller.enqueue(
-                encoder.encode(sse({ type: "status", message: "Splitting the edit into smaller, safer chunks…" })),
-              );
-              const retry = await aiChatCompletions({
-                feature: "generate",
-                body: {
-                  model: MODEL_STRUCTURED_RETRY,
-                  messages: addStructuredRetryInstruction(chatMessages, {
-                    isInitial,
-                    problem: msg,
-                    hasBackend: Boolean(backend),
-                  }),
-                  tools: [tool],
-                  tool_choice: { type: "function", function: { name: tool.function.name } },
-                  max_tokens: Math.max(maxCompletionTokens, 8_000),
-                  stream: true,
-                },
-                signal: request.signal,
-                meta: {
-                  phase: phaseTag.phase,
-                  promptChars: lastUserContent.length,
-                  hadAttachments: hasVisionTurn,
-                  chosenBy: gateLabel + "_retry",
-                },
-              });
-              if (!retry.ok || !retry.body) {
-                emitConversationalFallback(controller, encoder, {
-                  files: currentFiles,
-                  summary:
-                    "I tried to make that edit but couldn't pin it down to a safe spot in the file. Could you tell me which section or wording to change?",
+              let retryProblem = msg;
+              let applied = false;
+              for (let attempt = 1; attempt <= 3; attempt++) {
+                const gateLabel = retryProblem.startsWith("replace_too_large") ? "replace_too_large" : "must_use_replace";
+                console.warn(`[generate] ${gateLabel} gate fired — chunked retry ${attempt}/3`);
+                controller.enqueue(
+                  encoder.encode(sse({ type: "status", message: attempt === 1 ? "Splitting the edit into smaller, safer chunks…" : `Trying chunk ${attempt} with narrower edit targets…` })),
+                );
+                const retry = await aiChatCompletions({
+                  feature: "generate",
+                  body: {
+                    model: MODEL_STRUCTURED_RETRY,
+                    messages: addStructuredRetryInstruction(chatMessages, {
+                      isInitial,
+                      problem: retryProblem,
+                      hasBackend: Boolean(backend),
+                    }),
+                    tools: [tool],
+                    tool_choice: { type: "function", function: { name: tool.function.name } },
+                    max_tokens: Math.max(maxCompletionTokens, 8_000),
+                    stream: true,
+                  },
+                  signal: request.signal,
+                  meta: {
+                    phase: phaseTag.phase,
+                    promptChars: lastUserContent.length,
+                    hadAttachments: hasVisionTurn,
+                    chosenBy: `${gateLabel}_retry_${attempt}`,
+                  },
                 });
-                return;
+                if (!retry.ok || !retry.body) break;
+                const retryCollected = await relayAndCollect(retry, controller, encoder);
+                try {
+                  const retryPayload = parseCollectedProject(retryCollected, isInitial);
+                  if (!retryPayload.parsed.ops?.length) throw new Error("retry returned no ops");
+                  const retrySafeOps = retryPayload.parsed.ops.filter((op) => !isProtectedPath(op.path));
+                  patched = applyOps(currentFiles, retrySafeOps);
+                  collected = retryCollected;
+                  parsed = retryPayload.parsed;
+                  summary = retryPayload.summary;
+                  plan = retryPayload.plan;
+                  recap = retryPayload.recap;
+                  applied = true;
+                  break;
+                } catch (retryErr) {
+                  retryProblem = retryErr instanceof Error ? retryErr.message : String(retryErr);
+                  console.warn(`[generate] chunked retry ${attempt}/3 failed:`, retryProblem);
+                  if (!retryProblem.startsWith("must_use_replace") && !retryProblem.startsWith("replace_too_large")) break;
+                }
               }
-              const retryCollected = await relayAndCollect(retry, controller, encoder);
-              try {
-                const retryPayload = parseCollectedProject(retryCollected, isInitial);
-                if (!retryPayload.parsed.ops?.length) throw new Error("retry returned no ops");
-                const retrySafeOps = retryPayload.parsed.ops.filter((op) => !isProtectedPath(op.path));
-                patched = applyOps(currentFiles, retrySafeOps);
-              } catch (retryErr) {
-                console.warn("[generate] must_use_replace retry failed:", retryErr);
+              if (!applied) {
                 emitConversationalFallback(controller, encoder, {
                   files: currentFiles,
                   summary:
