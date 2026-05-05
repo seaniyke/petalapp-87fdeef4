@@ -422,6 +422,7 @@ export type ChatMessage = {
 export type FileOp =
   | { op: "create"; path: string; content: string }
   | { op: "update"; path: string; content: string }
+  | { op: "replace"; path: string; search: string; replace: string }
   | { op: "delete"; path: string };
 
 export type WriteProjectArgs = {
@@ -555,7 +556,8 @@ export type ErrorKind =
   | "unknown";
 
 /** Apply a list of file operations to a current set of files.
- *  "update" ops must contain complete, valid file contents. Legacy
+ *  "replace" ops are exact one-shot textual edits. "update" ops must
+ *  contain complete, valid file contents. Legacy
  *  "// ... keep existing code ..." markers are expanded only when they can be
  *  anchored safely; otherwise we reject the patch before broken half-files can
  *  be saved or deployed. */
@@ -576,6 +578,22 @@ export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
         );
       }
       map.set(op.path, content);
+    } else if (op.op === "replace") {
+      const prev = map.get(op.path);
+      if (typeof prev !== "string") {
+        throw new Error(`AI tried to replace text in missing file ${op.path}.`);
+      }
+      if (!op.search) {
+        throw new Error(`AI returned an empty search snippet for ${op.path}.`);
+      }
+      const first = prev.indexOf(op.search);
+      if (first === -1) {
+        throw new Error(`AI replace snippet did not match ${op.path}.`);
+      }
+      if (prev.indexOf(op.search, first + op.search.length) !== -1) {
+        throw new Error(`AI replace snippet matched more than once in ${op.path}.`);
+      }
+      map.set(op.path, prev.slice(0, first) + op.replace + prev.slice(first + op.search.length));
     } else {
       // create — never run the expander (no original to splice from).
       map.set(op.path, op.content);
