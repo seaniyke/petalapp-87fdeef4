@@ -28,12 +28,10 @@ import { aiChatCompletions } from "@/server/ai-provider.server";
 import {
   THEMES,
   pickThemeForBrief,
-  renderThemeCatalog,
   renderThemeTokensBlock,
   type ThemeKey,
 } from "@/server/themes.server";
 import {
-  TEMPLATES,
   pickTemplateForBrief,
   renderTemplatePlanBlock,
   type TemplateKey,
