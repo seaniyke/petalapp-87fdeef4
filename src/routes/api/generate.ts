@@ -1256,7 +1256,69 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             });
             return;
           }
-          const patched = applyOps(currentFiles, safeOps);
+          let patched: ProjectFile[];
+          try {
+            patched = applyOps(currentFiles, safeOps);
+          } catch (applyErr) {
+            const msg = applyErr instanceof Error ? applyErr.message : String(applyErr);
+            // Workstream A: surgical-edit gate. On must_use_replace,
+            // do ONE structured retry asking the model to re-emit the
+            // change as `replace` ops. If that retry also fails, fall
+            // through to the conversational fallback rather than throw.
+            if (msg.startsWith("must_use_replace")) {
+              console.warn("[generate] must_use_replace gate fired — retrying with replace hint");
+              controller.enqueue(
+                encoder.encode(sse({ type: "status", message: "Reshaping the edit to be safer…" })),
+              );
+              const retry = await aiChatCompletions({
+                feature: "generate",
+                body: {
+                  model: MODEL_STRUCTURED_RETRY,
+                  messages: addStructuredRetryInstruction(chatMessages, {
+                    isInitial,
+                    problem: msg,
+                    hasBackend: Boolean(backend),
+                  }),
+                  tools: [tool],
+                  tool_choice: { type: "function", function: { name: tool.function.name } },
+                  max_tokens: Math.max(maxCompletionTokens, 8_000),
+                  stream: true,
+                },
+                signal: request.signal,
+                meta: {
+                  phase: phaseTag.phase,
+                  promptChars: lastUserContent.length,
+                  hadAttachments: hasVisionTurn,
+                  chosenBy: "must_use_replace_retry",
+                },
+              });
+              if (!retry.ok || !retry.body) {
+                emitConversationalFallback(controller, encoder, {
+                  files: currentFiles,
+                  summary:
+                    "I tried to make that edit but couldn't pin it down to a safe spot in the file. Could you tell me which section or wording to change?",
+                });
+                return;
+              }
+              const retryCollected = await relayAndCollect(retry, controller, encoder);
+              try {
+                const retryPayload = parseCollectedProject(retryCollected, isInitial);
+                if (!retryPayload.parsed.ops?.length) throw new Error("retry returned no ops");
+                const retrySafeOps = retryPayload.parsed.ops.filter((op) => !isProtectedPath(op.path));
+                patched = applyOps(currentFiles, retrySafeOps);
+              } catch (retryErr) {
+                console.warn("[generate] must_use_replace retry failed:", retryErr);
+                emitConversationalFallback(controller, encoder, {
+                  files: currentFiles,
+                  summary:
+                    "I couldn't safely apply that edit on this pass. Tell me the exact bit you want changed (e.g. 'change the hero headline to …') and I'll target it precisely.",
+                });
+                return;
+              }
+            } else {
+              throw applyErr;
+            }
+          }
           // Heal-on-patch: re-apply the canonical scaffold to old saved
           // projects whose `src/components/ui/*`, `package.json`, or
           // backend kit files predate later kit upgrades. Without this,

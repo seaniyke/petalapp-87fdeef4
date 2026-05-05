@@ -62,5 +62,46 @@ try {
   assert("replace op rejects ambiguous snippets", true);
 }
 
+// Workstream A — surgical-edit gate
+const longPrev = Array.from({ length: 80 }, (_, i) => `const lineNumber${i} = ${i};`).join("\n");
+const longFiles: ProjectFile[] = [
+  { path: "src/big.tsx", content: longPrev },
+];
+
+try {
+  // Identical content (~100% overlap) on a long file → must be rejected.
+  applyOps(longFiles, [
+    { op: "update", path: "src/big.tsx", content: longPrev + "\nconst extra = 1;" },
+  ] as FileOp[]);
+  assert("update gate rejects near-identical large rewrites", false);
+} catch (e) {
+  const msg = e instanceof Error ? e.message : String(e);
+  assert(
+    "update gate rejects near-identical large rewrites",
+    msg.startsWith("must_use_replace"),
+    msg,
+  );
+}
+
+// Genuine large rewrite (only 20% overlap) should still be accepted.
+const partialRewrite = Array.from({ length: 80 }, (_, i) =>
+  i < 16 ? `const lineNumber${i} = ${i};` : `const renamed_${i} = ${i * 2};`,
+).join("\n");
+const accepted = applyOps(longFiles, [
+  { op: "update", path: "src/big.tsx", content: partialRewrite },
+] as FileOp[]);
+assert(
+  "update gate accepts genuine rewrites with low overlap",
+  accepted[0]?.content === partialRewrite,
+);
+
+// Short files always pass the gate.
+const shortPrev = `export const a = 1;\nexport const b = 2;\n`;
+const shortFiles: ProjectFile[] = [{ path: "src/small.ts", content: shortPrev }];
+const shortNext = applyOps(shortFiles, [
+  { op: "update", path: "src/small.ts", content: shortPrev + "export const c = 3;\n" },
+] as FileOp[]);
+assert("update gate skips short files", shortNext[0]?.content.includes("c = 3"));
+
 console.log(`\n${failed === 0 ? "✓ all assertions passed" : `✗ ${failed} assertion(s) failed`}`);
 process.exit(failed === 0 ? 0 : 1);

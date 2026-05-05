@@ -170,7 +170,8 @@ Each operation is one of:
 - { "op": "delete", "path": "..." }
 
 EDIT COMPLETENESS REQUIREMENT (critical):
-- For small changes, prefer \`replace\` with a precise snippet from the current file. This avoids resending giant files and is safer after the first generation.
+- HARD RULE: for ANY existing file longer than ~60 lines, you MUST use \`replace\` ops with a unique snippet. Do NOT resend the whole file via \`update\` if you're keeping most of it. The server REJECTS such ops with a "must_use_replace" error and forces a retry — wasting the user's time and tokens.
+- Use \`update\` ONLY when (a) the file is short, (b) you are genuinely rewriting the whole file from scratch, or (c) the change touches > 30% of the lines.
 - Every "update" op MUST contain the complete, final contents of that file.
 - NEVER write placeholders such as "// ... keep existing code", "{/* ... keep existing code */}", "same as before", "rest unchanged", or ellipses standing in for code.
 - If you use \`update\` and omit imports, opening JSX, hooks, helper functions, or closing tags, the app will fail. For large files, use \`replace\` or create a smaller extracted component instead.
@@ -555,6 +556,43 @@ export type ErrorKind =
   | "aborted"
   | "unknown";
 
+/**
+ * Workstream A — surgical-edit gate.
+ *
+ * Reject `update` ops that wholesale rewrite an existing non-trivial file
+ * but keep most of its content verbatim. This is the root cause of mid-
+ * stream truncations and "AI did not return usable edits" failures: the
+ * model resends a 200-line file just to change three lines, blowing the
+ * idle-timeout budget.
+ *
+ * Thresholds are intentionally conservative so legitimate full-file
+ * rewrites (renames, big redesigns) still pass.
+ *
+ *   - Only files > 60 lines.
+ *   - Only when ≥ 70% of original lines reappear verbatim in the new
+ *     content (line-set Jaccard-style on trimmed non-empty lines).
+ *
+ * Skips files the model is allowed to rewrite freely:
+ *   - new files (no `prev`)
+ *   - tiny files (≤ 60 lines)
+ *   - JSON / config / styles
+ */
+const REPLACE_GATE_MIN_LINES = 60;
+const REPLACE_GATE_OVERLAP_RATIO = 0.7;
+
+function shouldRequireReplaceOp(prev: string, next: string, path: string): boolean {
+  if (!prev) return false;
+  if (path.endsWith(".json") || path.endsWith(".css") || path.endsWith(".html")) return false;
+  if (path === "package.json") return false;
+  const prevLines = prev.split("\n").map((l) => l.trim()).filter((l) => l.length >= 4);
+  if (prevLines.length < REPLACE_GATE_MIN_LINES) return false;
+  const nextSet = new Set(next.split("\n").map((l) => l.trim()));
+  let kept = 0;
+  for (const l of prevLines) if (nextSet.has(l)) kept++;
+  const ratio = kept / prevLines.length;
+  return ratio >= REPLACE_GATE_OVERLAP_RATIO;
+}
+
 /** Apply a list of file operations to a current set of files.
  *  "replace" ops are exact one-shot textual edits. "update" ops must
  *  contain complete, valid file contents. Legacy
@@ -575,6 +613,11 @@ export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
       if (failed > 0 || /keep existing code/i.test(content)) {
         throw new Error(
           `AI returned an incomplete placeholder patch for ${op.path}. It must resend the full file contents.`,
+        );
+      }
+      if (shouldRequireReplaceOp(prev, content, op.path)) {
+        throw new Error(
+          `must_use_replace: ${op.path} is a large existing file and your edit kept most of it unchanged. Re-emit this change as one or more \`replace\` ops with the exact snippet to swap, instead of resending the whole file.`,
         );
       }
       map.set(op.path, content);
