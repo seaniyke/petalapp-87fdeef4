@@ -170,7 +170,8 @@ Each operation is one of:
 - { "op": "delete", "path": "..." }
 
 EDIT COMPLETENESS REQUIREMENT (critical):
-- For small changes, prefer \`replace\` with a precise snippet from the current file. This avoids resending giant files and is safer after the first generation.
+- HARD RULE: for ANY existing file longer than ~60 lines, you MUST use \`replace\` ops with a unique snippet. Do NOT resend the whole file via \`update\` if you're keeping most of it. The server REJECTS such ops with a "must_use_replace" error and forces a retry — wasting the user's time and tokens.
+- Use \`update\` ONLY when (a) the file is short, (b) you are genuinely rewriting the whole file from scratch, or (c) the change touches > 30% of the lines.
 - Every "update" op MUST contain the complete, final contents of that file.
 - NEVER write placeholders such as "// ... keep existing code", "{/* ... keep existing code */}", "same as before", "rest unchanged", or ellipses standing in for code.
 - If you use \`update\` and omit imports, opening JSX, hooks, helper functions, or closing tags, the app will fail. For large files, use \`replace\` or create a smaller extracted component instead.
