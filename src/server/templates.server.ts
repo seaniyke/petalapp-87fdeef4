@@ -34,7 +34,12 @@ export type TemplateKey =
   | "podcast"
   | "nonprofit"
   | "ai-chat-app"
-  | "ecommerce-store";
+  | "ecommerce-store"
+  | "ai-image-generator"
+  | "link-in-bio"
+  | "waitlist-launch"
+  | "agency-studio"
+  | "booking-appointments";
 
 export interface TemplateSpec {
   key: TemplateKey;
