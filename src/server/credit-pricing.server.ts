@@ -19,17 +19,19 @@
 // frequent cap hits at 8.0. Target is ~3-4 credits/build with cap at 6.0.
 // Diff/patch output mode (see SYSTEM_PROMPT_PATCH) materially reduces
 // completion tokens, so we can lower COMPLETION_RATE without losing margin.
-export const BUILD_HOLD = 1.0; // pre-flight reservation
+// Pricing tuned 2026-05-05: token rates and base bumped ~1.8× to improve
+// per-build margin while keeping the floor at 1.0 (so trivial tweaks still
+// feel cheap). Cap raised in lockstep so multi-cycle turns aren't unfairly
+// pinned to the ceiling under the new rates.
+export const BUILD_HOLD = 1.5; // pre-flight reservation
 export const BUILD_FLOOR = 1.0; // minimum charged after true-up
-export const BUILD_BASE = 0.5; // additive base before token weighting
-export const PROMPT_RATE = 0.03; // credits per 1k input tokens
-export const COMPLETION_RATE = 0.15; // credits per 1k output tokens
-// Bumped 2026-05 to 12.0 to leave headroom for multi-cycle agentic turns
-// (plan: a 2m+ turn that legitimately runs 3-5 verifier/fix cycles can
-// price out at 8-10 credits with the same per-token formula). The cap is
-// still in CREDITS, not tokens — a runaway is bounded.
-export const BUILD_CAP = 12.0; // max credits per single user turn
-export const MISSING_USAGE_FALLBACK = 1.0; // when gateway omits usage data
+export const BUILD_BASE = 1.0; // additive base before token weighting
+export const PROMPT_RATE = 0.06; // credits per 1k input tokens
+export const COMPLETION_RATE = 0.28; // credits per 1k output tokens
+// Cap raised to 20.0 to give headroom for the higher per-token rates on
+// long, multi-cycle agentic turns. Still bounded in CREDITS, not tokens.
+export const BUILD_CAP = 20.0; // max credits per single user turn
+export const MISSING_USAGE_FALLBACK = 1.5; // when gateway omits usage data
 
 export type GatewayUsage = {
   prompt_tokens?: number;
