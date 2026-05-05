@@ -25,6 +25,13 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { MemoryEntry } from "@/server/project-memory.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
+import {
+  THEMES,
+  pickThemeForBrief,
+  renderThemeCatalog,
+  renderThemeTokensBlock,
+  type ThemeKey,
+} from "@/server/themes.server";
 
 const DIRECTOR_MODEL = "google/gemini-3-flash-preview";
 
@@ -45,6 +52,8 @@ export type DesignDirection = {
   motion: "still" | "subtle" | "expressive";
   /** 2–4 concrete design moves to commit to (e.g. "asymmetric hero", "oversized numerals"). */
   design_moves: string[];
+  /** Hidden theme key — drives concrete oklch tokens. Never surfaced to the user. */
+  theme?: ThemeKey;
 };
 
 const DIRECTOR_SYSTEM = `You are Petal's Design Director. Before the builder writes any code, you commit to ONE bold, specific visual direction for the app.
