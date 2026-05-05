@@ -577,6 +577,7 @@ function emitConversationalFallback(
         plan: undefined,
         recap: undefined,
         creditsCharged: 0,
+        noFileChanges: true,
       }),
     ),
   );
@@ -1204,7 +1205,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           }
         }
 
-        const { parsed, summary, plan, recap } = payload;
+        let { parsed, summary, plan, recap } = payload;
         let nextFiles: ProjectFile[];
         if (collected.name === "write_project") {
           if (!parsed.files?.length) throw new Error("AI returned no files.");
