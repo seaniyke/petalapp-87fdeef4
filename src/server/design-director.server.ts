@@ -124,6 +124,7 @@ const DIRECTOR_TOOL = {
 export function renderDesignDirectionBlock(d: DesignDirection): string {
   const moves = d.design_moves.map((m) => `  - ${m}`).join("\n");
   const themeBlock = d.theme ? renderThemeTokensBlock(d.theme) : "";
+  const templateBlock = d.template ? renderTemplatePlanBlock(d.template) : "";
   return (
     `\n\n### Design Direction (committed before this build — execute it with conviction)\n` +
     `- vibe: ${d.vibe}\n` +
