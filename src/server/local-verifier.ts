@@ -26,6 +26,7 @@ export interface LocalIssue {
     | "parse"
     | "oversize"
     | "render-risk"
+    | "blank-render"
     | "rls-sanity";
   detail: string;
 }
