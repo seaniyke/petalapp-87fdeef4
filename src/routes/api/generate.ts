@@ -583,6 +583,26 @@ function emitConversationalFallback(
   );
 }
 
+function ensureRenderableShell(files: ProjectFile[]): { files: ProjectFile[]; fixed: string[] } {
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const fixed: string[] = [];
+  if (!byPath.has("index.html")) {
+    byPath.set("index.html", '<!doctype html>\n<html lang="en">\n  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>App</title></head>\n  <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>\n</html>\n');
+    fixed.push("index.html");
+  }
+  const main = byPath.get("src/main.tsx") ?? "";
+  if (!/createRoot\s*\(|\.render\s*\(/.test(main)) {
+    byPath.set("src/main.tsx", 'import React from "react";\nimport ReactDOM from "react-dom/client";\nimport App from "./App";\nimport "./styles.css";\n\nReactDOM.createRoot(document.getElementById("root")!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>,\n);\n');
+    fixed.push("src/main.tsx");
+  }
+  const app = byPath.get("src/App.tsx") ?? "";
+  if (!app.trim() || /PlaceholderIndex|data-lovable-blank-page-placeholder|REPLACE this/i.test(app) || /return\s+(?:null|<><\/>)\s*;/.test(app)) {
+    byPath.set("src/App.tsx", 'export default function App() {\n  return (\n    <main className="min-h-screen bg-background px-6 py-16 text-foreground">\n      <section className="mx-auto max-w-3xl space-y-4">\n        <p className="text-sm font-medium text-muted-foreground">Starter app</p>\n        <h1 className="text-4xl font-bold tracking-tight">Your app is ready</h1>\n        <p className="text-lg text-muted-foreground">Ask for the next section or feature and this page will update safely.</p>\n      </section>\n    </main>\n  );\n}\n');
+    fixed.push("src/App.tsx");
+  }
+  return { files: Array.from(byPath, ([path, content]) => ({ path, content })), fixed };
+}
+
 function parseCollectedProject(collected: ParsedTool, isInitial: boolean): ParsedProjectPayload {
   if (isTruncatedFinishReason(collected.finishReason)) {
     throw new Error(
