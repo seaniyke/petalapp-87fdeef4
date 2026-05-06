@@ -674,6 +674,42 @@ function findUnresolvedImports(
   return issues;
 }
 
+function findBlankRenderIssues(
+  files: { path: string; content: string }[],
+  changedPaths: Set<string>,
+): LocalIssue[] {
+  const issues: LocalIssue[] = [];
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const app = byPath.get("src/App.tsx") ?? "";
+  const main = byPath.get("src/main.tsx") ?? "";
+
+  const touchesAppShell =
+    changedPaths.has("src/App.tsx") ||
+    changedPaths.has("src/main.tsx") ||
+    changedPaths.has("index.html") ||
+    files.length <= 8;
+  if (!touchesAppShell) return issues;
+
+  if (!byPath.has("index.html")) {
+    issues.push({ path: "index.html", kind: "blank-render", detail: "missing index.html means the app has no document shell" });
+  }
+  if (!main.trim()) {
+    issues.push({ path: "src/main.tsx", kind: "blank-render", detail: "missing src/main.tsx means React never mounts" });
+  } else if (!/createRoot\s*\(|\.render\s*\(/.test(main)) {
+    issues.push({ path: "src/main.tsx", kind: "blank-render", detail: "src/main.tsx does not mount the React app" });
+  }
+  if (!app.trim()) {
+    issues.push({ path: "src/App.tsx", kind: "blank-render", detail: "missing src/App.tsx leaves the preview blank" });
+  } else if (
+    /PlaceholderIndex|data-lovable-blank-page-placeholder|REPLACE this/i.test(app) ||
+    /return\s+(?:null|<><\/>)\s*;/.test(app) ||
+    !/<[A-Za-z][\w.:-]*(?:\s|>|\/)/.test(app)
+  ) {
+    issues.push({ path: "src/App.tsx", kind: "blank-render", detail: "App renders placeholder, null, or no visible JSX" });
+  }
+  return issues;
+}
+
 /**
  * Node.js built-in modules supported by the Worker runtime (nodejs_compat).
  * Accepts both bare (`path`) and prefixed (`node:path`) forms. Anything
