@@ -10,7 +10,9 @@
  *
  *   - Healthy        ≤ 180 lines AND ≤  6 KB → pass through
  *   - Oversize       181-280 lines OR  6-10 KB → warn (autofix asked to split)
- *   - Hard reject    > 280 lines OR > 10 KB → revert to prior content
+ *   - Hard reject    > 280 lines OR > 10 KB → revert only if a prior safe
+ *                     version exists; new files stay so autofix can shrink
+ *                     them instead of creating missing imports / blank apps
  *
  * Hard rejections are routed into the Layer-B "Continue building" handoff
  * (see /api/generate.ts).
@@ -106,9 +108,10 @@ export function checkFileBudgets(
 }
 
 /**
- * Apply rejections to the file map: revert reverted files to their prior
- * content, drop newly-added rejected files entirely. This guarantees we
- * never SHIP a file > HARD_REJECT_LINES even when the model insists.
+ * Apply rejections to the file map: revert existing files to their prior
+ * content. Newly-added oversized files are kept and fed to the autofix pass;
+ * dropping them caused worse failures (main imports a file that vanished),
+ * which showed up as blank apps or unresolved imports.
  */
 export function enforceFileBudgets(
   nextFiles: { path: string; content: string }[],
@@ -130,7 +133,9 @@ export function enforceFileBudgets(
       // Existing file → revert to last-known-good content.
       out.push({ path: f.path, content: prior });
     }
-    // New file that was rejected → drop entirely.
+    // New oversized file → keep it. The oversize issue is still sent to the
+    // repair model, which can replace it with a smaller complete version.
+    out.push(f);
   }
   return out;
 }
