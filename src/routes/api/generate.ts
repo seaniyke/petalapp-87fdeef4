@@ -1726,6 +1726,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         const autofixGateOpen =
           !localVerdict.ok ||
           !esbuildVerdict.ok ||
+          renderRiskIssues.length > 0 ||
           budgetWarnings.length > 0 ||
           autofixOut.report.fixedCount >= 2;
         const combinedAutofixIssues = [
@@ -1740,9 +1741,9 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             kind: "oversize" as const,
             detail: w.detail,
           })),
-          // Render-risk + RLS-sanity issues come along for the ride
-          // when the gate is already open; they don't open it on
-          // their own.
+          // Render-risk issues open the gate: compile-clean code can still
+          // white-screen at runtime (for example undefined.includes()).
+          // RLS sanity remains advisory only.
           ...renderRiskIssues,
           ...rlsSanityIssues,
         ];
