@@ -183,6 +183,33 @@ function findUnknownAppliedClasses(src: string): string[] {
   // `@utility foo { … }` — Tailwind v4 custom utility
   for (const m of src.matchAll(/@utility\s+([a-zA-Z_][\w-]*)/g)) defined.add(m[1]);
 
+  // Collect color tokens registered via `--color-<name>: …;` (typically inside
+  // `@theme { … }`). These are the ONLY suffixes that Tailwind v4 will accept
+  // for color utilities like `bg-X`, `text-X`, `border-X`, `ring-X`, etc.
+  // outside of the built-in palette. If the AI writes `border-muted-foreground`
+  // without registering `--color-muted-foreground`, the production build aborts
+  // with "Cannot apply unknown utility class". We catch it deterministically.
+  const themeColors = new Set<string>();
+  for (const m of src.matchAll(/--color-([a-zA-Z_][\w-]*)\s*:/g)) themeColors.add(m[1]);
+
+  // Color-family utility prefixes — when the suffix is a custom name, it must
+  // resolve to a `--color-<suffix>` token registered in @theme.
+  const COLOR_PREFIXES = [
+    "bg", "text", "border", "ring", "outline", "fill", "stroke",
+    "from", "via", "to", "divide", "accent", "caret", "placeholder", "decoration",
+    "shadow",
+  ];
+  // Suffixes that are always valid regardless of theme tokens.
+  const BUILTIN_COLOR_KEYWORDS = new Set([
+    "transparent", "current", "inherit", "initial", "unset", "none",
+    "white", "black",
+  ]);
+  const BUILTIN_COLOR_FAMILIES = new Set([
+    "slate","gray","zinc","neutral","stone","red","orange","amber","yellow",
+    "lime","green","emerald","teal","cyan","sky","blue","indigo","violet",
+    "purple","fuchsia","pink","rose",
+  ]);
+
   const unknown = new Set<string>();
   // Capture the entire class list inside each `@apply …;`
   for (const m of src.matchAll(/@apply\s+([^;}{]+)[;}]/g)) {
@@ -196,11 +223,37 @@ function findUnknownAppliedClasses(src: string): string[] {
       if (!util) continue;
       // If it's defined locally, it's fine.
       if (defined.has(util)) continue;
-      // Heuristic: a custom (non-Tailwind) class typically uses two or more
-      // hyphenated segments AND does NOT start with a known utility prefix.
-      // Built-ins like `bg-red-500`, `text-foreground`, `rounded-lg`, `p-4`,
-      // `flex`, `grid-cols-3`, `border` all match a known prefix or are
-      // single-segment — so we leave them alone.
+
+      // Color-family utility check: `border-muted-foreground`, `bg-coral`, …
+      // Strip any `/<opacity>` suffix (e.g. `bg-primary/10`).
+      const noOpacity = util.split("/")[0];
+      const dashIdx = noOpacity.indexOf("-");
+      if (dashIdx > 0) {
+        const head = noOpacity.slice(0, dashIdx);
+        const tail = noOpacity.slice(dashIdx + 1);
+        if (COLOR_PREFIXES.includes(head) && tail.length > 0) {
+          // Arbitrary value like `bg-[#fff]` is always valid.
+          if (tail.startsWith("[") && tail.endsWith("]")) continue;
+          // Built-in palette: `red-500`, `slate-50`, `white`, `transparent`, …
+          const family = tail.split("-")[0];
+          if (BUILTIN_COLOR_KEYWORDS.has(tail)) continue;
+          if (BUILTIN_COLOR_FAMILIES.has(family)) continue;
+          // Custom token: must be registered as `--color-<tail>` in @theme.
+          if (themeColors.has(tail)) continue;
+          // For `border-<tail>` only, also allow border-only utilities like
+          // `border-2`, `border-dashed`, `border-solid` — these aren't colors.
+          if (head === "border" && /^(?:\d+|dashed|dotted|solid|double|none|hidden)$/.test(tail)) continue;
+          // For `text-<tail>`, allow size/weight utilities like `text-sm`,
+          // `text-lg`, `text-center`, `text-balance`, `text-pretty`.
+          if (head === "text" && /^(?:xs|sm|base|lg|xl|\d?xl|left|right|center|justify|start|end|balance|pretty|wrap|nowrap|ellipsis|clip)$/.test(tail)) continue;
+          // For `shadow-<tail>`, allow size keywords.
+          if (head === "shadow" && /^(?:sm|md|lg|xl|\d?xl|inner|none)$/.test(tail)) continue;
+          unknown.add(util);
+          continue;
+        }
+      }
+
+      // Non-color custom class heuristic (existing behavior).
       if (looksLikeBuiltInUtility(util)) continue;
       unknown.add(util);
     }
