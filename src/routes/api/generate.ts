@@ -1379,6 +1379,15 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           throw new Error("Project is missing index.html.");
         }
 
+        const shellGuard = ensureRenderableShell(nextFiles);
+        nextFiles = shellGuard.files;
+        if (shellGuard.fixed.length > 0) {
+          console.warn("[renderable-shell] repaired", shellGuard.fixed.join(", "));
+          controller.enqueue(
+            encoder.encode(sse({ type: "status", message: "Restored the app shell so the preview can render." })),
+          );
+        }
+
         // Last-mile guard: if the AI emitted (or patched in) a broken
         // src/styles.css, swap it for the canonical scaffold CSS so the
         // build can never be killed by a single bad character. Same
