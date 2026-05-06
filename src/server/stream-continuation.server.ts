@@ -113,7 +113,11 @@ export async function runContinuation(args: {
         tail = tail.slice(overlapIdx + overlapWindow.length);
       }
 
-      const merged = file.content + (file.content.endsWith("\n") ? "" : "\n") + tail;
+      // Append the continuation bytes exactly where the stream stopped. Do
+      // NOT insert a newline first: many real truncations stop mid-string,
+      // mid-JSX attribute, or mid-token, and adding a newline corrupts the
+      // file we are trying to complete.
+      const merged = `${file.content}${tail}`;
 
       // Verify the continuation actually helped — if it's still truncated
       // OR braces are still wildly unbalanced, keep the original (the

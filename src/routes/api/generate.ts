@@ -583,6 +583,26 @@ function emitConversationalFallback(
   );
 }
 
+function ensureRenderableShell(files: ProjectFile[]): { files: ProjectFile[]; fixed: string[] } {
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const fixed: string[] = [];
+  if (!byPath.has("index.html")) {
+    byPath.set("index.html", '<!doctype html>\n<html lang="en">\n  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>App</title></head>\n  <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>\n</html>\n');
+    fixed.push("index.html");
+  }
+  const main = byPath.get("src/main.tsx") ?? "";
+  if (!/createRoot\s*\(|\.render\s*\(/.test(main)) {
+    byPath.set("src/main.tsx", 'import React from "react";\nimport ReactDOM from "react-dom/client";\nimport App from "./App";\nimport "./styles.css";\n\nReactDOM.createRoot(document.getElementById("root")!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>,\n);\n');
+    fixed.push("src/main.tsx");
+  }
+  const app = byPath.get("src/App.tsx") ?? "";
+  if (!app.trim() || /PlaceholderIndex|data-lovable-blank-page-placeholder|REPLACE this/i.test(app) || /return\s+(?:null|<><\/>)\s*;/.test(app)) {
+    byPath.set("src/App.tsx", 'export default function App() {\n  return (\n    <main className="min-h-screen bg-background px-6 py-16 text-foreground">\n      <section className="mx-auto max-w-3xl space-y-4">\n        <p className="text-sm font-medium text-muted-foreground">Starter app</p>\n        <h1 className="text-4xl font-bold">Your app is ready</h1>\n        <p className="text-lg text-muted-foreground">Ask for the next section or feature and this page will update safely.</p>\n      </section>\n    </main>\n  );\n}\n');
+    fixed.push("src/App.tsx");
+  }
+  return { files: Array.from(byPath, ([path, content]) => ({ path, content })), fixed };
+}
+
 function parseCollectedProject(collected: ParsedTool, isInitial: boolean): ParsedProjectPayload {
   if (isTruncatedFinishReason(collected.finishReason)) {
     throw new Error(
@@ -1359,6 +1379,15 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           throw new Error("Project is missing index.html.");
         }
 
+        const shellGuard = ensureRenderableShell(nextFiles);
+        nextFiles = shellGuard.files;
+        if (shellGuard.fixed.length > 0) {
+          console.warn("[renderable-shell] repaired", shellGuard.fixed.join(", "));
+          controller.enqueue(
+            encoder.encode(sse({ type: "status", message: "Restored the app shell so the preview can render." })),
+          );
+        }
+
         // Last-mile guard: if the AI emitted (or patched in) a broken
         // src/styles.css, swap it for the canonical scaffold CSS so the
         // build can never be killed by a single bad character. Same
@@ -1697,6 +1726,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         const autofixGateOpen =
           !localVerdict.ok ||
           !esbuildVerdict.ok ||
+          renderRiskIssues.length > 0 ||
           budgetWarnings.length > 0 ||
           autofixOut.report.fixedCount >= 2;
         const combinedAutofixIssues = [
@@ -1711,9 +1741,9 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             kind: "oversize" as const,
             detail: w.detail,
           })),
-          // Render-risk + RLS-sanity issues come along for the ride
-          // when the gate is already open; they don't open it on
-          // their own.
+          // Render-risk issues open the gate: compile-clean code can still
+          // white-screen at runtime (for example undefined.includes()).
+          // RLS sanity remains advisory only.
           ...renderRiskIssues,
           ...rlsSanityIssues,
         ];
