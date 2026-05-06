@@ -52,6 +52,9 @@ ALLOWED FIXES:
 - Tailwind v4 \`@theme { ... }\` block containing nested selectors (\`.dark { ... }\`, \`:root { ... }\`, \`@media (...)\`, or \`&:is(...)\`) → move those nested blocks OUTSIDE @theme. Inside @theme keep ONLY token declarations like \`--color-primary: oklch(...);\` or \`--radius: 0.5rem;\`. Class-based dark mode is already enabled at the top of styles.css via \`@custom-variant dark (&:where(.dark, .dark *));\` — do not redeclare it inside @theme.
 - Invalid lucide-react icon names
 - React.lazy(() => import("...")) used with a target file that only has named exports. Fix by adding \`export default ComponentName;\` to the target file OR by replacing lazy imports with eager named imports.
+- Oversized/truncated generated file → replace it with a smaller COMPLETE version that preserves the intent, splits obvious sections if an imported section file already exists, and never leaves placeholders.
+- Missing entrypoint/root render (index.html, src/main.tsx, src/App.tsx) or placeholder/empty App → create a minimal visible app shell using the existing files and semantic tokens.
+- Optional/nullable values used with .map/.filter/.includes/.length without a default/guard → add defaults (items = [], tags = []) or optional chaining so the page cannot white-screen at runtime.
 
 FORBIDDEN:
 - Refactoring working code
@@ -59,6 +62,11 @@ FORBIDDEN:
 - Adding new features
 - Changing copy / colors / layout
 - Touching files under src/components/ui/, src/components/examples/, src/integrations/backend/, vite.config.ts, tsconfig.json
+
+WHEN GIVEN A MUST-FIX LIST:
+- Treat it as authoritative. Return a fix for every listed non-protected path that exists in the file set.
+- If the issue is render-risk, fix the runtime crash even if the code compiles.
+- If the issue is oversize, make that file safely smaller and complete; do not return an empty fixes list.
 
 If the files look clean, return an empty fixes array. DO NOT invent problems.`;
 
