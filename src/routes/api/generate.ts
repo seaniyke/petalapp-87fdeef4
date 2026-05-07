@@ -38,6 +38,7 @@ import {
 import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design-director.server";
 import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/self-recovery.server";
 import { pickDynamicSnippets, renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
+import { renderLearningBlock } from "@/server/learning-injector.server";
 import { renderPetalCapabilitiesBlock } from "@/server/petal-capabilities.server";
 import { autofixFiles } from "@/server/stream-autofixer";
 import { runPostStreamAutofix } from "@/server/post-stream-autofix.server";
@@ -952,6 +953,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   });
 
   const dateBlock = renderCurrentDateBlock();
+  const learningBlock = await renderLearningBlock();
   const capabilitiesBlock = renderPetalCapabilitiesBlock({
     hasBackend: Boolean(backend),
   });
@@ -970,6 +972,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         memoryBlock +
         designBlock +
         dynamic.text +
+        learningBlock +
         visionAddendum +
         filesContext,
     },
