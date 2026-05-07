@@ -3826,8 +3826,17 @@ function mergePackageJson(
   };
   const aiDeps = (pkg.dependencies as Record<string, string> | undefined) ?? {};
   const aiDevDeps = (pkg.devDependencies as Record<string, string> | undefined) ?? {};
-  pkg.dependencies = { ...aiDeps, ...REQUIRED_DEPS, ...extraDeps };
-  pkg.devDependencies = { ...aiDevDeps, ...REQUIRED_DEV_DEPS };
+  // The model often invents semver ranges that no published version satisfies
+  // (e.g. `react-use-wake-lock@^1.0.3` when only 1.0.1 exists), which kills
+  // `npm install` with ETARGET. Force every AI-emitted version to `*` so npm
+  // resolves whatever the registry actually has. Our REQUIRED_* maps below
+  // override pins for any package the scaffold actually controls.
+  const safeAiDeps: Record<string, string> = {};
+  for (const k of Object.keys(aiDeps)) safeAiDeps[k] = "*";
+  const safeAiDevDeps: Record<string, string> = {};
+  for (const k of Object.keys(aiDevDeps)) safeAiDevDeps[k] = "*";
+  pkg.dependencies = { ...safeAiDeps, ...REQUIRED_DEPS, ...extraDeps };
+  pkg.devDependencies = { ...safeAiDevDeps, ...REQUIRED_DEV_DEPS };
   return JSON.stringify(pkg, null, 2) + "\n";
 }
 
