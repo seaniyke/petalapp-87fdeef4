@@ -31,6 +31,9 @@ export interface LocalVerifyTierOutput {
   preflightDropped: number;
   /** Pre-flight: confirmed-bogus package roots. */
   preflightHallucinated: string[];
+  /** Pre-flight: real package roots not yet in package.json. Caller must
+   *  add them so the installer doesn't silently skip them. */
+  realButMissing: string[];
   /** SSE events to emit, in order. */
   emit: EmitList;
 }

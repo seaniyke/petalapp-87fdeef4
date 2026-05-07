@@ -46,10 +46,12 @@ export async function runLocalVerifyTier(args: RunArgs): Promise<LocalVerifyTier
   // Tier 2.45 — npm pre-flight (mutates verdict.issues in place via reassignment).
   let preflightDropped = 0;
   let preflightHallucinated: string[] = [];
+  let realButMissing: string[] = [];
   try {
     const pre = await applyNpmPreflight(verdict.issues);
     preflightDropped = pre.realButMissing.length;
     preflightHallucinated = pre.hallucinated;
+    realButMissing = pre.realButMissing;
     verdict.issues = pre.issues;
     verdict.ok = pre.issues.length === 0;
     if (preflightDropped > 0) {
@@ -139,6 +141,7 @@ export async function runLocalVerifyTier(args: RunArgs): Promise<LocalVerifyTier
     earlyChangedPaths,
     preflightDropped,
     preflightHallucinated,
+    realButMissing,
     emit,
   };
 }
