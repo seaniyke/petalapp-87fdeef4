@@ -1814,7 +1814,13 @@ function Builder() {
         setFiles(files2);
         setActiveFile((prev) => prev ?? "index.html");
         setMessages((prev) => [...prev, assistantMsg]);
-        setPreviewKey((k) => k + 1);
+        // Don't bump previewKey here — `mountProject` patches the WebContainer
+        // FS in place and Vite HMR re-renders the affected modules. Forcing
+        // a full iframe reload after every turn caused a visible white
+        // "flash" between the final stream chunk and the next render and
+        // wiped any in-app state (open modal, scroll position, form input).
+        // Reverts / version restores still hard-reload (they swap entire
+        // projects); incremental edits do not.
         setLastUserPrompt(null);
         // The streaming bubble has been promoted into a real message — clear it.
         setStreamingAssistant("");
