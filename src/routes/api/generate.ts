@@ -1558,6 +1558,41 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           },
         });
 
+        // Tier 2.451 — actually add the real-but-missing packages to
+        // package.json. Without this, the AI's bare import (e.g. `import x
+        // from "nanoid"`) survives but `npm install` never fetches the
+        // package, so the build fails with "Failed to resolve import" the
+        // moment Vite tries to bundle it. Force the version to "*" so npm
+        // grabs whatever's latest — same safety we apply to AI-emitted deps.
+        if (localOut.realButMissing.length > 0) {
+          const pkgFile = nextFiles.find((f) => f.path === "package.json");
+          if (pkgFile) {
+            try {
+              const pkg = JSON.parse(pkgFile.content) as {
+                dependencies?: Record<string, string>;
+              };
+              const deps = pkg.dependencies ?? {};
+              let added = 0;
+              for (const root of localOut.realButMissing) {
+                if (!deps[root]) {
+                  deps[root] = "*";
+                  added += 1;
+                }
+              }
+              if (added > 0) {
+                pkg.dependencies = deps;
+                pkgFile.content = JSON.stringify(pkg, null, 2) + "\n";
+                console.log(
+                  `[npm-preflight] added ${added} real-but-missing dep(s) to package.json:`,
+                  localOut.realButMissing.join(", "),
+                );
+              }
+            } catch (e) {
+              console.warn("[npm-preflight] could not patch package.json:", e);
+            }
+          }
+        }
+
         // Tier 2.46 — deterministic strip of npm-confirmed-hallucinated
         // imports. We do this BEFORE continuation/esbuild so the parse
         // tier doesn't trip on identifiers that point at packages the
