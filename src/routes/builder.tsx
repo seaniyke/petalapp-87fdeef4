@@ -1056,7 +1056,7 @@ function Builder() {
             isTransientFailureCardTitle(err.title),
           ).catch(() => {});
           setActiveFile(fs.find((f) => f.path === "index.html")?.path ?? fs[0]?.path ?? null);
-          if (draft) {
+          if (draft && !readPersistedTurn(p.id)) {
             // Show the partial reply as a normal (non-collapsed) assistant
             // message tagged so the user understands it was rescued from a
             // previous session. We don't try to re-attach to the live stream
