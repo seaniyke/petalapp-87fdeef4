@@ -923,7 +923,12 @@ function Builder() {
       // Also clear any persisted build-failure cards still pinned in the
       // message thread from a previous failed attempt — showing a failure card
       // right above "Your app is live" is contradictory UX.
-      setMessages(removeBuildFailureCards);
+      setMessages(removeAllFailureCards);
+      if (project?.id) {
+        void deleteAssistantErrorMessages(project.id, (err) =>
+          isBuildFailureCardTitle(err.title) || isTransientFailureCardTitle(err.title),
+        ).catch(() => {});
+      }
       // Note: we used to surface a "Changes ready to publish" toast here, but
       // it fired on every refresh / build completion and was more noise than
       // signal. Users can publish from the header button when ready.
@@ -977,7 +982,7 @@ function Builder() {
       persistFriendlyError(friendlyBuildFailure(effectiveBuildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, project?.latest_build_id, project?.published_build_id, busy, awaitingBuild]);
+  }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, project?.id, project?.latest_build_id, project?.published_build_id, busy, awaitingBuild]);
 
   // Auto-hide the success card a little after the app goes live so the chat
   // returns to a calm state. The card itself also self-collapses.
