@@ -245,10 +245,12 @@ export const Route = createFileRoute("/api/builds/trigger")({
               ready_at: new Date().toISOString(),
             })
             .eq("id", build.id);
-          return Response.json(
-            { buildId: build.id, status: "failed" as const, error: message },
-            { status: 502 }
-          );
+          return Response.json({
+            buildId: build.id,
+            status: "failed" as const,
+            error: message,
+            fallback: true,
+          });
         }
 
         return Response.json({ buildId: build.id, status: "pending" as const });
