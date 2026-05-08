@@ -80,6 +80,7 @@ import { NextStepsCard } from "@/components/NextStepsCard";
 import {
   appendMessages,
   createProject,
+  deleteAssistantMessagesMatching,
   deleteAssistantErrorMessages,
   getProject,
   loadProjectFiles,
