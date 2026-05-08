@@ -376,6 +376,7 @@ function Builder() {
   const persistFriendlyError = useCallback(
     (err: FriendlyError) => {
       setFriendlyError(err);
+      if (!shouldPersistFriendlyError(err)) return;
       const projId = projectIdRef.current;
       if (!projId) return;
       const errMsg: ChatMessage = {
@@ -387,6 +388,7 @@ function Builder() {
           actionLabel: err.actionLabel,
           actionKind: err.actionKind,
           technicalDetail: err.technicalDetail,
+          transient: isTransientFailureCardTitle(err.title),
         },
       };
       setMessages((prev) => {
