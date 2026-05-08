@@ -1045,7 +1045,10 @@ function Builder() {
           if (cancelled) return;
           setProject(p);
           setFiles(fs);
-          setMessages(ms);
+          setMessages(removeTransientFailureCards(ms));
+          void deleteAssistantErrorMessages(p.id, (err) =>
+            isTransientFailureCardTitle(err.title),
+          ).catch(() => {});
           setActiveFile(fs.find((f) => f.path === "index.html")?.path ?? fs[0]?.path ?? null);
           if (draft) {
             // Show the partial reply as a normal (non-collapsed) assistant
