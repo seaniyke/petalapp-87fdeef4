@@ -413,7 +413,7 @@ export function friendlyBuildServiceBusy(rawLog: string | null | undefined): Fri
   return {
     title: "Build service is briefly unavailable",
     message:
-      "This isn't a problem with your app — our build service didn't respond just now. Tap retry in a moment and it should go through.",
+      "Your edit was saved, but the live preview couldn't refresh just now. Retry the build in a moment — don't ask Petal to rewrite the app.",
     actionLabel: "Retry build",
     actionKind: "retry",
     technicalDetail: tail,

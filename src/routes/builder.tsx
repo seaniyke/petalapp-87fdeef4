@@ -80,6 +80,7 @@ import { NextStepsCard } from "@/components/NextStepsCard";
 import {
   appendMessages,
   createProject,
+  deleteAssistantErrorMessages,
   getProject,
   loadProjectFiles,
   loadProjectMessages,
@@ -212,10 +213,39 @@ function isBuildFailureCardTitle(title: string | undefined): boolean {
   );
 }
 
+function isTransientFailureCardTitle(title: string | undefined): boolean {
+  if (!title) return false;
+  return (
+    title.startsWith("Petal lost the connection") ||
+    title.startsWith("Petal is reconnecting") ||
+    title.startsWith("Build service is briefly unavailable") ||
+    title.startsWith("Couldn't reach the publishing service") ||
+    title.startsWith("Publishing is taking")
+  );
+}
+
+function shouldPersistFriendlyError(err: FriendlyError): boolean {
+  return !isTransientFailureCardTitle(err.title);
+}
+
 function removeBuildFailureCards(messages: ChatMessage[]): ChatMessage[] {
   return messages.filter(
     (m) => !(m.role === "assistant" && m.error && isBuildFailureCardTitle(m.error.title)),
   );
+}
+
+function removeTransientFailureCards(messages: ChatMessage[]): ChatMessage[] {
+  return messages.filter(
+    (m) => !(m.role === "assistant" && m.error && isTransientFailureCardTitle(m.error.title)),
+  );
+}
+
+function removeAllFailureCards(messages: ChatMessage[]): ChatMessage[] {
+  return removeTransientFailureCards(removeBuildFailureCards(messages));
+}
+
+function looksLikeCompletedEditClaim(text: string): boolean {
+  return /\b(i['’]?ve|i have|done|updated|made|fixed|changed|added|created|implemented)\b/i.test(text);
 }
 
 export const Route = createFileRoute("/builder")({
@@ -351,6 +381,7 @@ function Builder() {
   const persistFriendlyError = useCallback(
     (err: FriendlyError) => {
       setFriendlyError(err);
+      if (!shouldPersistFriendlyError(err)) return;
       const projId = projectIdRef.current;
       if (!projId) return;
       const errMsg: ChatMessage = {
@@ -892,7 +923,12 @@ function Builder() {
       // Also clear any persisted build-failure cards still pinned in the
       // message thread from a previous failed attempt — showing a failure card
       // right above "Your app is live" is contradictory UX.
-      setMessages(removeBuildFailureCards);
+      setMessages(removeAllFailureCards);
+      if (project?.id) {
+        void deleteAssistantErrorMessages(project.id, (err) =>
+          isBuildFailureCardTitle(err.title) || isTransientFailureCardTitle(err.title),
+        ).catch(() => {});
+      }
       // Note: we used to surface a "Changes ready to publish" toast here, but
       // it fired on every refresh / build completion and was more noise than
       // signal. Users can publish from the header button when ready.
@@ -946,7 +982,7 @@ function Builder() {
       persistFriendlyError(friendlyBuildFailure(effectiveBuildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, project?.latest_build_id, project?.published_build_id, busy, awaitingBuild]);
+  }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, project?.id, project?.latest_build_id, project?.published_build_id, busy, awaitingBuild]);
 
   // Auto-hide the success card a little after the app goes live so the chat
   // returns to a calm state. The card itself also self-collapses.
@@ -1014,9 +1050,12 @@ function Builder() {
           if (cancelled) return;
           setProject(p);
           setFiles(fs);
-          setMessages(ms);
+          setMessages(removeTransientFailureCards(ms));
+          void deleteAssistantErrorMessages(p.id, (err) =>
+            isTransientFailureCardTitle(err.title),
+          ).catch(() => {});
           setActiveFile(fs.find((f) => f.path === "index.html")?.path ?? fs[0]?.path ?? null);
-          if (draft) {
+          if (draft && !readPersistedTurn(p.id)) {
             // Show the partial reply as a normal (non-collapsed) assistant
             // message tagged so the user understands it was rescued from a
             // previous session. We don't try to re-attach to the live stream
@@ -2076,8 +2115,9 @@ function Builder() {
         // If Petal had partial output OR Layer 5 produced retry suggestions,
         // append a single message that carries both — the chips piggyback on
         // the existing assistant-suggestions render path (line ~1741).
-        if (rescued.length > 0 || errorSuggestions.length > 0) {
-          const fallbackContent = rescued.length > 0 ? rescued : msg;
+        const rescuedLooksLikeDone = looksLikeCompletedEditClaim(rescued);
+        if ((rescued.length > 0 && !rescuedLooksLikeDone) || errorSuggestions.length > 0) {
+          const fallbackContent = rescued.length > 0 && !rescuedLooksLikeDone ? rescued : msg;
           setMessages((prev) => [
             ...prev,
             {
