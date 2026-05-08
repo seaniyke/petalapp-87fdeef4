@@ -2117,7 +2117,7 @@ function Builder() {
         // the existing assistant-suggestions render path (line ~1741).
         const rescuedLooksLikeDone = looksLikeCompletedEditClaim(rescued);
         if ((rescued.length > 0 && !rescuedLooksLikeDone) || errorSuggestions.length > 0) {
-          const fallbackContent = rescued.length > 0 ? rescued : msg;
+          const fallbackContent = rescued.length > 0 && !rescuedLooksLikeDone ? rescued : msg;
           setMessages((prev) => [
             ...prev,
             {
