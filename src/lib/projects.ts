@@ -398,6 +398,27 @@ export async function appendMessages(projectId: string, msgs: ChatMessage[]) {
   if (error) throw error;
 }
 
+export async function deleteAssistantErrorMessages(
+  projectId: string,
+  shouldDelete: (error: NonNullable<ChatMessage["error"]>) => boolean,
+) {
+  const { data, error } = await supabase
+    .from("messages")
+    .select("id, role, content")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  const ids = (data ?? [])
+    .filter((row) => {
+      const decoded = decodeAssistantContent(row.role, row.content);
+      return decoded.role === "assistant" && decoded.error && shouldDelete(decoded.error);
+    })
+    .map((row) => row.id);
+  if (ids.length === 0) return;
+  const { error: delErr } = await supabase.from("messages").delete().in("id", ids);
+  if (delErr) throw delErr;
+}
+
 /**
  * Trim chat history to the first `keepCount` messages (chronological).
  * Used by per-message revert so the conversation reflects the restored state.
