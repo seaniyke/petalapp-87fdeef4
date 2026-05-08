@@ -240,6 +240,10 @@ function removeTransientFailureCards(messages: ChatMessage[]): ChatMessage[] {
   );
 }
 
+function removeAllFailureCards(messages: ChatMessage[]): ChatMessage[] {
+  return removeTransientFailureCards(removeBuildFailureCards(messages));
+}
+
 function looksLikeCompletedEditClaim(text: string): boolean {
   return /\b(i['’]?ve|i have|done|updated|made|fixed|changed|added|created|implemented)\b/i.test(text);
 }
