@@ -2115,7 +2115,8 @@ function Builder() {
         // If Petal had partial output OR Layer 5 produced retry suggestions,
         // append a single message that carries both — the chips piggyback on
         // the existing assistant-suggestions render path (line ~1741).
-        if (rescued.length > 0 || errorSuggestions.length > 0) {
+        const rescuedLooksLikeDone = looksLikeCompletedEditClaim(rescued);
+        if ((rescued.length > 0 && !rescuedLooksLikeDone) || errorSuggestions.length > 0) {
           const fallbackContent = rescued.length > 0 ? rescued : msg;
           setMessages((prev) => [
             ...prev,
