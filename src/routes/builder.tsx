@@ -212,10 +212,35 @@ function isBuildFailureCardTitle(title: string | undefined): boolean {
   );
 }
 
+function isTransientFailureCardTitle(title: string | undefined): boolean {
+  if (!title) return false;
+  return (
+    title.startsWith("Petal lost the connection") ||
+    title.startsWith("Petal is reconnecting") ||
+    title.startsWith("Build service is briefly unavailable") ||
+    title.startsWith("Couldn't reach the publishing service") ||
+    title.startsWith("Publishing is taking")
+  );
+}
+
+function shouldPersistFriendlyError(err: FriendlyError): boolean {
+  return !isTransientFailureCardTitle(err.title);
+}
+
 function removeBuildFailureCards(messages: ChatMessage[]): ChatMessage[] {
   return messages.filter(
     (m) => !(m.role === "assistant" && m.error && isBuildFailureCardTitle(m.error.title)),
   );
+}
+
+function removeTransientFailureCards(messages: ChatMessage[]): ChatMessage[] {
+  return messages.filter(
+    (m) => !(m.role === "assistant" && m.error && isTransientFailureCardTitle(m.error.title)),
+  );
+}
+
+function looksLikeCompletedEditClaim(text: string): boolean {
+  return /\b(i['’]?ve|i have|done|updated|made|fixed|changed|added|created|implemented)\b/i.test(text);
 }
 
 export const Route = createFileRoute("/builder")({
