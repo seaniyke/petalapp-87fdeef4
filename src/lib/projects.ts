@@ -398,9 +398,9 @@ export async function appendMessages(projectId: string, msgs: ChatMessage[]) {
   if (error) throw error;
 }
 
-export async function deleteAssistantErrorMessages(
+export async function deleteAssistantMessagesMatching(
   projectId: string,
-  shouldDelete: (error: NonNullable<ChatMessage["error"]>) => boolean,
+  shouldDelete: (message: ChatMessage) => boolean,
 ) {
   const { data, error } = await supabase
     .from("messages")
@@ -411,12 +411,22 @@ export async function deleteAssistantErrorMessages(
   const ids = (data ?? [])
     .filter((row) => {
       const decoded = decodeAssistantContent(row.role, row.content);
-      return decoded.role === "assistant" && decoded.error && shouldDelete(decoded.error);
+      return decoded.role === "assistant" && shouldDelete(decoded);
     })
     .map((row) => row.id);
   if (ids.length === 0) return;
   const { error: delErr } = await supabase.from("messages").delete().in("id", ids);
   if (delErr) throw delErr;
+}
+
+export async function deleteAssistantErrorMessages(
+  projectId: string,
+  shouldDelete: (error: NonNullable<ChatMessage["error"]>) => boolean,
+) {
+  return deleteAssistantMessagesMatching(
+    projectId,
+    (message) => !!message.error && shouldDelete(message.error),
+  );
 }
 
 /**
