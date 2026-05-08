@@ -388,7 +388,6 @@ function Builder() {
           actionLabel: err.actionLabel,
           actionKind: err.actionKind,
           technicalDetail: err.technicalDetail,
-          transient: isTransientFailureCardTitle(err.title),
         },
       };
       setMessages((prev) => {
