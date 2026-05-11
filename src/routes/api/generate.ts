@@ -1276,7 +1276,23 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           nextFiles = applyScaffoldKit(parsed.files, {
             backend: backend ?? undefined,
           });
-        } else {
+          // Step 5: fill in any blueprint route the model forgot to emit so
+          // every nav link in the generated UI lands on a real screen.
+          try {
+            const { composeAppBlueprint, scaffoldRouteStubs } = await import(
+              "@/server/app-composer.server"
+            );
+            const bp = composeAppBlueprint(lastUserText);
+            if (bp) {
+              const have = new Set(nextFiles.map((f) => f.path));
+              for (const stub of scaffoldRouteStubs(bp)) {
+                if (!have.has(stub.path)) nextFiles.push(stub);
+              }
+            }
+          } catch {
+            // Never block a build on composer failure.
+          }
+
           // Empty / missing ops on an edit turn = the model decided
           // there was nothing safe to change. Reply conversationally
           // instead of throwing a red error card. Same treatment when
