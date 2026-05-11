@@ -3734,6 +3734,11 @@ matching file below and adapt — do not invent layouts from scratch.
 ## Multi-page routing (Phase 5)
 - \`kit-multi-page-app.tsx\` — canonical App.tsx with Router/Routes/Route, shared layout via Outlet, NavLink active states, dynamic \`/post/:slug\`, and a 404 catch-all. Copy this when the user wants more than one page.
 
+## Fintech / Web3 (key-gated, read-only — DO NOT use unless the user has provided keys)
+- \`fintech-viem-readonly.tsx\` — read-only EVM balance lookup with viem + an Alchemy/Infura RPC URL. NEVER signs or sends transactions. Requires \`VITE_ALCHEMY_RPC_URL\`.
+- \`fintech-plaid-link.tsx\` — Plaid Link launcher loaded from CDN. Requires backend routes \`/api/plaid/link-token\` + \`/api/plaid/exchange\` using server-side \`PLAID_CLIENT_ID\` + \`PLAID_SECRET\`. NEVER ship Plaid secrets to the client.
+
+
 ## Conventions
 
 - Every example uses semantic tokens only — no raw hex, no Tailwind colour names.
@@ -3745,6 +3750,139 @@ matching file below and adapt — do not invent layouts from scratch.
 /* =================================================================
  * EXPORTED LIST
  * ================================================================= */
+
+/* =================================================================
+ * FINTECH / WEB3 (advanced — only use when the user provides API keys)
+ *
+ * These are the ONLY safe seeds for real on-chain reads or bank-data
+ * pulls. They are read-only and key-gated. Never adapt them for custody,
+ * signing, or money movement — Petal does not support that.
+ * ================================================================= */
+
+const FINTECH_VIEM_READONLY = `import { useEffect, useState } from "react";
+import { createPublicClient, http, formatEther } from "viem";
+import { mainnet } from "viem/chains";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+/**
+ * READ-ONLY EVM balance lookup using viem. Safe for browser/edge.
+ * Requires VITE_ALCHEMY_RPC_URL (or any HTTPS RPC). NEVER put a private
+ * key in client code. NEVER sign or send transactions from the browser.
+ *
+ * Adapt by passing the address as a prop. Do not generalize this into
+ * a custodial wallet — Petal does not support custody.
+ */
+export default function ViemReadOnlyBalance({ address }: { address: \`0x\${string}\` }) {
+  const [eth, setEth] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const rpc = import.meta.env.VITE_ALCHEMY_RPC_URL as string | undefined;
+    if (!rpc) {
+      setError("Missing VITE_ALCHEMY_RPC_URL — add an RPC URL to enable on-chain reads.");
+      return;
+    }
+    const client = createPublicClient({ chain: mainnet, transport: http(rpc) });
+    client
+      .getBalance({ address })
+      .then((wei) => setEth(formatEther(wei)))
+      .catch((e: Error) => setError(e.message));
+  }, [address]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">On-chain balance (read-only)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {error ? (
+          <p className="text-sm text-destructive">{error}</p>
+        ) : eth === null ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : (
+          <p className="text-2xl font-semibold tabular-nums">{Number(eth).toFixed(4)} ETH</p>
+        )}
+        <p className="mt-2 text-xs text-muted-foreground">
+          Read-only via Alchemy/Infura RPC. No keys, no signing.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+`;
+
+const FINTECH_PLAID_LINK_BUTTON = `import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+
+/**
+ * Plaid Link launcher. Requires:
+ *   - A backend route POST /api/plaid/link-token that returns { link_token }
+ *     using PLAID_CLIENT_ID + PLAID_SECRET (server-side only — NEVER ship
+ *     these to the browser).
+ *   - A backend route POST /api/plaid/exchange that exchanges public_token
+ *     for an access_token and stores it server-side.
+ *
+ * Loads Plaid Link from the official CDN to avoid bundling a Node-only
+ * SDK in the browser. Adapt onSuccess to call your exchange endpoint.
+ */
+declare global {
+  interface Window {
+    Plaid?: {
+      create: (opts: {
+        token: string;
+        onSuccess: (publicToken: string, metadata: unknown) => void;
+        onExit?: (err: unknown, metadata: unknown) => void;
+      }) => { open: () => void };
+    };
+  }
+}
+
+export default function PlaidLinkButton() {
+  const [linkToken, setLinkToken] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const id = "plaid-link-script";
+    if (document.getElementById(id)) {
+      setReady(true);
+      return;
+    }
+    const s = document.createElement("script");
+    s.id = id;
+    s.src = "https://cdn.plaid.com/link/v2/stable/link-initialize.js";
+    s.onload = () => setReady(true);
+    document.body.appendChild(s);
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/plaid/link-token", { method: "POST" })
+      .then((r) => r.json())
+      .then((j: { link_token?: string }) => setLinkToken(j.link_token ?? null))
+      .catch(() => setLinkToken(null));
+  }, []);
+
+  const open = useCallback(() => {
+    if (!linkToken || !window.Plaid) return;
+    const handler = window.Plaid.create({
+      token: linkToken,
+      onSuccess: async (publicToken) => {
+        await fetch("/api/plaid/exchange", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ public_token: publicToken }),
+        });
+      },
+    });
+    handler.open();
+  }, [linkToken]);
+
+  return (
+    <Button onClick={open} disabled={!ready || !linkToken}>
+      {ready && linkToken ? "Connect a bank account" : "Loading…"}
+    </Button>
+  );
+}
+`;
 
 export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/EXAMPLES.md", content: EXAMPLES_INDEX, overwrite: true },
@@ -3823,4 +3961,8 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
 
   // Multi-page routing (Phase 5)
   { path: "src/components/examples/kit-multi-page-app.tsx", content: KIT_MULTI_PAGE_APP, overwrite: true },
+
+  // Fintech / Web3 (key-gated, read-only)
+  { path: "src/components/examples/fintech-viem-readonly.tsx", content: FINTECH_VIEM_READONLY, overwrite: true },
+  { path: "src/components/examples/fintech-plaid-link.tsx", content: FINTECH_PLAID_LINK_BUTTON, overwrite: true },
 ];

@@ -39,7 +39,10 @@ export type TemplateKey =
   | "link-in-bio"
   | "waitlist-launch"
   | "agency-studio"
-  | "booking-appointments";
+  | "booking-appointments"
+  | "crypto-wallet-demo"
+  | "neobank-demo"
+  | "trading-dashboard-demo";
 
 export interface TemplateSpec {
   key: TemplateKey;
@@ -231,6 +234,53 @@ export const TEMPLATES: Record<TemplateKey, TemplateSpec> = {
     blocks: ["Hero", "ServiceCard", "Calendar", "BookingForm", "OrderConfirmation", "SignInCard"],
     features: ["hero with book-now CTA", "services with duration + price", "calendar picker with available time slots", "booking form (name/email/notes) + confirmation", "my bookings list with cancel/reschedule"],
     keywords: [/booking/, /appointment/, /calendly/i, /schedule (a|an) (call|appointment|consultation)/, /salon booking/, /barber booking/, /clinic booking/, /tutor booking/, /reservation system/],
+  },
+  "crypto-wallet-demo": {
+    key: "crypto-wallet-demo",
+    description: "DEMO crypto wallet UI with simulated balances and transactions stored in the database — NO real on-chain custody, signing, or RPC calls.",
+    routes: ["/", "/wallet", "/send", "/receive", "/activity", "/settings", "/auth/sign-in"],
+    blocks: ["MobileNav", "StatCard", "KpiGrid", "ActivityFeed", "EmptyState", "SignInCard"],
+    features: [
+      "prominent DEMO banner on the home/wallet route stating this is simulated, not a real wallet",
+      "balance hero with clearly fake total (label it 'Demo balance')",
+      "asset list (BTC, ETH, USDC) backed by a database table seeded with mock numbers",
+      "send screen: address + amount form that inserts a row into a transactions table — never signs or broadcasts",
+      "receive screen: shows a fake address + QR placeholder",
+      "activity feed of mock transactions with status pills",
+      "do NOT import viem/ethers/web3.js or any RPC client",
+    ],
+    keywords: [/crypto wallet/, /web3 wallet/, /defi wallet/, /metamask/, /seed phrase/, /self[- ]custody/, /\bsend\b.*\b(eth|btc|usdc|sol|tokens?)\b/, /\b(eth|btc|usdc|sol)\b.*\bwallet\b/],
+  },
+  "neobank-demo": {
+    key: "neobank-demo",
+    description: "DEMO neobank / online banking UI with simulated accounts and transfers stored in the database — NO real money movement, ACH, SWIFT, KYC, or card issuing.",
+    routes: ["/", "/accounts", "/accounts/$id", "/transfer", "/cards", "/activity", "/settings", "/auth/sign-in"],
+    blocks: ["MobileNav", "StatCard", "KpiGrid", "ActivityFeed", "EmptyState", "SignInCard"],
+    features: [
+      "prominent DEMO banner stating this is a simulated bank, not a real financial institution",
+      "accounts overview with checking + savings cards (clearly labelled demo balances)",
+      "transfer flow: from/to/amount form that updates two rows in a transactions table",
+      "virtual cards screen with masked PAN placeholders",
+      "activity feed grouped by date",
+      "do NOT import Plaid, Increase, Unit, Treasury Prime, Marqeta, or any banking SDK",
+    ],
+    keywords: [/online bank/, /neobank/, /digital bank/, /banking app/, /checking account/, /savings account/, /\bbank\b.*\b(app|site|platform)\b/, /money transfer app/],
+  },
+  "trading-dashboard-demo": {
+    key: "trading-dashboard-demo",
+    description: "DEMO trading / brokerage dashboard with mock prices and a simulated portfolio in the database — NO real market data feeds, broker connections, or order execution.",
+    routes: ["/", "/markets", "/markets/$symbol", "/portfolio", "/orders", "/watchlist", "/auth/sign-in"],
+    blocks: ["SidebarShell", "KpiGrid", "StatCard", "FilterBar", "ActivityFeed", "EmptyState", "SignInCard"],
+    features: [
+      "prominent DEMO banner stating prices and orders are simulated",
+      "markets list with mock tickers, prices, and 24h change (database-seeded)",
+      "symbol detail with a placeholder chart and clearly fake quote",
+      "buy/sell ticket that inserts a mock order row — never routes to a broker",
+      "portfolio screen with positions, cost basis, and P&L computed from mock data",
+      "watchlist with add/remove",
+      "do NOT import broker SDKs (Alpaca, IB, Tradier) or live market data feeds",
+    ],
+    keywords: [/stock trading/, /brokerage/, /robinhood/i, /trading platform/, /trading app/, /\bportfolio\b.*\bstocks?\b/, /options trading/, /forex trading/],
   },
 };
 
