@@ -1001,6 +1001,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         dynamic.text +
         learningBlock +
         highStakesBlock +
+        archetypeBlock +
         visionAddendum +
         filesContext,
     },
