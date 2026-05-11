@@ -39,6 +39,7 @@ import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { loadProjectMemoryBlock } from "@/server/project-memory.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
+import { detectHighStakesIntent, highStakesClarifyInstruction } from "@/lib/high-stakes-intent";
 
 type Body = {
   messages: ChatMessage[];
@@ -307,10 +308,27 @@ export const Route = createFileRoute("/api/triage")({
 
         // Strip attachments — vision isn't needed for classification and the
         // base64 payloads would balloon the prompt.
+        // High-stakes domain guard: if the latest user turn mentions a
+        // crypto wallet, online bank, brokerage, etc., force a clarify so
+        // we don't ship a demo the user mistakes for the real thing.
+        const lastUser = [...messages].reverse().find((m) => m.role === "user");
+        const lastUserText = typeof lastUser?.content === "string" ? lastUser.content : "";
+        const highStakes = detectHighStakesIntent(lastUserText);
+        const highStakesBlock =
+          highStakes.detected && highStakes.domain
+            ? "\n\n" + highStakesClarifyInstruction(highStakes.domain)
+            : "";
+
         const chatMessages = [
           {
             role: "system",
-            content: TRIAGE_SYSTEM_PROMPT + "\n\n" + stateLine + knowledgeBlock + memoryBlock,
+            content:
+              TRIAGE_SYSTEM_PROMPT +
+              "\n\n" +
+              stateLine +
+              knowledgeBlock +
+              memoryBlock +
+              highStakesBlock,
           },
           ...messages.map((m) => ({
             role: m.role,
