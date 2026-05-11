@@ -21,6 +21,7 @@ import { PETAL_SOURCE_PLUGIN } from "./petal-source-plugin";
 import { KIT_BLOCK_FILES } from "./scaffold-kit-blocks";
 import { KIT_BLOCK_FILES_2 } from "./scaffold-kit-blocks-2";
 import { KIT_BLOCK_FILES_3 } from "./scaffold-kit-blocks-3";
+import { KIT_BLOCK_FILES_4 } from "./scaffold-kit-blocks-4";
 import { KIT_BLOCK_FILES_MOBILE } from "./scaffold-kit-mobile";
 
 type KitFile = ProjectFile & { overwrite: boolean };
