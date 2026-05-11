@@ -1293,8 +1293,8 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             // Never block a build on composer failure.
           }
         } else {
+          // Empty / missing ops on an edit turn = the model decided
 
-          // there was nothing safe to change. Reply conversationally
           // instead of throwing a red error card. Same treatment when
           // every op the model proposed touched a protected path and
           // got filtered out below.
