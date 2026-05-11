@@ -654,7 +654,7 @@ export default function PosOrderTicket() {
           {ITEMS.map((i) => (
             <div key={i.name} className="flex items-center justify-between text-sm">
               <span>{i.qty}× {i.name}</span>
-              <span className="tabular-nums">${(i.qty * i.price).toFixed(2)}</span>
+              <span className="tabular-nums">\${(i.qty * i.price).toFixed(2)}</span>
             </div>
           ))}
           <Separator />
