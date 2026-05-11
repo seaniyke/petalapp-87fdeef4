@@ -493,7 +493,7 @@ export default function DonationLanding() {
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2">
-            {[20, 50, 100].map((a) => <Button key={a} variant="outline">${a}</Button>)}
+            {[20, 50, 100].map((a) => <Button key={a} variant="outline">\${a}</Button>)}
           </div>
           <Button className="w-full"><Heart className="mr-2 h-4 w-4" />Donate now</Button>
         </CardContent>
@@ -619,7 +619,7 @@ export default function EventTicketingPage() {
                   <p className="text-xs text-muted-foreground">{t.left} left</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Badge variant="secondary">${t.price}</Badge>
+                  <Badge variant="secondary">\${t.price}</Badge>
                   <Button size="sm">Buy</Button>
                 </div>
               </CardContent>
@@ -658,10 +658,10 @@ export default function PosOrderTicket() {
             </div>
           ))}
           <Separator />
-          <div className="flex justify-between text-sm text-muted-foreground"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-          <div className="flex justify-between text-sm text-muted-foreground"><span>Tax</span><span>${tax.toFixed(2)}</span></div>
-          <div className="flex justify-between text-base font-semibold"><span>Total</span><span>${(subtotal + tax).toFixed(2)}</span></div>
-          <Button className="w-full">Charge ${(subtotal + tax).toFixed(2)}</Button>
+          <div className="flex justify-between text-sm text-muted-foreground"><span>Subtotal</span><span>\${subtotal.toFixed(2)}</span></div>
+          <div className="flex justify-between text-sm text-muted-foreground"><span>Tax</span><span>\${tax.toFixed(2)}</span></div>
+          <div className="flex justify-between text-base font-semibold"><span>Total</span><span>\${(subtotal + tax).toFixed(2)}</span></div>
+          <Button className="w-full">Charge \${(subtotal + tax).toFixed(2)}</Button>
         </CardContent>
       </Card>
     </div>
