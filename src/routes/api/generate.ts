@@ -39,6 +39,7 @@ import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design
 import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/self-recovery.server";
 import { pickDynamicSnippets, renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
 import { renderLearningBlock } from "@/server/learning-injector.server";
+import { detectHighStakesIntent, highStakesClarifyInstruction } from "@/lib/high-stakes-intent";
 import { renderPetalCapabilitiesBlock } from "@/server/petal-capabilities.server";
 import { autofixFiles } from "@/server/stream-autofixer";
 import { runPostStreamAutofix } from "@/server/post-stream-autofix.server";
