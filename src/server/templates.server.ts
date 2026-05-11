@@ -381,7 +381,7 @@ export const TEMPLATES: Record<TemplateKey, TemplateSpec> = {
     routes: ["/", "/join", "/dashboard", "/library", "/library/$slug", "/profile", "/auth/sign-in"],
     blocks: ["Hero", "PricingTable", "SidebarShell", "CourseCard", "ProfileHeader", "SignInCard"],
     features: ["public landing with member benefits", "member-only library grid", "content detail (article/video)", "member profile"],
-    keywords: [/membership site/, /paid community/, /\bsubstack\b/i.compile ? /\bsubstack\b/i : /substack/i, /patreon/i, /\bcircle\b/i],
+    keywords: [/membership site/, /paid community/, /substack/i, /patreon/i, /\bcircle\b/i],
   },
   "helpdesk-tickets": {
     key: "helpdesk-tickets",
