@@ -3707,6 +3707,12 @@ export const KIT_FILES: KitFile[] = [
   // pricing, hero, forms, and tables. Lives in examples-pack.ts to keep this
   // file from getting unwieldy.
   ...EXAMPLES_PACK,
+  // Volume 2: domain references for the 500-system expansion (kanban,
+  // mobile shells, telehealth-demo, music-demo, directory, job board, IoT,
+  // education, AI productivity, civic/donation, calendar/booking,
+  // legal-demo, ticketing, POS, CRM, helpdesk, analytics, community,
+  // portfolio).
+  ...EXAMPLES_PACK_2,
   // Phase-1 expansion: new atoms (Marquee/Stat/EmptyState/Section/etc.) +
   // composed section blocks (Hero/Features variants) so generated landing
   // pages stop converging on the same centered-hero + 3-card layout.
