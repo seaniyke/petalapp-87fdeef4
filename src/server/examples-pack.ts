@@ -3956,4 +3956,8 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
 
   // Multi-page routing (Phase 5)
   { path: "src/components/examples/kit-multi-page-app.tsx", content: KIT_MULTI_PAGE_APP, overwrite: true },
+
+  // Fintech / Web3 (key-gated, read-only)
+  { path: "src/components/examples/fintech-viem-readonly.tsx", content: FINTECH_VIEM_READONLY, overwrite: true },
+  { path: "src/components/examples/fintech-plaid-link.tsx", content: FINTECH_PLAID_LINK_BUTTON, overwrite: true },
 ];
