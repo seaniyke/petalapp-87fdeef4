@@ -39,7 +39,10 @@ export type TemplateKey =
   | "link-in-bio"
   | "waitlist-launch"
   | "agency-studio"
-  | "booking-appointments";
+  | "booking-appointments"
+  | "crypto-wallet-demo"
+  | "neobank-demo"
+  | "trading-dashboard-demo";
 
 export interface TemplateSpec {
   key: TemplateKey;
