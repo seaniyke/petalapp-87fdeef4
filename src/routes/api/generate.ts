@@ -987,6 +987,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         designBlock +
         dynamic.text +
         learningBlock +
+        highStakesBlock +
         visionAddendum +
         filesContext,
     },
