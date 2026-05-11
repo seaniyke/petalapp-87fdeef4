@@ -39,6 +39,7 @@ import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { loadProjectMemoryBlock } from "@/server/project-memory.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
+import { detectHighStakesIntent, highStakesClarifyInstruction } from "@/lib/high-stakes-intent";
 
 type Body = {
   messages: ChatMessage[];
