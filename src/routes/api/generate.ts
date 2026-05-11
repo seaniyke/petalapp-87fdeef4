@@ -800,6 +800,30 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   const isInitial = currentFiles.length === 0;
   const baseSystem = isInitial ? SYSTEM_PROMPT_INITIAL : SYSTEM_PROMPT_PATCH;
 
+  // Step 5: on initial builds, pre-stub TanStack route files for the
+  // composed blueprint so the model gets a pre-laid filesystem and just
+  // fills in screens. Stubs are visible to the model via filesContext.
+  if (isInitial) {
+    try {
+      const lastUserMsgForStubs = [...messages].reverse().find((m) => m.role === "user");
+      const briefForStubs =
+        typeof lastUserMsgForStubs?.content === "string" ? lastUserMsgForStubs.content : "";
+      if (briefForStubs) {
+        const { composeAppBlueprint, scaffoldRouteStubs } = await import(
+          "@/server/app-composer.server"
+        );
+        const blueprint = composeAppBlueprint(briefForStubs);
+        if (blueprint) {
+          const stubs = scaffoldRouteStubs(blueprint);
+          const existing = new Set(currentFiles.map((f) => f.path));
+          for (const s of stubs) if (!existing.has(s.path)) currentFiles.push(s);
+        }
+      }
+    } catch {
+      // Never block a build on stub failure.
+    }
+  }
+
   // Look up the project's attached backend (BYO Supabase). When present,
   // we both inject the pre-configured client and tell the AI it exists.
   const backend = body.projectId ? await lookupBackendForGenerate(body.projectId) : null;
