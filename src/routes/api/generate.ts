@@ -958,6 +958,19 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     hasBackend: Boolean(backend),
   });
 
+  // High-stakes domain honesty: if the latest user turn asks for a crypto
+  // wallet, online bank, brokerage, etc., instruct the model to clearly
+  // label the build as a DEMO and render an in-app notice card so users
+  // never mistake it for a production-grade financial product.
+  const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+  const lastUserText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
+  const hs = detectHighStakesIntent(lastUserText);
+  const highStakesBlock =
+    hs.detected && hs.domain
+      ? `\n\n### High-stakes domain — DEMO ONLY\n${highStakesClarifyInstruction(hs.domain)}\nWhen you build, you MUST:\n- Render a visible, dismissible notice on the home/landing route stating this is a DEMO with simulated data, not a real ${hs.domain.replace("-", " ")}.\n- Use clearly fake placeholder balances/amounts (e.g. labelled "Demo balance").\n- NEVER import on-chain libraries (viem, ethers, web3.js), banking SDKs (Plaid, Increase, Unit), or write code that pretends to move real money or sign real transactions.\n- In your summary to the user, restate the limitation in one sentence and suggest which provider keys would be needed to make it real.\n`
+      : "";
+
+
   const chatMessages = [
     {
       role: "system",
