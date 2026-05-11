@@ -21,6 +21,7 @@ import { PETAL_SOURCE_PLUGIN } from "./petal-source-plugin";
 import { KIT_BLOCK_FILES } from "./scaffold-kit-blocks";
 import { KIT_BLOCK_FILES_2 } from "./scaffold-kit-blocks-2";
 import { KIT_BLOCK_FILES_3 } from "./scaffold-kit-blocks-3";
+import { KIT_BLOCK_FILES_4 } from "./scaffold-kit-blocks-4";
 import { KIT_BLOCK_FILES_MOBILE } from "./scaffold-kit-mobile";
 
 type KitFile = ProjectFile & { overwrite: boolean };
@@ -3721,6 +3722,15 @@ export const KIT_FILES: KitFile[] = [
   // (ProductCard/CartLineItem/CheckoutSummary). Defined separately to keep
   // diffs reviewable.
   ...KIT_BLOCK_FILES_3,
+  // Phase-4 expansion: domain section blocks for the Step-2 templates —
+  // commerce/booking (ServiceCard, MenuSection, BookingForm), content
+  // (ArticleCard, AuthorCard, EpisodeCard, AudioPlayer), community
+  // (ThreadCard, ReplyList, ComposeSheet), AI (ChatStream, MessageBubble,
+  // PromptCard), mobile (MobileNav, FeedCard, ProfileHeader, LinkButton,
+  // SocialRow), education (CourseCard, LessonPlayer), fintech-demo
+  // (PriceTicker, DemoBanner), placeholders (Map/SeatMap), and aesthetics
+  // (Gallery/Heatmap/CategoryGrid).
+  ...KIT_BLOCK_FILES_4,
   // Mobile-feel primitives: SafeArea/MobileHeader/BottomTabBar/PullToRefresh
   // + MobileScreen wrapper + ExampleMobileApp shell. Use when the user asks
   // for a native iOS/Android app (Petal ships as Capacitor under the hood).
