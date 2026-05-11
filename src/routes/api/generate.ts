@@ -971,6 +971,19 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
       ? `\n\n### High-stakes domain — DEMO ONLY\n${highStakesClarifyInstruction(hs.domain)}\nWhen you build, you MUST:\n- Render a visible, dismissible notice on the home/landing route stating this is a DEMO with simulated data, not a real ${hs.domain.replace("-", " ")}.\n- Use clearly fake placeholder balances/amounts (e.g. labelled "Demo balance").\n- NEVER import on-chain libraries (viem, ethers, web3.js), banking SDKs (Plaid, Increase, Unit), or write code that pretends to move real money or sign real transactions.\n- In your summary to the user, restate the limitation in one sentence and suggest which provider keys would be needed to make it real.\n`
       : "";
 
+  // Archetype router: pick the best system-catalog entry for this brief and
+  // inject its reality/capability guardrail. Falls back silently if no
+  // confident match — the existing template scorer still runs.
+  let archetypeBlock = "";
+  try {
+    const { routeBrief } = await import("@/server/semantic-router.server");
+    const { renderArchetypeGuardrail } = await import("@/server/system-catalog.server");
+    const match = routeBrief(lastUserText);
+    if (match) archetypeBlock = renderArchetypeGuardrail(match.archetype);
+  } catch {
+    // Never block a build on router failure.
+  }
+
 
   const chatMessages = [
     {
