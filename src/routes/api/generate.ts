@@ -971,17 +971,16 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
       ? `\n\n### High-stakes domain — DEMO ONLY\n${highStakesClarifyInstruction(hs.domain)}\nWhen you build, you MUST:\n- Render a visible, dismissible notice on the home/landing route stating this is a DEMO with simulated data, not a real ${hs.domain.replace("-", " ")}.\n- Use clearly fake placeholder balances/amounts (e.g. labelled "Demo balance").\n- NEVER import on-chain libraries (viem, ethers, web3.js), banking SDKs (Plaid, Increase, Unit), or write code that pretends to move real money or sign real transactions.\n- In your summary to the user, restate the limitation in one sentence and suggest which provider keys would be needed to make it real.\n`
       : "";
 
-  // Archetype router: pick the best system-catalog entry for this brief and
-  // inject its reality/capability guardrail. Falls back silently if no
-  // confident match — the existing template scorer still runs.
+  // App Composer (Step 5): collapse archetype + template + kit blocks +
+  // examples into ONE structured blueprint. Replaces the legacy archetype-
+  // only block. Falls back silently if no confident match.
   let archetypeBlock = "";
   try {
-    const { routeBrief } = await import("@/server/semantic-router.server");
-    const { renderArchetypeGuardrail } = await import("@/server/system-catalog.server");
-    const match = routeBrief(lastUserText);
-    if (match) archetypeBlock = renderArchetypeGuardrail(match.archetype);
+    const { buildBlueprintFor } = await import("@/server/app-composer.server");
+    const composed = buildBlueprintFor(lastUserText);
+    if (composed) archetypeBlock = composed.promptBlock;
   } catch {
-    // Never block a build on router failure.
+    // Never block a build on composer failure.
   }
 
 
@@ -1277,9 +1276,25 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           nextFiles = applyScaffoldKit(parsed.files, {
             backend: backend ?? undefined,
           });
+          // Step 5: fill in any blueprint route the model forgot to emit so
+          // every nav link in the generated UI lands on a real screen.
+          try {
+            const { composeAppBlueprint, scaffoldRouteStubs } = await import(
+              "@/server/app-composer.server"
+            );
+            const bp = composeAppBlueprint(lastUserText);
+            if (bp) {
+              const have = new Set(nextFiles.map((f) => f.path));
+              for (const stub of scaffoldRouteStubs(bp)) {
+                if (!have.has(stub.path)) nextFiles.push(stub);
+              }
+            }
+          } catch {
+            // Never block a build on composer failure.
+          }
         } else {
           // Empty / missing ops on an edit turn = the model decided
-          // there was nothing safe to change. Reply conversationally
+
           // instead of throwing a red error card. Same treatment when
           // every op the model proposed touched a protected path and
           // got filtered out below.
