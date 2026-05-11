@@ -17,6 +17,7 @@
 import type { ProjectFile } from "./generate.server";
 import { backendKit, BACKEND_DEPS } from "./backend-kit";
 import { EXAMPLES_PACK } from "./examples-pack";
+import { EXAMPLES_PACK_2 } from "./examples-pack-2";
 import { PETAL_SOURCE_PLUGIN } from "./petal-source-plugin";
 import { KIT_BLOCK_FILES } from "./scaffold-kit-blocks";
 import { KIT_BLOCK_FILES_2 } from "./scaffold-kit-blocks-2";
