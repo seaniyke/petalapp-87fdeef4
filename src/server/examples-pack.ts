@@ -3734,6 +3734,11 @@ matching file below and adapt — do not invent layouts from scratch.
 ## Multi-page routing (Phase 5)
 - \`kit-multi-page-app.tsx\` — canonical App.tsx with Router/Routes/Route, shared layout via Outlet, NavLink active states, dynamic \`/post/:slug\`, and a 404 catch-all. Copy this when the user wants more than one page.
 
+## Fintech / Web3 (key-gated, read-only — DO NOT use unless the user has provided keys)
+- \`fintech-viem-readonly.tsx\` — read-only EVM balance lookup with viem + an Alchemy/Infura RPC URL. NEVER signs or sends transactions. Requires \`VITE_ALCHEMY_RPC_URL\`.
+- \`fintech-plaid-link.tsx\` — Plaid Link launcher loaded from CDN. Requires backend routes \`/api/plaid/link-token\` + \`/api/plaid/exchange\` using server-side \`PLAID_CLIENT_ID\` + \`PLAID_SECRET\`. NEVER ship Plaid secrets to the client.
+
+
 ## Conventions
 
 - Every example uses semantic tokens only — no raw hex, no Tailwind colour names.
