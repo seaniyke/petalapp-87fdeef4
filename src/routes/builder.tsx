@@ -2743,14 +2743,14 @@ function Builder() {
   }, [files, lastUserPrompt, send]);
 
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
       {/* First-run product tour. Self-gates on localStorage so it shows once per browser. */}
       <Suspense fallback={null}>
         <FirstRunTour />
       </Suspense>
-      {/* Top bar */}
-      <div className="safe-top sticky top-0 z-30 shrink-0 border-b border-border bg-card shadow-[0_1px_0_0_oklch(0.91_0.018_70),0_8px_24px_-16px_oklch(0.2_0.04_30/0.12)]">
-      <header className="grid h-14 grid-cols-[auto_1fr_auto] items-center gap-2 px-3 sm:px-4">
+      {/* Top bar — iOS-style translucent material, never moves */}
+      <div className="safe-top sticky top-0 z-30 shrink-0 border-b border-border/60 bg-card/80 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65">
+      <header className="grid h-12 grid-cols-[auto_1fr_auto] items-center gap-2 px-3 sm:h-14 sm:px-4">
         {/* Left: hamburger (mobile) + back/title (desktop) */}
         <div className="flex min-w-0 items-center gap-2">
           {/* Mobile: hamburger opens the projects drawer */}
@@ -3047,26 +3047,26 @@ function Builder() {
       <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[360px_1fr]">
         {/* Chat */}
         <aside
-          className={`flex min-h-0 flex-col border-b border-border bg-sidebar md:flex md:border-b-0 md:border-r ${
+          className={`min-h-0 flex-col border-b border-border/60 bg-sidebar md:flex md:border-b-0 md:border-r ${
             mobileTab === "chat" ? "flex" : "hidden"
           }`}
         >
-          <div className="flex items-center justify-between border-b-2 border-foreground/10 bg-sidebar px-4 py-3">
+          <div className="flex shrink-0 items-center justify-between border-b border-border/50 bg-sidebar/80 px-4 py-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-sidebar/60">
             <div className="flex items-center gap-2">
               <span className="grid h-5 w-5 place-items-center rounded-md bg-foreground text-background">
                 <MessageSquare className="h-3 w-3" />
               </span>
-              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-foreground">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground/80">
                 Conversation
               </span>
             </div>
             {messages.length > 0 && (
-              <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+              <span className="rounded-full bg-foreground/8 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
                 {messages.length}
               </span>
             )}
           </div>
-          <div className="flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-5">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-5 sm:px-5">
             {bootstrapping && (
               <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-3.5 py-1.5 text-[12px] text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading project…
@@ -4003,7 +4003,7 @@ function Builder() {
               e.preventDefault();
               submitPrompt(input);
             }}
-            className="safe-bottom border-t border-border bg-card p-3"
+            className="safe-bottom shrink-0 border-t border-border/50 bg-card/80 px-3 pb-3 pt-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65"
           >
             {/* Queued messages — shown when the user typed while Petal was busy. */}
             {pendingQueue.length > 0 && (
@@ -4215,8 +4215,8 @@ function Builder() {
             )}
             {/* Composer: textarea on top, integrated toolbar (attach + mode toggle on left, send on right) below. Auto-expands as user types. */}
             <div
-              className={`flex flex-col gap-2 rounded-2xl border-2 bg-background p-2 shadow-sm transition focus-within:border-primary focus-within:shadow-md ${
-                mode === "discuss" ? "border-foreground/25" : "border-border"
+              className={`flex flex-col gap-1.5 rounded-[26px] border bg-background/90 p-2 shadow-[0_1px_2px_0_oklch(0.2_0.04_30/0.04),0_8px_24px_-12px_oklch(0.2_0.04_30/0.10)] backdrop-blur-xl transition focus-within:border-primary/60 focus-within:shadow-[0_2px_8px_0_oklch(0.2_0.04_30/0.06),0_12px_32px_-12px_oklch(0.2_0.04_30/0.16)] ${
+                mode === "discuss" ? "border-foreground/20" : "border-border/70"
               }`}
             >
               <textarea
@@ -4290,7 +4290,7 @@ function Builder() {
                   <button
                     type="submit"
                   disabled={bootstrapping || !input.trim()}
-                  className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-background shadow-md transition hover:scale-105 hover:shadow-lg active:scale-95 disabled:opacity-30 disabled:shadow-none disabled:hover:scale-100"
+                  className="grid h-9 w-9 place-items-center rounded-full bg-[oklch(0.62_0.19_255)] text-white shadow-[0_2px_8px_-2px_oklch(0.62_0.19_255/0.5)] transition hover:brightness-110 active:scale-95 disabled:bg-foreground/20 disabled:text-foreground/40 disabled:shadow-none"
                   title={
                     busy || discussBusy
                       ? "Add to queue"
@@ -4302,7 +4302,7 @@ function Builder() {
                   {mode === "discuss" ? (
                     <MessageSquare className="h-4 w-4" />
                   ) : (
-                    <Send className="h-4 w-4" />
+                    <Send className="h-3.5 w-3.5 -translate-x-[1px]" />
                   )}
                 </button>
                 </div>
