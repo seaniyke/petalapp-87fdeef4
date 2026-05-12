@@ -76,6 +76,7 @@ import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivit
 import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { NextStepsCard } from "@/components/NextStepsCard";
 import { PlanProposalCard } from "@/components/PlanProposalCard";
+import { tryParseQuickEdit, applyQuickEditToFile } from "@/lib/quick-edit";
 
 
 import {
@@ -527,6 +528,63 @@ function Builder() {
   };
   const [pickedElement, setPickedElement] = useState<PickedElement | null>(null);
   const [pickInstruction, setPickInstruction] = useState("");
+  /**
+   * Submit handler for the picker dialog. First tries a deterministic
+   * Tailwind-class patch (zero LLM call); falls back to a structured prompt
+   * for the model otherwise.
+   */
+  const runPickerSubmit = async () => {
+    const el = pickedElement;
+    const instruction = pickInstruction.trim();
+    if (!el || !instruction) return;
+
+    // --- Fast path: deterministic visual edit ---
+    const plan = tryParseQuickEdit(instruction);
+    if (plan && el.sourceFile && el.sourceLine && project) {
+      const sourceLine = parseInt(el.sourceLine, 10);
+      const file = files.find((f) => f.path === el.sourceFile);
+      if (file && Number.isFinite(sourceLine)) {
+        const result = applyQuickEditToFile(file.content, sourceLine, plan.ops);
+        if (result) {
+          const nextFiles = files.map((f) =>
+            f.path === el.sourceFile ? { ...f, content: result.content } : f,
+          );
+          setFiles(nextFiles);
+          try {
+            await saveProjectFiles(project.id, nextFiles);
+            toast.success(`Instant edit · ${plan.summary}`, {
+              description: "Patched directly — no AI used.",
+            });
+            setPickedElement(null);
+            setPickInstruction("");
+            return;
+          } catch (err) {
+            console.error("[quick-edit] save failed, falling back to AI", err);
+            // fall through to LLM path
+          }
+        }
+      }
+    }
+
+    // --- Fallback: structured prompt to the model ---
+    const lines: string[] = [
+      `Edit a single element in the preview:`,
+      `- Tag: <${el.tag}>`,
+    ];
+    if (el.text) lines.push(`- Visible text: "${el.text}"`);
+    if (el.id) lines.push(`- id: ${el.id}`);
+    if (el.classes) lines.push(`- className: ${el.classes}`);
+    if (el.role) lines.push(`- role: ${el.role}`);
+    if (el.ariaLabel) lines.push(`- aria-label: ${el.ariaLabel}`);
+    if (el.sourceFile) {
+      lines.push(`- Source file: ${el.sourceFile}${el.sourceLine ? `:${el.sourceLine}` : ""}`);
+    }
+    lines.push("", `Change requested: ${instruction}`);
+    lines.push("", `Find this exact element in the project and apply the change. Make the smallest possible edit; do not redesign other parts of the app.`);
+    submitPrompt(lines.join("\n"));
+    setPickedElement(null);
+    setPickInstruction("");
+  };
   // Runtime error captured from the live preview iframe. Surfaces a banner
   // above the composer with a one-click "Fix this" button that routes through
   // the existing free-charge auto-fix path. Dismissed by the user OR cleared
@@ -4501,28 +4559,21 @@ function Builder() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
-                  if (!pickInstruction.trim()) return;
-                  const el = pickedElement;
-                  const lines: string[] = [
-                    `Edit a single element in the preview:`,
-                    `- Tag: <${el.tag}>`,
-                  ];
-                  if (el.text) lines.push(`- Visible text: "${el.text}"`);
-                  if (el.id) lines.push(`- id: ${el.id}`);
-                  if (el.classes) lines.push(`- className: ${el.classes}`);
-                  if (el.role) lines.push(`- role: ${el.role}`);
-                  if (el.ariaLabel) lines.push(`- aria-label: ${el.ariaLabel}`);
-                  if (el.sourceFile) {
-                    lines.push(`- Source file: ${el.sourceFile}${el.sourceLine ? `:${el.sourceLine}` : ""}`);
-                  }
-                  lines.push("", `Change requested: ${pickInstruction.trim()}`);
-                  lines.push("", `Find this exact element in the project and apply the change. Make the smallest possible edit; do not redesign other parts of the app.`);
-                  submitPrompt(lines.join("\n"));
-                  setPickedElement(null);
-                  setPickInstruction("");
+                  void runPickerSubmit();
                 }
               }}
             />
+            {(() => {
+              const preview = pickInstruction.trim() ? tryParseQuickEdit(pickInstruction) : null;
+              if (!preview) return null;
+              return (
+                <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-[10px] text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
+                  <Wand2 className="h-3 w-3" />
+                  <span className="font-medium">Instant edit</span>
+                  <span className="opacity-75">· {preview.summary} · no AI used</span>
+                </div>
+              );
+            })()}
             <div className="mt-3 flex items-center justify-between">
               <span className="text-[10px] text-muted-foreground">⌘/Ctrl + Enter to send</span>
               <div className="flex items-center gap-2">
@@ -4534,27 +4585,7 @@ function Builder() {
                 </button>
                 <button
                   disabled={!pickInstruction.trim()}
-                  onClick={() => {
-                    const el = pickedElement;
-                    if (!el) return;
-                    const lines: string[] = [
-                      `Edit a single element in the preview:`,
-                      `- Tag: <${el.tag}>`,
-                    ];
-                    if (el.text) lines.push(`- Visible text: "${el.text}"`);
-                    if (el.id) lines.push(`- id: ${el.id}`);
-                    if (el.classes) lines.push(`- className: ${el.classes}`);
-                    if (el.role) lines.push(`- role: ${el.role}`);
-                    if (el.ariaLabel) lines.push(`- aria-label: ${el.ariaLabel}`);
-                    if (el.sourceFile) {
-                      lines.push(`- Source file: ${el.sourceFile}${el.sourceLine ? `:${el.sourceLine}` : ""}`);
-                    }
-                    lines.push("", `Change requested: ${pickInstruction.trim()}`);
-                    lines.push("", `Find this exact element in the project and apply the change. Make the smallest possible edit; do not redesign other parts of the app.`);
-                    submitPrompt(lines.join("\n"));
-                    setPickedElement(null);
-                    setPickInstruction("");
-                  }}
+                  onClick={() => void runPickerSubmit()}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-40"
                 >
                   <Wand2 className="h-3.5 w-3.5" /> Send to Petal
