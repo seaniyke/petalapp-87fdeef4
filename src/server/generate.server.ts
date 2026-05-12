@@ -645,6 +645,13 @@ export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
           `AI returned an incomplete placeholder patch for ${op.path}. It must resend the full file contents.`,
         );
       }
+      if (isDestructiveShrink(prev, content, op.path)) {
+        const prevLines = prev.split("\n").length;
+        const nextLines = content.split("\n").length;
+        throw new Error(
+          `destructive_shrink: ${op.path} would shrink from ${prevLines} to ${nextLines} lines. This usually means you returned a stub instead of the full edit. Re-emit this change as one or more \`replace\` ops targeting only the snippet you want to change.`,
+        );
+      }
       if (shouldRequireReplaceOp(prev, content, op.path)) {
         throw new Error(
           `must_use_replace: ${op.path} is a large existing file and your edit kept most of it unchanged. Re-emit this change as one or more \`replace\` ops with the exact snippet to swap, instead of resending the whole file.`,
