@@ -4263,8 +4263,32 @@ function Builder() {
                     disabled={bootstrapping}
                   />
                 </div>
-                <button
-                  type="submit"
+                <div className="flex items-center gap-1.5">
+                  {voice.supported && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!voice.listening) voiceBaseRef.current = input;
+                        voice.toggle();
+                      }}
+                      aria-pressed={voice.listening}
+                      className={`grid h-9 w-9 place-items-center rounded-full transition ${
+                        voice.listening
+                          ? "bg-red-500/15 text-red-500 ring-2 ring-red-500/40 animate-pulse"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                      title={
+                        voice.listening
+                          ? "Stop dictation"
+                          : voice.error ?? "Dictate — speak your prompt"
+                      }
+                      aria-label={voice.listening ? "Stop dictation" : "Start dictation"}
+                    >
+                      {voice.listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </button>
+                  )}
+                  <button
+                    type="submit"
                   disabled={bootstrapping || !input.trim()}
                   className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-background shadow-md transition hover:scale-105 hover:shadow-lg active:scale-95 disabled:opacity-30 disabled:shadow-none disabled:hover:scale-100"
                   title={
