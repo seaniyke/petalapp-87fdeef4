@@ -2743,14 +2743,14 @@ function Builder() {
   }, [files, lastUserPrompt, send]);
 
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
       {/* First-run product tour. Self-gates on localStorage so it shows once per browser. */}
       <Suspense fallback={null}>
         <FirstRunTour />
       </Suspense>
-      {/* Top bar */}
-      <div className="safe-top sticky top-0 z-30 shrink-0 border-b border-border bg-card shadow-[0_1px_0_0_oklch(0.91_0.018_70),0_8px_24px_-16px_oklch(0.2_0.04_30/0.12)]">
-      <header className="grid h-14 grid-cols-[auto_1fr_auto] items-center gap-2 px-3 sm:px-4">
+      {/* Top bar — iOS-style translucent material, never moves */}
+      <div className="safe-top sticky top-0 z-30 shrink-0 border-b border-border/60 bg-card/80 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65">
+      <header className="grid h-12 grid-cols-[auto_1fr_auto] items-center gap-2 px-3 sm:h-14 sm:px-4">
         {/* Left: hamburger (mobile) + back/title (desktop) */}
         <div className="flex min-w-0 items-center gap-2">
           {/* Mobile: hamburger opens the projects drawer */}
