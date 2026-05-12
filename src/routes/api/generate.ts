@@ -738,6 +738,9 @@ function deterministicPatchFallback(args: {
   currentFiles: ProjectFile[];
   latestUserContent: string;
 }): ParsedProjectPayload | null {
+  const heroBackground = deterministicHeroBackgroundFallback(args);
+  if (heroBackground) return heroBackground;
+
   const prompt = args.latestUserContent.toLowerCase();
   const isLandingExpansion =
     /\b(add|more|expand|extra|new|additional|content|contents|section|sections)\b/i.test(prompt) &&
