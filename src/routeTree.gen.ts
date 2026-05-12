@@ -22,6 +22,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
+import { Route as PacksSlugRouteImport } from './routes/packs.$slug'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as BillingReturnRouteImport } from './routes/billing.return'
@@ -144,6 +145,11 @@ const ShareTokenRoute = ShareTokenRouteImport.update({
   id: '/share/$token',
   path: '/share/$token',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PacksSlugRoute = PacksSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => PacksRoute,
 } as any)
 const PSlugRoute = PSlugRouteImport.update({
   id: '/p/$slug',
@@ -447,7 +453,7 @@ export interface FileRoutesByFullPath {
   '/builder': typeof BuilderRoute
   '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
-  '/packs': typeof PacksRoute
+  '/packs': typeof PacksRouteWithChildren
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -477,6 +483,7 @@ export interface FileRoutesByFullPath {
   '/billing/return': typeof BillingReturnRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
+  '/packs/$slug': typeof PacksSlugRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
@@ -519,7 +526,7 @@ export interface FileRoutesByTo {
   '/builder': typeof BuilderRoute
   '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
-  '/packs': typeof PacksRoute
+  '/packs': typeof PacksRouteWithChildren
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -549,6 +556,7 @@ export interface FileRoutesByTo {
   '/billing/return': typeof BillingReturnRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
+  '/packs/$slug': typeof PacksSlugRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
@@ -592,7 +600,7 @@ export interface FileRoutesById {
   '/builder': typeof BuilderRoute
   '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
-  '/packs': typeof PacksRoute
+  '/packs': typeof PacksRouteWithChildren
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -622,6 +630,7 @@ export interface FileRoutesById {
   '/billing/return': typeof BillingReturnRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
+  '/packs/$slug': typeof PacksSlugRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
@@ -696,6 +705,7 @@ export interface FileRouteTypes {
     | '/billing/return'
     | '/email/unsubscribe'
     | '/p/$slug'
+    | '/packs/$slug'
     | '/share/$token'
     | '/admin/'
     | '/api/admin/ai-providers'
@@ -768,6 +778,7 @@ export interface FileRouteTypes {
     | '/billing/return'
     | '/email/unsubscribe'
     | '/p/$slug'
+    | '/packs/$slug'
     | '/share/$token'
     | '/admin'
     | '/api/admin/ai-providers'
@@ -840,6 +851,7 @@ export interface FileRouteTypes {
     | '/billing/return'
     | '/email/unsubscribe'
     | '/p/$slug'
+    | '/packs/$slug'
     | '/share/$token'
     | '/admin/'
     | '/api/admin/ai-providers'
@@ -883,7 +895,7 @@ export interface RootRouteChildren {
   BuilderRoute: typeof BuilderRoute
   DocsRoute: typeof DocsRoute
   GalleryRoute: typeof GalleryRoute
-  PacksRoute: typeof PacksRoute
+  PacksRoute: typeof PacksRouteWithChildren
   ProfileRoute: typeof ProfileRoute
   ProjectsRoute: typeof ProjectsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -1041,6 +1053,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/share/$token'
       preLoaderRoute: typeof ShareTokenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/packs/$slug': {
+      id: '/packs/$slug'
+      path: '/$slug'
+      fullPath: '/packs/$slug'
+      preLoaderRoute: typeof PacksSlugRouteImport
+      parentRoute: typeof PacksRoute
     }
     '/p/$slug': {
       id: '/p/$slug'
@@ -1444,6 +1463,16 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface PacksRouteChildren {
+  PacksSlugRoute: typeof PacksSlugRoute
+}
+
+const PacksRouteChildren: PacksRouteChildren = {
+  PacksSlugRoute: PacksSlugRoute,
+}
+
+const PacksRouteWithChildren = PacksRoute._addFileChildren(PacksRouteChildren)
+
 interface ApiDomainsRouteChildren {
   ApiDomainsDnsCheckRoute: typeof ApiDomainsDnsCheckRoute
 }
@@ -1462,7 +1491,7 @@ const rootRouteChildren: RootRouteChildren = {
   BuilderRoute: BuilderRoute,
   DocsRoute: DocsRoute,
   GalleryRoute: GalleryRoute,
-  PacksRoute: PacksRoute,
+  PacksRoute: PacksRouteWithChildren,
   ProfileRoute: ProfileRoute,
   ProjectsRoute: ProjectsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
