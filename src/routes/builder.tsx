@@ -1438,6 +1438,12 @@ function Builder() {
          *  visible thread shows a friendly system note instead of the raw
          *  internal prompt. Credits ARE charged — this is real product work. */
         isAutoContinue?: boolean;
+        /** Plan Mode v1 — request a scoped plan first; the build doesn't run. */
+        planFirst?: boolean;
+        /** Plan Mode v1 — resume a previously-approved plan. */
+        approvedPlanId?: string;
+        /** Plan Mode v1 — user's edited subset of approved file paths. */
+        allowedPaths?: string[];
       } = {},
     ) => {
       const text = content.trim();
