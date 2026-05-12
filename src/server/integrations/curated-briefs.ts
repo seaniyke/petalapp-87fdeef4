@@ -839,4 +839,326 @@ Note: this project uses Lovable Cloud (Supabase) auth by default. Only swap to C
   \`\`\`
 - Pitfall: searchable / filterable / sortable attributes must be configured on the index BEFORE indexing for filters to work.`,
   },
+
+  /* ─── Layer I — Fintech / banking / BaaS ───────────────────────────── */
+
+  // (plaid is already defined earlier in this file — see line ~325)
+
+  teller: {
+    displayName: "Teller (US bank data)",
+    npmPackage: null,
+    docsUrl: "https://teller.io/docs",
+    requiredSecrets: ["TELLER_APPLICATION_ID", "TELLER_SIGNING_SECRET"],
+    promptBlock: `### Universal Integration: Teller
+- No official Node SDK — call REST directly from a server function with \`fetch\`.
+- Secrets: \`TELLER_APPLICATION_ID\` (public, used in browser SDK), \`TELLER_SIGNING_SECRET\` (server-only, for webhook verification). Auth uses mTLS — upload your client certificate via Teller dashboard, attach as Node \`https.Agent\` or Cloudflare Workers \`fetch\` with mTLS bindings.
+- Flow: client SDK \`TellerConnect.setup\` → user logs into bank → enrollment token → server calls \`https://api.teller.io/accounts\` etc.
+- Pitfall: Teller requires per-environment client certificates. Workers runtime can't load arbitrary cert files at runtime — register the cert at deploy time. Always verify webhook \`Teller-Signature\` before processing.`,
+  },
+
+  unit: {
+    displayName: "Unit (BaaS)",
+    npmPackage: "@unit-finance/unit-node-sdk",
+    docsUrl: "https://docs.unit.co/",
+    requiredSecrets: ["UNIT_API_TOKEN"],
+    promptBlock: `### Universal Integration: Unit
+- Install: \`npm install @unit-finance/unit-node-sdk\`
+- Secret: \`UNIT_API_TOKEN\` (Bearer; sandbox vs prod is by token, not URL switch)
+- Server example (create a customer):
+  \`\`\`ts
+  import { Unit } from "@unit-finance/unit-node-sdk";
+  const unit = new Unit(process.env.UNIT_API_TOKEN!, "https://api.s.unit.sh");
+  const customer = await unit.customers.create({ type: "individualCustomer", attributes: { /* ... */ } });
+  \`\`\`
+- Webhooks: register at Unit dashboard, verify HMAC \`X-Signature\` on a public route BEFORE processing.
+- Pitfall: ALL money-moving endpoints require an \`Idempotency-Key\` header (UUID). Without it, retries can double-charge. Customer KYC via Unit's Onboarding flow is required before any transaction.`,
+  },
+
+  increase: {
+    displayName: "Increase (US BaaS)",
+    npmPackage: "increase",
+    docsUrl: "https://increase.com/documentation",
+    requiredSecrets: ["INCREASE_API_KEY"],
+    promptBlock: `### Universal Integration: Increase
+- Install: \`npm install increase\`
+- Secret: \`INCREASE_API_KEY\` (Bearer)
+- Server example:
+  \`\`\`ts
+  import Increase from "increase";
+  const client = new Increase({ apiKey: process.env.INCREASE_API_KEY });
+  const transfer = await client.achTransfers.create({ /* ... */ }, { idempotencyKey: crypto.randomUUID() });
+  \`\`\`
+- Webhooks: HMAC-SHA-256 of body using your endpoint secret, header \`Increase-Webhook-Signature\`. Verify BEFORE processing.
+- Pitfall: ACH transfers are reversible for ~60 days; design DB schema to track \`status\` updates from webhooks, never assume "submitted" = "settled".`,
+  },
+
+  dwolla: {
+    displayName: "Dwolla (ACH payments)",
+    npmPackage: "dwolla-v2",
+    docsUrl: "https://developers.dwolla.com/",
+    requiredSecrets: ["DWOLLA_KEY", "DWOLLA_SECRET", "DWOLLA_ENV"],
+    promptBlock: `### Universal Integration: Dwolla
+- Install: \`npm install dwolla-v2\`
+- Secrets: \`DWOLLA_KEY\`, \`DWOLLA_SECRET\`, \`DWOLLA_ENV\` (\`sandbox\` or \`production\`)
+- Server example:
+  \`\`\`ts
+  import { Client } from "dwolla-v2";
+  const dwolla = new Client({ key: process.env.DWOLLA_KEY!, secret: process.env.DWOLLA_SECRET!, environment: process.env.DWOLLA_ENV as "sandbox" | "production" });
+  const res = await dwolla.post("transfers", { _links: { source: { href: srcUrl }, destination: { href: dstUrl } }, amount: { currency: "USD", value: "10.00" } });
+  \`\`\`
+- Webhooks: HMAC-SHA-256 verify on a public route. Always idempotent — store \`event.id\` and skip duplicates.
+- Pitfall: customer onboarding requires KYC; you must collect SSN-last-4 and DOB for unverified-customer creation. Never log raw SSNs.`,
+  },
+
+  "modern-treasury": {
+    displayName: "Modern Treasury",
+    npmPackage: "modern-treasury",
+    docsUrl: "https://docs.moderntreasury.com/",
+    requiredSecrets: ["MODERN_TREASURY_API_KEY", "MODERN_TREASURY_ORGANIZATION_ID"],
+    promptBlock: `### Universal Integration: Modern Treasury
+- Install: \`npm install modern-treasury\`
+- Secrets: \`MODERN_TREASURY_API_KEY\`, \`MODERN_TREASURY_ORGANIZATION_ID\`
+- Server example:
+  \`\`\`ts
+  import ModernTreasury from "modern-treasury";
+  const mt = new ModernTreasury({ apiKey: process.env.MODERN_TREASURY_API_KEY!, organizationId: process.env.MODERN_TREASURY_ORGANIZATION_ID! });
+  const payment = await mt.paymentOrders.create({ type: "ach", amount: 10000, direction: "debit", originating_account_id: acctId, receiving_account_id: rxId }, { idempotencyKey: crypto.randomUUID() });
+  \`\`\`
+- Webhooks: verify \`X-Signature\` (HMAC) BEFORE processing. Always send Idempotency-Key on creates.
+- Pitfall: ledger reconciliation is core — model accounts/transactions in your DB to mirror MT entries, otherwise you'll lose audit trail.`,
+  },
+
+  "stripe-issuing": {
+    displayName: "Stripe Issuing (cards)",
+    npmPackage: "stripe",
+    docsUrl: "https://stripe.com/docs/issuing",
+    requiredSecrets: ["STRIPE_SECRET_KEY"],
+    promptBlock: `### Universal Integration: Stripe Issuing
+- Install: \`npm install stripe\` (already required if Stripe is enabled)
+- Secret: \`STRIPE_SECRET_KEY\` (server only)
+- Issue a virtual card:
+  \`\`\`ts
+  import Stripe from "stripe";
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  const cardholder = await stripe.issuing.cardholders.create({ name, email, phone_number, status: "active", type: "individual", individual: { first_name, last_name, dob: { day, month, year } } });
+  const card = await stripe.issuing.cards.create({ cardholder: cardholder.id, currency: "usd", type: "virtual" });
+  \`\`\`
+- Webhooks: subscribe to \`issuing_authorization.request\` for real-time approvals — must respond < 2s with approve/decline, or Stripe auto-declines.
+- Pitfall: Issuing is gated; the Stripe account must be approved before live cards work. Sandbox uses test cards. Authorization webhooks need an immediate decision — keep handler logic minimal, queue heavy work for after the response.`,
+  },
+
+  "stripe-treasury": {
+    displayName: "Stripe Treasury (BaaS in US)",
+    npmPackage: "stripe",
+    docsUrl: "https://stripe.com/docs/treasury",
+    requiredSecrets: ["STRIPE_SECRET_KEY"],
+    promptBlock: `### Universal Integration: Stripe Treasury
+- Install: \`npm install stripe\`
+- Secret: \`STRIPE_SECRET_KEY\`
+- Open a Financial Account, send Outbound Payments / Outbound Transfers, attach Issued Cards. Use Stripe Connect Custom accounts for end-users.
+- Pitfall: Treasury is invite-only and US-only. Onboarded platforms must hold a Money Transmitter program with Stripe. Always design for held funds reconciliation.`,
+  },
+
+  "financial-connections": {
+    displayName: "Stripe Financial Connections",
+    npmPackage: "stripe",
+    docsUrl: "https://stripe.com/docs/financial-connections",
+    requiredSecrets: ["STRIPE_SECRET_KEY"],
+    promptBlock: `### Universal Integration: Stripe Financial Connections (bank linking)
+- Install: \`npm install stripe @stripe/stripe-js\`
+- Secret: \`STRIPE_SECRET_KEY\` server-side; publishable key client-side
+- Flow: server creates a Session → client mounts Financial Connections widget → returns linked Account ID → server fetches accounts/balances/transactions.
+- Use this INSTEAD of Plaid if the user is already on Stripe (no Plaid contract, ACH verification flows directly into Stripe).
+- Pitfall: transactions endpoint requires the \`transactions\` permission requested at session creation — easy to miss.`,
+  },
+
+  wise: {
+    displayName: "Wise (international payouts)",
+    npmPackage: null,
+    docsUrl: "https://docs.wise.com/api-docs",
+    requiredSecrets: ["WISE_API_TOKEN", "WISE_PROFILE_ID"],
+    promptBlock: `### Universal Integration: Wise
+- No official Node SDK — call REST with \`fetch\`. Base: \`https://api.transferwise.com\` (live) / \`https://api.sandbox.transferwise.tech\` (sandbox)
+- Secrets: \`WISE_API_TOKEN\` (Bearer), \`WISE_PROFILE_ID\`
+- Flow: create quote → create recipient → create transfer → fund transfer (this last step requires SCA / Strong Customer Auth — a signed JWT using a private key the user uploads).
+- Pitfall: payouts require SCA signing for any transfer over the per-currency limit. Generate an Ed25519 keypair, register the public key with Wise, sign the funding request server-side. NEVER include the private key in client bundles.`,
+  },
+
+  /* ─── Layer I — Crypto / web3 ──────────────────────────────────────── */
+
+  viem: {
+    displayName: "viem (modern Ethereum client)",
+    npmPackage: "viem",
+    docsUrl: "https://viem.sh",
+    requiredSecrets: [],
+    promptBlock: `### Universal Integration: viem
+- Install: \`npm install viem\`
+- No secret required for read-only RPC (use a public endpoint or Alchemy/Infura URL via env). For writes, the user's wallet signs via wagmi/RainbowKit — server NEVER holds the user's private key.
+- Read example:
+  \`\`\`ts
+  import { createPublicClient, http } from "viem";
+  import { mainnet } from "viem/chains";
+  const client = createPublicClient({ chain: mainnet, transport: http(process.env.RPC_URL) });
+  const balance = await client.getBalance({ address: "0x..." });
+  \`\`\`
+- Pitfall: prefer viem over ethers for new code (smaller, type-safe, better tree-shaking). Never call \`createWalletClient\` with a server-side private key for user funds — that's custodial and out of scope.`,
+  },
+
+  wagmi: {
+    displayName: "wagmi (React hooks for Ethereum)",
+    npmPackage: "wagmi",
+    docsUrl: "https://wagmi.sh",
+    requiredSecrets: [],
+    promptBlock: `### Universal Integration: wagmi
+- Install: \`npm install wagmi viem @tanstack/react-query\` (React Query is a peer dep)
+- No secret. Wrap the app in \`<WagmiProvider>\` + \`<QueryClientProvider>\`; use \`useAccount()\`, \`useConnect()\`, \`useReadContract()\`, \`useWriteContract()\` in components.
+- Setup:
+  \`\`\`ts
+  import { createConfig, http } from "wagmi";
+  import { mainnet, base } from "wagmi/chains";
+  import { injected, walletConnect } from "wagmi/connectors";
+  export const config = createConfig({
+    chains: [mainnet, base],
+    connectors: [injected(), walletConnect({ projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID! })],
+    transports: { [mainnet.id]: http(), [base.id]: http() },
+  });
+  \`\`\`
+- Pitfall: SSR. Wrap WagmiProvider in a client-only boundary or guard with \`typeof window !== "undefined"\` — wagmi touches \`window\` on init.`,
+  },
+
+  rainbowkit: {
+    displayName: "RainbowKit (wallet connect UI)",
+    npmPackage: "@rainbow-me/rainbowkit",
+    docsUrl: "https://www.rainbowkit.com/docs/installation",
+    requiredSecrets: [],
+    promptBlock: `### Universal Integration: RainbowKit
+- Install: \`npm install @rainbow-me/rainbowkit wagmi viem @tanstack/react-query\`
+- Public env: \`VITE_WALLETCONNECT_PROJECT_ID\` (get from cloud.walletconnect.com — required for WalletConnect connector).
+- Wrap app: \`<WagmiProvider><QueryClientProvider><RainbowKitProvider>{children}</RainbowKitProvider>...\`. Use \`<ConnectButton />\` for the connect UI.
+- Pitfall: import its CSS once: \`import "@rainbow-me/rainbowkit/styles.css"\`. Without it, the modal looks unstyled.`,
+  },
+
+  ethers: {
+    displayName: "ethers.js",
+    npmPackage: "ethers",
+    docsUrl: "https://docs.ethers.org/v6/",
+    requiredSecrets: [],
+    promptBlock: `### Universal Integration: ethers.js (v6)
+- Install: \`npm install ethers\`
+- Read example:
+  \`\`\`ts
+  import { JsonRpcProvider, formatEther } from "ethers";
+  const provider = new JsonRpcProvider(process.env.RPC_URL);
+  const balance = await provider.getBalance("0x...");
+  console.log(formatEther(balance));
+  \`\`\`
+- Pitfall: v6 API differs from v5 (e.g. \`utils.formatEther\` is now top-level \`formatEther\`). For new builds prefer \`viem\` — smaller, type-safe, faster.`,
+  },
+
+  alchemy: {
+    displayName: "Alchemy (multi-chain RPC + indexed APIs)",
+    npmPackage: "alchemy-sdk",
+    docsUrl: "https://docs.alchemy.com/",
+    requiredSecrets: ["ALCHEMY_API_KEY"],
+    promptBlock: `### Universal Integration: Alchemy
+- Install: \`npm install alchemy-sdk\`
+- Server secret: \`ALCHEMY_API_KEY\` (server-only — for client RPC use the WebSocket/HTTP URL via VITE_ env if rate limits allow exposing it).
+- Server example:
+  \`\`\`ts
+  import { Alchemy, Network } from "alchemy-sdk";
+  const alchemy = new Alchemy({ apiKey: process.env.ALCHEMY_API_KEY!, network: Network.ETH_MAINNET });
+  const balances = await alchemy.core.getTokenBalances("0x...");
+  const nfts = await alchemy.nft.getNftsForOwner("0x...");
+  \`\`\`
+- Pitfall: per-network API keys differ for some products (e.g. Webhooks use a separate Notify auth token).`,
+  },
+
+  helius: {
+    displayName: "Helius (Solana RPC + APIs)",
+    npmPackage: "helius-sdk",
+    docsUrl: "https://docs.helius.dev/",
+    requiredSecrets: ["HELIUS_API_KEY"],
+    promptBlock: `### Universal Integration: Helius
+- Install: \`npm install helius-sdk\`
+- Server secret: \`HELIUS_API_KEY\`
+- Server example:
+  \`\`\`ts
+  import { Helius } from "helius-sdk";
+  const helius = new Helius(process.env.HELIUS_API_KEY!);
+  const txs = await helius.rpc.getSignaturesForAddress("walletPubkey...");
+  \`\`\`
+- Pitfall: Solana RPC endpoints are aggressively rate-limited; use Helius's enhanced \`getAssetsByOwner\` instead of polling vanilla RPC.`,
+  },
+
+  moonpay: {
+    displayName: "MoonPay (fiat on/off-ramp)",
+    npmPackage: "@moonpay/moonpay-react",
+    docsUrl: "https://dev.moonpay.com/docs",
+    requiredSecrets: ["MOONPAY_API_KEY", "MOONPAY_SECRET_KEY"],
+    promptBlock: `### Universal Integration: MoonPay
+- Install: \`npm install @moonpay/moonpay-react\`
+- Secrets: \`MOONPAY_API_KEY\` (publishable, OK in browser), \`MOONPAY_SECRET_KEY\` (server-only — used to sign URLs)
+- Flow: server signs the buy/sell URL with \`crypto.createHmac("sha256", SECRET).update(url).digest("base64")\`, returns it; client renders \`<MoonPayBuyWidget />\` with the signed URL.
+- Pitfall: never sign in the browser — the secret would leak. KYC happens inside MoonPay; webhooks notify your backend on transaction status.`,
+  },
+
+  ramp: {
+    displayName: "Ramp Network (fiat on-ramp)",
+    npmPackage: "@ramp-network/ramp-instant-sdk",
+    docsUrl: "https://docs.ramp.network/",
+    requiredSecrets: ["RAMP_HOST_API_KEY"],
+    promptBlock: `### Universal Integration: Ramp Network
+- Install: \`npm install @ramp-network/ramp-instant-sdk\`
+- Public key: \`RAMP_HOST_API_KEY\` (publishable, OK in client). For webhook verification you'll separately get a webhook secret from Ramp dashboard.
+- Client example:
+  \`\`\`ts
+  import { RampInstantSDK } from "@ramp-network/ramp-instant-sdk";
+  new RampInstantSDK({ hostAppName: "MyApp", hostLogoUrl: "...", swapAsset: "ETH", userAddress: address, hostApiKey: import.meta.env.VITE_RAMP_HOST_API_KEY }).show();
+  \`\`\`
+- Pitfall: verify webhook signatures (ECDSA P-256) BEFORE crediting any user balance.`,
+  },
+
+  transak: {
+    displayName: "Transak (fiat on/off-ramp)",
+    npmPackage: "@transak/transak-sdk",
+    docsUrl: "https://docs.transak.com/",
+    requiredSecrets: ["TRANSAK_API_KEY"],
+    promptBlock: `### Universal Integration: Transak
+- Install: \`npm install @transak/transak-sdk\`
+- Public key: \`TRANSAK_API_KEY\` (publishable). Webhook secret separately for backend verification.
+- Pitfall: the staging environment uses a different API key + base URL — make the env explicit (\`environment: "STAGING" | "PRODUCTION"\`) so you don't accidentally ship sandbox to prod.`,
+  },
+
+  coingecko: {
+    displayName: "CoinGecko (prices, market data)",
+    npmPackage: null,
+    docsUrl: "https://docs.coingecko.com/reference/introduction",
+    requiredSecrets: ["COINGECKO_API_KEY"],
+    promptBlock: `### Universal Integration: CoinGecko
+- No SDK — \`fetch\` directly. Base: \`https://api.coingecko.com/api/v3\` (Demo) or \`https://pro-api.coingecko.com/api/v3\` (Pro).
+- Secret: \`COINGECKO_API_KEY\` (free demo tier exists; pro tier needed for higher rate limits)
+- Server example:
+  \`\`\`ts
+  const r = await fetch(\`https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd\`, { headers: { "x-cg-demo-api-key": process.env.COINGECKO_API_KEY! } });
+  \`\`\`
+- Pitfall: free tier is 30 calls/min — cache aggressively (60s+) on the server, never call from the client in a loop.`,
+  },
+
+  moralis: {
+    displayName: "Moralis (multi-chain APIs)",
+    npmPackage: "moralis",
+    docsUrl: "https://docs.moralis.io/",
+    requiredSecrets: ["MORALIS_API_KEY"],
+    promptBlock: `### Universal Integration: Moralis
+- Install: \`npm install moralis\`
+- Server secret: \`MORALIS_API_KEY\`
+- Server example:
+  \`\`\`ts
+  import Moralis from "moralis";
+  await Moralis.start({ apiKey: process.env.MORALIS_API_KEY! });
+  const balances = await Moralis.EvmApi.token.getWalletTokenBalances({ address, chain: "0x1" });
+  \`\`\`
+- Pitfall: \`Moralis.start\` is global — call it ONCE per process, not per request. Memoize via a module-level promise.`,
+  },
 };
+

@@ -38,6 +38,15 @@ const KNOWN = [
   "tinybird", "supabase",
   "x", "twitter", "instagram", "threads", "facebook", "meta", "linkedin",
   "tiktok", "youtube", "reddit", "bluesky", "mastodon",
+  // Layer I — fintech / banking / BaaS
+  "plaid", "teller", "mx", "unit", "increase", "dwolla", "wise",
+  "modern treasury", "stripe issuing", "stripe treasury", "financial connections",
+  "persona", "sumsub", "alloy", "veriff",
+  // Layer I — crypto / web3
+  "viem", "wagmi", "ethers", "walletconnect", "rainbowkit",
+  "alchemy", "infura", "helius", "quicknode",
+  "moonpay", "ramp", "transak",
+  "moralis", "the graph", "coingecko", "coinbase", "coinmarketcap",
 ];
 
 const SERVICE_PATTERN = new RegExp(
