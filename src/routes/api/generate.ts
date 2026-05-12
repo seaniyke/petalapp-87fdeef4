@@ -702,7 +702,9 @@ function addStructuredRetryInstruction<T extends Array<{ role: string; content: 
       : "";
   const chunkHint = args.problem.startsWith("replace_too_large")
     ? " Split the change into MULTIPLE small \`replace\` ops, each with a \`search\` snippet under ~160 lines / 8 KB. Target one logical region per op."
-    : "";
+    : args.problem.startsWith("destructive_shrink")
+      ? " You returned a much shorter file than the original — that destroys the user's app. DO NOT resend the file as a stub. Use \`replace\` ops that change only the specific lines that need to change, and preserve everything else."
+      : "";
   const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field. For edit turns, prefer exact \`replace\` ops for small changes instead of resending whole files.${chunkHint} Keep files short and split large UI into components. If this is an initial app, build a focused MVP that works instead of a giant showcase: 4-8 app files max, no file over 140 lines, no long content blocks.${backendHint}`;
   return messages.map((m, i) =>
     i === 0 && typeof m.content === "string" ? { ...m, content: `${m.content}${retryBlock}` } : m,
