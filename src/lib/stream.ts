@@ -60,6 +60,16 @@ type Handlers = {
      *  isn't blinded by LLM-rewritten apology copy. */
     raw?: string,
   ) => void;
+  /** Plan Mode v1 — server proposed a scoped plan. The stream then ends and
+   *  the composer renders an approval card. */
+  onPlanProposed?: (plan: {
+    planId: string;
+    summary: string;
+    risk: "low" | "medium" | "high";
+    files: Array<{ path: string; intent: "edit" | "create" | "delete"; reason: string }>;
+  }) => void;
+  /** Plan Mode v1 — patch tried to touch files outside the approved scope. */
+  onPlanScopeViolation?: (droppedPaths: string[]) => void;
   /** Fired once at the very start of every turn. The client should persist
    *  this id (e.g. to localStorage keyed by projectId) so it can silently
    *  reconnect via /api/turns/$id/events after a tab close or refresh. */
