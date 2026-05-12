@@ -1203,6 +1203,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         knowledgeBlock +
         memoryBlock +
         preservationBlock +
+        (approvedPlan ? renderApprovedPlanBlock(approvedPlan) : "") +
         designBlock +
         dynamic.text +
         learningBlock +
