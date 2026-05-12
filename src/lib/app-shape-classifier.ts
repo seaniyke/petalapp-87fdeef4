@@ -247,6 +247,15 @@ const RULES: Rule[] = [
     surfaces: ["landing", "public-detail", "admin"],
     cloud: ["database", "storage"],
   },
+  // — Games (any genre) —
+  {
+    category: "game",
+    match:
+      /\b(game|gameplay|leaderboard|high[- ]?score|endless\s+runner|platformer|tower\s+defense|trivia\s+game|quiz\s+battle|card\s+game|board\s+game|puzzle\s+game|arcade\s+game|shooter|tycoon|idle\s+game|rpg|phaser|three\.?js|@react-three\/fiber)\b/i,
+    surfaces: ["landing", "auth", "dashboard"],
+    cloud: ["auth", "database"],
+    weight: 2,
+  },
 ];
 
 /* --------------------------- classifier ---------------------------- */
