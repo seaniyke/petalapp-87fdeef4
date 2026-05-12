@@ -227,6 +227,6 @@ export function PlanProposalCard({
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
