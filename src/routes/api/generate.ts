@@ -1421,7 +1421,8 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             p.startsWith("src/components/blocks/") ||
             p.startsWith("src/components/mobile/") ||
             p.startsWith("src/integrations/backend/") ||
-            PROTECTED.includes(p);
+            PROTECTED.includes(p) ||
+            matchesUserProtectedGlob(p);
           const violations = parsed.ops.filter((op) => isProtectedPath(op.path));
           if (violations.length) {
             console.warn(
@@ -1431,14 +1432,45 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           }
           const safeOps = parsed.ops.filter((op) => !isProtectedPath(op.path));
           if (safeOps.length === 0) {
-            // Every op was protected-path-only. Same conversational
-            // fallback: nothing safe to apply, no credits charged.
+            const userGlobsHit = violations.some((v) => matchesUserProtectedGlob(v.path));
             emitConversationalFallback(controller, encoder, {
               files: currentFiles,
-              summary:
-                "The change you asked for would touch files I keep reserved for the framework (the UI kit / build config). I can do this a different way — tell me the user-visible behavior you want and I'll wire it up in app code instead.",
+              summary: userGlobsHit
+                ? "The change you asked for would touch files you've marked as protected in PETAL.md. Update PETAL.md to allow them, or rephrase the request to target other files."
+                : "The change you asked for would touch files I keep reserved for the framework (the UI kit / build config). I can do this a different way — tell me the user-visible behavior you want and I'll wire it up in app code instead.",
             });
             return;
+          }
+          // Pre-apply diff summary — informational only (apply still proceeds).
+          // Lets the client render a "what's about to change" card so users
+          // see scope before the file writes stream in.
+          try {
+            const prevByPath = new Map(currentFiles.map((f) => [f.path, f.content]));
+            const seen = new Set<string>();
+            const changes = safeOps
+              .map((op) => {
+                if (seen.has(op.path)) return null;
+                seen.add(op.path);
+                const prev = prevByPath.get(op.path) ?? "";
+                let nextSnippet = "";
+                if (op.op === "replace") nextSnippet = (op as { replace?: string }).replace ?? "";
+                else if (op.op === "create" || op.op === "update")
+                  nextSnippet = (op as { content?: string }).content ?? "";
+                const prevLines = prev ? prev.split("\n").length : 0;
+                const nextLines = op.op === "delete" ? 0 : nextSnippet.split("\n").length;
+                return {
+                  path: op.path,
+                  op: op.op,
+                  addedLines: op.op === "delete" ? 0 : Math.max(0, nextLines - (op.op === "replace" ? (op as { search?: string }).search?.split("\n").length ?? 0 : prevLines)),
+                  removedLines: op.op === "create" ? 0 : op.op === "replace" ? (op as { search?: string }).search?.split("\n").length ?? 0 : prevLines,
+                };
+              })
+              .filter((x): x is NonNullable<typeof x> => x !== null);
+            controller.enqueue(
+              encoder.encode(sse({ type: "patch_preview", changes, totalFiles: changes.length })),
+            );
+          } catch {
+            /* preview is best-effort; never block apply */
           }
           let patched: ProjectFile[] | null = null;
           try {
