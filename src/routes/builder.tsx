@@ -402,19 +402,31 @@ function Builder() {
         },
       };
       setMessages((prev) => {
-        // Guard against double-fire of the same error in a single tick
-        // (e.g. a retry path that signals failure twice). Anything older
-        // than the immediate previous message is a legitimately new
-        // failure and should be shown — we no longer suppress it.
-        const last = prev[prev.length - 1];
-        if (last?.error?.title === err.title && last?.error?.message === err.message) {
-          return prev;
-        }
-        return [...prev, errMsg];
+        // Keep one failure card per user turn. The same generation failure can
+        // be followed by a rescued assistant note, then fail again on retry;
+        // checking only the immediate tail rendered two identical error cards.
+        const lastUserIdx = (() => {
+          for (let i = prev.length - 1; i >= 0; i--) {
+            if (prev[i].role === "user") return i;
+          }
+          return -1;
+        })();
+        const withoutDuplicateTurnError = prev.filter((m, i) => {
+          if (i <= lastUserIdx) return true;
+          return !(m.error?.title === err.title && m.error?.message === err.message);
+        });
+        return [...withoutDuplicateTurnError, errMsg];
       });
-      void appendMessages(projId, [errMsg]).catch(() => {
-        /* best-effort — the live state still shows the card */
-      });
+      void deleteAssistantErrorMessages(
+        projId,
+        (e) => e.title === err.title && e.message === err.message,
+      )
+        .catch(() => undefined)
+        .finally(() => {
+          void appendMessages(projId, [errMsg]).catch(() => {
+            /* best-effort — the live state still shows the card */
+          });
+        });
     },
     [],
   );

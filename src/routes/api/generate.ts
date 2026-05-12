@@ -345,6 +345,8 @@ async function authorize(request: Request): Promise<string | Response> {
 type ParsedTool = {
   name: "write_project" | "patch_files" | null;
   args: string;
+  /** Plain assistant text when the provider ignored tool_choice. */
+  text: string;
   /** Provider stop reason from the final stream chunk, e.g. `length` / `max_tokens`. */
   finishReason: string | null;
   /** Token usage from the gateway (final SSE chunk usually carries it). */
@@ -374,7 +376,7 @@ async function relayAndCollect(
   const reader = upstream.body!.getReader();
   const decoder = new TextDecoder();
   let buf = "";
-  const tool: ParsedTool = { name: null, args: "", finishReason: null, usage: null };
+  const tool: ParsedTool = { name: null, args: "", text: "", finishReason: null, usage: null };
   // Running prefixes of the structured narrative fields already streamed to
   // the client. We re-extract from `tool.args` on every chunk and emit only
   // the new tail, so the client renders a clean token-by-token feel.
@@ -470,7 +472,8 @@ async function relayAndCollect(
       const choice = (json as { choices?: Array<{ delta?: unknown; finish_reason?: unknown; stop_reason?: unknown }> })?.choices?.[0];
       const choiceFinishReason = choice?.finish_reason ?? choice?.stop_reason;
       if (typeof choiceFinishReason === "string") tool.finishReason = choiceFinishReason;
-      const delta = (choice as { delta?: { tool_calls?: unknown[] } })?.delta;
+      const delta = (choice as { delta?: { content?: string; tool_calls?: unknown[] } })?.delta;
+      if (typeof delta?.content === "string") tool.text += delta.content;
       const toolCalls = delta?.tool_calls as
         | Array<{ function?: { name?: string; arguments?: string } }>
         | undefined;
@@ -616,6 +619,84 @@ type ParsedProjectPayload = {
   plan?: string;
   recap?: string;
 };
+
+type ToolRecoveryPayload = ParsedProjectPayload & {
+  collected: ParsedTool;
+  usedRecovery: boolean;
+};
+
+function assistantTextFromCollected(collected: ParsedTool): string {
+  return [collected.text, collected.name ?? "", collected.args ?? ""].join("\n").trim();
+}
+
+function isMissingToolOutputError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return /AI did not return (?:a project|usable edits)|AI tried to (?:rewrite|patch)/i.test(msg);
+}
+
+async function recoverMissingToolOutput(args: {
+  chatMessages: Array<{ role: string; content: unknown }>;
+  collected: ParsedTool;
+  isInitial: boolean;
+  tool: typeof WRITE_PROJECT_TOOL | typeof PATCH_FILES_TOOL;
+  model: string;
+  phaseTag: { phase: Phase };
+  lastUserContent: string;
+  hasVisionTurn: boolean;
+  backend: unknown;
+  signal: AbortSignal;
+  controller: ReadableStreamDefaultController<Uint8Array>;
+  encoder: TextEncoder;
+}): Promise<ToolRecoveryPayload | null> {
+  const assistantText = assistantTextFromCollected(args.collected);
+  if (!assistantText) return null;
+
+  args.controller.enqueue(
+    args.encoder.encode(sse({ type: "status", message: "Converting the draft into safe edits…" })),
+  );
+  const requiredTool = args.isInitial ? "write_project" : "patch_files";
+  const recoveryMessages = [
+    ...args.chatMessages,
+    {
+      role: "assistant",
+      content: assistantText.slice(0, 12_000),
+    },
+    {
+      role: "user",
+      content:
+        `Convert your previous response into a ${requiredTool} tool call now. ` +
+        `Do not add prose. Preserve the user's requested scope, but emit only valid tool JSON.`,
+    },
+  ];
+  const recovery = await aiChatCompletions({
+    feature: "generate",
+    body: {
+      model: MODEL_STRUCTURED_RETRY,
+      messages: addStructuredRetryInstruction(recoveryMessages, {
+        isInitial: args.isInitial,
+        problem: "previous response contained prose instead of the required tool call",
+        hasBackend: Boolean(args.backend),
+      }),
+      tools: [args.tool],
+      tool_choice: { type: "function", function: { name: args.tool.function.name } },
+      max_tokens: args.isInitial ? 12_000 : 10_000,
+      stream: true,
+    },
+    timeoutTier: args.isInitial ? "stream_first_build" : "stream",
+    signal: args.signal,
+    meta: {
+      phase: args.phaseTag.phase,
+      promptChars: args.lastUserContent.length,
+      hadAttachments: args.hasVisionTurn,
+      chosenBy: "tool_recovery",
+    },
+  });
+  if (!recovery.ok || !recovery.body) return null;
+
+  const recoveredCollected = await relayAndCollect(recovery, args.controller, args.encoder);
+  const parsed = parseCollectedProject(recoveredCollected, args.isInitial);
+  return { ...parsed, collected: recoveredCollected, usedRecovery: true };
+}
 
 /**
  * Emit a conversational AI reply WITHOUT failing the turn — used as the
@@ -1595,11 +1676,12 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           controller.enqueue(
             encoder.encode(sse({ type: "status", message: "Retrying the response safely…" })),
           );
+          const firstCollected = collected;
           const retry = await aiChatCompletions({
             feature: "generate",
             body: {
               model: MODEL_STRUCTURED_RETRY,
-              messages: addStructuredRetryInstruction(chatMessages, {
+              messages: addStructuredRetryInstruction(finalMessages, {
                 isInitial,
                 problem: e instanceof Error ? e.message : "invalid structured response",
                 hasBackend: Boolean(backend),
@@ -1636,6 +1718,33 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
               return;
             }
 
+            const recovered = isMissingToolOutputError(retryErr)
+              ? await recoverMissingToolOutput({
+                  chatMessages: finalMessages,
+                  collected: assistantTextFromCollected(collected) ? collected : firstCollected,
+                  isInitial,
+                  tool,
+                  model,
+                  phaseTag,
+                  lastUserContent,
+                  hasVisionTurn,
+                  backend,
+                  signal: request.signal,
+                  controller,
+                  encoder,
+                }).catch((recoveryErr) => {
+                  console.warn(
+                    "[generate] tool recovery failed:",
+                    recoveryErr instanceof Error ? recoveryErr.message : String(recoveryErr),
+                  );
+                  return null;
+                })
+              : null;
+            if (recovered) {
+              payload = recovered;
+              collected = recovered.collected;
+            } else {
+
             const deterministic = !isInitial
               ? deterministicPatchFallback({ currentFiles, latestUserContent: lastUserContent })
               : null;
@@ -1647,6 +1756,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
               collected = {
                 name: "patch_files",
                 args: JSON.stringify(deterministic.parsed),
+                text: "",
                 finishReason: null,
                 usage: collected.usage,
               };
@@ -1669,6 +1779,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
                 : "I took a careful look but couldn't pin down a safe change for this one. Could you point me at the specific element or behavior you want adjusted? A quick note like 'make the header sticky' or 'change the CTA color to teal' is usually enough.",
             });
             return;
+            }
             }
           }
         }
@@ -1821,7 +1932,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
                   feature: "generate",
                   body: {
                     model: MODEL_STRUCTURED_RETRY,
-                    messages: addStructuredRetryInstruction(chatMessages, {
+                    messages: addStructuredRetryInstruction(finalMessages, {
                       isInitial,
                       problem: retryProblem,
                       hasBackend: Boolean(backend),
