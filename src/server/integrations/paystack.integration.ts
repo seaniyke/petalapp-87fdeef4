@@ -307,15 +307,38 @@ export const Route = createFileRoute("/api/public/paystack/webhook")({
         const { event } = result;
         switch (event.event) {
           case "charge.success": {
-            // const { reference, amount, currency } = event.data;
-            // TODO: look up local order by reference, verify amount + currency, fulfill.
+            const { reference, amount, currency } = event.data as {
+              reference: string; amount: number; currency: string;
+            };
+            try {
+              const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+              const { data: order } = await supabaseAdmin
+                .from("orders")
+                .select("id, amount_minor, currency, status")
+                .eq("reference", reference)
+                .single();
+              if (!order) { console.warn("[paystack webhook] unknown reference", reference); break; }
+              if (order.status === "paid") break; // idempotent
+              if (order.amount_minor !== amount || order.currency?.toUpperCase() !== currency?.toUpperCase()) {
+                console.error("[paystack webhook] amount/currency mismatch", { reference });
+                return new Response("amount mismatch", { status: 500 });
+              }
+              const { error: updErr } = await supabaseAdmin
+                .from("orders")
+                .update({ status: "paid", paid_at: new Date().toISOString() })
+                .eq("id", order.id);
+              if (updErr) { console.error("[paystack webhook] fulfill failed", updErr); return new Response("fulfill failed", { status: 500 }); }
+            } catch (err) {
+              console.error("[paystack webhook] fulfill threw", err);
+              return new Response("fulfill error", { status: 500 });
+            }
             break;
           }
           case "transfer.success":
           case "refund.processed":
           case "subscription.create":
           case "subscription.disable":
-            // TODO: handle as needed.
+            // Mirror the charge.success pattern above for these side-effects.
             break;
           default:
             break;
