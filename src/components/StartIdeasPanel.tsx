@@ -1,4 +1,6 @@
-import { Sparkles, Calendar, ListTodo, Camera, Users, Coffee, Music, ChartBar, Layers, BookOpen, Briefcase, Building2, Smartphone, Bell, CreditCard } from "lucide-react";
+import { Sparkles, ArrowRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { START_IDEAS, type StartIdea } from "@/lib/start-ideas";
 
 /**
  * Curated starter prompts surfaced under the landing-page composer.
@@ -14,120 +16,23 @@ import { Sparkles, Calendar, ListTodo, Camera, Users, Coffee, Music, ChartBar, L
  * generic ("a todo app") — vague prompts produce vague apps.
  */
 
-export type StartIdea = {
-  title: string;
-  prompt: string;
-  Icon: typeof Sparkles;
-  accent: "pink" | "mint" | "lilac" | "sky" | "butter";
-};
+// Curated landing-page subset: featured ideas first, then top up to 12 with a
+// spread across categories so the rail feels diverse on first glance.
+function pickLandingIdeas(): StartIdea[] {
+  const featured = START_IDEAS.filter((i) => i.featured);
+  const seenCats = new Set(featured.map((i) => i.category));
+  const extras: StartIdea[] = [];
+  for (const idea of START_IDEAS) {
+    if (extras.length + featured.length >= 12) break;
+    if (idea.featured) continue;
+    if (seenCats.has(idea.category)) continue;
+    extras.push(idea);
+    seenCats.add(idea.category);
+  }
+  return [...featured, ...extras].slice(0, 12);
+}
 
-const IDEAS: StartIdea[] = [
-  {
-    title: "Habit tracker",
-    prompt:
-      "A minimalist daily habit tracker with streak counts, a 7-day grid, and confetti when I complete all habits for the day.",
-    Icon: ListTodo,
-    accent: "mint",
-  },
-  {
-    title: "Recipe finder",
-    prompt:
-      "A recipe finder where I type ingredients I have and get 6 recipe cards back, each with a hero photo, time, and difficulty.",
-    Icon: Sparkles,
-    accent: "butter",
-  },
-  {
-    title: "Coffee shop site (multi-page)",
-    prompt:
-      "A warm site for an independent coffee shop called Petal & Bean — separate pages for Home, Menu, Our Story, and Visit Us (with a map). Real /menu, /story and /visit routes, linked from a sticky nav.",
-    Icon: Coffee,
-    accent: "butter",
-  },
-  {
-    title: "Yoga studio (4 pages)",
-    prompt:
-      "A 4-page site for a neighborhood yoga studio: home, /classes (with weekly schedule), /instructors (bios + photos), and /contact (form + map). Calm editorial vibe.",
-    Icon: Layers,
-    accent: "mint",
-  },
-  {
-    title: "Consultancy + case studies",
-    prompt:
-      "A consultancy website with separate pages for home, /services, /case-studies (index page) plus /case-studies/$slug detail pages, and /about. Confident, editorial tone.",
-    Icon: Briefcase,
-    accent: "lilac",
-  },
-  {
-    title: "SaaS marketing site",
-    prompt:
-      "A small SaaS marketing site with proper pages: home, /features, /pricing (3 tiers), /faq, and a /blog index with /blog/$slug detail routes. Modern dev-tool vibe.",
-    Icon: Building2,
-    accent: "sky",
-  },
-  {
-    title: "Full SaaS product (auth + billing)",
-    prompt:
-      "A complete SaaS product: marketing landing page, email + Google sign-in, a logged-in dashboard with user-scoped data (RLS), a 3-tier Stripe subscription paywall, account settings, and transactional emails. Build the smallest end-to-end slice first — auth, paywall, and one core feature working together.",
-    Icon: CreditCard,
-    accent: "lilac",
-  },
-  {
-    title: "Pomodoro timer",
-    prompt:
-      "A pastel pomodoro timer with 25/5 cycles, a session counter, gentle chime on transitions, and a daily focus stats chart.",
-    Icon: ChartBar,
-    accent: "lilac",
-  },
-  {
-    title: "Event RSVP page",
-    prompt:
-      "An RSVP page for a small wedding — hero photo, event details, 'Will you attend?' form, and a guest count that updates live.",
-    Icon: Calendar,
-    accent: "pink",
-  },
-  {
-    title: "Photo portfolio (multi-page)",
-    prompt:
-      "A photographer's portfolio with separate pages: home (masonry preview), /gallery (3 collections each on their own /gallery/$slug page), /about, and /contact form.",
-    Icon: Camera,
-    accent: "sky",
-  },
-  {
-    title: "Writer's blog",
-    prompt:
-      "A minimalist writer's blog: home with featured posts, /blog index of all posts, /blog/$slug post detail with prose styling, and a short /about page.",
-    Icon: BookOpen,
-    accent: "butter",
-  },
-  {
-    title: "Team standup board",
-    prompt:
-      "A team standup board with columns for Yesterday, Today, Blockers — each card has an avatar, name, and timestamp.",
-    Icon: Users,
-    accent: "mint",
-  },
-  {
-    title: "Mood music picker",
-    prompt:
-      "A playful 'pick your mood' page that recommends a playlist style — 4 mood tiles, a generated playlist name, and a vibe description.",
-    Icon: Music,
-    accent: "lilac",
-  },
-  {
-    title: "Mobile habit tracker (iOS + Android)",
-    prompt:
-      "A native-feel mobile habit tracker I can ship to the App Store and Play Store — bottom tab bar, daily streaks, push notification reminders, and a clean splash screen. Build it as a real iOS and Android app.",
-    Icon: Smartphone,
-    accent: "pink",
-  },
-  {
-    title: "Mobile gratitude journal",
-    prompt:
-      "A native-feel mobile gratitude journal app — write a daily entry, see past entries in a calendar, get a gentle evening push notification. Ship as iOS and Android.",
-    Icon: Bell,
-    accent: "mint",
-  },
-];
+const LANDING_IDEAS = pickLandingIdeas();
 
 const ACCENT_BG: Record<StartIdea["accent"], string> = {
   pink: "bg-primary/10 text-primary",
