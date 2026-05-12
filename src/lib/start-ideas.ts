@@ -67,7 +67,13 @@ export type IdeaCategory =
   | "Directories"
   | "E-commerce"
   | "Games & toys"
-  | "Productivity";
+  | "Productivity"
+  | "Collaboration"
+  | "Booking"
+  | "Marketplace"
+  | "Maps & geo"
+  | "Audio & video"
+  | "Extensions";
 
 export type StartIdea = {
   title: string;
@@ -90,6 +96,12 @@ export const CATEGORY_ORDER: IdeaCategory[] = [
   "Directories",
   "E-commerce",
   "Mobile",
+  "Collaboration",
+  "Booking",
+  "Marketplace",
+  "Maps & geo",
+  "Audio & video",
+  "Extensions",
   "Games & toys",
 ];
 
