@@ -199,7 +199,7 @@ export async function proposeChangePlan(args: ProposePlanArgs): Promise<PlanProp
 
   // Cap fields defensively before persisting / displaying.
   parsed.summary = (parsed.summary || "").slice(0, 240);
-  parsed.files = parsed.files.slice(0, 12).map((f) => ({
+  parsed.files = parsed.files.slice(0, PLAN_MAX_FILES).map((f) => ({
     path: f.path,
     intent: f.intent,
     reason: (f.reason || "").slice(0, 200),
