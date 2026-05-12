@@ -91,6 +91,12 @@ export async function streamGenerate(
      *  itself (after a failed build). The server skips credit charging and
      *  the client suppresses the giant prompt from the chat thread. */
     isAutoFix?: boolean;
+    /** Plan Mode — propose a plan first instead of generating immediately. */
+    planFirst?: boolean;
+    /** Plan Mode — resume after the user approved a previously-proposed plan. */
+    approvedPlanId?: string;
+    /** Plan Mode — user-edited subset of the plan's file list to allow. */
+    allowedPaths?: string[];
   },
   handlers: Handlers,
   signal?: AbortSignal,
