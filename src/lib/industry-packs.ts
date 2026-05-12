@@ -18,6 +18,9 @@ import {
   CalendarCheck,
   Store,
   Megaphone,
+  Landmark,
+  Coins,
+  FileText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -320,6 +323,126 @@ Pages:
 Tables: profiles, bio_pages, bio_links (with click_count), scheduled_posts (with target_platforms[], status, scheduled_at), platform_accounts (per-user OAuth tokens, encrypted), inbox_messages.
 
 Integration brief for the LLM: use per-user OAuth (not workspace connectors) for X v2, LinkedIn UGC, Threads, and Bluesky AT Protocol so each creator authorizes their own accounts. Store refresh tokens in platform_accounts with strict RLS (owner-only). For dispatch, use a server function triggered by pg_cron hitting an /api/public/dispatch-scheduled endpoint that signs requests with a shared secret. Image/video uploads go through Cloud storage with signed URLs.`,
+  },
+  {
+    slug: "neobank",
+    name: "Neobank dashboard",
+    tagline: "Accounts, transactions, transfers — KYC-aware, demo-safe",
+    Icon: Landmark,
+    blurb:
+      "A modern banking dashboard with accounts list, transaction feed, transfer flow, KYC onboarding, and provider-webhook plumbing. Demo-safe by default.",
+    palette: [
+      { name: "Indigo", cssVar: "--primary", sample: "#3D5AFE" },
+      { name: "Ink", cssVar: "--background", sample: "#0A0F1F" },
+      { name: "Mint", cssVar: "--accent", sample: "#34D399" },
+    ],
+    typography: { display: "Söhne", body: "Inter" },
+    pages: [
+      { path: "/", purpose: "Marketing landing — trust, security, FDIC-style copy (clearly labelled demo), signup CTA" },
+      { path: "/signup", purpose: "Email + password signup, then redirect to KYC" },
+      { path: "/onboarding/kyc", purpose: "Multi-step KYC: legal name, DOB, address, ID upload (Persona/Stripe Identity placeholder)" },
+      { path: "/dashboard", purpose: "Accounts overview: balance cards, recent transactions, quick-transfer CTA" },
+      { path: "/accounts/$id", purpose: "Account detail: full transaction list, filters, statements" },
+      { path: "/transfers/new", purpose: "ACH/internal transfer form with idempotency-key, confirmation step" },
+      { path: "/admin", purpose: "Ops dashboard: pending KYC reviews, flagged transactions, manual ledger adjustments (admin role only)" },
+      { path: "/api/public/webhooks/banking", purpose: "Provider webhook receiver (Plaid/Increase/Unit) — verify signature, idempotency on event_id" },
+      { path: "/settings", purpose: "Profile, linked external accounts, notification prefs" },
+    ],
+    cloud: ["auth", "database", "email", "storage"],
+    brief: `A neobank-style banking dashboard. Calm, trustworthy, fintech-modern: indigo primary on ink background, mint success accent, Söhne/Inter pairing. Show clear "DEMO — simulated balances" notices everywhere money is displayed unless real provider keys are configured.
+
+Pages:
+1. / — marketing landing: trust messaging, security highlights (encryption, audit log), labelled-demo disclosure, signup CTA.
+2. /signup — email + password, redirect to /onboarding/kyc.
+3. /onboarding/kyc — multi-step form (legal name, DOB, address, government ID upload). Stub Persona / Stripe Identity integration with TODO comments. Save kyc_status to profiles.
+4. /dashboard — accounts list (cards with balance, last 4, type), recent transactions table, "New transfer" CTA. Account-scoped via RLS.
+5. /accounts/$id — full transaction list with date/amount/counterparty/status filters, downloadable statement.
+6. /transfers/new — amount + destination form. CRITICAL: every money-movement request must include an Idempotency-Key (UUID v4 generated client-side, stored in transfers table). Show confirmation step before submit.
+7. /admin — role-gated (user_roles table, has_role() definer fn). KYC review queue, flagged-transaction list, manual journal entries.
+8. /api/public/webhooks/banking — POST handler that verifies the provider's HMAC signature, deduplicates on event_id, then writes to a webhook_events table before updating ledger rows.
+9. /settings — profile, external account links, notification preferences.
+
+Tables: profiles (kyc_status, role), accounts (user_id, balance_cents, type, last4), transactions (account_id, amount_cents, currency, counterparty, status, posted_at), transfers (idempotency_key UNIQUE, status, provider_ref), webhook_events (provider, event_id UNIQUE, payload, received_at), user_roles (user_id, role).
+
+Integration brief for the LLM: NEVER move real money. Use Plaid for account linking sandbox, Stripe Financial Connections or Increase/Unit/Modern Treasury for ledger — all server-side only via createServerFn, never from the browser. All amounts in integer cents. All money-moving handlers MUST be idempotent on Idempotency-Key. Webhook routes under /api/public/* MUST verify HMAC signature with timingSafeEqual before any write. Display a persistent "Demo balances" banner unless PLAID_SECRET / INCREASE_API_KEY etc. are set.`,
+  },
+  {
+    slug: "crypto-portfolio",
+    name: "Crypto portfolio",
+    tagline: "Wallet-connect, balances across chains, on/off-ramp aware",
+    Icon: Coins,
+    blurb:
+      "A non-custodial crypto portfolio tracker — wallet connect, multi-chain balances, transaction history, swap/onramp links. No private keys ever leave the wallet.",
+    palette: [
+      { name: "Electric violet", cssVar: "--primary", sample: "#7C3AED" },
+      { name: "Carbon", cssVar: "--background", sample: "#0E0E12" },
+      { name: "Lime", cssVar: "--accent", sample: "#A3E635" },
+    ],
+    typography: { display: "Space Grotesk", body: "Inter" },
+    pages: [
+      { path: "/", purpose: "Marketing landing — connect-wallet CTA, supported chains, non-custodial messaging" },
+      { path: "/dashboard", purpose: "Portfolio overview: total value, per-chain breakdown, top holdings, 24h change" },
+      { path: "/holdings", purpose: "Full token table with quantities, USD value, allocation %" },
+      { path: "/activity", purpose: "Cross-chain transaction history with explorer links" },
+      { path: "/onramp", purpose: "Buy crypto via MoonPay/Ramp/Transak iframe with disclosure" },
+      { path: "/settings", purpose: "Manage connected wallets, currency preference, hide-small-balances toggle" },
+    ],
+    cloud: ["auth", "database", "analytics"],
+    brief: `A non-custodial crypto portfolio tracker. Bold web3 aesthetic: electric violet on carbon, lime accent, Space Grotesk display. NEVER ask for or store private keys / seed phrases — that's a hard rule, including in placeholder text.
+
+Pages:
+1. / — landing: connect-wallet CTA (RainbowKit modal), supported chains row (Ethereum, Base, Arbitrum, Optimism, Solana), non-custodial trust copy, FAQ.
+2. /dashboard — total portfolio value (USD), per-chain breakdown chart, top 5 holdings, 24h change. Scoped to the connected wallet address (or linked profile).
+3. /holdings — sortable table: token, chain, balance, USD value, % of portfolio, 24h change.
+4. /activity — unified transaction history across chains with type icons (send/receive/swap/contract) and explorer links.
+5. /onramp — provider-picker (MoonPay, Ramp, Transak) embedded via their official widget URL. Show fees + KYC disclosure clearly.
+6. /settings — list connected wallets, primary currency, hide-small-balances threshold.
+
+Tables: profiles (optional — can run wallet-only), wallets (user_id NULLABLE, address, chain, label), portfolio_snapshots (wallet_id, captured_at, total_usd_cents) for history charts.
+
+Integration brief for the LLM: use wagmi + viem + RainbowKit for wallet connect (browser only). For balances/prices/history use a chain-data provider via server fn — Alchemy (EVM), Helius (Solana), Moralis (multi-chain) — keep API keys server-side in process.env. Use CoinGecko for price USD conversion. NEVER use ethers v5 docs — viem is the standard now. NEVER call wallet.signTransaction or wallet.sendTransaction from server code. Price + balance data is read-only on the server; signing happens client-side via wagmi hooks if a swap is added. Cache price responses 60s. All amounts use BigInt for on-chain values, convert to display only at render time.`,
+  },
+  {
+    slug: "smb-invoicing",
+    name: "SMB invoicing",
+    tagline: "Quotes, invoices, Stripe payment links, and chase emails",
+    Icon: FileText,
+    blurb:
+      "An invoicing tool for small businesses — clients, line-item invoices, Stripe-hosted payment links, automated reminders, and a clean public invoice page.",
+    palette: [
+      { name: "Slate blue", cssVar: "--primary", sample: "#1E40AF" },
+      { name: "Paper", cssVar: "--background", sample: "#F8FAFC" },
+      { name: "Emerald", cssVar: "--accent", sample: "#059669" },
+    ],
+    typography: { display: "Inter Tight", body: "Inter" },
+    pages: [
+      { path: "/", purpose: "Marketing landing for the tool itself, signup CTA" },
+      { path: "/dashboard", purpose: "Outstanding total, overdue list, recent activity, MRR-style stats" },
+      { path: "/clients", purpose: "Client CRM: list + create + edit (name, email, address, currency, notes)" },
+      { path: "/invoices", purpose: "Invoice list with status filters (draft/sent/paid/overdue), search, export CSV" },
+      { path: "/invoices/new", purpose: "Invoice composer: client picker, line items (qty/desc/rate), tax, due date, Stripe payment link toggle" },
+      { path: "/invoices/$id", purpose: "Invoice detail: send via email, mark paid, void, download PDF" },
+      { path: "/i/$publicId", purpose: "Public invoice page (no auth) with Pay-with-Stripe button" },
+      { path: "/api/public/webhooks/stripe", purpose: "Stripe webhook: verify signature, mark invoice paid on checkout.session.completed" },
+      { path: "/settings", purpose: "Business profile (logo, address, default tax, payment terms), Stripe connection" },
+    ],
+    cloud: ["auth", "database", "email", "payments", "storage"],
+    brief: `An invoicing app for small businesses. Clean, professional, finance-software polish: slate-blue primary on paper background, emerald success, Inter Tight display. No clutter, no gradients — money apps need to look trustworthy.
+
+Pages:
+1. / — landing: hero with screenshot mock, "what it does" rows (clients/invoices/get-paid/auto-chase), pricing teaser, signup CTA.
+2. /dashboard — outstanding total card, overdue invoices list, last 30 days activity feed, paid-this-month stat.
+3. /clients — full CRM table with create/edit drawer (name, email, billing address, default currency, notes).
+4. /invoices — list with tabs (Draft/Sent/Paid/Overdue), filter, search, export to CSV.
+5. /invoices/new — composer: pick client, add line items (qty × rate), apply tax, set due date, optional message, toggle "Generate Stripe payment link". Save as draft or send.
+6. /invoices/$id — detail page: PDF preview, "Send" (email via Resend), "Mark paid", "Void", "Download PDF". Activity timeline on the right.
+7. /i/$publicId — public client-facing page (no auth, signed publicId). Shows invoice + a big "Pay $X" button that redirects to Stripe Checkout.
+8. /api/public/webhooks/stripe — POST handler that verifies stripe-signature with constructEvent and on checkout.session.completed marks the matching invoice paid (idempotent on event.id stored in webhook_events).
+9. /settings — business profile (logo upload, address, default tax %, payment terms days), Stripe Connect onboarding link.
+
+Tables: profiles, clients (user_id, name, email, address, currency), invoices (user_id, client_id, public_id UNIQUE, status, currency, subtotal_cents, tax_cents, total_cents, due_at, sent_at, paid_at, stripe_session_id), invoice_items (invoice_id, description, qty, unit_amount_cents), webhook_events (provider, event_id UNIQUE, payload).
+
+Integration brief for the LLM: use Stripe Checkout (mode=payment) generated server-side via createServerFn — never expose secret key to the browser. Webhook route under /api/public/* MUST verify the stripe-signature header with stripe.webhooks.constructEvent and dedupe on event.id. Send email via Resend (RESEND_API_KEY) on invoice send and on payment confirmation. PDF generation: use react-pdf in a server fn or render a print-styled HTML page and use the browser print dialog as v1 fallback. Store all amounts in integer cents.`,
   },
 ];
 
