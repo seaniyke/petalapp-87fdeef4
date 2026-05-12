@@ -1314,6 +1314,22 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
               return;
             }
 
+            const deterministic = !isInitial
+              ? deterministicPatchFallback({ currentFiles, latestUserContent: lastUserContent })
+              : null;
+            if (deterministic) {
+              controller.enqueue(
+                encoder.encode(sse({ type: "status", message: "Applying a safe targeted edit path…" })),
+              );
+              payload = deterministic;
+              collected = {
+                name: "patch_files",
+                args: JSON.stringify(deterministic.parsed),
+                finishReason: null,
+                usage: collected.usage,
+              };
+            } else {
+
             // Generic case (the one users were hitting): the model didn't
             // emit a usable patch after two passes. NOT a real error —
             // the most likely causes are an ambiguous request or the
@@ -1331,6 +1347,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
                 : "I took a careful look but couldn't pin down a safe change for this one. Could you point me at the specific element or behavior you want adjusted? A quick note like 'make the header sticky' or 'change the CTA color to teal' is usually enough.",
             });
             return;
+            }
           }
         }
 
