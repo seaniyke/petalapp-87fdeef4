@@ -1320,6 +1320,20 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     // Never block a build on guidance failure.
   }
 
+  // Layer M — Game generation guidance. Fires when the user asks Petal to
+  // build a game. Picks the right library (Phaser / three.js / plain React)
+  // by genre, scaffolds the React+Phaser bridge, and adds a leaderboard
+  // schema when the prompt mentions scores or multiplayer.
+  let gameBlock = "";
+  try {
+    const { renderGameGuidanceBlock } = await import(
+      "@/server/integrations/game-guidance.server"
+    );
+    gameBlock = renderGameGuidanceBlock(lastUserText);
+  } catch {
+    // Never block a build on guidance failure.
+  }
+
 
   const chatMessages = [
     {
@@ -1342,6 +1356,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         highStakesBlock +
         appShapeBlock +
         mobileBlock +
+        gameBlock +
         archetypeBlock +
         visionAddendum +
         filesContext,

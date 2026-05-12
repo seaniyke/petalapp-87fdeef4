@@ -54,6 +54,11 @@ const KNOWN = [
   "capacitor browser", "capacitor network", "capacitor filesystem",
   "capacitor status bar", "capacitor app", "capacitor splash screen",
   "revenuecat", "onesignal", "firebase messaging", "expo",
+  // Layer M — game libraries. The resolver pulls npm briefs on demand
+  // when the user names one explicitly ("use phaser", "add howler").
+  "phaser", "three", "three\\.js", "@react-three/fiber", "@react-three/drei",
+  "matter-js", "matter\\.js", "planck", "pixi\\.js", "pixi", "howler",
+  "nipplejs", "colyseus", "partykit", "gsap",
 ];
 
 const SERVICE_PATTERN = new RegExp(

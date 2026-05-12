@@ -46,6 +46,7 @@ export type ShapeCategory =
   | "real-estate"
   | "fitness"
   | "restaurant"
+  | "game"
   | "generic";
 
 export type CloudFeature =
@@ -246,6 +247,15 @@ const RULES: Rule[] = [
     surfaces: ["landing", "public-detail", "admin"],
     cloud: ["database", "storage"],
   },
+  // — Games (any genre) —
+  {
+    category: "game",
+    match:
+      /\b(game|gameplay|leaderboard|high[- ]?score|endless\s+runner|platformer|tower\s+defense|trivia\s+game|quiz\s+battle|card\s+game|board\s+game|puzzle\s+game|arcade\s+game|shooter|tycoon|idle\s+game|rpg|phaser|three\.?js|@react-three\/fiber)\b/i,
+    surfaces: ["landing", "auth", "dashboard"],
+    cloud: ["auth", "database"],
+    weight: 2,
+  },
 ];
 
 /* --------------------------- classifier ---------------------------- */
@@ -394,6 +404,8 @@ function rationaleFor(
       return "AI tools need auth, a chat/composer surface, settings for model/preferences, and storage for uploaded context. Default to Lovable AI Gateway over BYO keys.";
     case "internal-tool":
       return "Internal tools skip the marketing landing and focus on auth + admin/data CRUD with role checks. Use the user_roles pattern, never store role on profiles.";
+    case "game":
+      return "Game apps need a play surface (the actual game), an auth-gated profile when leaderboards exist, and a leaderboard route/modal. Pick library by genre: Phaser for arcade/runner/platformer/shooter, three.js + @react-three/fiber for 3D, plain React + Zustand for card/board/trivia/puzzle/idle. Persist scores in Cloud with RLS public read + authenticated insert; never trust raw client scores.";
     default:
       return `Detected ${category} pattern. Suggested surfaces: ${surfaces.join(", ")}.${integrations.length ? ` Likely services: ${integrations.join(", ")}.` : ""}`;
   }
