@@ -79,6 +79,18 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
               label="Templates"
             />
             <RowLink
+              to="/packs"
+              onClick={close}
+              icon={<Sparkles className="h-4 w-4" />}
+              label="Industry packs"
+            />
+            <RowLink
+              to="/themes"
+              onClick={close}
+              icon={<Sparkles className="h-4 w-4" />}
+              label="Themes & snippets"
+            />
+            <RowLink
               to="/gallery"
               onClick={close}
               icon={<ImageIcon className="h-4 w-4" />}
@@ -205,7 +217,7 @@ function RowLink({
   icon,
   label,
 }: {
-  to: "/" | "/projects" | "/gallery" | "/profile" | "/admin" | "/docs";
+  to: "/" | "/projects" | "/gallery" | "/profile" | "/admin" | "/docs" | "/templates" | "/packs" | "/themes";
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
