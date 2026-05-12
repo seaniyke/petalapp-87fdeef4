@@ -771,6 +771,7 @@ function isRetryablePatchApplyError(message: string): boolean {
   return (
     message.startsWith("must_use_replace") ||
     message.startsWith("replace_too_large") ||
+    message.startsWith("destructive_shrink") ||
     /AI replace snippet (?:did not match|matched more than once)/i.test(message) ||
     /AI tried to replace text in missing file/i.test(message) ||
     /AI returned an empty search snippet/i.test(message) ||
