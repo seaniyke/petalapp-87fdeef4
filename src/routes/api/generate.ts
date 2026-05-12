@@ -73,6 +73,14 @@ import { expandBriefIfVague } from "@/server/brief-expander.server";
 import { loadLabsFlagsForRequest } from "@/server/labs-flags.server";
 import { runStagedPipelineStream } from "@/server/pipeline/staged-orchestrator.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
+import {
+  proposeChangePlan,
+  savePlan,
+  loadAndConsumePlan,
+  buildAllowedPathSet,
+  renderApprovedPlanBlock,
+  type PlanProposal,
+} from "@/server/plan-mode";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
@@ -94,6 +102,16 @@ type Body = {
    *  itself after a failed build. Skip credit charging — the user did not
    *  ask for this turn, Petal is fixing its own mistake. */
   isAutoFix?: boolean;
+  /** Plan Mode v1 — when true, run the cheap planning model first, emit
+   *  `plan_proposed`, persist the plan, and end the stream. */
+  planFirst?: boolean;
+  /** Plan Mode v1 — when set, treat this as the "approval resume". The
+   *  plan is loaded, its file list (intersected with `allowedPaths`) is
+   *  used as a hard scope cap inside the protected-path filter. */
+  approvedPlanId?: string;
+  /** Plan Mode v1 — user's edited subset of plan paths to allow. If
+   *  omitted, the entire plan's file list is allowed. */
+  allowedPaths?: string[];
 };
 
 const PATCH_CONTEXT_FILE_LIMIT = 24;
@@ -867,7 +885,112 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     );
   }
 
-  // Pre-flight balance check ONLY — we no longer take a "hold". The
+  // ===========================================================================
+  // Plan Mode v1 — propose-only short-circuit.
+  // When `planFirst` is true and there is no `approvedPlanId` yet, we run the
+  // cheap planning model, persist the plan, emit `plan_proposed`, and end the
+  // stream. The composer renders the plan as an approval card; the user picks
+  // files (or accepts all) and POSTs back with `approvedPlanId` to resume.
+  // ===========================================================================
+  if (body.planFirst && !body.approvedPlanId) {
+    if (!body.projectId) {
+      return new Response(
+        JSON.stringify({ error: "Plan mode requires a saved project. Save and try again." }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    const planEncoder = new TextEncoder();
+    const planStream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          const plan = await proposeChangePlan({
+            userPrompt: lastContent,
+            history: messages,
+            currentFiles,
+            signal: request.signal,
+          });
+          const planId = await savePlan({
+            projectId: body.projectId!,
+            userId,
+            payload: plan,
+          });
+          controller.enqueue(
+            planEncoder.encode(
+              sse({
+                type: "plan_proposed",
+                planId,
+                summary: plan.summary,
+                risk: plan.risk,
+                files: plan.files,
+              }),
+            ),
+          );
+        } catch (e) {
+          const raw = e instanceof Error ? e.message : "Planning failed.";
+          console.error("[/api/generate] plan_proposal failed", raw);
+          controller.enqueue(
+            planEncoder.encode(
+              sse({
+                type: "error",
+                message:
+                  "Petal couldn't draft a plan for that request. Try sending again without Plan first.",
+                kind: classifyRawError(raw),
+                raw: raw.slice(0, 240),
+              }),
+            ),
+          );
+        } finally {
+          controller.close();
+        }
+      },
+    });
+    return new Response(planStream, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+      },
+    });
+  }
+
+  // Plan Mode v1 — approval resume. Load the plan and compute the scope cap.
+  // Errors here become a friendly inline error; the user can retry without
+  // plan mode if their plan expired.
+  let approvedPlan: PlanProposal | null = null;
+  let allowedPathSet: Set<string> | null = null;
+  if (body.approvedPlanId) {
+    try {
+      const loaded = await loadAndConsumePlan({
+        planId: body.approvedPlanId,
+        userId,
+      });
+      approvedPlan = loaded.payload;
+      allowedPathSet = buildAllowedPathSet(loaded.allowedPathsCanonical, body.allowedPaths);
+      if (allowedPathSet.size === 0) {
+        return new Response(
+          JSON.stringify({
+            error:
+              "All files were unchecked from the plan, so there's nothing to do. Re-send your message and approve at least one file.",
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : "plan_load_failed";
+      const friendly =
+        raw === "plan_expired"
+          ? "That plan has expired. Re-send your message to draft a new one."
+          : raw === "plan_already_approved" || raw === "plan_already_cancelled"
+          ? "That plan was already used. Re-send your message to draft a fresh one."
+          : "Couldn't load that plan. Re-send your message to draft a new one.";
+      return new Response(JSON.stringify({ error: friendly }), {
+        status: 410,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
+
   // user is charged once, after the build succeeds, based on actual
   // token usage (see post-flight section below). This keeps the
   // experience honest: failed/aborted builds cost nothing.
@@ -1080,6 +1203,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         knowledgeBlock +
         memoryBlock +
         preservationBlock +
+        (approvedPlan ? renderApprovedPlanBlock(approvedPlan) : "") +
         designBlock +
         dynamic.text +
         learningBlock +
@@ -1422,20 +1546,41 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             p.startsWith("src/components/mobile/") ||
             p.startsWith("src/integrations/backend/") ||
             PROTECTED.includes(p) ||
-            matchesUserProtectedGlob(p);
+            matchesUserProtectedGlob(p) ||
+            // Plan Mode v1 — when a plan was approved, ANY file outside its
+            // allow-list is treated as protected and dropped.
+            (allowedPathSet !== null && !allowedPathSet.has(p));
           const violations = parsed.ops.filter((op) => isProtectedPath(op.path));
           if (violations.length) {
             console.warn(
               "Dropping protected-path ops:",
               violations.map((v) => `${v.op} ${v.path}`).join(", "),
             );
+            // Surface plan-scope violations distinctly so the UI can label them.
+            if (allowedPathSet) {
+              const planDropped = violations
+                .filter((v) => !allowedPathSet!.has(v.path))
+                .map((v) => v.path);
+              if (planDropped.length) {
+                controller.enqueue(
+                  encoder.encode(
+                    sse({ type: "plan_scope_violation", droppedPaths: Array.from(new Set(planDropped)) }),
+                  ),
+                );
+              }
+            }
           }
           const safeOps = parsed.ops.filter((op) => !isProtectedPath(op.path));
           if (safeOps.length === 0) {
             const userGlobsHit = violations.some((v) => matchesUserProtectedGlob(v.path));
+            const planScopeHit =
+              allowedPathSet !== null &&
+              violations.some((v) => !allowedPathSet!.has(v.path));
             emitConversationalFallback(controller, encoder, {
               files: currentFiles,
-              summary: userGlobsHit
+              summary: planScopeHit
+                ? "The change you asked for would touch files outside the plan you approved. Re-send the message and approve the new files in the plan card, or send without Plan first to let me pick the scope."
+                : userGlobsHit
                 ? "The change you asked for would touch files you've marked as protected in PETAL.md. Update PETAL.md to allow them, or rephrase the request to target other files."
                 : "The change you asked for would touch files I keep reserved for the framework (the UI kit / build config). I can do this a different way — tell me the user-visible behavior you want and I'll wire it up in app code instead.",
             });

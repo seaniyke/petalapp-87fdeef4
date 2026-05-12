@@ -60,6 +60,16 @@ type Handlers = {
      *  isn't blinded by LLM-rewritten apology copy. */
     raw?: string,
   ) => void;
+  /** Plan Mode v1 — server proposed a scoped plan. The stream then ends and
+   *  the composer renders an approval card. */
+  onPlanProposed?: (plan: {
+    planId: string;
+    summary: string;
+    risk: "low" | "medium" | "high";
+    files: Array<{ path: string; intent: "edit" | "create" | "delete"; reason: string }>;
+  }) => void;
+  /** Plan Mode v1 — patch tried to touch files outside the approved scope. */
+  onPlanScopeViolation?: (droppedPaths: string[]) => void;
   /** Fired once at the very start of every turn. The client should persist
    *  this id (e.g. to localStorage keyed by projectId) so it can silently
    *  reconnect via /api/turns/$id/events after a tab close or refresh. */
@@ -81,6 +91,12 @@ export async function streamGenerate(
      *  itself (after a failed build). The server skips credit charging and
      *  the client suppresses the giant prompt from the chat thread. */
     isAutoFix?: boolean;
+    /** Plan Mode — propose a plan first instead of generating immediately. */
+    planFirst?: boolean;
+    /** Plan Mode — resume after the user approved a previously-proposed plan. */
+    approvedPlanId?: string;
+    /** Plan Mode — user-edited subset of the plan's file list to allow. */
+    allowedPaths?: string[];
   },
   handlers: Handlers,
   signal?: AbortSignal,
@@ -205,6 +221,17 @@ export async function streamGenerate(
             break;
           case "done":
             handlers.onDone?.(evt.status);
+            break;
+          case "plan_proposed":
+            handlers.onPlanProposed?.({
+              planId: evt.planId,
+              summary: evt.summary,
+              risk: evt.risk,
+              files: evt.files,
+            });
+            break;
+          case "plan_scope_violation":
+            handlers.onPlanScopeViolation?.(evt.droppedPaths);
             break;
         }
       }

@@ -552,6 +552,21 @@ function Builder() {
   // results on hard refactors / multi-file features. One-shot: auto-resets
   // after the next send so users don't accidentally pay for it forever.
   const [deepThink, setDeepThink] = useState(false);
+  // Plan Mode v1 — when true, the next send goes through the planning step
+  // first; the user gets an approval card before any patches run.
+  const [planFirst, setPlanFirst] = useState(false);
+  // Active proposed plan (if any). When set, the composer renders the
+  // approval card instead of the normal "send" UI.
+  const [proposedPlan, setProposedPlan] = useState<{
+    planId: string;
+    summary: string;
+    risk: "low" | "medium" | "high";
+    files: Array<{ path: string; intent: "edit" | "create" | "delete"; reason: string }>;
+    /** User's checkbox state — paths currently allowed. */
+    allowedPaths: Set<string>;
+    /** Original prompt the user submitted, replayed on approve. */
+    sourcePrompt: string;
+  } | null>(null);
   const composerFileInputRef = useRef<HTMLInputElement>(null);
   const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
@@ -1423,6 +1438,12 @@ function Builder() {
          *  visible thread shows a friendly system note instead of the raw
          *  internal prompt. Credits ARE charged — this is real product work. */
         isAutoContinue?: boolean;
+        /** Plan Mode v1 — request a scoped plan first; the build doesn't run. */
+        planFirst?: boolean;
+        /** Plan Mode v1 — resume a previously-approved plan. */
+        approvedPlanId?: string;
+        /** Plan Mode v1 — user's edited subset of approved file paths. */
+        allowedPaths?: string[];
       } = {},
     ) => {
       const text = content.trim();
@@ -1681,6 +1702,9 @@ function Builder() {
             customInstructions: proj.custom_instructions ?? undefined,
             projectId: proj.id,
             isAutoFix: opts.isAutoFix,
+            planFirst: opts.planFirst,
+            approvedPlanId: opts.approvedPlanId,
+            allowedPaths: opts.allowedPaths,
           },
           {
             onPhase: (phase: PhaseId) => {
@@ -1782,6 +1806,24 @@ function Builder() {
             },
             onDone: () => {
               clearPersistedTurnId(proj.id);
+            },
+            onPlanProposed: (plan) => {
+              // Stop the build flow here; user must approve before we patch.
+              setProposedPlan({
+                planId: plan.planId,
+                summary: plan.summary,
+                risk: plan.risk,
+                files: plan.files,
+                allowedPaths: new Set(plan.files.map((f) => f.path)),
+                sourcePrompt: text,
+              });
+              setActivityVisible(false);
+              setLatestCycleProgress(undefined);
+            },
+            onPlanScopeViolation: (dropped) => {
+              setLatestCycleProgress(
+                `Skipped ${dropped.length} file${dropped.length === 1 ? "" : "s"} outside the approved plan.`,
+              );
             },
           },
           controller.signal,
@@ -2296,7 +2338,7 @@ function Builder() {
         return;
       }
       if (mode === "discuss") void discuss(trimmed);
-      else void send(trimmed);
+      else void send(trimmed, { planFirst: planFirst && !proposedPlan });
     },
     [bootstrapping, busy, discussBusy, mode, discuss, send, lastDiscussIndex, APPLY_AFFIRMATIONS, applyDiscussedPlan],
   );
@@ -3851,6 +3893,78 @@ function Builder() {
             )}
             <div ref={chatEndRef} />
           </div>
+          {proposedPlan && (
+            <div className="border-t border-border bg-muted/30 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Proposed plan ·{" "}
+                  <span
+                    className={
+                      proposedPlan.risk === "high"
+                        ? "text-destructive"
+                        : proposedPlan.risk === "medium"
+                          ? "text-foreground"
+                          : "text-muted-foreground"
+                    }
+                  >
+                    {proposedPlan.risk} risk
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setProposedPlan(null)}
+                  className="text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  Cancel
+                </button>
+              </div>
+              <p className="mb-2 text-xs text-foreground">{proposedPlan.summary}</p>
+              <ul className="mb-3 space-y-1">
+                {proposedPlan.files.map((f) => {
+                  const checked = proposedPlan.allowedPaths.has(f.path);
+                  return (
+                    <li key={f.path} className="flex items-start gap-2 text-[11px]">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          setProposedPlan((p) => {
+                            if (!p) return p;
+                            const next = new Set(p.allowedPaths);
+                            if (e.target.checked) next.add(f.path);
+                            else next.delete(f.path);
+                            return { ...p, allowedPaths: next };
+                          });
+                        }}
+                        className="mt-0.5"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <code className="text-foreground">{f.path}</code>{" "}
+                        <span className="text-muted-foreground">· {f.intent}</span>
+                        <div className="text-muted-foreground">{f.reason}</div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              <button
+                type="button"
+                disabled={proposedPlan.allowedPaths.size === 0}
+                onClick={() => {
+                  const plan = proposedPlan;
+                  setProposedPlan(null);
+                  void sendRef.current?.(plan.sourcePrompt, {
+                    approvedPlanId: plan.planId,
+                    allowedPaths: Array.from(plan.allowedPaths),
+                  });
+                }}
+                className="rounded-full bg-foreground px-3 py-1 text-[11px] font-semibold text-background shadow-sm transition hover:scale-[1.02] disabled:opacity-40"
+              >
+                Approve & build ({proposedPlan.allowedPaths.size}{" "}
+                file{proposedPlan.allowedPaths.size === 1 ? "" : "s"})
+              </button>
+            </div>
+          )}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -4148,6 +4262,23 @@ function Builder() {
                     }
                   >
                     <Sparkles className="h-3 w-3" /> Deep
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPlanFirst((v) => !v)}
+                    aria-pressed={planFirst}
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                      planFirst
+                        ? "border-foreground bg-foreground text-background shadow-sm"
+                        : "border-border bg-muted/40 text-muted-foreground hover:text-foreground"
+                    }`}
+                    title={
+                      planFirst
+                        ? "Plan first on — Petal will propose a scoped plan and wait for your approval before editing."
+                        : "Turn on Plan first — Petal proposes which files it will touch and waits for your approval before editing."
+                    }
+                  >
+                    <MessageSquare className="h-3 w-3" /> Plan
                   </button>
                 </div>
                 <button

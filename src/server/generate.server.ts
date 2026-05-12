@@ -468,6 +468,23 @@ export type StreamEvent =
       totalFiles: number;
     }
   /**
+   * Plan Mode v1 — emitted ONCE when the user submitted with `planFirst:true`.
+   * The stream then ends. The composer renders an approval card; on approve
+   * the client makes a fresh /api/generate request with `approvedPlanId`.
+   */
+  | {
+      type: "plan_proposed";
+      planId: string;
+      summary: string;
+      risk: "low" | "medium" | "high";
+      files: Array<{ path: string; intent: "edit" | "create" | "delete"; reason: string }>;
+    }
+  /** Emitted when an approved plan tried to apply ops outside its allowed paths. */
+  | {
+      type: "plan_scope_violation";
+      droppedPaths: string[];
+    }
+  /**
    * One short, human sentence the model wrote in its OWN voice for the file
    * it's about to start generating ("Building the photo upload screen…").
    * Emitted exactly once per file, the moment the model's `narration` field
