@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
+import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -81,6 +82,11 @@ import { Route as ApiBillingSubscriptionCancelRouteImport } from './routes/api/b
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
   path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TemplatesRoute = TemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -438,6 +444,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/templates': typeof TemplatesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -508,6 +515,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/templates': typeof TemplatesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -579,6 +587,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/templates': typeof TemplatesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -651,6 +660,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/projects'
     | '/reset-password'
+    | '/templates'
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
@@ -721,6 +731,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/projects'
     | '/reset-password'
+    | '/templates'
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
@@ -791,6 +802,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/projects'
     | '/reset-password'
+    | '/templates'
     | '/unsubscribe'
     | '/admin/ai-providers'
     | '/admin/billing'
@@ -862,6 +874,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ProjectsRoute: typeof ProjectsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  TemplatesRoute: typeof TemplatesRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminBillingRoute: typeof AdminBillingRoute
@@ -930,6 +943,13 @@ declare module '@tanstack/react-router' {
       path: '/unsubscribe'
       fullPath: '/unsubscribe'
       preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/templates': {
+      id: '/templates'
+      path: '/templates'
+      fullPath: '/templates'
+      preLoaderRoute: typeof TemplatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -1425,6 +1445,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ProjectsRoute: ProjectsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  TemplatesRoute: TemplatesRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminBillingRoute: AdminBillingRoute,
@@ -1488,3 +1509,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

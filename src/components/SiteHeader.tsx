@@ -8,6 +8,7 @@ import {
   Wallet,
   Menu,
   Image as ImageIcon,
+  Sparkles,
 } from "lucide-react";
 import petalLogo from "@/assets/petal-logo.png";
 import { useAuth } from "@/lib/auth";
@@ -93,6 +94,12 @@ export function SiteHeader() {
                   How it works
                 </a>
                 <Link
+                  to="/templates"
+                  className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                >
+                  Templates
+                </Link>
+                <Link
                   to="/gallery"
                   className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                 >
@@ -107,6 +114,13 @@ export function SiteHeader() {
                   activeProps={{ className: "bg-muted/60 text-foreground" }}
                 >
                   <FolderOpen className="h-4 w-4" /> Projects
+                </Link>
+                <Link
+                  to="/templates"
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                  activeProps={{ className: "bg-muted/60 text-foreground" }}
+                >
+                  <Sparkles className="h-4 w-4" /> Templates
                 </Link>
                 <Link
                   to="/gallery"
