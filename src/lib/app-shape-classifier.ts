@@ -46,6 +46,7 @@ export type ShapeCategory =
   | "real-estate"
   | "fitness"
   | "restaurant"
+  | "game"
   | "generic";
 
 export type CloudFeature =
