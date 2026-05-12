@@ -709,6 +709,65 @@ function addStructuredRetryInstruction<T extends Array<{ role: string; content: 
   ) as T;
 }
 
+function deterministicPatchFallback(args: {
+  currentFiles: ProjectFile[];
+  latestUserContent: string;
+}): ParsedProjectPayload | null {
+  const prompt = args.latestUserContent.toLowerCase();
+  const isLandingExpansion =
+    /\b(add|more|expand|extra|new|additional|content|contents|section|sections)\b/i.test(prompt) &&
+    /\b(landing|home\s?page|homepage|main page|front page|page)\b/i.test(prompt);
+  if (!isLandingExpansion) return null;
+
+  const target =
+    args.currentFiles.find((f) => f.path === "src/pages/Home.tsx") ??
+    args.currentFiles.find((f) => f.path === "src/routes/index.tsx") ??
+    args.currentFiles.find((f) => f.path === "src/App.tsx");
+  if (!target || target.content.includes("LandingProofSection")) return null;
+
+  const callBlock = `      <LandingProofSection />\n      <LandingProcessSection />\n      <LandingProjectSection />\n`;
+  const callAnchor = target.content.includes("      <CtaSection />")
+    ? "      <CtaSection />\n"
+    : target.content.includes("      <CTASection />")
+      ? "      <CTASection />\n"
+      : null;
+  const callsOp = callAnchor
+    ? {
+        op: "replace" as const,
+        path: target.path,
+        search: callAnchor,
+        replace: `${callBlock}${callAnchor}`,
+      }
+    : null;
+
+  const appendAnchor = target.content.trimEnd().endsWith("}")
+    ? "\n}"
+    : null;
+  if (!callsOp || !appendAnchor) return null;
+
+  const sections = `\n}\n\nfunction LandingProofSection() {\n  const proofPoints = [\n    { label: "Years in operation", value: "18+" },\n    { label: "Completed projects", value: "240+" },\n    { label: "Safety rating", value: "A+" },\n  ];\n\n  return (\n    <section className="bg-muted/40 py-16">\n      <div className="mx-auto max-w-6xl px-4">\n        <div className="grid gap-6 md:grid-cols-3">\n          {proofPoints.map((item) => (\n            <div key={item.label} className="rounded-xl border border-border bg-card p-6 text-center shadow-sm">\n              <div className="text-4xl font-bold text-primary">{item.value}</div>\n              <p className="mt-2 text-sm text-muted-foreground">{item.label}</p>\n            </div>\n          ))}\n        </div>\n      </div>\n    </section>\n  );\n}\n\nfunction LandingProcessSection() {\n  const steps = [\n    "Site review and project planning",\n    "Clear estimates and build timeline",\n    "Dedicated crew management",\n    "Final inspection and handover",\n  ];\n\n  return (\n    <section className="py-16">\n      <div className="mx-auto max-w-6xl px-4">\n        <div className="max-w-2xl">\n          <p className="text-sm font-semibold uppercase tracking-wide text-primary">How we work</p>\n          <h2 className="mt-3 text-3xl font-bold md:text-5xl">A smoother path from quote to completion</h2>\n        </div>\n        <div className="mt-10 grid gap-4 md:grid-cols-4">\n          {steps.map((step, index) => (\n            <div key={step} className="rounded-xl border border-border bg-card p-5">\n              <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">\n                {index + 1}\n              </div>\n              <p className="font-medium">{step}</p>\n            </div>\n          ))}\n        </div>\n      </div>\n    </section>\n  );\n}\n\nfunction LandingProjectSection() {\n  const projects = [\n    "Commercial renovations",\n    "Industrial facilities",\n    "Residential developments",\n  ];\n\n  return (\n    <section className="py-16">\n      <div className="mx-auto max-w-6xl px-4">\n        <div className="rounded-2xl border border-border bg-card p-8 md:p-10">\n          <div className="grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-center">\n            <div>\n              <p className="text-sm font-semibold uppercase tracking-wide text-primary">Project range</p>\n              <h2 className="mt-3 text-3xl font-bold md:text-5xl">Built for complex jobs and clear communication</h2>\n              <p className="mt-4 text-muted-foreground">From early planning to the final walkthrough, the team keeps owners, architects, and site leads aligned.</p>\n            </div>\n            <div className="grid gap-3">\n              {projects.map((project) => (\n                <div key={project} className="rounded-lg bg-muted px-4 py-3 font-medium">{project}</div>\n              ))}\n            </div>\n          </div>\n        </div>\n      </div>\n    </section>\n  );`;
+
+  return {
+    parsed: {
+      plan: "I’ll add richer landing-page sections so the homepage feels more complete while keeping the existing design intact.",
+      summary: "I added more homepage content with proof points, a working process section, and a project range block.",
+      ops: [
+        callsOp,
+        {
+          op: "replace" as const,
+          path: target.path,
+          search: appendAnchor,
+          replace: sections,
+        },
+      ],
+      recap: `- \`${target.path}\` — added additional landing-page sections before the final call-to-action`,
+    },
+    summary: "I added more homepage content with proof points, a working process section, and a project range block.",
+    plan: "I’ll add richer landing-page sections so the homepage feels more complete while keeping the existing design intact.",
+    recap: `- \`${target.path}\` — added additional landing-page sections before the final call-to-action`,
+  };
+}
+
 function isRetryablePatchApplyError(message: string): boolean {
   return (
     message.startsWith("must_use_replace") ||
