@@ -7,7 +7,7 @@ import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-ro
 import { ArrowLeft, ArrowRight, Cloud, Layout, Palette, Type } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAuth } from "@/lib/auth";
-import { getPack, packToPrompt, INDUSTRY_PACKS } from "@/lib/industry-packs";
+import { getPack, packToPrompt, INDUSTRY_PACKS, type IndustryPack } from "@/lib/industry-packs";
 
 export const Route = createFileRoute("/packs/$slug")({
   loader: ({ params }) => {
