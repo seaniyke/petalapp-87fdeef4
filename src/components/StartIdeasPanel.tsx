@@ -70,7 +70,7 @@ export function StartIdeasPanel({
           md:grid md:grid-cols-4 md:gap-2 md:overflow-visible md:px-0 md:pb-0
         "
       >
-        {IDEAS.map((idea) => (
+        {LANDING_IDEAS.map((idea) => (
           <li
             key={idea.title}
             className="snap-start shrink-0 basis-[62%] sm:basis-[42%] md:basis-auto"
@@ -95,6 +95,14 @@ export function StartIdeasPanel({
           </li>
         ))}
       </ul>
+      <div className="mt-3 flex items-center justify-center gap-3">
+        <Link
+          to="/templates"
+          className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-3 py-1 text-[11px] text-foreground/80 transition hover:bg-muted"
+        >
+          Browse all templates <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
       {onSwitchToCoach && (
         <div className="mt-3 text-center">
           <button
