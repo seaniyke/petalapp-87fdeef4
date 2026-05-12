@@ -47,6 +47,13 @@ const KNOWN = [
   "alchemy", "infura", "helius", "quicknode",
   "moonpay", "ramp", "transak",
   "moralis", "the graph", "coingecko", "coinbase", "coinmarketcap",
+  // Layer K — Capacitor mobile plugins (matched as words; the resolver
+  // will pull the @capacitor/<x> npm package brief automatically).
+  "capacitor camera", "capacitor push", "capacitor geolocation",
+  "capacitor share", "capacitor haptics", "capacitor preferences",
+  "capacitor browser", "capacitor network", "capacitor filesystem",
+  "capacitor status bar", "capacitor app", "capacitor splash screen",
+  "revenuecat", "onesignal", "firebase messaging", "expo",
 ];
 
 const SERVICE_PATTERN = new RegExp(
