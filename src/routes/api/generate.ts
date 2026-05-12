@@ -626,7 +626,7 @@ type ToolRecoveryPayload = ParsedProjectPayload & {
 };
 
 function assistantTextFromCollected(collected: ParsedTool): string {
-  return [collected.name ?? "", collected.args ?? ""].join("\n").trim();
+  return [collected.text, collected.name ?? "", collected.args ?? ""].join("\n").trim();
 }
 
 function isMissingToolOutputError(error: unknown): boolean {
@@ -1680,7 +1680,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             feature: "generate",
             body: {
               model: MODEL_STRUCTURED_RETRY,
-              messages: addStructuredRetryInstruction(chatMessages, {
+              messages: addStructuredRetryInstruction(finalMessages, {
                 isInitial,
                 problem: e instanceof Error ? e.message : "invalid structured response",
                 hasBackend: Boolean(backend),
@@ -1717,6 +1717,33 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
               return;
             }
 
+            const recovered = isMissingToolOutputError(retryErr)
+              ? await recoverMissingToolOutput({
+                  chatMessages: finalMessages,
+                  collected,
+                  isInitial,
+                  tool,
+                  model,
+                  phaseTag,
+                  lastUserContent,
+                  hasVisionTurn,
+                  backend,
+                  signal: request.signal,
+                  controller,
+                  encoder,
+                }).catch((recoveryErr) => {
+                  console.warn(
+                    "[generate] tool recovery failed:",
+                    recoveryErr instanceof Error ? recoveryErr.message : String(recoveryErr),
+                  );
+                  return null;
+                })
+              : null;
+            if (recovered) {
+              payload = recovered;
+              collected = recovered.collected;
+            } else {
+
             const deterministic = !isInitial
               ? deterministicPatchFallback({ currentFiles, latestUserContent: lastUserContent })
               : null;
@@ -1728,6 +1755,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
               collected = {
                 name: "patch_files",
                 args: JSON.stringify(deterministic.parsed),
+                text: "",
                 finishReason: null,
                 usage: collected.usage,
               };
@@ -1750,6 +1778,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
                 : "I took a careful look but couldn't pin down a safe change for this one. Could you point me at the specific element or behavior you want adjusted? A quick note like 'make the header sticky' or 'change the CTA color to teal' is usually enough.",
             });
             return;
+            }
             }
           }
         }
