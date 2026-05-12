@@ -94,6 +94,16 @@ type Body = {
    *  itself after a failed build. Skip credit charging — the user did not
    *  ask for this turn, Petal is fixing its own mistake. */
   isAutoFix?: boolean;
+  /** Plan Mode v1 — when true, run the cheap planning model first, emit
+   *  `plan_proposed`, persist the plan, and end the stream. */
+  planFirst?: boolean;
+  /** Plan Mode v1 — when set, treat this as the "approval resume". The
+   *  plan is loaded, its file list (intersected with `allowedPaths`) is
+   *  used as a hard scope cap inside the protected-path filter. */
+  approvedPlanId?: string;
+  /** Plan Mode v1 — user's edited subset of plan paths to allow. If
+   *  omitted, the entire plan's file list is allowed. */
+  allowedPaths?: string[];
 };
 
 const PATCH_CONTEXT_FILE_LIMIT = 24;
