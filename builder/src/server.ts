@@ -40,7 +40,7 @@ if (!CALLBACK_URL) throw new Error("PETAL_CALLBACK_URL env var is required");
 const fastify = Fastify({
   logger: { level: process.env.LOG_LEVEL ?? "info" },
   // We need the raw body to verify HMACs.
-  bodyLimit: 8 * 1024 * 1024, // 8 MB — enough for ~10 files of generated code.
+  bodyLimit: 32 * 1024 * 1024, // 32 MB — covers full scaffold kit + examples + user files.
 });
 
 // Capture rawBody on every JSON request for signature verification.
