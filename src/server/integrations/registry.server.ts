@@ -15,6 +15,10 @@ import { plausibleIntegration } from "./plausible.integration";
 import { stripeIntegration } from "./stripe.integration";
 import { paystackIntegration } from "./paystack.integration";
 import { flutterwaveIntegration } from "./flutterwave.integration";
+import { posthogIntegration } from "./posthog.integration";
+import { openaiIntegration } from "./openai.integration";
+import { pwaIntegration } from "./pwa.integration";
+import { stripeIdentityIntegration } from "./stripe-identity.integration";
 
 export const INTEGRATIONS: IntegrationDefinition[] = [
   resendIntegration,
@@ -22,7 +26,10 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
   stripeIntegration,
   paystackIntegration,
   flutterwaveIntegration,
-  // TODO follow-up: posthog, openai, pwa
+  posthogIntegration,
+  openaiIntegration,
+  pwaIntegration,
+  stripeIdentityIntegration,
 ];
 
 export function getIntegration(code: string): IntegrationDefinition | null {

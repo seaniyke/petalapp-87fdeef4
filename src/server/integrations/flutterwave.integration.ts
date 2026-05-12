@@ -331,8 +331,40 @@ export const Route = createFileRoute("/api/public/flutterwave/webhook")({
 
         const { event } = result;
         if (event.event === "charge.completed" && event.data.status === "successful") {
-          // const txId = event.data.id;
-          // TODO: re-verify with verifyTransaction(txId), assertMatchesExpected, then fulfill.
+          const txId = event.data.id;
+          const tx_ref = event.data.tx_ref as string | undefined;
+          try {
+            // Re-verify with Flutterwave (webhook payload is informational only).
+            const { verifyTransaction, assertMatchesExpected } = await import(
+              "@/integrations/flutterwave/verify"
+            );
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { data: order } = tx_ref
+              ? await supabaseAdmin
+                  .from("orders")
+                  .select("id, amount_minor, currency, status")
+                  .eq("reference", tx_ref)
+                  .single()
+              : { data: null };
+            if (!order) { console.warn("[flw webhook] unknown tx_ref", tx_ref); return new Response("ok"); }
+            if (order.status === "paid") return new Response("ok");
+            const v = await verifyTransaction(String(txId));
+            if (!v.ok) { console.error("[flw webhook] verify failed"); return new Response("verify failed", { status: 500 }); }
+            const check = assertMatchesExpected(v.transaction, {
+              amount: order.amount_minor / 100,
+              currency: order.currency,
+              tx_ref: tx_ref!,
+            });
+            if (!check.ok) { console.error("[flw webhook] mismatch", check); return new Response("mismatch", { status: 500 }); }
+            const { error: updErr } = await supabaseAdmin
+              .from("orders")
+              .update({ status: "paid", paid_at: new Date().toISOString() })
+              .eq("id", order.id);
+            if (updErr) { console.error("[flw webhook] fulfill failed", updErr); return new Response("fulfill failed", { status: 500 }); }
+          } catch (err) {
+            console.error("[flw webhook] fulfill threw", err);
+            return new Response("fulfill error", { status: 500 });
+          }
         }
         return new Response("ok");
       },

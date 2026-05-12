@@ -642,6 +642,11 @@ function Builder() {
       setInput(next);
       if (isFinal) voiceBaseRef.current = next;
     },
+    // Bearer token for the Whisper fallback (Safari iOS / Firefox).
+    getAuthToken: async () => {
+      const { data } = await supabase.auth.getSession();
+      return data.session?.access_token ?? null;
+    },
   });
   const isMobile = useIsMobile();
   const webContainerSupported = useWebContainerSupported();
