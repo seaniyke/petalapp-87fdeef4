@@ -205,7 +205,7 @@ function RowLink({
   icon,
   label,
 }: {
-  to: "/" | "/projects" | "/gallery" | "/profile" | "/admin" | "/docs";
+  to: "/" | "/projects" | "/gallery" | "/profile" | "/admin" | "/docs" | "/templates" | "/packs" | "/themes";
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
