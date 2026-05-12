@@ -3845,16 +3845,26 @@ function Builder() {
                 );
               })()}
             {/* Live, token-by-token reply while Petal works. Promoted to a real
-                message in `messages` once the run completes. */}
+                message in `messages` once the run completes.
+
+                UX rule: when a build is in flight (activity card visible) we
+                hide the past-tense recap paragraph (`streamingAssistant`) and
+                the "What changed" panel (`streamingRecap`) until the app is
+                actually live. Showing "I built X" while the verifier is still
+                running reads as a lie. The plan + preamble still stream
+                because they describe intent, not a finished result. */}
             {busy &&
               (streamingPreamble ||
                 streamingPlan ||
                 streamingAssistant ||
                 streamingRecap) && (() => {
                 const activePhase = phases.find((p) => p.status === "active");
-                const stageLabel = streamingRecap
+                const gateBuiltOutput = activityVisible && !isLive;
+                const showAssistant = streamingAssistant && !gateBuiltOutput;
+                const showRecap = streamingRecap && !gateBuiltOutput;
+                const stageLabel = showRecap
                   ? "Wrapping up"
-                  : streamingAssistant
+                  : showAssistant
                     ? "Writing"
                     : streamingPlan
                       ? "Planning"
@@ -3868,49 +3878,8 @@ function Builder() {
                   <span className="petal-shimmer font-medium">
                     {stageLabel}
                   </span>
-                </div>
-                <div className="space-y-2.5">
-                  {/* Warm conversational preamble — always shown plain, never
-                      hidden behind a chip. This is the first thing the user
-                      reads and it sets the tone for the whole turn. */}
-                  {streamingPreamble && (() => {
-                    const safePreamble = sanitizeNarrative(streamingPreamble);
-                    return (
-                      <Suspense
-                        fallback={<div className="whitespace-pre-wrap">{safePreamble}</div>}
-                      >
-                        <MarkdownMessage content={safePreamble} projectId={project?.id ?? null} />
-                      </Suspense>
-                    );
-                  })()}
-                  {streamingPlan && (() => {
-                    const safePlan = sanitizeNarrative(streamingPlan);
-                    return (
-                      <CollapsibleSegment
-                        label="Plan"
-                        tone="primary"
-                        icon={<Wand2 className="h-2.5 w-2.5" />}
-                        defaultOpen={false}
-                      >
-                        <Suspense
-                          fallback={<div className="whitespace-pre-wrap text-[13px]">{safePlan}</div>}
-                        >
-                          <MarkdownMessage content={safePlan} projectId={project?.id ?? null} />
-                        </Suspense>
-                      </CollapsibleSegment>
-                    );
-                  })()}
-                  {streamingAssistant && (() => {
-                    const safeAssistant = sanitizeNarrative(streamingAssistant);
-                    return (
-                      <Suspense
-                        fallback={<div className="whitespace-pre-wrap">{safeAssistant}</div>}
-                      >
-                        <MarkdownMessage content={safeAssistant} projectId={project?.id ?? null} />
-                      </Suspense>
-                    );
-                  })()}
-                  {streamingRecap && (() => {
+...
+                  {showRecap && (() => {
                     const safeRecap = sanitizeNarrative(streamingRecap);
                     return (
                       <CollapsibleSegment
