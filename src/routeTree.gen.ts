@@ -29,6 +29,7 @@ import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe
 import { Route as BillingReturnRouteImport } from './routes/billing.return'
 import { Route as ApiVisitorsRouteImport } from './routes/api/visitors'
 import { Route as ApiTriageRouteImport } from './routes/api/triage'
+import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
 import { Route as ApiSubdomainRouteImport } from './routes/api/subdomain'
 import { Route as ApiSiteInfoRouteImport } from './routes/api/site-info'
 import { Route as ApiPublishRouteImport } from './routes/api/publish'
@@ -181,6 +182,11 @@ const ApiVisitorsRoute = ApiVisitorsRouteImport.update({
 const ApiTriageRoute = ApiTriageRouteImport.update({
   id: '/api/triage',
   path: '/api/triage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
+  id: '/api/transcribe',
+  path: '/api/transcribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSubdomainRoute = ApiSubdomainRouteImport.update({
@@ -492,6 +498,7 @@ export interface FileRoutesByFullPath {
   '/api/publish': typeof ApiPublishRoute
   '/api/site-info': typeof ApiSiteInfoRoute
   '/api/subdomain': typeof ApiSubdomainRoute
+  '/api/transcribe': typeof ApiTranscribeRoute
   '/api/triage': typeof ApiTriageRoute
   '/api/visitors': typeof ApiVisitorsRoute
   '/billing/return': typeof BillingReturnRoute
@@ -567,6 +574,7 @@ export interface FileRoutesByTo {
   '/api/publish': typeof ApiPublishRoute
   '/api/site-info': typeof ApiSiteInfoRoute
   '/api/subdomain': typeof ApiSubdomainRoute
+  '/api/transcribe': typeof ApiTranscribeRoute
   '/api/triage': typeof ApiTriageRoute
   '/api/visitors': typeof ApiVisitorsRoute
   '/billing/return': typeof BillingReturnRoute
@@ -643,6 +651,7 @@ export interface FileRoutesById {
   '/api/publish': typeof ApiPublishRoute
   '/api/site-info': typeof ApiSiteInfoRoute
   '/api/subdomain': typeof ApiSubdomainRoute
+  '/api/transcribe': typeof ApiTranscribeRoute
   '/api/triage': typeof ApiTriageRoute
   '/api/visitors': typeof ApiVisitorsRoute
   '/billing/return': typeof BillingReturnRoute
@@ -720,6 +729,7 @@ export interface FileRouteTypes {
     | '/api/publish'
     | '/api/site-info'
     | '/api/subdomain'
+    | '/api/transcribe'
     | '/api/triage'
     | '/api/visitors'
     | '/billing/return'
@@ -795,6 +805,7 @@ export interface FileRouteTypes {
     | '/api/publish'
     | '/api/site-info'
     | '/api/subdomain'
+    | '/api/transcribe'
     | '/api/triage'
     | '/api/visitors'
     | '/billing/return'
@@ -870,6 +881,7 @@ export interface FileRouteTypes {
     | '/api/publish'
     | '/api/site-info'
     | '/api/subdomain'
+    | '/api/transcribe'
     | '/api/triage'
     | '/api/visitors'
     | '/billing/return'
@@ -946,6 +958,7 @@ export interface RootRouteChildren {
   ApiPublishRoute: typeof ApiPublishRoute
   ApiSiteInfoRoute: typeof ApiSiteInfoRoute
   ApiSubdomainRoute: typeof ApiSubdomainRoute
+  ApiTranscribeRoute: typeof ApiTranscribeRoute
   ApiTriageRoute: typeof ApiTriageRoute
   ApiVisitorsRoute: typeof ApiVisitorsRoute
   BillingReturnRoute: typeof BillingReturnRoute
@@ -1127,6 +1140,13 @@ declare module '@tanstack/react-router' {
       path: '/api/triage'
       fullPath: '/api/triage'
       preLoaderRoute: typeof ApiTriageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/transcribe': {
+      id: '/api/transcribe'
+      path: '/api/transcribe'
+      fullPath: '/api/transcribe'
+      preLoaderRoute: typeof ApiTranscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/subdomain': {
@@ -1558,6 +1578,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublishRoute: ApiPublishRoute,
   ApiSiteInfoRoute: ApiSiteInfoRoute,
   ApiSubdomainRoute: ApiSubdomainRoute,
+  ApiTranscribeRoute: ApiTranscribeRoute,
   ApiTriageRoute: ApiTriageRoute,
   ApiVisitorsRoute: ApiVisitorsRoute,
   BillingReturnRoute: BillingReturnRoute,
