@@ -34,6 +34,8 @@ import {
   Link2,
   Play,
   AlertTriangle,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import {
   encodeAttachments,
