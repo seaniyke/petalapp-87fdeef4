@@ -1807,6 +1807,24 @@ function Builder() {
             onDone: () => {
               clearPersistedTurnId(proj.id);
             },
+            onPlanProposed: (plan) => {
+              // Stop the build flow here; user must approve before we patch.
+              setProposedPlan({
+                planId: plan.planId,
+                summary: plan.summary,
+                risk: plan.risk,
+                files: plan.files,
+                allowedPaths: new Set(plan.files.map((f) => f.path)),
+                sourcePrompt: text,
+              });
+              setActivityVisible(false);
+              setLatestCycleProgress(undefined);
+            },
+            onPlanScopeViolation: (dropped) => {
+              setLatestCycleProgress(
+                `Skipped ${dropped.length} file${dropped.length === 1 ? "" : "s"} outside the approved plan.`,
+              );
+            },
           },
           controller.signal,
         );
