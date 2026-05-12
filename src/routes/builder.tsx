@@ -4239,66 +4239,15 @@ function Builder() {
                   >
                     <ImageIcon className="h-4 w-4" />
                   </button>
-                  <div className="inline-flex items-center rounded-full border border-border bg-muted/40 p-0.5 text-[11px]">
-                    <button
-                      type="button"
-                      onClick={() => setMode("build")}
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold transition ${
-                        mode === "build"
-                          ? "bg-foreground text-background shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      title="Petal will write code and update your app"
-                    >
-                      <Hammer className="h-3 w-3" /> Build
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMode("discuss")}
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold transition ${
-                        mode === "discuss"
-                          ? "bg-foreground text-background shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      title="Chat about changes without touching your files"
-                    >
-                      <MessageSquare className="h-3 w-3" /> Discuss
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setDeepThink((v) => !v)}
-                    aria-pressed={deepThink}
-                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
-                      deepThink
-                        ? "border-foreground bg-foreground text-background shadow-sm"
-                        : "border-border bg-muted/40 text-muted-foreground hover:text-foreground"
-                    }`}
-                    title={
-                      deepThink
-                        ? "Deep think on — Petal will use the strongest model with extended reasoning. Slower and costs more."
-                        : "Turn on Deep think — uses the strongest model with extended reasoning for hard refactors. One-shot."
-                    }
-                  >
-                    <Sparkles className="h-3 w-3" /> Deep
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPlanFirst((v) => !v)}
-                    aria-pressed={planFirst}
-                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
-                      planFirst
-                        ? "border-foreground bg-foreground text-background shadow-sm"
-                        : "border-border bg-muted/40 text-muted-foreground hover:text-foreground"
-                    }`}
-                    title={
-                      planFirst
-                        ? "Plan first on — Petal will propose a scoped plan and wait for your approval before editing."
-                        : "Turn on Plan first — Petal proposes which files it will touch and waits for your approval before editing."
-                    }
-                  >
-                    <MessageSquare className="h-3 w-3" /> Plan
-                  </button>
+                  <ComposerActionsMenu
+                    mode={mode === "discuss" ? "discuss" : "build"}
+                    onModeChange={(next) => setMode(next)}
+                    deepThink={deepThink}
+                    onDeepThinkChange={setDeepThink}
+                    planFirst={planFirst}
+                    onPlanFirstChange={setPlanFirst}
+                    disabled={bootstrapping}
+                  />
                 </div>
                 <button
                   type="submit"
