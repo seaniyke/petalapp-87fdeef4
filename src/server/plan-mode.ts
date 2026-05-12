@@ -40,6 +40,7 @@ export type PlanProposal = {
 };
 
 const PLAN_MODEL = "google/gemini-3-flash-preview";
+const PLAN_MAX_FILES = 24;
 
 const PLAN_TOOL = {
   type: "function" as const,
@@ -57,7 +58,7 @@ const PLAN_TOOL = {
         files: {
           type: "array",
           minItems: 1,
-          maxItems: 12,
+          maxItems: PLAN_MAX_FILES,
           items: {
             type: "object",
             properties: {
