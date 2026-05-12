@@ -24,6 +24,7 @@ import {
   resolveIntegration,
   renderResolvedIntegrationsBlock,
 } from "@/server/integrations/doc-resolver.server";
+import { resolveFromUserPaste } from "@/server/integrations/user-paste-resolver.server";
 import { detectIntegrationRequests } from "@/lib/integration-request-intent";
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
