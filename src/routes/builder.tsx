@@ -4290,7 +4290,7 @@ function Builder() {
                   <button
                     type="submit"
                   disabled={bootstrapping || !input.trim()}
-                  className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-background shadow-md transition hover:scale-105 hover:shadow-lg active:scale-95 disabled:opacity-30 disabled:shadow-none disabled:hover:scale-100"
+                  className="grid h-9 w-9 place-items-center rounded-full bg-[oklch(0.62_0.19_255)] text-white shadow-[0_2px_8px_-2px_oklch(0.62_0.19_255/0.5)] transition hover:brightness-110 active:scale-95 disabled:bg-foreground/20 disabled:text-foreground/40 disabled:shadow-none"
                   title={
                     busy || discussBusy
                       ? "Add to queue"
@@ -4302,7 +4302,7 @@ function Builder() {
                   {mode === "discuss" ? (
                     <MessageSquare className="h-4 w-4" />
                   ) : (
-                    <Send className="h-4 w-4" />
+                    <Send className="h-3.5 w-3.5 -translate-x-[1px]" />
                   )}
                 </button>
                 </div>
