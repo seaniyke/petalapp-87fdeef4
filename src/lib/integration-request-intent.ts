@@ -36,6 +36,8 @@ const KNOWN = [
   "firebase", "amplify", "appwrite",
   "auth0", "clerk", "kinde", "workos",
   "tinybird", "supabase",
+  "x", "twitter", "instagram", "threads", "facebook", "meta", "linkedin",
+  "tiktok", "youtube", "reddit", "bluesky", "mastodon",
 ];
 
 const SERVICE_PATTERN = new RegExp(
