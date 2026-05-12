@@ -73,6 +73,7 @@ import {
   type FriendlyError,
 } from "@/lib/friendly-errors";
 import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivityCard";
+import { ComposerActionsMenu } from "@/components/ComposerActionsMenu";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { NextStepsCard } from "@/components/NextStepsCard";
 import { PlanProposalCard } from "@/components/PlanProposalCard";
