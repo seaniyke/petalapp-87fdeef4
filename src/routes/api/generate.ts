@@ -885,7 +885,112 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     );
   }
 
-  // Pre-flight balance check ONLY — we no longer take a "hold". The
+  // ===========================================================================
+  // Plan Mode v1 — propose-only short-circuit.
+  // When `planFirst` is true and there is no `approvedPlanId` yet, we run the
+  // cheap planning model, persist the plan, emit `plan_proposed`, and end the
+  // stream. The composer renders the plan as an approval card; the user picks
+  // files (or accepts all) and POSTs back with `approvedPlanId` to resume.
+  // ===========================================================================
+  if (body.planFirst && !body.approvedPlanId) {
+    if (!body.projectId) {
+      return new Response(
+        JSON.stringify({ error: "Plan mode requires a saved project. Save and try again." }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    const planEncoder = new TextEncoder();
+    const planStream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          const plan = await proposeChangePlan({
+            userPrompt: lastContent,
+            history: messages,
+            currentFiles,
+            signal: request.signal,
+          });
+          const planId = await savePlan({
+            projectId: body.projectId!,
+            userId,
+            payload: plan,
+          });
+          controller.enqueue(
+            planEncoder.encode(
+              sse({
+                type: "plan_proposed",
+                planId,
+                summary: plan.summary,
+                risk: plan.risk,
+                files: plan.files,
+              }),
+            ),
+          );
+        } catch (e) {
+          const raw = e instanceof Error ? e.message : "Planning failed.";
+          console.error("[/api/generate] plan_proposal failed", raw);
+          controller.enqueue(
+            planEncoder.encode(
+              sse({
+                type: "error",
+                message:
+                  "Petal couldn't draft a plan for that request. Try sending again without Plan first.",
+                kind: classifyRawError(raw),
+                raw: raw.slice(0, 240),
+              }),
+            ),
+          );
+        } finally {
+          controller.close();
+        }
+      },
+    });
+    return new Response(planStream, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+      },
+    });
+  }
+
+  // Plan Mode v1 — approval resume. Load the plan and compute the scope cap.
+  // Errors here become a friendly inline error; the user can retry without
+  // plan mode if their plan expired.
+  let approvedPlan: PlanProposal | null = null;
+  let allowedPathSet: Set<string> | null = null;
+  if (body.approvedPlanId) {
+    try {
+      const loaded = await loadAndConsumePlan({
+        planId: body.approvedPlanId,
+        userId,
+      });
+      approvedPlan = loaded.payload;
+      allowedPathSet = buildAllowedPathSet(loaded.allowedPathsCanonical, body.allowedPaths);
+      if (allowedPathSet.size === 0) {
+        return new Response(
+          JSON.stringify({
+            error:
+              "All files were unchecked from the plan, so there's nothing to do. Re-send your message and approve at least one file.",
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : "plan_load_failed";
+      const friendly =
+        raw === "plan_expired"
+          ? "That plan has expired. Re-send your message to draft a new one."
+          : raw === "plan_already_approved" || raw === "plan_already_cancelled"
+          ? "That plan was already used. Re-send your message to draft a fresh one."
+          : "Couldn't load that plan. Re-send your message to draft a new one.";
+      return new Response(JSON.stringify({ error: friendly }), {
+        status: 410,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
+
   // user is charged once, after the build succeeds, based on actual
   // token usage (see post-flight section below). This keeps the
   // experience honest: failed/aborted builds cost nothing.
