@@ -105,12 +105,12 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
     setResults(null);
     setSelected(null);
     try {
-      const rows = await searchDomains(query);
+      const rawRows = await searchDomains(query);
+      // Hide premium-tier results entirely — we don't have a fee-acknowledgement
+      // checkout flow for them yet, so showing "coming soon" rows is just noise.
+      const rows = rawRows.filter((r) => r.tier !== "premium");
       setResults(rows);
-      // Auto-select the first BUYABLE result (skip premiums + unavailables).
-      const firstAvail = rows.find(
-        (r) => r.available && r.priceCents != null && r.tier !== "premium",
-      );
+      const firstAvail = rows.find((r) => r.available && r.priceCents != null);
       if (firstAvail) setSelected(firstAvail);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Search failed");
