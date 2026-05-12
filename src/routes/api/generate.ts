@@ -617,6 +617,84 @@ type ParsedProjectPayload = {
   recap?: string;
 };
 
+type ToolRecoveryPayload = ParsedProjectPayload & {
+  collected: ParsedTool;
+  usedRecovery: boolean;
+};
+
+function assistantTextFromCollected(collected: ParsedTool): string {
+  return [collected.name ?? "", collected.args ?? ""].join("\n").trim();
+}
+
+function isMissingToolOutputError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return /AI did not return (?:a project|usable edits)|AI tried to (?:rewrite|patch)/i.test(msg);
+}
+
+async function recoverMissingToolOutput(args: {
+  chatMessages: Array<{ role: string; content: unknown }>;
+  collected: ParsedTool;
+  isInitial: boolean;
+  tool: typeof WRITE_PROJECT_TOOL | typeof PATCH_FILES_TOOL;
+  model: string;
+  phaseTag: { phase: Phase };
+  lastUserContent: string;
+  hasVisionTurn: boolean;
+  backend: unknown;
+  signal: AbortSignal;
+  controller: ReadableStreamDefaultController<Uint8Array>;
+  encoder: TextEncoder;
+}): Promise<ToolRecoveryPayload | null> {
+  const assistantText = assistantTextFromCollected(args.collected);
+  if (!assistantText) return null;
+
+  args.controller.enqueue(
+    args.encoder.encode(sse({ type: "status", message: "Converting the draft into safe edits…" })),
+  );
+  const requiredTool = args.isInitial ? "write_project" : "patch_files";
+  const recoveryMessages = [
+    ...args.chatMessages,
+    {
+      role: "assistant",
+      content: assistantText.slice(0, 12_000),
+    },
+    {
+      role: "user",
+      content:
+        `Convert your previous response into a ${requiredTool} tool call now. ` +
+        `Do not add prose. Preserve the user's requested scope, but emit only valid tool JSON.`,
+    },
+  ];
+  const recovery = await aiChatCompletions({
+    feature: "generate",
+    body: {
+      model: MODEL_STRUCTURED_RETRY,
+      messages: addStructuredRetryInstruction(recoveryMessages, {
+        isInitial: args.isInitial,
+        problem: "previous response contained prose instead of the required tool call",
+        hasBackend: Boolean(args.backend),
+      }),
+      tools: [args.tool],
+      tool_choice: { type: "function", function: { name: args.tool.function.name } },
+      max_tokens: args.isInitial ? 12_000 : 10_000,
+      stream: true,
+    },
+    timeoutTier: args.isInitial ? "stream_first_build" : "stream",
+    signal: args.signal,
+    meta: {
+      phase: args.phaseTag.phase,
+      promptChars: args.lastUserContent.length,
+      hadAttachments: args.hasVisionTurn,
+      chosenBy: "tool_recovery",
+    },
+  });
+  if (!recovery.ok || !recovery.body) return null;
+
+  const recoveredCollected = await relayAndCollect(recovery, args.controller, args.encoder);
+  const parsed = parseCollectedProject(recoveredCollected, args.isInitial);
+  return { ...parsed, collected: recoveredCollected, usedRecovery: true };
+}
+
 /**
  * Emit a conversational AI reply WITHOUT failing the turn — used as the
  * deterministic fallback whenever generation can't safely produce edits.
