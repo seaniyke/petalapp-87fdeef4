@@ -18,6 +18,7 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { CURATED_INTEGRATIONS } from "./curated-briefs";
+import { renderGatewayHint } from "./gateway-aware-services";
 
 export type ResolvedIntegration = {
   serviceSlug: string;
@@ -271,6 +272,8 @@ export async function resolveIntegration(
   const curated = CURATED_INTEGRATIONS[slug];
   if (curated) {
     const r: ResolvedIntegration = { ...curated, serviceSlug: slug, source: "curated" };
+    const hint = renderGatewayHint(slug, r.displayName);
+    if (hint) r.promptBlock = `${r.promptBlock}\n${hint}`;
     void writeCache(r);
     return r;
   }
@@ -278,6 +281,8 @@ export async function resolveIntegration(
   // 3. npm
   const npm = await tryNpm(slug, displayName);
   if (npm) {
+    const hint = renderGatewayHint(slug, npm.displayName);
+    if (hint) npm.promptBlock = `${npm.promptBlock}\n${hint}`;
     void writeCache(npm);
     return npm;
   }
@@ -285,6 +290,8 @@ export async function resolveIntegration(
   // 4. AI fallback
   const ai = await tryAiSynth(slug, displayName);
   if (ai) {
+    const hint = renderGatewayHint(slug, ai.displayName);
+    if (hint) ai.promptBlock = `${ai.promptBlock}\n${hint}`;
     void writeCache(ai);
     return ai;
   }
