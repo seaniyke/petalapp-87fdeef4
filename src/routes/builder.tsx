@@ -528,6 +528,63 @@ function Builder() {
   };
   const [pickedElement, setPickedElement] = useState<PickedElement | null>(null);
   const [pickInstruction, setPickInstruction] = useState("");
+  /**
+   * Submit handler for the picker dialog. First tries a deterministic
+   * Tailwind-class patch (zero LLM call); falls back to a structured prompt
+   * for the model otherwise.
+   */
+  const runPickerSubmit = async () => {
+    const el = pickedElement;
+    const instruction = pickInstruction.trim();
+    if (!el || !instruction) return;
+
+    // --- Fast path: deterministic visual edit ---
+    const plan = tryParseQuickEdit(instruction);
+    if (plan && el.sourceFile && el.sourceLine && project) {
+      const sourceLine = parseInt(el.sourceLine, 10);
+      const file = files.find((f) => f.path === el.sourceFile);
+      if (file && Number.isFinite(sourceLine)) {
+        const result = applyQuickEditToFile(file.content, sourceLine, plan.ops);
+        if (result) {
+          const nextFiles = files.map((f) =>
+            f.path === el.sourceFile ? { ...f, content: result.content } : f,
+          );
+          setFiles(nextFiles);
+          try {
+            await saveProjectFiles(project.id, nextFiles);
+            toast.success(`Instant edit · ${plan.summary}`, {
+              description: "Patched directly — no AI used.",
+            });
+            setPickedElement(null);
+            setPickInstruction("");
+            return;
+          } catch (err) {
+            console.error("[quick-edit] save failed, falling back to AI", err);
+            // fall through to LLM path
+          }
+        }
+      }
+    }
+
+    // --- Fallback: structured prompt to the model ---
+    const lines: string[] = [
+      `Edit a single element in the preview:`,
+      `- Tag: <${el.tag}>`,
+    ];
+    if (el.text) lines.push(`- Visible text: "${el.text}"`);
+    if (el.id) lines.push(`- id: ${el.id}`);
+    if (el.classes) lines.push(`- className: ${el.classes}`);
+    if (el.role) lines.push(`- role: ${el.role}`);
+    if (el.ariaLabel) lines.push(`- aria-label: ${el.ariaLabel}`);
+    if (el.sourceFile) {
+      lines.push(`- Source file: ${el.sourceFile}${el.sourceLine ? `:${el.sourceLine}` : ""}`);
+    }
+    lines.push("", `Change requested: ${instruction}`);
+    lines.push("", `Find this exact element in the project and apply the change. Make the smallest possible edit; do not redesign other parts of the app.`);
+    submitPrompt(lines.join("\n"));
+    setPickedElement(null);
+    setPickInstruction("");
+  };
   // Runtime error captured from the live preview iframe. Surfaces a banner
   // above the composer with a one-click "Fix this" button that routes through
   // the existing free-charge auto-fix path. Dismissed by the user OR cleared
