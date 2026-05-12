@@ -1385,6 +1385,8 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           const isProtectedPath = (p: string) =>
             p.startsWith("src/components/ui/") ||
             p.startsWith("src/components/examples/") ||
+            p.startsWith("src/components/blocks/") ||
+            p.startsWith("src/components/mobile/") ||
             p.startsWith("src/integrations/backend/") ||
             PROTECTED.includes(p);
           const violations = parsed.ops.filter((op) => isProtectedPath(op.path));
