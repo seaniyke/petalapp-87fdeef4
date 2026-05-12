@@ -680,6 +680,15 @@ export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
       }
       const first = prev.indexOf(op.search);
       if (first === -1) {
+        // Aider-style fuzzy fallback: try whitespace-tolerant, indent-aware,
+        // and first/last-line anchor strategies before giving up. This
+        // eliminates the most common "stale snippet" retry round-trip.
+        const fuzzy = fuzzyReplace(prev, op.search, op.replace);
+        if (fuzzy) {
+          console.log(`[fuzzy-replace] ${op.path}: matched via ${fuzzy.strategy}`);
+          map.set(op.path, fuzzy.content);
+          continue;
+        }
         throw new Error(`AI replace snippet did not match ${op.path}.`);
       }
       if (prev.indexOf(op.search, first + op.search.length) !== -1) {
