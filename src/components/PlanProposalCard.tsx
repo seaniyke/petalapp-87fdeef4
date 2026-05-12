@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { motion } from "framer-motion";
 import { Check, X, FilePlus2, FilePen, FileMinus2, ShieldAlert, ShieldCheck, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
