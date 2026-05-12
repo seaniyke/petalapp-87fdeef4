@@ -552,6 +552,21 @@ function Builder() {
   // results on hard refactors / multi-file features. One-shot: auto-resets
   // after the next send so users don't accidentally pay for it forever.
   const [deepThink, setDeepThink] = useState(false);
+  // Plan Mode v1 — when true, the next send goes through the planning step
+  // first; the user gets an approval card before any patches run.
+  const [planFirst, setPlanFirst] = useState(false);
+  // Active proposed plan (if any). When set, the composer renders the
+  // approval card instead of the normal "send" UI.
+  const [proposedPlan, setProposedPlan] = useState<{
+    planId: string;
+    summary: string;
+    risk: "low" | "medium" | "high";
+    files: Array<{ path: string; intent: "edit" | "create" | "delete"; reason: string }>;
+    /** User's checkbox state — paths currently allowed. */
+    allowedPaths: Set<string>;
+    /** Original prompt the user submitted, replayed on approve. */
+    sourcePrompt: string;
+  } | null>(null);
   const composerFileInputRef = useRef<HTMLInputElement>(null);
   const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
