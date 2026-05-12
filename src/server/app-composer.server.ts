@@ -220,7 +220,12 @@ export function renderBlueprintBlock(b: AppBlueprint): string {
 
   // Append the legacy archetype guardrail block too — keeps the existing
   // reality-tier wording intact for the model.
-  if (b.archetype) out.push(renderArchetypeGuardrail(b.archetype));
+  if (b.archetype) {
+    out.push(renderArchetypeGuardrail(b.archetype));
+    // Step 6: per-vertical domain pack — injected only when matched, so
+    // prompt size stays flat regardless of how many packs we add.
+    out.push(renderDomainPackBlock(b.archetype));
+  }
   return out.join("\n");
 }
 
