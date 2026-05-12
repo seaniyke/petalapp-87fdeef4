@@ -18,6 +18,7 @@ import { flutterwaveIntegration } from "./flutterwave.integration";
 import { posthogIntegration } from "./posthog.integration";
 import { openaiIntegration } from "./openai.integration";
 import { pwaIntegration } from "./pwa.integration";
+import { stripeIdentityIntegration } from "./stripe-identity.integration";
 
 export const INTEGRATIONS: IntegrationDefinition[] = [
   resendIntegration,
@@ -28,6 +29,7 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
   posthogIntegration,
   openaiIntegration,
   pwaIntegration,
+  stripeIdentityIntegration,
 ];
 
 export function getIntegration(code: string): IntegrationDefinition | null {
