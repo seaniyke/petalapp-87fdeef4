@@ -3894,76 +3894,35 @@ function Builder() {
             <div ref={chatEndRef} />
           </div>
           {proposedPlan && (
-            <div className="border-t border-border bg-muted/30 p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Proposed plan ·{" "}
-                  <span
-                    className={
-                      proposedPlan.risk === "high"
-                        ? "text-destructive"
-                        : proposedPlan.risk === "medium"
-                          ? "text-foreground"
-                          : "text-muted-foreground"
-                    }
-                  >
-                    {proposedPlan.risk} risk
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setProposedPlan(null)}
-                  className="text-[11px] text-muted-foreground hover:text-foreground"
-                >
-                  Cancel
-                </button>
-              </div>
-              <p className="mb-2 text-xs text-foreground">{proposedPlan.summary}</p>
-              <ul className="mb-3 space-y-1">
-                {proposedPlan.files.map((f) => {
-                  const checked = proposedPlan.allowedPaths.has(f.path);
-                  return (
-                    <li key={f.path} className="flex items-start gap-2 text-[11px]">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => {
-                          setProposedPlan((p) => {
-                            if (!p) return p;
-                            const next = new Set(p.allowedPaths);
-                            if (e.target.checked) next.add(f.path);
-                            else next.delete(f.path);
-                            return { ...p, allowedPaths: next };
-                          });
-                        }}
-                        className="mt-0.5"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <code className="text-foreground">{f.path}</code>{" "}
-                        <span className="text-muted-foreground">· {f.intent}</span>
-                        <div className="text-muted-foreground">{f.reason}</div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-              <button
-                type="button"
-                disabled={proposedPlan.allowedPaths.size === 0}
-                onClick={() => {
-                  const plan = proposedPlan;
-                  setProposedPlan(null);
-                  void sendRef.current?.(plan.sourcePrompt, {
-                    approvedPlanId: plan.planId,
-                    allowedPaths: Array.from(plan.allowedPaths),
-                  });
-                }}
-                className="rounded-full bg-foreground px-3 py-1 text-[11px] font-semibold text-background shadow-sm transition hover:scale-[1.02] disabled:opacity-40"
-              >
-                Approve & build ({proposedPlan.allowedPaths.size}{" "}
-                file{proposedPlan.allowedPaths.size === 1 ? "" : "s"})
-              </button>
-            </div>
+            <PlanProposalCard
+              plan={proposedPlan}
+              onToggle={(path, checked) =>
+                setProposedPlan((p) => {
+                  if (!p) return p;
+                  const next = new Set(p.allowedPaths);
+                  if (checked) next.add(path);
+                  else next.delete(path);
+                  return { ...p, allowedPaths: next };
+                })
+              }
+              onSelectAll={() =>
+                setProposedPlan((p) =>
+                  p ? { ...p, allowedPaths: new Set(p.files.map((f) => f.path)) } : p,
+                )
+              }
+              onSelectNone={() =>
+                setProposedPlan((p) => (p ? { ...p, allowedPaths: new Set() } : p))
+              }
+              onCancel={() => setProposedPlan(null)}
+              onApprove={() => {
+                const plan = proposedPlan;
+                setProposedPlan(null);
+                void sendRef.current?.(plan.sourcePrompt, {
+                  approvedPlanId: plan.planId,
+                  allowedPaths: Array.from(plan.allowedPaths),
+                });
+              }}
+            />
           )}
           <form
             onSubmit={(e) => {
