@@ -1333,6 +1333,36 @@ export type Database = {
         }
         Relationships: []
       }
+      petal_plans: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          payload: Json
+          project_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          payload: Json
+          project_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          payload?: Json
+          project_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       petal_self_learning_digests: {
         Row: {
           avg_autofix_count: number | null
