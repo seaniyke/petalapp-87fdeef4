@@ -96,12 +96,7 @@ export function PlanProposalCard({
   );
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18, ease: "easeOut" }}
-      className="border-t border-border bg-gradient-to-b from-muted/40 to-background"
-    >
+    <div className="border-t border-border bg-gradient-to-b from-muted/40 to-background animate-in fade-in slide-in-from-bottom-2 duration-200">
       <div className="p-3">
         <div className="rounded-xl border border-border bg-card shadow-sm">
           {/* Header */}
