@@ -647,6 +647,54 @@ export type Database = {
         }
         Relationships: []
       }
+      integration_docs_cache: {
+        Row: {
+          display_name: string
+          docs_url: string | null
+          fetched_at: string
+          hit_count: number
+          homepage_url: string | null
+          id: string
+          meta: Json
+          npm_package: string | null
+          prompt_block: string
+          refreshed_at: string
+          required_secrets: Json
+          service_slug: string
+          source: string
+        }
+        Insert: {
+          display_name: string
+          docs_url?: string | null
+          fetched_at?: string
+          hit_count?: number
+          homepage_url?: string | null
+          id?: string
+          meta?: Json
+          npm_package?: string | null
+          prompt_block: string
+          refreshed_at?: string
+          required_secrets?: Json
+          service_slug: string
+          source: string
+        }
+        Update: {
+          display_name?: string
+          docs_url?: string | null
+          fetched_at?: string
+          hit_count?: number
+          homepage_url?: string | null
+          id?: string
+          meta?: Json
+          npm_package?: string | null
+          prompt_block?: string
+          refreshed_at?: string
+          required_secrets?: Json
+          service_slug?: string
+          source?: string
+        }
+        Relationships: []
+      }
       labs_flags: {
         Row: {
           created_at: string
