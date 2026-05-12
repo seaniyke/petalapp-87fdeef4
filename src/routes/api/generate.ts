@@ -1356,6 +1356,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         highStakesBlock +
         appShapeBlock +
         mobileBlock +
+        gameBlock +
         archetypeBlock +
         visionAddendum +
         filesContext,
