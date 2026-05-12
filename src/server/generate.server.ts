@@ -452,6 +452,22 @@ export type StreamEvent =
   | { type: "file_progress"; written: number; latestPath?: string }
   | { type: "file_complete"; path: string; bytes: number; index: number }
   /**
+   * Pre-apply diff summary. Emitted ONCE per edit turn, immediately before
+   * `applyOps` runs, so the client can render a "what's about to change"
+   * card. Does NOT block apply — this is informational; revert remains the
+   * undo path. Suppressed on initial generation (no diff baseline).
+   */
+  | {
+      type: "patch_preview";
+      changes: Array<{
+        path: string;
+        op: "create" | "update" | "replace" | "delete";
+        addedLines?: number;
+        removedLines?: number;
+      }>;
+      totalFiles: number;
+    }
+  /**
    * One short, human sentence the model wrote in its OWN voice for the file
    * it's about to start generating ("Building the photo upload screen…").
    * Emitted exactly once per file, the moment the model's `narration` field
