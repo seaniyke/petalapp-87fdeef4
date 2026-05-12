@@ -228,7 +228,7 @@ export function tryParseQuickEdit(rawInstruction: string): QuickEditPlan | null 
     }
 
     // Skip our connector words silently.
-    if (["and", "with", "background", "bg", "color", "make", "all", "&"].includes(t)) continue;
+    if (["and", "with", "background", "bg", "color", "make", "all", "&", "fully", "align", "aligned", "corners"].includes(t)) continue;
 
     // Anything else → bail to LLM.
     return null;
