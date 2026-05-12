@@ -1,4 +1,5 @@
 import { expandKeepMarkers } from "./keep-existing-expander";
+import { fuzzyReplace } from "./fuzzy-replace";
 
 export const SYSTEM_PROMPT_INITIAL = `You are Petal, an AI that builds small Vite + React + TypeScript apps from natural language. Every project is built on a pre-installed UI kit (Tailwind CSS v4 + a curated shadcn-style component library). You assemble apps from these primitives — you do not invent new ones.
 
