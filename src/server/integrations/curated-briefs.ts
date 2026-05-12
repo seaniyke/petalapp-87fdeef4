@@ -493,4 +493,427 @@ If they do:
   \`\`\`
 - For programmatic booking creation, use Cal API v2 with a personal access token (env: \`CAL_API_KEY\`).`,
   },
+
+  /* ─────────────── Messaging / comms ─────────────── */
+
+  whatsapp: {
+    displayName: "WhatsApp Cloud API",
+    npmPackage: null,
+    docsUrl: "https://developers.facebook.com/docs/whatsapp/cloud-api",
+    requiredSecrets: ["WHATSAPP_TOKEN", "WHATSAPP_PHONE_NUMBER_ID"],
+    promptBlock: `### Universal Integration: WhatsApp (Meta Cloud API)
+Use the official Meta Cloud API directly via fetch — no SDK needed.
+- Server secrets: \`WHATSAPP_TOKEN\` (long-lived system-user token from Meta Business), \`WHATSAPP_PHONE_NUMBER_ID\`, optionally \`WHATSAPP_VERIFY_TOKEN\` for the webhook.
+- Send a text message (server function only):
+  \`\`\`ts
+  await fetch(\`https://graph.facebook.com/v21.0/\${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages\`, {
+    method: "POST",
+    headers: { Authorization: \`Bearer \${process.env.WHATSAPP_TOKEN}\`, "Content-Type": "application/json" },
+    body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body } }),
+  });
+  \`\`\`
+- Webhooks (incoming messages): create a route at \`src/routes/api/public/whatsapp/webhook.ts\`. Handle GET for the \`hub.challenge\` verification, POST for incoming messages. Respond 200 fast (<5s) and process async.
+- Pitfalls: outside a 24-hour customer-service window you can ONLY send pre-approved message templates. Free-form text fails silently. New numbers are rate-limited until quality rating is established.`,
+  },
+
+  telegram: {
+    displayName: "Telegram Bot API",
+    npmPackage: null,
+    docsUrl: "https://core.telegram.org/bots/api",
+    requiredSecrets: [],
+    promptBlock: `### Universal Integration: Telegram Bot
+**Prefer the Lovable connector gateway.** Do NOT ask the user for a bot token directly — link the Telegram connector instead and call through the gateway. Server-side env vars become \`LOVABLE_API_KEY\` and \`TELEGRAM_API_KEY\` (the connection key, NOT the raw bot token).
+- Send a message:
+  \`\`\`ts
+  await fetch("https://connector-gateway.lovable.dev/telegram/sendMessage", {
+    method: "POST",
+    headers: {
+      Authorization: \`Bearer \${process.env.LOVABLE_API_KEY}\`,
+      "X-Connection-Api-Key": process.env.TELEGRAM_API_KEY!,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ chat_id, text, parse_mode: "HTML" }),
+  });
+  \`\`\`
+- Receive messages: create \`src/routes/api/public/telegram/webhook.ts\`, derive a secret_token via \`sha256("telegram-webhook:" + TELEGRAM_API_KEY).base64url\`, validate the \`X-Telegram-Bot-Api-Secret-Token\` header, persist the update by \`update_id\` (idempotent). Register with \`setWebhook\` through the gateway.
+- Pitfall: never call \`api.telegram.org\` directly — the gateway holds the token. Telegram retries failed deliveries, so dedupe on \`update_id\`.`,
+  },
+
+  slack: {
+    displayName: "Slack Web API",
+    npmPackage: null,
+    docsUrl: "https://api.slack.com/web",
+    requiredSecrets: [],
+    promptBlock: `### Universal Integration: Slack
+**Prefer the Lovable connector gateway.** Link the Slack connector; env becomes \`LOVABLE_API_KEY\` + \`SLACK_API_KEY\`. Do NOT use \`@slack/web-api\` — call the gateway directly.
+- Post a message:
+  \`\`\`ts
+  await fetch("https://connector-gateway.lovable.dev/slack/api/chat.postMessage", {
+    method: "POST",
+    headers: {
+      Authorization: \`Bearer \${process.env.LOVABLE_API_KEY}\`,
+      "X-Connection-Api-Key": process.env.SLACK_API_KEY!,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ channel, text, blocks }),
+  });
+  \`\`\`
+- Slash commands & events: public webhook at \`src/routes/api/public/slack/events.ts\` — verify the \`X-Slack-Signature\` HMAC, handle the \`url_verification\` challenge, ack within 3s.
+- Pitfall: missing scopes are the #1 failure. If a call returns \`{ ok: false, error: "missing_scope" }\`, ask the user to reconnect with the needed scope (e.g. \`chat:write\`).`,
+  },
+
+  discord: {
+    displayName: "Discord (bot + webhooks)",
+    npmPackage: "discord.js",
+    docsUrl: "https://discord.com/developers/docs",
+    requiredSecrets: ["DISCORD_BOT_TOKEN"],
+    promptBlock: `### Universal Integration: Discord
+Two paths — pick based on intent:
+
+**(A) Webhook posting** (simplest — post to one channel, no bot needed):
+- Secret: \`DISCORD_WEBHOOK_URL\` (user creates in channel settings → Integrations → Webhooks).
+- \`await fetch(process.env.DISCORD_WEBHOOK_URL, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ content, embeds }) });\`
+
+**(B) Full bot** (read messages, slash commands, react):
+- Install: \`npm install discord.js\`
+- Secret: \`DISCORD_BOT_TOKEN\` (from discord.com/developers/applications → Bot)
+- Run the gateway client in a long-lived process (NOT a serverless function — it needs a persistent WebSocket). For TanStack on Workers, prefer the HTTP interactions endpoint instead: register a public route at \`src/routes/api/public/discord/interactions.ts\`, verify Ed25519 signature with \`tweetnacl\`, ack with \`{ type: 1 }\` for PING.
+- Pitfall: never run \`Client.login()\` in a server function or edge route — it will leak connections. Use HTTP interactions for serverless.`,
+  },
+
+  vonage: {
+    displayName: "Vonage (SMS / Voice)",
+    npmPackage: "@vonage/server-sdk",
+    docsUrl: "https://developer.vonage.com",
+    requiredSecrets: ["VONAGE_API_KEY", "VONAGE_API_SECRET"],
+    promptBlock: `### Universal Integration: Vonage
+- Install: \`npm install @vonage/server-sdk\`
+- Secrets: \`VONAGE_API_KEY\`, \`VONAGE_API_SECRET\` (and \`VONAGE_FROM\` for sender ID).
+- Send SMS in a server function:
+  \`\`\`ts
+  import { Vonage } from "@vonage/server-sdk";
+  const v = new Vonage({ apiKey: process.env.VONAGE_API_KEY!, apiSecret: process.env.VONAGE_API_SECRET! });
+  await v.sms.send({ to, from: process.env.VONAGE_FROM!, text });
+  \`\`\`
+- Pitfall: alphanumeric sender IDs are blocked in the US — use a long code or toll-free number there.`,
+  },
+
+  /* ─────────────── Social — publish & read ─────────────── */
+
+  twitter: {
+    displayName: "X (Twitter) API v2",
+    npmPackage: "twitter-api-v2",
+    docsUrl: "https://docs.x.com/x-api",
+    requiredSecrets: ["TWITTER_BEARER_TOKEN"],
+    promptBlock: `### Universal Integration: X (Twitter) API v2
+- Install: \`npm install twitter-api-v2\`
+- For READ-ONLY (search tweets, read user timelines as the developer): \`TWITTER_BEARER_TOKEN\`.
+- For POSTING on a user's behalf: this REQUIRES per-user OAuth 2.0 PKCE — the user authorises your app, you store their access + refresh tokens. Do NOT just use a bearer token for posting; that fails with 403.
+  - App credentials: \`TWITTER_CLIENT_ID\`, \`TWITTER_CLIENT_SECRET\`. Store per-user tokens in a \`social_tokens\` table with RLS.
+- Post a tweet (with a per-user access token):
+  \`\`\`ts
+  import { TwitterApi } from "twitter-api-v2";
+  const client = new TwitterApi(userAccessToken);
+  await client.v2.tweet({ text });
+  \`\`\`
+- Pitfall: Free tier of the X API is heavily rate-limited (1500 posts/month/app, no search). Confirm the user has the right tier before promising features.`,
+  },
+
+  x: {
+    displayName: "X (Twitter) API v2",
+    npmPackage: "twitter-api-v2",
+    docsUrl: "https://docs.x.com/x-api",
+    requiredSecrets: ["TWITTER_BEARER_TOKEN"],
+    promptBlock: `### Universal Integration: X (formerly Twitter) — see "twitter" brief.
+Same SDK (\`twitter-api-v2\`), same OAuth 2.0 PKCE for posting on behalf of users, same Free-tier limits.`,
+  },
+
+  linkedin: {
+    displayName: "LinkedIn API",
+    npmPackage: null,
+    docsUrl: "https://learn.microsoft.com/en-us/linkedin/",
+    requiredSecrets: ["LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET"],
+    promptBlock: `### Universal Integration: LinkedIn
+LinkedIn has NO general-purpose SDK — call REST directly. ALL posting requires per-user OAuth 2.0 (member-context); there is no app-level posting.
+- App credentials: \`LINKEDIN_CLIENT_ID\`, \`LINKEDIN_CLIENT_SECRET\`. Required scopes for posting: \`w_member_social\`, \`openid\`, \`profile\`.
+- Post a UGC share (with the user's access token):
+  \`\`\`ts
+  await fetch("https://api.linkedin.com/v2/ugcPosts", {
+    method: "POST",
+    headers: { Authorization: \`Bearer \${userAccessToken}\`, "Content-Type": "application/json", "X-Restli-Protocol-Version": "2.0.0" },
+    body: JSON.stringify({
+      author: \`urn:li:person:\${userUrn}\`,
+      lifecycleState: "PUBLISHED",
+      specificContent: { "com.linkedin.ugc.ShareContent": { shareCommentary: { text }, shareMediaCategory: "NONE" } },
+      visibility: { "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC" },
+    }),
+  });
+  \`\`\`
+- Pitfall: the v2 \`ugcPosts\` endpoint is being deprecated — newer apps should use \`/rest/posts\` with the Versioned API. Always check current doc version. Apps need LinkedIn approval to access most products beyond Sign-In.`,
+  },
+
+  instagram: {
+    displayName: "Instagram Graph API",
+    npmPackage: null,
+    docsUrl: "https://developers.facebook.com/docs/instagram-platform",
+    requiredSecrets: ["INSTAGRAM_ACCESS_TOKEN"],
+    promptBlock: `### Universal Integration: Instagram Graph API
+Posting requires an Instagram Business or Creator account linked to a Facebook Page, plus Meta App Review for production. Two flows:
+
+**(A) Instagram Login API** (newer, simpler — post to your own IG account):
+- Per-user OAuth via Instagram Login. Token + IG User ID stored per user.
+- Publish a photo (two-step):
+  \`\`\`ts
+  // 1) Create container
+  const c = await fetch(\`https://graph.instagram.com/v21.0/\${igUserId}/media?image_url=\${encodeURIComponent(url)}&caption=\${encodeURIComponent(caption)}&access_token=\${token}\`, { method: "POST" });
+  const { id } = await c.json();
+  // 2) Publish container
+  await fetch(\`https://graph.instagram.com/v21.0/\${igUserId}/media_publish?creation_id=\${id}&access_token=\${token}\`, { method: "POST" });
+  \`\`\`
+
+**(B) Facebook Graph (legacy)**: post via the connected FB Page; uses \`graph.facebook.com\` and a Page access token.
+
+- Pitfall: image URLs must be PUBLIC HTTPS and stay reachable for ~1 minute. Stories / Reels have separate container types and stricter rules. No posting to personal accounts — Business/Creator only.`,
+  },
+
+  threads: {
+    displayName: "Threads API",
+    npmPackage: null,
+    docsUrl: "https://developers.facebook.com/docs/threads",
+    requiredSecrets: ["THREADS_ACCESS_TOKEN"],
+    promptBlock: `### Universal Integration: Threads (Meta) API
+- Per-user OAuth (Threads-specific scopes: \`threads_basic\`, \`threads_content_publish\`).
+- Publishing is a 2-step container flow like Instagram:
+  \`\`\`ts
+  const c = await fetch(\`https://graph.threads.net/v1.0/\${userId}/threads?media_type=TEXT&text=\${encodeURIComponent(text)}&access_token=\${token}\`, { method: "POST" });
+  const { id } = await c.json();
+  await fetch(\`https://graph.threads.net/v1.0/\${userId}/threads_publish?creation_id=\${id}&access_token=\${token}\`, { method: "POST" });
+  \`\`\`
+- Pitfall: Threads is rate-limited to 250 posts / 24h per user. Replies use \`reply_to_id\` on the container.`,
+  },
+
+  facebook: {
+    displayName: "Facebook Graph API",
+    npmPackage: null,
+    docsUrl: "https://developers.facebook.com/docs/graph-api",
+    requiredSecrets: ["FACEBOOK_ACCESS_TOKEN"],
+    promptBlock: `### Universal Integration: Facebook (Meta Graph API)
+- Per-user OAuth via Facebook Login; for posting you need a Page Access Token (not user token).
+- Post to a Page: \`POST https://graph.facebook.com/v21.0/{page-id}/feed\` with \`{ message, access_token }\`.
+- Pitfall: most permissions (e.g. \`pages_manage_posts\`) require Meta App Review before production. Personal-profile posting was removed in 2018.`,
+  },
+
+  tiktok: {
+    displayName: "TikTok Content Posting API",
+    npmPackage: null,
+    docsUrl: "https://developers.tiktok.com/doc/content-posting-api-get-started",
+    requiredSecrets: ["TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET"],
+    promptBlock: `### Universal Integration: TikTok Content Posting API
+- Per-user OAuth 2.0 with scopes \`video.upload\` and/or \`video.publish\`.
+- Publishing flow: (1) init upload to get an \`upload_url\` and \`publish_id\`; (2) PUT the video bytes to that URL; (3) poll \`/v2/post/publish/status/fetch/\` until \`PUBLISH_COMPLETE\`.
+- Sandbox mode posts to "Only Me" until your app is approved.
+- Pitfall: app review required for any production posting. Direct Post requires extra approval beyond Inbox upload.`,
+  },
+
+  youtube: {
+    displayName: "YouTube Data API v3",
+    npmPackage: "googleapis",
+    docsUrl: "https://developers.google.com/youtube/v3",
+    requiredSecrets: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+    promptBlock: `### Universal Integration: YouTube Data API v3
+- Install: \`npm install googleapis\`
+- READ-ONLY public data (search videos, fetch channel stats): use an API key, no OAuth.
+- WRITE (upload, update playlists, manage channel): per-user OAuth 2.0 with scope \`https://www.googleapis.com/auth/youtube.upload\` or \`youtube\`.
+- Upload:
+  \`\`\`ts
+  import { google } from "googleapis";
+  const auth = new google.auth.OAuth2(...); auth.setCredentials({ access_token, refresh_token });
+  const yt = google.youtube({ version: "v3", auth });
+  await yt.videos.insert({ part: ["snippet","status"], requestBody: { snippet: { title, description }, status: { privacyStatus: "private" } }, media: { body: stream } });
+  \`\`\`
+- Pitfall: default daily quota is 10,000 units; an \`upload\` costs 1,600 units. Search is 100/query.`,
+  },
+
+  reddit: {
+    displayName: "Reddit API",
+    npmPackage: "snoowrap",
+    docsUrl: "https://www.reddit.com/dev/api",
+    requiredSecrets: ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET", "REDDIT_USERNAME", "REDDIT_PASSWORD"],
+    promptBlock: `### Universal Integration: Reddit
+- Install: \`npm install snoowrap\` (or call REST directly — both work).
+- For app-as-user (your own bot account): script-app credentials with username/password OAuth.
+- For posting on a user's behalf: per-user OAuth 2.0 with scopes \`submit\`, \`identity\`, \`read\`.
+- \`\`\`ts
+  import Snoowrap from "snoowrap";
+  const r = new Snoowrap({ userAgent: "petal-app/1.0", clientId, clientSecret, username, password });
+  await r.getSubreddit("test").submitSelfpost({ title, text });
+  \`\`\`
+- Pitfall: Reddit blocks non-descriptive User-Agents. Use a unique \`platform-name/version by /u/your-username\` UA or you'll get 429 immediately.`,
+  },
+
+  bluesky: {
+    displayName: "Bluesky (AT Protocol)",
+    npmPackage: "@atproto/api",
+    docsUrl: "https://docs.bsky.app",
+    requiredSecrets: ["BLUESKY_HANDLE", "BLUESKY_APP_PASSWORD"],
+    promptBlock: `### Universal Integration: Bluesky / AT Protocol
+- Install: \`npm install @atproto/api\`
+- Auth uses an **app password** (created at bsky.app → Settings → App Passwords), NOT the account password.
+- Post:
+  \`\`\`ts
+  import { BskyAgent } from "@atproto/api";
+  const agent = new BskyAgent({ service: "https://bsky.social" });
+  await agent.login({ identifier: process.env.BLUESKY_HANDLE!, password: process.env.BLUESKY_APP_PASSWORD! });
+  await agent.post({ text, createdAt: new Date().toISOString() });
+  \`\`\`
+- For multi-user apps, use OAuth (newer) instead of app passwords. Posts and likes are public records on the user's PDS.`,
+  },
+
+  mastodon: {
+    displayName: "Mastodon API",
+    npmPackage: "masto",
+    docsUrl: "https://docs.joinmastodon.org/api/",
+    requiredSecrets: ["MASTODON_INSTANCE_URL", "MASTODON_ACCESS_TOKEN"],
+    promptBlock: `### Universal Integration: Mastodon
+- Install: \`npm install masto\`
+- Per-instance auth: each user picks their instance (e.g. \`mastodon.social\`). Register an app on that instance to get \`client_id\` + \`client_secret\`, then OAuth users to get an access token.
+- Post:
+  \`\`\`ts
+  import { createRestAPIClient } from "masto";
+  const m = createRestAPIClient({ url: instanceUrl, accessToken });
+  await m.v1.statuses.create({ status: text, visibility: "public" });
+  \`\`\`
+- Pitfall: instances are sovereign — rate limits and permissible content vary. Always store \`instance_url\` alongside the user's access token.`,
+  },
+
+  /* ─────────────── Auth providers ─────────────── */
+
+  clerk: {
+    displayName: "Clerk",
+    npmPackage: "@clerk/clerk-react",
+    docsUrl: "https://clerk.com/docs",
+    requiredSecrets: ["CLERK_SECRET_KEY"],
+    promptBlock: `### Universal Integration: Clerk
+Note: this project uses Lovable Cloud (Supabase) auth by default. Only swap to Clerk if the user explicitly asks (e.g. needs Clerk's organisations/MFA UI).
+- Install: \`npm install @clerk/clerk-react\` (frontend) + \`@clerk/backend\` (server fns).
+- Public env: \`VITE_CLERK_PUBLISHABLE_KEY\`. Server secret: \`CLERK_SECRET_KEY\`.
+- Wrap the app in \`<ClerkProvider publishableKey={...}>\`. Use \`<SignedIn>\`, \`<SignedOut>\`, \`<UserButton />\`.
+- Verify session in a server fn: \`import { verifyToken } from "@clerk/backend"\`.
+- Pitfall: Clerk and Supabase auth do NOT share sessions. If you need Clerk users to write to a Supabase RLS-protected table, mint a Supabase JWT from a Clerk session in a server fn.`,
+  },
+
+  auth0: {
+    displayName: "Auth0",
+    npmPackage: "@auth0/auth0-react",
+    docsUrl: "https://auth0.com/docs",
+    requiredSecrets: ["AUTH0_CLIENT_SECRET"],
+    promptBlock: `### Universal Integration: Auth0
+- Install: \`npm install @auth0/auth0-react\`
+- Public env: \`VITE_AUTH0_DOMAIN\`, \`VITE_AUTH0_CLIENT_ID\`. Server: \`AUTH0_CLIENT_SECRET\`.
+- Wrap in \`<Auth0Provider domain={...} clientId={...} authorizationParams={{ redirect_uri: window.location.origin }}>\`. Use \`useAuth0()\` for \`loginWithRedirect\`, \`logout\`, \`user\`.
+- Server-side: verify the access token with \`jose\` against the Auth0 JWKS at \`https://{domain}/.well-known/jwks.json\`.
+- Pitfall: callback URL must match EXACTLY what's configured in the Auth0 dashboard (including trailing slash). Localhost and production are separate entries.`,
+  },
+
+  workos: {
+    displayName: "WorkOS",
+    npmPackage: "@workos-inc/node",
+    docsUrl: "https://workos.com/docs",
+    requiredSecrets: ["WORKOS_API_KEY", "WORKOS_CLIENT_ID"],
+    promptBlock: `### Universal Integration: WorkOS (enterprise SSO + AuthKit)
+- Install: \`npm install @workos-inc/node @workos-inc/authkit-react\`
+- Server secret: \`WORKOS_API_KEY\`. Public: \`VITE_WORKOS_CLIENT_ID\`.
+- AuthKit hosted login: redirect to \`workos.getAuthorizationUrl({ provider: "authkit", clientId, redirectUri })\`, exchange the code in a server fn with \`workos.userManagement.authenticateWithCode\`.
+- Pitfall: SSO connections are configured per-organisation in the WorkOS dashboard — your app sees them via \`organization_id\`, not the SSO provider directly.`,
+  },
+
+  kinde: {
+    displayName: "Kinde",
+    npmPackage: "@kinde-oss/kinde-auth-react",
+    docsUrl: "https://kinde.com/docs",
+    requiredSecrets: ["KINDE_CLIENT_SECRET"],
+    promptBlock: `### Universal Integration: Kinde
+- Install: \`npm install @kinde-oss/kinde-auth-react\`
+- Public: \`VITE_KINDE_DOMAIN\`, \`VITE_KINDE_CLIENT_ID\`, \`VITE_KINDE_REDIRECT_URI\`. Server: \`KINDE_CLIENT_SECRET\`.
+- Wrap the tree in \`<KindeProvider clientId={...} domain={...} redirectUri={...} logoutUri={...}>\`; use \`useKindeAuth()\`.
+- Server-side: verify access tokens against the Kinde JWKS.
+- Pitfall: feature flags and permissions live on the Kinde token — read them from the access-token claims, not the user object.`,
+  },
+
+  /* ─────────────── Search / vector / observability ─────────────── */
+
+  algolia: {
+    displayName: "Algolia",
+    npmPackage: "algoliasearch",
+    docsUrl: "https://www.algolia.com/doc",
+    requiredSecrets: ["ALGOLIA_ADMIN_API_KEY"],
+    promptBlock: `### Universal Integration: Algolia
+- Install: \`npm install algoliasearch\` (server) and \`@algolia/client-search\` is included.
+- Public env: \`VITE_ALGOLIA_APP_ID\`, \`VITE_ALGOLIA_SEARCH_KEY\` (search-only key — safe in browser).
+- Server secret: \`ALGOLIA_ADMIN_API_KEY\` (used to index records — NEVER ship to client).
+- Index a record (server fn): \`const c = algoliasearch(appId, ADMIN_KEY); await c.saveObject({ indexName, body: { objectID, ...record } });\`
+- Search from the browser with the search-only key.
+- Pitfall: never put the admin key in \`VITE_*\` env. Use \`@algolia/autocomplete-js\` for ready-made UI.`,
+  },
+
+  meilisearch: {
+    displayName: "Meilisearch",
+    npmPackage: "meilisearch",
+    docsUrl: "https://www.meilisearch.com/docs",
+    requiredSecrets: ["MEILISEARCH_HOST", "MEILISEARCH_MASTER_KEY"],
+    promptBlock: `### Universal Integration: Meilisearch
+- Install: \`npm install meilisearch\`
+- Server: \`MEILISEARCH_HOST\`, \`MEILISEARCH_MASTER_KEY\`. Generate scoped tenant tokens for browser use; never ship the master key.
+- \`\`\`ts
+  import { MeiliSearch } from "meilisearch";
+  const client = new MeiliSearch({ host: process.env.MEILISEARCH_HOST!, apiKey: process.env.MEILISEARCH_MASTER_KEY! });
+  await client.index("movies").addDocuments([{ id: 1, title: "Dune" }]);
+  \`\`\`
+- Pitfall: searchable / filterable / sortable attributes must be configured on the index BEFORE indexing for filters to work.`,
+  },
+
+  pinecone: {
+    displayName: "Pinecone (vector DB)",
+    npmPackage: "@pinecone-database/pinecone",
+    docsUrl: "https://docs.pinecone.io",
+    requiredSecrets: ["PINECONE_API_KEY"],
+    promptBlock: `### Universal Integration: Pinecone
+- Install: \`npm install @pinecone-database/pinecone\`
+- Server secret: \`PINECONE_API_KEY\` (the SDK auto-reads it; index host is auto-discovered).
+- \`\`\`ts
+  import { Pinecone } from "@pinecone-database/pinecone";
+  const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
+  const index = pc.index("my-index");
+  await index.upsert([{ id: "v1", values: embedding, metadata: { text } }]);
+  const r = await index.query({ vector: queryEmbedding, topK: 5, includeMetadata: true });
+  \`\`\`
+- Pitfall: Serverless indexes are region-locked — pick the region nearest your edge runtime to keep p95 query <100ms.`,
+  },
+
+  sentry: {
+    displayName: "Sentry",
+    npmPackage: "@sentry/react",
+    docsUrl: "https://docs.sentry.io",
+    requiredSecrets: [],
+    promptBlock: `### Universal Integration: Sentry
+- Install: \`npm install @sentry/react\` (browser) — for server-side TanStack add \`@sentry/node\`.
+- Public env: \`VITE_SENTRY_DSN\` (DSNs are public by design — they identify the project, not authenticate).
+- Init in \`src/main.tsx\` BEFORE rendering: \`Sentry.init({ dsn: import.meta.env.VITE_SENTRY_DSN, tracesSampleRate: 0.1, replaysSessionSampleRate: 0.1 });\`
+- Wrap the app: \`<Sentry.ErrorBoundary fallback={<ErrorPage />}>...</Sentry.ErrorBoundary>\`.
+- Pitfall: source maps must be uploaded for readable stack traces — use \`@sentry/vite-plugin\` with \`SENTRY_AUTH_TOKEN\` (server-only) at build time.`,
+  },
+
+  posthog: {
+    displayName: "PostHog",
+    npmPackage: "posthog-js",
+    docsUrl: "https://posthog.com/docs",
+    requiredSecrets: [],
+    promptBlock: `### Universal Integration: PostHog
+- Install: \`npm install posthog-js\`
+- Public env: \`VITE_POSTHOG_KEY\`, \`VITE_POSTHOG_HOST\` (default \`https://us.i.posthog.com\` or \`https://eu.i.posthog.com\`).
+- Init once: \`posthog.init(import.meta.env.VITE_POSTHOG_KEY, { api_host: import.meta.env.VITE_POSTHOG_HOST });\`
+- Identify on login: \`posthog.identify(user.id, { email })\`. Track: \`posthog.capture("event", { ...props })\`.
+- Server-side capture: use \`posthog-node\` with a personal API key (\`POSTHOG_API_KEY\`) for backend events / cohort writes.
+- Pitfall: GDPR — call \`posthog.opt_out_capturing()\` until the user accepts cookies.`,
+  },
 };
