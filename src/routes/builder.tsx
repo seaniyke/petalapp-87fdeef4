@@ -34,6 +34,8 @@ import {
   Link2,
   Play,
   AlertTriangle,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import {
   encodeAttachments,
@@ -74,6 +76,7 @@ import {
 } from "@/lib/friendly-errors";
 import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivityCard";
 import { ComposerActionsMenu } from "@/components/ComposerActionsMenu";
+import { useVoiceDictation } from "@/hooks/use-voice-dictation";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { NextStepsCard } from "@/components/NextStepsCard";
 import { PlanProposalCard } from "@/components/PlanProposalCard";
@@ -629,6 +632,17 @@ function Builder() {
   } | null>(null);
   const composerFileInputRef = useRef<HTMLInputElement>(null);
   const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
+  // Voice dictation — Web Speech API. Streams interim words into the textarea
+  // and stops on toggle. Hidden when the browser doesn't support it.
+  const voiceBaseRef = useRef("");
+  const voice = useVoiceDictation({
+    onText: (text, isFinal) => {
+      const base = voiceBaseRef.current;
+      const next = base ? `${base.replace(/\s+$/, "")} ${text}` : text;
+      setInput(next);
+      if (isFinal) voiceBaseRef.current = next;
+    },
+  });
   const isMobile = useIsMobile();
   const webContainerSupported = useWebContainerSupported();
   // Use the deployed-build iframe fallback whenever WebContainers can't run
@@ -4249,8 +4263,32 @@ function Builder() {
                     disabled={bootstrapping}
                   />
                 </div>
-                <button
-                  type="submit"
+                <div className="flex items-center gap-1.5">
+                  {voice.supported && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!voice.listening) voiceBaseRef.current = input;
+                        voice.toggle();
+                      }}
+                      aria-pressed={voice.listening}
+                      className={`grid h-9 w-9 place-items-center rounded-full transition ${
+                        voice.listening
+                          ? "bg-red-500/15 text-red-500 ring-2 ring-red-500/40 animate-pulse"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                      title={
+                        voice.listening
+                          ? "Stop dictation"
+                          : voice.error ?? "Dictate — speak your prompt"
+                      }
+                      aria-label={voice.listening ? "Stop dictation" : "Start dictation"}
+                    >
+                      {voice.listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </button>
+                  )}
+                  <button
+                    type="submit"
                   disabled={bootstrapping || !input.trim()}
                   className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-background shadow-md transition hover:scale-105 hover:shadow-lg active:scale-95 disabled:opacity-30 disabled:shadow-none disabled:hover:scale-100"
                   title={
@@ -4267,6 +4305,7 @@ function Builder() {
                     <Send className="h-4 w-4" />
                   )}
                 </button>
+                </div>
               </div>
             </div>
             {/* Status line removed — the in-chat shimmer label
