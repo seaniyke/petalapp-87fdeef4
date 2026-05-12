@@ -18,6 +18,9 @@ import {
   CalendarCheck,
   Store,
   Megaphone,
+  Landmark,
+  Coins,
+  FileText,
   type LucideIcon,
 } from "lucide-react";
 
