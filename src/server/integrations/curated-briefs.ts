@@ -562,25 +562,6 @@ Use the official Meta Cloud API directly via fetch — no SDK needed.
 - Pitfall: missing scopes are the #1 failure. If a call returns \`{ ok: false, error: "missing_scope" }\`, ask the user to reconnect with the needed scope (e.g. \`chat:write\`).`,
   },
 
-  discord: {
-    displayName: "Discord (bot + webhooks)",
-    npmPackage: "discord.js",
-    docsUrl: "https://discord.com/developers/docs",
-    requiredSecrets: ["DISCORD_BOT_TOKEN"],
-    promptBlock: `### Universal Integration: Discord
-Two paths — pick based on intent:
-
-**(A) Webhook posting** (simplest — post to one channel, no bot needed):
-- Secret: \`DISCORD_WEBHOOK_URL\` (user creates in channel settings → Integrations → Webhooks).
-- \`await fetch(process.env.DISCORD_WEBHOOK_URL, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ content, embeds }) });\`
-
-**(B) Full bot** (read messages, slash commands, react):
-- Install: \`npm install discord.js\`
-- Secret: \`DISCORD_BOT_TOKEN\` (from discord.com/developers/applications → Bot)
-- Run the gateway client in a long-lived process (NOT a serverless function — it needs a persistent WebSocket). For TanStack on Workers, prefer the HTTP interactions endpoint instead: register a public route at \`src/routes/api/public/discord/interactions.ts\`, verify Ed25519 signature with \`tweetnacl\`, ack with \`{ type: 1 }\` for PING.
-- Pitfall: never run \`Client.login()\` in a server function or edge route — it will leak connections. Use HTTP interactions for serverless.`,
-  },
-
   vonage: {
     displayName: "Vonage (SMS / Voice)",
     npmPackage: "@vonage/server-sdk",
@@ -840,21 +821,8 @@ Note: this project uses Lovable Cloud (Supabase) auth by default. Only swap to C
 - Pitfall: feature flags and permissions live on the Kinde token — read them from the access-token claims, not the user object.`,
   },
 
-  /* ─────────────── Search / vector / observability ─────────────── */
+  /* ─────────────── Search ─────────────── */
 
-  algolia: {
-    displayName: "Algolia",
-    npmPackage: "algoliasearch",
-    docsUrl: "https://www.algolia.com/doc",
-    requiredSecrets: ["ALGOLIA_ADMIN_API_KEY"],
-    promptBlock: `### Universal Integration: Algolia
-- Install: \`npm install algoliasearch\` (server) and \`@algolia/client-search\` is included.
-- Public env: \`VITE_ALGOLIA_APP_ID\`, \`VITE_ALGOLIA_SEARCH_KEY\` (search-only key — safe in browser).
-- Server secret: \`ALGOLIA_ADMIN_API_KEY\` (used to index records — NEVER ship to client).
-- Index a record (server fn): \`const c = algoliasearch(appId, ADMIN_KEY); await c.saveObject({ indexName, body: { objectID, ...record } });\`
-- Search from the browser with the search-only key.
-- Pitfall: never put the admin key in \`VITE_*\` env. Use \`@algolia/autocomplete-js\` for ready-made UI.`,
-  },
 
   meilisearch: {
     displayName: "Meilisearch",
@@ -870,50 +838,5 @@ Note: this project uses Lovable Cloud (Supabase) auth by default. Only swap to C
   await client.index("movies").addDocuments([{ id: 1, title: "Dune" }]);
   \`\`\`
 - Pitfall: searchable / filterable / sortable attributes must be configured on the index BEFORE indexing for filters to work.`,
-  },
-
-  pinecone: {
-    displayName: "Pinecone (vector DB)",
-    npmPackage: "@pinecone-database/pinecone",
-    docsUrl: "https://docs.pinecone.io",
-    requiredSecrets: ["PINECONE_API_KEY"],
-    promptBlock: `### Universal Integration: Pinecone
-- Install: \`npm install @pinecone-database/pinecone\`
-- Server secret: \`PINECONE_API_KEY\` (the SDK auto-reads it; index host is auto-discovered).
-- \`\`\`ts
-  import { Pinecone } from "@pinecone-database/pinecone";
-  const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
-  const index = pc.index("my-index");
-  await index.upsert([{ id: "v1", values: embedding, metadata: { text } }]);
-  const r = await index.query({ vector: queryEmbedding, topK: 5, includeMetadata: true });
-  \`\`\`
-- Pitfall: Serverless indexes are region-locked — pick the region nearest your edge runtime to keep p95 query <100ms.`,
-  },
-
-  sentry: {
-    displayName: "Sentry",
-    npmPackage: "@sentry/react",
-    docsUrl: "https://docs.sentry.io",
-    requiredSecrets: [],
-    promptBlock: `### Universal Integration: Sentry
-- Install: \`npm install @sentry/react\` (browser) — for server-side TanStack add \`@sentry/node\`.
-- Public env: \`VITE_SENTRY_DSN\` (DSNs are public by design — they identify the project, not authenticate).
-- Init in \`src/main.tsx\` BEFORE rendering: \`Sentry.init({ dsn: import.meta.env.VITE_SENTRY_DSN, tracesSampleRate: 0.1, replaysSessionSampleRate: 0.1 });\`
-- Wrap the app: \`<Sentry.ErrorBoundary fallback={<ErrorPage />}>...</Sentry.ErrorBoundary>\`.
-- Pitfall: source maps must be uploaded for readable stack traces — use \`@sentry/vite-plugin\` with \`SENTRY_AUTH_TOKEN\` (server-only) at build time.`,
-  },
-
-  posthog: {
-    displayName: "PostHog",
-    npmPackage: "posthog-js",
-    docsUrl: "https://posthog.com/docs",
-    requiredSecrets: [],
-    promptBlock: `### Universal Integration: PostHog
-- Install: \`npm install posthog-js\`
-- Public env: \`VITE_POSTHOG_KEY\`, \`VITE_POSTHOG_HOST\` (default \`https://us.i.posthog.com\` or \`https://eu.i.posthog.com\`).
-- Init once: \`posthog.init(import.meta.env.VITE_POSTHOG_KEY, { api_host: import.meta.env.VITE_POSTHOG_HOST });\`
-- Identify on login: \`posthog.identify(user.id, { email })\`. Track: \`posthog.capture("event", { ...props })\`.
-- Server-side capture: use \`posthog-node\` with a personal API key (\`POSTHOG_API_KEY\`) for backend events / cohort writes.
-- Pitfall: GDPR — call \`posthog.opt_out_capturing()\` until the user accepts cookies.`,
   },
 };
