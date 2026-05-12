@@ -181,9 +181,15 @@ function resolveModel(preset: ModelPreset, latestPrompt: string, fileCount: numb
   return pickSmartModel(latestPrompt, fileCount);
 }
 
-function completionBudget(args: { isInitial: boolean; phase: Phase; hasVisionTurn: boolean }): number {
+function completionBudget(args: {
+  isInitial: boolean;
+  phase: Phase;
+  hasVisionTurn: boolean;
+  multiEditIntent: boolean;
+}): number {
   if (args.hasVisionTurn) return 8_000;
   if (args.isInitial) return 12_000;
+  if (args.multiEditIntent) return 12_000;
   if (args.phase === "implement" || args.phase === "docs") return 7_000;
   return 6_500;
 }
