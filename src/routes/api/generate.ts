@@ -1291,6 +1291,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   }
 
 
+  const chatMessages = [
     {
       role: "system",
       content:
@@ -1309,6 +1310,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         dynamic.text +
         learningBlock +
         highStakesBlock +
+        appShapeBlock +
         archetypeBlock +
         visionAddendum +
         filesContext,
