@@ -1426,6 +1426,9 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   if (hasVisionTurn) {
     model = MODEL_VISION;
     chosenBy = "vision_pin";
+  } else if (multiEditIntent) {
+    model = MODEL_BEST;
+    chosenBy = "multi_edit_pin";
   } else if (preset === "smart") {
     // Phase tag overrides the keyword heuristic in smart mode.
     const phaseDefault = tier === "smart" ? MODEL_BEST : MODEL_FAST;
