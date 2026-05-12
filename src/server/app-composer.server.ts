@@ -25,6 +25,7 @@
 import type { ProjectFile } from "./generate.server";
 import type { ArchetypeSpec } from "./system-catalog.server";
 import { renderArchetypeGuardrail } from "./system-catalog.server";
+import { renderDomainPackBlock } from "./domain-packs.server";
 import { routeBrief } from "./semantic-router.server";
 import {
   TEMPLATES,
