@@ -133,7 +133,7 @@ async function tryNpm(slug: string, displayName: string): Promise<ResolvedIntegr
       | null;
     if (!data?.name) continue;
     const latest = data["dist-tags"]?.latest;
-    const verData = latest && data.versions?.[latest];
+    const verData = (latest && data.versions?.[latest]) || null;
     const description = verData?.description ?? data.description ?? "";
     const homepage = verData?.homepage ?? data.homepage ?? null;
     const readmeSnippet = (data.readme ?? "").slice(0, 1800).trim();
