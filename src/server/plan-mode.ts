@@ -40,6 +40,7 @@ export type PlanProposal = {
 };
 
 const PLAN_MODEL = "google/gemini-3-flash-preview";
+const PLAN_MAX_FILES = 24;
 
 const PLAN_TOOL = {
   type: "function" as const,
@@ -57,7 +58,7 @@ const PLAN_TOOL = {
         files: {
           type: "array",
           minItems: 1,
-          maxItems: 12,
+          maxItems: PLAN_MAX_FILES,
           items: {
             type: "object",
             properties: {
@@ -91,7 +92,8 @@ You are NOT writing code. You are deciding the SMALLEST set of files needed to s
 
 Rules:
 - List ONLY files you will actually edit, create, or delete. No "maybe".
-- Prefer 1-3 files. Cap is 12.
+- Prefer the smallest complete batch. Single edits should stay 1-3 files; multi-part requests may include every required file up to ${PLAN_MAX_FILES}.
+- If the user asks for multiple edits, decompose the request and include the full coordinated scope instead of dropping items from the batch.
 - Never list files under: src/components/ui/, src/integrations/backend/, src/integrations/supabase/, vite.config.ts, tsconfig.json. They are protected.
 - Use the EXACT file paths shown in the manifest. Do not invent paths.
 - "reason" is one short sentence the END USER will read. No jargon.
@@ -197,7 +199,7 @@ export async function proposeChangePlan(args: ProposePlanArgs): Promise<PlanProp
 
   // Cap fields defensively before persisting / displaying.
   parsed.summary = (parsed.summary || "").slice(0, 240);
-  parsed.files = parsed.files.slice(0, 12).map((f) => ({
+  parsed.files = parsed.files.slice(0, PLAN_MAX_FILES).map((f) => ({
     path: f.path,
     intent: f.intent,
     reason: (f.reason || "").slice(0, 200),

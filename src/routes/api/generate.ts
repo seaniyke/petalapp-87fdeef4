@@ -122,6 +122,8 @@ type Body = {
 
 const PATCH_CONTEXT_FILE_LIMIT = 24;
 const PATCH_CONTEXT_CHAR_LIMIT = 70_000;
+const MULTI_EDIT_CONTEXT_FILE_LIMIT = 48;
+const MULTI_EDIT_CONTEXT_CHAR_LIMIT = 150_000;
 const LARGE_FILE_CONTEXT_CHAR_LIMIT = 10_000;
 const RELEVANT_FILE_CONTEXT_CHAR_LIMIT = 18_000;
 
@@ -179,9 +181,15 @@ function resolveModel(preset: ModelPreset, latestPrompt: string, fileCount: numb
   return pickSmartModel(latestPrompt, fileCount);
 }
 
-function completionBudget(args: { isInitial: boolean; phase: Phase; hasVisionTurn: boolean }): number {
+function completionBudget(args: {
+  isInitial: boolean;
+  phase: Phase;
+  hasVisionTurn: boolean;
+  multiEditIntent: boolean;
+}): number {
   if (args.hasVisionTurn) return 8_000;
   if (args.isInitial) return 12_000;
+  if (args.multiEditIntent) return 12_000;
   if (args.phase === "implement" || args.phase === "docs") return 7_000;
   return 6_500;
 }
@@ -204,21 +212,34 @@ function trimMessagesForGeneration(messages: ChatMessage[]): ChatMessage[] {
   const latest = messages[lastUserIdx];
   const latestText = latestUserMessage([latest]).trim().toLowerCase();
   const needsPreviousContext =
-    /^(yes|yeah|yep|ok|okay|sure|do it|go ahead|continue|proceed|that|this)$/i.test(latestText);
+    /^(yes|yeah|yep|ok|okay|sure|do it|do all|do all of (?:it|them|these)|do both|all of (?:it|them|these)|both|everything|ship it|go ahead|continue|proceed|that|this)$/i.test(latestText);
   if (!needsPreviousContext) return [latest];
   const previousContext = messages.slice(Math.max(0, lastUserIdx - 2), lastUserIdx);
   return [...previousContext, latest];
+}
+
+function detectMultiEditIntent(prompt: string): boolean {
+  const p = prompt.toLowerCase();
+  const explicitMulti =
+    /\b(multiple|several|many|batch|coordinated|across|throughout|site[-\s]?wide|app[-\s]?wide|whole app|entire app|all pages|every page|multi[-\s]?(?:file|edit|step|task|thing|part))\b/i.test(p) ||
+    /\b(do|handle|work on|change|update|fix|implement)\s+(?:all|both|these|them)\b/i.test(p);
+  const enumeratedItems = (prompt.match(/(?:^|\n|;|,)\s*(?:\d+[.)]|[-*])\s+\S/g) ?? []).length;
+  const connectorCount = (p.match(/\b(?:and|also|plus|then|as well as|along with)\b/g) ?? []).length;
+  return explicitMulti || enumeratedItems >= 2 || connectorCount >= 3;
 }
 
 function trimFilesForPrompt(
   files: ProjectFile[],
   latestPrompt = "",
 ): { files: ProjectFile[]; omitted: number } {
+  const multiEditIntent = detectMultiEditIntent(latestPrompt);
+  const fileLimit = multiEditIntent ? MULTI_EDIT_CONTEXT_FILE_LIMIT : PATCH_CONTEXT_FILE_LIMIT;
+  const charLimit = multiEditIntent ? MULTI_EDIT_CONTEXT_CHAR_LIMIT : PATCH_CONTEXT_CHAR_LIMIT;
   const terms = latestPrompt
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter((w) => w.length >= 4 && !/^(please|make|change|update|build|create|this|that|with|from|into|app)$/i.test(w))
-    .slice(0, 18);
+    .slice(0, multiEditIntent ? 36 : 18);
   const isPromptRelevant = (file: ProjectFile): boolean => {
     if (terms.length === 0) return false;
     const haystack = `${file.path}\n${file.content.slice(0, 24_000)}`.toLowerCase();
@@ -241,7 +262,7 @@ function trimFilesForPrompt(
       rank(a.path) - rank(b.path) ||
       a.path.localeCompare(b.path),
   )) {
-    if (picked.length >= PATCH_CONTEXT_FILE_LIMIT) break;
+    if (picked.length >= fileLimit) break;
     const limit = isPromptRelevant(file)
       ? RELEVANT_FILE_CONTEXT_CHAR_LIMIT
       : LARGE_FILE_CONTEXT_CHAR_LIMIT;
@@ -250,7 +271,7 @@ function trimFilesForPrompt(
         ? `${file.content.slice(0, limit)}\n\n/* ...trimmed for context budget... */`
         : file.content;
     const cost = file.path.length + content.length + 32;
-    if (picked.length > 0 && used + cost > PATCH_CONTEXT_CHAR_LIMIT) continue;
+    if (picked.length > 0 && used + cost > charLimit) continue;
     picked.push({ path: file.path, content });
     used += cost;
   }
@@ -1172,6 +1193,10 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   // honored automatically (pickDesignDirection short-circuits to it).
   // Patches skip the call entirely — the existing aesthetic wins.
   let lastUserContent = latestUserMessage(messages);
+  const multiEditPromptContext = messages
+    .map((m) => (typeof m.content === "string" ? m.content : ""))
+    .join("\n");
+  const multiEditIntent = !isInitial && detectMultiEditIntent(multiEditPromptContext);
 
   // Brief expander — vague initial prompts ("surprise me", "build an app")
   // are the dominant cause of `no_files_emitted` failures: the main model
@@ -1231,7 +1256,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   // model. The AI never edits these (we drop ops that touch them), but feeding
   // them back as context bloats patch turns and makes targeted edits harder.
   const editablePromptFiles = currentFiles.filter((f) => !isManagedScaffoldPath(f.path));
-  const promptBudget = trimFilesForPrompt(editablePromptFiles, lastUserContent);
+  const promptBudget = trimFilesForPrompt(editablePromptFiles, multiEditPromptContext || lastUserContent);
   const filesContext = isInitial
     ? ""
     : `\n\nEditable app file manifest (all app-owned files Petal may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Petal-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
@@ -1268,6 +1293,9 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   const capabilitiesBlock = renderPetalCapabilitiesBlock({
     hasBackend: Boolean(backend),
   });
+  const multiEditBlock = multiEditIntent
+    ? `\n\n### Multi-edit turn\nThe latest request contains multiple coordinated asks. Treat this as one complete batch: decompose it internally, preserve dependencies across files, emit every required create/update/replace/delete op in one patch, and do not ask the user to split the work unless the asks conflict, are unsafe, or require missing infrastructure. Use small precise ops, especially when touching multiple regions of the same file.\n`
+    : "";
 
   // High-stakes domain honesty: if the latest user turn asks for a crypto
   // wallet, online bank, brokerage, etc., instruct the model to clearly
@@ -1342,6 +1370,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         baseSystem +
         dateBlock +
         capabilitiesBlock +
+        multiEditBlock +
         backendBlock +
         integrationsBlock +
         suggestionsBlock +
@@ -1395,10 +1424,14 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     isInitial,
     phase: phaseTag.phase,
     hasVisionTurn,
+    multiEditIntent,
   });
   if (hasVisionTurn) {
     model = MODEL_VISION;
     chosenBy = "vision_pin";
+  } else if (multiEditIntent) {
+    model = MODEL_BEST;
+    chosenBy = "multi_edit_pin";
   } else if (preset === "smart") {
     // Phase tag overrides the keyword heuristic in smart mode.
     const phaseDefault = tier === "smart" ? MODEL_BEST : MODEL_FAST;
