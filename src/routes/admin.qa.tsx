@@ -33,16 +33,15 @@ const SEV_META: Record<Severity, { label: string; tone: string; Icon: typeof Ale
 };
 
 function AdminQAPage() {
-  const { isAdmin, loading } = useAdminGuard();
+  const { ready, isAdmin } = useAdminGuard("/admin/qa");
   const report = useMemo(() => runQAHarness(), []);
 
-  if (loading) return null;
-  if (!isAdmin) {
+  if (!ready) {
     return (
       <div className="min-h-screen bg-background">
         <SiteHeader />
         <div className="mx-auto max-w-3xl px-4 py-12 text-center text-sm text-muted-foreground">
-          Admin only.
+          {isAdmin ? "Loading…" : "Admin only."}
         </div>
       </div>
     );
