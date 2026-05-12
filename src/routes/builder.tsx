@@ -76,6 +76,7 @@ import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivit
 import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { NextStepsCard } from "@/components/NextStepsCard";
 import { PlanProposalCard } from "@/components/PlanProposalCard";
+import { tryParseQuickEdit, applyQuickEditToFile } from "@/lib/quick-edit";
 
 
 import {
