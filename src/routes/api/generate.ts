@@ -1193,6 +1193,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   // honored automatically (pickDesignDirection short-circuits to it).
   // Patches skip the call entirely — the existing aesthetic wins.
   let lastUserContent = latestUserMessage(messages);
+  const multiEditIntent = !isInitial && detectMultiEditIntent(lastUserContent);
 
   // Brief expander — vague initial prompts ("surprise me", "build an app")
   // are the dominant cause of `no_files_emitted` failures: the main model
@@ -1416,6 +1417,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     isInitial,
     phase: phaseTag.phase,
     hasVisionTurn,
+    multiEditIntent,
   });
   if (hasVisionTurn) {
     model = MODEL_VISION;
