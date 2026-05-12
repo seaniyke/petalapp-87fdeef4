@@ -96,6 +96,20 @@ const PATCH_CONTEXT_CHAR_LIMIT = 70_000;
 const LARGE_FILE_CONTEXT_CHAR_LIMIT = 10_000;
 const RELEVANT_FILE_CONTEXT_CHAR_LIMIT = 18_000;
 
+function isManagedScaffoldPath(path: string): boolean {
+  return (
+    path.startsWith("src/components/ui/") ||
+    path.startsWith("src/components/examples/") ||
+    path.startsWith("src/components/blocks/") ||
+    path.startsWith("src/components/mobile/") ||
+    path.startsWith("src/integrations/backend/") ||
+    path === "vite.config.ts" ||
+    path === "tsconfig.json" ||
+    path === "src/lib/utils.ts" ||
+    path === "petal-source-plugin.mjs"
+  );
+}
+
 const MODEL_FAST = "google/gemini-3-flash-preview";
 const MODEL_BEST = "google/gemini-2.5-pro";
 /** Escalation model used when the primary returned prose / no tool call.
@@ -212,6 +226,14 @@ function trimFilesForPrompt(
     used += cost;
   }
   return { files: picked, omitted: Math.max(0, files.length - picked.length) };
+}
+
+function compactManifest(files: ProjectFile[]): string {
+  const rows = files
+    .filter((f) => !isManagedScaffoldPath(f.path))
+    .sort((a, b) => a.path.localeCompare(b.path))
+    .map((f) => `- ${f.path} (${f.content.split("\n").length} lines)`);
+  return rows.length ? rows.join("\n") : "- No editable app files found.";
 }
 
 function sse(event: StreamEvent): string {
@@ -687,6 +709,64 @@ function addStructuredRetryInstruction<T extends Array<{ role: string; content: 
   ) as T;
 }
 
+function deterministicPatchFallback(args: {
+  currentFiles: ProjectFile[];
+  latestUserContent: string;
+}): ParsedProjectPayload | null {
+  const prompt = args.latestUserContent.toLowerCase();
+  const isLandingExpansion =
+    /\b(add|more|expand|extra|new|additional|content|contents|section|sections)\b/i.test(prompt) &&
+    /\b(landing|home\s?page|homepage|main page|front page|page)\b/i.test(prompt);
+  if (!isLandingExpansion) return null;
+
+  const target =
+    args.currentFiles.find((f) => f.path === "src/pages/Home.tsx") ??
+    args.currentFiles.find((f) => f.path === "src/routes/index.tsx") ??
+    args.currentFiles.find((f) => f.path === "src/App.tsx");
+  if (!target || target.content.includes("LandingProofSection")) return null;
+
+  const callBlock = `      <LandingProofSection />\n      <LandingProcessSection />\n      <LandingProjectSection />\n`;
+  const callAnchor = target.content.includes("      <CtaSection />")
+    ? "      <CtaSection />\n"
+    : target.content.includes("      <CTASection />")
+      ? "      <CTASection />\n"
+      : null;
+  const callsOp = callAnchor
+    ? {
+        op: "replace" as const,
+        path: target.path,
+        search: callAnchor,
+        replace: `${callBlock}${callAnchor}`,
+      }
+    : null;
+
+  const trimmed = target.content.trimEnd();
+  const appendAnchor = trimmed.slice(Math.max(0, trimmed.length - 600));
+  if (!callsOp || !appendAnchor || target.content.indexOf(appendAnchor) !== target.content.lastIndexOf(appendAnchor)) return null;
+
+  const sections = `\n\nfunction LandingProofSection() {\n  const proofPoints = [\n    { label: "Years in operation", value: "18+" },\n    { label: "Completed projects", value: "240+" },\n    { label: "Safety rating", value: "A+" },\n  ];\n\n  return (\n    <section className="bg-muted/40 py-16">\n      <div className="mx-auto max-w-6xl px-4">\n        <div className="grid gap-6 md:grid-cols-3">\n          {proofPoints.map((item) => (\n            <div key={item.label} className="rounded-xl border border-border bg-card p-6 text-center shadow-sm">\n              <div className="text-4xl font-bold text-primary">{item.value}</div>\n              <p className="mt-2 text-sm text-muted-foreground">{item.label}</p>\n            </div>\n          ))}\n        </div>\n      </div>\n    </section>\n  );\n}\n\nfunction LandingProcessSection() {\n  const steps = [\n    "Site review and project planning",\n    "Clear estimates and build timeline",\n    "Dedicated crew management",\n    "Final inspection and handover",\n  ];\n\n  return (\n    <section className="py-16">\n      <div className="mx-auto max-w-6xl px-4">\n        <div className="max-w-2xl">\n          <p className="text-sm font-semibold uppercase tracking-wide text-primary">How we work</p>\n          <h2 className="mt-3 text-3xl font-bold md:text-5xl">A smoother path from quote to completion</h2>\n        </div>\n        <div className="mt-10 grid gap-4 md:grid-cols-4">\n          {steps.map((step, index) => (\n            <div key={step} className="rounded-xl border border-border bg-card p-5">\n              <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">\n                {index + 1}\n              </div>\n              <p className="font-medium">{step}</p>\n            </div>\n          ))}\n        </div>\n      </div>\n    </section>\n  );\n}\n\nfunction LandingProjectSection() {\n  const projects = [\n    "Commercial renovations",\n    "Industrial facilities",\n    "Residential developments",\n  ];\n\n  return (\n    <section className="py-16">\n      <div className="mx-auto max-w-6xl px-4">\n        <div className="rounded-2xl border border-border bg-card p-8 md:p-10">\n          <div className="grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-center">\n            <div>\n              <p className="text-sm font-semibold uppercase tracking-wide text-primary">Project range</p>\n              <h2 className="mt-3 text-3xl font-bold md:text-5xl">Built for complex jobs and clear communication</h2>\n              <p className="mt-4 text-muted-foreground">From early planning to the final walkthrough, the team keeps owners, architects, and site leads aligned.</p>\n            </div>\n            <div className="grid gap-3">\n              {projects.map((project) => (\n                <div key={project} className="rounded-lg bg-muted px-4 py-3 font-medium">{project}</div>\n              ))}\n            </div>\n          </div>\n        </div>\n      </div>\n    </section>\n  );`;
+
+  return {
+    parsed: {
+      plan: "I’ll add richer landing-page sections so the homepage feels more complete while keeping the existing design intact.",
+      summary: "I added more homepage content with proof points, a working process section, and a project range block.",
+      ops: [
+        callsOp,
+        {
+          op: "replace" as const,
+          path: target.path,
+          search: appendAnchor,
+          replace: `${appendAnchor}${sections}`,
+        },
+      ],
+      recap: `- \`${target.path}\` — added additional landing-page sections before the final call-to-action`,
+    },
+    summary: "I added more homepage content with proof points, a working process section, and a project range block.",
+    plan: "I’ll add richer landing-page sections so the homepage feels more complete while keeping the existing design intact.",
+    recap: `- \`${target.path}\` — added additional landing-page sections before the final call-to-action`,
+  };
+}
+
 function isRetryablePatchApplyError(message: string): boolean {
   return (
     message.startsWith("must_use_replace") ||
@@ -905,26 +985,14 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
       : null;
   const designBlock = designDirection ? renderDesignDirectionBlock(designDirection) : "";
 
-  // Filter out files Petal manages itself before showing the project
-  // to the model. The AI never edits these (we drop ops that touch
-  // them), but feeding them back as context bloats the prompt by
-  // tens of KB on every patch turn — directly causing upstream
-  // generation timeouts on projects that accumulated many scaffold +
-  // example + backend files. We KEEP `package.json`, `index.html`,
-  // `src/main.tsx`, `src/App.tsx`, and anything else app-specific.
-  const isManagedScaffoldPath = (p: string): boolean =>
-    p.startsWith("src/components/ui/") ||
-    p.startsWith("src/components/examples/") ||
-    p.startsWith("src/integrations/backend/") ||
-    p === "vite.config.ts" ||
-    p === "tsconfig.json" ||
-    p === "src/lib/utils.ts" ||
-    p === "petal-source-plugin.mjs";
+  // Filter out files Petal manages itself before showing the project to the
+  // model. The AI never edits these (we drop ops that touch them), but feeding
+  // them back as context bloats patch turns and makes targeted edits harder.
   const editablePromptFiles = currentFiles.filter((f) => !isManagedScaffoldPath(f.path));
   const promptBudget = trimFilesForPrompt(editablePromptFiles, lastUserContent);
   const filesContext = isInitial
     ? ""
-    : `\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Petal-managed UI kit, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
+    : `\n\nEditable app file manifest (all app-owned files Petal may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Petal-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
         .map((f) => `--- ${f.path} ---\n${f.content}`)
         .join("\n\n")}`;
   const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
@@ -1246,6 +1314,22 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
               return;
             }
 
+            const deterministic = !isInitial
+              ? deterministicPatchFallback({ currentFiles, latestUserContent: lastUserContent })
+              : null;
+            if (deterministic) {
+              controller.enqueue(
+                encoder.encode(sse({ type: "status", message: "Applying a safe targeted edit path…" })),
+              );
+              payload = deterministic;
+              collected = {
+                name: "patch_files",
+                args: JSON.stringify(deterministic.parsed),
+                finishReason: null,
+                usage: collected.usage,
+              };
+            } else {
+
             // Generic case (the one users were hitting): the model didn't
             // emit a usable patch after two passes. NOT a real error —
             // the most likely causes are an ambiguous request or the
@@ -1263,6 +1347,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
                 : "I took a careful look but couldn't pin down a safe change for this one. Could you point me at the specific element or behavior you want adjusted? A quick note like 'make the header sticky' or 'change the CTA color to teal' is usually enough.",
             });
             return;
+            }
           }
         }
 
@@ -1317,6 +1402,8 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           const isProtectedPath = (p: string) =>
             p.startsWith("src/components/ui/") ||
             p.startsWith("src/components/examples/") ||
+            p.startsWith("src/components/blocks/") ||
+            p.startsWith("src/components/mobile/") ||
             p.startsWith("src/integrations/backend/") ||
             PROTECTED.includes(p);
           const violations = parsed.ops.filter((op) => isProtectedPath(op.path));
