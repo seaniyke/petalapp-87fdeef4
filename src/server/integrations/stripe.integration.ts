@@ -356,18 +356,59 @@ export const Route = createFileRoute("/api/public/stripe/webhook")({
 
         const { event } = result;
 
+        // De-dupe: Stripe retries on non-2xx. If you've created a
+        // \`stripe_processed_events(id text primary key, created_at timestamptz)\`
+        // table, insert event.id here and bail on conflict before fulfilling.
+
         switch (event.type) {
           case "checkout.session.completed": {
-            // const session = event.data.object;
-            // TODO: look up your local order by session.metadata.orderId,
-            // verify amount_total + currency, then mark fulfilled.
+            const session = event.data.object as {
+              id: string;
+              amount_total: number | null;
+              currency: string | null;
+              payment_status: string;
+              metadata?: Record<string, string>;
+            };
+            const orderId = session.metadata?.orderId;
+            if (!orderId) break;
+            // Look up the local order, verify amount + currency, mark paid.
+            // Swap the import for whichever DB client your project uses.
+            try {
+              const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+              const { data: order } = await supabaseAdmin
+                .from("orders")
+                .select("id, amount_minor, currency, status")
+                .eq("id", orderId)
+                .single();
+              if (!order) { console.warn("[stripe webhook] unknown orderId", orderId); break; }
+              if (order.status === "paid") break; // idempotent
+              if (
+                order.amount_minor !== session.amount_total ||
+                order.currency?.toLowerCase() !== session.currency?.toLowerCase()
+              ) {
+                console.error("[stripe webhook] amount/currency mismatch", { orderId, session });
+                return new Response("amount mismatch", { status: 500 });
+              }
+              const { error: updErr } = await supabaseAdmin
+                .from("orders")
+                .update({ status: "paid", paid_at: new Date().toISOString(), stripe_session_id: session.id })
+                .eq("id", orderId);
+              if (updErr) {
+                console.error("[stripe webhook] fulfill failed", updErr);
+                return new Response("fulfill failed", { status: 500 });
+              }
+            } catch (err) {
+              console.error("[stripe webhook] fulfill threw", err);
+              return new Response("fulfill error", { status: 500 });
+            }
             break;
           }
           case "payment_intent.payment_failed":
           case "charge.refunded":
           case "customer.subscription.updated":
           case "customer.subscription.deleted":
-            // TODO: handle as needed.
+            // Wire subscription / refund side-effects here using the same DB
+            // pattern as checkout.session.completed above.
             break;
           default:
             // Unhandled event types are fine — Stripe sends many.
