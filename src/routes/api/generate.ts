@@ -1676,6 +1676,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           controller.enqueue(
             encoder.encode(sse({ type: "status", message: "Retrying the response safely…" })),
           );
+          const firstCollected = collected;
           const retry = await aiChatCompletions({
             feature: "generate",
             body: {
@@ -1720,7 +1721,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             const recovered = isMissingToolOutputError(retryErr)
               ? await recoverMissingToolOutput({
                   chatMessages: finalMessages,
-                  collected,
+                  collected: assistantTextFromCollected(collected) ? collected : firstCollected,
                   isInitial,
                   tool,
                   model,
@@ -1931,7 +1932,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
                   feature: "generate",
                   body: {
                     model: MODEL_STRUCTURED_RETRY,
-                    messages: addStructuredRetryInstruction(chatMessages, {
+                    messages: addStructuredRetryInstruction(finalMessages, {
                       isInitial,
                       problem: retryProblem,
                       hasBackend: Boolean(backend),
