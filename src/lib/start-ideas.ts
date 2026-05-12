@@ -534,6 +534,30 @@ export const START_IDEAS: StartIdea[] = [
     accent: "sky",
     category: "Games & toys",
   },
+  {
+    title: "Endless runner",
+    prompt:
+      "An endless runner game using Phaser: a character auto-runs, jump on tap to dodge obstacles, collect coins, score increases over time, game over screen with a global leaderboard saved to the database. Touch controls for mobile.",
+    Icon: Gamepad2,
+    accent: "pink",
+    category: "Games & toys",
+  },
+  {
+    title: "One-button arcade",
+    prompt:
+      "A minimal one-button arcade game: tap anywhere to flap/jump/boost, procedurally spawned obstacles, scoring, juicy particles and screen shake on hit, personal best stored per user.",
+    Icon: Trophy,
+    accent: "butter",
+    category: "Games & toys",
+  },
+  {
+    title: "3D mini-scene",
+    prompt:
+      "A small 3D interactive scene built with three.js and @react-three/fiber: a stylized low-poly island the user can orbit around, click props to trigger short animations, ambient music toggle. Mobile-friendly camera controls.",
+    Icon: HelpCircle,
+    accent: "lilac",
+    category: "Games & toys",
+  },
 
   // ── Misc featured ───────────────────────────────────────────────────────
   {
