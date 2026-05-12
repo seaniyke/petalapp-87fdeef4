@@ -842,35 +842,8 @@ Note: this project uses Lovable Cloud (Supabase) auth by default. Only swap to C
 
   /* ─── Layer I — Fintech / banking / BaaS ───────────────────────────── */
 
-  plaid: {
-    displayName: "Plaid",
-    npmPackage: "plaid",
-    docsUrl: "https://plaid.com/docs/",
-    requiredSecrets: ["PLAID_CLIENT_ID", "PLAID_SECRET", "PLAID_ENV"],
-    promptBlock: `### Universal Integration: Plaid (bank linking, transactions, balances)
-- Install: \`npm install plaid react-plaid-link\`
-- Server secrets: \`PLAID_CLIENT_ID\`, \`PLAID_SECRET\`, \`PLAID_ENV\` (\`sandbox\` | \`development\` | \`production\`)
-- Flow: server creates a Link token → client opens Plaid Link → returns \`public_token\` → server exchanges for \`access_token\` (store per-user with strict RLS) → use it to call \`/transactions/sync\`, \`/accounts/balance/get\`, etc.
-- Server (TanStack Start function):
-  \`\`\`ts
-  import { Configuration, PlaidApi, PlaidEnvironments, Products, CountryCode } from "plaid";
-  const client = new PlaidApi(new Configuration({
-    basePath: PlaidEnvironments[process.env.PLAID_ENV ?? "sandbox"],
-    baseOptions: { headers: { "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID!, "PLAID-SECRET": process.env.PLAID_SECRET! } },
-  }));
-  const r = await client.linkTokenCreate({
-    user: { client_user_id: userId },
-    client_name: "My App",
-    products: [Products.Transactions],
-    country_codes: [CountryCode.Us],
-    language: "en",
-  });
-  \`\`\`
-- Webhooks: register a public route (\`/api/public/plaid-webhook\`); verify with \`itemPublicTokenExchange\`-derived JWT (Plaid's \`Plaid-Verification\` header) BEFORE processing.
-- Pitfall: NEVER expose \`access_token\` to the browser. Store encrypted at rest, scoped to the user via RLS. Use \`/transactions/sync\` (cursor-based) — not the deprecated \`/transactions/get\` polling endpoint.`,
-  },
+  // (plaid is already defined earlier in this file — see line ~325)
 
-  teller: {
     displayName: "Teller (US bank data)",
     npmPackage: null,
     docsUrl: "https://teller.io/docs",
