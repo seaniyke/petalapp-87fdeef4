@@ -25,6 +25,7 @@
 import type { ProjectFile } from "./generate.server";
 import type { ArchetypeSpec } from "./system-catalog.server";
 import { renderArchetypeGuardrail } from "./system-catalog.server";
+import { renderDomainPackBlock } from "./domain-packs.server";
 import { routeBrief } from "./semantic-router.server";
 import {
   TEMPLATES,
@@ -219,7 +220,12 @@ export function renderBlueprintBlock(b: AppBlueprint): string {
 
   // Append the legacy archetype guardrail block too — keeps the existing
   // reality-tier wording intact for the model.
-  if (b.archetype) out.push(renderArchetypeGuardrail(b.archetype));
+  if (b.archetype) {
+    out.push(renderArchetypeGuardrail(b.archetype));
+    // Step 6: per-vertical domain pack — injected only when matched, so
+    // prompt size stays flat regardless of how many packs we add.
+    out.push(renderDomainPackBlock(b.archetype));
+  }
   return out.join("\n");
 }
 
