@@ -41,6 +41,7 @@ import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
 import { Route as ApiCoachRouteImport } from './routes/api/coach'
 import { Route as ApiBackendRouteImport } from './routes/api/backend'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminQaRouteImport } from './routes/admin.qa'
 import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
 import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
@@ -240,6 +241,11 @@ const ApiBackendRoute = ApiBackendRouteImport.update({
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminQaRoute = AdminQaRouteImport.update({
+  id: '/admin/qa',
+  path: '/admin/qa',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminProjectsRoute = AdminProjectsRouteImport.update({
@@ -473,6 +479,7 @@ export interface FileRoutesByFullPath {
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
+  '/admin/qa': typeof AdminQaRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
@@ -547,6 +554,7 @@ export interface FileRoutesByTo {
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
+  '/admin/qa': typeof AdminQaRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
@@ -622,6 +630,7 @@ export interface FileRoutesById {
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
+  '/admin/qa': typeof AdminQaRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
@@ -698,6 +707,7 @@ export interface FileRouteTypes {
     | '/admin/ledgers'
     | '/admin/pipeline'
     | '/admin/projects'
+    | '/admin/qa'
     | '/admin/users'
     | '/api/backend'
     | '/api/coach'
@@ -772,6 +782,7 @@ export interface FileRouteTypes {
     | '/admin/ledgers'
     | '/admin/pipeline'
     | '/admin/projects'
+    | '/admin/qa'
     | '/admin/users'
     | '/api/backend'
     | '/api/coach'
@@ -846,6 +857,7 @@ export interface FileRouteTypes {
     | '/admin/ledgers'
     | '/admin/pipeline'
     | '/admin/projects'
+    | '/admin/qa'
     | '/admin/users'
     | '/api/backend'
     | '/api/coach'
@@ -921,6 +933,7 @@ export interface RootRouteChildren {
   AdminLedgersRoute: typeof AdminLedgersRoute
   AdminPipelineRoute: typeof AdminPipelineRoute
   AdminProjectsRoute: typeof AdminProjectsRoute
+  AdminQaRoute: typeof AdminQaRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ApiBackendRoute: typeof ApiBackendRoute
   ApiCoachRoute: typeof ApiCoachRoute
@@ -1198,6 +1211,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/qa': {
+      id: '/admin/qa'
+      path: '/admin/qa'
+      fullPath: '/admin/qa'
+      preLoaderRoute: typeof AdminQaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/projects': {
@@ -1525,6 +1545,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLedgersRoute: AdminLedgersRoute,
   AdminPipelineRoute: AdminPipelineRoute,
   AdminProjectsRoute: AdminProjectsRoute,
+  AdminQaRoute: AdminQaRoute,
   AdminUsersRoute: AdminUsersRoute,
   ApiBackendRoute: ApiBackendRoute,
   ApiCoachRoute: ApiCoachRoute,
