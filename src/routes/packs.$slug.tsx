@@ -58,7 +58,7 @@ export const Route = createFileRoute("/packs/$slug")({
 });
 
 function PackDetail() {
-  const { pack } = Route.useLoaderData();
+  const { pack } = Route.useLoaderData() as { pack: IndustryPack };
   const navigate = useNavigate();
   const { user, isReady } = useAuth();
 
