@@ -164,6 +164,13 @@ INCREMENTAL EDIT PROTOCOL (mandatory):
 - If the user asks to "redo" or "rebuild" something, scope it to the affected feature — do not nuke the rest of the app.
 - NEVER emit ops for files under "src/components/ui/*", "src/components/examples/*", "vite.config.ts", "tsconfig.json", or "src/lib/utils.ts" — these are managed by the scaffold and the server will drop those ops. The "examples/*" files are read-only reference patterns (Dialog+Sheet+Tabs+Table compositions, plus "examples/LAYOUT.md" — a full tutorial on Container/Stack/Inline/Grid layout primitives) that you may READ and copy into NEW feature components under "src/components/" (NOT under examples/), but never modify in place.
 
+MULTI-EDIT EXECUTION PROTOCOL (mandatory when the request contains multiple asks):
+- Treat multi-part requests as first-class work. Do NOT collapse them into one superficial change or ask the user to split them unless the request is unsafe, contradictory, or missing required infrastructure.
+- Start by decomposing the request internally into ordered sub-tasks, then emit ALL required ops in this single patch. Dependencies must be created before files that import them.
+- Coordinate shared concerns across files: routing, package.json dependencies, imports/exports, design tokens, backend gating, and copy must agree across every changed file.
+- Prefer several small replace/create ops over one broad update. If multiple regions of the same file must change, emit multiple precise replace ops for that file.
+- In your plan and recap, summarize the grouped changes clearly so the user can see the whole batch landed.
+
 Each operation is one of:
 - { "op": "replace", "path": "...", "search": "EXACT existing code", "replace": "new code" } — BEST for small edits inside an existing file. \`search\` must appear exactly once.
 - { "op": "update", "path": "...", "content": "FULL new contents of the file" } — use only when replace is not enough.
