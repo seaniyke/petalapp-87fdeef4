@@ -20,6 +20,11 @@ import {
   renderSuggestionsBlock,
   suggestIntegrations,
 } from "@/server/integrations/auto-suggest.server";
+import {
+  resolveIntegration,
+  renderResolvedIntegrationsBlock,
+} from "@/server/integrations/doc-resolver.server";
+import { detectIntegrationRequests } from "@/lib/integration-request-intent";
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
@@ -1102,6 +1107,25 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   });
   const suggestionsBlock = renderSuggestionsBlock(integrationSuggestions);
 
+  // Layer E — Universal Integration Resolver. When the user mentions a
+  // third-party service that ISN'T in our managed marketplace, fetch a
+  // compact prompt-ready brief (curated > npm > AI fallback) and inject it
+  // as ground truth so the LLM doesn't hallucinate SDK signatures from
+  // training-data memory. Bounded to 3 services per turn for prompt cost.
+  const lastUserForResolver =
+    [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+  const resolverText =
+    typeof lastUserForResolver === "string" ? lastUserForResolver : "";
+  const requestedIntegrations = detectIntegrationRequests(resolverText, 3);
+  const resolvedBriefs = (
+    await Promise.all(
+      requestedIntegrations
+        .filter((r) => !installedCodes.has(r.key))
+        .map((r) => resolveIntegration(r.name).catch(() => null)),
+    )
+  ).filter((b): b is NonNullable<typeof b> => b !== null);
+  const resolvedBlock = renderResolvedIntegrationsBlock(resolvedBriefs);
+
   // Project Knowledge: small piece of context the owner attached to the
   // project ("always use a pastel palette", etc.). Prepended on every turn.
   const knowledge = (body.customInstructions ?? "").trim().slice(0, 4000);
@@ -1264,6 +1288,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         backendBlock +
         integrationsBlock +
         suggestionsBlock +
+        resolvedBlock +
         knowledgeBlock +
         memoryBlock +
         preservationBlock +
