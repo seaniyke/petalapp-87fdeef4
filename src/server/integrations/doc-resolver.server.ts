@@ -27,7 +27,7 @@ export type ResolvedIntegration = {
   docsUrl: string | null;
   promptBlock: string;
   requiredSecrets: string[];
-  source: "cache" | "curated" | "npm" | "ai";
+  source: "cache" | "curated" | "npm" | "ai" | "user-paste";
 };
 
 const CACHE_MAX_AGE_DAYS = 14;
