@@ -4305,6 +4305,7 @@ function Builder() {
                     <Send className="h-4 w-4" />
                   )}
                 </button>
+                </div>
               </div>
             </div>
             {/* Status line removed — the in-chat shimmer label
