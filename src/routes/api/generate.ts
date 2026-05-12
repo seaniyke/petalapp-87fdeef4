@@ -212,7 +212,7 @@ function trimMessagesForGeneration(messages: ChatMessage[]): ChatMessage[] {
   const latest = messages[lastUserIdx];
   const latestText = latestUserMessage([latest]).trim().toLowerCase();
   const needsPreviousContext =
-    /^(yes|yeah|yep|ok|okay|sure|do it|go ahead|continue|proceed|that|this)$/i.test(latestText);
+    /^(yes|yeah|yep|ok|okay|sure|do it|do all|do all of (?:it|them|these)|do both|all of (?:it|them|these)|both|everything|ship it|go ahead|continue|proceed|that|this)$/i.test(latestText);
   if (!needsPreviousContext) return [latest];
   const previousContext = messages.slice(Math.max(0, lastUserIdx - 2), lastUserIdx);
   return [...previousContext, latest];
