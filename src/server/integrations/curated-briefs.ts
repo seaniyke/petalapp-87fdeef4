@@ -838,6 +838,7 @@ Note: this project uses Lovable Cloud (Supabase) auth by default. Only swap to C
   await client.index("movies").addDocuments([{ id: 1, title: "Dune" }]);
   \`\`\`
 - Pitfall: searchable / filterable / sortable attributes must be configured on the index BEFORE indexing for filters to work.`,
+  },
 
   /* ─── Layer I — Fintech / banking / BaaS ───────────────────────────── */
 
