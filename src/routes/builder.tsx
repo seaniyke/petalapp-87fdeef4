@@ -2338,7 +2338,7 @@ function Builder() {
         return;
       }
       if (mode === "discuss") void discuss(trimmed);
-      else void send(trimmed);
+      else void send(trimmed, { planFirst: planFirst && !proposedPlan });
     },
     [bootstrapping, busy, discussBusy, mode, discuss, send, lastDiscussIndex, APPLY_AFFIRMATIONS, applyDiscussedPlan],
   );
