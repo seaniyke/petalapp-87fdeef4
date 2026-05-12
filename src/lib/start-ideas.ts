@@ -112,6 +112,8 @@ export const CATEGORY_ORDER: IdeaCategory[] = [
   "Maps & geo",
   "Audio & video",
   "Extensions",
+  "Messaging",
+  "Social",
   "Games & toys",
 ];
 
@@ -758,3 +760,17 @@ export const START_IDEAS: StartIdea[] = [
 ];
 
 export const FEATURED_IDEAS = START_IDEAS.filter((i) => i.featured);
+
+// ── Messaging & Social (Layer H) ─────────────────────────────────────────
+START_IDEAS.push(
+  { title: "WhatsApp customer-support bot", prompt: "A WhatsApp customer-support bot using the Meta Cloud API: incoming-message webhook, AI-drafted replies via Lovable AI, agent dashboard to take over a conversation, persistent threads per customer phone number. Templates for outside the 24h window.", Icon: MessageSquare, accent: "mint", category: "Messaging", featured: true },
+  { title: "Telegram channel auto-poster", prompt: "A scheduler that posts to my Telegram channel via the Lovable Telegram connector gateway: compose UI, schedule for later, recurring posts, image attachments, posting history with delivery status.", Icon: MessageSquare, accent: "sky", category: "Messaging" },
+  { title: "Discord community bot", prompt: "A Discord community bot using HTTP interactions (Ed25519 verified) on a public route: slash commands (/help, /rules, /poll), welcome messages on member join via webhook, and an admin dashboard to view command usage.", Icon: MessageSquare, accent: "lilac", category: "Messaging" },
+  { title: "Slack standup bot", prompt: "A Slack standup bot via the Lovable Slack connector gateway: posts a daily prompt to a channel, collects threaded replies, summarises them with AI, posts the digest. Admin /settings to pick channel and time.", Icon: MessageSquare, accent: "butter", category: "Messaging" },
+  { title: "Social media scheduler (X + LinkedIn + Threads)", prompt: "A multi-platform social scheduler: per-user OAuth to X, LinkedIn, and Threads; compose once, pick platforms, schedule; queue UI; failure retries; analytics per post (impressions, clicks). Store per-user tokens in `social_accounts` with RLS.", Icon: TrendingUp, accent: "pink", category: "Social", featured: true },
+  { title: "Link-in-bio with click analytics", prompt: "A creator's link-in-bio page (like Linktree): customisable profile, ordered links, dark/light themes, click tracking per link, an owner dashboard with daily click charts. Custom slug per user.", Icon: LinkIcon, accent: "lilac", category: "Social" },
+  { title: "Social inbox (mentions across platforms)", prompt: "A unified social inbox that pulls @mentions from X, Reddit, and Bluesky into one timeline; mark as read, reply (where supported), filter by sentiment via AI. Per-user OAuth for each network.", Icon: Inbox, accent: "mint", category: "Social" },
+  { title: "AI auto-reply for DMs", prompt: "An AI auto-responder for incoming DMs (Instagram + Telegram + WhatsApp): classify intent (sales / support / spam), draft a reply with Lovable AI, human approval queue before sending. Per-channel on/off toggle.", Icon: Bot, accent: "sky", category: "Social" },
+  { title: "Creator dashboard (multi-platform stats)", prompt: "A creator analytics dashboard: connect YouTube, TikTok, Instagram, X via per-user OAuth; show follower growth, top posts, engagement rate per platform; daily snapshot stored in db for trend charts.", Icon: ChartBar, accent: "butter", category: "Social" },
+  { title: "Newsletter cross-poster", prompt: "Write a newsletter once; auto-cross-post a teaser + link to X and LinkedIn on publish. Per-user OAuth, customisable per-platform copy, queue with retries, posting history.", Icon: Mail, accent: "pink", category: "Social" },
+);
