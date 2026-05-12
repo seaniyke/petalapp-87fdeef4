@@ -931,6 +931,13 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     body.projectId && userJwt ? await loadProjectMemory(userJwt, body.projectId) : [];
   const memoryBlock = renderMemoryBlock(memoryEntries);
 
+  // PETAL.md / .petalrc — user-authored preservation rules. Optional.
+  // Adds protected globs to the patch filter and injects free-text rules
+  // into the system prompt for both initial and patch turns.
+  const preservation = parsePreservationRules(currentFiles);
+  const preservationBlock = renderPreservationBlock(preservation);
+  const matchesUserProtectedGlob = makeProtectedGlobMatcher(preservation.protectedGlobs);
+
   // Layer 4 — Design Director Pass.
   // On the very first build, pick a bold visual direction up-front so
   // the model doesn't fall back to the generic AI aesthetic. On
