@@ -594,6 +594,21 @@ const REPLACE_GATE_MIN_LINES = 80;
 const REPLACE_GATE_OVERLAP_RATIO = 0.92;
 const REPLACE_MAX_SEARCH_LINES = 160;
 const REPLACE_MAX_SEARCH_BYTES = 8192;
+/** Destructive-shrink gate. If an `update` op produces a file that is more
+ *  than this fraction smaller than the original (and the original was
+ *  meaningfully large), reject it — the model is almost certainly clobbering
+ *  the file with a stub instead of producing a real edit. Force a `replace`. */
+const SHRINK_GATE_MIN_PREV_LINES = 30;
+const SHRINK_GATE_MAX_LOSS_RATIO = 0.5;
+
+function isDestructiveShrink(prev: string, next: string, path: string): boolean {
+  if (!prev) return false;
+  if (path.endsWith(".json") || path.endsWith(".css") || path.endsWith(".html")) return false;
+  const prevLines = prev.split("\n").length;
+  if (prevLines < SHRINK_GATE_MIN_PREV_LINES) return false;
+  const nextLines = next.split("\n").length;
+  return nextLines < prevLines * SHRINK_GATE_MAX_LOSS_RATIO;
+}
 
 function shouldRequireReplaceOp(prev: string, next: string, path: string): boolean {
   if (!prev) return false;
@@ -628,6 +643,13 @@ export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
       if (failed > 0 || /keep existing code/i.test(content)) {
         throw new Error(
           `AI returned an incomplete placeholder patch for ${op.path}. It must resend the full file contents.`,
+        );
+      }
+      if (isDestructiveShrink(prev, content, op.path)) {
+        const prevLines = prev.split("\n").length;
+        const nextLines = content.split("\n").length;
+        throw new Error(
+          `destructive_shrink: ${op.path} would shrink from ${prevLines} to ${nextLines} lines. This usually means you returned a stub instead of the full edit. Re-emit this change as one or more \`replace\` ops targeting only the snippet you want to change.`,
         );
       }
       if (shouldRequireReplaceOp(prev, content, op.path)) {
