@@ -3047,26 +3047,26 @@ function Builder() {
       <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[360px_1fr]">
         {/* Chat */}
         <aside
-          className={`flex min-h-0 flex-col border-b border-border bg-sidebar md:flex md:border-b-0 md:border-r ${
+          className={`min-h-0 flex-col border-b border-border/60 bg-sidebar md:flex md:border-b-0 md:border-r ${
             mobileTab === "chat" ? "flex" : "hidden"
           }`}
         >
-          <div className="flex items-center justify-between border-b-2 border-foreground/10 bg-sidebar px-4 py-3">
+          <div className="flex shrink-0 items-center justify-between border-b border-border/50 bg-sidebar/80 px-4 py-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-sidebar/60">
             <div className="flex items-center gap-2">
               <span className="grid h-5 w-5 place-items-center rounded-md bg-foreground text-background">
                 <MessageSquare className="h-3 w-3" />
               </span>
-              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-foreground">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground/80">
                 Conversation
               </span>
             </div>
             {messages.length > 0 && (
-              <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+              <span className="rounded-full bg-foreground/8 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
                 {messages.length}
               </span>
             )}
           </div>
-          <div className="flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-5">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-5 sm:px-5">
             {bootstrapping && (
               <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-3.5 py-1.5 text-[12px] text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading project…
