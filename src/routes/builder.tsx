@@ -4191,6 +4191,23 @@ function Builder() {
                   >
                     <Sparkles className="h-3 w-3" /> Deep
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setPlanFirst((v) => !v)}
+                    aria-pressed={planFirst}
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                      planFirst
+                        ? "border-foreground bg-foreground text-background shadow-sm"
+                        : "border-border bg-muted/40 text-muted-foreground hover:text-foreground"
+                    }`}
+                    title={
+                      planFirst
+                        ? "Plan first on — Petal will propose a scoped plan and wait for your approval before editing."
+                        : "Turn on Plan first — Petal proposes which files it will touch and waits for your approval before editing."
+                    }
+                  >
+                    <MessageSquare className="h-3 w-3" /> Plan
+                  </button>
                 </div>
                 <button
                   type="submit"
