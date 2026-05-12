@@ -1193,7 +1193,10 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   // honored automatically (pickDesignDirection short-circuits to it).
   // Patches skip the call entirely — the existing aesthetic wins.
   let lastUserContent = latestUserMessage(messages);
-  const multiEditIntent = !isInitial && detectMultiEditIntent(lastUserContent);
+  const multiEditPromptContext = messages
+    .map((m) => (typeof m.content === "string" ? m.content : ""))
+    .join("\n");
+  const multiEditIntent = !isInitial && detectMultiEditIntent(multiEditPromptContext);
 
   // Brief expander — vague initial prompts ("surprise me", "build an app")
   // are the dominant cause of `no_files_emitted` failures: the main model
