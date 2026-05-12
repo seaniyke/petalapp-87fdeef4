@@ -17,6 +17,7 @@ import {
   Mail,
   CalendarCheck,
   Store,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 
@@ -281,6 +282,44 @@ Pages:
 7. /messages — per-order chat thread between buyer and seller (realtime).
 
 Tables: profiles (with seller flag), listings, orders, messages, reviews. RLS strict: sellers see only their listings/orders, buyers see only their orders, messages scoped to order participants. Stripe Connect for split payments.`,
+  },
+  {
+    slug: "creator-social",
+    name: "Creator & social",
+    tagline: "Link-in-bio, multi-platform scheduling, and an inbox that doesn't suck",
+    Icon: Megaphone,
+    blurb:
+      "A creator command center — link-in-bio landing, cross-platform post scheduler (X, LinkedIn, Threads), unified social inbox, and analytics.",
+    palette: [
+      { name: "Hot pink", cssVar: "--primary", sample: "#FF3D8A" },
+      { name: "Off-black", cssVar: "--background", sample: "#0B0B10" },
+      { name: "Citron", cssVar: "--accent", sample: "#E6FF55" },
+    ],
+    typography: { display: "Space Grotesk", body: "Inter" },
+    pages: [
+      { path: "/", purpose: "Marketing landing for the creator tool itself with signup CTA" },
+      { path: "/u/$handle", purpose: "Public link-in-bio page (avatar, bio, links, latest posts, click tracking)" },
+      { path: "/dashboard", purpose: "Creator dashboard: scheduled posts calendar, recent engagement, top links" },
+      { path: "/compose", purpose: "Composer: write once, choose targets (X, LinkedIn, Threads, Bluesky), schedule or send now" },
+      { path: "/inbox", purpose: "Unified inbox of DMs/comments across linked accounts with reply" },
+      { path: "/analytics", purpose: "Per-platform reach, click-through on bio links, top posts" },
+      { path: "/settings/connections", purpose: "Connect / disconnect social accounts via OAuth" },
+    ],
+    cloud: ["database", "email", "auth", "storage", "analytics"],
+    brief: `A creator/social command center. Bold, slightly maximalist — hot pink primary, off-black background, citron accent, Space Grotesk display + Inter body. Punchy, modern, not corporate.
+
+Pages:
+1. Home — marketing landing for the tool itself: hero, "what it does" feature row (compose once / cross-post / unified inbox / link-in-bio), pricing teaser, signup CTA.
+2. /u/$handle — public link-in-bio page (avatar, bio, theme, list of links with click tracking, latest posts pulled from connected accounts).
+3. /dashboard — creator dashboard: this-week post calendar, recent engagement (likes/replies across platforms), top-performing bio links.
+4. /compose — write a post once, pick targets (X, LinkedIn, Threads, Bluesky), attach media, schedule or send now. Save to a scheduled_posts table; a cron-style worker dispatches to each platform when due.
+5. /inbox — unified DM/comments inbox across linked accounts, reply inline, mark as handled.
+6. /analytics — per-platform reach + engagement, bio-link CTR, top posts.
+7. /settings/connections — OAuth connect/disconnect per platform.
+
+Tables: profiles, bio_pages, bio_links (with click_count), scheduled_posts (with target_platforms[], status, scheduled_at), platform_accounts (per-user OAuth tokens, encrypted), inbox_messages.
+
+Integration brief for the LLM: use per-user OAuth (not workspace connectors) for X v2, LinkedIn UGC, Threads, and Bluesky AT Protocol so each creator authorizes their own accounts. Store refresh tokens in platform_accounts with strict RLS (owner-only). For dispatch, use a server function triggered by pg_cron hitting an /api/public/dispatch-scheduled endpoint that signs requests with a shared secret. Image/video uploads go through Cloud storage with signed URLs.`,
   },
 ];
 
