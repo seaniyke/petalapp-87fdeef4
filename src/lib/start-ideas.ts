@@ -81,7 +81,9 @@ export type IdeaCategory =
   | "Marketplace"
   | "Maps & geo"
   | "Audio & video"
-  | "Extensions";
+  | "Extensions"
+  | "Messaging"
+  | "Social";
 
 export type StartIdea = {
   title: string;
