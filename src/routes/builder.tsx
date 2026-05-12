@@ -632,6 +632,17 @@ function Builder() {
   } | null>(null);
   const composerFileInputRef = useRef<HTMLInputElement>(null);
   const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
+  // Voice dictation — Web Speech API. Streams interim words into the textarea
+  // and stops on toggle. Hidden when the browser doesn't support it.
+  const voiceBaseRef = useRef("");
+  const voice = useVoiceDictation({
+    onText: (text, isFinal) => {
+      const base = voiceBaseRef.current;
+      const next = base ? `${base.replace(/\s+$/, "")} ${text}` : text;
+      setInput(next);
+      if (isFinal) voiceBaseRef.current = next;
+    },
+  });
   const isMobile = useIsMobile();
   const webContainerSupported = useWebContainerSupported();
   // Use the deployed-build iframe fallback whenever WebContainers can't run
