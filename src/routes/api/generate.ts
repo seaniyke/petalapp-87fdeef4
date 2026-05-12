@@ -1277,8 +1277,20 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     // Never block a build on composer failure.
   }
 
+  // Layer I — App-shape classifier. Predicts surfaces (landing/auth/dashboard/
+  // admin/webhooks/kyc) and likely integrations from the free-form prompt so
+  // the model scaffolds full apps instead of stopping at one dashboard page.
+  let appShapeBlock = "";
+  try {
+    const { classifyAppShape, renderShapeBlock } = await import(
+      "@/lib/app-shape-classifier"
+    );
+    appShapeBlock = renderShapeBlock(classifyAppShape(lastUserText));
+  } catch {
+    // Never block a build on classifier failure.
+  }
 
-  const chatMessages = [
+
     {
       role: "system",
       content:
