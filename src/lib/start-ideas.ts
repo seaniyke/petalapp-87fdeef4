@@ -53,6 +53,14 @@ import {
   HelpCircle,
   Globe,
   Wand2,
+  Map,
+  Mic,
+  Video,
+  PenTool,
+  Puzzle,
+  CalendarCheck,
+  Store,
+  Workflow,
   type LucideIcon,
 } from "lucide-react";
 
@@ -67,7 +75,13 @@ export type IdeaCategory =
   | "Directories"
   | "E-commerce"
   | "Games & toys"
-  | "Productivity";
+  | "Productivity"
+  | "Collaboration"
+  | "Booking"
+  | "Marketplace"
+  | "Maps & geo"
+  | "Audio & video"
+  | "Extensions";
 
 export type StartIdea = {
   title: string;
@@ -90,6 +104,12 @@ export const CATEGORY_ORDER: IdeaCategory[] = [
   "Directories",
   "E-commerce",
   "Mobile",
+  "Collaboration",
+  "Booking",
+  "Marketplace",
+  "Maps & geo",
+  "Audio & video",
+  "Extensions",
   "Games & toys",
 ];
 
@@ -519,6 +539,219 @@ export const START_IDEAS: StartIdea[] = [
     Icon: MessageSquare,
     accent: "lilac",
     category: "SaaS",
+  },
+
+  // ── Collaboration / multiplayer ─────────────────────────────────────────
+  {
+    title: "Realtime collaborative whiteboard",
+    prompt:
+      "A multiplayer whiteboard: shared canvas with sticky notes, pen tool, and shapes. Live cursors with each user's name, presence indicators, and persistent boards saved per user. Use Supabase Realtime for sync.",
+    Icon: PenTool,
+    accent: "sky",
+    category: "Collaboration",
+    featured: true,
+  },
+  {
+    title: "Live document editor",
+    prompt:
+      "A collaborative document editor like Google Docs lite: rich-text editing, multiple users typing at once with live cursors and selections, autosave, and a document list per workspace. Realtime via Supabase channels.",
+    Icon: FileText,
+    accent: "mint",
+    category: "Collaboration",
+  },
+  {
+    title: "Team chat (Slack-lite)",
+    prompt:
+      "A team chat app: workspaces, channels, threaded replies, @mentions, typing indicators, and unread badges. Realtime messages via Supabase, auth-gated, RLS per workspace.",
+    Icon: MessageSquare,
+    accent: "lilac",
+    category: "Collaboration",
+  },
+  {
+    title: "Realtime poll / Q&A",
+    prompt:
+      "A live audience Q&A and poll tool for events: host creates a session, audience joins via short code, submits questions, upvotes others'. Host sees live ranking. Realtime updates.",
+    Icon: TrendingUp,
+    accent: "pink",
+    category: "Collaboration",
+  },
+
+  // ── Booking / calendar ──────────────────────────────────────────────────
+  {
+    title: "Appointment booking (Calendly-lite)",
+    prompt:
+      "A booking page where visitors pick a time slot from my availability, fill name/email, and book. Sends confirmation email, prevents double-booking, and shows my upcoming bookings in a logged-in dashboard. Timezone-aware.",
+    Icon: CalendarCheck,
+    accent: "mint",
+    category: "Booking",
+    featured: true,
+  },
+  {
+    title: "Salon / barber booking",
+    prompt:
+      "A booking site for a salon: services list with duration and price, staff picker, calendar slot selection, customer details, confirmation email. Admin view of upcoming bookings.",
+    Icon: Scissors,
+    accent: "pink",
+    category: "Booking",
+  },
+  {
+    title: "Class / workshop signup",
+    prompt:
+      "A workshop signup site: list of upcoming classes with date, capacity, price; visitors reserve a seat with Stripe payment; capacity decrements live. Email confirmation + reminder 24h before.",
+    Icon: GraduationCap,
+    accent: "butter",
+    category: "Booking",
+  },
+  {
+    title: "Restaurant table reservations",
+    prompt:
+      "A reservation widget for a restaurant: party size, date, time slots respecting capacity, name + phone. Stores bookings, emails confirmation, host dashboard for tonight's covers.",
+    Icon: Utensils,
+    accent: "butter",
+    category: "Booking",
+  },
+
+  // ── Marketplace / two-sided ─────────────────────────────────────────────
+  {
+    title: "Two-sided marketplace",
+    prompt:
+      "A two-sided marketplace (think Etsy-lite): sellers create listings with photos and price, buyers browse/search/filter, Stripe Connect handles seller payouts, in-app messaging between buyer and seller. Reviews per listing.",
+    Icon: Store,
+    accent: "lilac",
+    category: "Marketplace",
+    featured: true,
+  },
+  {
+    title: "Freelance services marketplace",
+    prompt:
+      "A services marketplace (Fiverr-lite): freelancers list gigs with tiers (Basic/Standard/Premium), buyers order with Stripe escrow-style hold, in-app chat, delivery + review flow.",
+    Icon: Briefcase,
+    accent: "sky",
+    category: "Marketplace",
+  },
+  {
+    title: "Local rental marketplace",
+    prompt:
+      "A peer-to-peer rental marketplace (camera gear, tools, party supplies): owners list items by day rate, renters book a date range, Stripe payment with damage deposit, calendar shows availability.",
+    Icon: Store,
+    accent: "mint",
+    category: "Marketplace",
+  },
+
+  // ── Maps & geo ──────────────────────────────────────────────────────────
+  {
+    title: "Local directory with map",
+    prompt:
+      "A local business directory with an interactive Mapbox map: searchable list, filter by category, click pin to see details, submit-a-listing form. Use Mapbox GL JS.",
+    Icon: Map,
+    accent: "sky",
+    category: "Maps & geo",
+    featured: true,
+  },
+  {
+    title: "Delivery tracker",
+    prompt:
+      "A delivery tracking app: drivers update their position, customers see live driver location on a Mapbox map, ETA, and order status. Realtime via Supabase channels.",
+    Icon: Map,
+    accent: "mint",
+    category: "Maps & geo",
+  },
+  {
+    title: "Travel itinerary planner",
+    prompt:
+      "A trip planner: add destinations to a day-by-day itinerary, see them pinned on a Mapbox map with route lines, attach notes and photos per stop, share read-only link with friends.",
+    Icon: Globe,
+    accent: "butter",
+    category: "Maps & geo",
+  },
+
+  // ── Audio & video ───────────────────────────────────────────────────────
+  {
+    title: "Podcast site (with player)",
+    prompt:
+      "A podcast website: hero, episode list pulled from a database, /episodes/$slug page with embedded audio player and shownotes, RSS feed at /rss.xml, subscribe-via newsletter form.",
+    Icon: Mic,
+    accent: "lilac",
+    category: "Audio & video",
+    featured: true,
+  },
+  {
+    title: "Video course platform",
+    prompt:
+      "A video course platform: course catalog, lesson list per course, video player (Mux or HTML5), progress tracking per user, Stripe one-time purchase to unlock a course, simple admin to upload lessons.",
+    Icon: Video,
+    accent: "pink",
+    category: "Audio & video",
+  },
+  {
+    title: "Voice transcription tool",
+    prompt:
+      "Upload an audio file or record in-browser, AI transcribes it (use OpenAI Whisper or similar), show timestamped transcript, allow edits, export as TXT/SRT. Save transcripts per user.",
+    Icon: Mic,
+    accent: "mint",
+    category: "Audio & video",
+  },
+  {
+    title: "Live video room (Daily.co)",
+    prompt:
+      "A 1-click video meeting tool: create a room, share the link, up to 10 people join with camera/mic, screen share. Use Daily.co's prebuilt component. Track meeting history per user.",
+    Icon: Video,
+    accent: "sky",
+    category: "Audio & video",
+  },
+
+  // ── Extensions / embeds ─────────────────────────────────────────────────
+  {
+    title: "Embeddable chat widget",
+    prompt:
+      "A customer-support chat widget that any site can embed with a single <script> tag. Floating bubble bottom-right, opens to chat panel, messages routed to my admin inbox in this project. Realtime.",
+    Icon: MessageSquare,
+    accent: "lilac",
+    category: "Extensions",
+    featured: true,
+  },
+  {
+    title: "Browser extension (Chrome MV3)",
+    prompt:
+      "A Chrome extension scaffold (Manifest V3): popup UI, content script that adds a button to any webpage, background service worker, options page. Build it so I can load unpacked and iterate.",
+    Icon: Puzzle,
+    accent: "butter",
+    category: "Extensions",
+  },
+  {
+    title: "Embeddable testimonials widget",
+    prompt:
+      "A testimonials manager: I collect testimonials in an admin, then embed a beautiful rotating-quotes widget on any site via a <script> tag. Light/dark themes auto-detect.",
+    Icon: Sparkles,
+    accent: "pink",
+    category: "Extensions",
+  },
+
+  // ── AI agents / workflow ────────────────────────────────────────────────
+  {
+    title: "AI agent / workflow builder",
+    prompt:
+      "A visual workflow builder: drag steps onto a canvas (HTTP request, AI step, condition, send email), connect them, run the workflow on a trigger or schedule. Save/load workflows per user. Use React Flow.",
+    Icon: Workflow,
+    accent: "lilac",
+    category: "AI tools",
+    featured: true,
+  },
+  {
+    title: "AI research agent",
+    prompt:
+      "Give the AI a research question; it searches the web (Perplexity API), reads the top sources, and returns a structured report with citations. Save reports per user.",
+    Icon: Brain,
+    accent: "sky",
+    category: "AI tools",
+  },
+  {
+    title: "AI email triage assistant",
+    prompt:
+      "Connect a Gmail inbox; AI categorises incoming emails (Action, FYI, Newsletter, Spam), drafts replies for Action items, and shows a daily digest. Approve-to-send for replies.",
+    Icon: Inbox,
+    accent: "mint",
+    category: "AI tools",
   },
 ];
 

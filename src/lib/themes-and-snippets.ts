@@ -100,7 +100,16 @@ export const THEME_PRESETS: ThemePreset[] = [
 export type Snippet = {
   slug: string;
   name: string;
-  category: "Marketing" | "Forms" | "Data" | "Auth" | "Pricing";
+  category:
+    | "Marketing"
+    | "Forms"
+    | "Data"
+    | "Auth"
+    | "Pricing"
+    | "Realtime"
+    | "Maps"
+    | "AI"
+    | "Media";
   blurb: string;
   /** Composed prompt the user's project receives in the builder. */
   prompt: string;
@@ -186,5 +195,45 @@ export const SNIPPETS: Snippet[] = [
     blurb: "Owner can invite teammates by email; pending invites table.",
     prompt:
       "Add team invites: an owner can invite teammates by email from /settings/team, the invite is stored in `team_invites` and an email is sent. Accepting the invite via a tokenised link adds the user to the team with a default role.",
+  },
+  {
+    slug: "live-cursors",
+    name: "Live cursors / presence",
+    category: "Realtime",
+    blurb: "Show other users' cursors and names in realtime on a shared page.",
+    prompt:
+      "Add live cursors and presence to the current page using Supabase Realtime: each connected user sees the others' cursor positions with name labels and a presence avatar stack in the top-right.",
+  },
+  {
+    slug: "comments-thread",
+    name: "Comments thread",
+    category: "Realtime",
+    blurb: "Threaded comments with realtime new-message updates.",
+    prompt:
+      "Add a threaded comments component that I can drop on any page (scoped by an `entity_id` prop). Persist to a `comments` table with RLS, support replies, and use Supabase Realtime to live-append new comments without refresh.",
+  },
+  {
+    slug: "mapbox-picker",
+    name: "Map location picker",
+    category: "Maps",
+    blurb: "Mapbox map with searchable address picker that returns lat/lng.",
+    prompt:
+      "Add a reusable `<LocationPicker />` component using Mapbox GL JS: search address with geocoder, drop a pin, return lat/lng + formatted address via onChange. Read MAPBOX_PUBLIC_TOKEN from env.",
+  },
+  {
+    slug: "ai-chat-drawer",
+    name: "AI chat drawer",
+    category: "AI",
+    blurb: "Slide-in AI assistant drawer wired to Lovable AI Gateway.",
+    prompt:
+      "Add a global AI assistant: a floating button bottom-right opens a slide-in drawer with a streaming chat UI powered by Lovable AI Gateway (model: google/gemini-2.5-flash). Persist conversation per user.",
+  },
+  {
+    slug: "file-uploader",
+    name: "Drag-and-drop file uploader",
+    category: "Media",
+    blurb: "Multi-file uploader with progress, saved to Cloud storage.",
+    prompt:
+      "Add a drag-and-drop file uploader component: multiple files, per-file progress, image previews, upload to a `uploads` Cloud storage bucket, persist file metadata in an `uploads` table with RLS scoped to the current user.",
   },
 ];

@@ -15,6 +15,8 @@ import {
   Dumbbell,
   Briefcase,
   Mail,
+  CalendarCheck,
+  Store,
   type LucideIcon,
 } from "lucide-react";
 
@@ -209,6 +211,76 @@ Pages:
 4. /about — author bio, why this newsletter exists, what to expect.
 
 Reading-first design: max-width prose, generous line-height, real serif typography. Not a SaaS landing page in disguise.`,
+  },
+  {
+    slug: "booking",
+    name: "Booking & appointments",
+    tagline: "A scheduling site that captures bookings while you sleep",
+    Icon: CalendarCheck,
+    blurb:
+      "A polished booking site for solo professionals (coaches, therapists, consultants) — services, availability calendar, online booking, payment, and a logged-in dashboard.",
+    palette: [
+      { name: "Sage", cssVar: "--primary", sample: "#5C7A6A" },
+      { name: "Bone", cssVar: "--background", sample: "#F4F1EA" },
+      { name: "Plum", cssVar: "--accent", sample: "#7A3E5C" },
+    ],
+    typography: { display: "Fraunces", body: "Inter" },
+    pages: [
+      { path: "/", purpose: "Hero, services overview, testimonials, prominent Book CTA" },
+      { path: "/services", purpose: "Service list with duration, price, and Book button" },
+      { path: "/book/$service", purpose: "Calendar slot picker, customer details, Stripe payment" },
+      { path: "/about", purpose: "Practitioner story, qualifications, approach" },
+      { path: "/account", purpose: "Customer dashboard: upcoming + past bookings, reschedule/cancel" },
+      { path: "/admin", purpose: "Admin: today's schedule, all bookings, blocked dates" },
+    ],
+    cloud: ["database", "email", "payments", "auth"],
+    brief: `A booking site for a solo professional. Calm, premium design — sage primary, bone background, plum accent, Fraunces display + Inter body.
+
+Pages:
+1. Home — hero with practitioner photo, services overview, 3 testimonials, big "Book a session" CTA.
+2. /services — service cards (name, duration, price, short description, Book button).
+3. /book/$service — pick a date, see available slots (respect existing bookings + blocked dates, timezone-aware), enter name/email/phone/notes, pay with Stripe, save booking, send confirmation email + calendar invite (.ics).
+4. /about — story, qualifications, approach, FAQ.
+5. /account — customer-facing dashboard (auth-gated): upcoming + past bookings, reschedule, cancel.
+6. /admin — practitioner dashboard: today's schedule, all bookings, block out dates, manage services.
+
+Use a calm, considered aesthetic — not a SaaS landing page. Real database tables: services, bookings, blocked_dates. RLS so customers only see their own bookings.`,
+  },
+  {
+    slug: "marketplace",
+    name: "Two-sided marketplace",
+    tagline: "Sellers list, buyers buy, you take a cut",
+    Icon: Store,
+    blurb:
+      "A two-sided marketplace starter — seller onboarding, listings, buyer browse + purchase via Stripe Connect, in-app messaging, reviews.",
+    palette: [
+      { name: "Indigo", cssVar: "--primary", sample: "#3D3A8C" },
+      { name: "Paper", cssVar: "--background", sample: "#FAFAF7" },
+      { name: "Coral", cssVar: "--accent", sample: "#E8704F" },
+    ],
+    typography: { display: "Outfit", body: "Inter" },
+    pages: [
+      { path: "/", purpose: "Hero, featured listings, top categories, become-a-seller CTA" },
+      { path: "/browse", purpose: "Searchable, filterable listing grid" },
+      { path: "/listings/$slug", purpose: "Listing detail: gallery, price, seller card, Buy button, reviews" },
+      { path: "/sell", purpose: "Seller onboarding: Stripe Connect, profile, first listing" },
+      { path: "/dashboard/seller", purpose: "Seller dashboard: listings, orders, payouts" },
+      { path: "/dashboard/buyer", purpose: "Buyer dashboard: orders, messages, reviews to write" },
+      { path: "/messages", purpose: "In-app messaging between buyer and seller per order" },
+    ],
+    cloud: ["database", "email", "payments", "auth", "storage"],
+    brief: `A two-sided marketplace. Confident, slightly playful — indigo primary, paper background, coral accent, Outfit display + Inter body.
+
+Pages:
+1. Home — hero with category quick-links, featured listings carousel, "Become a seller" CTA, social proof.
+2. /browse — searchable + filterable listing grid (category, price range, location, sort).
+3. /listings/$slug — image gallery, title, price, seller card, description, reviews, Buy button (Stripe checkout, escrow-style hold via Stripe Connect destination charges).
+4. /sell — seller onboarding flow: Stripe Connect Express account, business details, first listing.
+5. /dashboard/seller — listings management, orders to fulfil, payout history.
+6. /dashboard/buyer — order history, in-app messages, prompt to leave reviews.
+7. /messages — per-order chat thread between buyer and seller (realtime).
+
+Tables: profiles (with seller flag), listings, orders, messages, reviews. RLS strict: sellers see only their listings/orders, buyers see only their orders, messages scoped to order participants. Stripe Connect for split payments.`,
   },
 ];
 
