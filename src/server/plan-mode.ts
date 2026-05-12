@@ -92,7 +92,8 @@ You are NOT writing code. You are deciding the SMALLEST set of files needed to s
 
 Rules:
 - List ONLY files you will actually edit, create, or delete. No "maybe".
-- Prefer 1-3 files. Cap is 12.
+- Prefer the smallest complete batch. Single edits should stay 1-3 files; multi-part requests may include every required file up to ${PLAN_MAX_FILES}.
+- If the user asks for multiple edits, decompose the request and include the full coordinated scope instead of dropping items from the batch.
 - Never list files under: src/components/ui/, src/integrations/backend/, src/integrations/supabase/, vite.config.ts, tsconfig.json. They are protected.
 - Use the EXACT file paths shown in the manifest. Do not invent paths.
 - "reason" is one short sentence the END USER will read. No jargon.
