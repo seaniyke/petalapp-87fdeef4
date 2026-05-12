@@ -734,6 +734,67 @@ function addStructuredRetryInstruction<T extends Array<{ role: string; content: 
   ) as T;
 }
 
+function deterministicHeroBackgroundFallback(args: {
+  currentFiles: ProjectFile[];
+  latestUserContent: string;
+}): ParsedProjectPayload | null {
+  const prompt = args.latestUserContent.toLowerCase();
+  const asksForHeroBackground =
+    /\b(hero|header|top|landing|homepage|home page)\b/i.test(prompt) &&
+    /\b(background|backdrop|banner|cover|image|photo|picture)\b/i.test(prompt);
+  if (!asksForHeroBackground) return null;
+
+  const target =
+    args.currentFiles.find((f) => f.path === "src/pages/Home.tsx") ??
+    args.currentFiles.find((f) => f.path === "src/routes/index.tsx") ??
+    args.currentFiles.find((f) => f.path === "src/App.tsx") ??
+    args.currentFiles.find(
+      (f) =>
+        !isManagedScaffoldPath(f.path) &&
+        /\.(tsx|jsx)$/.test(f.path) &&
+        /hero|HeroSection|<h1|homepage|landing/i.test(f.content),
+    );
+  if (!target || target.content.includes("petal-image://")) return null;
+
+  const imagePrompt = /construct|contractor|building|crane|site|commercial/i.test(prompt)
+    ? "construction-site-cranes-steel-beams-workers-golden-hour"
+    : "professional-business-hero-background-photography";
+
+  const containerMatch = target.content.match(
+    /<Container\s+className="([^"]*(?:pt-16|pt-20|pt-24|pt-32|py-16|py-20|py-24|py-32)[^"]*)">/,
+  );
+  if (!containerMatch) return null;
+  const search = containerMatch[0];
+  if (target.content.indexOf(search) !== target.content.lastIndexOf(search)) return null;
+
+  const replace = `<section className="relative isolate overflow-hidden bg-background text-foreground">
+      <img
+        src="petal-image://${imagePrompt}"
+        alt="Construction project site"
+        className="absolute inset-0 -z-20 h-full w-full object-cover"
+      />
+      <div className="absolute inset-0 -z-10 bg-background/70" />
+      <Container className="${containerMatch[1]} min-h-[70vh] flex flex-col items-center justify-center text-center">`;
+
+  const closeContainer = "    </Container>\n  );";
+  if (!target.content.includes(closeContainer)) return null;
+
+  return {
+    parsed: {
+      plan: "I’ll add a construction-themed hero background while keeping the homepage structure intact.",
+      summary: "I added a construction-related image backdrop to the hero and layered the existing hero content over it.",
+      ops: [
+        { op: "replace", path: target.path, search, replace },
+        { op: "replace", path: target.path, search: closeContainer, replace: "      </Container>\n    </section>\n  );" },
+      ],
+      recap: `- \`${target.path}\` — added a generated hero background image with a readable overlay`,
+    },
+    summary: "I added a construction-related image backdrop to the hero and layered the existing hero content over it.",
+    plan: "I’ll add a construction-themed hero background while keeping the homepage structure intact.",
+    recap: `- \`${target.path}\` — added a generated hero background image with a readable overlay`,
+  };
+}
+
 function deterministicPatchFallback(args: {
   currentFiles: ProjectFile[];
   latestUserContent: string;
