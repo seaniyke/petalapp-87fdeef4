@@ -4215,8 +4215,8 @@ function Builder() {
             )}
             {/* Composer: textarea on top, integrated toolbar (attach + mode toggle on left, send on right) below. Auto-expands as user types. */}
             <div
-              className={`flex flex-col gap-2 rounded-2xl border-2 bg-background p-2 shadow-sm transition focus-within:border-primary focus-within:shadow-md ${
-                mode === "discuss" ? "border-foreground/25" : "border-border"
+              className={`flex flex-col gap-1.5 rounded-[26px] border bg-background/90 p-2 shadow-[0_1px_2px_0_oklch(0.2_0.04_30/0.04),0_8px_24px_-12px_oklch(0.2_0.04_30/0.10)] backdrop-blur-xl transition focus-within:border-primary/60 focus-within:shadow-[0_2px_8px_0_oklch(0.2_0.04_30/0.06),0_12px_32px_-12px_oklch(0.2_0.04_30/0.16)] ${
+                mode === "discuss" ? "border-foreground/20" : "border-border/70"
               }`}
             >
               <textarea
