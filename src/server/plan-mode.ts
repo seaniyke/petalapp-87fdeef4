@@ -214,7 +214,16 @@ export async function savePlan(opts: {
   userId: string;
   payload: PlanProposal;
 }): Promise<string> {
-  const { data, error } = await supabaseAdmin
+  // Cast through `any` because the table was just added by migration and the
+  // generated Database types haven't been regenerated yet.
+  const client = supabaseAdmin as unknown as {
+    from: (t: string) => {
+      insert: (row: Record<string, unknown>) => {
+        select: (s: string) => { single: () => Promise<{ data: { id: string } | null; error: { message: string } | null }> };
+      };
+    };
+  };
+  const { data, error } = await client
     .from("petal_plans")
     .insert({
       project_id: opts.projectId,
