@@ -96,6 +96,20 @@ const PATCH_CONTEXT_CHAR_LIMIT = 70_000;
 const LARGE_FILE_CONTEXT_CHAR_LIMIT = 10_000;
 const RELEVANT_FILE_CONTEXT_CHAR_LIMIT = 18_000;
 
+function isManagedScaffoldPath(path: string): boolean {
+  return (
+    path.startsWith("src/components/ui/") ||
+    path.startsWith("src/components/examples/") ||
+    path.startsWith("src/components/blocks/") ||
+    path.startsWith("src/components/mobile/") ||
+    path.startsWith("src/integrations/backend/") ||
+    path === "vite.config.ts" ||
+    path === "tsconfig.json" ||
+    path === "src/lib/utils.ts" ||
+    path === "petal-source-plugin.mjs"
+  );
+}
+
 const MODEL_FAST = "google/gemini-3-flash-preview";
 const MODEL_BEST = "google/gemini-2.5-pro";
 /** Escalation model used when the primary returned prose / no tool call.
