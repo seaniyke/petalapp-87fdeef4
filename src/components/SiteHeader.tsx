@@ -100,6 +100,18 @@ export function SiteHeader() {
                   Templates
                 </Link>
                 <Link
+                  to="/packs"
+                  className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                >
+                  Packs
+                </Link>
+                <Link
+                  to="/themes"
+                  className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                >
+                  Themes
+                </Link>
+                <Link
                   to="/gallery"
                   className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                 >
