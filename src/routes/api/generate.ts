@@ -73,6 +73,14 @@ import { expandBriefIfVague } from "@/server/brief-expander.server";
 import { loadLabsFlagsForRequest } from "@/server/labs-flags.server";
 import { runStagedPipelineStream } from "@/server/pipeline/staged-orchestrator.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
+import {
+  proposeChangePlan,
+  savePlan,
+  loadAndConsumePlan,
+  buildAllowedPathSet,
+  renderApprovedPlanBlock,
+  type PlanProposal,
+} from "@/server/plan-mode";
 
 /** Smart routing presets, mirroring Base44's Automatic/Manual dropdown.
  *  - "fast"  : cheapest + quickest, good for trivial edits
