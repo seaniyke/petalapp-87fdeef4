@@ -231,4 +231,9 @@ export const SNIPPETS: Snippet[] = [
   {
     slug: "file-uploader",
     name: "Drag-and-drop file uploader",
-    category: "Media
+    category: "Media",
+    blurb: "Multi-file uploader with progress, saved to Cloud storage.",
+    prompt:
+      "Add a drag-and-drop file uploader component: multiple files, per-file progress, image previews, upload to a `uploads` Cloud storage bucket, persist file metadata in an `uploads` table with RLS scoped to the current user.",
+  },
+];
