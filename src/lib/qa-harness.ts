@@ -147,6 +147,33 @@ function auditPack(p: IndustryPack): Finding[] {
       });
     }
   }
+
+  // Layer I — fintech/crypto/banking specific lints.
+  const isMoneyMovement = /\b(transfer|payout|ach|wire|invoice|payment|charge|withdraw)\b/i.test(p.brief);
+  const isCrypto = /\b(crypto|wallet|web3|on-chain|viem|wagmi|ethers)\b/i.test(p.brief);
+  const isBanking = /\b(bank|neobank|ledger|kyc|plaid|increase|unit|treasury)\b/i.test(p.brief);
+
+  if (isMoneyMovement && !/idempoten/i.test(p.brief)) {
+    out.push({
+      severity: "error", surface: "pack", slug: p.slug,
+      rule: "money-movement-no-idempotency",
+      message: "Pack moves money but brief doesn't mention idempotency — duplicate charges will happen.",
+    });
+  }
+  if (isCrypto && !/(NEVER|never).{0,80}(private key|seed phrase)/i.test(p.brief)) {
+    out.push({
+      severity: "error", surface: "pack", slug: p.slug,
+      rule: "crypto-missing-key-warning",
+      message: "Crypto pack must explicitly forbid handling private keys / seed phrases.",
+    });
+  }
+  if (isBanking && !p.cloud.includes("auth")) {
+    out.push({
+      severity: "error", surface: "pack", slug: p.slug,
+      rule: "banking-missing-auth",
+      message: "Banking pack must enable Cloud auth — anonymous money apps are a non-starter.",
+    });
+  }
   return out;
 }
 
