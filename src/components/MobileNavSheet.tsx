@@ -73,6 +73,12 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
               />
             )}
             <RowLink
+              to="/templates"
+              onClick={close}
+              icon={<Sparkles className="h-4 w-4" />}
+              label="Templates"
+            />
+            <RowLink
               to="/gallery"
               onClick={close}
               icon={<ImageIcon className="h-4 w-4" />}
