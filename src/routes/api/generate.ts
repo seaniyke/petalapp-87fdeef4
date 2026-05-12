@@ -1256,7 +1256,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   // model. The AI never edits these (we drop ops that touch them), but feeding
   // them back as context bloats patch turns and makes targeted edits harder.
   const editablePromptFiles = currentFiles.filter((f) => !isManagedScaffoldPath(f.path));
-  const promptBudget = trimFilesForPrompt(editablePromptFiles, lastUserContent);
+  const promptBudget = trimFilesForPrompt(editablePromptFiles, multiEditPromptContext || lastUserContent);
   const filesContext = isInitial
     ? ""
     : `\n\nEditable app file manifest (all app-owned files Petal may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Petal-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
