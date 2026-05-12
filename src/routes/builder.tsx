@@ -1702,6 +1702,9 @@ function Builder() {
             customInstructions: proj.custom_instructions ?? undefined,
             projectId: proj.id,
             isAutoFix: opts.isAutoFix,
+            planFirst: opts.planFirst,
+            approvedPlanId: opts.approvedPlanId,
+            allowedPaths: opts.allowedPaths,
           },
           {
             onPhase: (phase: PhaseId) => {
