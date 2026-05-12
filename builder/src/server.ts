@@ -69,7 +69,10 @@ const FileSchema = z.object({
 const BuildBodySchema = z.object({
   projectId: z.string().uuid(),
   buildId: z.string().uuid(),
-  files: z.array(FileSchema).min(1).max(200),
+  // Cap raised to 2000 to accommodate the full scaffold kit (UI primitives,
+  // ~150 section blocks, examples pack) plus the user's generated files.
+  // The 8 MB → 32 MB bodyLimit bump above ensures we can still receive it.
+  files: z.array(FileSchema).min(1).max(2000),
 });
 type BuildBody = z.infer<typeof BuildBodySchema>;
 
