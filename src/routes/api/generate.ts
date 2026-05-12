@@ -35,6 +35,11 @@ import {
   renderMemoryBlock,
   updateProjectMemory,
 } from "@/server/project-memory.server";
+import {
+  parsePreservationRules,
+  renderPreservationBlock,
+  makeProtectedGlobMatcher,
+} from "@/server/preservation-rules";
 import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design-director.server";
 import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/self-recovery.server";
 import { pickDynamicSnippets, renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
