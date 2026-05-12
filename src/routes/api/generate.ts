@@ -1290,6 +1290,9 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   const capabilitiesBlock = renderPetalCapabilitiesBlock({
     hasBackend: Boolean(backend),
   });
+  const multiEditBlock = multiEditIntent
+    ? `\n\n### Multi-edit turn\nThe latest request contains multiple coordinated asks. Treat this as one complete batch: decompose it internally, preserve dependencies across files, emit every required create/update/replace/delete op in one patch, and do not ask the user to split the work unless the asks conflict, are unsafe, or require missing infrastructure. Use small precise ops, especially when touching multiple regions of the same file.\n`
+    : "";
 
   // High-stakes domain honesty: if the latest user turn asks for a crypto
   // wallet, online bank, brokerage, etc., instruct the model to clearly
@@ -1364,6 +1367,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         baseSystem +
         dateBlock +
         capabilitiesBlock +
+        multiEditBlock +
         backendBlock +
         integrationsBlock +
         suggestionsBlock +
