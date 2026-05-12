@@ -1118,13 +1118,28 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   const resolverText =
     typeof lastUserForResolver === "string" ? lastUserForResolver : "";
   const requestedIntegrations = detectIntegrationRequests(resolverText, 3);
-  const resolvedBriefs = (
-    await Promise.all(
+  // Layer J — User-paste resolver runs FIRST so anything the user pasted
+  // (docs URL, cURL, code snippet) becomes the authoritative brief and
+  // suppresses the curated/npm/AI fallback for the same service.
+  const [userPasteBriefs, namedBriefs] = await Promise.all([
+    resolveFromUserPaste(resolverText).catch(() => []),
+    Promise.all(
       requestedIntegrations
         .filter((r) => !installedCodes.has(r.key))
         .map((r) => resolveIntegration(r.name).catch(() => null)),
-    )
-  ).filter((b): b is NonNullable<typeof b> => b !== null);
+    ),
+  ]);
+  const pastedKeys = new Set(
+    userPasteBriefs.map((b) => b.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "")),
+  );
+  const resolvedBriefs = [
+    ...userPasteBriefs,
+    ...namedBriefs.filter(
+      (b): b is NonNullable<typeof b> =>
+        b !== null &&
+        !pastedKeys.has(b.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "")),
+    ),
+  ];
   const resolvedBlock = renderResolvedIntegrationsBlock(resolvedBriefs);
 
   // Project Knowledge: small piece of context the owner attached to the
