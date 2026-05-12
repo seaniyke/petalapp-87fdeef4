@@ -1546,20 +1546,41 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             p.startsWith("src/components/mobile/") ||
             p.startsWith("src/integrations/backend/") ||
             PROTECTED.includes(p) ||
-            matchesUserProtectedGlob(p);
+            matchesUserProtectedGlob(p) ||
+            // Plan Mode v1 — when a plan was approved, ANY file outside its
+            // allow-list is treated as protected and dropped.
+            (allowedPathSet !== null && !allowedPathSet.has(p));
           const violations = parsed.ops.filter((op) => isProtectedPath(op.path));
           if (violations.length) {
             console.warn(
               "Dropping protected-path ops:",
               violations.map((v) => `${v.op} ${v.path}`).join(", "),
             );
+            // Surface plan-scope violations distinctly so the UI can label them.
+            if (allowedPathSet) {
+              const planDropped = violations
+                .filter((v) => !allowedPathSet!.has(v.path))
+                .map((v) => v.path);
+              if (planDropped.length) {
+                controller.enqueue(
+                  encoder.encode(
+                    sse({ type: "plan_scope_violation", droppedPaths: Array.from(new Set(planDropped)) }),
+                  ),
+                );
+              }
+            }
           }
           const safeOps = parsed.ops.filter((op) => !isProtectedPath(op.path));
           if (safeOps.length === 0) {
             const userGlobsHit = violations.some((v) => matchesUserProtectedGlob(v.path));
+            const planScopeHit =
+              allowedPathSet !== null &&
+              violations.some((v) => !allowedPathSet!.has(v.path));
             emitConversationalFallback(controller, encoder, {
               files: currentFiles,
-              summary: userGlobsHit
+              summary: planScopeHit
+                ? "The change you asked for would touch files outside the plan you approved. Re-send the message and approve the new files in the plan card, or send without Plan first to let me pick the scope."
+                : userGlobsHit
                 ? "The change you asked for would touch files you've marked as protected in PETAL.md. Update PETAL.md to allow them, or rephrase the request to target other files."
                 : "The change you asked for would touch files I keep reserved for the framework (the UI kit / build config). I can do this a different way — tell me the user-visible behavior you want and I'll wire it up in app code instead.",
             });
