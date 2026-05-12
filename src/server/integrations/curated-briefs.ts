@@ -844,6 +844,7 @@ Note: this project uses Lovable Cloud (Supabase) auth by default. Only swap to C
 
   // (plaid is already defined earlier in this file — see line ~325)
 
+  teller: {
     displayName: "Teller (US bank data)",
     npmPackage: null,
     docsUrl: "https://teller.io/docs",
