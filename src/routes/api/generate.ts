@@ -122,6 +122,8 @@ type Body = {
 
 const PATCH_CONTEXT_FILE_LIMIT = 24;
 const PATCH_CONTEXT_CHAR_LIMIT = 70_000;
+const MULTI_EDIT_CONTEXT_FILE_LIMIT = 48;
+const MULTI_EDIT_CONTEXT_CHAR_LIMIT = 150_000;
 const LARGE_FILE_CONTEXT_CHAR_LIMIT = 10_000;
 const RELEVANT_FILE_CONTEXT_CHAR_LIMIT = 18_000;
 
@@ -210,15 +212,28 @@ function trimMessagesForGeneration(messages: ChatMessage[]): ChatMessage[] {
   return [...previousContext, latest];
 }
 
+function detectMultiEditIntent(prompt: string): boolean {
+  const p = prompt.toLowerCase();
+  const explicitMulti =
+    /\b(multiple|several|many|batch|coordinated|across|throughout|site[-\s]?wide|app[-\s]?wide|whole app|entire app|all pages|every page|multi[-\s]?(?:file|edit|step|task|thing|part))\b/i.test(p) ||
+    /\b(do|handle|work on|change|update|fix|implement)\s+(?:all|both|these|them)\b/i.test(p);
+  const enumeratedItems = (prompt.match(/(?:^|\n|;|,)\s*(?:\d+[.)]|[-*])\s+\S/g) ?? []).length;
+  const connectorCount = (p.match(/\b(?:and|also|plus|then|as well as|along with)\b/g) ?? []).length;
+  return explicitMulti || enumeratedItems >= 2 || connectorCount >= 3;
+}
+
 function trimFilesForPrompt(
   files: ProjectFile[],
   latestPrompt = "",
 ): { files: ProjectFile[]; omitted: number } {
+  const multiEditIntent = detectMultiEditIntent(latestPrompt);
+  const fileLimit = multiEditIntent ? MULTI_EDIT_CONTEXT_FILE_LIMIT : PATCH_CONTEXT_FILE_LIMIT;
+  const charLimit = multiEditIntent ? MULTI_EDIT_CONTEXT_CHAR_LIMIT : PATCH_CONTEXT_CHAR_LIMIT;
   const terms = latestPrompt
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter((w) => w.length >= 4 && !/^(please|make|change|update|build|create|this|that|with|from|into|app)$/i.test(w))
-    .slice(0, 18);
+    .slice(0, multiEditIntent ? 36 : 18);
   const isPromptRelevant = (file: ProjectFile): boolean => {
     if (terms.length === 0) return false;
     const haystack = `${file.path}\n${file.content.slice(0, 24_000)}`.toLowerCase();
@@ -241,7 +256,7 @@ function trimFilesForPrompt(
       rank(a.path) - rank(b.path) ||
       a.path.localeCompare(b.path),
   )) {
-    if (picked.length >= PATCH_CONTEXT_FILE_LIMIT) break;
+    if (picked.length >= fileLimit) break;
     const limit = isPromptRelevant(file)
       ? RELEVANT_FILE_CONTEXT_CHAR_LIMIT
       : LARGE_FILE_CONTEXT_CHAR_LIMIT;
@@ -250,7 +265,7 @@ function trimFilesForPrompt(
         ? `${file.content.slice(0, limit)}\n\n/* ...trimmed for context budget... */`
         : file.content;
     const cost = file.path.length + content.length + 32;
-    if (picked.length > 0 && used + cost > PATCH_CONTEXT_CHAR_LIMIT) continue;
+    if (picked.length > 0 && used + cost > charLimit) continue;
     picked.push({ path: file.path, content });
     used += cost;
   }
