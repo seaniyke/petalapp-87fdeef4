@@ -75,6 +75,7 @@ import {
 import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivityCard";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { NextStepsCard } from "@/components/NextStepsCard";
+import { PlanProposalCard } from "@/components/PlanProposalCard";
 
 
 import {
