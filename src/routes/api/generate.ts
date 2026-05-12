@@ -345,6 +345,8 @@ async function authorize(request: Request): Promise<string | Response> {
 type ParsedTool = {
   name: "write_project" | "patch_files" | null;
   args: string;
+  /** Plain assistant text when the provider ignored tool_choice. */
+  text: string;
   /** Provider stop reason from the final stream chunk, e.g. `length` / `max_tokens`. */
   finishReason: string | null;
   /** Token usage from the gateway (final SSE chunk usually carries it). */
@@ -374,7 +376,7 @@ async function relayAndCollect(
   const reader = upstream.body!.getReader();
   const decoder = new TextDecoder();
   let buf = "";
-  const tool: ParsedTool = { name: null, args: "", finishReason: null, usage: null };
+  const tool: ParsedTool = { name: null, args: "", text: "", finishReason: null, usage: null };
   // Running prefixes of the structured narrative fields already streamed to
   // the client. We re-extract from `tool.args` on every chunk and emit only
   // the new tail, so the client renders a clean token-by-token feel.
@@ -470,7 +472,8 @@ async function relayAndCollect(
       const choice = (json as { choices?: Array<{ delta?: unknown; finish_reason?: unknown; stop_reason?: unknown }> })?.choices?.[0];
       const choiceFinishReason = choice?.finish_reason ?? choice?.stop_reason;
       if (typeof choiceFinishReason === "string") tool.finishReason = choiceFinishReason;
-      const delta = (choice as { delta?: { tool_calls?: unknown[] } })?.delta;
+      const delta = (choice as { delta?: { content?: string; tool_calls?: unknown[] } })?.delta;
+      if (typeof delta?.content === "string") tool.text += delta.content;
       const toolCalls = delta?.tool_calls as
         | Array<{ function?: { name?: string; arguments?: string } }>
         | undefined;
