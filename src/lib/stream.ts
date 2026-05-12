@@ -222,6 +222,17 @@ export async function streamGenerate(
           case "done":
             handlers.onDone?.(evt.status);
             break;
+          case "plan_proposed":
+            handlers.onPlanProposed?.({
+              planId: evt.planId,
+              summary: evt.summary,
+              risk: evt.risk,
+              files: evt.files,
+            });
+            break;
+          case "plan_scope_violation":
+            handlers.onPlanScopeViolation?.(evt.droppedPaths);
+            break;
         }
       }
     }
