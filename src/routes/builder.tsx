@@ -3878,7 +3878,45 @@ function Builder() {
                   <span className="petal-shimmer font-medium">
                     {stageLabel}
                   </span>
-...
+                </div>
+                <div className="space-y-2.5">
+                  {streamingPreamble && (() => {
+                    const safePreamble = sanitizeNarrative(streamingPreamble);
+                    return (
+                      <Suspense
+                        fallback={<div className="whitespace-pre-wrap">{safePreamble}</div>}
+                      >
+                        <MarkdownMessage content={safePreamble} projectId={project?.id ?? null} />
+                      </Suspense>
+                    );
+                  })()}
+                  {streamingPlan && (() => {
+                    const safePlan = sanitizeNarrative(streamingPlan);
+                    return (
+                      <CollapsibleSegment
+                        label="Plan"
+                        tone="primary"
+                        icon={<Wand2 className="h-2.5 w-2.5" />}
+                        defaultOpen={false}
+                      >
+                        <Suspense
+                          fallback={<div className="whitespace-pre-wrap text-[13px]">{safePlan}</div>}
+                        >
+                          <MarkdownMessage content={safePlan} projectId={project?.id ?? null} />
+                        </Suspense>
+                      </CollapsibleSegment>
+                    );
+                  })()}
+                  {showAssistant && (() => {
+                    const safeAssistant = sanitizeNarrative(streamingAssistant);
+                    return (
+                      <Suspense
+                        fallback={<div className="whitespace-pre-wrap">{safeAssistant}</div>}
+                      >
+                        <MarkdownMessage content={safeAssistant} projectId={project?.id ?? null} />
+                      </Suspense>
+                    );
+                  })()}
                   {showRecap && (() => {
                     const safeRecap = sanitizeNarrative(streamingRecap);
                     return (
