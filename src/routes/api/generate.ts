@@ -1306,6 +1306,20 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     // Never block a build on classifier failure.
   }
 
+  // Layer K — Mobile generation guidance. Only fires when the user wants a
+  // real native app (App Store / Play Store, push, signed binary, etc.).
+  // Teaches the model to use Capacitor plugins instead of web-only APIs and
+  // to lay things out mobile-first with safe-area + bottom nav.
+  let mobileBlock = "";
+  try {
+    const { renderMobileGuidanceBlock } = await import(
+      "@/server/integrations/mobile-guidance.server"
+    );
+    mobileBlock = renderMobileGuidanceBlock(lastUserText);
+  } catch {
+    // Never block a build on guidance failure.
+  }
+
 
   const chatMessages = [
     {
@@ -1327,6 +1341,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         learningBlock +
         highStakesBlock +
         appShapeBlock +
+        mobileBlock +
         archetypeBlock +
         visionAddendum +
         filesContext,
