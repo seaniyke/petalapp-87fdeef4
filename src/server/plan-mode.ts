@@ -247,7 +247,30 @@ export async function loadAndConsumePlan(opts: {
   planId: string;
   userId: string;
 }): Promise<{ payload: PlanProposal; allowedPathsCanonical: string[] }> {
-  const { data, error } = await supabaseAdmin
+  const client = supabaseAdmin as unknown as {
+    from: (t: string) => {
+      select: (s: string) => {
+        eq: (col: string, val: string) => {
+          maybeSingle: () => Promise<{
+            data:
+              | {
+                  id: string;
+                  user_id: string;
+                  payload: unknown;
+                  status: string;
+                  expires_at: string | null;
+                }
+              | null;
+            error: { message: string } | null;
+          }>;
+        };
+      };
+      update: (row: Record<string, unknown>) => {
+        eq: (col: string, val: string) => Promise<unknown>;
+      };
+    };
+  };
+  const { data, error } = await client
     .from("petal_plans")
     .select("id, user_id, payload, status, expires_at")
     .eq("id", opts.planId)
@@ -260,10 +283,7 @@ export async function loadAndConsumePlan(opts: {
   }
   const payload = data.payload as unknown as PlanProposal;
   // Mark as approved (best-effort; not fatal if it races).
-  void supabaseAdmin
-    .from("petal_plans")
-    .update({ status: "approved" })
-    .eq("id", opts.planId);
+  void client.from("petal_plans").update({ status: "approved" }).eq("id", opts.planId);
   return {
     payload,
     allowedPathsCanonical: payload.files.map((f) => f.path),
