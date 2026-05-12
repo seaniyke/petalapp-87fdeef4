@@ -1079,6 +1079,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         suggestionsBlock +
         knowledgeBlock +
         memoryBlock +
+        preservationBlock +
         designBlock +
         dynamic.text +
         learningBlock +
