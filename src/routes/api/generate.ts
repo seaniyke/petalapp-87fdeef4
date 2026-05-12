@@ -228,6 +228,14 @@ function trimFilesForPrompt(
   return { files: picked, omitted: Math.max(0, files.length - picked.length) };
 }
 
+function compactManifest(files: ProjectFile[]): string {
+  const rows = files
+    .filter((f) => !isManagedScaffoldPath(f.path))
+    .sort((a, b) => a.path.localeCompare(b.path))
+    .map((f) => `- ${f.path} (${f.content.split("\n").length} lines)`);
+  return rows.length ? rows.join("\n") : "- No editable app files found.";
+}
+
 function sse(event: StreamEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;
 }
