@@ -324,7 +324,7 @@ Pages:
 
 Tables: profiles, bio_pages, bio_links (with click_count), scheduled_posts (with target_platforms[], status, scheduled_at), platform_accounts (per-user OAuth tokens, encrypted), inbox_messages.
 
-Integration brief for the LLM: use per-user OAuth (not workspace connectors) for X v2, LinkedIn UGC, Threads, and Bluesky AT Protocol so each creator authorizes their own accounts. Store refresh tokens in platform_accounts with strict RLS (owner-only). For dispatch, use a server function triggered by pg_cron hitting an /api/public/dispatch-scheduled endpoint that signs requests with a shared secret. Image/video uploads go through Cloud storage with signed URLs.`,
+Integration brief for the builder: use per-user OAuth (not workspace connectors) for X v2, LinkedIn UGC, Threads, and Bluesky AT Protocol so each creator authorizes their own accounts. Store refresh tokens in platform_accounts with strict RLS (owner-only). For dispatch, use a server function triggered by pg_cron hitting an /api/public/dispatch-scheduled endpoint that signs requests with a shared secret. Image/video uploads go through Cloud storage with signed URLs.`,
   },
   {
     slug: "neobank",
@@ -366,7 +366,7 @@ Pages:
 
 Tables: profiles (kyc_status, role), accounts (user_id, balance_cents, type, last4), transactions (account_id, amount_cents, currency, counterparty, status, posted_at), transfers (idempotency_key UNIQUE, status, provider_ref), webhook_events (provider, event_id UNIQUE, payload, received_at), user_roles (user_id, role).
 
-Integration brief for the LLM: NEVER move real money. Use Plaid for account linking sandbox, Stripe Financial Connections or Increase/Unit/Modern Treasury for ledger — all server-side only via createServerFn, never from the browser. All amounts in integer cents. All money-moving handlers MUST be idempotent on Idempotency-Key. Webhook routes under /api/public/* MUST verify HMAC signature with timingSafeEqual before any write. Display a persistent "Demo balances" banner unless PLAID_SECRET / INCREASE_API_KEY etc. are set.`,
+Integration brief for the builder: NEVER move real money. Use Plaid for account linking sandbox, Stripe Financial Connections or Increase/Unit/Modern Treasury for ledger — all server-side only via createServerFn, never from the browser. All amounts in integer cents. All money-moving handlers MUST be idempotent on Idempotency-Key. Webhook routes under /api/public/* MUST verify HMAC signature with timingSafeEqual before any write. Display a persistent "Demo balances" banner unless PLAID_SECRET / INCREASE_API_KEY etc. are set.`,
   },
   {
     slug: "crypto-portfolio",
@@ -402,7 +402,7 @@ Pages:
 
 Tables: profiles (optional — can run wallet-only), wallets (user_id NULLABLE, address, chain, label), portfolio_snapshots (wallet_id, captured_at, total_usd_cents) for history charts.
 
-Integration brief for the LLM: use wagmi + viem + RainbowKit for wallet connect (browser only). For balances/prices/history use a chain-data provider via server fn — Alchemy (EVM), Helius (Solana), Moralis (multi-chain) — keep API keys server-side in process.env. Use CoinGecko for price USD conversion. NEVER use ethers v5 docs — viem is the standard now. NEVER call wallet.signTransaction or wallet.sendTransaction from server code. Price + balance data is read-only on the server; signing happens client-side via wagmi hooks if a swap is added. Cache price responses 60s. All amounts use BigInt for on-chain values, convert to display only at render time.`,
+Integration brief for the builder: use wagmi + viem + RainbowKit for wallet connect (browser only). For balances/prices/history use a chain-data provider via server fn — Alchemy (EVM), Helius (Solana), Moralis (multi-chain) — keep API keys server-side in process.env. Use CoinGecko for price USD conversion. NEVER use ethers v5 docs — viem is the standard now. NEVER call wallet.signTransaction or wallet.sendTransaction from server code. Price + balance data is read-only on the server; signing happens client-side via wagmi hooks if a swap is added. Cache price responses 60s. All amounts use BigInt for on-chain values, convert to display only at render time.`,
   },
   {
     slug: "smb-invoicing",
@@ -444,7 +444,7 @@ Pages:
 
 Tables: profiles, clients (user_id, name, email, address, currency), invoices (user_id, client_id, public_id UNIQUE, status, currency, subtotal_cents, tax_cents, total_cents, due_at, sent_at, paid_at, stripe_session_id), invoice_items (invoice_id, description, qty, unit_amount_cents), webhook_events (provider, event_id UNIQUE, payload).
 
-Integration brief for the LLM: use Stripe Checkout (mode=payment) generated server-side via createServerFn — never expose secret key to the browser. Webhook route under /api/public/* MUST verify the stripe-signature header with stripe.webhooks.constructEvent and dedupe on event.id. Send email via Resend (RESEND_API_KEY) on invoice send and on payment confirmation. PDF generation: use react-pdf in a server fn or render a print-styled HTML page and use the browser print dialog as v1 fallback. Store all amounts in integer cents.`,
+Integration brief for the builder: use Stripe Checkout (mode=payment) generated server-side via createServerFn — never expose secret key to the browser. Webhook route under /api/public/* MUST verify the stripe-signature header with stripe.webhooks.constructEvent and dedupe on event.id. Send email via Resend (RESEND_API_KEY) on invoice send and on payment confirmation. PDF generation: use react-pdf in a server fn or render a print-styled HTML page and use the browser print dialog as v1 fallback. Store all amounts in integer cents.`,
   },
 ];
 
