@@ -144,11 +144,12 @@ function isManagedScaffoldPath(path: string): boolean {
 const MODEL_FAST = "google/gemini-3-flash-preview";
 const MODEL_BEST = "google/gemini-2.5-pro";
 /** Escalation model used when the primary returned prose / no tool call.
- *  Different family from MODEL_BEST on purpose — retrying on the same model
- *  that just refused to call the tool reproduces the refusal (telemetry:
- *  Gemini 2.5 Pro is the model most prone to prose-only completions on
- *  long implement turns). GPT-5 has the strongest tool-call discipline. */
-const MODEL_STRUCTURED_RETRY = "openai/gpt-5";
+ *  This must be a model that is known-good on the Lovable AI gateway for
+ *  streamed tool calls. GPT-5 was returning HTTP 400 in production retry
+ *  telemetry, which meant the retry never actually ran and `no_edit_emitted`
+ *  leaked to users. */
+const MODEL_STRUCTURED_RETRY = "google/gemini-3-flash-preview";
+const MODEL_STRUCTURED_RETRY_BACKUP = "google/gemini-2.5-pro";
 /** Vision-capable model used whenever the latest turn carries image attachments. */
 const MODEL_VISION = "google/gemini-2.5-pro";
 
