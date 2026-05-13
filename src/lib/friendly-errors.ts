@@ -81,10 +81,10 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
     technicalDetail: raw,
   }),
   no_edit_emitted: (raw) => ({
-    title: "Petal didn’t apply the change",
+    title: "Petal needs a sharper target",
     message:
-      "Your request was clear, but Petal didn’t return usable edits. I’ll retry it with a stricter path instead of asking you to explain again.",
-    actionLabel: "Retry the edit",
+      "Tell me the exact element or behavior to change (e.g. 'make the header sticky' or 'change the CTA color to teal') and I'll apply it precisely.",
+    actionLabel: "Try again",
     actionKind: "retry",
     technicalDetail: raw,
   }),
