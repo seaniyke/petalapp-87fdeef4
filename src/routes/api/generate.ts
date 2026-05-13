@@ -144,11 +144,12 @@ function isManagedScaffoldPath(path: string): boolean {
 const MODEL_FAST = "google/gemini-3-flash-preview";
 const MODEL_BEST = "google/gemini-2.5-pro";
 /** Escalation model used when the primary returned prose / no tool call.
- *  Different family from MODEL_BEST on purpose — retrying on the same model
- *  that just refused to call the tool reproduces the refusal (telemetry:
- *  Gemini 2.5 Pro is the model most prone to prose-only completions on
- *  long implement turns). GPT-5 has the strongest tool-call discipline. */
-const MODEL_STRUCTURED_RETRY = "openai/gpt-5";
+ *  This must be a model that is known-good on the Lovable AI gateway for
+ *  streamed tool calls. GPT-5 was returning HTTP 400 in production retry
+ *  telemetry, which meant the retry never actually ran and `no_edit_emitted`
+ *  leaked to users. */
+const MODEL_STRUCTURED_RETRY = "google/gemini-3-flash-preview";
+const MODEL_STRUCTURED_RETRY_BACKUP = "google/gemini-2.5-pro";
 /** Vision-capable model used whenever the latest turn carries image attachments. */
 const MODEL_VISION = "google/gemini-2.5-pro";
 
@@ -634,6 +635,63 @@ function isMissingToolOutputError(error: unknown): boolean {
   return /AI did not return (?:a project|usable edits)|AI tried to (?:rewrite|patch)/i.test(msg);
 }
 
+async function structuredRetryCompletion(args: {
+  messages: Array<{ role: string; content: unknown }>;
+  isInitial: boolean;
+  problem: string;
+  hasBackend: boolean;
+  tool: typeof WRITE_PROJECT_TOOL | typeof PATCH_FILES_TOOL;
+  maxTokens: number;
+  signal: AbortSignal;
+  meta: {
+    phase: Phase;
+    promptChars: number;
+    hadAttachments: boolean;
+    chosenBy: string;
+  };
+}): Promise<Response> {
+  const bodyBase = {
+    messages: addStructuredRetryInstruction(args.messages, {
+      isInitial: args.isInitial,
+      problem: args.problem,
+      hasBackend: args.hasBackend,
+    }),
+    tools: [args.tool],
+    tool_choice: { type: "function", function: { name: args.tool.function.name } },
+    max_tokens: args.maxTokens,
+    stream: true,
+  };
+
+  const timeoutTier = args.isInitial ? "stream_first_build" : "stream";
+  const primary = await aiChatCompletions({
+    feature: "generate",
+    body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY },
+    timeoutTier,
+    signal: args.signal,
+    meta: args.meta,
+  });
+  if (primary.ok && primary.body) return primary;
+
+  let detail = "";
+  try {
+    detail = (await primary.text()).slice(0, 500);
+  } catch {
+    /* ignore */
+  }
+  console.warn(
+    `[generate] structured retry failed HTTP ${primary.status}; retrying backup model`,
+    detail,
+  );
+
+  return aiChatCompletions({
+    feature: "generate",
+    body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY_BACKUP },
+    timeoutTier,
+    signal: args.signal,
+    meta: { ...args.meta, chosenBy: `${args.meta.chosenBy}_backup` },
+  });
+}
+
 async function recoverMissingToolOutput(args: {
   chatMessages: Array<{ role: string; content: unknown }>;
   collected: ParsedTool;
@@ -668,21 +726,13 @@ async function recoverMissingToolOutput(args: {
         `Do not add prose. Preserve the user's requested scope, but emit only valid tool JSON.`,
     },
   ];
-  const recovery = await aiChatCompletions({
-    feature: "generate",
-    body: {
-      model: MODEL_STRUCTURED_RETRY,
-      messages: addStructuredRetryInstruction(recoveryMessages, {
-        isInitial: args.isInitial,
-        problem: "previous response contained prose instead of the required tool call",
-        hasBackend: Boolean(args.backend),
-      }),
-      tools: [args.tool],
-      tool_choice: { type: "function", function: { name: args.tool.function.name } },
-      max_tokens: args.isInitial ? 12_000 : 10_000,
-      stream: true,
-    },
-    timeoutTier: args.isInitial ? "stream_first_build" : "stream",
+  const recovery = await structuredRetryCompletion({
+    messages: recoveryMessages,
+    isInitial: args.isInitial,
+    problem: "previous response contained prose instead of the required tool call",
+    hasBackend: Boolean(args.backend),
+    tool: args.tool,
+    maxTokens: args.isInitial ? 12_000 : 10_000,
     signal: args.signal,
     meta: {
       phase: args.phaseTag.phase,
@@ -1677,20 +1727,13 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             encoder.encode(sse({ type: "status", message: "Retrying the response safely…" })),
           );
           const firstCollected = collected;
-          const retry = await aiChatCompletions({
-            feature: "generate",
-            body: {
-              model: MODEL_STRUCTURED_RETRY,
-              messages: addStructuredRetryInstruction(finalMessages, {
-                isInitial,
-                problem: e instanceof Error ? e.message : "invalid structured response",
-                hasBackend: Boolean(backend),
-              }),
-              tools: [tool],
-              tool_choice: { type: "function", function: { name: tool.function.name } },
-              max_tokens: Math.max(maxCompletionTokens, isInitial ? 12_000 : 8_000),
-              stream: true,
-            },
+          const retry = await structuredRetryCompletion({
+            messages: finalMessages,
+            isInitial,
+            problem: e instanceof Error ? e.message : "invalid structured response",
+            hasBackend: Boolean(backend),
+            tool,
+            maxTokens: Math.max(maxCompletionTokens, isInitial ? 12_000 : 8_000),
             signal: request.signal,
             meta: {
               phase: phaseTag.phase,
@@ -1928,20 +1971,13 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
                 controller.enqueue(
                   encoder.encode(sse({ type: "status", message: attempt === 1 ? "Retargeting the edit against the current files…" : `Trying a narrower edit pass (${attempt}/3)…` })),
                 );
-                const retry = await aiChatCompletions({
-                  feature: "generate",
-                  body: {
-                    model: MODEL_STRUCTURED_RETRY,
-                    messages: addStructuredRetryInstruction(finalMessages, {
-                      isInitial,
-                      problem: retryProblem,
-                      hasBackend: Boolean(backend),
-                    }),
-                    tools: [tool],
-                    tool_choice: { type: "function", function: { name: tool.function.name } },
-                    max_tokens: Math.max(maxCompletionTokens, 8_000),
-                    stream: true,
-                  },
+                const retry = await structuredRetryCompletion({
+                  messages: finalMessages,
+                  isInitial,
+                  problem: retryProblem,
+                  hasBackend: Boolean(backend),
+                  tool,
+                  maxTokens: Math.max(maxCompletionTokens, 8_000),
                   signal: request.signal,
                   meta: {
                     phase: phaseTag.phase,
@@ -2878,7 +2914,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           projectId: body.projectId ?? null,
         });
         if (!userCancelled) {
-          void markLastCallFailure({
+          await markLastCallFailure({
             feature: "generate",
             model: typeof model === "string" ? model : null,
             status: kind === "upstream_timeout" ? 524 : 599,

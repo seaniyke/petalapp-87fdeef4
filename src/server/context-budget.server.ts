@@ -4,7 +4,7 @@
  * Estimates the token cost of an assembled OpenAI-compatible `messages[]`
  * payload BEFORE we send it to the gateway. If the estimate exceeds the
  * target model's safe input window, we either:
- *   1. Suggest a larger-context model from the same family, OR
+ *   1. Suggest a larger-context model known to work for tool-call generation, OR
  *   2. Truncate the OLDEST non-system messages until the payload fits,
  *      preserving the system prompt and the most recent user turn (which
  *      typically carries the actual instruction + attachments).
@@ -70,11 +70,11 @@ const SAFE_INPUT_TOKENS: Record<string, number> = {
 
 /** Model upgrades when the current pick can't fit the payload. */
 const LARGER_CONTEXT_ALTERNATIVE: Record<string, string> = {
-  "google/gemini-3-flash-preview": "openai/gpt-5",
-  "google/gemini-2.5-flash": "openai/gpt-5",
+  "google/gemini-3-flash-preview": "google/gemini-3.1-pro-preview",
+  "google/gemini-2.5-flash": "google/gemini-3.1-pro-preview",
   "google/gemini-2.5-flash-lite": "google/gemini-2.5-flash",
-  "google/gemini-2.5-pro": "openai/gpt-5",
-  "openai/gpt-5-mini": "openai/gpt-5",
+  "google/gemini-2.5-pro": "google/gemini-3.1-pro-preview",
+  "openai/gpt-5-mini": "google/gemini-3.1-pro-preview",
   "openai/gpt-5-nano": "openai/gpt-5-mini",
 };
 
