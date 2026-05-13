@@ -350,7 +350,7 @@ Integration brief for the builder: use per-user OAuth (not workspace connectors)
       { path: "/api/public/webhooks/banking", purpose: "Provider webhook receiver (Plaid/Increase/Unit) — verify signature, idempotency on event_id" },
       { path: "/settings", purpose: "Profile, linked external accounts, notification prefs" },
     ],
-    cloud: ["auth", "database", "email", "storage"],
+    cloud: ["auth", "database", "email", "storage", "payments"],
     brief: `A neobank-style banking dashboard. Calm, trustworthy, fintech-modern: indigo primary on ink background, mint success accent, Söhne/Inter pairing. Show clear "DEMO — simulated balances" notices everywhere money is displayed unless real provider keys are configured.
 
 Pages:
