@@ -1810,11 +1810,10 @@ function Builder() {
               draftWriter.queue({ content: partialAssistant, plan: partialPlan, recap: partialRecap });
             },
             onSummaryDelta: (d) => {
-              // Two consumers of the same stream:
-              //   - structured timeline (designCaption under "Designing")
-              //   - live assistant bubble in the chat thread
+              // The model's summary is a past-tense "what I built" recap.
+              // Keep it out of the activity card while deploy is pending; the
+              // chat renderer below gates the recap until the app is live.
               partialAssistant += d;
-              setDesignCaption((s) => s + d);
               setStreamingAssistant((s) => s + d);
               draftWriter.queue({ content: partialAssistant, plan: partialPlan, recap: partialRecap });
             },
@@ -2220,20 +2219,18 @@ function Builder() {
         // empty `surface=unknown` row. Tail of the partial assistant text
         // is the model's own apology when it bailed prose-only.
         const tail = (partialAssistant || partialPlan || "").slice(-2000);
-        persistFriendlyError(
-          toFriendlyError(e, {
-            surface: "generate",
-            projectId: proj.id,
-            model: opts.isAutoFix ? "smart" : deepThink ? "deep" : "smart",
-            streamTail: tail || null,
-            extra: {
-              had_partial_assistant: partialAssistant.length > 0,
-              had_plan: partialPlan.length > 0,
-              files_written_so_far: 0,
-              is_auto_fix: !!opts.isAutoFix,
-            },
-          }),
-        );
+        const friendly = toFriendlyError(e, {
+          surface: "generate",
+          projectId: proj.id,
+          model: opts.isAutoFix ? "smart" : deepThink ? "deep" : "smart",
+          streamTail: tail || null,
+          extra: {
+            had_partial_assistant: partialAssistant.length > 0,
+            had_plan: partialPlan.length > 0,
+            files_written_so_far: 0,
+            is_auto_fix: !!opts.isAutoFix,
+          },
+        });
         setPhases((p) => markFailed(p));
 
         // Preserve whatever Petal had said before failing. Without this, the
@@ -2260,6 +2257,10 @@ function Builder() {
             },
           ]);
         }
+        // Persist the error AFTER any rescued partial text so the error card is
+        // the tail message. That keeps its retry action enabled and lets the
+        // activity card suppress its duplicate copy by comparing against tail.
+        persistFriendlyError(friendly);
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
         setBusy(false);
