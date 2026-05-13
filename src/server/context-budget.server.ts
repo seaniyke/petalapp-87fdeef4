@@ -4,7 +4,7 @@
  * Estimates the token cost of an assembled OpenAI-compatible `messages[]`
  * payload BEFORE we send it to the gateway. If the estimate exceeds the
  * target model's safe input window, we either:
- *   1. Suggest a larger-context model from the same family, OR
+ *   1. Suggest a larger-context model known to work for tool-call generation, OR
  *   2. Truncate the OLDEST non-system messages until the payload fits,
  *      preserving the system prompt and the most recent user turn (which
  *      typically carries the actual instruction + attachments).
