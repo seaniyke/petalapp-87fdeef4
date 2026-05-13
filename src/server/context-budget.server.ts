@@ -70,11 +70,11 @@ const SAFE_INPUT_TOKENS: Record<string, number> = {
 
 /** Model upgrades when the current pick can't fit the payload. */
 const LARGER_CONTEXT_ALTERNATIVE: Record<string, string> = {
-  "google/gemini-3-flash-preview": "openai/gpt-5",
-  "google/gemini-2.5-flash": "openai/gpt-5",
+  "google/gemini-3-flash-preview": "google/gemini-3.1-pro-preview",
+  "google/gemini-2.5-flash": "google/gemini-3.1-pro-preview",
   "google/gemini-2.5-flash-lite": "google/gemini-2.5-flash",
-  "google/gemini-2.5-pro": "openai/gpt-5",
-  "openai/gpt-5-mini": "openai/gpt-5",
+  "google/gemini-2.5-pro": "google/gemini-3.1-pro-preview",
+  "openai/gpt-5-mini": "google/gemini-3.1-pro-preview",
   "openai/gpt-5-nano": "openai/gpt-5-mini",
 };
 
