@@ -52,9 +52,9 @@ const KNOWN_SERVICES = new Set(
     "stripe", "paystack", "flutterwave", "resend", "plausible",
     "openai", "anthropic", "twilio", "mapbox", "supabase", "sentry",
     "cloudinary", "algolia", "pinecone", "replicate", "elevenlabs",
-    "mux", "daily", "livekit", "perplexity", "shopify", "notion",
+    "mux", "daily", "daily.co", "livekit", "perplexity", "shopify", "notion",
     "airtable", "linear", "hubspot", "discord", "telegram", "whisper",
-    "react flow", "react-flow",
+    "react flow", "react-flow", "gmail", "tanstack", "@dnd-kit",
   ].map((s) => s.toLowerCase()),
 );
 
