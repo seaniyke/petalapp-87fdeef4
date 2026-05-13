@@ -1727,20 +1727,13 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             encoder.encode(sse({ type: "status", message: "Retrying the response safely…" })),
           );
           const firstCollected = collected;
-          const retry = await aiChatCompletions({
-            feature: "generate",
-            body: {
-              model: MODEL_STRUCTURED_RETRY,
-              messages: addStructuredRetryInstruction(finalMessages, {
-                isInitial,
-                problem: e instanceof Error ? e.message : "invalid structured response",
-                hasBackend: Boolean(backend),
-              }),
-              tools: [tool],
-              tool_choice: { type: "function", function: { name: tool.function.name } },
-              max_tokens: Math.max(maxCompletionTokens, isInitial ? 12_000 : 8_000),
-              stream: true,
-            },
+          const retry = await structuredRetryCompletion({
+            messages: finalMessages,
+            isInitial,
+            problem: e instanceof Error ? e.message : "invalid structured response",
+            hasBackend: Boolean(backend),
+            tool,
+            maxTokens: Math.max(maxCompletionTokens, isInitial ? 12_000 : 8_000),
             signal: request.signal,
             meta: {
               phase: phaseTag.phase,
@@ -1978,20 +1971,13 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
                 controller.enqueue(
                   encoder.encode(sse({ type: "status", message: attempt === 1 ? "Retargeting the edit against the current files…" : `Trying a narrower edit pass (${attempt}/3)…` })),
                 );
-                const retry = await aiChatCompletions({
-                  feature: "generate",
-                  body: {
-                    model: MODEL_STRUCTURED_RETRY,
-                    messages: addStructuredRetryInstruction(finalMessages, {
-                      isInitial,
-                      problem: retryProblem,
-                      hasBackend: Boolean(backend),
-                    }),
-                    tools: [tool],
-                    tool_choice: { type: "function", function: { name: tool.function.name } },
-                    max_tokens: Math.max(maxCompletionTokens, 8_000),
-                    stream: true,
-                  },
+                const retry = await structuredRetryCompletion({
+                  messages: finalMessages,
+                  isInitial,
+                  problem: retryProblem,
+                  hasBackend: Boolean(backend),
+                  tool,
+                  maxTokens: Math.max(maxCompletionTokens, 8_000),
                   signal: request.signal,
                   meta: {
                     phase: phaseTag.phase,
