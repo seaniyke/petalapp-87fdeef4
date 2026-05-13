@@ -284,7 +284,9 @@ Pages:
 6. /dashboard/buyer — order history, in-app messages, prompt to leave reviews.
 7. /messages — per-order chat thread between buyer and seller (realtime).
 
-Tables: profiles (with seller flag), listings, orders, messages, reviews. RLS strict: sellers see only their listings/orders, buyers see only their orders, messages scoped to order participants. Stripe Connect for split payments.`,
+Tables: profiles (with seller flag), listings, orders (idempotency_key UNIQUE), messages, reviews, webhook_events (provider, event_id UNIQUE). RLS strict: sellers see only their listings/orders, buyers see only their orders, messages scoped to order participants. Stripe Connect for split payments.
+
+Integration brief for the builder: every checkout / payout / refund call MUST be idempotent on a client-generated Idempotency-Key (UUID v4) persisted on the orders row before the Stripe call. The Stripe webhook route under /api/public/* MUST verify the stripe-signature with constructEvent and dedupe on event.id via webhook_events — duplicate webhook deliveries are normal and must never double-charge or double-credit a seller.`,
   },
   {
     slug: "creator-social",
