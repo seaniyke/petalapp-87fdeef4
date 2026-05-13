@@ -669,21 +669,13 @@ async function recoverMissingToolOutput(args: {
         `Do not add prose. Preserve the user's requested scope, but emit only valid tool JSON.`,
     },
   ];
-  const recovery = await aiChatCompletions({
-    feature: "generate",
-    body: {
-      model: MODEL_STRUCTURED_RETRY,
-      messages: addStructuredRetryInstruction(recoveryMessages, {
-        isInitial: args.isInitial,
-        problem: "previous response contained prose instead of the required tool call",
-        hasBackend: Boolean(args.backend),
-      }),
-      tools: [args.tool],
-      tool_choice: { type: "function", function: { name: args.tool.function.name } },
-      max_tokens: args.isInitial ? 12_000 : 10_000,
-      stream: true,
-    },
-    timeoutTier: args.isInitial ? "stream_first_build" : "stream",
+  const recovery = await structuredRetryCompletion({
+    messages: recoveryMessages,
+    isInitial: args.isInitial,
+    problem: "previous response contained prose instead of the required tool call",
+    hasBackend: Boolean(args.backend),
+    tool: args.tool,
+    maxTokens: args.isInitial ? 12_000 : 10_000,
     signal: args.signal,
     meta: {
       phase: args.phaseTag.phase,
