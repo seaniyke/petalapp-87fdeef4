@@ -635,6 +635,63 @@ function isMissingToolOutputError(error: unknown): boolean {
   return /AI did not return (?:a project|usable edits)|AI tried to (?:rewrite|patch)/i.test(msg);
 }
 
+async function structuredRetryCompletion(args: {
+  messages: Array<{ role: string; content: unknown }>;
+  isInitial: boolean;
+  problem: string;
+  hasBackend: boolean;
+  tool: typeof WRITE_PROJECT_TOOL | typeof PATCH_FILES_TOOL;
+  maxTokens: number;
+  signal: AbortSignal;
+  meta: {
+    phase: Phase;
+    promptChars: number;
+    hadAttachments: boolean;
+    chosenBy: string;
+  };
+}): Promise<Response> {
+  const bodyBase = {
+    messages: addStructuredRetryInstruction(args.messages, {
+      isInitial: args.isInitial,
+      problem: args.problem,
+      hasBackend: args.hasBackend,
+    }),
+    tools: [args.tool],
+    tool_choice: { type: "function", function: { name: args.tool.function.name } },
+    max_tokens: args.maxTokens,
+    stream: true,
+  };
+
+  const timeoutTier = args.isInitial ? "stream_first_build" : "stream";
+  const primary = await aiChatCompletions({
+    feature: "generate",
+    body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY },
+    timeoutTier,
+    signal: args.signal,
+    meta: args.meta,
+  });
+  if (primary.ok && primary.body) return primary;
+
+  let detail = "";
+  try {
+    detail = (await primary.text()).slice(0, 500);
+  } catch {
+    /* ignore */
+  }
+  console.warn(
+    `[generate] structured retry failed HTTP ${primary.status}; retrying backup model`,
+    detail,
+  );
+
+  return aiChatCompletions({
+    feature: "generate",
+    body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY_BACKUP },
+    timeoutTier,
+    signal: args.signal,
+    meta: { ...args.meta, chosenBy: `${args.meta.chosenBy}_backup` },
+  });
+}
+
 async function recoverMissingToolOutput(args: {
   chatMessages: Array<{ role: string; content: unknown }>;
   collected: ParsedTool;
