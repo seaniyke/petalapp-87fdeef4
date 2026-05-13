@@ -2914,7 +2914,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           projectId: body.projectId ?? null,
         });
         if (!userCancelled) {
-          void markLastCallFailure({
+          await markLastCallFailure({
             feature: "generate",
             model: typeof model === "string" ? model : null,
             status: kind === "upstream_timeout" ? 524 : 599,
