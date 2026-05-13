@@ -2910,19 +2910,41 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             console.warn("[/api/generate] pipeline_failures insert failed", loggingErr);
           }
         }
-        controller.enqueue(
-          encoder.encode(
-            sse({
-              type: "error",
-              message: friendly.message,
-              suggestions: friendly.suggestions,
-              kind,
-              // Ship the raw alongside humanized copy so the client can
-              // log it for telemetry but not show it to users.
-              raw: raw.slice(0, 500),
-            }),
-          ),
-        );
+        // ROOT-CAUSE GUARD: never let a "no usable edits" failure surface
+        // as a red error card. By the time we reach this outer catch, every
+        // in-pipeline recovery path (structured retry → tool recovery →
+        // deterministic patch → conversational fallback) has already been
+        // tried. If something still managed to throw `no_edit_emitted` out
+        // here (rare leaked path, future regression, unanticipated throw
+        // site), degrade gracefully to a normal Petal reply instead of
+        // showing the user "AI did not return usable edits". No credits
+        // were charged, files are unchanged — the right UX is a friendly
+        // ask-for-clarification message, not a failure card.
+        if (!userCancelled && kind === "no_edit_emitted") {
+          console.warn(
+            "[/api/generate] no_edit_emitted leaked to outer catch — degrading to conversational reply",
+            { raw: raw.slice(0, 240) },
+          );
+          emitConversationalFallback(controller, encoder, {
+            files: currentFiles,
+            summary:
+              "I took a careful look but couldn't pin down a safe change for this one. Could you point me at the specific element or behavior you want adjusted? A short note like 'make the header sticky' or 'change the CTA color to teal' is usually enough for me to land it precisely.",
+          });
+        } else {
+          controller.enqueue(
+            encoder.encode(
+              sse({
+                type: "error",
+                message: friendly.message,
+                suggestions: friendly.suggestions,
+                kind,
+                // Ship the raw alongside humanized copy so the client can
+                // log it for telemetry but not show it to users.
+                raw: raw.slice(0, 500),
+              }),
+            ),
+          );
+        }
 
         // Phase B — record the failed outcome so the smart router
         // sees this model produced a broken build for this turn.
