@@ -1810,11 +1810,10 @@ function Builder() {
               draftWriter.queue({ content: partialAssistant, plan: partialPlan, recap: partialRecap });
             },
             onSummaryDelta: (d) => {
-              // Two consumers of the same stream:
-              //   - structured timeline (designCaption under "Designing")
-              //   - live assistant bubble in the chat thread
+              // The model's summary is a past-tense "what I built" recap.
+              // Keep it out of the activity card while deploy is pending; the
+              // chat renderer below gates the recap until the app is live.
               partialAssistant += d;
-              setDesignCaption((s) => s + d);
               setStreamingAssistant((s) => s + d);
               draftWriter.queue({ content: partialAssistant, plan: partialPlan, recap: partialRecap });
             },
@@ -2220,20 +2219,18 @@ function Builder() {
         // empty `surface=unknown` row. Tail of the partial assistant text
         // is the model's own apology when it bailed prose-only.
         const tail = (partialAssistant || partialPlan || "").slice(-2000);
-        persistFriendlyError(
-          toFriendlyError(e, {
-            surface: "generate",
-            projectId: proj.id,
-            model: opts.isAutoFix ? "smart" : deepThink ? "deep" : "smart",
-            streamTail: tail || null,
-            extra: {
-              had_partial_assistant: partialAssistant.length > 0,
-              had_plan: partialPlan.length > 0,
-              files_written_so_far: 0,
-              is_auto_fix: !!opts.isAutoFix,
-            },
-          }),
-        );
+        const friendly = toFriendlyError(e, {
+          surface: "generate",
+          projectId: proj.id,
+          model: opts.isAutoFix ? "smart" : deepThink ? "deep" : "smart",
+          streamTail: tail || null,
+          extra: {
+            had_partial_assistant: partialAssistant.length > 0,
+            had_plan: partialPlan.length > 0,
+            files_written_so_far: 0,
+            is_auto_fix: !!opts.isAutoFix,
+          },
+        });
         setPhases((p) => markFailed(p));
 
         // Preserve whatever Petal had said before failing. Without this, the
@@ -2260,6 +2257,10 @@ function Builder() {
             },
           ]);
         }
+        // Persist the error AFTER any rescued partial text so the error card is
+        // the tail message. That keeps its retry action enabled and lets the
+        // activity card suppress its duplicate copy by comparing against tail.
+        persistFriendlyError(friendly);
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
         setBusy(false);
@@ -3847,21 +3848,22 @@ function Builder() {
             {/* Live, token-by-token reply while Petal works. Promoted to a real
                 message in `messages` once the run completes.
 
-                UX rule: when a build is in flight (activity card visible) we
-                hide the past-tense recap paragraph (`streamingAssistant`) and
-                the "What changed" panel (`streamingRecap`) until the app is
-                actually live. Showing "I built X" while the verifier is still
-                running reads as a lie. The plan + preamble still stream
-                because they describe intent, not a finished result. */}
+                UX rule: when the app is not live yet, hide the past-tense
+                recap paragraph (`streamingAssistant`) and the "What changed"
+                panel (`streamingRecap`). Showing "I built X" while the app is
+                still deploying reads as a lie. The plan + preamble still
+                stream because they describe intent, not a finished result. */}
             {busy &&
               (streamingPreamble ||
                 streamingPlan ||
                 streamingAssistant ||
                 streamingRecap) && (() => {
                 const activePhase = phases.find((p) => p.status === "active");
-                const gateBuiltOutput = activityVisible && !isLive;
+                const gateBuiltOutput = !isLive;
                 const showAssistant = streamingAssistant && !gateBuiltOutput;
                 const showRecap = streamingRecap && !gateBuiltOutput;
+                const hasVisibleContent = streamingPreamble || streamingPlan || showAssistant || showRecap;
+                if (!hasVisibleContent) return null;
                 const stageLabel = showRecap
                   ? "Wrapping up"
                   : showAssistant
