@@ -2179,7 +2179,7 @@ function Builder() {
           setFriendlyError({
             title: "Petal is trying another way",
             message:
-              "No action needed — Petal didn't get usable edits back, so it's retrying automatically.",
+              "No action needed — Petal is automatically retrying with a safer edit path.",
             actionLabel: "Working on it",
             actionKind: "dismiss",
           });
