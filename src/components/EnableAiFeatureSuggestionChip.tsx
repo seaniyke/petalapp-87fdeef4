@@ -1,6 +1,6 @@
 /**
  * EnableAiFeatureSuggestionChip — appears when the user wants to add an AI
- * capability to their app. Pitches Lovable AI Gateway so Petal doesn't ask
+ * capability to their app. Pitches Petal AI Gateway so Petal doesn't ask
  * for an OpenAI / Claude key. Doesn't need a backend on its own (gateway
  * runs through Petal), though most real features will also persist data.
  */
