@@ -2,13 +2,13 @@
  * /admin/ai-providers — operator console for AI routing.
  *
  * Per feature you can choose:
- *   - Provider (Auto / Lovable / OpenRouter)
+ *   - Provider (Auto / Petal / OpenRouter)
  *   - Primary model (free text, validated server-side)
  *   - Fallback model (retried once on 429/402/5xx)
  *
  * Plus a 7-day cost & usage rollup at the top.
  *
- * Image gen is hard-pinned to Lovable AI and shown as locked.
+ * Image gen is hard-pinned to Petal AI and shown as locked.
  */
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -133,7 +133,7 @@ const FEATURE_DETAILS: Record<AiFeature, { label: string; blurb: string; recomme
   },
   image: {
     label: "Image generation",
-    blurb: "Nano-banana / Gemini image gen. Locked to Lovable AI.",
+    blurb: "Nano-banana / Gemini image gen. Locked to Petal AI.",
     recommended: { lovable: "google/gemini-2.5-flash-image", openrouter: "google/gemini-2.5-flash-image" },
     fallback: "",
   },
@@ -219,7 +219,7 @@ function AiProvidersPage() {
       toast.success(
         choice === "auto"
           ? `${FEATURE_DETAILS[feature].label}: cleared override`
-          : `${FEATURE_DETAILS[feature].label} → ${choice === "openrouter" ? "OpenRouter" : "Lovable AI"}`,
+          : `${FEATURE_DETAILS[feature].label} → ${choice === "openrouter" ? "OpenRouter" : "Petal AI"}`,
       );
       await refresh();
     } catch (e) {
@@ -568,7 +568,7 @@ function FeatureRow({
               disabled={row.locked || saving}
               onClick={() => onProviderChange("lovable")}
             >
-              Lovable
+              Petal
             </SegBtn>
             <SegBtn
               active={current === "openrouter"}
@@ -682,7 +682,7 @@ function ProviderBadge({ provider }: { provider: "lovable" | "openrouter" }) {
           : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
       }`}
     >
-      {isLovable ? "Lovable" : "OpenRouter"}
+      {isLovable ? "Petal" : "OpenRouter"}
     </span>
   );
 }
