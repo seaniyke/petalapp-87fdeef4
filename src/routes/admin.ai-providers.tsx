@@ -568,7 +568,7 @@ function FeatureRow({
               disabled={row.locked || saving}
               onClick={() => onProviderChange("lovable")}
             >
-              Lovable
+              Petal
             </SegBtn>
             <SegBtn
               active={current === "openrouter"}
