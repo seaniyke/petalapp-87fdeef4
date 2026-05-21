@@ -219,7 +219,7 @@ function AiProvidersPage() {
       toast.success(
         choice === "auto"
           ? `${FEATURE_DETAILS[feature].label}: cleared override`
-          : `${FEATURE_DETAILS[feature].label} → ${choice === "openrouter" ? "OpenRouter" : "Lovable AI"}`,
+          : `${FEATURE_DETAILS[feature].label} → ${choice === "openrouter" ? "OpenRouter" : "Petal AI"}`,
       );
       await refresh();
     } catch (e) {
