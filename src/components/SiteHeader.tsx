@@ -110,12 +110,7 @@ export function SiteHeader() {
                 >
                   <FolderOpen className="h-4 w-4" /> Projects
                 </Link>
-                <Link
-                  to="/gallery"
-                  className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                >
-                  Gallery
-                </Link>
+                {/* Templates / Packs / Themes intentionally hidden — Petal picks them automatically. */}
                 <Link
                   to="/gallery"
                   className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
