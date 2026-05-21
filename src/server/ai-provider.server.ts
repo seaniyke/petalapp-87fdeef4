@@ -335,7 +335,24 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
 
   // DB model wins over caller-supplied model (operator overrides have priority).
   const callerModel = (opts.body.model as string | undefined) ?? undefined;
-  const primaryModel = dbModel || callerModel || null;
+  let primaryModel = dbModel || callerModel || null;
+
+  // Kill-switch: if the primary model is currently cooling off because of a
+  // high `no_edit_emitted` rate, swap it for the configured fallback BEFORE
+  // we make the call. Prevents the "every turn keeps hitting the same broken
+  // model" loop until the cool-off window expires.
+  const { isModelKilled } = await import("@/server/model-kill-switch.server");
+  if (
+    primaryModel &&
+    isModelKilled(primaryModel) &&
+    fallback &&
+    !isModelKilled(fallback)
+  ) {
+    console.warn(
+      `[kill-switch] swapping primary ${primaryModel} → ${fallback} (cooling off)`,
+    );
+    primaryModel = fallback;
+  }
 
   const body =
     primaryModel && primaryModel !== callerModel
