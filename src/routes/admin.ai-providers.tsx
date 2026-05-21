@@ -2,13 +2,13 @@
  * /admin/ai-providers — operator console for AI routing.
  *
  * Per feature you can choose:
- *   - Provider (Auto / Lovable / OpenRouter)
+ *   - Provider (Auto / Petal / OpenRouter)
  *   - Primary model (free text, validated server-side)
  *   - Fallback model (retried once on 429/402/5xx)
  *
  * Plus a 7-day cost & usage rollup at the top.
  *
- * Image gen is hard-pinned to Lovable AI and shown as locked.
+ * Image gen is hard-pinned to Petal AI and shown as locked.
  */
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
