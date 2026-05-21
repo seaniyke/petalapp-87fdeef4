@@ -93,24 +93,7 @@ export function SiteHeader() {
                 >
                   How it works
                 </a>
-                <Link
-                  to="/templates"
-                  className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                >
-                  Templates
-                </Link>
-                <Link
-                  to="/packs"
-                  className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                >
-                  Packs
-                </Link>
-                <Link
-                  to="/themes"
-                  className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                >
-                  Themes
-                </Link>
+                {/* Templates / Packs / Themes intentionally hidden — Petal picks them automatically. */}
                 <Link
                   to="/gallery"
                   className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
