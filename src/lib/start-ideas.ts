@@ -158,7 +158,7 @@ export const START_IDEAS: StartIdea[] = [
   {
     title: "AI chatbot for my site",
     prompt:
-      "A customer-support chatbot embeddable on any site: chat UI, conversation memory, streaming responses powered by Lovable AI, and a small admin to review past chats.",
+      "A customer-support chatbot embeddable on any site: chat UI, conversation memory, streaming responses powered by Petal AI, and a small admin to review past chats.",
     Icon: Bot,
     accent: "lilac",
     category: "AI tools",
