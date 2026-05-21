@@ -48,6 +48,7 @@ import {
 } from "@/server/preservation-rules";
 import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design-director.server";
 import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/self-recovery.server";
+import { recordModelOutcome } from "@/server/model-kill-switch.server";
 import { pickDynamicSnippets, renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
 import { renderLearningBlock } from "@/server/learning-injector.server";
 import { detectHighStakesIntent, highStakesClarifyInstruction } from "@/lib/high-stakes-intent";
@@ -2867,6 +2868,11 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           console.warn("[self-check] rejected:", e);
         }
 
+        // Kill-switch: this turn produced a usable edit on the primary
+        // model — record a success sample so a transient blip doesn't
+        // trip the cool-off.
+        recordModelOutcome(typeof model === "string" ? model : null, true);
+
         // Memory writer — fire-and-forget. Distills the user's latest
         // turn (+ Petal's summary) into durable facts saved to
         // project_memory. Failures are logged inside; never block the
@@ -2914,6 +2920,12 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           projectId: body.projectId ?? null,
         });
         if (!userCancelled) {
+          // Kill-switch: feed the hard-fail outcome so a model with a
+          // sustained >5% no-edit / generation-incomplete rate auto-rotates
+          // out of the primary slot on subsequent turns.
+          if (kind === "no_edit_emitted" || kind === "generation_incomplete" || kind === "truncated_response") {
+            recordModelOutcome(typeof model === "string" ? model : null, false);
+          }
           await markLastCallFailure({
             feature: "generate",
             model: typeof model === "string" ? model : null,

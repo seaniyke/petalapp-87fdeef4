@@ -38,6 +38,7 @@ import { EmailSection } from "@/components/EmailSection";
 import { MobileAppPanel } from "@/components/MobileAppPanel";
 import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { LabsSection } from "@/components/LabsSection";
+import { ProjectMemorySection } from "@/components/ProjectMemorySection";
 import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
 import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { useWallet } from "@/hooks/use-wallet";
@@ -284,6 +285,9 @@ export function ProjectSettingsSheet({
             </Button>
           </div>
         </div>
+
+        {/* What Petal remembers — durable per-project memory */}
+        <ProjectMemorySection projectId={project.id} />
 
         {/* Powered by Petal badge toggle */}
         <PetalBadgeSection project={project} onChange={onChange} />
