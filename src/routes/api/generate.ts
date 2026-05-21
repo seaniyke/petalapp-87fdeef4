@@ -48,6 +48,7 @@ import {
 } from "@/server/preservation-rules";
 import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design-director.server";
 import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/self-recovery.server";
+import { recordModelOutcome } from "@/server/model-kill-switch.server";
 import { pickDynamicSnippets, renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
 import { renderLearningBlock } from "@/server/learning-injector.server";
 import { detectHighStakesIntent, highStakesClarifyInstruction } from "@/lib/high-stakes-intent";
