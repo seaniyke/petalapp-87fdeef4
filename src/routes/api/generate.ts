@@ -2920,6 +2920,12 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           projectId: body.projectId ?? null,
         });
         if (!userCancelled) {
+          // Kill-switch: feed the hard-fail outcome so a model with a
+          // sustained >5% no-edit / generation-incomplete rate auto-rotates
+          // out of the primary slot on subsequent turns.
+          if (kind === "no_edit_emitted" || kind === "generation_incomplete" || kind === "truncated_response") {
+            recordModelOutcome(typeof model === "string" ? model : null, false);
+          }
           await markLastCallFailure({
             feature: "generate",
             model: typeof model === "string" ? model : null,
