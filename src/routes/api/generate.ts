@@ -2868,6 +2868,11 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
           console.warn("[self-check] rejected:", e);
         }
 
+        // Kill-switch: this turn produced a usable edit on the primary
+        // model — record a success sample so a transient blip doesn't
+        // trip the cool-off.
+        recordModelOutcome(typeof model === "string" ? model : null, true);
+
         // Memory writer — fire-and-forget. Distills the user's latest
         // turn (+ Petal's summary) into durable facts saved to
         // project_memory. Failures are logged inside; never block the
