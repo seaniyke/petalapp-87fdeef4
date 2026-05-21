@@ -111,11 +111,10 @@ export function SiteHeader() {
                   <FolderOpen className="h-4 w-4" /> Projects
                 </Link>
                 <Link
-                  to="/templates"
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                  activeProps={{ className: "bg-muted/60 text-foreground" }}
+                  to="/gallery"
+                  className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                 >
-                  <Sparkles className="h-4 w-4" /> Templates
+                  Gallery
                 </Link>
                 <Link
                   to="/gallery"
