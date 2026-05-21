@@ -72,24 +72,8 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
                 label="My projects"
               />
             )}
-            <RowLink
-              to="/templates"
-              onClick={close}
-              icon={<Sparkles className="h-4 w-4" />}
-              label="Templates"
-            />
-            <RowLink
-              to="/packs"
-              onClick={close}
-              icon={<Sparkles className="h-4 w-4" />}
-              label="Industry packs"
-            />
-            <RowLink
-              to="/themes"
-              onClick={close}
-              icon={<Sparkles className="h-4 w-4" />}
-              label="Themes & snippets"
-            />
+            {/* Templates / Industry packs / Themes & snippets intentionally hidden — */}
+            {/* Petal selects from them automatically based on the user's brief. */}
             <RowLink
               to="/gallery"
               onClick={close}
