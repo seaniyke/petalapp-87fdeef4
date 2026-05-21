@@ -286,6 +286,9 @@ export function ProjectSettingsSheet({
           </div>
         </div>
 
+        {/* What Petal remembers — durable per-project memory */}
+        <ProjectMemorySection projectId={project.id} />
+
         {/* Powered by Petal badge toggle */}
         <PetalBadgeSection project={project} onChange={onChange} />
 
