@@ -224,9 +224,9 @@ export const SNIPPETS: Snippet[] = [
     slug: "ai-chat-drawer",
     name: "AI chat drawer",
     category: "AI",
-    blurb: "Slide-in AI assistant drawer wired to Lovable AI Gateway.",
+    blurb: "Slide-in AI assistant drawer wired to Petal AI Gateway.",
     prompt:
-      "Add a global AI assistant: a floating button bottom-right opens a slide-in drawer with a streaming chat UI powered by Lovable AI Gateway (model: google/gemini-2.5-flash). Persist conversation per user.",
+      "Add a global AI assistant: a floating button bottom-right opens a slide-in drawer with a streaming chat UI powered by Petal AI Gateway (model: google/gemini-2.5-flash). Persist conversation per user.",
   },
   {
     slug: "file-uploader",
