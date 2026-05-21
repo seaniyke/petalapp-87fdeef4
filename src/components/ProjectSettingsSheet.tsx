@@ -38,6 +38,7 @@ import { EmailSection } from "@/components/EmailSection";
 import { MobileAppPanel } from "@/components/MobileAppPanel";
 import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { LabsSection } from "@/components/LabsSection";
+import { ProjectMemorySection } from "@/components/ProjectMemorySection";
 import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
 import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { useWallet } from "@/hooks/use-wallet";
