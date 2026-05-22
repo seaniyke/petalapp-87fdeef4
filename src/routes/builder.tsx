@@ -3274,7 +3274,12 @@ function Builder() {
                                 composerTextareaRef.current?.focus();
                               }}
                               suggestions={m.suggestions}
-                              onSuggest={(s) => void send(s, { forceBuild: true })}
+                              onSuggest={(s) => {
+                                setInput((prev) => (prev.trim() ? `${prev.trim()} ${s}` : s));
+                                if (isMobile) setMobileTab("chat");
+                                composerTextareaRef.current?.focus();
+                              }}
+
                             />
                           )}
                         {m.recap && (() => {
