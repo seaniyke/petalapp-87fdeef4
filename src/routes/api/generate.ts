@@ -13,6 +13,8 @@ import {
   type StreamEvent,
 } from "@/server/generate.server";
 import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
+import { getBuildTarget } from "@/lib/build-targets";
+
 import { lookupBackendForGenerate } from "@/server/backend-connector.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
 import {
