@@ -604,16 +604,9 @@ function Landing() {
                 className="hidden"
               />
 
-              {/* Build-target chips (Google AI Studio-style) */}
-              {mode !== "coach" && (
-                <div className="mb-2 px-1">
-                  <BuildTargetChips value={buildTarget} onChange={setBuildTarget} compact />
-                </div>
-              )}
-
               {/* Bottom toolbar */}
               <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
 
                   {mode !== "coach" && (
                     <button
@@ -628,6 +621,11 @@ function Landing() {
                   )}
 
                   <ComposerModePicker value={mode} onChange={setMode} />
+
+                  {/* Build-target picker — Google AI Studio-style */}
+                  {mode !== "coach" && (
+                    <BuildTargetChips value={buildTarget} onChange={setBuildTarget} compact />
+                  )}
                 </div>
 
                 {mode !== "coach" && (
@@ -641,6 +639,7 @@ function Landing() {
                   </button>
                 )}
               </div>
+
             </div>
 
           </form>
