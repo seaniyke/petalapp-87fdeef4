@@ -3226,7 +3226,7 @@ function Builder() {
                         {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && files.length === 0 && (
                           <SuggestionChecklist
                             options={m.suggestions}
-                            onSubmit={(picks) => {
+                            onSubmit={(picks: string[]) => {
                               const joined = picks.length === 1 ? picks[0] : picks.join("; ");
                               void send(joined, { forceBuild: true });
                             }}
