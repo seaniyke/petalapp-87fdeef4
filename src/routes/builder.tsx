@@ -3226,12 +3226,12 @@ function Builder() {
                         {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && files.length === 0 && (
                           <SuggestionChecklist
                             options={m.suggestions}
-                            onSubmit={(picks: string[]) => {
-                              const joined = picks.length === 1 ? picks[0] : picks.join("; ");
-                              void send(joined, { forceBuild: true });
+                            onPick={(text: string) => {
+                              setInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
                             }}
                           />
                         )}
+
 
                         {/* Post-build "what's next?" card. Only on the latest
                             assistant message, only when Petal is idle and
@@ -3274,7 +3274,12 @@ function Builder() {
                                 composerTextareaRef.current?.focus();
                               }}
                               suggestions={m.suggestions}
-                              onSuggest={(s) => void send(s, { forceBuild: true })}
+                              onSuggest={(s) => {
+                                setInput((prev) => (prev.trim() ? `${prev.trim()} ${s}` : s));
+                                if (isMobile) setMobileTab("chat");
+                                composerTextareaRef.current?.focus();
+                              }}
+
                             />
                           )}
                         {m.recap && (() => {
