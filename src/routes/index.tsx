@@ -998,51 +998,52 @@ function Landing() {
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
             <p className="text-sm font-medium uppercase tracking-wider text-primary">Why Petal</p>
-            <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">A creative tool, not a code editor.</h2>
+            <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">One chat. Four targets. Real software.</h2>
             <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-              Petal is built around a conversation. You describe, it makes. You
-              refine, it iterates. The files are real, the preview is live, and
-              the result is yours.
+              Petal is a creative tool, not a code editor. Pick what you're
+              building — web app, mobile app, backend, or Chrome extension —
+              and describe it. Petal writes the right stack, runs a live
+              preview, and ships it.
             </p>
           </div>
 
           <div className="mt-12 grid gap-4 md:grid-cols-3">
             {[
               {
-                icon: MessageSquare,
-                tint: "bg-butter",
-                title: "Chat-first building",
-                body: "Plain language in, working app out. No prompts to memorize.",
+                icon: Globe,
+                tint: "bg-sky",
+                title: "Web apps",
+                body: "React + Tailwind, deployed to your own subdomain or custom domain.",
+              },
+              {
+                icon: Smartphone,
+                tint: "bg-coral/40",
+                title: "Mobile apps",
+                body: "One Expo codebase, ships to iOS and Android. QR-test on your phone.",
               },
               {
                 icon: Layers,
                 tint: "bg-mint",
-                title: "Multi-file projects",
-                body: "Real HTML, CSS and JS files you can browse, edit and download.",
+                title: "Backends & APIs",
+                body: "Typed server routes, database, auth and storage out of the box.",
+              },
+              {
+                icon: Wand2,
+                tint: "bg-lilac",
+                title: "Chrome extensions",
+                body: "Manifest V3 popup, background worker, content script — packaged.",
               },
               {
                 icon: Eye,
-                tint: "bg-lilac",
-                title: "Live sandboxed preview",
-                body: "Every change reloads instantly inside an isolated iframe.",
-              },
-              {
-                icon: Code2,
-                tint: "bg-sky",
-                title: "Edit anything by hand",
-                body: "Open the editor when you want to tweak something yourself.",
+                tint: "bg-butter",
+                title: "Live preview",
+                body: "Web frame, phone frame, or API console — whichever fits what you're building.",
               },
               {
                 icon: Rocket,
                 tint: "bg-coral/40",
                 title: "Ship in one click",
-                body: "Share a public link the moment you're happy with it.",
-              },
-              {
-                icon: Wand2,
-                tint: "bg-butter",
-                title: "Frontier AI models",
-                body: "Top-tier models built in — no API keys or setup required.",
+                body: "Publish a public URL, download a build, or wire a custom domain.",
               },
             ].map((f) => (
               <div
