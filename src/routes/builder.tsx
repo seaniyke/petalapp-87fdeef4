@@ -403,6 +403,7 @@ function Builder() {
     }
     return "web";
   });
+  const [mobilePublishOpen, setMobilePublishOpen] = useState(false);
   // Persist target per project once the project is known.
   useEffect(() => {
     if (!project?.id) return;
