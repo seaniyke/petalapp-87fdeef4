@@ -1514,6 +1514,8 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
       role: "system",
       content:
         baseSystem +
+        buildTargetBlock +
+
         dateBlock +
         capabilitiesBlock +
         multiEditBlock +
