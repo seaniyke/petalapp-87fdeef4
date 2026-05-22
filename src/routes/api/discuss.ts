@@ -245,6 +245,29 @@ export const Route = createFileRoute("/api/discuss")({
           return new Response("Empty reply from AI.", { status: 502 });
         }
 
+        // Parse the trailing ```suggestions ["..","..","..]``` block (if any)
+        // so the chat can render tappable answer chips below the reply.
+        let cleanReply = reply;
+        let suggestions: string[] = [];
+        const suggestionsMatch = reply.match(
+          /```suggestions\s*\n([\s\S]*?)\n?```\s*$/i,
+        );
+        if (suggestionsMatch) {
+          try {
+            const parsed = JSON.parse(suggestionsMatch[1].trim());
+            if (Array.isArray(parsed)) {
+              suggestions = parsed
+                .filter((s): s is string => typeof s === "string")
+                .map((s) => s.trim())
+                .filter((s) => s.length > 0 && s.length <= 80)
+                .slice(0, 4);
+            }
+          } catch {
+            /* malformed JSON — drop the chips, keep the prose */
+          }
+          cleanReply = reply.slice(0, suggestionsMatch.index).trimEnd();
+        }
+
         // Charge ONCE, after success. If the wallet emptied between the
         // pre-flight check and now, we still deliver the reply (the user
         // already received it) and log a warning.
@@ -259,7 +282,7 @@ export const Route = createFileRoute("/api/discuss")({
           console.warn("[credits] post-discuss charge failed", charge);
         }
 
-        return Response.json({ reply });
+        return Response.json({ reply: cleanReply, suggestions });
       },
     },
   },
