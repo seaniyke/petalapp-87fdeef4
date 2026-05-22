@@ -5,6 +5,9 @@ import { SampleAppShowcase } from "@/components/SampleAppShowcase";
 import { StartIdeasPanel } from "@/components/StartIdeasPanel";
 import { ComposerModePicker, type ComposerMode } from "@/components/ComposerModePicker";
 import { IdeaCoach } from "@/components/IdeaCoach";
+import { BuildTargetChips } from "@/components/BuildTargetChips";
+import type { BuildTargetId } from "@/lib/build-targets";
+
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
