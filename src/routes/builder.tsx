@@ -4250,7 +4250,8 @@ function Builder() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
+                  // Enter inserts a newline (default). Cmd/Ctrl+Enter sends.
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     e.preventDefault();
                     submitPrompt(input);
                   }
