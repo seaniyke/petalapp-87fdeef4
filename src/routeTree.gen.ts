@@ -57,7 +57,6 @@ import { Route as ApiRegistrarPollRouteImport } from './routes/api/registrar/pol
 import { Route as ApiPublicTrackFailureRouteImport } from './routes/api/public/track-failure'
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
 import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
-import { Route as ApiPublicExpoOauthCallbackRouteImport } from './routes/api/public/expo-oauth-callback'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
 import { Route as ApiMobileEasBuildRouteImport } from './routes/api/mobile/eas-build'
 import { Route as ApiDomainsDnsCheckRouteImport } from './routes/api/domains/dns-check'
@@ -326,12 +325,6 @@ const ApiPublicHostLookupRoute = ApiPublicHostLookupRouteImport.update({
   path: '/api/public/host-lookup',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicExpoOauthCallbackRoute =
-  ApiPublicExpoOauthCallbackRouteImport.update({
-    id: '/api/public/expo-oauth-callback',
-    path: '/api/public/expo-oauth-callback',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPreviewProjectIdRoute = ApiPreviewProjectIdRouteImport.update({
   id: '/api/preview/$projectId',
   path: '/api/preview/$projectId',
@@ -531,7 +524,6 @@ export interface FileRoutesByFullPath {
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
-  '/api/public/expo-oauth-callback': typeof ApiPublicExpoOauthCallbackRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
@@ -609,7 +601,6 @@ export interface FileRoutesByTo {
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
-  '/api/public/expo-oauth-callback': typeof ApiPublicExpoOauthCallbackRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
@@ -688,7 +679,6 @@ export interface FileRoutesById {
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
-  '/api/public/expo-oauth-callback': typeof ApiPublicExpoOauthCallbackRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
@@ -768,7 +758,6 @@ export interface FileRouteTypes {
     | '/api/domains/dns-check'
     | '/api/mobile/eas-build'
     | '/api/preview/$projectId'
-    | '/api/public/expo-oauth-callback'
     | '/api/public/host-lookup'
     | '/api/public/track'
     | '/api/public/track-failure'
@@ -846,7 +835,6 @@ export interface FileRouteTypes {
     | '/api/domains/dns-check'
     | '/api/mobile/eas-build'
     | '/api/preview/$projectId'
-    | '/api/public/expo-oauth-callback'
     | '/api/public/host-lookup'
     | '/api/public/track'
     | '/api/public/track-failure'
@@ -924,7 +912,6 @@ export interface FileRouteTypes {
     | '/api/domains/dns-check'
     | '/api/mobile/eas-build'
     | '/api/preview/$projectId'
-    | '/api/public/expo-oauth-callback'
     | '/api/public/host-lookup'
     | '/api/public/track'
     | '/api/public/track-failure'
@@ -1001,7 +988,6 @@ export interface RootRouteChildren {
   ApiBuildsTriggerRoute: typeof ApiBuildsTriggerRoute
   ApiMobileEasBuildRoute: typeof ApiMobileEasBuildRoute
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
-  ApiPublicExpoOauthCallbackRoute: typeof ApiPublicExpoOauthCallbackRoute
   ApiPublicHostLookupRoute: typeof ApiPublicHostLookupRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
   ApiPublicTrackFailureRoute: typeof ApiPublicTrackFailureRoute
@@ -1365,13 +1351,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHostLookupRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/expo-oauth-callback': {
-      id: '/api/public/expo-oauth-callback'
-      path: '/api/public/expo-oauth-callback'
-      fullPath: '/api/public/expo-oauth-callback'
-      preLoaderRoute: typeof ApiPublicExpoOauthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/preview/$projectId': {
       id: '/api/preview/$projectId'
       path: '/api/preview/$projectId'
@@ -1637,7 +1616,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBuildsTriggerRoute: ApiBuildsTriggerRoute,
   ApiMobileEasBuildRoute: ApiMobileEasBuildRoute,
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
-  ApiPublicExpoOauthCallbackRoute: ApiPublicExpoOauthCallbackRoute,
   ApiPublicHostLookupRoute: ApiPublicHostLookupRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
   ApiPublicTrackFailureRoute: ApiPublicTrackFailureRoute,

@@ -1,39 +1,29 @@
 /**
- * Expo / EAS Build integration — server-side status + OAuth start.
+ * Expo / EAS Build integration — server-side readiness check.
  *
- * Real publishing flow lives in `src/routes/api/mobile/eas-build.ts`.
- * This module just tells the client whether the prerequisites are in
- * place so the "Connect Expo account" button can render its true state
- * instead of a permanent "Coming soon".
+ * Petal runs EAS Build under its OWN Expo organization account, not
+ * the user's. That means we don't need OAuth, we just need a single
+ * server-side `EXPO_ACCESS_TOKEN` (a personal access token from
+ * Petal's Expo org with `builds:write` scope).
  *
- * Prerequisites checked here:
- *   - EXPO_OAUTH_CLIENT_ID
- *   - EXPO_OAUTH_CLIENT_SECRET
+ * This is the same pattern Bolt and Rork use for "no setup" mobile
+ * builds — the heavy infra (build runners, build queue) lives on the
+ * platform's account, and the user's account is only requested at the
+ * point of actually submitting to the App Store / Play Store (because
+ * Apple and Google legally require the app owner's identity).
  *
- * Add them via the secrets tool when the user is ready to ship.
+ * Add the secret via the secrets tool when ready:
+ *   EXPO_ACCESS_TOKEN
  */
 import { createServerFn } from "@tanstack/react-start";
 
-export const getExpoConnectStatus = createServerFn({ method: "GET" }).handler(
+export const getMobileBuildReady = createServerFn({ method: "GET" }).handler(
   async () => {
-    const hasOAuth =
-      Boolean(process.env.EXPO_OAUTH_CLIENT_ID) &&
-      Boolean(process.env.EXPO_OAUTH_CLIENT_SECRET);
+    const ready = Boolean(process.env.EXPO_ACCESS_TOKEN);
     return {
-      ready: hasOAuth,
-      // OAuth start URL — Expo's OAuth endpoint follows the standard
-      // authorization code flow (see https://docs.expo.dev/accounts/oauth/).
-      // We only build it when secrets are present so we never leak a
-      // half-configured redirect.
-      authorizeUrl: hasOAuth
-        ? `https://api.expo.dev/v2/oauth/authorize?response_type=code` +
-          `&client_id=${encodeURIComponent(process.env.EXPO_OAUTH_CLIENT_ID!)}` +
-          `&scope=${encodeURIComponent("builds:write builds:read")}` +
-          `&redirect_uri=${encodeURIComponent(
-            (process.env.APP_BASE_URL ?? "https://buildwithpetal.com") +
-              "/api/public/expo-oauth-callback"
-          )}`
-        : null,
+      ready,
+      // If true → Petal can run EAS Build for the user with zero setup.
+      // If false → "Petal is finishing its mobile build pipeline" copy.
     };
   }
 );
