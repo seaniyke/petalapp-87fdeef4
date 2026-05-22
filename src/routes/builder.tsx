@@ -36,6 +36,7 @@ import {
   AlertTriangle,
   Mic,
   MicOff,
+  Square,
 } from "lucide-react";
 import {
   encodeAttachments,
