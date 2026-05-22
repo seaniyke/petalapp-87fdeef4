@@ -4468,58 +4468,61 @@ function Builder() {
                           : "max-w-none"
                   }`}
                 >
-                  {useDeployedFallback ? (
-                    <Suspense
-                      fallback={
-                        <div className="grid h-full place-items-center text-xs text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      }
-                    >
-                      <MobilePreviewFallback
-                        projectId={project?.id ?? null}
-                        latestBuildId={project?.latest_build_id ?? null}
-                        isGenerating={busy}
-                      />
-                    </Suspense>
-                  ) : files.length ? (
-                    <Suspense
-                      fallback={
-                        <div className="grid h-full place-items-center text-xs text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      }
-                    >
-                      <WebContainerPreview
-                        files={files}
-                        reloadKey={previewKey}
-                        onPick={(el) => {
-                          setPickedElement(el);
-                          setPickInstruction("");
-                        }}
-                        onRuntimeError={(err) => {
-                          // Only surface fresh errors. If the same message is
-                          // already showing (and not yet sent for fixing), keep
-                          // the existing entry so the banner doesn't flicker.
-                          setRuntimeError((prev) => {
-                            if (
-                              prev &&
-                              !prev.fixed &&
-                              prev.message === err.message &&
-                              prev.source === err.source &&
-                              prev.lineno === err.lineno
-                            ) {
-                              return prev;
-                            }
-                            return { ...err, fixed: false };
-                          });
-                        }}
-                      />
-                    </Suspense>
-                  ) : (
-                    <EmptyPreview />
-                  )}
+                  <DevicePreviewFrame mode={getBuildTarget(buildTarget).preview}>
+                    {useDeployedFallback ? (
+                      <Suspense
+                        fallback={
+                          <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        }
+                      >
+                        <MobilePreviewFallback
+                          projectId={project?.id ?? null}
+                          latestBuildId={project?.latest_build_id ?? null}
+                          isGenerating={busy}
+                        />
+                      </Suspense>
+                    ) : files.length ? (
+                      <Suspense
+                        fallback={
+                          <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        }
+                      >
+                        <WebContainerPreview
+                          files={files}
+                          reloadKey={previewKey}
+                          onPick={(el) => {
+                            setPickedElement(el);
+                            setPickInstruction("");
+                          }}
+                          onRuntimeError={(err) => {
+                            // Only surface fresh errors. If the same message is
+                            // already showing (and not yet sent for fixing), keep
+                            // the existing entry so the banner doesn't flicker.
+                            setRuntimeError((prev) => {
+                              if (
+                                prev &&
+                                !prev.fixed &&
+                                prev.message === err.message &&
+                                prev.source === err.source &&
+                                prev.lineno === err.lineno
+                              ) {
+                                return prev;
+                              }
+                              return { ...err, fixed: false };
+                            });
+                          }}
+                        />
+                      </Suspense>
+                    ) : (
+                      <EmptyPreview />
+                    )}
+                  </DevicePreviewFrame>
                 </div>
+
               </div>
             </div>
           ) : (
