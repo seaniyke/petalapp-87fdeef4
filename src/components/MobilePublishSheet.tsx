@@ -120,22 +120,33 @@ export function MobilePublishSheet({ open, onOpenChange }: Props) {
               below — Petal never stores your password, just an OAuth
               refresh token scoped to builds.
             </p>
-            <button
-              type="button"
-              disabled
-              title="Connect-Expo OAuth is wired in the next release"
-              className="mt-3 inline-flex h-9 cursor-not-allowed items-center gap-2 rounded-full border border-border bg-muted/40 px-4 text-[12.5px] font-medium text-muted-foreground"
-            >
-              Connect Expo account
-              <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px]">
-                Coming soon
-              </span>
-            </button>
+            {ready && expo?.authorizeUrl ? (
+              <a
+                href={expo.authorizeUrl}
+                className="mt-3 inline-flex h-9 items-center gap-2 rounded-full bg-foreground px-4 text-[12.5px] font-medium text-background transition hover:brightness-110"
+              >
+                Connect Expo account
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled
+                title="Add EXPO_OAUTH_CLIENT_ID + EXPO_OAUTH_CLIENT_SECRET to enable"
+                className="mt-3 inline-flex h-9 cursor-not-allowed items-center gap-2 rounded-full border border-border bg-muted/40 px-4 text-[12.5px] font-medium text-muted-foreground"
+              >
+                Connect Expo account
+                <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px]">
+                  Coming soon
+                </span>
+              </button>
+            )}
             <p className="mt-2 text-[11px] text-muted-foreground">
               In the meantime, you can export the project from the menu
               and run <code className="rounded bg-muted px-1 py-0.5 text-[11px]">eas build</code> locally
               with the same files.
             </p>
+
           </section>
         </div>
       </SheetContent>
