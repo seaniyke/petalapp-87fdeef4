@@ -101,7 +101,7 @@ export function BuildTargetChips({ projectId, value, onChange, compact = false }
       {open && (
         <div
           role="listbox"
-          className="absolute bottom-full left-0 z-30 mb-2 w-64 origin-bottom-left overflow-hidden rounded-2xl border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-in fade-in slide-in-from-bottom-1 duration-150"
+          className="absolute bottom-full left-0 z-30 mb-2 w-[15rem] max-h-[min(55vh,340px)] overflow-y-auto origin-bottom-left rounded-2xl border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-in fade-in slide-in-from-bottom-1 duration-150"
         >
           {BUILD_TARGETS.map((t) => {
             const on = current === t.id;
@@ -112,23 +112,23 @@ export function BuildTargetChips({ projectId, value, onChange, compact = false }
                 onClick={() => pick(t.id)}
                 role="option"
                 aria-selected={on}
-                className={`flex w-full items-start gap-2.5 rounded-xl px-2.5 py-2 text-left text-[12.5px] leading-snug transition ${
+                className={`flex w-full items-start gap-2 rounded-xl px-2 py-1.5 text-left text-[12px] leading-snug transition ${
                   on ? "bg-foreground/[0.07]" : "hover:bg-foreground/[0.05]"
                 }`}
               >
-                <span aria-hidden className="mt-0.5 text-base leading-none">
+                <span aria-hidden className="mt-0.5 text-sm leading-none">
                   {t.glyph || "✨"}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block font-medium text-foreground">
+                  <span className="block font-medium text-foreground truncate">
                     {t.menuLabel}
                   </span>
-                  <span className="block text-[11px] text-muted-foreground">
+                  <span className="block text-[10.5px] text-muted-foreground truncate">
                     {t.hint}
                   </span>
                 </span>
                 {on && (
-                  <Check className="mt-1 h-3.5 w-3.5 text-foreground" aria-hidden />
+                  <Check className="mt-0.5 h-3.5 w-3.5 text-foreground shrink-0" aria-hidden />
                 )}
               </button>
             );
