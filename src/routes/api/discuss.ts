@@ -248,7 +248,7 @@ export const Route = createFileRoute("/api/discuss")({
         // Parse the trailing ```suggestions ["..","..","..]``` block (if any)
         // so the chat can render tappable answer chips below the reply.
         let cleanReply = reply;
-        let suggestions: string[] = [];
+        let chipSuggestions: string[] = [];
         const suggestionsMatch = reply.match(
           /```suggestions\s*\n([\s\S]*?)\n?```\s*$/i,
         );
