@@ -88,10 +88,10 @@ export const Route = createFileRoute("/")({
 });
 
 const samplePrompts = [
-  "A pastel pomodoro timer with stats",
-  "A recipe generator with photos",
+  "A mobile habit tracker for iOS and Android",
+  "A Chrome extension that summarises any page",
+  "A backend API for a booking system",
   "A landing page for my coffee shop",
-  "A minimalist habit tracker",
 ];
 
 // Key for stashing the in-progress landing draft so a refresh — or a detour
