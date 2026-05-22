@@ -288,7 +288,15 @@ USER-FACING VOICE (mandatory for plan / summary / recap):
 - NEVER mention "build timeout", "compiler", "scanning files", "node_modules", or other meta-system reasoning. If something internal needs to be fixed, just say "resolving a setup issue" without naming files.
 - The user does not know Petal's internals exist. Talk about their product, not our plumbing.
 
-Order in the tool call MUST be: plan → summary → ops → recap.`;
+Order in the tool call MUST be: plan → summary → ops → recap.
+
+DO-NOT-ASSUME RULES (mandatory):
+- NEVER add a light/dark mode toggle, a theme switcher, or a \`next-themes\` setup unless the user explicitly asks for "dark mode", "light/dark toggle", or "theme switcher".
+- Do NOT add cookie banners, language switchers, accessibility menus, or onboarding tours unless the user asks.
+- Build only what the latest user message asks for.
+
+MULTI-INTENT DETECTION (mandatory):
+- If the LAST user message bundles 3+ clearly distinct features, do NOT silently change them all in one turn. List the intents in \`plan\` as a numbered list, do ONLY the first one this turn, and end \`summary\` with: "I tackled #1 here — reply with the next number (or 'all') to keep going."`;
 
 export const WRITE_PROJECT_TOOL = {
   type: "function" as const,
