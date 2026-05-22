@@ -2778,26 +2778,55 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         if (body.isAutoFix) {
           console.log(`[credits] auto-fix run — skipping charge of ${priced.amount} (would-be)`);
         } else {
-          const charge = await spendCredit({
-            userId,
-            amount: priced.amount,
-            reason: "ai_build_charge",
-            projectId: body.projectId ?? null,
-            metadata: {
-              route: "/api/generate",
-              prompt_tokens: priced.promptTokens,
-              completion_tokens: priced.completionTokens,
-              usage_missing: priced.usageMissing,
-              clamped: priced.clamped,
-              model,
-            },
-          });
-          if (charge.ok) {
+          const tryCharge = async (amount: number) =>
+            spendCredit({
+              userId,
+              amount,
+              reason: "ai_build_charge",
+              projectId: body.projectId ?? null,
+              metadata: {
+                route: "/api/generate",
+                prompt_tokens: priced.promptTokens,
+                completion_tokens: priced.completionTokens,
+                usage_missing: priced.usageMissing,
+                clamped: priced.clamped,
+                model,
+                priced_amount: priced.amount,
+                charged_amount: amount,
+              },
+            });
+          let charge = await tryCharge(priced.amount);
+          if (!charge.ok && charge.reason === "insufficient_credits") {
+            // User passed the pre-flight floor but doesn't have enough for the
+            // full bill. Drain the remaining wallet instead of letting the
+            // build go through for free.
+            try {
+              const { data: wallet } = await supabaseAdmin
+                .from("user_wallets")
+                .select("monthly_credits_remaining, topup_credits_remaining")
+                .eq("user_id", userId)
+                .maybeSingle();
+              const remaining =
+                Number(wallet?.monthly_credits_remaining ?? 0) +
+                Number(wallet?.topup_credits_remaining ?? 0);
+              const drainAmount = Math.max(0, Math.min(priced.amount, Math.floor(remaining * 100) / 100));
+              if (drainAmount > 0) {
+                charge = await tryCharge(drainAmount);
+                if (charge.ok) finalCharged = drainAmount;
+              }
+            } catch (e) {
+              console.warn("[credits] drain fallback failed", (e as Error).message);
+            }
+            if (!charge.ok) {
+              console.warn("[credits] post-build charge failed", charge);
+            }
+          } else if (charge.ok) {
             finalCharged = priced.amount;
           } else {
             console.warn("[credits] post-build charge failed", charge);
           }
         }
+
 
         // (Legacy `continuation_handoff` SSE emit removed along with the
         // Continue-building chip.)
