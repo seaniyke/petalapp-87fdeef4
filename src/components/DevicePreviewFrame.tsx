@@ -21,8 +21,7 @@ type Props = {
 
 export function DevicePreviewFrame({ mode, children }: Props) {
   if (mode === "web") return <>{children}</>;
-  if (mode === "ios") return <PhoneFrame variant="ios">{children}</PhoneFrame>;
-  if (mode === "android") return <PhoneFrame variant="android">{children}</PhoneFrame>;
+  if (mode === "mobile") return <PhoneFrame>{children}</PhoneFrame>;
   if (mode === "extension") return <ExtensionFrame>{children}</ExtensionFrame>;
   if (mode === "api") return <ApiFrame>{children}</ApiFrame>;
   return <>{children}</>;
