@@ -1836,6 +1836,8 @@ function Builder() {
             planFirst: opts.planFirst,
             approvedPlanId: opts.approvedPlanId,
             allowedPaths: opts.allowedPaths,
+            buildTarget,
+
           },
           {
             onPhase: (phase: PhaseId) => {
