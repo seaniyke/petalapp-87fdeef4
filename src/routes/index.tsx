@@ -808,8 +808,8 @@ function Landing() {
                   </div>
                   <h3 className="mt-5 font-display text-xl">Your workspace is empty</h3>
                   <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-                    Describe an app in the box above and Petal will build the
-                    files for you in seconds.
+                    Describe a web app, mobile app, API or extension in the box
+                    above — Petal scaffolds it in seconds.
                   </p>
                 </div>
               ) : (
