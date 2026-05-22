@@ -38,6 +38,7 @@ export const BUILD_TARGETS: BuildTarget[] = [
   {
     id: "web",
     label: "Web app",
+    menuLabel: "Build a web app",
     hint: "React + Tailwind in the browser",
     glyph: "🌐",
     preview: "web",
@@ -46,6 +47,7 @@ export const BUILD_TARGETS: BuildTarget[] = [
   {
     id: "android",
     label: "Android app",
+    menuLabel: "Build an Android app",
     hint: "Expo / React Native — ships to Play Store",
     glyph: "🤖",
     preview: "android",
@@ -62,6 +64,7 @@ export const BUILD_TARGETS: BuildTarget[] = [
   {
     id: "ios",
     label: "iOS app",
+    menuLabel: "Build an iOS app",
     hint: "Expo / React Native — ships to App Store",
     glyph: "",
     preview: "ios",
@@ -79,6 +82,7 @@ export const BUILD_TARGETS: BuildTarget[] = [
   {
     id: "backend",
     label: "Backend / API",
+    menuLabel: "Build a backend / API",
     hint: "TanStack server routes — no UI",
     glyph: "⚙️",
     preview: "api",
@@ -93,6 +97,7 @@ export const BUILD_TARGETS: BuildTarget[] = [
   {
     id: "extension",
     label: "Chrome extension",
+    menuLabel: "Build a Chrome extension",
     hint: "Manifest V3 — popup + background worker",
     glyph: "🧩",
     preview: "extension",
