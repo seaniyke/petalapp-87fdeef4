@@ -263,6 +263,7 @@ export const Route = createFileRoute("/builder")({
     mode?: "discuss";
     attachKey?: string;
     topup?: "success";
+    target?: string;
   } => ({
     prompt: typeof search.prompt === "string" ? search.prompt : undefined,
     id: typeof search.id === "string" ? search.id : undefined,
@@ -270,6 +271,7 @@ export const Route = createFileRoute("/builder")({
     /** sessionStorage key holding ChatAttachment[] stashed by the landing page. */
     attachKey: typeof search.attachKey === "string" ? search.attachKey : undefined,
     topup: search.topup === "success" ? ("success" as const) : undefined,
+    target: typeof search.target === "string" ? search.target : undefined,
   }),
   head: () => ({
     meta: [
@@ -279,6 +281,7 @@ export const Route = createFileRoute("/builder")({
   }),
   component: Builder,
 });
+
 
 type ViewMode = "preview" | "code";
 
