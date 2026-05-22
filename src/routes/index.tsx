@@ -1065,12 +1065,12 @@ function Landing() {
           <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-12">
             <div>
               <p className="text-sm font-medium uppercase tracking-wider text-primary">How it works</p>
-              <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">From idea to app in three little steps.</h2>
+              <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">From idea to shipped, in three steps.</h2>
               <ol className="mt-8 space-y-6">
                 {[
-                  { n: "01", t: "Describe what you want", d: "A page, a tool, a tiny game — say it like you'd tell a friend." },
-                  { n: "02", t: "Petal generates the project", d: "Files appear in the explorer and the preview starts running." },
-                  { n: "03", t: "Refine through chat", d: "Ask for changes, tweak code by hand, or both. Then share." },
+                  { n: "01", t: "Pick what you're building", d: "Web app, mobile app, backend, or Chrome extension — one click under the composer." },
+                  { n: "02", t: "Describe it in a sentence", d: "Petal scaffolds the right stack and runs a live preview in the matching frame." },
+                  { n: "03", t: "Refine, then ship", d: "Chat to iterate, edit by hand if you want, then publish a URL or download a build." },
                 ].map((s) => (
                   <li key={s.n} className="flex gap-5">
                     <span className="font-display text-3xl text-primary">{s.n}</span>
