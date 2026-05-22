@@ -24,6 +24,8 @@ export type BuildTarget = {
   label: string;
   /** Tiny one-liner shown below the chip when selected. */
   hint: string;
+  /** Long label used in the dropdown menu ("Build an Android app"). */
+  menuLabel: string;
   /** Single emoji / glyph fallback if a Lucide icon isn't a fit. */
   glyph: string;
   /** Determines the device frame wrapped around the preview. */
