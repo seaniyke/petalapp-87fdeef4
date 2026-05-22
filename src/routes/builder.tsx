@@ -4391,9 +4391,20 @@ function Builder() {
                       )}
                     </button>
                   )}
-                </div>
               </div>
             </div>
+            {/* Build-target chip rail — Google AI Studio style. Tells Petal
+                what stack to scaffold (Web / Android / iOS / Backend /
+                Extension) and drives the preview-frame chrome. */}
+            <div className="mt-1.5 px-1">
+              <BuildTargetChips
+                projectId={project?.id ?? null}
+                value={buildTarget}
+                onChange={setBuildTarget}
+                compact
+              />
+            </div>
+
             {/* Status line removed — the in-chat shimmer label
                 ("Thinking" / "Working") now conveys this directly. */}
             {/* Errors are shown inside <BuildActivityCard /> with friendly copy. */}
