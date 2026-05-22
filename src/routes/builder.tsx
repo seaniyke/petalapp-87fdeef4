@@ -142,6 +142,14 @@ import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { SharePreviewDialog } from "@/components/SharePreviewDialog";
 import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
+import { BuildTargetChips } from "@/components/BuildTargetChips";
+import { DevicePreviewFrame } from "@/components/DevicePreviewFrame";
+import {
+  type BuildTargetId,
+  buildTargetStorageKey,
+  getBuildTarget,
+} from "@/lib/build-targets";
+
 import { detectDomainIntentInTurn } from "@/lib/domain-intent";
 import { detectEmailIntentInTurn } from "@/lib/email-intent";
 import { detectPaymentIntentInTurn } from "@/lib/payment-intent";
@@ -263,6 +271,7 @@ export const Route = createFileRoute("/builder")({
     mode?: "discuss";
     attachKey?: string;
     topup?: "success";
+    target?: string;
   } => ({
     prompt: typeof search.prompt === "string" ? search.prompt : undefined,
     id: typeof search.id === "string" ? search.id : undefined,
@@ -270,6 +279,7 @@ export const Route = createFileRoute("/builder")({
     /** sessionStorage key holding ChatAttachment[] stashed by the landing page. */
     attachKey: typeof search.attachKey === "string" ? search.attachKey : undefined,
     topup: search.topup === "success" ? ("success" as const) : undefined,
+    target: typeof search.target === "string" ? search.target : undefined,
   }),
   head: () => ({
     meta: [
@@ -280,10 +290,11 @@ export const Route = createFileRoute("/builder")({
   component: Builder,
 });
 
+
 type ViewMode = "preview" | "code";
 
 function Builder() {
-  const { prompt: initialPrompt, id: searchId, mode: initialMode, attachKey, topup } = Route.useSearch();
+  const { prompt: initialPrompt, id: searchId, mode: initialMode, attachKey, topup, target: initialTarget } = Route.useSearch();
   const { user, isReady } = useAuthReady();
   const navigate = useNavigate();
 
@@ -375,6 +386,33 @@ function Builder() {
   // around WebContainerPreview / MobilePreviewFallback — they get the iframe
   // sized to a realistic device width so users can spot responsive issues.
   const [previewDevice, setPreviewDevice] = useState<"phone" | "tablet" | "desktop">("desktop");
+  // Build-target chip (web / android / ios / backend / extension). Hydrated
+  // from URL param (?target=) on first mount, then from localStorage per
+  // project. Sent on every generate as `x-petal-target` and drives the
+  // device-frame chrome around the preview.
+  const [buildTarget, setBuildTarget] = useState<BuildTargetId>(() => {
+    const fromUrl = (initialTarget as BuildTargetId | undefined);
+    if (fromUrl && ["web", "android", "ios", "backend", "extension"].includes(fromUrl)) {
+      return fromUrl;
+    }
+    return "web";
+  });
+  // Persist target per project once the project is known.
+  useEffect(() => {
+    if (!project?.id) return;
+    try {
+      const stored = localStorage.getItem(buildTargetStorageKey(project.id));
+      if (stored && ["web", "android", "ios", "backend", "extension"].includes(stored)) {
+        setBuildTarget(stored as BuildTargetId);
+      } else if (initialTarget) {
+        localStorage.setItem(buildTargetStorageKey(project.id), buildTarget);
+      }
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id]);
+
   const [activityVisible, setActivityVisible] = useState(false);
   const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
   // Tracks the current project id for callbacks that fire outside React's
@@ -1798,6 +1836,8 @@ function Builder() {
             planFirst: opts.planFirst,
             approvedPlanId: opts.approvedPlanId,
             allowedPaths: opts.allowedPaths,
+            buildTarget,
+
           },
           {
             onPhase: (phase: PhaseId) => {
@@ -4354,6 +4394,19 @@ function Builder() {
                 </div>
               </div>
             </div>
+
+            {/* Build-target chip rail — Google AI Studio style. Tells Petal
+                what stack to scaffold (Web / Android / iOS / Backend /
+                Extension) and drives the preview-frame chrome. */}
+            <div className="mt-1.5 px-1">
+              <BuildTargetChips
+                projectId={project?.id ?? null}
+                value={buildTarget}
+                onChange={setBuildTarget}
+                compact
+              />
+            </div>
+
             {/* Status line removed — the in-chat shimmer label
                 ("Thinking" / "Working") now conveys this directly. */}
             {/* Errors are shown inside <BuildActivityCard /> with friendly copy. */}
@@ -4415,58 +4468,61 @@ function Builder() {
                           : "max-w-none"
                   }`}
                 >
-                  {useDeployedFallback ? (
-                    <Suspense
-                      fallback={
-                        <div className="grid h-full place-items-center text-xs text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      }
-                    >
-                      <MobilePreviewFallback
-                        projectId={project?.id ?? null}
-                        latestBuildId={project?.latest_build_id ?? null}
-                        isGenerating={busy}
-                      />
-                    </Suspense>
-                  ) : files.length ? (
-                    <Suspense
-                      fallback={
-                        <div className="grid h-full place-items-center text-xs text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      }
-                    >
-                      <WebContainerPreview
-                        files={files}
-                        reloadKey={previewKey}
-                        onPick={(el) => {
-                          setPickedElement(el);
-                          setPickInstruction("");
-                        }}
-                        onRuntimeError={(err) => {
-                          // Only surface fresh errors. If the same message is
-                          // already showing (and not yet sent for fixing), keep
-                          // the existing entry so the banner doesn't flicker.
-                          setRuntimeError((prev) => {
-                            if (
-                              prev &&
-                              !prev.fixed &&
-                              prev.message === err.message &&
-                              prev.source === err.source &&
-                              prev.lineno === err.lineno
-                            ) {
-                              return prev;
-                            }
-                            return { ...err, fixed: false };
-                          });
-                        }}
-                      />
-                    </Suspense>
-                  ) : (
-                    <EmptyPreview />
-                  )}
+                  <DevicePreviewFrame mode={getBuildTarget(buildTarget).preview}>
+                    {useDeployedFallback ? (
+                      <Suspense
+                        fallback={
+                          <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        }
+                      >
+                        <MobilePreviewFallback
+                          projectId={project?.id ?? null}
+                          latestBuildId={project?.latest_build_id ?? null}
+                          isGenerating={busy}
+                        />
+                      </Suspense>
+                    ) : files.length ? (
+                      <Suspense
+                        fallback={
+                          <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        }
+                      >
+                        <WebContainerPreview
+                          files={files}
+                          reloadKey={previewKey}
+                          onPick={(el) => {
+                            setPickedElement(el);
+                            setPickInstruction("");
+                          }}
+                          onRuntimeError={(err) => {
+                            // Only surface fresh errors. If the same message is
+                            // already showing (and not yet sent for fixing), keep
+                            // the existing entry so the banner doesn't flicker.
+                            setRuntimeError((prev) => {
+                              if (
+                                prev &&
+                                !prev.fixed &&
+                                prev.message === err.message &&
+                                prev.source === err.source &&
+                                prev.lineno === err.lineno
+                              ) {
+                                return prev;
+                              }
+                              return { ...err, fixed: false };
+                            });
+                          }}
+                        />
+                      </Suspense>
+                    ) : (
+                      <EmptyPreview />
+                    )}
+                  </DevicePreviewFrame>
                 </div>
+
               </div>
             </div>
           ) : (
