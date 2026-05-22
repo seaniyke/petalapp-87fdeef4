@@ -101,7 +101,7 @@ export function BuildTargetChips({ projectId, value, onChange, compact = false }
       {open && (
         <div
           role="listbox"
-          className="absolute bottom-full left-0 z-30 mb-2 w-64 origin-bottom-left overflow-hidden rounded-2xl border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-in fade-in slide-in-from-bottom-1 duration-150"
+          className="absolute bottom-full left-0 z-30 mb-2 w-[15rem] max-h-[min(55vh,340px)] overflow-y-auto origin-bottom-left rounded-2xl border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-in fade-in slide-in-from-bottom-1 duration-150"
         >
           {BUILD_TARGETS.map((t) => {
             const on = current === t.id;
