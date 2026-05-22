@@ -3979,7 +3979,7 @@ function Builder() {
                 creditsCharged={lastBuildCredits}
                 fileChanges={fileChanges}
                 deployElapsedSec={deployElapsed}
-                onStop={busy ? stopGeneration : undefined}
+                onStop={undefined}
                 onRetry={
                   // The "Publishing is taking longer" stall card and the
                   // infra card both retry the deploy directly. Every other
