@@ -38,7 +38,7 @@ import { EmailSection } from "@/components/EmailSection";
 import { MobileAppPanel } from "@/components/MobileAppPanel";
 import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { LabsSection } from "@/components/LabsSection";
-import { ProjectMemorySection } from "@/components/ProjectMemorySection";
+// ProjectMemorySection is intentionally not imported — memory is internal.
 import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
 import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { useWallet } from "@/hooks/use-wallet";
@@ -286,8 +286,9 @@ export function ProjectSettingsSheet({
           </div>
         </div>
 
-        {/* What Petal remembers — durable per-project memory */}
-        <ProjectMemorySection projectId={project.id} />
+        {/* "What Petal remembers" is internal — not shown to the user.
+            Petal still reads/writes project memory; the surface is just
+            hidden from the settings sheet on purpose. */}
 
         {/* Powered by Petal badge toggle */}
         <PetalBadgeSection project={project} onChange={onChange} />
