@@ -286,7 +286,7 @@ export const Route = createFileRoute("/builder")({
 type ViewMode = "preview" | "code";
 
 function Builder() {
-  const { prompt: initialPrompt, id: searchId, mode: initialMode, attachKey, topup } = Route.useSearch();
+  const { prompt: initialPrompt, id: searchId, mode: initialMode, attachKey, topup, target: initialTarget } = Route.useSearch();
   const { user, isReady } = useAuthReady();
   const navigate = useNavigate();
 
