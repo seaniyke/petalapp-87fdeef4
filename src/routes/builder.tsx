@@ -142,6 +142,14 @@ import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { SharePreviewDialog } from "@/components/SharePreviewDialog";
 import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
+import { BuildTargetChips } from "@/components/BuildTargetChips";
+import { DevicePreviewFrame } from "@/components/DevicePreviewFrame";
+import {
+  type BuildTargetId,
+  buildTargetStorageKey,
+  getBuildTarget,
+} from "@/lib/build-targets";
+
 import { detectDomainIntentInTurn } from "@/lib/domain-intent";
 import { detectEmailIntentInTurn } from "@/lib/email-intent";
 import { detectPaymentIntentInTurn } from "@/lib/payment-intent";
