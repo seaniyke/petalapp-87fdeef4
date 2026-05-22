@@ -1113,9 +1113,9 @@ function Landing() {
       <section className="px-4 pb-16 sm:px-6 sm:pb-24">
         <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-border bg-card p-6 text-center shadow-[var(--shadow-soft)] sm:p-12">
           <div className="absolute" />
-          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl">Your next app is one sentence away.</h2>
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl">Your next product is one sentence away.</h2>
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-            Open the builder, describe an idea, and watch it come to life.
+            Web, mobile, backend or extension — open Petal and describe it.
           </p>
           {!isReady ? null : user ? (
             <Link
