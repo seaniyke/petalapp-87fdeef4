@@ -26,11 +26,15 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Apple, Download, Smartphone, AlertTriangle, ExternalLink } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getExpoConnectStatus } from "@/lib/expo.functions";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
+
 
 export function MobilePublishSheet({ open, onOpenChange }: Props) {
   return (
