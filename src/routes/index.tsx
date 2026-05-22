@@ -5,6 +5,9 @@ import { SampleAppShowcase } from "@/components/SampleAppShowcase";
 import { StartIdeasPanel } from "@/components/StartIdeasPanel";
 import { ComposerModePicker, type ComposerMode } from "@/components/ComposerModePicker";
 import { IdeaCoach } from "@/components/IdeaCoach";
+import { BuildTargetChips } from "@/components/BuildTargetChips";
+import type { BuildTargetId } from "@/lib/build-targets";
+
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -103,6 +106,8 @@ function Landing() {
   const [isFocused, setIsFocused] = useState(false);
   const [mode, setMode] = useState<ComposerMode>("build");
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [buildTarget, setBuildTarget] = useState<BuildTargetId>("web");
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, isReady } = useAuth();
@@ -396,6 +401,8 @@ function Landing() {
     const params = new URLSearchParams({ prompt: trimmed });
     if (mode === "discuss") params.set("mode", "discuss");
     if (opts?.fromCoach) params.set("source", "coach");
+    if (buildTarget !== "web") params.set("target", buildTarget);
+
 
     // The draft is about to ride along on the URL — drop the local copy so
     // a future visit to the landing page doesn't pre-fill an old prompt.
@@ -597,9 +604,17 @@ function Landing() {
                 className="hidden"
               />
 
+              {/* Build-target chips (Google AI Studio-style) */}
+              {mode !== "coach" && (
+                <div className="mb-2 px-1">
+                  <BuildTargetChips value={buildTarget} onChange={setBuildTarget} compact />
+                </div>
+              )}
+
               {/* Bottom toolbar */}
               <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
+
                   {mode !== "coach" && (
                     <button
                       type="button"

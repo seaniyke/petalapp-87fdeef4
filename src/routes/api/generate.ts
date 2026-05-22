@@ -13,6 +13,8 @@ import {
   type StreamEvent,
 } from "@/server/generate.server";
 import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
+import { getBuildTarget } from "@/lib/build-targets";
+
 import { lookupBackendForGenerate } from "@/server/backend-connector.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
 import {
@@ -1235,6 +1237,17 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   const isInitial = currentFiles.length === 0;
   const baseSystem = isInitial ? SYSTEM_PROMPT_INITIAL : SYSTEM_PROMPT_PATCH;
 
+  // Build-target chip (Google AI Studio-style: "Build an Android app", etc.).
+  // Selection is sent as `x-petal-target` header by the client. When present
+  // and not the default web target, prepend a hard constraint block so the
+  // model scaffolds the right stack.
+  const buildTargetId = request.headers.get("x-petal-target") ?? "web";
+  const buildTarget = getBuildTarget(buildTargetId);
+  const buildTargetBlock = buildTarget.systemPromptAddendum
+    ? `\n\n### Build target (HARD CONSTRAINT)\n${buildTarget.systemPromptAddendum}\n`
+    : "";
+
+
   // Look up the project's attached backend (BYO Supabase). When present,
   // we both inject the pre-configured client and tell the AI it exists.
   const backend = body.projectId ? await lookupBackendForGenerate(body.projectId) : null;
@@ -1501,6 +1514,8 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
       role: "system",
       content:
         baseSystem +
+        buildTargetBlock +
+
         dateBlock +
         capabilitiesBlock +
         multiEditBlock +
