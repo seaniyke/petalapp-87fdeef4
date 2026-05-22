@@ -58,6 +58,7 @@ import { Route as ApiPublicTrackFailureRouteImport } from './routes/api/public/t
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
 import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
+import { Route as ApiMobileEasBuildRouteImport } from './routes/api/mobile/eas-build'
 import { Route as ApiDomainsDnsCheckRouteImport } from './routes/api/domains/dns-check'
 import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigger'
 import { Route as ApiBuildsCallbackRouteImport } from './routes/api/builds/callback'
@@ -329,6 +330,11 @@ const ApiPreviewProjectIdRoute = ApiPreviewProjectIdRouteImport.update({
   path: '/api/preview/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMobileEasBuildRoute = ApiMobileEasBuildRouteImport.update({
+  id: '/api/mobile/eas-build',
+  path: '/api/mobile/eas-build',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDomainsDnsCheckRoute = ApiDomainsDnsCheckRouteImport.update({
   id: '/dns-check',
   path: '/dns-check',
@@ -516,6 +522,7 @@ export interface FileRoutesByFullPath {
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
+  '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
@@ -592,6 +599,7 @@ export interface FileRoutesByTo {
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
+  '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
@@ -669,6 +677,7 @@ export interface FileRoutesById {
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
+  '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
@@ -747,6 +756,7 @@ export interface FileRouteTypes {
     | '/api/builds/callback'
     | '/api/builds/trigger'
     | '/api/domains/dns-check'
+    | '/api/mobile/eas-build'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
@@ -823,6 +833,7 @@ export interface FileRouteTypes {
     | '/api/builds/callback'
     | '/api/builds/trigger'
     | '/api/domains/dns-check'
+    | '/api/mobile/eas-build'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
@@ -899,6 +910,7 @@ export interface FileRouteTypes {
     | '/api/builds/callback'
     | '/api/builds/trigger'
     | '/api/domains/dns-check'
+    | '/api/mobile/eas-build'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
@@ -974,6 +986,7 @@ export interface RootRouteChildren {
   ApiBillingVerifyRoute: typeof ApiBillingVerifyRoute
   ApiBuildsCallbackRoute: typeof ApiBuildsCallbackRoute
   ApiBuildsTriggerRoute: typeof ApiBuildsTriggerRoute
+  ApiMobileEasBuildRoute: typeof ApiMobileEasBuildRoute
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
   ApiPublicHostLookupRoute: typeof ApiPublicHostLookupRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
@@ -1345,6 +1358,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPreviewProjectIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/mobile/eas-build': {
+      id: '/api/mobile/eas-build'
+      path: '/api/mobile/eas-build'
+      fullPath: '/api/mobile/eas-build'
+      preLoaderRoute: typeof ApiMobileEasBuildRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/domains/dns-check': {
       id: '/api/domains/dns-check'
       path: '/dns-check'
@@ -1594,6 +1614,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBillingVerifyRoute: ApiBillingVerifyRoute,
   ApiBuildsCallbackRoute: ApiBuildsCallbackRoute,
   ApiBuildsTriggerRoute: ApiBuildsTriggerRoute,
+  ApiMobileEasBuildRoute: ApiMobileEasBuildRoute,
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
   ApiPublicHostLookupRoute: ApiPublicHostLookupRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
