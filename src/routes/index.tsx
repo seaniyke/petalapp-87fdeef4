@@ -316,7 +316,7 @@ function Landing() {
     if (isFocused || prompt.length > 0) return;
     if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       setAnimatedPlaceholder(
-        mode === "discuss" ? "Ask Petal anything…" : "Describe an app you want to build…",
+        mode === "discuss" ? "Ask Petal anything…" : "Describe a web app, mobile app, API or extension…",
       );
       return;
     }
@@ -327,7 +327,7 @@ function Landing() {
     const restingPlaceholder =
       mode === "discuss"
         ? "Ask Petal anything about your idea…"
-        : "Describe an app you want to build…";
+        : "Describe a web app, mobile app, API or extension…";
     let promptIdx = 0;
     let charIdx = 0;
     let typingMode: "typing" | "pausing" | "deleting" | "done" = "typing";
