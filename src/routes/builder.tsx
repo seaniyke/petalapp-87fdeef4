@@ -398,8 +398,9 @@ function Builder() {
   // device-frame chrome around the preview.
   const [buildTarget, setBuildTarget] = useState<BuildTargetId>(() => {
     const fromUrl = (initialTarget as BuildTargetId | undefined);
-    if (fromUrl && ["web", "android", "ios", "backend", "extension"].includes(fromUrl)) {
-      return fromUrl;
+    if (fromUrl && ["web", "mobile", "android", "ios", "backend", "extension"].includes(fromUrl)) {
+      // Migrate legacy ios/android → mobile.
+      return fromUrl === "ios" || fromUrl === "android" ? "mobile" : fromUrl;
     }
     return "web";
   });
@@ -409,8 +410,9 @@ function Builder() {
     if (!project?.id) return;
     try {
       const stored = localStorage.getItem(buildTargetStorageKey(project.id));
-      if (stored && ["web", "android", "ios", "backend", "extension"].includes(stored)) {
-        setBuildTarget(stored as BuildTargetId);
+      if (stored && ["web", "mobile", "android", "ios", "backend", "extension"].includes(stored)) {
+        const migrated = stored === "ios" || stored === "android" ? "mobile" : (stored as BuildTargetId);
+        setBuildTarget(migrated);
       } else if (initialTarget) {
         localStorage.setItem(buildTargetStorageKey(project.id), buildTarget);
       }
@@ -4412,7 +4414,7 @@ function Builder() {
                 onChange={setBuildTarget}
                 compact
               />
-              {(buildTarget === "ios" || buildTarget === "android") && (
+              {(buildTarget === "mobile" || buildTarget === "ios" || buildTarget === "android") && (
                 <button
                   type="button"
                   onClick={() => setMobilePublishOpen(true)}
@@ -4428,6 +4430,7 @@ function Builder() {
                 <MobilePublishSheet
                   open={mobilePublishOpen}
                   onOpenChange={setMobilePublishOpen}
+                  projectId={project?.id ?? null}
                 />
               )}
             </Suspense>
@@ -4498,7 +4501,7 @@ function Builder() {
                         Rork pattern) — the web-player iframe renders the
                         RN code with hot-reload, and the QR opens the same
                         session in Expo Go on a real device. */}
-                    {(buildTarget === "ios" || buildTarget === "android") && files.length ? (
+                    {(buildTarget === "mobile" || buildTarget === "ios" || buildTarget === "android") && files.length ? (
                       <Suspense
                         fallback={
                           <div className="grid h-full place-items-center text-xs text-muted-foreground">
