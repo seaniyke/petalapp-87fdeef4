@@ -7,6 +7,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 
+export type DiscussResult = { reply: string; suggestions: string[] };
+
 export async function requestDiscussion(
   body: {
     messages: ChatMessage[];
@@ -14,7 +16,7 @@ export async function requestDiscussion(
     customInstructions?: string;
   },
   signal?: AbortSignal,
-): Promise<string> {
+): Promise<DiscussResult> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("Not signed in");
@@ -33,7 +35,10 @@ export async function requestDiscussion(
     const text = await resp.text().catch(() => "");
     throw new Error(text || `Request failed (${resp.status})`);
   }
-  const json = (await resp.json()) as { reply?: string };
+  const json = (await resp.json()) as { reply?: string; suggestions?: string[] };
   if (!json.reply) throw new Error("Empty reply from AI.");
-  return json.reply;
+  return {
+    reply: json.reply,
+    suggestions: Array.isArray(json.suggestions) ? json.suggestions : [],
+  };
 }

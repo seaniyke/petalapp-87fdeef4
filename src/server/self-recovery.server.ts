@@ -106,7 +106,7 @@ Rules:
 - gaps: ONLY list things the brief asked for that are clearly NOT in the summary/files. Skip nitpicks. Empty array is a valid answer.
 - suggestions: ALWAYS return 2–3 SHORT prompts the user could tap to send next (≤ 8 words each, written as the user would phrase them, e.g. "Add a contact form", "Make the hero darker", "Add user signup", "Connect a database").
   - If gaps exist, the FIRST suggestion should address the biggest gap.
-  - Otherwise, propose natural next features, polish, or integrations that fit the app's purpose (auth, database, payments, dark mode, mobile polish, SEO, share preview, real content, etc.).
+  - Otherwise, propose natural next features, polish, or integrations that fit the app's purpose (auth, database, payments, mobile polish, SEO, share preview, real content, etc.). Do NOT suggest "dark mode" or a theme toggle unless the user has explicitly asked for it.
   - Always concrete to THIS app. Never generic ("Improve it").
   - Never suggest the same thing the build just did.
 

@@ -2340,12 +2340,16 @@ function Builder() {
       }
 
       try {
-        const reply = await requestDiscussion({
+        const { reply, suggestions } = await requestDiscussion({
           messages: nextMessages,
           currentFiles: files,
           customInstructions: proj.custom_instructions ?? undefined,
         });
-        const assistantMsg: ChatMessage = { role: "assistant", content: reply };
+        const assistantMsg: ChatMessage = {
+          role: "assistant",
+          content: reply,
+          ...(suggestions.length > 0 ? { suggestions } : {}),
+        };
         setMessages((prev) => {
           const updated = [...prev, assistantMsg];
           setLastDiscussIndex(updated.length - 1);
@@ -4250,7 +4254,8 @@ function Builder() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
+                  // Enter inserts a newline (default). Cmd/Ctrl+Enter sends.
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     e.preventDefault();
                     submitPrompt(input);
                   }
