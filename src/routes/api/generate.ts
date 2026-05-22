@@ -29,6 +29,7 @@ import { detectIntegrationRequests } from "@/lib/integration-request-intent";
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   aiChatCompletions,
   markLastCallFailure,
