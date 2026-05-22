@@ -144,6 +144,12 @@ import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
 import { BuildTargetChips } from "@/components/BuildTargetChips";
 import { DevicePreviewFrame } from "@/components/DevicePreviewFrame";
+const SnackPreview = lazy(() =>
+  import("@/components/SnackPreview").then((m) => ({ default: m.SnackPreview })),
+);
+const MobilePublishSheet = lazy(() =>
+  import("@/components/MobilePublishSheet").then((m) => ({ default: m.MobilePublishSheet })),
+);
 import {
   type BuildTargetId,
   buildTargetStorageKey,
@@ -397,6 +403,7 @@ function Builder() {
     }
     return "web";
   });
+  const [mobilePublishOpen, setMobilePublishOpen] = useState(false);
   // Persist target per project once the project is known.
   useEffect(() => {
     if (!project?.id) return;
@@ -4398,14 +4405,32 @@ function Builder() {
             {/* Build-target chip rail — Google AI Studio style. Tells Petal
                 what stack to scaffold (Web / Android / iOS / Backend /
                 Extension) and drives the preview-frame chrome. */}
-            <div className="mt-1.5 px-1">
+            <div className="mt-1.5 flex items-center gap-1.5 px-1">
               <BuildTargetChips
                 projectId={project?.id ?? null}
                 value={buildTarget}
                 onChange={setBuildTarget}
                 compact
               />
+              {(buildTarget === "ios" || buildTarget === "android") && (
+                <button
+                  type="button"
+                  onClick={() => setMobilePublishOpen(true)}
+                  className="ml-auto inline-flex h-7 items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-2.5 text-[11.5px] text-foreground/80 transition hover:bg-foreground/[0.05] hover:text-foreground"
+                  title="Ship this app to the App Store / Play"
+                >
+                  <Smartphone className="h-3 w-3" /> Publish
+                </button>
+              )}
             </div>
+            <Suspense fallback={null}>
+              {mobilePublishOpen && (
+                <MobilePublishSheet
+                  open={mobilePublishOpen}
+                  onOpenChange={setMobilePublishOpen}
+                />
+              )}
+            </Suspense>
 
             {/* Status line removed — the in-chat shimmer label
                 ("Thinking" / "Working") now conveys this directly. */}
@@ -4469,7 +4494,21 @@ function Builder() {
                   }`}
                 >
                   <DevicePreviewFrame mode={getBuildTarget(buildTarget).preview}>
-                    {useDeployedFallback ? (
+                    {/* For mobile build targets we use Expo Snack (Bolt /
+                        Rork pattern) — the web-player iframe renders the
+                        RN code with hot-reload, and the QR opens the same
+                        session in Expo Go on a real device. */}
+                    {(buildTarget === "ios" || buildTarget === "android") && files.length ? (
+                      <Suspense
+                        fallback={
+                          <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        }
+                      >
+                        <SnackPreview files={files} projectName={project?.title ?? "Petal preview"} />
+                      </Suspense>
+                    ) : useDeployedFallback ? (
                       <Suspense
                         fallback={
                           <div className="grid h-full place-items-center text-xs text-muted-foreground">
