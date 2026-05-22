@@ -52,31 +52,8 @@ export type TimelineEntry = {
   ts: number;
 };
 
-const TIMELINE_LABELS: Record<TimelineEntry["step"], string> = {
-  stream_autofix: "Quick autofix",
-  local_verifier: "Local verifier",
-  npm_preflight: "Package check",
-  continuation: "Stream continuation",
-  esbuild_parse: "Compiler check",
-  render_risk: "Render-risk check",
-  rls_sanity: "RLS sanity check",
-  file_budget: "File-size guard",
-  post_stream_autofix: "Polish pass",
-  image_resolve: "Image generation",
-};
 
-const TIMELINE_ICONS: Record<TimelineEntry["step"], LucideIcon> = {
-  stream_autofix: Wand2,
-  local_verifier: ShieldCheck,
-  npm_preflight: ShieldCheck,
-  continuation: FileEdit,
-  esbuild_parse: ShieldCheck,
-  render_risk: ShieldCheck,
-  rls_sanity: ShieldCheck,
-  file_budget: ShieldCheck,
-  post_stream_autofix: Wrench,
-  image_resolve: ImageIcon,
-};
+
 
 // Lovable-style: clean monoline icons per phase instead of emoji.
 const PHASE_ICONS: Record<PhaseId, LucideIcon> = {
