@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
-  
+
   Wrench,
   X,
 
@@ -22,16 +22,13 @@ import {
   Loader2,
   Check,
   Circle,
-  ShieldCheck,
-  Image as ImageIcon,
-  MinusCircle,
-  AlertCircle,
   type LucideIcon,
 } from "lucide-react";
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
 import { pathToNarration } from "@/lib/path-narration";
 import type { FriendlyError } from "@/lib/friendly-errors";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
+
 
 /**
  * One entry in the real-time build pipeline timeline.
