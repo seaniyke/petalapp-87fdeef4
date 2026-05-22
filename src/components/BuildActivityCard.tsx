@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
-  
+
   Wrench,
   X,
 
@@ -22,16 +22,13 @@ import {
   Loader2,
   Check,
   Circle,
-  ShieldCheck,
-  Image as ImageIcon,
-  MinusCircle,
-  AlertCircle,
   type LucideIcon,
 } from "lucide-react";
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
 import { pathToNarration } from "@/lib/path-narration";
 import type { FriendlyError } from "@/lib/friendly-errors";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
+
 
 /**
  * One entry in the real-time build pipeline timeline.
@@ -55,31 +52,8 @@ export type TimelineEntry = {
   ts: number;
 };
 
-const TIMELINE_LABELS: Record<TimelineEntry["step"], string> = {
-  stream_autofix: "Quick autofix",
-  local_verifier: "Local verifier",
-  npm_preflight: "Package check",
-  continuation: "Stream continuation",
-  esbuild_parse: "Compiler check",
-  render_risk: "Render-risk check",
-  rls_sanity: "RLS sanity check",
-  file_budget: "File-size guard",
-  post_stream_autofix: "Polish pass",
-  image_resolve: "Image generation",
-};
 
-const TIMELINE_ICONS: Record<TimelineEntry["step"], LucideIcon> = {
-  stream_autofix: Wand2,
-  local_verifier: ShieldCheck,
-  npm_preflight: ShieldCheck,
-  continuation: FileEdit,
-  esbuild_parse: ShieldCheck,
-  render_risk: ShieldCheck,
-  rls_sanity: ShieldCheck,
-  file_budget: ShieldCheck,
-  post_stream_autofix: Wrench,
-  image_resolve: ImageIcon,
-};
+
 
 // Lovable-style: clean monoline icons per phase instead of emoji.
 const PHASE_ICONS: Record<PhaseId, LucideIcon> = {
@@ -562,51 +536,5 @@ function ChangeBadge({ kind }: { kind: "added" | "modified" | "unchanged" | "del
   );
 }
 
-/**
- * One row in the build-pipeline timeline. Shows the step name, what it did,
- * and a per-outcome icon (✓ ok, ✦ fixed, ⊘ skipped, ! failed).
- */
-function TimelineRow({ entry }: { entry: TimelineEntry }) {
-  const Icon = TIMELINE_ICONS[entry.step];
-  const label = TIMELINE_LABELS[entry.step];
 
-  // Outcome → tone + status glyph. Skipped is intentionally muted so users
-  // see "we considered this and it wasn't needed", not as a problem.
-  const tone =
-    entry.outcome === "failed"
-      ? "text-destructive"
-      : entry.outcome === "fixed"
-        ? "text-foreground"
-        : entry.outcome === "skipped"
-          ? "text-muted-foreground/60"
-          : "text-emerald-600 dark:text-emerald-500";
 
-  const StatusIcon =
-    entry.outcome === "failed"
-      ? AlertCircle
-      : entry.outcome === "skipped"
-        ? MinusCircle
-        : entry.outcome === "fixed"
-          ? Sparkles
-          : Check;
-
-  return (
-    <li className="flex items-start gap-2 text-[12px] leading-snug">
-      <span className={`mt-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center ${tone}`} aria-hidden>
-        <StatusIcon className="h-3 w-3" />
-      </span>
-      <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-muted-foreground">
-        <Icon className="h-3 w-3 opacity-70" aria-hidden />
-        {label}
-      </span>
-      <span className="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground/90">
-        {entry.message}
-      </span>
-      {typeof entry.count === "number" && entry.count > 0 && entry.outcome !== "ok" && (
-        <span className="shrink-0 rounded-sm bg-muted px-1 py-px font-mono text-[10px] tabular-nums text-foreground/70">
-          {entry.count}
-        </span>
-      )}
-    </li>
-  );
-}
