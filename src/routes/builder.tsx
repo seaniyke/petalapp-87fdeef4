@@ -4391,8 +4391,10 @@ function Builder() {
                       )}
                     </button>
                   )}
+                </div>
               </div>
             </div>
+
             {/* Build-target chip rail — Google AI Studio style. Tells Petal
                 what stack to scaffold (Web / Android / iOS / Backend /
                 Extension) and drives the preview-frame chrome. */}
