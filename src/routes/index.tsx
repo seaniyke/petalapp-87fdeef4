@@ -910,16 +910,16 @@ function Landing() {
           <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-12">
             <div>
               <p className="text-sm font-medium uppercase tracking-wider text-primary">
-                Mobile, included
+                One codebase, both stores
               </p>
               <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">
-                Ship to the App Store and Play Store.
+                Mobile apps without the Mac.
               </h2>
               <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-                Every Petal app is mobile-ready. When you're happy with it, ask
-                Petal to package it as a real iOS or Android app — signed,
-                store-ready, no Mac or Xcode required. Builds run in the cloud
-                and land in your project as a download link.
+                Pick "Build a mobile app" and Petal scaffolds an Expo project
+                that ships to iOS and Android from a single codebase. Preview
+                in an iPhone or Android frame, scan a QR to test on your phone,
+                then download a signed build — no Xcode, no Android Studio.
               </p>
               <ul className="mt-6 space-y-3 text-sm">
                 <li className="flex items-start gap-3">
@@ -927,8 +927,8 @@ function Landing() {
                     <Apple className="h-4 w-4" />
                   </span>
                   <span>
-                    <strong>iOS .ipa</strong> — TestFlight-ready, signed with your
-                    Apple credentials we keep encrypted.
+                    <strong>iOS .ipa</strong> — TestFlight-ready. Built on
+                    Petal's cloud, no Apple hardware needed.
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
@@ -936,8 +936,8 @@ function Landing() {
                     <Bot className="h-4 w-4" />
                   </span>
                   <span>
-                    <strong>Android .aab / .apk</strong> — upload straight to
-                    Google Play or sideload to test.
+                    <strong>Android .apk / .aab</strong> — sideload to test,
+                    upload to Play when you're ready.
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
@@ -945,8 +945,8 @@ function Landing() {
                     <Smartphone className="h-4 w-4" />
                   </span>
                   <span>
-                    <strong>Native feel</strong> — push notifications, app icon,
-                    splash screen, safe-area, bottom tabs.
+                    <strong>Test on phone in seconds</strong> — scan the QR,
+                    open Expo Go, see your app live with hot reload.
                   </span>
                 </li>
               </ul>
