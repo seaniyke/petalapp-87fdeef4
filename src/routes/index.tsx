@@ -563,7 +563,7 @@ function Landing() {
                     isFocused || prompt
                       ? mode === "discuss"
                         ? "Ask Petal anything about your idea…"
-                        : "Describe an app you want to build…"
+                        : "Describe a web app, mobile app, API or extension…"
                       : animatedPlaceholder
                   }
                   className="block w-full resize-none bg-transparent px-2 pb-16 pt-1 text-base leading-relaxed outline-none placeholder:text-muted-foreground/80"
