@@ -498,9 +498,9 @@ function Landing() {
               </div>
 
               <h1 className="mt-6 font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
-                Build apps by{" "}
+                Web, mobile, backend —{" "}
                 <span className="relative whitespace-nowrap">
-                  <span className="relative z-10 italic">just chatting</span>
+                  <span className="relative z-10 italic">just chat</span>
                   <span
                     className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50"
                     aria-hidden
@@ -510,7 +510,7 @@ function Landing() {
               </h1>
 
               <p className="mx-auto mt-5 max-w-xl text-balance text-sm text-muted-foreground sm:text-lg md:text-xl">
-                Describe what you want. Watch it come to life.
+                One sentence. A real app, mobile build, API, or Chrome extension — live in minutes.
               </p>
             </>
           )}
