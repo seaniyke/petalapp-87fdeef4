@@ -37,6 +37,15 @@ type Props = {
 
 
 export function MobilePublishSheet({ open, onOpenChange }: Props) {
+  const fetchStatus = useServerFn(getExpoConnectStatus);
+  const { data: expo } = useQuery({
+    queryKey: ["expo-connect-status"],
+    queryFn: () => fetchStatus(),
+    enabled: open,
+    staleTime: 60_000,
+  });
+  const ready = Boolean(expo?.ready);
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full max-w-md overflow-y-auto">
