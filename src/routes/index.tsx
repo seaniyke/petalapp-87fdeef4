@@ -653,21 +653,6 @@ function Landing() {
             />
           )}
 
-          {isReady && !isAuthed && (
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-mint" /> Live preview
-              </span>
-              <span className="hidden sm:inline">•</span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-lilac" /> Multi-file projects
-              </span>
-              <span className="hidden sm:inline">•</span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-sky" /> One-click share
-              </span>
-            </div>
-          )}
         </div>
       </section>
 
