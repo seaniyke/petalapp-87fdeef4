@@ -4469,7 +4469,21 @@ function Builder() {
                   }`}
                 >
                   <DevicePreviewFrame mode={getBuildTarget(buildTarget).preview}>
-                    {useDeployedFallback ? (
+                    {/* For mobile build targets we use Expo Snack (Bolt /
+                        Rork pattern) — the web-player iframe renders the
+                        RN code with hot-reload, and the QR opens the same
+                        session in Expo Go on a real device. */}
+                    {(buildTarget === "ios" || buildTarget === "android") && files.length ? (
+                      <Suspense
+                        fallback={
+                          <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        }
+                      >
+                        <SnackPreview files={files} projectName={project?.title ?? "Petal preview"} />
+                      </Suspense>
+                    ) : useDeployedFallback ? (
                       <Suspense
                         fallback={
                           <div className="grid h-full place-items-center text-xs text-muted-foreground">
