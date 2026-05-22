@@ -1,5 +1,5 @@
-import { Sparkles, ArrowRight } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Sparkles } from "lucide-react";
+
 import { START_IDEAS, type StartIdea } from "@/lib/start-ideas";
 
 /**
