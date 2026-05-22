@@ -80,6 +80,7 @@ import { ComposerActionsMenu } from "@/components/ComposerActionsMenu";
 import { useVoiceDictation } from "@/hooks/use-voice-dictation";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { NextStepsCard } from "@/components/NextStepsCard";
+import { SuggestionChecklist } from "@/components/SuggestionChecklist";
 import { PlanProposalCard } from "@/components/PlanProposalCard";
 import { tryParseQuickEdit, applyQuickEditToFile } from "@/lib/quick-edit";
 
@@ -3223,19 +3224,15 @@ function Builder() {
                             into the "Keep building" action below to keep the
                             thread calm. */}
                         {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && files.length === 0 && (
-                          <div className="-mx-0.5 mt-1 flex flex-wrap gap-1.5">
-                            {m.suggestions.map((s, si) => (
-                              <button
-                                key={si}
-                                type="button"
-                                onClick={() => void send(s, { forceBuild: true })}
-                                className="inline-flex items-center rounded-full border border-foreground/15 bg-background px-3 py-1.5 text-[12.5px] font-medium text-foreground transition hover:border-foreground/30 hover:bg-foreground hover:text-background"
-                              >
-                                {s}
-                              </button>
-                            ))}
-                          </div>
+                          <SuggestionChecklist
+                            options={m.suggestions}
+                            onSubmit={(picks: string[]) => {
+                              const joined = picks.length === 1 ? picks[0] : picks.join("; ");
+                              void send(joined, { forceBuild: true });
+                            }}
+                          />
                         )}
+
                         {/* Post-build "what's next?" card. Only on the latest
                             assistant message, only when Petal is idle and
                             there's a real app to show. Gives users a clear

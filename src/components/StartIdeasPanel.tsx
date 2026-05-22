@@ -1,5 +1,5 @@
-import { Sparkles, ArrowRight } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Sparkles } from "lucide-react";
+
 import { START_IDEAS, type StartIdea } from "@/lib/start-ideas";
 
 /**
@@ -95,14 +95,6 @@ export function StartIdeasPanel({
           </li>
         ))}
       </ul>
-      <div className="mt-3 flex items-center justify-center gap-3">
-        <Link
-          to="/templates"
-          className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-3 py-1 text-[11px] text-foreground/80 transition hover:bg-muted"
-        >
-          Browse all templates <ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
       {onSwitchToCoach && (
         <div className="mt-3 text-center">
           <button
