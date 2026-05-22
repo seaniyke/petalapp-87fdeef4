@@ -401,6 +401,8 @@ function Landing() {
     const params = new URLSearchParams({ prompt: trimmed });
     if (mode === "discuss") params.set("mode", "discuss");
     if (opts?.fromCoach) params.set("source", "coach");
+    if (buildTarget !== "web") params.set("target", buildTarget);
+
 
     // The draft is about to ride along on the URL — drop the local copy so
     // a future visit to the landing page doesn't pre-fill an old prompt.
