@@ -256,7 +256,7 @@ export const Route = createFileRoute("/api/discuss")({
           try {
             const parsed = JSON.parse(suggestionsMatch[1].trim());
             if (Array.isArray(parsed)) {
-              suggestions = parsed
+              chipSuggestions = parsed
                 .filter((s): s is string => typeof s === "string")
                 .map((s) => s.trim())
                 .filter((s) => s.length > 0 && s.length <= 80)
