@@ -144,6 +144,12 @@ import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
 import { BuildTargetChips } from "@/components/BuildTargetChips";
 import { DevicePreviewFrame } from "@/components/DevicePreviewFrame";
+const SnackPreview = lazy(() =>
+  import("@/components/SnackPreview").then((m) => ({ default: m.SnackPreview })),
+);
+const MobilePublishSheet = lazy(() =>
+  import("@/components/MobilePublishSheet").then((m) => ({ default: m.MobilePublishSheet })),
+);
 import {
   type BuildTargetId,
   buildTargetStorageKey,
