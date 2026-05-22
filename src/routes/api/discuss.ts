@@ -282,7 +282,7 @@ export const Route = createFileRoute("/api/discuss")({
           console.warn("[credits] post-discuss charge failed", charge);
         }
 
-        return Response.json({ reply: cleanReply, suggestions });
+        return Response.json({ reply: cleanReply, suggestions: chipSuggestions });
       },
     },
   },
