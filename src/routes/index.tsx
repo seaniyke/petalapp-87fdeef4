@@ -61,16 +61,16 @@ export const Route = createFileRoute("/")({
     search.focus === "composer" ? { focus: "composer" } : {},
   head: () => ({
     meta: [
-      { title: "Petal — Build real apps with AI" },
+      { title: "Petal — Build web, mobile, backends & extensions by chatting" },
       {
         name: "description",
         content:
-          "Petal turns conversations into working web apps. Chat, preview, and ship — no setup required.",
+          "Petal turns a sentence into a real product. Web apps, mobile apps for iOS + Android, backends, and Chrome extensions — one chat, live preview, ship.",
       },
-      { property: "og:title", content: "Petal — Build real apps with AI" },
+      { property: "og:title", content: "Petal — Build real software by chatting" },
       {
         property: "og:description",
-        content: "Turn conversations into working web apps in minutes.",
+        content: "One chat. Web, mobile, backend, or extension. Live preview, real files, shipped.",
       },
       {
         property: "og:image",
