@@ -106,6 +106,8 @@ function Landing() {
   const [isFocused, setIsFocused] = useState(false);
   const [mode, setMode] = useState<ComposerMode>("build");
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [buildTarget, setBuildTarget] = useState<BuildTargetId>("web");
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, isReady } = useAuth();
