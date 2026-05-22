@@ -40,15 +40,13 @@ function formatTime(d: Date) {
   return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
-function PhoneFrame({
-  children,
-  variant,
-}: {
-  children: React.ReactNode;
-  variant: "ios" | "android";
-}) {
+function PhoneFrame({ children }: { children: React.ReactNode }) {
   const time = useClock();
   const [landscape, setLandscape] = useState(false);
+  // Mobile is one codebase, but the preview shell can swap between
+  // iOS and Android chrome so you can sanity-check both platforms
+  // without changing the build target.
+  const [variant, setVariant] = useState<"ios" | "android">("ios");
   const isIOS = variant === "ios";
 
   // Aspect & shell tuned per platform (iPhone 14 Pro / Pixel 7).
@@ -60,11 +58,26 @@ function PhoneFrame({
   return (
     <div className="grid h-full w-full place-items-center bg-gradient-to-br from-muted/40 to-muted/10 p-3">
       <div className="flex flex-col items-center gap-2">
-        {/* Controls */}
-        <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-1.5 py-1 text-[10.5px] text-muted-foreground backdrop-blur">
-          <span className="px-1.5 font-medium uppercase tracking-wide">
-            {isIOS ? "iOS" : "Android"} · {landscape ? "Landscape" : "Portrait"}
-          </span>
+        {/* Controls: platform toggle + rotate */}
+        <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-1 py-1 text-[10.5px] text-muted-foreground backdrop-blur">
+          <div className="flex rounded-full bg-muted/40 p-0.5">
+            {(["ios", "android"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setVariant(v)}
+                className={`rounded-full px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-wide transition ${
+                  variant === v
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                aria-pressed={variant === v}
+              >
+                {v === "ios" ? "iOS" : "Android"}
+              </button>
+            ))}
+          </div>
+          <span className="px-1 opacity-60">{landscape ? "Landscape" : "Portrait"}</span>
           <button
             type="button"
             onClick={() => setLandscape((v) => !v)}
