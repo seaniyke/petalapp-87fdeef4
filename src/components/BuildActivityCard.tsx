@@ -12,7 +12,7 @@ import {
   
   Wrench,
   X,
-  Square,
+
   Sparkles,
   Palette,
   FileEdit,
