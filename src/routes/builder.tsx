@@ -36,6 +36,7 @@ import {
   AlertTriangle,
   Mic,
   MicOff,
+  Square,
 } from "lucide-react";
 import {
   encodeAttachments,
@@ -3978,7 +3979,7 @@ function Builder() {
                 creditsCharged={lastBuildCredits}
                 fileChanges={fileChanges}
                 deployElapsedSec={deployElapsed}
-                onStop={busy ? stopGeneration : undefined}
+                onStop={undefined}
                 onRetry={
                   // The "Publishing is taking longer" stall card and the
                   // infra card both retry the deploy directly. Every other
@@ -4318,24 +4319,36 @@ function Builder() {
                       {voice.listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                     </button>
                   )}
-                  <button
-                    type="submit"
-                  disabled={bootstrapping || !input.trim()}
-                  className="grid h-9 w-9 place-items-center rounded-full bg-[oklch(0.62_0.19_255)] text-white shadow-[0_2px_8px_-2px_oklch(0.62_0.19_255/0.5)] transition hover:brightness-110 active:scale-95 disabled:bg-foreground/20 disabled:text-foreground/40 disabled:shadow-none"
-                  title={
-                    busy || discussBusy
-                      ? "Add to queue"
-                      : mode === "discuss"
-                        ? "Send (chat only)"
-                        : "Send (build changes)"
-                  }
-                >
-                  {mode === "discuss" ? (
-                    <MessageSquare className="h-4 w-4" />
+                  {busy ? (
+                    <button
+                      type="button"
+                      onClick={stopGeneration}
+                      className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-background shadow-[0_2px_8px_-2px_oklch(0_0_0/0.4)] transition hover:brightness-110 active:scale-95"
+                      title="Stop"
+                      aria-label="Stop generation"
+                    >
+                      <Square className="h-3 w-3 fill-current" />
+                    </button>
                   ) : (
-                    <Send className="h-3.5 w-3.5 -translate-x-[1px]" />
+                    <button
+                      type="submit"
+                      disabled={bootstrapping || !input.trim()}
+                      className="grid h-9 w-9 place-items-center rounded-full bg-[oklch(0.62_0.19_255)] text-white shadow-[0_2px_8px_-2px_oklch(0.62_0.19_255/0.5)] transition hover:brightness-110 active:scale-95 disabled:bg-foreground/20 disabled:text-foreground/40 disabled:shadow-none"
+                      title={
+                        discussBusy
+                          ? "Add to queue"
+                          : mode === "discuss"
+                            ? "Send (chat only)"
+                            : "Send (build changes)"
+                      }
+                    >
+                      {mode === "discuss" ? (
+                        <MessageSquare className="h-4 w-4" />
+                      ) : (
+                        <Send className="h-3.5 w-3.5 -translate-x-[1px]" />
+                      )}
+                    </button>
                   )}
-                </button>
                 </div>
               </div>
             </div>

@@ -12,7 +12,7 @@ import {
   
   Wrench,
   X,
-  Square,
+
   Sparkles,
   Palette,
   FileEdit,
@@ -331,15 +331,7 @@ export function BuildActivityCard({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {isActive && onStop && (
-            <button
-              type="button"
-              onClick={onStop}
-              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:text-foreground"
-            >
-              <Square className="h-2.5 w-2.5 fill-current" /> Stop
-            </button>
-          )}
+
           <button
             type="button"
             onClick={() => setStepsOpen((s) => !s)}
@@ -367,9 +359,7 @@ export function BuildActivityCard({
             const startedPhases = phases.filter(
               (p) => p.id !== "live" && p.status !== "pending" && p.status !== "active",
             );
-            const hasContent =
-              startedPhases.length > 0 ||
-              (timelineEvents && timelineEvents.length > 0);
+            const hasContent = startedPhases.length > 0;
             if (!hasContent) {
               return (
                 <div className="px-3 py-2 text-[11.5px] text-muted-foreground/70">
@@ -381,6 +371,7 @@ export function BuildActivityCard({
               <>
                 {startedPhases.length > 0 && (
                   <ol className="space-y-1.5 px-3 py-2.5">
+
                     {startedPhases.map((p) => (
                       <PhaseRow
                         key={p.id}
@@ -395,20 +386,6 @@ export function BuildActivityCard({
                       />
                     ))}
                   </ol>
-                )}
-                {timelineEvents && timelineEvents.length > 0 && (
-                  <div
-                    className={`px-3 py-2.5 ${startedPhases.length > 0 ? "border-t border-border/40" : ""}`}
-                  >
-                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                      Build pipeline
-                    </div>
-                    <ol className="space-y-1">
-                      {timelineEvents.map((e, i) => (
-                        <TimelineRow key={`${e.step}-${e.ts}-${i}`} entry={e} />
-                      ))}
-                    </ol>
-                  </div>
                 )}
               </>
             );
