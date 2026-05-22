@@ -331,15 +331,7 @@ export function BuildActivityCard({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {isActive && onStop && (
-            <button
-              type="button"
-              onClick={onStop}
-              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:text-foreground"
-            >
-              <Square className="h-2.5 w-2.5 fill-current" /> Stop
-            </button>
-          )}
+
           <button
             type="button"
             onClick={() => setStepsOpen((s) => !s)}
