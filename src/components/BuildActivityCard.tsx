@@ -387,20 +387,6 @@ export function BuildActivityCard({
                     ))}
                   </ol>
                 )}
-                {timelineEvents && timelineEvents.length > 0 && (
-                  <div
-                    className={`px-3 py-2.5 ${startedPhases.length > 0 ? "border-t border-border/40" : ""}`}
-                  >
-                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                      Build pipeline
-                    </div>
-                    <ol className="space-y-1">
-                      {timelineEvents.map((e, i) => (
-                        <TimelineRow key={`${e.step}-${e.ts}-${i}`} entry={e} />
-                      ))}
-                    </ol>
-                  </div>
-                )}
               </>
             );
           })()}
