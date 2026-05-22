@@ -386,6 +386,33 @@ function Builder() {
   // around WebContainerPreview / MobilePreviewFallback — they get the iframe
   // sized to a realistic device width so users can spot responsive issues.
   const [previewDevice, setPreviewDevice] = useState<"phone" | "tablet" | "desktop">("desktop");
+  // Build-target chip (web / android / ios / backend / extension). Hydrated
+  // from URL param (?target=) on first mount, then from localStorage per
+  // project. Sent on every generate as `x-petal-target` and drives the
+  // device-frame chrome around the preview.
+  const [buildTarget, setBuildTarget] = useState<BuildTargetId>(() => {
+    const fromUrl = (initialTarget as BuildTargetId | undefined);
+    if (fromUrl && ["web", "android", "ios", "backend", "extension"].includes(fromUrl)) {
+      return fromUrl;
+    }
+    return "web";
+  });
+  // Persist target per project once the project is known.
+  useEffect(() => {
+    if (!project?.id) return;
+    try {
+      const stored = localStorage.getItem(buildTargetStorageKey(project.id));
+      if (stored && ["web", "android", "ios", "backend", "extension"].includes(stored)) {
+        setBuildTarget(stored as BuildTargetId);
+      } else if (initialTarget) {
+        localStorage.setItem(buildTargetStorageKey(project.id), buildTarget);
+      }
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id]);
+
   const [activityVisible, setActivityVisible] = useState(false);
   const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
   // Tracks the current project id for callbacks that fire outside React's
