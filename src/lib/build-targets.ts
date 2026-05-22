@@ -1,30 +1,35 @@
 /**
  * Build-target registry — what the user is asking Petal to build.
  *
- * Selected via the chip row under the composer (à la Google AI Studio's
- * "Build an Android app"). The selection rides every generate request as
- * `x-petal-target` and is mirrored into the system prompt as a hard
- * constraint so Petal scaffolds the right stack.
+ * Single dropdown under the composer ("Build a web app ▾"). Selection
+ * rides every generate request as `x-petal-target` and gets mirrored
+ * into the system prompt as a hard constraint so Petal scaffolds the
+ * right stack.
  *
- * Milestone 1 wiring only — the actual stack swaps (Expo scaffold,
- * Snack web-player, EAS publish) land in later milestones. For now the
- * chip drives prompt steering and preview-frame chrome.
+ * Mobile is intentionally ONE target — Expo / React Native is "one
+ * codebase, two stores", same model as Flutter. The user picks
+ * iOS-vs-Android only at the final publish step (or via the in-frame
+ * device toggle for preview), not at the prompt step.
  */
 export type BuildTargetId =
   | "web"
-  | "android"
-  | "ios"
+  | "mobile"
   | "backend"
-  | "extension";
+  | "extension"
+  // Legacy ids — older projects may have these in localStorage. Kept in
+  // the type so `getBuildTarget` can migrate them to "mobile" without
+  // a TS error. Never surfaced in the picker.
+  | "android"
+  | "ios";
 
-export type PreviewMode = "web" | "ios" | "android" | "api" | "extension";
+export type PreviewMode = "web" | "mobile" | "api" | "extension";
 
 export type BuildTarget = {
   id: BuildTargetId;
   label: string;
-  /** Tiny one-liner shown below the chip when selected. */
+  /** Tiny one-liner shown in the menu under the menuLabel. */
   hint: string;
-  /** Long label used in the dropdown menu ("Build an Android app"). */
+  /** Long label used in the dropdown menu ("Build a mobile app"). */
   menuLabel: string;
   /** Single emoji / glyph fallback if a Lucide icon isn't a fit. */
   glyph: string;
@@ -34,6 +39,7 @@ export type BuildTarget = {
   systemPromptAddendum: string;
 };
 
+/** Ordered list shown in the picker. Mobile sits right after web. */
 export const BUILD_TARGETS: BuildTarget[] = [
   {
     id: "web",
@@ -45,38 +51,22 @@ export const BUILD_TARGETS: BuildTarget[] = [
     systemPromptAddendum: "",
   },
   {
-    id: "android",
-    label: "Android app",
-    menuLabel: "Build an Android app",
-    hint: "Expo / React Native — ships to Play Store",
-    glyph: "🤖",
-    preview: "android",
+    id: "mobile",
+    label: "Mobile app",
+    menuLabel: "Build a mobile app",
+    hint: "One codebase, ships to iOS + Android",
+    glyph: "📱",
+    preview: "mobile",
     systemPromptAddendum: [
-      "BUILD TARGET: Android (Expo / React Native).",
+      "BUILD TARGET: Mobile app (Expo / React Native) — one codebase that ships to BOTH iOS and Android.",
       "- Use `react-native` primitives (View, Text, Pressable, ScrollView, FlatList) — NEVER `div`, `span`, `button`, or any react-dom element.",
       "- Routing is `expo-router` file-based under `app/`.",
       "- Styling is StyleSheet.create or NativeWind — no Tailwind className utilities on RN elements.",
+      "- Honor safe areas via `react-native-safe-area-context`; respect notch + home indicator on iOS, status + gesture nav on Android.",
       "- Images use `expo-image`. Icons use `@expo/vector-icons`.",
-      "- Treat the canvas as a phone screen (~390×844). No mouse-only interactions.",
+      "- Treat the canvas as a phone screen (~390×844). No mouse-only interactions; use gestures and taps.",
       "- Do not import anything from `react-dom`, `next`, `@tanstack/react-router`, or web-only libraries.",
-    ].join("\n"),
-  },
-  {
-    id: "ios",
-    label: "iOS app",
-    menuLabel: "Build an iOS app",
-    hint: "Expo / React Native — ships to App Store",
-    glyph: "",
-    preview: "ios",
-    systemPromptAddendum: [
-      "BUILD TARGET: iOS (Expo / React Native).",
-      "- Use `react-native` primitives (View, Text, Pressable, ScrollView, FlatList) — NEVER `div`, `span`, `button`, or any react-dom element.",
-      "- Routing is `expo-router` file-based under `app/`.",
-      "- Styling is StyleSheet.create or NativeWind — no Tailwind className utilities on RN elements.",
-      "- Honor safe areas via `react-native-safe-area-context`; respect notch + home indicator.",
-      "- Images use `expo-image`. Icons use `@expo/vector-icons` (SF Symbols-style).",
-      "- Treat the canvas as an iPhone screen (~390×844). No mouse-only interactions.",
-      "- Do not import anything from `react-dom`, `next`, `@tanstack/react-router`, or web-only libraries.",
+      "- Keep platform-specific code rare. When unavoidable, use `Platform.OS === 'ios' | 'android'` inline — do NOT create separate iOS/Android screen files.",
     ].join("\n"),
   },
   {
@@ -111,11 +101,33 @@ export const BUILD_TARGETS: BuildTarget[] = [
   },
 ];
 
+/**
+ * Resolve an id (including legacy `ios` / `android`) to a BuildTarget.
+ * Legacy mobile ids migrate transparently to the unified `mobile` entry.
+ */
 export function getBuildTarget(id: string | null | undefined): BuildTarget {
+  if (id === "ios" || id === "android") {
+    return BUILD_TARGETS.find((t) => t.id === "mobile")!;
+  }
   return (
     BUILD_TARGETS.find((t) => t.id === id) ?? BUILD_TARGETS[0] // web fallback
   );
 }
+
+/** Treat any phone-shaped target (current or legacy) as "mobile". */
+export function isMobileTarget(id: string | null | undefined): boolean {
+  return id === "mobile" || id === "ios" || id === "android";
+}
+
+/** Set of ids that are valid to persist / read from storage or URL. */
+export const VALID_TARGET_IDS: readonly BuildTargetId[] = [
+  "web",
+  "mobile",
+  "backend",
+  "extension",
+  "android",
+  "ios",
+] as const;
 
 /** localStorage key (per-project). Stub until we add the DB column. */
 export function buildTargetStorageKey(projectId: string | null | undefined) {

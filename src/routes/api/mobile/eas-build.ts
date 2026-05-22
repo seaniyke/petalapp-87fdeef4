@@ -1,20 +1,14 @@
 /**
  * POST /api/mobile/eas-build
  *
- * Triggers an EAS Build for the current project. Requires a connected
- * Expo account (OAuth refresh token stored server-side) — until that's
- * wired, this endpoint cleanly returns 503 with actionable copy so the
- * UI can tell the user what's missing instead of failing opaquely.
+ * Triggers an EAS Build under PETAL'S Expo org account on behalf of
+ * the user — they never connect their own Expo account. Output is a
+ * downloadable .apk (Android) or .ipa (iOS, ad-hoc) the user can
+ * install directly, or hand off to Play / TestFlight at the publish
+ * step (where their own store credentials become required).
  *
- * When `EXPO_OAUTH_CLIENT_ID`/`EXPO_OAUTH_CLIENT_SECRET` are present
- * AND the user has completed the OAuth callback (token persisted in
- * `expo_connections`), this will:
- *   1. Resolve the user's Expo access token (refresh via OAuth if stale)
- *   2. POST to EAS Build GraphQL with the project's app.json + profile
- *   3. Return { buildId, status: 'queued', logsUrl }
- *
- * Same shape Bolt/Rork use — keeps Petal out of the build path and
- * leverages Expo's free 30-builds/month tier.
+ * Requires: EXPO_ACCESS_TOKEN (personal access token from Petal's
+ * Expo org with `builds:write` scope).
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
@@ -29,16 +23,13 @@ export const Route = createFileRoute("/api/mobile/eas-build")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const hasOAuth =
-          Boolean(process.env.EXPO_OAUTH_CLIENT_ID) &&
-          Boolean(process.env.EXPO_OAUTH_CLIENT_SECRET);
-
-        if (!hasOAuth) {
+        const token = process.env.EXPO_ACCESS_TOKEN;
+        if (!token) {
           return Response.json(
             {
-              error: "expo_not_connected",
+              error: "mobile_builds_unavailable",
               message:
-                "Expo OAuth isn't configured yet. Add EXPO_OAUTH_CLIENT_ID and EXPO_OAUTH_CLIENT_SECRET, then connect your Expo account.",
+                "Petal's mobile build pipeline isn't connected yet. Try again shortly.",
             },
             { status: 503 }
           );
@@ -58,14 +49,15 @@ export const Route = createFileRoute("/api/mobile/eas-build")({
           );
         }
 
-        // TODO (next PR): look up the user's Expo refresh token from
-        // `expo_connections`, exchange for an access token, then POST
-        // to EAS Build's GraphQL endpoint with the project app.json.
+        // TODO (next PR): call EAS Build's GraphQL endpoint with the
+        // project's app.json + selected profile, using the Petal
+        // EXPO_ACCESS_TOKEN. Return { buildId, status: 'queued',
+        // logsUrl, artifactUrl (once finished) }.
         return Response.json(
           {
             error: "not_implemented",
             message:
-              "EAS Build trigger is staged but not yet wired. Connect your Expo account first, then we'll hand off to EAS.",
+              "EAS Build trigger is wired but the GraphQL handoff lands in the next PR.",
           },
           { status: 501 }
         );
