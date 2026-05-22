@@ -15,8 +15,6 @@ import { listProjects, listPublicProjects, type ProjectRow } from "@/lib/project
 import {
   ArrowRight,
   ArrowUp,
-  MessageSquare,
-  Code2,
   Eye,
   Rocket,
   Layers,
