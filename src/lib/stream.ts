@@ -97,6 +97,8 @@ export async function streamGenerate(
     approvedPlanId?: string;
     /** Plan Mode — user-edited subset of the plan's file list to allow. */
     allowedPaths?: string[];
+    /** Build target chip (web / android / ios / backend / extension). */
+    buildTarget?: string;
   },
   handlers: Handlers,
   signal?: AbortSignal,
@@ -111,10 +113,12 @@ export async function streamGenerate(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        ...(body.buildTarget ? { "x-petal-target": body.buildTarget } : {}),
       },
       body: JSON.stringify(body),
       signal,
     });
+
   } catch (e) {
     if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
     throw e;
