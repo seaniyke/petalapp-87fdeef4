@@ -359,9 +359,7 @@ export function BuildActivityCard({
             const startedPhases = phases.filter(
               (p) => p.id !== "live" && p.status !== "pending" && p.status !== "active",
             );
-            const hasContent =
-              startedPhases.length > 0 ||
-              (timelineEvents && timelineEvents.length > 0);
+            const hasContent = startedPhases.length > 0;
             if (!hasContent) {
               return (
                 <div className="px-3 py-2 text-[11.5px] text-muted-foreground/70">
@@ -373,6 +371,7 @@ export function BuildActivityCard({
               <>
                 {startedPhases.length > 0 && (
                   <ol className="space-y-1.5 px-3 py-2.5">
+
                     {startedPhases.map((p) => (
                       <PhaseRow
                         key={p.id}
