@@ -15,8 +15,6 @@ import { listProjects, listPublicProjects, type ProjectRow } from "@/lib/project
 import {
   ArrowRight,
   ArrowUp,
-  MessageSquare,
-  Code2,
   Eye,
   Rocket,
   Layers,
@@ -61,16 +59,16 @@ export const Route = createFileRoute("/")({
     search.focus === "composer" ? { focus: "composer" } : {},
   head: () => ({
     meta: [
-      { title: "Petal — Build real apps with AI" },
+      { title: "Petal — Build web, mobile, backends & extensions by chatting" },
       {
         name: "description",
         content:
-          "Petal turns conversations into working web apps. Chat, preview, and ship — no setup required.",
+          "Petal turns a sentence into a real product. Web apps, mobile apps for iOS + Android, backends, and Chrome extensions — one chat, live preview, ship.",
       },
-      { property: "og:title", content: "Petal — Build real apps with AI" },
+      { property: "og:title", content: "Petal — Build real software by chatting" },
       {
         property: "og:description",
-        content: "Turn conversations into working web apps in minutes.",
+        content: "One chat. Web, mobile, backend, or extension. Live preview, real files, shipped.",
       },
       {
         property: "og:image",
@@ -88,10 +86,10 @@ export const Route = createFileRoute("/")({
 });
 
 const samplePrompts = [
-  "A pastel pomodoro timer with stats",
-  "A recipe generator with photos",
+  "A mobile habit tracker for iOS and Android",
+  "A Chrome extension that summarises any page",
+  "A backend API for a booking system",
   "A landing page for my coffee shop",
-  "A minimalist habit tracker",
 ];
 
 // Key for stashing the in-progress landing draft so a refresh — or a detour
@@ -316,7 +314,7 @@ function Landing() {
     if (isFocused || prompt.length > 0) return;
     if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       setAnimatedPlaceholder(
-        mode === "discuss" ? "Ask Petal anything…" : "Describe an app you want to build…",
+        mode === "discuss" ? "Ask Petal anything…" : "Describe a web app, mobile app, API or extension…",
       );
       return;
     }
@@ -327,7 +325,7 @@ function Landing() {
     const restingPlaceholder =
       mode === "discuss"
         ? "Ask Petal anything about your idea…"
-        : "Describe an app you want to build…";
+        : "Describe a web app, mobile app, API or extension…";
     let promptIdx = 0;
     let charIdx = 0;
     let typingMode: "typing" | "pausing" | "deleting" | "done" = "typing";
@@ -498,9 +496,9 @@ function Landing() {
               </div>
 
               <h1 className="mt-6 font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
-                Build apps by{" "}
+                Web, mobile, backend —{" "}
                 <span className="relative whitespace-nowrap">
-                  <span className="relative z-10 italic">just chatting</span>
+                  <span className="relative z-10 italic">just chat</span>
                   <span
                     className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50"
                     aria-hidden
@@ -510,7 +508,7 @@ function Landing() {
               </h1>
 
               <p className="mx-auto mt-5 max-w-xl text-balance text-sm text-muted-foreground sm:text-lg md:text-xl">
-                Describe what you want. Watch it come to life.
+                One sentence. A real app, mobile build, API, or Chrome extension — live in minutes.
               </p>
             </>
           )}
@@ -563,7 +561,7 @@ function Landing() {
                     isFocused || prompt
                       ? mode === "discuss"
                         ? "Ask Petal anything about your idea…"
-                        : "Describe an app you want to build…"
+                        : "Describe a web app, mobile app, API or extension…"
                       : animatedPlaceholder
                   }
                   className="block w-full resize-none bg-transparent px-2 pb-16 pt-1 text-base leading-relaxed outline-none placeholder:text-muted-foreground/80"
@@ -808,8 +806,8 @@ function Landing() {
                   </div>
                   <h3 className="mt-5 font-display text-xl">Your workspace is empty</h3>
                   <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-                    Describe an app in the box above and Petal will build the
-                    files for you in seconds.
+                    Describe a web app, mobile app, API or extension in the box
+                    above — Petal scaffolds it in seconds.
                   </p>
                 </div>
               ) : (
@@ -910,16 +908,16 @@ function Landing() {
           <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-12">
             <div>
               <p className="text-sm font-medium uppercase tracking-wider text-primary">
-                Mobile, included
+                One codebase, both stores
               </p>
               <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">
-                Ship to the App Store and Play Store.
+                Mobile apps without the Mac.
               </h2>
               <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-                Every Petal app is mobile-ready. When you're happy with it, ask
-                Petal to package it as a real iOS or Android app — signed,
-                store-ready, no Mac or Xcode required. Builds run in the cloud
-                and land in your project as a download link.
+                Pick "Build a mobile app" and Petal scaffolds an Expo project
+                that ships to iOS and Android from a single codebase. Preview
+                in an iPhone or Android frame, scan a QR to test on your phone,
+                then download a signed build — no Xcode, no Android Studio.
               </p>
               <ul className="mt-6 space-y-3 text-sm">
                 <li className="flex items-start gap-3">
@@ -927,8 +925,8 @@ function Landing() {
                     <Apple className="h-4 w-4" />
                   </span>
                   <span>
-                    <strong>iOS .ipa</strong> — TestFlight-ready, signed with your
-                    Apple credentials we keep encrypted.
+                    <strong>iOS .ipa</strong> — TestFlight-ready. Built on
+                    Petal's cloud, no Apple hardware needed.
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
@@ -936,8 +934,8 @@ function Landing() {
                     <Bot className="h-4 w-4" />
                   </span>
                   <span>
-                    <strong>Android .aab / .apk</strong> — upload straight to
-                    Google Play or sideload to test.
+                    <strong>Android .apk / .aab</strong> — sideload to test,
+                    upload to Play when you're ready.
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
@@ -945,8 +943,8 @@ function Landing() {
                     <Smartphone className="h-4 w-4" />
                   </span>
                   <span>
-                    <strong>Native feel</strong> — push notifications, app icon,
-                    splash screen, safe-area, bottom tabs.
+                    <strong>Test on phone in seconds</strong> — scan the QR,
+                    open Expo Go, see your app live with hot reload.
                   </span>
                 </li>
               </ul>
@@ -998,51 +996,52 @@ function Landing() {
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
             <p className="text-sm font-medium uppercase tracking-wider text-primary">Why Petal</p>
-            <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">A creative tool, not a code editor.</h2>
+            <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">One chat. Four targets. Real software.</h2>
             <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-              Petal is built around a conversation. You describe, it makes. You
-              refine, it iterates. The files are real, the preview is live, and
-              the result is yours.
+              Petal is a creative tool, not a code editor. Pick what you're
+              building — web app, mobile app, backend, or Chrome extension —
+              and describe it. Petal writes the right stack, runs a live
+              preview, and ships it.
             </p>
           </div>
 
           <div className="mt-12 grid gap-4 md:grid-cols-3">
             {[
               {
-                icon: MessageSquare,
-                tint: "bg-butter",
-                title: "Chat-first building",
-                body: "Plain language in, working app out. No prompts to memorize.",
+                icon: Globe,
+                tint: "bg-sky",
+                title: "Web apps",
+                body: "React + Tailwind, deployed to your own subdomain or custom domain.",
+              },
+              {
+                icon: Smartphone,
+                tint: "bg-coral/40",
+                title: "Mobile apps",
+                body: "One Expo codebase, ships to iOS and Android. QR-test on your phone.",
               },
               {
                 icon: Layers,
                 tint: "bg-mint",
-                title: "Multi-file projects",
-                body: "Real HTML, CSS and JS files you can browse, edit and download.",
+                title: "Backends & APIs",
+                body: "Typed server routes, database, auth and storage out of the box.",
+              },
+              {
+                icon: Wand2,
+                tint: "bg-lilac",
+                title: "Chrome extensions",
+                body: "Manifest V3 popup, background worker, content script — packaged.",
               },
               {
                 icon: Eye,
-                tint: "bg-lilac",
-                title: "Live sandboxed preview",
-                body: "Every change reloads instantly inside an isolated iframe.",
-              },
-              {
-                icon: Code2,
-                tint: "bg-sky",
-                title: "Edit anything by hand",
-                body: "Open the editor when you want to tweak something yourself.",
+                tint: "bg-butter",
+                title: "Live preview",
+                body: "Web frame, phone frame, or API console — whichever fits what you're building.",
               },
               {
                 icon: Rocket,
                 tint: "bg-coral/40",
                 title: "Ship in one click",
-                body: "Share a public link the moment you're happy with it.",
-              },
-              {
-                icon: Wand2,
-                tint: "bg-butter",
-                title: "Frontier AI models",
-                body: "Top-tier models built in — no API keys or setup required.",
+                body: "Publish a public URL, download a build, or wire a custom domain.",
               },
             ].map((f) => (
               <div
@@ -1066,12 +1065,12 @@ function Landing() {
           <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-12">
             <div>
               <p className="text-sm font-medium uppercase tracking-wider text-primary">How it works</p>
-              <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">From idea to app in three little steps.</h2>
+              <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">From idea to shipped, in three steps.</h2>
               <ol className="mt-8 space-y-6">
                 {[
-                  { n: "01", t: "Describe what you want", d: "A page, a tool, a tiny game — say it like you'd tell a friend." },
-                  { n: "02", t: "Petal generates the project", d: "Files appear in the explorer and the preview starts running." },
-                  { n: "03", t: "Refine through chat", d: "Ask for changes, tweak code by hand, or both. Then share." },
+                  { n: "01", t: "Pick what you're building", d: "Web app, mobile app, backend, or Chrome extension — one click under the composer." },
+                  { n: "02", t: "Describe it in a sentence", d: "Petal scaffolds the right stack and runs a live preview in the matching frame." },
+                  { n: "03", t: "Refine, then ship", d: "Chat to iterate, edit by hand if you want, then publish a URL or download a build." },
                 ].map((s) => (
                   <li key={s.n} className="flex gap-5">
                     <span className="font-display text-3xl text-primary">{s.n}</span>
@@ -1114,9 +1113,9 @@ function Landing() {
       <section className="px-4 pb-16 sm:px-6 sm:pb-24">
         <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-border bg-card p-6 text-center shadow-[var(--shadow-soft)] sm:p-12">
           <div className="absolute" />
-          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl">Your next app is one sentence away.</h2>
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl">Your next product is one sentence away.</h2>
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-            Open the builder, describe an idea, and watch it come to life.
+            Web, mobile, backend or extension — open Petal and describe it.
           </p>
           {!isReady ? null : user ? (
             <Link
