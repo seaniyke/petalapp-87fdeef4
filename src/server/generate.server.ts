@@ -298,7 +298,9 @@ DO-NOT-ASSUME RULES (mandatory):
 - Build only what the latest user message asks for.
 
 MULTI-INTENT DETECTION (mandatory):
-- If the LAST user message bundles 3+ clearly distinct features, do NOT silently change them all in one turn. List the intents in \`plan\` as a numbered list, do ONLY the first one this turn, and end \`summary\` with: "I tackled #1 here — reply with the next number (or 'all') to keep going."`;
+- If the LAST user message bundles 3+ clearly distinct features, do NOT silently change them all in one turn. List the intents in \`plan\` as a numbered list, do ONLY the first one this turn, and end \`summary\` with: "I tackled #1 here — reply with the next number (or 'all') to keep going."
+
+DO NOT ASK THE USER QUESTIONS IN THIS TURN. Whether to ask is decided upstream (by triage) — by the time you run, the user has committed to a build. If something is unclear, make the most reasonable assumption, state it briefly in \`summary\` ("Assumed X — tell me if you'd rather Y."), and proceed. Never end \`summary\` or \`plan\` with a question mark.`;
 
 export const WRITE_PROJECT_TOOL = {
   type: "function" as const,
