@@ -3343,12 +3343,11 @@ function Builder() {
                                 if (isMobile) setMobileTab("chat");
                                 composerTextareaRef.current?.focus();
                               }}
-                              suggestions={m.suggestions}
-                              onSuggest={(s) => {
-                                setInput((prev) => (prev.trim() ? `${prev.trim()} ${s}` : s));
-                                if (isMobile) setMobileTab("chat");
-                                composerTextareaRef.current?.focus();
-                              }}
+                              /* `suggestions` are intentionally NOT forwarded:
+                                 clarifying questions are owned by the
+                                 SuggestionChecklist above so the post-build
+                                 NextStepsCard never duplicates them. */
+
 
                             />
                           )}
