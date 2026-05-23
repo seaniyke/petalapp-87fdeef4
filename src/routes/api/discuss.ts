@@ -24,7 +24,7 @@ import {
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import { renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
 import { renderPetalCapabilitiesBlock } from "@/server/petal-capabilities.server";
-import { synthesizeAnswerOptions } from "@/server/answer-options.server";
+
 
 type Body = {
   messages: ChatMessage[];
@@ -33,30 +33,23 @@ type Body = {
   projectId?: string;
 };
 
-const DISCUSS_SYSTEM_PROMPT = `You are Petal, a friendly product collaborator helping the user think through changes to their small web app.
+const DISCUSS_SYSTEM_PROMPT = `You are Petal, a friendly product collaborator helping the user think through their small web app.
 
-You are in DISCUSS mode. You will NOT write or change any files in this turn. Your job is to listen, ask any clarifying questions you need, and propose a clear plan in plain language the user can approve.
+You are in DISCUSS mode. You will NOT write or change any files in this turn. Your job is to ANSWER and propose a clear plan in plain language the user can approve.
+
+HARD RULE — DO NOT ASK QUESTIONS:
+- Never end a reply with "?". Never ask the user to clarify, choose, pick, decide, or confirm anything in this mode.
+- Whether to ask the user something is decided upstream (by triage), not here. By the time you run, the user has chosen to chat — your job is to give them a useful answer, not interview them.
+- If the request feels ambiguous, make the most reasonable assumption, state it in one short sentence ("I'll assume X."), and propose the plan anyway. The user can correct you in their next message.
+- If you genuinely cannot answer without more information, say so in ONE sentence and stop. Do not phrase it as a question.
 
 Rules:
 - Keep replies short and warm. Use simple language; assume the user is non-technical.
 - Use markdown: short paragraphs, small bullet lists, **bold** for key ideas. No code blocks unless absolutely necessary.
 - When proposing changes, describe them as user-visible outcomes ("a sign-in button on the home page") not as file paths or code.
-- Default to proposing a clear plan. Only ask a clarifying question when the request is genuinely ambiguous AND a wrong assumption would cause real rework. If you can make a reasonable assumption, state it ("I'll assume X — say so if you'd rather Y") and propose the plan in the SAME reply. Never ask back-to-back questions, never ask about preferences you can pick a sensible default for (colors, copy tone, layout details), and never ask more than one question per reply.
 - End with a single line like: "Reply *go* and I'll make these changes." so the user knows how to proceed.
 - Never invent features that aren't possible in a static React + Vite app **or covered by an installed integration listed below**. When the user asks for something an installed integration covers (e.g. sending email, tracking analytics, taking payments), say YES and describe how you'd wire it up using that integration.
 - NEVER assume the user wants light/dark mode, a theme toggle, cookie banners, language switchers, or onboarding tours. Only propose these if the user explicitly asks.
-
-SUGGESTED-ANSWER CHIPS (MANDATORY whenever you ask a question — no exceptions):
-- If your reply contains a question mark, you MUST end with a single fenced block in this exact shape:
-
-\`\`\`suggestions
-["First suggested answer","Second suggested answer","Third (optional)"]
-\`\`\`
-
-- 2–4 short chip labels, each ≤ 40 characters, written as if the user is replying (first person where natural: "Yes, go ahead", "Use a dark theme", "Keep it minimal").
-- Chips must be REAL tap-ready answers to the question — not topics, not generic ("Tell me more"). They send as the user's next message exactly as written.
-- NEVER ask a question without this block. If you have nothing concrete to offer, do not ask the question — state your assumption and proceed instead.
-- If you are NOT asking anything, DO NOT include the suggestions block.
 
 ### Petal's built-in capabilities (what this app CAN already do, no extra accounts needed)
 The app you're helping with runs on **Petal**, which gives every project these native capabilities — they are part of the product, not third-party add-ons:
@@ -247,44 +240,19 @@ export const Route = createFileRoute("/api/discuss")({
           return new Response("Empty reply from AI.", { status: 502 });
         }
 
-        // Parse the trailing ```suggestions ["..","..","..]``` block (if any)
-        // so the chat can render tappable answer chips below the reply.
-        let cleanReply = reply;
-        let chipSuggestions: string[] = [];
-        const suggestionsMatch = reply.match(
-          /```suggestions\s*\n([\s\S]*?)\n?```\s*$/i,
-        );
-        if (suggestionsMatch) {
-          try {
-            const parsed = JSON.parse(suggestionsMatch[1].trim());
-            if (Array.isArray(parsed)) {
-              chipSuggestions = parsed
-                .filter((s): s is string => typeof s === "string")
-                .map((s) => s.trim())
-                .filter((s) => s.length > 0 && s.length <= 80)
-                .slice(0, 4);
-            }
-          } catch {
-            /* malformed JSON — drop the chips, keep the prose */
-          }
-          cleanReply = reply.slice(0, suggestionsMatch.index).trimEnd();
-        }
+        // Discuss never emits answer chips — questions are routed upstream
+        // by /api/triage. Strip any stray trailing ```suggestions``` block
+        // a fine-tuned model might emit, just in case.
+        let cleanReply = reply.replace(
+          /```suggestions\s*\n[\s\S]*?\n?```\s*$/i,
+          "",
+        ).trimEnd();
 
-        // Safety net: if the assistant asked a question but didn't ship chips,
-        // synthesize 2–3 tap-ready answers so the user always has something
-        // to click. Skipped if cleanReply has no question mark.
-        if (chipSuggestions.length === 0 && /\?/.test(cleanReply)) {
-          const sentences = cleanReply.split(/(?<=[.!?])\s+/);
-          const lastQ = [...sentences].reverse().find((x) => /\?\s*$/.test(x));
-          if (lastQ) {
-            const lastUser = [...body.messages]
-              .reverse()
-              .find((m) => m.role === "user")?.content;
-            const synth = await synthesizeAnswerOptions(lastQ, {
-              lastUserMessage: typeof lastUser === "string" ? lastUser : undefined,
-            });
-            if (synth.length >= 2) chipSuggestions = synth;
-          }
+        // Defensive: if the model ignored the "no questions" rule and still
+        // ended with a question, soften the question mark to a period rather
+        // than ship a dead-end question. (Rare — the prompt is now strict.)
+        if (/\?\s*$/.test(cleanReply)) {
+          cleanReply = cleanReply.replace(/\?(\s*)$/, ".$1");
         }
 
         // Charge ONCE, after success. If the wallet emptied between the
@@ -301,7 +269,7 @@ export const Route = createFileRoute("/api/discuss")({
           console.warn("[credits] post-discuss charge failed", charge);
         }
 
-        return Response.json({ reply: cleanReply, suggestions: chipSuggestions });
+        return Response.json({ reply: cleanReply });
       },
     },
   },
