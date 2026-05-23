@@ -3354,6 +3354,7 @@ function Builder() {
                              the app is actually live. */}
                          {i === messages.length - 1 &&
                            !petalIsWorking &&
+                           !pendingQuestion &&
                            isLive &&
                            !friendlyError &&
                            files.length > 0 &&
