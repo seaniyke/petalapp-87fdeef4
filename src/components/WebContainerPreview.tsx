@@ -244,6 +244,9 @@ export function WebContainerPreview({
   useEffect(() => {
     pickerReadyRef.current = false;
     setPickerWarning(null);
+    // Plan #3 — a fresh iframe load clears the crash state so reloads work.
+    setCrashReason(null);
+    crashWindowRef.current = [];
   }, [iframeKey]);
 
   // Push enable/disable into the iframe whenever pickActive flips, AND start
