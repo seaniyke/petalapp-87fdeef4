@@ -4607,6 +4607,15 @@ function Builder() {
                               return { ...err, fixed: false };
                             });
                           }}
+                          lastNarration={latestNarration ?? null}
+                          onAskRepair={(reason) => {
+                            // Plan #3 — pre-fill the composer with a repair
+                            // request seeded by the runtime crash reason.
+                            // User can edit then send.
+                            setInput(
+                              `The preview just crashed with: "${reason}". Please diagnose and fix it.`,
+                            );
+                          }}
                         />
                       </Suspense>
                     ) : (

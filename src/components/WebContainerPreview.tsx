@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, Terminal, RotateCw, AlertCircle, Smartphone, MousePointerClick, X } from "lucide-react";
 import type { ProjectFile } from "@/server/generate.server";
 import { detectUnsupportedWebContainerBrowser } from "@/lib/browser-support";
+import { PreviewCrashFallback } from "@/components/PreviewCrashFallback";
 import {
   ensurePickerInstalled,
   getContainer,
@@ -48,6 +49,8 @@ export function WebContainerPreview({
   reloadKey,
   onPick,
   onRuntimeError,
+  onAskRepair,
+  lastNarration,
 }: {
   files: ProjectFile[];
   /** Bump this number to force the iframe to reload (e.g. after restoring a version). */
@@ -56,6 +59,10 @@ export function WebContainerPreview({
   onPick?: (el: PickedElement) => void;
   /** Called when the running app throws a runtime error or unhandled rejection. */
   onRuntimeError?: (err: RuntimeError) => void;
+  /** Plan #3 — user clicked "Ask Petal to repair" on the crash fallback. */
+  onAskRepair?: (reason: string) => void;
+  /** Plan #3 — last build narration to surface on the crash fallback as context. */
+  lastNarration?: string | null;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [serverUrl, setServerUrl] = useState<string | null>(null);
@@ -64,6 +71,11 @@ export function WebContainerPreview({
   const [showLogs, setShowLogs] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [pickActive, setPickActive] = useState(false);
+  // Plan #3 — preview-crash detection. When the running app throws 2+ runtime
+  // errors within 5s we consider it a hard crash and swap the iframe for
+  // PreviewCrashFallback. Reload clears the state and remounts.
+  const [crashReason, setCrashReason] = useState<string | null>(null);
+  const crashWindowRef = useRef<number[]>([]);
   // Set to a friendly message when the picker has been "armed" for >30s
   // without the iframe acknowledging readiness — usually means the picker
   // script failed to inject (custom index.html, very fast iframe reload, etc).
@@ -201,7 +213,18 @@ export function WebContainerPreview({
         return;
       }
       if (data.type === "petal:runtime:error" && data.payload && onRuntimeError) {
-        onRuntimeError(data.payload as unknown as RuntimeError);
+        const payload = data.payload as RuntimeError;
+        onRuntimeError(payload);
+        // Plan #3 — sliding-window crash detector. Count errors in last 5s;
+        // if 2+ pile up the preview is effectively dead — swap to fallback.
+        const now = Date.now();
+        crashWindowRef.current = [
+          ...crashWindowRef.current.filter((t) => now - t < 5_000),
+          now,
+        ];
+        if (crashWindowRef.current.length >= 2 && !crashReason) {
+          setCrashReason(payload?.message?.slice(0, 240) || "Unknown runtime error");
+        }
         return;
       }
       if (!onPick) return;
@@ -214,13 +237,16 @@ export function WebContainerPreview({
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [onPick, onRuntimeError]);
+  }, [onPick, onRuntimeError, crashReason]);
 
   // Reset the picker-ready flag whenever the iframe is hard-reloaded — the
   // new document needs to send `petal:pick:ready` again to be considered live.
   useEffect(() => {
     pickerReadyRef.current = false;
     setPickerWarning(null);
+    // Plan #3 — a fresh iframe load clears the crash state so reloads work.
+    setCrashReason(null);
+    crashWindowRef.current = [];
   }, [iframeKey]);
 
   // Push enable/disable into the iframe whenever pickActive flips, AND start
@@ -330,9 +356,17 @@ export function WebContainerPreview({
         </div>
       )}
 
-      {/* Iframe */}
+      {/* Iframe (or crash fallback) */}
       <div className="relative min-h-0 flex-1">
-        {serverUrl ? (
+        {crashReason ? (
+          <PreviewCrashFallback
+            reason={crashReason}
+            lastPath={serverUrl}
+            lastNarration={lastNarration}
+            onRetry={() => setIframeKey((k) => k + 1)}
+            onAskRepair={onAskRepair ? () => onAskRepair(crashReason) : undefined}
+          />
+        ) : serverUrl ? (
           <iframe
             ref={iframeRef}
             key={iframeKey}
