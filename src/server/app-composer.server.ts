@@ -34,6 +34,7 @@ import {
   type TemplateSpec,
 } from "./templates.server";
 import { KIT_FILES } from "./scaffold-kit";
+import { BACKEND_KIT_BLOCK_FILES_3 } from "./scaffold-kit-blocks-3";
 
 export interface AppBlueprint {
   archetype: ArchetypeSpec | null;
@@ -64,8 +65,9 @@ function blockNameVariants(name: string): string[] {
 }
 
 /** Resolve TemplateSpec.blocks (UI/Pascal names) into actual kit file paths. */
-function resolveKitBlockPaths(blockNames: ReadonlyArray<string>): string[] {
-  const blockFiles = KIT_FILES.filter(
+function resolveKitBlockPaths(blockNames: ReadonlyArray<string>, opts?: { hasBackend?: boolean }): string[] {
+  const sourceFiles = opts?.hasBackend ? [...KIT_FILES, ...BACKEND_KIT_BLOCK_FILES_3] : KIT_FILES;
+  const blockFiles = sourceFiles.filter(
     (f) =>
       f.path.startsWith("src/components/blocks/") ||
       f.path.startsWith("src/components/ui/"),
@@ -89,10 +91,13 @@ function resolveKitBlockPaths(blockNames: ReadonlyArray<string>): string[] {
 function resolveExamplePaths(
   template: TemplateSpec,
   archetype: ArchetypeSpec | null,
+  opts?: { hasBackend?: boolean },
 ): string[] {
-  const examples = KIT_FILES.filter((f) =>
-    f.path.startsWith("src/components/examples/"),
-  );
+  const examples = KIT_FILES.filter((f) => {
+    if (!f.path.startsWith("src/components/examples/")) return false;
+    if (!opts?.hasBackend && f.path.includes("/auth-")) return false;
+    return true;
+  });
   const needles = new Set<string>();
   // Template key tokens (e.g. "kanban-tasks" → "kanban", "tasks").
   for (const tok of template.key.split("-")) needles.add(tok);
@@ -124,7 +129,7 @@ function resolveExamplePaths(
  * Compose
  * ============================================================ */
 
-export function composeAppBlueprint(brief: string): AppBlueprint | null {
+export function composeAppBlueprint(brief: string, opts?: { hasBackend?: boolean }): AppBlueprint | null {
   const semantic = routeBrief(brief);
   const archetype = semantic?.archetype ?? null;
 
@@ -145,8 +150,8 @@ export function composeAppBlueprint(brief: string): AppBlueprint | null {
     }
   }
 
-  const kitBlockPaths = resolveKitBlockPaths(template.blocks);
-  const examplePaths = resolveExamplePaths(template, archetype);
+  const kitBlockPaths = resolveKitBlockPaths(template.blocks, opts);
+  const examplePaths = resolveExamplePaths(template, archetype, opts);
 
   const guardrails: string[] = [];
   if (archetype?.reality === "demo-only") {
@@ -315,8 +320,9 @@ export function scaffoldRouteStubs(blueprint: AppBlueprint): ProjectFile[] {
 /** One-shot helper used by the generate route. */
 export function buildBlueprintFor(
   brief: string,
+  opts?: { hasBackend?: boolean },
 ): { blueprint: AppBlueprint; promptBlock: string } | null {
-  const blueprint = composeAppBlueprint(brief);
+  const blueprint = composeAppBlueprint(brief, opts);
   if (!blueprint) return null;
   return { blueprint, promptBlock: renderBlueprintBlock(blueprint) };
 }

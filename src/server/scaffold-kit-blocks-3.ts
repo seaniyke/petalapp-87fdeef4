@@ -2,8 +2,8 @@
  * Phase-3 expansion of the Petal scaffold (workstream B).
  *
  * What's new vs blocks-1 / blocks-2:
- *   - Auth blocks pre-wired to `@/integrations/backend/auth` so the model
- *     never hand-rolls auth screens again.
+ *   - Auth blocks live in a separate backend-only export so no-backend
+ *     projects never receive imports that cannot resolve.
  *   - Data display blocks (StatCard / KpiGrid / ComparisonTable / PricingTable
  *     / ActivityFeed) — the things the model previously hand-styled poorly.
  *   - Form blocks (MultiStepWizard / FileUploadDropzone / OtpInputGroup /
@@ -33,7 +33,7 @@ import type { ProjectFile } from "./generate.server";
 type KitFile = ProjectFile & { overwrite: boolean };
 
 // =============================================================================
-// AUTH — pre-wired to @/integrations/backend/auth.
+// AUTH — pre-wired to @/integrations/backend/auth, injected only with backend kit.
 // =============================================================================
 
 const SIGN_IN_CARD = `import * as React from "react";
@@ -42,24 +42,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useAuth } from "@/integrations/backend/auth";
 import { Loader2 } from "lucide-react";
 
-/** Pre-wired sign-in card. Drop in to any /auth or /sign-in route. */
+type AuthResult = void | { error?: { message?: string } | null };
+
+/** Universal sign-in card. Pass handlers when auth is wired; otherwise it renders safely. */
 export function SignInCard({
   title = "Welcome back",
   description = "Sign in to your account to continue.",
   onSignedIn,
+  onSubmit,
+  onGoogle,
   showGoogle = true,
   signUpHref = "/sign-up",
 }: {
   title?: string;
   description?: string;
   onSignedIn?: () => void;
+  onSubmit?: (values: { email: string; password: string }) => Promise<AuthResult> | AuthResult;
+  onGoogle?: () => Promise<AuthResult> | AuthResult;
   showGoogle?: boolean;
   signUpHref?: string;
 }) {
-  const { signInWithPassword, signInWithGoogle } = useAuth();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -68,11 +72,19 @@ export function SignInCard({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+    if (!onSubmit) return setErr("Connect a backend to enable sign in.");
     setBusy(true);
-    const { error } = await signInWithPassword({ email, password });
+    const result = await onSubmit({ email, password });
     setBusy(false);
-    if (error) return setErr(error.message);
+    if (result && result.error) return setErr(result.error.message ?? "Unable to sign in.");
     onSignedIn?.();
+  }
+
+  async function google() {
+    setErr(null);
+    if (!onGoogle) return setErr("Connect a backend to enable Google sign-in.");
+    const result = await onGoogle();
+    if (result && result.error) setErr(result.error.message ?? "Unable to continue with Google.");
   }
 
   return (
@@ -96,7 +108,7 @@ export function SignInCard({
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Sign in
           </Button>
           {showGoogle && (
-            <Button type="button" variant="outline" className="w-full" onClick={() => signInWithGoogle()}>
+            <Button type="button" variant="outline" className="w-full" onClick={google}>
               Continue with Google
             </Button>
           )}
@@ -928,11 +940,13 @@ export function CheckoutSummary({
 // REGISTRY
 // =============================================================================
 
-export const KIT_BLOCK_FILES_3: KitFile[] = [
-  // Auth
+export const BACKEND_KIT_BLOCK_FILES_3: KitFile[] = [
   { path: "src/components/blocks/auth-sign-in-card.tsx", content: SIGN_IN_CARD, overwrite: true },
   { path: "src/components/blocks/auth-sign-up-card.tsx", content: SIGN_UP_CARD, overwrite: true },
   { path: "src/components/blocks/auth-forgot-password-card.tsx", content: FORGOT_PASSWORD_CARD, overwrite: true },
+];
+
+export const KIT_BLOCK_FILES_3: KitFile[] = [
   // Data display
   { path: "src/components/blocks/stat-card.tsx", content: STAT_CARD, overwrite: true },
   { path: "src/components/blocks/kpi-grid.tsx", content: KPI_GRID, overwrite: true },

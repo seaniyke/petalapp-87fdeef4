@@ -7,7 +7,7 @@
  * Fixes known footguns we keep seeing in generated apps:
  *   1. Direct imports from "react-router-dom"        → "@/components/ui/router"
  *   2. Direct imports from "@supabase/supabase-js"   → "@/integrations/backend/client"
- *      (only the createClient surface; we keep type-only imports alone)
+ *      only when the backend kit is present (type-only imports stay alone)
  *   3. <input type="date">                           → noted (cannot rewrite JSX safely; logged)
  *   4. lucide-react icons that don't exist           → swapped for nearest valid icon
  *   5. Petal-image:// placeholders > 6 unique        → first 6 kept, rest stripped to picsum
@@ -147,7 +147,7 @@ function fixLucideIcons(content: string, report: AutofixReport): string {
   return next;
 }
 
-function fixBadImports(content: string, report: AutofixReport): string {
+function fixBadImports(content: string, report: AutofixReport, hasBackendKit: boolean): string {
   let out = content;
 
   // 1. react-router-dom → kit re-export
@@ -158,10 +158,11 @@ function fixBadImports(content: string, report: AutofixReport): string {
     report.notes.push('react-router-dom → @/components/ui/router');
   }
 
-  // 2. Direct supabase-js client → backend kit. Only catch named/default
-  //    imports that include createClient or the default — type imports stay.
+  // 2. Direct supabase-js client → backend kit, but only when that kit exists.
+  //    Without this guard, no-backend projects get rewritten to an alias that
+  //    cannot resolve, causing the exact Vite load-fallback failure reported.
   const sbCreate = /import\s+\{[^}]*createClient[^}]*\}\s+from\s+["']@supabase\/supabase-js["']/g;
-  if (sbCreate.test(out)) {
+  if (hasBackendKit && sbCreate.test(out)) {
     out = out.replace(
       sbCreate,
       'import { supabase } from "@/integrations/backend/client"',
@@ -252,7 +253,7 @@ function fixLazyNamedExports(files: ProjectFile[], report: AutofixReport): Proje
 }
 
 /** Apply autofixers to a single file. Returns the (possibly modified) file. */
-export function autofixFile(file: ProjectFile, report: AutofixReport): ProjectFile {
+export function autofixFile(file: ProjectFile, report: AutofixReport, hasBackendKit = false): ProjectFile {
   // Only run on text files we'd ship to the build. Skip binaries, lockfiles.
   if (!/\.(tsx?|jsx?|css|html|md)$/.test(file.path)) return file;
   if (file.path.startsWith("src/components/ui/") ||
@@ -261,7 +262,7 @@ export function autofixFile(file: ProjectFile, report: AutofixReport): ProjectFi
     return file; // protected — never modify scaffold
   }
   let content = file.content;
-  content = fixBadImports(content, report);
+  content = fixBadImports(content, report, hasBackendKit);
   content = fixLucideIcons(content, report);
   content = capPetalImages(content, report);
   return content === file.content ? file : { ...file, content };
@@ -270,7 +271,8 @@ export function autofixFile(file: ProjectFile, report: AutofixReport): ProjectFi
 /** Apply autofixers across the whole file set. Returns new files + report. */
 export function autofixFiles(files: ProjectFile[]): { files: ProjectFile[]; report: AutofixReport } {
   const report: AutofixReport = { fixedCount: 0, notes: [] };
+  const hasBackendKit = files.some((f) => f.path === "src/integrations/backend/client.ts");
   const lazyFixed = fixLazyNamedExports(files, report);
-  const out = lazyFixed.map((f) => autofixFile(f, report));
+  const out = lazyFixed.map((f) => autofixFile(f, report, hasBackendKit));
   return { files: out, report };
 }

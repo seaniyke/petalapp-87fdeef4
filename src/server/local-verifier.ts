@@ -531,7 +531,9 @@ export function verifyFileLocal(path: string, content: string): LocalIssue[] {
  * Anything that fails resolves to a `missing-sibling` or `missing-dep` issue.
  *
  * Whitelisted: `react`, `react-dom`, scaffold-managed namespaces (`@/components/ui/*`,
- * `@/integrations/backend/*`, `@/lib/utils`) — those always exist in the kit.
+ * `@/integrations/supabase/*`, `@/lib/utils`) — those always exist in the kit.
+ * `@/integrations/backend/*` is intentionally NOT whitelisted: it only exists
+ * after the backend kit is injected, so the file map must prove it resolves.
  */
 function findUnresolvedImports(
   files: { path: string; content: string }[],
@@ -596,7 +598,6 @@ function findUnresolvedImports(
   const SCAFFOLD_PREFIXES = [
     "@/components/ui/",
     "@/integrations/supabase/",
-    "@/integrations/backend/",
     "@/integrations/lovable/",
     "@/lib/utils",
     "@/lib/router",
