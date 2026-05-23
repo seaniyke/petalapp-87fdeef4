@@ -1,93 +1,97 @@
 ## Goal
 
-Match Lovable's behavior end-to-end: whenever Petal asks a clarifying question, it **also** ships 2–4 concrete tap-to-pick answer options, rendered as a Lovable-style radio card (with inline "Write your own…", arrow carousel, and Skip all / Next-Review footer).
+Collapse the three independent "should Petal ask a question?" layers into **one decision point: triage**. Today the question logic is duplicated across triage, discuss, and generate — each with its own prompt rules, its own regex detectors, and its own chip synthesizer. That's why Petal feels chatty: three systems all biased toward asking, layered on top of each other.
 
-Two parts:
-1. **Backend** — guarantee every clarifying question comes with answer options.
-2. **Frontend** — rebuild the SuggestionChecklist card to look/behave like the screenshots.
+After this change, **only triage** decides whether the turn is a question. Discuss and generate trust that decision and just execute.
 
 ---
 
-## Part 1 — Backend: always emit answer options with a question
-
-Today suggestions only appear when:
-- `triage` returns `clarify` (already works), OR
-- `discuss` model voluntarily emits a `` ```suggestions `` JSON block (often skipped), OR
-- `generate`'s `detectClarifyingQuestion` regex finds an "A, B, or C" or yes/no pattern (most free-form questions miss this).
-
-That's why Petal often asks "What color scheme would you like?" with zero clickable answers.
-
-### 1a. `src/routes/api/discuss.ts` — make answer chips mandatory when asking
-
-- Tighten `DISCUSS_SYSTEM_PROMPT`: **"If your reply contains a question mark, you MUST end with a `` ```suggestions `` JSON array of 2–4 short, distinct answer options (each ≤6 words, written as the user would say them, e.g. `"Use a dark theme"`, `"Keep it light and minimal"`). Never ask a question without options."**
-- Add a server-side safety net after the model returns: if `cleanReply` contains `?` but `chipSuggestions.length === 0`, run a lightweight LLM follow-up (or a deterministic fallback that extracts noun-phrase alternatives) to fill 2–3 options. Cheapest path: a second tiny call to the same model with a 1-shot prompt — `"Given this assistant question, return 2–4 short answer options as a JSON array."` Use the existing gateway client; no new deps.
-- Keep `suggestions` flowing through the existing `Response.json({ reply, suggestions })` contract — the client already renders them.
-
-### 1b. `src/routes/api/generate.ts` — same guarantee on the build-path question detector
-
-- In `detectClarifyingQuestion`, when a question is detected but the regex extracts 0 chips, call the same "answer-options" helper (shared util, see 1c) to synthesize 2–4 options from the question text. This runs only on the rare "question slipped through to build" path that's already discarded — but when it does, the user gets clickable answers instead of a dead card.
-
-### 1c. New helper `src/server/answer-options.server.ts`
-
-- Exported `synthesizeAnswerOptions(question: string, context?: { lastUserMessage?: string }) : Promise<string[]>`.
-- Strategy: deterministic-first, LLM-fallback.
-  - Deterministic: pull "A, B, or C" lists, "yes/no" auxiliary verbs, and "either … or …" patterns out of the question (lift the existing logic from `detectClarifyingQuestion`).
-  - LLM fallback: tiny one-shot call to the cheapest model in the gateway. Cap to 4 options, ≤6 words each, dedupe, strip leading bullets/numbers.
-- Used by both 1a and 1b.
-
-### 1d. (Optional safety) `src/routes/api/triage.ts`
-
-Already returns suggestions in `clarify` mode. No code change — just add a sentence in the prompt: **"Answer options must be tap-ready replies the user can send as-is, not topics."** Existing schema/limits stay.
-
----
-
-## Part 2 — Frontend: Lovable-style question card
-
-### 2a. Rewrite `src/components/SuggestionChecklist.tsx` (keep export name)
-
-Render shape (matches IMG_8136 / 8137 / 8138):
+## Target architecture
 
 ```text
-┌────────────────────────────────────────┐
-│ {question title}                       │
-├────────────────────────────────────────┤
-│ ● Option one                           │  ← selected, soft tinted row
-│ ○ Option two                           │
-│ ○ Option three                         │
-│ ○ [ Write your own…              ]    │  ← radio + inline input
-├────────────────────────────────────────┤
-│ ‹  ›                  Skip all  [Next] │
-└────────────────────────────────────────┘
+user message
+     │
+     ▼
+┌──────────────────────────────────────────┐
+│  /api/triage  ← THE ONLY QUESTION GATE   │
+│  Returns: mode + (if clarify) question   │
+│           + suggestions (chips)          │
+└──────────────────────────────────────────┘
+     │
+     ├── mode = "clarify"  → render question card. STOP. No discuss, no build.
+     │
+     ├── mode = "chat"/"explain" → /api/discuss (answer only, never asks back)
+     │
+     └── mode = "build"/"edit"/"fix"/"redesign" → /api/generate (just builds, never asks)
 ```
 
-- State: `selectedIndex: number | null`, `customText: string`.
-- **Single-select radios.** Clicking a row selects it; clicking "Write your own…" focuses the input. Typing in the input auto-selects the custom row.
-- Footer:
-  - `‹ ›` ghost circular buttons (disabled in single-question mode — kept for visual parity).
-  - **Skip all** muted link → calls existing `onSkip`.
-  - Primary pill **Next** (or **Review** when `isLast`) → calls `onSend(selectedOption ?? customText)`. Disabled until something is picked.
-- Tokens only — `bg-card`, `bg-muted/50` for selected row, `bg-primary text-primary-foreground` for the pill, `text-muted-foreground` for Skip all. No raw hex.
-- Keep `pending` / `answered` lock states and the Cmd/Ctrl+Enter shortcut.
-- Drop the "Quick replies — tap one or keep typing" chip header. The question text becomes the card title.
+Triage already returns `mode`, `suggestions`, and a `reply`. We extend it to be the authoritative question source, and we strip the question-asking machinery out of discuss and generate.
 
-### 2b. Call site `src/routes/builder.tsx` (around line 3327)
+---
 
-- Pass `question` derived from `m.content`: take the last sentence ending in `?`; fallback to `"Pick an option"`.
-- Everything else (`options`, `onSend`, `onSkip`, `answered`) stays as-is.
+## Changes
+
+### 1. `src/routes/api/triage.ts` — the single gate (keep + strengthen)
+
+- Keep the existing triage tool-call shape (`mode`, `suggestions`, `reply`, etc.).
+- Rewrite `TRIAGE_SYSTEM_PROMPT` so `clarify` is a **last resort**: only when two reasonable interpretations would produce visibly different products AND no sensible default exists. Otherwise pick build/edit/fix and proceed with a stated assumption. Drop the "low confidence → clarify" guidance.
+- Tighten `looksLikeBareQuestion`: a bare question now biases to `explain` (Petal answers it) instead of `clarify` (Petal asks back). Only escalate to `clarify` when the message is so short/ambiguous that no answer is possible.
+- This is now the only file in the codebase that decides "is this turn a question?".
+
+### 2. `src/routes/api/discuss.ts` — strip its question logic
+
+- Rewrite `DISCUSS_SYSTEM_PROMPT` to forbid asking questions in this mode. Discuss runs only when triage already classified the turn as `chat`/`explain` — its job is to **answer**, not to interrogate. Hard rule: "Never end a reply with `?`. State assumptions, propose a plan, and stop. If you genuinely cannot answer without more information, say so in one sentence and stop — do not ask."
+- **Delete** the `SUGGESTED-ANSWER CHIPS (MANDATORY…)` block in the prompt.
+- **Delete** the server-side safety net that synthesizes chips when the reply contains `?` (lines ~273–288). With discuss no longer asking, this is dead code.
+- Stop parsing the trailing ```suggestions``` fenced block — discuss won't emit one anymore. Simplify the response to `{ reply }`.
+- Update `src/lib/discuss.ts` client helper to drop `suggestions` from its return type.
+
+### 3. `src/routes/api/generate.ts` — strip its question logic
+
+- **Delete** `detectClarifyingQuestion` (lines ~845–893) and its call site at ~2073–2109. Generate no longer second-guesses whether the model "really meant to ask" — by the time generate runs, triage has already routed clarifying turns elsewhere, so generate's job is unambiguously to ship files.
+- **Delete** the `emitConversationalFallback` `suggestions` branch usage tied to that detector. Keep the helper itself if other call sites use it; remove only the question-detection caller.
+- Add one short line to the build system prompt (in `src/server/generate.server.ts`): "Do NOT ask the user questions in this turn. If something is unclear, make the most reasonable assumption, state it in `summary`, and proceed. Asking is handled upstream — by the time you run, the user has committed to a build."
+
+### 4. `src/server/answer-options.server.ts` — keep, used only by triage
+
+- File stays. Triage may call it as a server-side safety net when the model returns `mode=clarify` with empty `suggestions` (rare, but worth keeping the guardrail). Remove its imports from `discuss.ts` and `generate.ts`.
+
+### 5. Client routing in `src/routes/builder.tsx` — trust triage
+
+- When triage returns `intent="clarify"`, render the question card (`SuggestionChecklist`) using `meta.suggestions` and `meta.reply` directly — do NOT call `/api/discuss` or `/api/generate` for that turn.
+- When `intent="chat"`, call `/api/discuss` (will never return suggestions now).
+- When `intent="build"`, call `/api/generate` (will never abort on a question now).
+- Remove any client-side fallback that synthesizes chips from a generate response — generate no longer emits clarifying questions.
+
+---
+
+## Files
+
+**Edit:**
+- `src/routes/api/triage.ts` — prompt rewrite + downgrade tightening (single source of truth).
+- `src/routes/api/discuss.ts` — strip prompt rules, strip chip parser, strip safety net, simplify response.
+- `src/routes/api/generate.ts` — delete `detectClarifyingQuestion` + its call site.
+- `src/server/generate.server.ts` — add one-line "do not ask" rule to the build prompt.
+- `src/lib/discuss.ts` — drop `suggestions` from `DiscussResult`.
+- `src/routes/builder.tsx` — route `clarify` intent to question card without hitting discuss/generate.
+
+**Keep, unchanged:**
+- `src/server/answer-options.server.ts` (now only called from triage as a safety net).
+- `src/components/SuggestionChecklist.tsx` (UI is fine; it just renders whatever triage produced).
+
+**No new files. No DB changes. No UI changes.**
 
 ---
 
 ## Out of scope
 
-- Multi-question carousel as a real multi-step flow (still one question per assistant turn). Arrows render disabled for now so the visuals match Lovable; we can wire real multi-question later by extending the assistant-message shape to `questions: Array<{ question, options }>`.
-- Composer blocking. Questions remain non-blocking per existing memory rule.
-- Triage / discuss / generate orchestration logic — only the prompts and the new options-synthesizer change.
+- Redesigning the question card UI.
+- Touching credits, build pipeline, or the integration-suggestion chips (those are a separate system for "enable backend / payments / etc." and not user-facing questions).
+- Changing the Idea Coach (separate flow, separate endpoint).
 
-## Files touched
+## Why this is a permanent fix
 
-- `src/components/SuggestionChecklist.tsx` — full rewrite (same export).
-- `src/routes/builder.tsx` — derive + pass `question` title.
-- `src/routes/api/discuss.ts` — stricter prompt + post-reply safety net.
-- `src/routes/api/generate.ts` — wire safety net into `detectClarifyingQuestion`.
-- `src/routes/api/triage.ts` — one-line prompt tightening (optional).
-- `src/server/answer-options.server.ts` — **new** shared synthesizer.
+- **One decision, one place.** "Should Petal ask?" is answered exactly once per turn, by triage. Discuss and generate become pure executors.
+- **No drift.** Today the three layers' prompts can disagree and each has its own regex; tightening one doesn't fix the others. After this change, tuning Petal's askiness means editing one prompt.
+- **Fewer false-positive questions.** Generate's regex that aborts builds on any `?` is gone — no more "Want to see it live?" killing a deploy.
+- **Cheaper.** One fewer LLM safety-net call in discuss; no second classifier pass in generate.
