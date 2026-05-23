@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.admin_grant_credit(uuid, numeric, text) TO authenticated;
