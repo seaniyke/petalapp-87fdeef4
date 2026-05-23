@@ -310,6 +310,16 @@ export async function loadProjectFiles(projectId: string): Promise<ProjectFile[]
   return (data ?? []).map((r) => ({ path: r.path, content: r.content }));
 }
 
+function dedupeProjectFiles(files: ProjectFile[]): ProjectFile[] {
+  const byPath = new Map<string, ProjectFile>();
+  for (const file of files) {
+    const path = file.path.trim();
+    if (!path) continue;
+    byPath.set(path, { path, content: file.content ?? "" });
+  }
+  return Array.from(byPath.values());
+}
+
 /** Marker prefix used to embed structured assistant fields (plan/recap) inside
  *  the existing `content` text column. Backward-compatible: any row without
  *  this prefix is treated as a plain text message. */
@@ -375,11 +385,12 @@ export async function loadProjectMessages(projectId: string): Promise<ChatMessag
  * happen in a single transaction — a failed save never empties the project.
  */
 export async function saveProjectFiles(projectId: string, files: ProjectFile[]) {
+  const cleanFiles = dedupeProjectFiles(files);
   // Cast: the generated types treat jsonb args narrowly, but our payload is a
   // plain JSON array of {path, content} which the RPC handles natively.
   const { error } = await supabase.rpc(
     "replace_project_files",
-    { _project_id: projectId, _files: files } as never
+    { _project_id: projectId, _files: cleanFiles } as never
   );
   if (error) throw error;
 }
