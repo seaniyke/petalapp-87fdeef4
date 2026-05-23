@@ -4436,7 +4436,7 @@ function Builder() {
                   ) : (
                     <button
                       type="submit"
-                      disabled={bootstrapping || pendingQuestion || !input.trim()}
+                      disabled={bootstrapping || !input.trim()}
                       className="grid h-9 w-9 place-items-center rounded-full bg-[oklch(0.62_0.19_255)] text-white shadow-[0_2px_8px_-2px_oklch(0.62_0.19_255/0.5)] transition hover:brightness-110 active:scale-95 disabled:bg-foreground/20 disabled:text-foreground/40 disabled:shadow-none"
                       title={
                         discussBusy
