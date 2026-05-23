@@ -89,6 +89,7 @@ export function BuildTargetChips({ projectId, value, onChange, compact = false }
   return (
     <div ref={wrapRef} className="relative inline-block">
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
