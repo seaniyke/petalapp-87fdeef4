@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, Terminal, RotateCw, AlertCircle, Smartphone, MousePointerClick, X } from "lucide-react";
 import type { ProjectFile } from "@/server/generate.server";
 import { detectUnsupportedWebContainerBrowser } from "@/lib/browser-support";
+import { PreviewCrashFallback } from "@/components/PreviewCrashFallback";
 import {
   ensurePickerInstalled,
   getContainer,
