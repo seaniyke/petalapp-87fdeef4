@@ -91,10 +91,13 @@ function resolveKitBlockPaths(blockNames: ReadonlyArray<string>, opts?: { hasBac
 function resolveExamplePaths(
   template: TemplateSpec,
   archetype: ArchetypeSpec | null,
+  opts?: { hasBackend?: boolean },
 ): string[] {
-  const examples = KIT_FILES.filter((f) =>
-    f.path.startsWith("src/components/examples/"),
-  );
+  const examples = KIT_FILES.filter((f) => {
+    if (!f.path.startsWith("src/components/examples/")) return false;
+    if (!opts?.hasBackend && f.path.includes("/auth-")) return false;
+    return true;
+  });
   const needles = new Set<string>();
   // Template key tokens (e.g. "kanban-tasks" → "kanban", "tasks").
   for (const tok of template.key.split("-")) needles.add(tok);
@@ -148,7 +151,7 @@ export function composeAppBlueprint(brief: string, opts?: { hasBackend?: boolean
   }
 
   const kitBlockPaths = resolveKitBlockPaths(template.blocks, opts);
-  const examplePaths = resolveExamplePaths(template, archetype);
+  const examplePaths = resolveExamplePaths(template, archetype, opts);
 
   const guardrails: string[] = [];
   if (archetype?.reality === "demo-only") {
