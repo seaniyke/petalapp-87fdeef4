@@ -2874,13 +2874,33 @@ Forbidden defaults
         // Without this, every streaming generate call shows NULL tokens
         // and we can't distinguish "model returned a full project" from
         // "model returned a one-line refusal".
+        // Pull cached-prefix tokens out of whichever shape the upstream used.
+        // OpenAI / Anthropic via OpenRouter: usage.prompt_tokens_details.cached_tokens.
+        // Anthropic raw: usage.cache_read_input_tokens.
+        const cachedPromptTokens =
+          collected.usage?.prompt_tokens_details?.cached_tokens ??
+          collected.usage?.cache_read_input_tokens ??
+          null;
         void updateLastCallUsage({
           feature: "generate",
           model,
           promptTokens: collected.usage?.prompt_tokens ?? null,
           completionTokens: collected.usage?.completion_tokens ?? null,
           totalTokens: collected.usage?.total_tokens ?? null,
+          cachedPromptTokens,
+          staticPrefixChars: staticPrefixText.length,
+          staticPrefixHash,
+          filesSent: isInitial ? 0 : (promptBudget.files?.length ?? 0),
         });
+        if (collected.usage?.prompt_tokens) {
+          const hitPct =
+            cachedPromptTokens && collected.usage.prompt_tokens
+              ? ((cachedPromptTokens / collected.usage.prompt_tokens) * 100).toFixed(1)
+              : "0.0";
+          console.log(
+            `[prompt-cache] result prompt=${collected.usage.prompt_tokens} cached=${cachedPromptTokens ?? 0} hit=${hitPct}% model=${model}`,
+          );
+        }
         let finalCharged = 0;
         if (body.isAutoFix) {
           console.log(`[credits] auto-fix run — skipping charge of ${priced.amount} (would-be)`);
