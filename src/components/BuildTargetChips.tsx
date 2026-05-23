@@ -7,7 +7,7 @@
  * Selection is persisted per-project to localStorage and surfaced to the
  * parent via `onChange`. Defaults to "web" (no extra prompt steering).
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Hammer } from "lucide-react";
 import {
   BUILD_TARGETS,
