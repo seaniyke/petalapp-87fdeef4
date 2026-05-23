@@ -1607,6 +1607,7 @@ Forbidden defaults
     learningBlock +
     highStakesBlock +
     visionAddendum +
+    backendGateBlock +
     filesContext;
 
   // Short stable hash of the prefix — logged with each call so we can see at
@@ -2991,6 +2992,9 @@ Forbidden defaults
               plan,
               recap,
               creditsCharged: finalCharged,
+              ...(backendGate.gated && backendGate.suggestions.length > 0
+                ? { suggestions: backendGate.suggestions }
+                : {}),
             }),
           ),
         );
