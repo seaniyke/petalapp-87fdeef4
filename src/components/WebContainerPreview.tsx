@@ -213,7 +213,18 @@ export function WebContainerPreview({
         return;
       }
       if (data.type === "petal:runtime:error" && data.payload && onRuntimeError) {
-        onRuntimeError(data.payload as unknown as RuntimeError);
+        const payload = data.payload as RuntimeError;
+        onRuntimeError(payload);
+        // Plan #3 — sliding-window crash detector. Count errors in last 5s;
+        // if 2+ pile up the preview is effectively dead — swap to fallback.
+        const now = Date.now();
+        crashWindowRef.current = [
+          ...crashWindowRef.current.filter((t) => now - t < 5_000),
+          now,
+        ];
+        if (crashWindowRef.current.length >= 2 && !crashReason) {
+          setCrashReason(payload?.message?.slice(0, 240) || "Unknown runtime error");
+        }
         return;
       }
       if (!onPick) return;
@@ -226,7 +237,7 @@ export function WebContainerPreview({
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [onPick, onRuntimeError]);
+  }, [onPick, onRuntimeError, crashReason]);
 
   // Reset the picker-ready flag whenever the iframe is hard-reloaded — the
   // new document needs to send `petal:pick:ready` again to be considered live.
