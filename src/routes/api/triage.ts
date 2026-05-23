@@ -220,6 +220,35 @@ function modeToIntent(mode: TriageMode): TriageIntent {
   return "build"; // build / edit / fix / redesign all run the build pipeline
 }
 
+/**
+ * Deterministic "bare question" sniffer. Catches messages like
+ *   "Why is the preview blank?"
+ *   "Is this the deployed URL?"
+ *   "What does this button do?"
+ * where the user is asking ABOUT existing state, not asking us to change it.
+ *
+ * If matched, we bias triage toward `clarify`/`explain` so the build
+ * pipeline doesn't run on a guess. The model can still override with high
+ * confidence (≥0.8) — e.g. if it's clearly "fix it" phrased as a question.
+ */
+function looksLikeBareQuestion(text: string): boolean {
+  const t = (text ?? "").trim();
+  if (!t) return false;
+  if (!/\?\s*$/.test(t)) return false;
+  // Imperative / fix-it cues short-circuit: this is a real instruction.
+  if (
+    /\b(?:fix|repair|change|update|make|add|build|create|remove|delete|rename|replace|redesign|refactor|implement|wire|hook up|install|set up|enable|disable|move|rewrite)\b/i.test(
+      t,
+    )
+  ) {
+    return false;
+  }
+  // Leading question word.
+  return /^(?:why|what|how|where|when|which|who|is|are|was|were|do|does|did|can|could|should|would|will|may|might|have|has|had)\b/i.test(
+    t,
+  );
+}
+
 function safeMeta(args: unknown): TriageMeta {
   // Defensive parse — the gateway can occasionally drop fields.
   const obj = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
