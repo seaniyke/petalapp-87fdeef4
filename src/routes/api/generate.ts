@@ -1551,6 +1551,8 @@ Forbidden defaults
       content:
         baseSystem +
         buildTargetBlock +
+        designQualityBlock +
+
 
         dateBlock +
         capabilitiesBlock +
