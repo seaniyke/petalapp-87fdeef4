@@ -851,6 +851,18 @@ function Builder() {
   //   - awaitingBuild: post-generation, pre-deploy bridge (no flash)
   const petalIsWorking = busy || discussBusy || isDeploying || awaitingBuild;
 
+  // Pending clarifying question gate. When the LAST message is an assistant
+  // turn with `suggestions`, Petal is asking the user to choose. Until the
+  // user sends an answer or taps "Skip question" the composer is hard-blocked
+  // and the SuggestionChecklist is the only way to proceed.
+  const _lastMsg = messages[messages.length - 1];
+  const pendingQuestion =
+    !!_lastMsg &&
+    _lastMsg.role === "assistant" &&
+    (_lastMsg.suggestions?.length ?? 0) > 0 &&
+    answeredQuestionAt !== messages.length &&
+    !petalIsWorking;
+
   // Long-wait escalation for the deploy phase. We escalate copy at 60s/90s
   // and surface a friendly "deploy stalled" card at 150s so the user always
   // has a way to retry or keep working — never a stranded spinner.
