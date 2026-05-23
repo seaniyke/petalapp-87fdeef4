@@ -18,7 +18,8 @@ export type LabsFlagName =
   | "integrations_marketplace"
   | "pwa_template"
   | "staged_pipeline"
-  | "agent_loop";
+  | "agent_loop"
+  | "ast_patches";
 export type LabsFlags = Partial<Record<LabsFlagName, boolean>>;
 
 const ALL_FLAGS: LabsFlagName[] = [
@@ -26,6 +27,7 @@ const ALL_FLAGS: LabsFlagName[] = [
   "pwa_template",
   "staged_pipeline",
   "agent_loop",
+  "ast_patches",
 ];
 
 export async function loadLabsFlagsForRequest(jwt: string | null | undefined): Promise<LabsFlags> {
