@@ -241,7 +241,15 @@ export async function updateLastCallUsage(args: {
     const { data: rows } = await q;
     const id = rows?.[0]?.id;
     if (!id) return;
-    const patch: Record<string, unknown> = {
+    const patch: {
+      prompt_tokens: number | null;
+      completion_tokens: number | null;
+      total_tokens: number | null;
+      cached_prompt_tokens?: number | null;
+      static_prefix_chars?: number | null;
+      static_prefix_hash?: string | null;
+      files_sent?: number | null;
+    } = {
       prompt_tokens: args.promptTokens,
       completion_tokens: args.completionTokens,
       total_tokens: args.totalTokens,
