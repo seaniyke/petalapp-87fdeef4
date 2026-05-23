@@ -2435,7 +2435,7 @@ function Builder() {
       }
 
       try {
-        const { reply, suggestions } = await requestDiscussion({
+        const { reply } = await requestDiscussion({
           messages: nextMessages,
           currentFiles: files,
           customInstructions: proj.custom_instructions ?? undefined,
@@ -2443,7 +2443,6 @@ function Builder() {
         const assistantMsg: ChatMessage = {
           role: "assistant",
           content: reply,
-          ...(suggestions.length > 0 ? { suggestions } : {}),
         };
         setMessages((prev) => {
           const updated = [...prev, assistantMsg];

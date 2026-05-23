@@ -3,11 +3,14 @@
  *
  * Discuss mode is non-streaming and non-mutating — it just returns a markdown
  * reply that we render in the chat. No phases, no file changes, no build.
+ *
+ * Discuss never asks the user a question — clarifying turns are routed
+ * upstream by /api/triage. So this helper only returns a reply string.
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 
-export type DiscussResult = { reply: string; suggestions: string[] };
+export type DiscussResult = { reply: string };
 
 export async function requestDiscussion(
   body: {
@@ -35,10 +38,7 @@ export async function requestDiscussion(
     const text = await resp.text().catch(() => "");
     throw new Error(text || `Request failed (${resp.status})`);
   }
-  const json = (await resp.json()) as { reply?: string; suggestions?: string[] };
+  const json = (await resp.json()) as { reply?: string };
   if (!json.reply) throw new Error("Empty reply from AI.");
-  return {
-    reply: json.reply,
-    suggestions: Array.isArray(json.suggestions) ? json.suggestions : [],
-  };
+  return { reply: json.reply };
 }
