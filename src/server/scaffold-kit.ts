@@ -21,7 +21,7 @@ import { EXAMPLES_PACK_2 } from "./examples-pack-2";
 import { PETAL_SOURCE_PLUGIN } from "./petal-source-plugin";
 import { KIT_BLOCK_FILES } from "./scaffold-kit-blocks";
 import { KIT_BLOCK_FILES_2 } from "./scaffold-kit-blocks-2";
-import { KIT_BLOCK_FILES_3 } from "./scaffold-kit-blocks-3";
+import { BACKEND_KIT_BLOCK_FILES_3, KIT_BLOCK_FILES_3 } from "./scaffold-kit-blocks-3";
 import { KIT_BLOCK_FILES_4 } from "./scaffold-kit-blocks-4";
 import { KIT_BLOCK_FILES_MOBILE } from "./scaffold-kit-mobile";
 
@@ -3722,8 +3722,7 @@ export const KIT_FILES: KitFile[] = [
   // section variants + page-assembly examples (saas/editorial/ecommerce/
   // agency/app-shell/blog) showing the model how to compose full pages.
   ...KIT_BLOCK_FILES_2,
-  // Phase-3 expansion (workstream B): auth cards pre-wired to the backend
-  // kit, data-display tiles (StatCard/KpiGrid/ComparisonTable/PricingTable/
+  // Phase-3 expansion (workstream B): data-display tiles (StatCard/KpiGrid/ComparisonTable/PricingTable/
   // ActivityFeed), form blocks (MultiStepWizard/FileUploadDropzone/EmptyStateCta),
   // dashboard shell (SidebarShell/SectionHeader/FilterBar), and commerce
   // (ProductCard/CartLineItem/CheckoutSummary). Defined separately to keep
@@ -3878,12 +3877,15 @@ export function applyScaffoldKit(
     }
   }
 
-  // Backend kit: only injected when a backend is connected to the project.
-  // All entries overwrite — these files are protected and the AI must not
-  // own them.
+  // Backend kit + backend-only auth blocks: only injected when a backend is
+  // connected to the project. All entries overwrite — these files are
+  // protected and the AI must not own them.
   let extraDeps: Record<string, string> = {};
   if (opts?.backend) {
     for (const f of backendKit(opts.backend)) {
+      map.set(f.path, f.content);
+    }
+    for (const f of BACKEND_KIT_BLOCK_FILES_3) {
       map.set(f.path, f.content);
     }
     extraDeps = BACKEND_DEPS;
