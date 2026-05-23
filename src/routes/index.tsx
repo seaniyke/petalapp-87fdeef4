@@ -620,10 +620,7 @@ function Landing() {
 
                   <ComposerModePicker value={mode} onChange={setMode} />
 
-                  {/* Build-target picker — Google AI Studio-style */}
-                  {mode !== "coach" && (
-                    <BuildTargetChips value={buildTarget} onChange={setBuildTarget} compact />
-                  )}
+                  {/* Build-target picker hidden on landing — selection still flows via builder. */}
                 </div>
 
                 {mode !== "coach" && (
