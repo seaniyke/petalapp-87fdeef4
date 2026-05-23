@@ -49,6 +49,8 @@ export function WebContainerPreview({
   reloadKey,
   onPick,
   onRuntimeError,
+  onAskRepair,
+  lastNarration,
 }: {
   files: ProjectFile[];
   /** Bump this number to force the iframe to reload (e.g. after restoring a version). */
@@ -57,6 +59,10 @@ export function WebContainerPreview({
   onPick?: (el: PickedElement) => void;
   /** Called when the running app throws a runtime error or unhandled rejection. */
   onRuntimeError?: (err: RuntimeError) => void;
+  /** Plan #3 — user clicked "Ask Petal to repair" on the crash fallback. */
+  onAskRepair?: (reason: string) => void;
+  /** Plan #3 — last build narration to surface on the crash fallback as context. */
+  lastNarration?: string | null;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [serverUrl, setServerUrl] = useState<string | null>(null);
@@ -65,6 +71,11 @@ export function WebContainerPreview({
   const [showLogs, setShowLogs] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [pickActive, setPickActive] = useState(false);
+  // Plan #3 — preview-crash detection. When the running app throws 2+ runtime
+  // errors within 5s we consider it a hard crash and swap the iframe for
+  // PreviewCrashFallback. Reload clears the state and remounts.
+  const [crashReason, setCrashReason] = useState<string | null>(null);
+  const crashWindowRef = useRef<number[]>([]);
   // Set to a friendly message when the picker has been "armed" for >30s
   // without the iframe acknowledging readiness — usually means the picker
   // script failed to inject (custom index.html, very fast iframe reload, etc).
