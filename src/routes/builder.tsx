@@ -852,14 +852,25 @@ function Builder() {
   const petalIsWorking = busy || discussBusy || isDeploying || awaitingBuild;
 
   // Pending clarifying question gate. When the LAST message is an assistant
-  // turn with `suggestions`, Petal is asking the user to choose. Until the
-  // user sends an answer or taps "Skip question" the composer is hard-blocked
-  // and the SuggestionChecklist is the only way to proceed.
+  // turn that BOTH carries `suggestions` AND ends with a real question mark
+  // in its body, Petal is asking the user to choose. Until the user sends an
+  // answer or taps "Skip question" the composer is hard-blocked and the
+  // SuggestionChecklist is the only way to proceed.
+  //
+  // Suggestions WITHOUT a "?" in the text are post-build next-step ideas
+  // (from self-check) and must NOT block the composer — otherwise a happy
+  // path build silently locks the user out. Keep this in sync with the
+  // SuggestionChecklist render gate below (~line 3326).
   const _lastMsg = messages[messages.length - 1];
+  const _lastMsgHasQuestion =
+    !!_lastMsg &&
+    _lastMsg.role === "assistant" &&
+    /\?\s*$/m.test(sanitizeNarrative(_lastMsg.content ?? "").trim());
   const pendingQuestion =
     !!_lastMsg &&
     _lastMsg.role === "assistant" &&
     (_lastMsg.suggestions?.length ?? 0) > 0 &&
+    _lastMsgHasQuestion &&
     answeredQuestionAt !== messages.length &&
     !petalIsWorking;
 
@@ -3324,12 +3335,20 @@ function Builder() {
                             composer is hard-blocked above until the user
                             sends an answer or taps Skip. */}
                         {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && (() => {
+                          // Only render the radio-style "Pick an option" card
+                          // for REAL clarifying questions — i.e. the assistant
+                          // text actually contains a question mark. Post-build
+                          // "next move" suggestions (from self-check) are NOT
+                          // questions; they belong in NextStepsCard below and
+                          // would otherwise duplicate it as a misleading
+                          // "Pick an option" card. See plan.md.
                           const text = sanitizeNarrative(m.content ?? "");
                           const sentences = text.split(/(?<=[.!?])\s+/);
                           const lastQ = [...sentences]
                             .reverse()
                             .find((s) => /\?\s*$/.test(s.trim()));
-                          const title = (lastQ ?? "Pick an option").trim();
+                          if (!lastQ) return null;
+                          const title = lastQ.trim();
                           return (
                             <SuggestionChecklist
                               options={m.suggestions}

@@ -1,85 +1,66 @@
-# Petal duplication audit
+## What I found
 
-Goal: find every place where multiple independent modules implement the same job (the same pattern that made the question-asking layers fight each other), rank by risk, and propose a safe consolidation order. No code changes in this turn — this is the audit + roadmap. We touch nothing until you pick what to consolidate.
+Two distinct bugs, both rooted in "two systems doing one job" — same theme as the earlier audit.
 
-## How the audit was done
+### Bug 1 — "Pick an option" card appears on a successful build (image 2)
 
-Scanned `src/lib`, `src/server`, `src/routes/api`. For each suspect group I read the file headers to confirm overlap vs. legitimate specialization. Flagged a group only when (a) modules answer the same question, (b) they run in the same turn, and (c) divergence between them is the kind of bug that just bit us in triage/discuss/generate.
+`src/routes/builder.tsx` has ONE renderer for the `message.suggestions` field (`SuggestionChecklist`, line 3326) but TWO writers feeding it:
 
-## Findings, ranked by how badly they mirror the question-asking bug
+- `onResult.extras.suggestions` — true clarifying questions / backend chips Petal wants the user to confirm.
+- `onSelfCheck(v).suggestions` (line 1962) — post-build "next move" ideas like "Add appointment booking form".
 
-### 1. CRITICAL — 15 hand-rolled "intent detectors" (`src/lib/*-intent.ts`)
+Both write to the same `m.suggestions`, so the next-move list renders as a radio-style "Pick an option" card *and* the `NextStepsCard` ("READY — WHAT'S NEXT?") renders right below it. Duplicate surface, and it looks like Petal is asking a question when it isn't.
 
-`backend-intent`, `payment-intent`, `email-intent`, `domain-intent`, `seo-intent`, `add-page-intent`, `mobile-intent`, `analytics-intent`, `ai-feature-intent`, `storage-intent`, `realtime-intent`, `cron-intent`, `game-intent`, `high-stakes-intent`, `integration-request-intent`.
+Per project memory: "Petal asks at most ONE question per reply and only when truly ambiguous." Post-build next-step ideas are not questions.
 
-Each file is the same shape: a `STRONG_SIGNALS` regex list + a `detectXIntentInTurn(prevUser, reply)` function. `builder.tsx` runs **all 12** of them on every assistant message (lines 3434–3851) to decide which inline suggestion chip to render. Several also re-run `detectBackendIntent` as a sub-check, so the same regex set evaluates 5+ times per turn. New intent type = new file + new import + new render branch — exactly the fragmentation pattern we just fixed.
+### Bug 2 — Blank preview / repeated build failures (image 1)
 
-**Risk if left alone:** every new chip type adds another regex list that can disagree with triage, and chips already silently overlap (storage + backend + realtime fire together on the same message).
+Looking at the last 6 builds for project `cbfeb89f` (the hospital landing page):
 
-### 2. HIGH — 5 overlapping classifiers/routers feeding generation
-
-`src/routes/api/triage.ts`, `src/server/semantic-router.server.ts`, `src/server/smart-router.server.ts`, `src/server/phase-classifier.server.ts`, `src/lib/app-shape-classifier.ts` (plus `two-phase-gate.server.ts`).
-
-Each one inspects the user prompt and tags it with something (mode, archetype, phase, model, app-shape, gate). They have legitimate separate jobs, but the boundaries are blurry — `triage.mode` and `phase-classifier.phase` both influence model choice, `semantic-router` and `app-shape-classifier` both predict app surfaces. If two disagree on the same turn, the later one silently wins. Same failure mode as triage vs. generate.
-
-### 3. HIGH — Verification / autofix pipeline has 8 layers
-
-`local-verifier`, `esbuild-verifier`, `render-risk-linter`, `rls-sanity-linter`, `validate-styles`, `stream-autofixer`, `post-stream-autofix`, `strip-hallucinated-imports`, `tool-call-guard`, `self-recovery`.
-
-Most are legitimately staged tiers (2.0 → 2.9). But `stream-autofixer` (regex) and `post-stream-autofix` (model) overlap, and `strip-hallucinated-imports` partly duplicates what `post-stream-autofix` is asked to do. Worth tightening, not collapsing.
-
-### 4. MEDIUM — `.ts` / `.server.ts` / `.functions.ts` twins
-
-| Module | Files |
-|---|---|
-| runtime-wallet | `lib/runtime-wallet.ts` + `server/runtime-wallet.server.ts` |
-| petal-subdomain | `lib/petal-subdomain.ts` + `server/petal-subdomain.server.ts` |
-| petal-email | `server/petal-email.functions.ts` + `server/petal-email.server.ts` |
-| preflight-estimate | `.functions.ts` + `.server.ts` |
-| managed-migrations | `.functions.ts` + `.server.ts` |
-
-Some of these are correct (functions = createServerFn wrapper, server = pure logic). Others (runtime-wallet, petal-subdomain) look like accidental forks. Needs a per-pair read before touching.
-
-### 5. MEDIUM — `scaffold-kit*` is split across 6 files
-
-`scaffold-kit.ts`, `scaffold-kit-blocks.ts`, `-blocks-2`, `-blocks-3`, `-blocks-4`, `scaffold-kit-mobile.ts`, plus `examples-pack.ts` + `examples-pack-2.ts`. The `-2/-3/-4` numbering is a strong signal these grew by append rather than refactor. Risk is low (data files, no runtime conflict) but maintenance is bad.
-
-### 6. LOW — Discuss/Generate post-consolidation leftovers
-
-`src/server/answer-options.server.ts` still exists but the previous consolidation made it unreachable from discuss/generate. Either re-wire it as triage's chip source or delete it. Same for `SuggestionChecklist.tsx`'s suggestion-parsing branches.
-
-## Recommended order (safest first)
-
-```text
-Step A  delete dead code from last consolidation (Finding 6)
-Step B  unify the 15 intent detectors behind one registry (Finding 1)
-Step C  audit the 5 .ts/.server.ts twins, merge the accidental ones (Finding 4)
-Step D  rationalise scaffold-kit-* into one indexed module (Finding 5)
-Step E  draw the classifier/router contract on paper, then merge or
-        explicitly split jobs (Finding 2)
-Step F  tighten stream-autofixer vs post-stream-autofix overlap (Finding 3)
+```
+17 modules  → SignInPage.tsx broken JSX  (latest)
+ 8 modules  → SignInPage.tsx broken JSX
+15 modules  → SignInPage.tsx broken JSX
+1612 mods   → @/integrations/backend/auth missing
+1591 mods   → same
+1042 mods   → same
 ```
 
-A, C, D, F are mechanical and low-risk. B is the highest payoff — it kills the exact "12 independent regex lists fight each other" pattern. E is the highest risk; do it last and only after we agree on the contract.
+The model keeps scaffolding `src/pages/SignInPage.tsx` for a hospital landing page even though the project has NO backend. Each "fix" attempt then tries to "disable" the sign-in form and produces broken JSX (unclosed tags, `<Stack>` inside props, etc.). The autofixer can't recover, build fails, preview goes blank.
 
-## What I'd do first (suggested next turn)
+Root cause: nothing in the prompt or pipeline tells the model "if no backend, do not create auth pages at all." We added rules about commented-out JSX but not about scaffolding auth pages speculatively.
 
-**Step B — Intent Registry.** One file `src/lib/intent-registry.ts` exporting:
+## Plan
 
-```ts
-type IntentId = "backend" | "payment" | "email" | "domain" | ...
-type IntentRule = { id: IntentId; signals: RegExp[]; chip: ChipSpec; requiresBackend?: boolean }
-export function detectIntents(prevUser: string, reply: string): IntentId[]
-```
+### Fix 1 — Stop duplicate suggestion surface (UI only)
 
-All 15 regex lists move into the registry as data. `builder.tsx` replaces 12 detector-import + 12 render branches with one loop over `detectIntents(...)`. Same chip UX, one place to add new intents, zero behavior change on day 1. Then we can delete the 15 files in one follow-up commit.
+In `src/routes/builder.tsx`:
 
-## Technical notes
+- Only render `SuggestionChecklist` when the assistant message text actually contains a question mark (real clarifying question). Today the title falls back to "Pick an option" when no `?` is found — that's the exact failure mode in the screenshot.
+- When there's no question mark, treat `m.suggestions` as next-step ideas and let `NextStepsCard` own them (it already exists below and is the canonical post-build surface).
 
-- No DB changes, no migrations, no UI changes in any step.
-- Steps B, C, D, F are pure refactors and reversible. Step E needs a written contract first.
-- Each step ships as its own turn so we can verify the build between them.
+This is a 1-file frontend change, no business logic touched.
 
-## Scope of THIS turn
+### Fix 2 — Stop the auth-page build loop (prompt + autofix)
 
-This plan only. Pick the step(s) you want me to execute (recommend Step A + B first) and I'll implement them in build mode.
+Two coordinated changes:
+
+1. **Prompt rule** in `src/server/generate.server.ts` (BACKEND / AUTH RULES section, ~line 111): add a hard rule — "If `src/integrations/backend/` does NOT exist, do NOT create any sign-in, sign-up, login, register, reset-password, or auth-* page or component. Do NOT add 'Sign in' links to navigation. Auth is a backend-gated feature; without backend, omit it entirely."
+
+2. **Defensive autofix** in `src/server/stream-autofixer.ts`: when no backend is present, drop any newly-emitted files matching `src/pages/(SignIn|SignUp|Login|Register|ResetPassword)Page.tsx` (and similar under `src/components/auth*`) before they ever reach the build. Strip matching nav links/imports. This is the same pattern as the existing `fixBadImports` — it runs after the model and prevents the broken file from being written.
+
+Both changes are server-side only and additive — no existing passing project is affected.
+
+### Out of scope (intentionally)
+
+- Not touching the broader audit work (intent registry, etc.) — those changes already landed and aren't implicated here.
+- Not changing the question pipeline / triage — the question wasn't actually asked; the UI just looked like a question.
+- Not redesigning `NextStepsCard` or `SuggestionChecklist`.
+
+## Files I'll edit
+
+- `src/routes/builder.tsx` — gate `SuggestionChecklist` on real-question detection.
+- `src/server/generate.server.ts` — add no-backend = no-auth-pages rule.
+- `src/server/stream-autofixer.ts` — strip auth pages when no backend; remove stale "Sign in" nav links.
+
+After edits I'll re-read each touched file to confirm syntax, and rely on the harness build to confirm typecheck.

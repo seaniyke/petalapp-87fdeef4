@@ -304,11 +304,72 @@ export function autofixFile(file: ProjectFile, report: AutofixReport, hasBackend
 }
 
 
+/**
+ * When no backend is present, drop any auth pages/components the model
+ * scaffolded speculatively and scrub references to them from other files.
+ *
+ * The model has a persistent habit of emitting `src/pages/SignInPage.tsx`
+ * (and friends) for marketing/landing pages with no backend, then later
+ * trying to "disable" them and producing broken JSX that fails the build.
+ * Without backend the right answer is to OMIT auth entirely — this is the
+ * server-side enforcement of the "NO-BACKEND AUTH RULE" prompt directive.
+ */
+const AUTH_FILE_RE =
+  /(^|\/)(SignIn|SignUp|LogIn|Login|Register|SignOut|LogOut|Logout|ForgotPassword|ResetPassword|Auth(Form|Page|Layout|Provider|Card)?|Profile|Account)(Page|View|Screen|Card|Form)?\.tsx?$/i;
+const AUTH_IMPORT_RE =
+  /^\s*import\s+[^;]*?from\s+["'][^"']*\/(SignIn|SignUp|LogIn|Login|Register|SignOut|LogOut|Logout|ForgotPassword|ResetPassword|Auth(Form|Page|Layout|Provider|Card)?|Profile|Account)(Page|View|Screen|Card|Form)?["'];?\s*\n?/gim;
+const AUTH_ROUTE_RE =
+  /<Route\b[^>]*\bpath=["']\/?(sign-?in|sign-?up|log-?in|login|register|sign-?out|log-?out|logout|forgot-password|reset-password|auth|account|profile)["'][^>]*\/?>(\s*<\/Route>)?/gi;
+const AUTH_LINK_RE =
+  /<(Link|NavLink|a)\b[^>]*\b(to|href)=["']\/?(sign-?in|sign-?up|log-?in|login|register|sign-?out|log-?out|logout|forgot-password|reset-password|auth|account|profile)["'][^>]*>[\s\S]*?<\/\1>/gi;
+
+function stripAuthSurface(
+  files: ProjectFile[],
+  report: AutofixReport,
+): ProjectFile[] {
+  const dropped: string[] = [];
+  const kept = files.filter((f) => {
+    // Only target files under user-owned paths. Never touch the scaffold,
+    // shadcn primitives, or pre-shipped examples.
+    if (f.path.startsWith("src/components/ui/")) return true;
+    if (f.path.startsWith("src/components/examples/")) return true;
+    if (f.path.startsWith("src/integrations/")) return true;
+    if (AUTH_FILE_RE.test(f.path)) {
+      dropped.push(f.path);
+      return false;
+    }
+    return true;
+  });
+  if (dropped.length === 0) return files;
+  report.fixedCount += dropped.length;
+  report.notes.push(
+    `Dropped ${dropped.length} auth file(s) — no backend in this project: ${dropped.join(", ")}`,
+  );
+  // Scrub references to the dropped files from everything that remains.
+  return kept.map((f) => {
+    if (!/\.(tsx?|jsx?)$/.test(f.path)) return f;
+    let c = f.content;
+    const before = c;
+    c = c.replace(AUTH_IMPORT_RE, "");
+    if (/\.(tsx|jsx)$/.test(f.path)) {
+      c = c.replace(AUTH_ROUTE_RE, "");
+      c = c.replace(AUTH_LINK_RE, "");
+    }
+    if (c !== before) {
+      report.fixedCount += 1;
+      report.notes.push(`Scrubbed auth refs from ${f.path}`);
+      return { ...f, content: c };
+    }
+    return f;
+  });
+}
+
 /** Apply autofixers across the whole file set. Returns new files + report. */
 export function autofixFiles(files: ProjectFile[]): { files: ProjectFile[]; report: AutofixReport } {
   const report: AutofixReport = { fixedCount: 0, notes: [] };
   const hasBackendKit = files.some((f) => f.path === "src/integrations/backend/client.ts");
   const lazyFixed = fixLazyNamedExports(files, report);
-  const out = lazyFixed.map((f) => autofixFile(f, report, hasBackendKit));
+  const authStripped = hasBackendKit ? lazyFixed : stripAuthSurface(lazyFixed, report);
+  const out = authStripped.map((f) => autofixFile(f, report, hasBackendKit));
   return { files: out, report };
 }
