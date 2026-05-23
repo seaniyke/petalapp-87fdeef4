@@ -86,7 +86,7 @@ export function ComposerModePicker({
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-64 rounded-2xl border-border bg-card p-1.5 shadow-[var(--shadow-soft)]"
+        className="w-64 rounded-2xl border-border bg-card p-1.5 shadow-[var(--shadow-soft)] backdrop-blur-xl"
         role="menu"
       >
         <ul className="flex flex-col gap-0.5">
