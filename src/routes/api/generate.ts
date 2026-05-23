@@ -2078,13 +2078,31 @@ Forbidden defaults
         {
           const q = detectClarifyingQuestion(summary);
           if (q) {
+            let chips = q.chips;
+            if (chips.length < 2) {
+              try {
+                const { synthesizeAnswerOptions } = await import(
+                  "@/server/answer-options.server"
+                );
+                const lastUser = [...messages]
+                  .reverse()
+                  .find((m) => m.role === "user")?.content;
+                const synth = await synthesizeAnswerOptions(q.question, {
+                  lastUserMessage:
+                    typeof lastUser === "string" ? lastUser : undefined,
+                });
+                if (synth.length >= 2) chips = synth;
+              } catch (err) {
+                console.warn("[question-first] options synth failed", err);
+              }
+            }
             console.warn(
               `[question-first] aborting build — model asked a clarifying question; discarding ${parsed.files?.length ?? 0} file(s) / ${parsed.ops?.length ?? 0} op(s)`,
             );
             emitConversationalFallback(controller, encoder, {
               files: currentFiles,
               summary: q.question,
-              suggestions: q.chips,
+              suggestions: chips,
             });
             return;
           }
