@@ -5,7 +5,7 @@ import { SampleAppShowcase } from "@/components/SampleAppShowcase";
 import { StartIdeasPanel } from "@/components/StartIdeasPanel";
 import { ComposerModePicker, type ComposerMode } from "@/components/ComposerModePicker";
 import { IdeaCoach } from "@/components/IdeaCoach";
-import { BuildTargetChips } from "@/components/BuildTargetChips";
+
 import type { BuildTargetId } from "@/lib/build-targets";
 
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
@@ -620,10 +620,7 @@ function Landing() {
 
                   <ComposerModePicker value={mode} onChange={setMode} />
 
-                  {/* Build-target picker — Google AI Studio-style */}
-                  {mode !== "coach" && (
-                    <BuildTargetChips value={buildTarget} onChange={setBuildTarget} compact />
-                  )}
+                  {/* Build-target picker hidden on landing — selection still flows via builder. */}
                 </div>
 
                 {mode !== "coach" && (
