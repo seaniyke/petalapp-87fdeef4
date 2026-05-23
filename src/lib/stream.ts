@@ -22,7 +22,14 @@ type Handlers = {
   onResult?: (
     files: ProjectFile[],
     summary: string,
-    extras?: { plan?: string; recap?: string; creditsCharged?: number; noFileChanges?: boolean },
+    extras?: {
+      plan?: string;
+      recap?: string;
+      creditsCharged?: number;
+      noFileChanges?: boolean;
+      /** Two-phase gate: backend chips proposed for the NEXT turn. */
+      suggestions?: string[];
+    },
   ) => void;
   onSelfCheck?: (verdict: {
     score: number;
@@ -197,6 +204,7 @@ export async function streamGenerate(
               recap: evt.recap,
               creditsCharged: evt.creditsCharged,
               noFileChanges: evt.noFileChanges,
+              suggestions: evt.suggestions,
             });
             break;
           case "self_check":
@@ -351,6 +359,7 @@ export async function streamResumeTurn(
                 recap: evt.recap as string | undefined,
                 creditsCharged: evt.creditsCharged as number | undefined,
                 noFileChanges: evt.noFileChanges as boolean | undefined,
+                suggestions: evt.suggestions as string[] | undefined,
               },
             );
             break;

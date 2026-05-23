@@ -537,6 +537,8 @@ export type StreamEvent =
       recap?: string;
       creditsCharged?: number;
       noFileChanges?: boolean;
+      /** Two-phase gate: backend chips proposed for the NEXT turn. */
+      suggestions?: string[];
     }
   | {
       type: "self_check";

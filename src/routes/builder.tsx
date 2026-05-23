@@ -1928,6 +1928,12 @@ function Builder() {
               if (typeof extras?.creditsCharged === "number") {
                 setLastBuildCredits(extras.creditsCharged);
               }
+              // Two-phase gate: backend chips proposed by the server take
+              // precedence over self_check suggestions. They're the next
+              // action Petal wants the user to confirm.
+              if (extras?.suggestions && extras.suggestions.length > 0) {
+                resultSuggestions = extras.suggestions;
+              }
             },
             onSelfCheck: (v) => {
               // Layer 5 — surface follow-up chips after every build.

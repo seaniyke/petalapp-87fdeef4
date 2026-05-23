@@ -82,6 +82,7 @@ import { applyContextBudget, type BudgetMessage } from "@/server/context-budget.
 import { expandBriefIfVague } from "@/server/brief-expander.server";
 import { loadLabsFlagsForRequest } from "@/server/labs-flags.server";
 import { runStagedPipelineStream } from "@/server/pipeline/staged-orchestrator.server";
+import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
 import {
   proposeChangePlan,
@@ -1414,6 +1415,22 @@ Forbidden defaults
     }
   }
 
+  // Two-phase gate (smart variant). On the user's very first turn, if their
+  // prompt implies a backend (auth/db/payments/etc.) AND they didn't
+  // explicitly ask for full-stack, build the FRONTEND ONLY this turn and
+  // propose backend additions via suggestion chips on the assistant message.
+  // The chips render as the standard required-answer card; the next turn
+  // ships the backend.
+  const backendGate = decideBackendGate({
+    isInitial,
+    hasBackendConnected: Boolean(backend),
+    userPrompt: lastUserContent,
+  });
+  const backendGateBlock = backendGate.gated ? renderBackendGateBlock() : "";
+  if (backendGate.gated) {
+    console.log(`[two-phase-gate] activated: ${backendGate.reason}`);
+  }
+
   // Labs flags — loaded once per request so both the staged-pipeline
   // gate (initial only) and the agentic-loop gate (post-stream autofix)
   // see the same values without re-querying. Empty {} on failure.
@@ -1590,6 +1607,7 @@ Forbidden defaults
     learningBlock +
     highStakesBlock +
     visionAddendum +
+    backendGateBlock +
     filesContext;
 
   // Short stable hash of the prefix — logged with each call so we can see at
@@ -2974,6 +2992,9 @@ Forbidden defaults
               plan,
               recap,
               creditsCharged: finalCharged,
+              ...(backendGate.gated && backendGate.suggestions.length > 0
+                ? { suggestions: backendGate.suggestions }
+                : {}),
             }),
           ),
         );
