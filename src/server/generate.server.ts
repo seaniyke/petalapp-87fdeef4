@@ -776,6 +776,19 @@ export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
         throw new Error(`AI replace snippet matched more than once in ${op.path}.`);
       }
       map.set(op.path, prev.slice(0, first) + op.replace + prev.slice(first + op.search.length));
+    } else if (op.op === "ast-patch") {
+      // Plan #4 — AST patches. The route handler is responsible for
+      // rejecting this op when the `ast_patches` labs flag is off, so
+      // by the time we get here it's authorized.
+      const prev = map.get(op.path);
+      if (typeof prev !== "string") {
+        throw new Error(`AI tried to ast-patch missing file ${op.path}.`);
+      }
+      // Lazy require so the @babel/parser import doesn't bloat the cold
+      // start of every generate request that never uses ast-patches.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { applyAstPatches } = require("./ast-patch.server") as typeof import("./ast-patch.server");
+      map.set(op.path, applyAstPatches(prev, op.patches));
     } else {
       // create — never run the expander (no original to splice from).
       map.set(op.path, op.content);
