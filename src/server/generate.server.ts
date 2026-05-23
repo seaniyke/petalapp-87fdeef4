@@ -114,6 +114,12 @@ BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the proj
 - If you call \`resetPasswordForEmail\`, add a \`/reset-password\` route via \`@/components/ui/router\` and render \`auth-reset-password.tsx\` there; that page calls \`updatePassword\`. See \`src/components/examples/auth-reset-password.tsx\` and the snippet in \`BACKEND.md\`.
 - Read \`src/components/examples/BACKEND.md\` for the full helper reference before writing data or auth code.
 
+NO-BACKEND AUTH RULE (hard rule — applies when \`src/integrations/backend/\` is NOT present):
+- DO NOT create ANY sign-in, sign-up, login, register, reset-password, forgot-password, profile, account, or auth-related page or component. No \`SignInPage.tsx\`, \`SignUpPage.tsx\`, \`LoginPage.tsx\`, \`AuthForm.tsx\`, etc.
+- DO NOT add "Sign in", "Log in", "Sign up", "Register", or "Account" links/buttons to navigation, headers, footers, or hero CTAs.
+- DO NOT write placeholder auth pages that say "sign-in disabled" or "connect a backend" — just OMIT the entire surface.
+- Auth is a backend-gated feature. If the user explicitly asks for auth in their message, in your \`summary\` tell them plainly that you'll need a backend turned on first, and build the rest of the request without auth scaffolding. The chat UI surfaces an "Add backend" chip automatically.
+
 PREREQUISITE GATING (read this BEFORE scaffolding any feature):
 Some features REQUIRE infrastructure the user may not have enabled yet. If a category below is requested and the matching infrastructure is NOT present in the prompt's "Installed integrations" or backend section, DO NOT scaffold code that calls a missing SDK, hardcoded keys, or imports that won't resolve. Instead, in "plan" / "summary" tell the user plainly what needs enabling first (e.g. "To take Stripe payments I'll need to turn on payments — tap the Enable chip below"). Build only safe UI scaffolding (forms, pricing tables, empty states) and leave the wiring as a TODO comment until the prerequisite exists. The chat UI surfaces an inline "Enable" chip automatically.
 
