@@ -190,6 +190,9 @@ export async function streamGenerate(
           case "file_complete":
             handlers.onFileComplete?.(evt.path, evt.bytes, evt.index);
             break;
+          case "file_validated":
+            handlers.onFileValidated?.(evt.path, evt.ok, evt.errors);
+            break;
           case "narration":
             handlers.onNarration?.(evt.path, evt.text);
             break;
