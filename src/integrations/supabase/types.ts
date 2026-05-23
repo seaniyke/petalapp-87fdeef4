@@ -2971,6 +2971,19 @@ export type Database = {
       expire_domain_slots: { Args: never; Returns: undefined }
       expire_paystack_plans: { Args: never; Returns: undefined }
       expire_topup_lots: { Args: never; Returns: undefined }
+      get_preview_share_by_token: {
+        Args: { _token: string }
+        Returns: {
+          allow_comments: boolean
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          project_id: string
+          revoked_at: string
+          token: string
+        }[]
+      }
       get_project_pageview_stats: {
         Args: { _project_id: string }
         Returns: {
