@@ -1,28 +1,43 @@
 /**
- * Clarifying-question checklist.
+ * Required clarifying-question answer card.
  *
- * When Petal pauses mid-build because it needs a decision from the user,
- * it presents a short checklist of options. The user ticks the boxes they
- * want and hits "Add to message" — the chosen lines are dropped into the
- * composer (joined with commas) so they can tweak before sending. Never
- * auto-submits; the user is always in control of the final message.
+ * When Petal asks a question, it pauses and shows this card. The user must
+ * either tick one or more options (and/or type a custom answer) and tap
+ * "Send answer" to continue, or tap "Skip question" to bypass. The composer
+ * is hard-blocked above until one of those happens. On send, the assembled
+ * answer is submitted automatically as the user's next message — no manual
+ * editing in the composer required.
  */
 import { useState } from "react";
-import { Check, ListChecks } from "lucide-react";
+import { Check, ListChecks, Loader2 } from "lucide-react";
 
 type Props = {
   options: string[];
-  /** Called with the assembled text once the user submits the checklist. */
-  onPick: (text: string) => void;
+  /** Submit the assembled answer (chosen ticks + optional free text). */
+  onSend: (text: string) => void;
+  /** Dismiss the question without sending a reply. */
+  onSkip: () => void;
   /** Optional question header so the card reads as a real "Petal asks" moment. */
   question?: string;
+  /** Disables interaction while a request is in flight. */
+  pending?: boolean;
+  /** Once true, the card locks into a "sent" state. */
+  answered?: boolean;
 };
 
-export function SuggestionChecklist({ options, onPick, question }: Props) {
+export function SuggestionChecklist({
+  options,
+  onSend,
+  onSkip,
+  question,
+  pending,
+  answered,
+}: Props) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [submitted, setSubmitted] = useState(false);
+  const [freeText, setFreeText] = useState("");
 
   const toggle = (i: number) => {
+    if (answered || pending) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(i)) next.delete(i);
@@ -31,22 +46,31 @@ export function SuggestionChecklist({ options, onPick, question }: Props) {
     });
   };
 
+  const assembled = (() => {
+    const chosen = [...selected].sort((a, b) => a - b).map((i) => options[i]).filter(Boolean);
+    const lines: string[] = [];
+    if (chosen.length) lines.push(chosen.join(", "));
+    const ft = freeText.trim();
+    if (ft) lines.push(ft);
+    return lines.join("\n");
+  })();
+
+  const canSend = !answered && !pending && assembled.length > 0;
+
   const submit = () => {
-    const chosen = [...selected].sort().map((i) => options[i]).filter(Boolean);
-    if (chosen.length === 0) return;
-    onPick(chosen.join(", "));
-    setSubmitted(true);
+    if (!canSend) return;
+    onSend(assembled);
   };
 
   return (
     <div
-      className="mt-3 overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-sm animate-in fade-in slide-in-from-bottom-1 duration-300"
+      className="mt-3 overflow-hidden rounded-2xl border border-primary/40 bg-card/80 shadow-sm ring-1 ring-primary/10 animate-in fade-in slide-in-from-bottom-1 duration-300"
       role="group"
-      aria-label="Petal needs a quick answer"
+      aria-label="Petal needs an answer to continue"
     >
-      <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-3.5 py-2 text-[11.5px] font-medium text-muted-foreground">
+      <div className="flex items-center gap-2 border-b border-border/60 bg-primary/[0.06] px-3.5 py-2 text-[11.5px] font-medium text-foreground/80">
         <ListChecks className="h-3.5 w-3.5" />
-        <span>{question ?? "Petal needs a quick answer — tick what fits"}</span>
+        <span>{question ?? "Petal needs an answer to continue"}</span>
       </div>
 
       <ul className="divide-y divide-border/50">
@@ -57,7 +81,7 @@ export function SuggestionChecklist({ options, onPick, question }: Props) {
               <button
                 type="button"
                 onClick={() => toggle(i)}
-                disabled={submitted}
+                disabled={answered || pending}
                 aria-pressed={on}
                 className={`flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left text-[13px] leading-snug transition ${
                   on
@@ -82,19 +106,40 @@ export function SuggestionChecklist({ options, onPick, question }: Props) {
         })}
       </ul>
 
+      <div className="border-t border-border/50 bg-background/60 px-3 py-2">
+        <textarea
+          value={freeText}
+          onChange={(e) => setFreeText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          disabled={answered || pending}
+          rows={2}
+          placeholder="Add your own answer (optional)…"
+          className="min-h-[44px] w-full resize-none rounded-md border border-border/60 bg-background/80 px-2.5 py-1.5 text-[13px] outline-none transition focus:border-primary/60 disabled:opacity-60"
+        />
+      </div>
+
       <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-muted/20 px-3 py-2">
-        <span className="text-[11px] text-muted-foreground">
-          {selected.size === 0
-            ? "Pick one or more"
-            : `${selected.size} selected`}
-        </span>
+        <button
+          type="button"
+          onClick={onSkip}
+          disabled={answered || pending}
+          className="text-[11px] text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline disabled:cursor-default disabled:opacity-50"
+        >
+          Skip question
+        </button>
         <button
           type="button"
           onClick={submit}
-          disabled={selected.size === 0 || submitted}
+          disabled={!canSend}
           className="inline-flex h-7 items-center gap-1.5 rounded-full bg-foreground px-3 text-[11.5px] font-medium text-background transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {submitted ? "Added to message" : "Add to message"}
+          {pending && <Loader2 className="h-3 w-3 animate-spin" />}
+          {answered ? "Answer sent" : pending ? "Sending…" : "Send answer"}
         </button>
       </div>
     </div>
