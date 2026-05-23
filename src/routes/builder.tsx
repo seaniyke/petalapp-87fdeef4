@@ -1458,6 +1458,17 @@ function Builder() {
               return next;
             });
           },
+          onFileValidated: (path, ok, errors) => {
+            // Plan #2 — live structural-validation signal. Surface the
+            // first issue as a cycle-progress sub-caption so the user
+            // sees Petal noticed it; repair happens in the post-stream
+            // autofix tier.
+            if (!ok && errors && errors.length > 0) {
+              setLatestCycleProgress(
+                `Spotted an issue in ${path.split("/").pop()} — will repair after stream`,
+              );
+            }
+          },
           onNarration: (path, text) => {
             // Only adopt narration for the currently-streaming file. Late
             // narrations for earlier files are dropped to keep the caption
