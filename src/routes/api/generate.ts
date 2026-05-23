@@ -355,7 +355,16 @@ type ParsedTool = {
   /** Provider stop reason from the final stream chunk, e.g. `length` / `max_tokens`. */
   finishReason: string | null;
   /** Token usage from the gateway (final SSE chunk usually carries it). */
-  usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
+  usage: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+    /** OpenAI/Anthropic via OpenRouter normalize cached prefix tokens here. */
+    prompt_tokens_details?: { cached_tokens?: number };
+    /** Anthropic raw via OpenRouter exposes these directly. */
+    cache_read_input_tokens?: number;
+    cache_creation_input_tokens?: number;
+  } | null;
 };
 
 function isTruncatedFinishReason(reason: string | null | undefined): boolean {
