@@ -1,83 +1,93 @@
-# Question-first: never deploy when Petal is asking
+## Goal
 
-## Problem
+Match Lovable's behavior end-to-end: whenever Petal asks a clarifying question, it **also** ships 2–4 concrete tap-to-pick answer options, rendered as a Lovable-style radio card (with inline "Write your own…", arrow carousel, and Skip all / Next-Review footer).
 
-Today a single turn can both **ask a clarifying question** and **build + deploy**. The screenshot shows Petal asking "is this the in-app preview, your browser, or a deployed URL?" while also wrapping the App in a Router and shipping "Your app is live · built in 13s". That's wrong on two counts:
+Two parts:
+1. **Backend** — guarantee every clarifying question comes with answer options.
+2. **Frontend** — rebuild the SuggestionChecklist card to look/behave like the screenshots.
 
-1. It burns credits on a guess.
-2. It makes the question feel rhetorical — the user already sees a "live" stamp, so why answer?
+---
 
-Rule we want: **if Petal asks, Petal doesn't build. The user answers, then Petal builds and deploys.**
+## Part 1 — Backend: always emit answer options with a question
 
-## Plan
+Today suggestions only appear when:
+- `triage` returns `clarify` (already works), OR
+- `discuss` model voluntarily emits a `` ```suggestions `` JSON block (often skipped), OR
+- `generate`'s `detectClarifyingQuestion` regex finds an "A, B, or C" or yes/no pattern (most free-form questions miss this).
 
-### 1. Triage — bias question-shaped prompts to `clarify`
+That's why Petal often asks "What color scheme would you like?" with zero clickable answers.
 
-`src/routes/api/triage.ts`
+### 1a. `src/routes/api/discuss.ts` — make answer chips mandatory when asking
 
-- Tighten the prompt: when the user's latest message is a **question about existing state** ("why is X blank?", "is this working?", "what does Y mean?") with no explicit fix instruction ("fix it", "make it work"), pick `mode = "explain"` or `"clarify"` — never `"fix"`/`"build"`.
-- Add a deterministic pre-classifier helper `looksLikeBareQuestion(text)` (regex: ends with `?`, starts with `why|what|how|is|are|can|does|do|should`, no imperative verbs). If it matches and the model still returned `fix`/`build` with `confidence < 0.7`, downgrade to `clarify` server-side before emitting `intent`.
+- Tighten `DISCUSS_SYSTEM_PROMPT`: **"If your reply contains a question mark, you MUST end with a `` ```suggestions `` JSON array of 2–4 short, distinct answer options (each ≤6 words, written as the user would say them, e.g. `"Use a dark theme"`, `"Keep it light and minimal"`). Never ask a question without options."**
+- Add a server-side safety net after the model returns: if `cleanReply` contains `?` but `chipSuggestions.length === 0`, run a lightweight LLM follow-up (or a deterministic fallback that extracts noun-phrase alternatives) to fill 2–3 options. Cheapest path: a second tiny call to the same model with a 1-shot prompt — `"Given this assistant question, return 2–4 short answer options as a JSON array."` Use the existing gateway client; no new deps.
+- Keep `suggestions` flowing through the existing `Response.json({ reply, suggestions })` contract — the client already renders them.
 
-### 2. New build-time escape hatch: `ask_question` op
+### 1b. `src/routes/api/generate.ts` — same guarantee on the build-path question detector
 
-`src/server/generate.server.ts`, `src/routes/api/generate.ts`
+- In `detectClarifyingQuestion`, when a question is detected but the regex extracts 0 chips, call the same "answer-options" helper (shared util, see 1c) to synthesize 2–4 options from the question text. This runs only on the rare "question slipped through to build" path that's already discarded — but when it does, the user gets clickable answers instead of a dead card.
 
-- Extend `FileOp` with a new variant `{ kind: "ask"; question: string; chips?: string[] }`. Only one allowed per turn; if present, **all sibling file ops are discarded**.
-- Add a small `askQuestionBlock` to the system prompt:
+### 1c. New helper `src/server/answer-options.server.ts`
 
-  > If you genuinely need one piece of information before you can build safely, emit a single `ask` op with a one-sentence question and up to 3 short answer chips. Do NOT also emit file edits in the same turn. Use this sparingly — default is to state an assumption and proceed.
+- Exported `synthesizeAnswerOptions(question: string, context?: { lastUserMessage?: string }) : Promise<string[]>`.
+- Strategy: deterministic-first, LLM-fallback.
+  - Deterministic: pull "A, B, or C" lists, "yes/no" auxiliary verbs, and "either … or …" patterns out of the question (lift the existing logic from `detectClarifyingQuestion`).
+  - LLM fallback: tiny one-shot call to the cheapest model in the gateway. Cap to 4 options, ≤6 words each, dedupe, strip leading bullets/numbers.
+- Used by both 1a and 1b.
 
-- In `applyOps`, when an `ask` op is seen:
-  - skip the validator/autofix/preview steps,
-  - skip the credit settlement for file work (charge only the small triage/model-input cost already taken),
-  - emit a new SSE event `type: "question"` with `{ question, chips }`,
-  - close the stream cleanly with `type: "result_question"` instead of `type: "result"` (no `files`, no `summary`, no `recap`).
+### 1d. (Optional safety) `src/routes/api/triage.ts`
 
-### 3. Post-generation guard
+Already returns suggestions in `clarify` mode. No code change — just add a sentence in the prompt: **"Answer options must be tap-ready replies the user can send as-is, not topics."** Existing schema/limits stay.
 
-`src/routes/api/generate.ts`
+---
 
-After the model returns, before we commit `nextFiles`:
+## Part 2 — Frontend: Lovable-style question card
 
-- Run a tiny heuristic on `summary` + last assistant chunk: contains `?` AND a question word AND no past-tense edit verb ("added", "wrapped", "created"). If true AND no `ask` op was emitted, treat the turn as a malformed question — convert to a `result_question` with the detected question, discard the file ops, refund the build settlement.
-- Log this as `recordAiOutcome({ buildStatus: "aborted_question" })` so we can see how often models violate the contract.
+### 2a. Rewrite `src/components/SuggestionChecklist.tsx` (keep export name)
 
-### 4. Client — render questions as a hard pause, not a footnote
+Render shape (matches IMG_8136 / 8137 / 8138):
 
-`src/routes/builder.tsx`, `src/lib/stream.ts`
+```text
+┌────────────────────────────────────────┐
+│ {question title}                       │
+├────────────────────────────────────────┤
+│ ● Option one                           │  ← selected, soft tinted row
+│ ○ Option two                           │
+│ ○ Option three                         │
+│ ○ [ Write your own…              ]    │  ← radio + inline input
+├────────────────────────────────────────┤
+│ ‹  ›                  Skip all  [Next] │
+└────────────────────────────────────────┘
+```
 
-- Add handlers for `question` / `result_question` SSE events. On receipt:
-  - append an assistant message with `content = question`, `suggestions = chips`,
-  - set `pendingQuestion = true` for that message (already used elsewhere),
-  - **do not** show `BuildActivityCard`, "Your app is live", `NextStepsCard`, or the diff summary for this turn,
-  - keep the composer fully enabled (non-blocking, per existing rule) but tag the next user message with `forceBuild: true` so the answer doesn't get re-triaged into another `clarify`.
-- When `result_question` arrives, ensure `setActivityVisible(false)`, `setPhases(defaultPhases())`, and no `creditsCharged` chip renders.
+- State: `selectedIndex: number | null`, `customText: string`.
+- **Single-select radios.** Clicking a row selects it; clicking "Write your own…" focuses the input. Typing in the input auto-selects the custom row.
+- Footer:
+  - `‹ ›` ghost circular buttons (disabled in single-question mode — kept for visual parity).
+  - **Skip all** muted link → calls existing `onSkip`.
+  - Primary pill **Next** (or **Review** when `isLast`) → calls `onSend(selectedOption ?? customText)`. Disabled until something is picked.
+- Tokens only — `bg-card`, `bg-muted/50` for selected row, `bg-primary text-primary-foreground` for the pill, `text-muted-foreground` for Skip all. No raw hex.
+- Keep `pending` / `answered` lock states and the Cmd/Ctrl+Enter shortcut.
+- Drop the "Quick replies — tap one or keep typing" chip header. The question text becomes the card title.
 
-### 5. Wallet / credits
+### 2b. Call site `src/routes/builder.tsx` (around line 3327)
 
-`src/routes/api/generate.ts`
+- Pass `question` derived from `m.content`: take the last sentence ending in `?`; fallback to `"Pick an option"`.
+- Everything else (`options`, `onSend`, `onSkip`, `answered`) stays as-is.
 
-- A `result_question` turn settles **only** the triage + question-emission cost (a few cents at most), never the build floor.
-- The follow-up turn (user's answer, `forceBuild: true`) runs the full build and is charged normally.
+---
 
-### 6. Memory rule
+## Out of scope
 
-`mem://index.md` Core:
-
-> If Petal asks a clarifying question, the turn must NOT also edit files or deploy. Answer first, build second.
-
-## Technical details
-
-- New SSE event types: `question`, `result_question`. Backwards-compatible — older clients just ignore them and see no result, which is fine since no files were written.
-- `FileOp` discriminator gains `"ask"`. AST-patch labs flag is untouched.
-- The triage downgrade is deterministic and runs **before** the SSE `intent` event, so the client never flips to build mode for a bare question.
-- No DB schema change. Questions ride existing `messages.suggestions` column.
+- Multi-question carousel as a real multi-step flow (still one question per assistant turn). Arrows render disabled for now so the visuals match Lovable; we can wire real multi-question later by extending the assistant-message shape to `questions: Array<{ question, options }>`.
+- Composer blocking. Questions remain non-blocking per existing memory rule.
+- Triage / discuss / generate orchestration logic — only the prompts and the new options-synthesizer change.
 
 ## Files touched
 
-- `src/routes/api/triage.ts` — prompt tightening + `looksLikeBareQuestion` downgrade
-- `src/routes/api/generate.ts` — `ask` op handling, post-gen guard, new SSE events, credit settlement branch
-- `src/server/generate.server.ts` — extend `FileOp`, prompt block, `applyOps` early-return
-- `src/lib/stream.ts` — parse `question` / `result_question` events
-- `src/routes/builder.tsx` — render question turns without build chrome, set `forceBuild` on the next send
-- `mem://index.md` — add the rule
+- `src/components/SuggestionChecklist.tsx` — full rewrite (same export).
+- `src/routes/builder.tsx` — derive + pass `question` title.
+- `src/routes/api/discuss.ts` — stricter prompt + post-reply safety net.
+- `src/routes/api/generate.ts` — wire safety net into `detectClarifyingQuestion`.
+- `src/routes/api/triage.ts` — one-line prompt tightening (optional).
+- `src/server/answer-options.server.ts` — **new** shared synthesizer.
