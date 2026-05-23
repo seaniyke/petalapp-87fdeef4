@@ -14,6 +14,7 @@
 export type BuildTargetId =
   | "web"
   | "mobile"
+  | "web-mobile"
   | "backend"
   | "extension"
   // Legacy ids — older projects may have these in localStorage. Kept in
@@ -70,6 +71,24 @@ export const BUILD_TARGETS: BuildTarget[] = [
     ].join("\n"),
   },
   {
+    id: "web-mobile",
+    label: "Web + Mobile",
+    menuLabel: "Build web + mobile together",
+    hint: "Shared backend, web app + Expo mobile app",
+    glyph: "🌐📱",
+    preview: "web",
+    systemPromptAddendum: [
+      "BUILD TARGET: Web app AND Mobile app together — one project, two clients sharing the same backend / API / types.",
+      "- Web client lives at the project root (existing TanStack Start + Tailwind setup) under `src/`.",
+      "- Mobile client lives under `mobile/` as an Expo / React Native app with its own `app/` (expo-router), `package.json`, and `app.json`.",
+      "- Shared code (types, zod schemas, API client helpers, business logic) lives in `packages/shared/` and is imported by BOTH `src/` (web) and `mobile/` (RN). Never duplicate domain logic across the two clients.",
+      "- Backend / API routes are authored ONCE under `src/routes/api/` (TanStack server routes) and consumed by both clients via the shared API client.",
+      "- Web uses `div`/`span`/`button` + Tailwind. Mobile uses `View`/`Text`/`Pressable` + StyleSheet/NativeWind. NEVER mix react-dom elements into `mobile/`, NEVER import RN primitives into `src/`.",
+      "- Auth/session: implement once on the backend, expose a shared hook from `packages/shared/auth` that each client adapts to its own storage (web: cookies/localStorage, mobile: expo-secure-store).",
+      "- When the user asks to add a feature, add it to BOTH clients (web screen + mobile screen) unless they explicitly say web-only or mobile-only.",
+    ].join("\n"),
+  },
+  {
     id: "backend",
     label: "Backend / API",
     menuLabel: "Build a backend / API",
@@ -123,6 +142,7 @@ export function isMobileTarget(id: string | null | undefined): boolean {
 export const VALID_TARGET_IDS: readonly BuildTargetId[] = [
   "web",
   "mobile",
+  "web-mobile",
   "backend",
   "extension",
   "android",
