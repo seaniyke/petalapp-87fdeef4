@@ -2069,7 +2069,18 @@ Forbidden defaults
               }
             }
           }
-          const safeOps = parsed.ops.filter((op) => !isProtectedPath(op.path));
+          let safeOps = parsed.ops.filter((op) => !isProtectedPath(op.path));
+          // Plan #4 — strip ast-patch ops if the labs flag isn't on. The
+          // model isn't supposed to emit them in that case (we don't add
+          // the grammar to the prompt), but be defensive: better to ignore
+          // than to apply an unauthorized op kind.
+          if (!labsFlags.ast_patches) {
+            const astCount = safeOps.filter((op) => op.op === "ast-patch").length;
+            if (astCount > 0) {
+              console.warn(`[ast-patches] dropped ${astCount} unauthorized ast-patch op(s)`);
+              safeOps = safeOps.filter((op) => op.op !== "ast-patch");
+            }
+          }
           if (safeOps.length === 0) {
             const userGlobsHit = violations.some((v) => matchesUserProtectedGlob(v.path));
             const planScopeHit =
