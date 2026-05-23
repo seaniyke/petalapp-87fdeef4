@@ -3324,19 +3324,28 @@ function Builder() {
                             `suggestions`, before AND after a build. The
                             composer is hard-blocked above until the user
                             sends an answer or taps Skip. */}
-                        {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && (
-                          <SuggestionChecklist
-                            options={m.suggestions}
-                            answered={answeredQuestionAt === messages.length}
-                            onSend={(text: string) => {
-                              setAnsweredQuestionAt(messages.length);
-                              submitPrompt(text, { bypassQuestionGate: true });
-                            }}
-                            onSkip={() => {
-                              setAnsweredQuestionAt(messages.length);
-                            }}
-                          />
-                        )}
+                        {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && (() => {
+                          const text = sanitizeNarrative(m.content ?? "");
+                          const sentences = text.split(/(?<=[.!?])\s+/);
+                          const lastQ = [...sentences]
+                            .reverse()
+                            .find((s) => /\?\s*$/.test(s.trim()));
+                          const title = (lastQ ?? "Pick an option").trim();
+                          return (
+                            <SuggestionChecklist
+                              options={m.suggestions}
+                              question={title}
+                              answered={answeredQuestionAt === messages.length}
+                              onSend={(text: string) => {
+                                setAnsweredQuestionAt(messages.length);
+                                submitPrompt(text, { bypassQuestionGate: true });
+                              }}
+                              onSkip={() => {
+                                setAnsweredQuestionAt(messages.length);
+                              }}
+                            />
+                          );
+                        })()}
 
 
                         {/* Post-build "what's next?" card. Only on the latest

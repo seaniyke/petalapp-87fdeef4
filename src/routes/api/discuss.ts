@@ -24,6 +24,7 @@ import {
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import { renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
 import { renderPetalCapabilitiesBlock } from "@/server/petal-capabilities.server";
+import { synthesizeAnswerOptions } from "@/server/answer-options.server";
 
 type Body = {
   messages: ChatMessage[];
@@ -45,16 +46,17 @@ Rules:
 - Never invent features that aren't possible in a static React + Vite app **or covered by an installed integration listed below**. When the user asks for something an installed integration covers (e.g. sending email, tracking analytics, taking payments), say YES and describe how you'd wire it up using that integration.
 - NEVER assume the user wants light/dark mode, a theme toggle, cookie banners, language switchers, or onboarding tours. Only propose these if the user explicitly asks.
 
-SUGGESTED-ANSWER CHIPS (mandatory whenever you ask a question):
-- Whenever your reply asks the user a question OR offers a choice, append a SINGLE fenced block at the very end of your reply in this exact shape:
+SUGGESTED-ANSWER CHIPS (MANDATORY whenever you ask a question — no exceptions):
+- If your reply contains a question mark, you MUST end with a single fenced block in this exact shape:
 
 \`\`\`suggestions
 ["First suggested answer","Second suggested answer","Third (optional)"]
 \`\`\`
 
-- 2-4 short chip labels, each ≤ 40 characters, written as if the user is replying (first person where natural: "Yes, go ahead", "Skip auth for now", "Use my brand colors").
-- Chips must be REAL answers to the question you asked — not generic ("Tell me more"). They're tapped to send as the user's next message.
-- If you are NOT asking anything (e.g. just acknowledging "got it, building now"), DO NOT include the suggestions block.
+- 2–4 short chip labels, each ≤ 40 characters, written as if the user is replying (first person where natural: "Yes, go ahead", "Use a dark theme", "Keep it minimal").
+- Chips must be REAL tap-ready answers to the question — not topics, not generic ("Tell me more"). They send as the user's next message exactly as written.
+- NEVER ask a question without this block. If you have nothing concrete to offer, do not ask the question — state your assumption and proceed instead.
+- If you are NOT asking anything, DO NOT include the suggestions block.
 
 ### Petal's built-in capabilities (what this app CAN already do, no extra accounts needed)
 The app you're helping with runs on **Petal**, which gives every project these native capabilities — they are part of the product, not third-party add-ons:
@@ -266,6 +268,23 @@ export const Route = createFileRoute("/api/discuss")({
             /* malformed JSON — drop the chips, keep the prose */
           }
           cleanReply = reply.slice(0, suggestionsMatch.index).trimEnd();
+        }
+
+        // Safety net: if the assistant asked a question but didn't ship chips,
+        // synthesize 2–3 tap-ready answers so the user always has something
+        // to click. Skipped if cleanReply has no question mark.
+        if (chipSuggestions.length === 0 && /\?/.test(cleanReply)) {
+          const sentences = cleanReply.split(/(?<=[.!?])\s+/);
+          const lastQ = [...sentences].reverse().find((x) => /\?\s*$/.test(x));
+          if (lastQ) {
+            const lastUser = [...body.messages]
+              .reverse()
+              .find((m) => m.role === "user")?.content;
+            const synth = await synthesizeAnswerOptions(lastQ, {
+              lastUserMessage: typeof lastUser === "string" ? lastUser : undefined,
+            });
+            if (synth.length >= 2) chipSuggestions = synth;
+          }
         }
 
         // Charge ONCE, after success. If the wallet emptied between the
