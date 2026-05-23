@@ -2479,6 +2479,9 @@ function Builder() {
     (text: string) => {
       const trimmed = text.trim();
       if (!trimmed || bootstrapping) return;
+      // If Petal is waiting on a clarifying answer the only valid submit path
+      // is through the SuggestionChecklist (which clears the gate first).
+      if (pendingQuestion) return;
       if (busy || discussBusy) {
         setPendingQueue((q) => [
           ...q,
