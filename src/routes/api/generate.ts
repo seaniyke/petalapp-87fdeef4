@@ -842,55 +842,12 @@ function emitConversationalFallback(
   );
 }
 
-/**
- * Question-first guard. If the model's summary is shaped like a clarifying
- * question (ends with `?`, contains a question word, and has no past-tense
- * edit verb like "added"/"wrapped"/"created"), the turn must NOT also ship
- * file edits. Returns the question + extracted answer chips when matched,
- * or `null` when the summary is a normal "I did X" build report.
- *
- * Rationale: Petal should never deploy on a guess. If it needs information,
- * it asks and waits. Build runs on the next turn once the user answers.
- */
-function detectClarifyingQuestion(
-  summary: string,
-): { question: string; chips: string[] } | null {
-  const s = (summary ?? "").trim();
-  if (!s) return null;
-  // Past-tense edit verbs → it's a build report, not a question.
-  if (
-    /\b(?:added|created|wrapped|updated|changed|fixed|removed|deleted|installed|wired|built|implemented|refactored|renamed|introduced|replaced|enabled|disabled|migrated|scaffolded|generated|configured|patched|polished|tightened)\b/i.test(
-      s,
-    )
-  ) {
-    return null;
-  }
-  const sentences = s.split(/(?<=[.!?])\s+/);
-  const lastQ = [...sentences].reverse().find((x) => /\?\s*$/.test(x));
-  if (!lastQ) return null;
-  if (
-    !/\b(?:what|why|how|where|when|which|who|whose|whom|is|are|was|were|do|does|did|can|could|should|would|will|may|might|have|has|had)\b/i.test(
-      lastQ.slice(0, 80),
-    )
-  ) {
-    return null;
-  }
-  const chips: string[] = [];
-  const orMatch = lastQ.match(/([^?.!,;:]+(?:,\s*[^?.!,;:]+)+\s*,?\s*or\s+[^?.!]+)\?/i);
-  if (orMatch) {
-    const parts = orMatch[1]
-      .split(/,\s*|\s+or\s+/i)
-      .map((p) => p.replace(/^(?:the|a|an)\s+/i, "").trim())
-      .filter((p) => p.length > 0 && p.length <= 40);
-    for (const p of parts) {
-      if (chips.length >= 3) break;
-      if (!chips.includes(p)) chips.push(p);
-    }
-  } else if (/^(?:is|are|was|were|do|does|did|can|could|should|would|will|have|has|had)\b/i.test(lastQ.trim())) {
-    chips.push("Yes", "No");
-  }
-  return { question: s, chips };
-}
+// Question-first guard removed. Whether a turn is a question is decided
+// upstream by /api/triage — the SINGLE source of truth for asking. By the
+// time generate runs, the turn is unambiguously a build/edit/fix, so we
+// never second-guess the model's summary here. If the model still asks
+// something rhetorical in its summary, that ships alongside the build.
+
 
 function ensureRenderableShell(files: ProjectFile[]): { files: ProjectFile[]; fixed: string[] } {
   const byPath = new Map(files.map((f) => [f.path, f.content]));
@@ -2070,43 +2027,10 @@ Forbidden defaults
 
         let { parsed, summary, plan, recap } = payload;
 
-        // Question-first guard. If the model asked a clarifying question
-        // instead of describing edits, do NOT apply any file ops — even if
-        // the model also emitted some. Petal asks → user answers → next
-        // turn builds. This prevents the "ask + deploy in the same turn"
-        // UX where the user sees "Your app is live" alongside a question.
-        {
-          const q = detectClarifyingQuestion(summary);
-          if (q) {
-            let chips = q.chips;
-            if (chips.length < 2) {
-              try {
-                const { synthesizeAnswerOptions } = await import(
-                  "@/server/answer-options.server"
-                );
-                const lastUser = [...messages]
-                  .reverse()
-                  .find((m) => m.role === "user")?.content;
-                const synth = await synthesizeAnswerOptions(q.question, {
-                  lastUserMessage:
-                    typeof lastUser === "string" ? lastUser : undefined,
-                });
-                if (synth.length >= 2) chips = synth;
-              } catch (err) {
-                console.warn("[question-first] options synth failed", err);
-              }
-            }
-            console.warn(
-              `[question-first] aborting build — model asked a clarifying question; discarding ${parsed.files?.length ?? 0} file(s) / ${parsed.ops?.length ?? 0} op(s)`,
-            );
-            emitConversationalFallback(controller, encoder, {
-              files: currentFiles,
-              summary: q.question,
-              suggestions: chips,
-            });
-            return;
-          }
-        }
+        // (Question-first guard removed — see comment near the top of this
+        // file. Triage is the single decision point for "is this a question?";
+        // generate just builds.)
+
 
         let nextFiles: ProjectFile[];
         if (collected.name === "write_project") {
