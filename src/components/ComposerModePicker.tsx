@@ -45,7 +45,6 @@ const OPTIONS: Option[] = [
     label: "Help me think",
     Icon: Sparkles,
     hint: "Brainstorm an app idea.",
-    suffix: "½ credit/turn",
     tint: "bg-lilac/40 text-foreground/80",
   },
 ];
