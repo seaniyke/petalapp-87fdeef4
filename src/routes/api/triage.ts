@@ -458,6 +458,24 @@ export const Route = createFileRoute("/api/triage")({
               const meta = safeMeta(parsedArgs);
               if (!meta.brief && replyEmitted) meta.brief = replyEmitted.slice(0, 200);
 
+              // Deterministic bias: a bare question about existing state
+              // should default to clarify/explain, not build/fix. We only
+              // override the model when it's NOT highly confident — if it
+              // says "fix" with 0.9 confidence, trust it.
+              if (
+                (meta.mode === "build" ||
+                  meta.mode === "fix" ||
+                  meta.mode === "edit" ||
+                  meta.mode === "redesign") &&
+                meta.confidence < 0.8 &&
+                looksLikeBareQuestion(lastUserText)
+              ) {
+                console.warn(
+                  `[triage] downgrading "${meta.mode}" → "clarify" (bare question, conf=${meta.confidence})`,
+                );
+                meta.mode = "clarify";
+              }
+
               controller.enqueue(encoder.encode(sse({ type: "meta", meta })));
               controller.enqueue(
                 encoder.encode(sse({ type: "intent", intent: modeToIntent(meta.mode) })),
