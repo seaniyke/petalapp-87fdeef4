@@ -47,7 +47,8 @@ ALLOWED FIXES:
 - Bad/missing imports (typoed package names, undefined React hooks, unresolved "@/..." paths)
 - Unbalanced JSX tags
 - Missing closing braces / semicolons that prevent parsing
-- Direct "react-router-dom" or "@supabase/supabase-js" imports → swap to "@/components/ui/router" or "@/integrations/backend/client"
+- Direct "react-router-dom" imports → swap to "@/components/ui/router"
+- Direct "@supabase/supabase-js" imports → swap to "@/integrations/backend/client" ONLY if src/integrations/backend/client.ts exists in the provided files; otherwise remove the backend wiring and keep a UI-only stub.
 - Tailwind v3 directives (@tailwind base/components/utilities) inside src/styles.css → swap for @import "tailwindcss";
 - Tailwind v4 \`@theme { ... }\` block containing nested selectors (\`.dark { ... }\`, \`:root { ... }\`, \`@media (...)\`, or \`&:is(...)\`) → move those nested blocks OUTSIDE @theme. Inside @theme keep ONLY token declarations like \`--color-primary: oklch(...);\` or \`--radius: 0.5rem;\`. Class-based dark mode is already enabled at the top of styles.css via \`@custom-variant dark (&:where(.dark, .dark *));\` — do not redeclare it inside @theme.
 - Invalid lucide-react icon names
