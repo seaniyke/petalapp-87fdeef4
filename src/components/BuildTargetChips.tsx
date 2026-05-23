@@ -7,7 +7,7 @@
  * Selection is persisted per-project to localStorage and surfaced to the
  * parent via `onChange`. Defaults to "web" (no extra prompt steering).
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Hammer } from "lucide-react";
 import {
   BUILD_TARGETS,
@@ -27,7 +27,9 @@ type Props = {
 export function BuildTargetChips({ projectId, value, onChange, compact = false }: Props) {
   const [internal, setInternal] = useState<BuildTargetId>("web");
   const [open, setOpen] = useState(false);
+  const [placement, setPlacement] = useState<"top" | "bottom">("top");
   const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   // Hydrate from localStorage when uncontrolled.
   useEffect(() => {
@@ -56,6 +58,16 @@ export function BuildTargetChips({ projectId, value, onChange, compact = false }
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+  // Auto-flip: drop down when there isn't enough room above the trigger.
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const POPOVER = 340; // matches max-h
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    setPlacement(spaceAbove < POPOVER && spaceBelow > spaceAbove ? "bottom" : "top");
+  }, [open]);
+
 
   const current = value ?? internal;
   const active = getBuildTarget(current);
@@ -77,6 +89,7 @@ export function BuildTargetChips({ projectId, value, onChange, compact = false }
   return (
     <div ref={wrapRef} className="relative inline-block">
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
@@ -101,8 +114,13 @@ export function BuildTargetChips({ projectId, value, onChange, compact = false }
       {open && (
         <div
           role="listbox"
-          className="absolute bottom-full left-0 z-30 mb-2 w-[15rem] max-h-[min(55vh,340px)] overflow-y-auto origin-bottom-left rounded-2xl border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-in fade-in slide-in-from-bottom-1 duration-150"
+          className={`absolute left-0 z-50 w-[15rem] max-h-[min(55vh,340px)] overflow-y-auto rounded-2xl border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-in fade-in duration-150 ${
+            placement === "top"
+              ? "bottom-full mb-2 origin-bottom-left slide-in-from-bottom-1"
+              : "top-full mt-2 origin-top-left slide-in-from-top-1"
+          }`}
         >
+
           {BUILD_TARGETS.map((t) => {
             const on = current === t.id;
             return (
