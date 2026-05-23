@@ -58,6 +58,16 @@ export function BuildTargetChips({ projectId, value, onChange, compact = false }
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+  // Auto-flip: drop down when there isn't enough room above the trigger.
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const POPOVER = 340; // matches max-h
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    setPlacement(spaceAbove < POPOVER && spaceBelow > spaceAbove ? "bottom" : "top");
+  }, [open]);
+
 
   const current = value ?? internal;
   const active = getBuildTarget(current);
