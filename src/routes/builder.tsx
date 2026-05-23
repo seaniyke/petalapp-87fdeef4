@@ -3324,12 +3324,20 @@ function Builder() {
                             composer is hard-blocked above until the user
                             sends an answer or taps Skip. */}
                         {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && (() => {
+                          // Only render the radio-style "Pick an option" card
+                          // for REAL clarifying questions — i.e. the assistant
+                          // text actually contains a question mark. Post-build
+                          // "next move" suggestions (from self-check) are NOT
+                          // questions; they belong in NextStepsCard below and
+                          // would otherwise duplicate it as a misleading
+                          // "Pick an option" card. See plan.md.
                           const text = sanitizeNarrative(m.content ?? "");
                           const sentences = text.split(/(?<=[.!?])\s+/);
                           const lastQ = [...sentences]
                             .reverse()
                             .find((s) => /\?\s*$/.test(s.trim()));
-                          const title = (lastQ ?? "Pick an option").trim();
+                          if (!lastQ) return null;
+                          const title = lastQ.trim();
                           return (
                             <SuggestionChecklist
                               options={m.suggestions}
