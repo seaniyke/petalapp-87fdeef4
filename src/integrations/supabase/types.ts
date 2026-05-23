@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       ai_call_log: {
         Row: {
+          cached_prompt_tokens: number | null
           chosen_by: string | null
           completion_tokens: number | null
           cost_usd_micro: number | null
@@ -23,6 +24,7 @@ export type Database = {
           error_message: string | null
           fallback_used: boolean
           feature: string
+          files_sent: number | null
           had_attachments: boolean
           id: string
           latency_ms: number | null
@@ -31,10 +33,13 @@ export type Database = {
           prompt_chars: number | null
           prompt_tokens: number | null
           provider: string
+          static_prefix_chars: number | null
+          static_prefix_hash: string | null
           status: number
           total_tokens: number | null
         }
         Insert: {
+          cached_prompt_tokens?: number | null
           chosen_by?: string | null
           completion_tokens?: number | null
           cost_usd_micro?: number | null
@@ -42,6 +47,7 @@ export type Database = {
           error_message?: string | null
           fallback_used?: boolean
           feature: string
+          files_sent?: number | null
           had_attachments?: boolean
           id?: string
           latency_ms?: number | null
@@ -50,10 +56,13 @@ export type Database = {
           prompt_chars?: number | null
           prompt_tokens?: number | null
           provider: string
+          static_prefix_chars?: number | null
+          static_prefix_hash?: string | null
           status: number
           total_tokens?: number | null
         }
         Update: {
+          cached_prompt_tokens?: number | null
           chosen_by?: string | null
           completion_tokens?: number | null
           cost_usd_micro?: number | null
@@ -61,6 +70,7 @@ export type Database = {
           error_message?: string | null
           fallback_used?: boolean
           feature?: string
+          files_sent?: number | null
           had_attachments?: boolean
           id?: string
           latency_ms?: number | null
@@ -69,6 +79,8 @@ export type Database = {
           prompt_chars?: number | null
           prompt_tokens?: number | null
           provider?: string
+          static_prefix_chars?: number | null
+          static_prefix_hash?: string | null
           status?: number
           total_tokens?: number | null
         }

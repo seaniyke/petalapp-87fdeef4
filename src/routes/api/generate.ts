@@ -355,7 +355,16 @@ type ParsedTool = {
   /** Provider stop reason from the final stream chunk, e.g. `length` / `max_tokens`. */
   finishReason: string | null;
   /** Token usage from the gateway (final SSE chunk usually carries it). */
-  usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
+  usage: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+    /** OpenAI/Anthropic via OpenRouter normalize cached prefix tokens here. */
+    prompt_tokens_details?: { cached_tokens?: number };
+    /** Anthropic raw via OpenRouter exposes these directly. */
+    cache_read_input_tokens?: number;
+    cache_creation_input_tokens?: number;
+  } | null;
 };
 
 function isTruncatedFinishReason(reason: string | null | undefined): boolean {
@@ -1545,36 +1554,76 @@ Forbidden defaults
   }
 
 
+  // ---------------------------------------------------------------------------
+  // Prompt caching: split the system message into a STABLE PREFIX and a
+  // DYNAMIC SUFFIX. The prefix is byte-for-byte identical across consecutive
+  // turns in a session — that's what lets OpenAI/Anthropic/Gemini serve it
+  // from cache (Anthropic gets an explicit `cache_control` marker; OpenAI
+  // and Gemini auto-cache stable prefixes ≥1024 tokens). The suffix carries
+  // anything that legitimately changes per turn: current files, the date,
+  // keyword-triggered snippets, plan results, vision addendum, etc.
+  // Rule: NEVER move per-turn content into the prefix. Drift kills cache hits.
+  // ---------------------------------------------------------------------------
+  const staticPrefixText =
+    baseSystem +
+    buildTargetBlock +
+    designQualityBlock +
+    capabilitiesBlock +
+    multiEditBlock +
+    backendBlock +
+    integrationsBlock +
+    knowledgeBlock +
+    memoryBlock +
+    preservationBlock +
+    designBlock +
+    appShapeBlock +
+    mobileBlock +
+    gameBlock +
+    archetypeBlock;
+
+  const dynamicSuffixText =
+    dateBlock +
+    suggestionsBlock +
+    resolvedBlock +
+    (approvedPlan ? renderApprovedPlanBlock(approvedPlan) : "") +
+    dynamic.text +
+    learningBlock +
+    highStakesBlock +
+    visionAddendum +
+    filesContext;
+
+  // Short stable hash of the prefix — logged with each call so we can see at
+  // a glance whether the prefix is drifting (which would kill cache hits).
+  // Tiny FNV-1a is enough; this is for ops, not security.
+  const staticPrefixHash = (() => {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < staticPrefixText.length; i++) {
+      h ^= staticPrefixText.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    return (h >>> 0).toString(16);
+  })();
+
   const chatMessages = [
     {
+      // STATIC PREFIX. Content uses the array shape so we can attach
+      // Anthropic-style `cache_control: { type: "ephemeral" }`. Gemini /
+      // OpenAI via OpenRouter ignore the marker safely and rely on
+      // automatic prefix-cache matching — which works because the text
+      // above is stable across turns.
       role: "system",
-      content:
-        baseSystem +
-        buildTargetBlock +
-        designQualityBlock +
-
-
-        dateBlock +
-        capabilitiesBlock +
-        multiEditBlock +
-        backendBlock +
-        integrationsBlock +
-        suggestionsBlock +
-        resolvedBlock +
-        knowledgeBlock +
-        memoryBlock +
-        preservationBlock +
-        (approvedPlan ? renderApprovedPlanBlock(approvedPlan) : "") +
-        designBlock +
-        dynamic.text +
-        learningBlock +
-        highStakesBlock +
-        appShapeBlock +
-        mobileBlock +
-        gameBlock +
-        archetypeBlock +
-        visionAddendum +
-        filesContext,
+      content: [
+        {
+          type: "text",
+          text: staticPrefixText,
+          cache_control: { type: "ephemeral" as const },
+        },
+      ],
+    },
+    {
+      // DYNAMIC SUFFIX. Everything below the cache boundary.
+      role: "system",
+      content: dynamicSuffixText,
     },
     ...messages.map((m, i) => {
       if (i === lastUserIdx && hasVisionTurn) {
@@ -1592,6 +1641,10 @@ Forbidden defaults
       return { role: m.role, content: m.content };
     }),
   ];
+
+  console.log(
+    `[prompt-cache] prefix_chars=${staticPrefixText.length} prefix_hash=${staticPrefixHash} suffix_chars=${dynamicSuffixText.length} files=${isInitial ? 0 : (promptBudget.files?.length ?? 0)}`,
+  );
 
   // Tier 3 — phase classifier. Tags the turn (implement/debug/refactor/
   // plan/docs) so we can route mechanical work to a cheap model and
@@ -2821,13 +2874,33 @@ Forbidden defaults
         // Without this, every streaming generate call shows NULL tokens
         // and we can't distinguish "model returned a full project" from
         // "model returned a one-line refusal".
+        // Pull cached-prefix tokens out of whichever shape the upstream used.
+        // OpenAI / Anthropic via OpenRouter: usage.prompt_tokens_details.cached_tokens.
+        // Anthropic raw: usage.cache_read_input_tokens.
+        const cachedPromptTokens =
+          collected.usage?.prompt_tokens_details?.cached_tokens ??
+          collected.usage?.cache_read_input_tokens ??
+          null;
         void updateLastCallUsage({
           feature: "generate",
           model,
           promptTokens: collected.usage?.prompt_tokens ?? null,
           completionTokens: collected.usage?.completion_tokens ?? null,
           totalTokens: collected.usage?.total_tokens ?? null,
+          cachedPromptTokens,
+          staticPrefixChars: staticPrefixText.length,
+          staticPrefixHash,
+          filesSent: isInitial ? 0 : (promptBudget.files?.length ?? 0),
         });
+        if (collected.usage?.prompt_tokens) {
+          const hitPct =
+            cachedPromptTokens && collected.usage.prompt_tokens
+              ? ((cachedPromptTokens / collected.usage.prompt_tokens) * 100).toFixed(1)
+              : "0.0";
+          console.log(
+            `[prompt-cache] result prompt=${collected.usage.prompt_tokens} cached=${cachedPromptTokens ?? 0} hit=${hitPct}% model=${model}`,
+          );
+        }
         let finalCharged = 0;
         if (body.isAutoFix) {
           console.log(`[credits] auto-fix run — skipping charge of ${priced.amount} (would-be)`);

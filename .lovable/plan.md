@@ -1,69 +1,109 @@
-## Goal
+# Phase 1 — Token Optimization (Cost + Speed, Zero Quality Risk)
 
-Let users pick what they're building (Web app, Android, iOS, Backend/API, Chrome extension) as a chip under the composer — like Google AI Studio. Petal then scaffolds the right stack and shows a preview that *looks* and *behaves* like that target (iOS frame with notch + status bar, Android pill, web browser chrome, JSON response viewer for APIs).
+This is the safe, high-ROI slice of the original prompt. It does NOT change models, does NOT change which files are sent, does NOT cap output size, and does NOT touch the generator's behavior. It only reshapes *how* we send context so OpenRouter/Anthropic/Gemini can cache it, and it gives us the metrics to prove the wins (and detect regressions later).
 
-## Research summary — how peers do it
+Expected impact (typical chat-iteration session):
+- 30–50% cost cut from prompt caching alone (static prefix billed at ~10–25% rate on cache hits across OpenAI/Anthropic/Gemini).
+- Lower TTFB on chat edits because cached prefixes skip prefill.
+- Full visibility into tokens / cost / cache-hit per request.
 
-| Tool | Mobile stack | Live preview | Real device | Store path |
-|---|---|---|---|---|
-| **Bolt.new** | Expo (React Native + Expo Router) | Expo Snack web-player in iframe (react-native-web) | Expo Go via QR | Export → EAS Build → App Store / Play |
-| **Rork** | Expo / Expo Router; "Max" tier also SwiftUI | Web preview (react-native-web) | "Rork Companion" app or Expo Go via QR | EAS Build (Android APK), cloud-Mac compile (iOS) |
-| **a0.dev** | Expo + React Native | Web preview + QR | a0 mobile app or Expo Go | EAS Build to App Store / Play |
-| **Antigravity** | Native Android (Kotlin/Compose) | Gradle build → APK | APK sideload | APK download / Play |
+Out of scope (deferred until we have metrics to justify them): file targeting, history summarization, model routing, Claude-as-repair-only, 1–2 file output cap, incremental generation.
 
-Pattern is consistent across the React-Native crowd: **Expo + Snack web-player in an iframe wrapped in a device frame** is the standard mobile preview. Native (Kotlin/Swift) requires a real toolchain — no live web preview.
+---
 
-## Phased plan
+## 1. Restructure the prompt into STATIC PREFIX + DYNAMIC SUFFIX
 
-### Milestone 1 — Chip selector + intent routing  (ships first, ~1 day)
+In `src/routes/api/generate.ts` (and the discuss pipeline), split the assembled prompt into two clean halves:
 
-- Add `BuildTargetChips` row under the composer on `/` and `/builder`. Options:
-  - **Web app** (default — current behavior)
-  - **Android app** (Expo / RN)
-  - **iOS app** (Expo / RN)
-  - **Backend / API** (server-only TanStack routes)
-  - **Chrome extension** (MV3)
-- Selection persists per-project (`projects.build_target` column) and gets injected into the system prompt as a hard constraint ("This project targets Android via Expo. Use react-native + expo-router, not react-dom").
-- For mobile targets, swap the starter template (`src/lib/templates/expo-starter.ts`) so the first build scaffolds an Expo app instead of a TanStack web app.
-- For Backend / Extension, swap to the matching scaffold and hide the visual preview pane (show a request inspector / extension popup mock instead).
+**Static prefix (identical across requests for the same project + target):**
+1. System instructions (Petal core rules, design quality block, build-target hard-constraint block)
+2. Project architecture summary (see §2)
+3. File tree (paths only, no contents)
+4. Dependency map (`package.json` deps + versions)
 
-### Milestone 2 — Device-frame preview wrapper  (~1 day)
+**Dynamic suffix (changes every turn):**
+1. Recent chat turns
+2. Current user request
+3. The specific files the existing pipeline already chose to include
+4. Any tool-call results / repair context
 
-- Add `<DevicePreviewFrame target="ios" | "android" | "web">` that wraps the existing preview iframe with:
-  - **iOS**: 19.5:9 viewport, rounded corners, Dynamic Island notch, status bar (time / signal / battery), home indicator
-  - **Android**: 20:9 viewport, status bar, 3-button or gesture nav bar
-  - **Web**: existing chrome
-- Set iframe viewport via `preview_ui--set_preview_device_viewport` automatically when the chip is mobile.
-- "Open in browser" / "Rotate" / "Show keyboard" controls.
+Rules:
+- The static prefix must be **byte-for-byte identical** across consecutive requests in a session. No timestamps, no random ordering, no per-request IDs interpolated into it.
+- Order matters for caching: prefix first, suffix last. Never interleave.
 
-### Milestone 3 — Expo Snack web-player integration  (~2 days)
+## 2. Lightweight project memory (architecture summary)
 
-- Wire `snack-sdk` to mirror project files into a Snack session and load `webPreviewURL` into the device frame iframe (this is exactly the Bolt/Rork pattern, documented in `expo/snack` repo).
-- Stream file changes from Petal's writes into the Snack session so hot-reload works.
-- Fallback: if Snack is unreachable, render `react-native-web` directly via a Vite plugin (degraded but offline-capable).
+Persist a small JSON blob per project (new table `project_memory` or a column on `projects` — pick whichever is one migration):
 
-### Milestone 4 — Real device + store publish  (~2-3 days)
+```
+{
+  routes: string[],          // from src/routes/ scan
+  components: string[],      // top-level src/components/ entries
+  dependencies: Record<string,string>, // from package.json
+  designTokens: string,      // extracted from src/styles.css :root block
+  buildTarget: 'web'|'mobile'|'backend'|'extension'|'web-mobile'
+}
+```
 
-- "Test on phone" button → generates QR code that opens the preview in **Expo Go** (free, no account).
-- "Publish to App Store / Play" wires into **EAS Build** via the user's Expo account (OAuth). Same flow Bolt and Rork use.
-- For Android, also offer raw `.apk` download via `eas build --profile preview --platform android`.
-- iOS requires the user's Apple Developer account ($99/yr) — surface this clearly before they start.
+- Built once at project create, refreshed when `package.json`, `src/styles.css`, `src/routes/`, or `src/components/` change (debounced — recompute on save, not on every keystroke).
+- Serialized into the static prefix as a compact markdown block.
+- Replaces ad-hoc "here's your file tree" blocks that currently get re-stringified per request.
 
-## What ships today vs later
+This is the "architecture memory separate from chat history" piece from the original prompt — kept minimal so we don't over-engineer.
 
-I'd recommend shipping **Milestone 1 + a stub Milestone 2** in the first PR so the chips are real and previews already look like phones, even before Snack is wired. Milestones 3-4 are separate PRs because each touches infra (Snack session manager, EAS OAuth flow) and needs its own testing pass.
+## 3. Wire provider-specific cache hints
 
-## Open decisions for you
+OpenRouter passes through to the underlying provider. Add cache markers on the static prefix only:
 
-1. **Stack for iOS/Android**: Expo/React Native (one codebase, web preview works) — or Capacitor (wraps the existing web app) — or native (Kotlin/Swift, no live preview)? Bolt/Rork/a0 all chose Expo for a reason; I recommend the same.
-2. **Snack hosting**: use hosted `snack.expo.dev` (free, rate-limited) or self-host the web-player (more work, no limits)?
-3. **Backend chip preview**: render a Postman-style request inspector, or just open the `/api/...` routes panel we already have?
+- **Anthropic (Claude):** add `cache_control: { type: "ephemeral" }` on the final system block of the static prefix.
+- **Gemini (via OpenRouter):** Gemini auto-caches on prefix match for prompts >1024 tokens — guaranteed by keeping the prefix stable (no extra header needed, but verify with a logged response).
+- **OpenAI:** auto prompt-caching on prefix match ≥1024 tokens — same requirement: stable prefix.
 
-## Technical details (skip if non-technical)
+Add a thin `attachCacheHints(messages, model)` helper so this lives in one place.
 
-- New table column: `projects.build_target text check (build_target in ('web','android','ios','backend','extension')) default 'web'`.
-- New module: `src/lib/build-targets.ts` — registry of `{ id, label, icon, systemPromptAddendum, starterFiles, previewMode }`.
-- New component: `src/components/BuildTargetChips.tsx` (composer row) + `src/components/DevicePreviewFrame.tsx` (preview wrapper).
-- Server: `src/server/generate.server.ts` reads `project.build_target` and prepends the matching addendum to `SYSTEM_PROMPT_CREATE` / `SYSTEM_PROMPT_PATCH`.
-- Snack: `src/lib/snack-session.ts` wraps `snack-sdk` and reconciles Petal's file writes into Snack files (debounced 250ms).
-- Memory: persist "Petal supports multi-target builds; selected target rides every request as `x-petal-target` header and is mirrored into the system prompt".
+## 4. Metrics (so we can prove it works, and catch regressions)
+
+New table `generation_metrics` (or extend existing logs if present):
+
+```
+request_id, project_id, user_id, created_at,
+model, stage,                       // 'plan' | 'generate' | 'repair' | 'discuss'
+prompt_tokens, completion_tokens,
+cached_prompt_tokens,               // from provider response when available
+cost_usd,                           // computed from per-model price table
+context_chars, files_sent,
+duration_ms, status                 // 'ok'|'error'|'aborted'
+```
+
+- Populated server-side from the OpenRouter response (`usage` + `usage.prompt_tokens_details.cached_tokens` for OpenAI/Anthropic; Gemini exposes `cachedContentTokenCount`).
+- Tiny admin route `/api/admin/metrics/summary` returning rolling 24h aggregates: avg cost/request, cache-hit %, p50/p95 latency, per-model split.
+- No UI yet — psql / a single read-only page is fine.
+
+## 5. Verification
+
+Before/after on the same scripted scenario:
+1. Create a fresh project, send 5 sequential small edits ("change heading color", "rename button", etc.).
+2. Compare total `prompt_tokens` vs `cached_prompt_tokens` across the 5 requests.
+3. Success criterion: ≥60% of prefix tokens cached on requests 2–5 for at least one provider; total $ for the session down ≥30% vs current baseline.
+
+If we don't see the cache hits, the prefix isn't stable — fix that before moving on. No further phases until this works.
+
+---
+
+## Technical notes
+
+- `src/routes/api/generate.ts` is 3,287 lines and already has multiple model constants (`MODEL_FAST`, `MODEL_BEST`, `MODEL_VISION`, structured-retry tier) — leave those alone in Phase 1.
+- Static prefix assembly should be a new `buildStaticPrefix(project, target)` function with a content hash logged per request so we can spot accidental drift.
+- Cost table: keep a single `MODEL_PRICES` map (input / cached-input / output ¢ per 1M tokens) updated from OpenRouter's published pricing.
+- Migration runs through the standard supabase migration tool.
+- No edits to the generator's output behavior, no changes to which files the existing pipeline selects, no model swaps. Anything that could change generation quality is deferred.
+
+## What we are explicitly NOT doing in Phase 1
+
+- File targeting / "only send affected files"
+- Chat history summarization
+- Model routing (Flash Lite for classify, Claude for repair-only, etc.)
+- 1–2 file output cap
+- Incremental file-by-file generation
+
+These remain on the table for Phase 2, but only after Phase 1 metrics show where the remaining cost actually is. We're not guessing.
