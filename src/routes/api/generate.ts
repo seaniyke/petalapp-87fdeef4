@@ -1464,26 +1464,9 @@ Forbidden defaults
     userPrompt: lastUserContent,
   });
   const backendGateBlock = backendGate.gated ? renderBackendGateBlock() : "";
-  // Plan #4 — opt-in AST patch grammar. Only documented to the model when
-  // the `ast_patches` labs flag is on for this user. Off by default.
-  const astPatchBlock = labsFlags.ast_patches
-    ? `\n\n## Optional: ast-patch ops (labs)\nFor narrow, surgical edits on existing JS/TS files you MAY emit an\n` +
-      `"ast-patch" op instead of "replace" when:\n` +
-      `- swapping the body of an exported const/function/class by name\n` +
-      `- adding or removing a single import\n` +
-      `- swapping a JSX subtree you previously tagged with data-petal-block="ID"\n\n` +
-      `Shape:\n` +
-      `{ "op": "ast-patch", "path": "src/.../foo.tsx", "patches": [\n` +
-      `  { "kind": "replace-export", "name": "MyHero", "body": "export const MyHero = () => ( ... );" },\n` +
-      `  { "kind": "replace-function", "name": "format", "body": "function format(x){ return ... }" },\n` +
-      `  { "kind": "add-import", "specifier": "useState", "from": "react" },\n` +
-      `  { "kind": "add-import", "specifier": "Button", "from": "@/components/ui/button", "default": false },\n` +
-      `  { "kind": "remove-import", "from": "@/old/path" },\n` +
-      `  { "kind": "replace-jsx-block", "blockId": "hero-cta", "jsx": "<div data-petal-block=\\"hero-cta\\">…</div>" }\n` +
-      `] }\n\n` +
-      `When in doubt use "replace" — ast-patch is a power tool, not a default. ` +
-      `keep-existing-expander and replace/update remain the fallback.\n`
-    : "";
+  // Plan #4 — opt-in AST patch grammar. Computed after labsFlags is loaded
+  // (see assignment below); placeholder declared here so staticPrefixText
+  // composition reads naturally.
   if (backendGate.gated) {
     console.log(`[two-phase-gate] activated: ${backendGate.reason}`);
   }
