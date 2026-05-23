@@ -99,10 +99,11 @@ export async function revokeShare(shareId: string): Promise<void> {
 }
 
 export async function getShareByToken(token: string): Promise<PreviewShare | null> {
+  // Uses a SECURITY DEFINER RPC instead of a direct SELECT so anonymous
+  // visitors can only resolve a share when they supply the exact token —
+  // they can no longer enumerate the preview_shares table.
   const { data } = await supabase
-    .from("preview_shares")
-    .select("*")
-    .eq("token", token)
+    .rpc("get_preview_share_by_token", { _token: token })
     .maybeSingle();
   return (data as PreviewShare) ?? null;
 }
