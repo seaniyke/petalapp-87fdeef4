@@ -1669,6 +1669,7 @@ Forbidden defaults
     highStakesBlock +
     visionAddendum +
     backendGateBlock +
+    astPatchBlock +
     filesContext;
 
   // Short stable hash of the prefix — logged with each call so we can see at
