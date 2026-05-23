@@ -2104,7 +2104,10 @@ Forbidden defaults
                 const nextLines = op.op === "delete" ? 0 : nextSnippet.split("\n").length;
                 return {
                   path: op.path,
-                  op: op.op,
+                  // Surface ast-patch as "replace" in the preview card —
+                  // it's a narrow in-place edit semantically.
+                  op: (op.op === "ast-patch" ? "replace" : op.op) as
+                    | "create" | "update" | "replace" | "delete",
                   addedLines: op.op === "delete" ? 0 : Math.max(0, nextLines - (op.op === "replace" ? (op as { search?: string }).search?.split("\n").length ?? 0 : prevLines)),
                   removedLines: op.op === "create" ? 0 : op.op === "replace" ? (op as { search?: string }).search?.split("\n").length ?? 0 : prevLines,
                 };
