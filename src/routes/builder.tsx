@@ -326,6 +326,10 @@ function Builder() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [input, setInput] = useState("");
+  // Tracks `messages.length` at the moment the user answered or skipped the
+  // most recent clarifying question. The composer stays hard-blocked until
+  // this matches the current message count.
+  const [answeredQuestionAt, setAnsweredQuestionAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [bootstrapping, setBootstrapping] = useState(true);
   const [error, setError] = useState<string | null>(null);
