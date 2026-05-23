@@ -3283,16 +3283,21 @@ function Builder() {
                         <Suspense fallback={<div className="whitespace-pre-wrap">{sanitizeNarrative(m.content)}</div>}>
                           <MarkdownMessage content={sanitizeNarrative(m.content)} projectId={project?.id ?? null} />
                         </Suspense>
-                        {/* Clarifying-question chips. Only render when the
-                            post-build NextStepsCard is NOT shown (no files
-                            yet) — once a build exists, suggestions are folded
-                            into the "Keep building" action below to keep the
-                            thread calm. */}
-                        {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && files.length === 0 && (
+                        {/* Required clarifying-question answer card. Renders
+                            whenever the latest assistant turn carries
+                            `suggestions`, before AND after a build. The
+                            composer is hard-blocked above until the user
+                            sends an answer or taps Skip. */}
+                        {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && (
                           <SuggestionChecklist
                             options={m.suggestions}
-                            onPick={(text: string) => {
-                              setInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+                            answered={answeredQuestionAt === messages.length}
+                            onSend={(text: string) => {
+                              setAnsweredQuestionAt(messages.length);
+                              submitPrompt(text);
+                            }}
+                            onSkip={() => {
+                              setAnsweredQuestionAt(messages.length);
                             }}
                           />
                         )}
