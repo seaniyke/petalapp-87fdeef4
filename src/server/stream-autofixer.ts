@@ -253,7 +253,7 @@ function fixLazyNamedExports(files: ProjectFile[], report: AutofixReport): Proje
 }
 
 /** Apply autofixers to a single file. Returns the (possibly modified) file. */
-export function autofixFile(file: ProjectFile, report: AutofixReport): ProjectFile {
+export function autofixFile(file: ProjectFile, report: AutofixReport, hasBackendKit = false): ProjectFile {
   // Only run on text files we'd ship to the build. Skip binaries, lockfiles.
   if (!/\.(tsx?|jsx?|css|html|md)$/.test(file.path)) return file;
   if (file.path.startsWith("src/components/ui/") ||
@@ -262,7 +262,7 @@ export function autofixFile(file: ProjectFile, report: AutofixReport): ProjectFi
     return file; // protected — never modify scaffold
   }
   let content = file.content;
-  content = fixBadImports(content, report);
+  content = fixBadImports(content, report, hasBackendKit);
   content = fixLucideIcons(content, report);
   content = capPetalImages(content, report);
   return content === file.content ? file : { ...file, content };
