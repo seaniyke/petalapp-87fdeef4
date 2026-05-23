@@ -130,7 +130,7 @@ export function SuggestionChecklist({
           disabled={answered || pending}
           className="text-[11px] text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline disabled:cursor-default disabled:opacity-50"
         >
-          Skip question
+          Dismiss
         </button>
         <button
           type="button"
