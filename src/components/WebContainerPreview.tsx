@@ -356,9 +356,17 @@ export function WebContainerPreview({
         </div>
       )}
 
-      {/* Iframe */}
+      {/* Iframe (or crash fallback) */}
       <div className="relative min-h-0 flex-1">
-        {serverUrl ? (
+        {crashReason ? (
+          <PreviewCrashFallback
+            reason={crashReason}
+            lastPath={serverUrl}
+            lastNarration={lastNarration}
+            onRetry={() => setIframeKey((k) => k + 1)}
+            onAskRepair={onAskRepair ? () => onAskRepair(crashReason) : undefined}
+          />
+        ) : serverUrl ? (
           <iframe
             ref={iframeRef}
             key={iframeKey}
