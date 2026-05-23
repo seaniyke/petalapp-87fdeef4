@@ -1464,6 +1464,9 @@ Forbidden defaults
     userPrompt: lastUserContent,
   });
   const backendGateBlock = backendGate.gated ? renderBackendGateBlock() : "";
+  // Plan #4 — opt-in AST patch grammar. Computed after labsFlags is loaded
+  // (see assignment below); placeholder declared here so staticPrefixText
+  // composition reads naturally.
   if (backendGate.gated) {
     console.log(`[two-phase-gate] activated: ${backendGate.reason}`);
   }
@@ -1472,6 +1475,27 @@ Forbidden defaults
   // gate (initial only) and the agentic-loop gate (post-stream autofix)
   // see the same values without re-querying. Empty {} on failure.
   const labsFlags = await loadLabsFlagsForRequest(userJwt);
+
+  // Plan #4 — opt-in AST patch grammar. Only documented to the model when
+  // the `ast_patches` labs flag is on for this user. Off by default.
+  const astPatchBlock = labsFlags.ast_patches
+    ? `\n\n## Optional: ast-patch ops (labs)\nFor narrow, surgical edits on existing JS/TS files you MAY emit an\n` +
+      `"ast-patch" op instead of "replace" when:\n` +
+      `- swapping the body of an exported const/function/class by name\n` +
+      `- adding or removing a single import\n` +
+      `- swapping a JSX subtree you previously tagged with data-petal-block="ID"\n\n` +
+      `Shape:\n` +
+      `{ "op": "ast-patch", "path": "src/.../foo.tsx", "patches": [\n` +
+      `  { "kind": "replace-export", "name": "MyHero", "body": "export const MyHero = () => ( ... );" },\n` +
+      `  { "kind": "replace-function", "name": "format", "body": "function format(x){ return ... }" },\n` +
+      `  { "kind": "add-import", "specifier": "useState", "from": "react" },\n` +
+      `  { "kind": "add-import", "specifier": "Button", "from": "@/components/ui/button", "default": false },\n` +
+      `  { "kind": "remove-import", "from": "@/old/path" },\n` +
+      `  { "kind": "replace-jsx-block", "blockId": "hero-cta", "jsx": "<div data-petal-block=\\"hero-cta\\">…</div>" }\n` +
+      `] }\n\n` +
+      `When in doubt use "replace" — ast-patch is a power tool, not a default. ` +
+      `keep-existing-expander and replace/update remain the fallback.\n`
+    : "";
 
   // Staged pipeline (Labs). When the user has the staged_pipeline flag on,
   // initial builds run through Plan → parallel-Scaffold → Wire-up instead
@@ -1645,6 +1669,7 @@ Forbidden defaults
     highStakesBlock +
     visionAddendum +
     backendGateBlock +
+    astPatchBlock +
     filesContext;
 
   // Short stable hash of the prefix — logged with each call so we can see at
@@ -2069,7 +2094,18 @@ Forbidden defaults
               }
             }
           }
-          const safeOps = parsed.ops.filter((op) => !isProtectedPath(op.path));
+          let safeOps = parsed.ops.filter((op) => !isProtectedPath(op.path));
+          // Plan #4 — strip ast-patch ops if the labs flag isn't on. The
+          // model isn't supposed to emit them in that case (we don't add
+          // the grammar to the prompt), but be defensive: better to ignore
+          // than to apply an unauthorized op kind.
+          if (!labsFlags.ast_patches) {
+            const astCount = safeOps.filter((op) => op.op === "ast-patch").length;
+            if (astCount > 0) {
+              console.warn(`[ast-patches] dropped ${astCount} unauthorized ast-patch op(s)`);
+              safeOps = safeOps.filter((op) => op.op !== "ast-patch");
+            }
+          }
           if (safeOps.length === 0) {
             const userGlobsHit = violations.some((v) => matchesUserProtectedGlob(v.path));
             const planScopeHit =
@@ -2104,7 +2140,10 @@ Forbidden defaults
                 const nextLines = op.op === "delete" ? 0 : nextSnippet.split("\n").length;
                 return {
                   path: op.path,
-                  op: op.op,
+                  // Surface ast-patch as "replace" in the preview card —
+                  // it's a narrow in-place edit semantically.
+                  op: (op.op === "ast-patch" ? "replace" : op.op) as
+                    | "create" | "update" | "replace" | "delete",
                   addedLines: op.op === "delete" ? 0 : Math.max(0, nextLines - (op.op === "replace" ? (op as { search?: string }).search?.split("\n").length ?? 0 : prevLines)),
                   removedLines: op.op === "create" ? 0 : op.op === "replace" ? (op as { search?: string }).search?.split("\n").length ?? 0 : prevLines,
                 };

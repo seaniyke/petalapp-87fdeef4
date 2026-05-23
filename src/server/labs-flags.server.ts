@@ -18,7 +18,8 @@ export type LabsFlagName =
   | "integrations_marketplace"
   | "pwa_template"
   | "staged_pipeline"
-  | "agent_loop";
+  | "agent_loop"
+  | "ast_patches";
 export type LabsFlags = Partial<Record<LabsFlagName, boolean>>;
 
 const ALL_FLAGS: LabsFlagName[] = [
@@ -26,6 +27,7 @@ const ALL_FLAGS: LabsFlagName[] = [
   "pwa_template",
   "staged_pipeline",
   "agent_loop",
+  "ast_patches",
 ];
 
 export async function loadLabsFlagsForRequest(jwt: string | null | undefined): Promise<LabsFlags> {
@@ -57,7 +59,7 @@ export async function loadLabsFlagsForRequest(jwt: string | null | undefined): P
       // both are unfinished alternate codepaths. Until they're proven
       // better than the monolithic path, admins must turn them on
       // manually in Labs.
-      const optInOnly = new Set<LabsFlagName>(["staged_pipeline", "agent_loop"]);
+      const optInOnly = new Set<LabsFlagName>(["staged_pipeline", "agent_loop", "ast_patches"]);
       const adminFlags = Object.fromEntries(
         ALL_FLAGS.filter((f) => !optInOnly.has(f)).map((f) => [f, true]),
       ) as LabsFlags;
@@ -65,6 +67,7 @@ export async function loadLabsFlagsForRequest(jwt: string | null | undefined): P
       const userFlags = (row?.flags ?? {}) as LabsFlags;
       if (userFlags.staged_pipeline) adminFlags.staged_pipeline = true;
       if (userFlags.agent_loop) adminFlags.agent_loop = true;
+      if (userFlags.ast_patches) adminFlags.ast_patches = true;
       return adminFlags;
     }
 
