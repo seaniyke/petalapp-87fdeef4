@@ -114,7 +114,7 @@ export function BuildTargetChips({ projectId, value, onChange, compact = false }
       {open && (
         <div
           role="listbox"
-          className={`absolute left-0 z-50 w-[15rem] max-h-[min(55vh,340px)] overflow-y-auto rounded-2xl border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-in fade-in duration-150 ${
+          className={`absolute left-0 z-50 w-[15rem] max-h-[min(55vh,340px)] overflow-y-auto rounded-2xl border border-border bg-card p-1 text-popover-foreground shadow-lg backdrop-blur-xl animate-in fade-in duration-150 ${
             placement === "top"
               ? "bottom-full mb-2 origin-bottom-left slide-in-from-bottom-1"
               : "top-full mt-2 origin-top-left slide-in-from-top-1"
