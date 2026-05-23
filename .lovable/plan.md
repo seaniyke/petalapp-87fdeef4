@@ -1,68 +1,83 @@
-# Plan: 4 Production-Grade Gaps
+# Question-first: never deploy when Petal is asking
 
-Sequenced lowest-risk → highest-risk. Each item is independently shippable; we can stop after any step.
+## Problem
 
-## 1. Hard two-phase gate (frontend → backend)
+Today a single turn can both **ask a clarifying question** and **build + deploy**. The screenshot shows Petal asking "is this the in-app preview, your browser, or a deployed URL?" while also wrapping the App in a Router and shipping "Your app is live · built in 13s". That's wrong on two counts:
 
-**Goal:** Backend-touching intents (auth, DB, payments, storage, email, realtime, cron, AI) cannot run on the same turn as the initial frontend build. Petal must build the frontend first, then ask the user to confirm before the backend turn.
+1. It burns credits on a guess.
+2. It makes the question feel rhetorical — the user already sees a "live" stamp, so why answer?
 
-**Where:**
-- `src/routes/api/generate.ts` — pre-flight check: if `messages.length` shows this is turn 1 AND the prompt triggers any backend intent (reuse `backend-intent.ts`, `payment-intent.ts`, etc. detectors), force `hasBackend: false` for the generation, append a `suggestions` block to the closing assistant message ("Add auth?", "Add database?", etc.), and skip the backend phase.
-- `src/server/pipeline/staged-orchestrator.server.ts` — pass `phase: "frontend" | "backend"` through; in frontend phase strip backend files from plan.
-- System prompt addition: "On turn 1, never write supabase client code, RLS, or server functions. Propose them as suggestions."
+Rule we want: **if Petal asks, Petal doesn't build. The user answers, then Petal builds and deploys.**
 
-**Risk:** Low. Reuses existing intent detectors + SuggestionChecklist (already hard-blocking).
+## Plan
 
-## 2. Per-file validate-then-continue loop
+### 1. Triage — bias question-shaped prompts to `clarify`
 
-**Goal:** Instead of running `post-stream-autofix` after the whole stream, validate each file as it lands and auto-repair before moving on. Catches broken imports / syntax mid-stream so later files can depend on earlier ones.
+`src/routes/api/triage.ts`
 
-**Where:**
-- `src/server/pipeline/stage-scaffold.server.ts` — wrap the per-file write in a `validateFile(file)` → `repairFile(file, errors)` → re-validate loop (max 2 repair passes per file).
-- New `src/server/pipeline/validate-file.server.ts` — runs the cheap subset of checks already in `validate-styles.server.ts`, `npm-existence.server.ts`, `tool-call-guard.server.ts`, plus a TS parse via `@babel/parser` (already a dep).
-- Emit `file_validated` SSE event so BuildActivityCard can show a green tick per file.
+- Tighten the prompt: when the user's latest message is a **question about existing state** ("why is X blank?", "is this working?", "what does Y mean?") with no explicit fix instruction ("fix it", "make it work"), pick `mode = "explain"` or `"clarify"` — never `"fix"`/`"build"`.
+- Add a deterministic pre-classifier helper `looksLikeBareQuestion(text)` (regex: ends with `?`, starts with `why|what|how|is|are|can|does|do|should`, no imperative verbs). If it matches and the model still returned `fix`/`build` with `confidence < 0.7`, downgrade to `clarify` server-side before emitting `intent`.
 
-**Risk:** Medium. Adds latency per file (~200-500ms). Mitigation: only run on `.ts/.tsx`, skip assets; cap repair at 2 attempts then continue and let post-stream autofix catch the rest (current behavior as fallback).
+### 2. New build-time escape hatch: `ask_question` op
 
-## 3. Preview crash → static fallback
+`src/server/generate.server.ts`, `src/routes/api/generate.ts`
 
-**Goal:** When WebContainer throws at runtime (white screen, module error, infinite loop), show the last known-good preview snapshot + a "Petal is fixing this" banner instead of a blank iframe.
+- Extend `FileOp` with a new variant `{ kind: "ask"; question: string; chips?: string[] }`. Only one allowed per turn; if present, **all sibling file ops are discarded**.
+- Add a small `askQuestionBlock` to the system prompt:
 
-**Where:**
-- `src/components/WebContainerPreview.tsx` — already has error boundary; extend to:
-  - On successful boot, snapshot a screenshot via `iframe.contentWindow` → IndexedDB keyed by `projectId@versionId`.
-  - On crash (caught error OR readiness probe fails after 8s), render `<PreviewCrashFallback>` showing the last snapshot + the crash reason from `friendly-errors.ts` + a "Try repair" button that re-triggers generation with the error context appended.
-- New `src/components/PreviewCrashFallback.tsx`.
-- `MobilePreviewFallback.tsx` already exists; refactor to share the snapshot UI.
+  > If you genuinely need one piece of information before you can build safely, emit a single `ask` op with a one-sentence question and up to 3 short answer chips. Do NOT also emit file edits in the same turn. Use this sparingly — default is to state an assumption and proceed.
 
-**Risk:** Medium. IndexedDB snapshot is best-effort (cross-origin iframe screenshots are limited — fallback to a cached DOM clone or just the friendly-error card if snapshot unavailable).
+- In `applyOps`, when an `ask` op is seen:
+  - skip the validator/autofix/preview steps,
+  - skip the credit settlement for file work (charge only the small triage/model-input cost already taken),
+  - emit a new SSE event `type: "question"` with `{ question, chips }`,
+  - close the stream cleanly with `type: "result_question"` instead of `type: "result"` (no `files`, no `summary`, no `recap`).
 
-## 4. AST-level diff edits
+### 3. Post-generation guard
 
-**Goal:** Replace the "keep existing code" comment convention with true AST patches for `.ts/.tsx` edits. The model emits a small JSON patch (`{file, op: "replace-export", name: "Foo", body: "..."}` etc.) and the server applies it via `@babel/traverse`. Fewer regressions, smaller token usage, no accidental deletions.
+`src/routes/api/generate.ts`
 
-**Where:**
-- New `src/server/pipeline/ast-patch.server.ts` — exports `applyPatch(source, patch)` supporting ops: `replace-export`, `replace-function`, `add-import`, `remove-import`, `replace-jsx-block` (anchored by `data-petal-block="id"`).
-- New tool spec in the system prompt: `<petal:patch file="..." op="...">...</petal:patch>` alongside the existing full-file write format. Model chooses per-edit; full-file for new files, patches for edits.
-- `keep-existing-expander.ts` stays as fallback.
-- Add `src/server/pipeline/__tests__/ast-patch.test.ts`.
+After the model returns, before we commit `nextFiles`:
 
-**Risk:** High. Touches the core generation contract. Recommend shipping behind a labs flag (`use-labs-flags.ts` already exists) and A/B testing on internal projects first.
+- Run a tiny heuristic on `summary` + last assistant chunk: contains `?` AND a question word AND no past-tense edit verb ("added", "wrapped", "created"). If true AND no `ask` op was emitted, treat the turn as a malformed question — convert to a `result_question` with the detected question, discard the file ops, refund the build settlement.
+- Log this as `recordAiOutcome({ buildStatus: "aborted_question" })` so we can see how often models violate the contract.
 
-## Suggested order
+### 4. Client — render questions as a hard pause, not a footnote
 
-1. **#1 (gate)** — 1 PR, low risk, biggest UX win for non-technical users.
-2. **#2 (per-file validate)** — 1 PR, medium risk, measurable build-quality improvement.
-3. **#3 (preview fallback)** — 1 PR, medium risk, eliminates the worst failure mode (blank screen).
-4. **#4 (AST patches)** — Labs-flagged rollout. Defer until #1–#3 stable.
+`src/routes/builder.tsx`, `src/lib/stream.ts`
 
-## Out of scope
+- Add handlers for `question` / `result_question` SSE events. On receipt:
+  - append an assistant message with `content = question`, `suggestions = chips`,
+  - set `pendingQuestion = true` for that message (already used elsewhere),
+  - **do not** show `BuildActivityCard`, "Your app is live", `NextStepsCard`, or the diff summary for this turn,
+  - keep the composer fully enabled (non-blocking, per existing rule) but tag the next user message with `forceBuild: true` so the answer doesn't get re-triaged into another `clarify`.
+- When `result_question` arrives, ensure `setActivityVisible(false)`, `setPhases(defaultPhases())`, and no `creditsCharged` chip renders.
 
-- Rewriting `examples-pack.ts` / system prompt structure (already strong).
-- Touching billing, mobile pipeline, Cloud activation, or the $5 grant logic.
-- Changing the SuggestionChecklist contract (already final per recent memory).
+### 5. Wallet / credits
 
-## Open questions
+`src/routes/api/generate.ts`
 
-- For #4: should we ship the patch format at all, or is "keep existing code" + #2's per-file validation enough? AST patches are the highest-effort/highest-risk item — happy to drop it if you'd rather invest the time elsewhere.
-- For #1: do you want the gate to be **absolute** (turn 1 = frontend only, always) or **smart** (skip gate if user explicitly says "build me a full SaaS with auth and DB")?
+- A `result_question` turn settles **only** the triage + question-emission cost (a few cents at most), never the build floor.
+- The follow-up turn (user's answer, `forceBuild: true`) runs the full build and is charged normally.
+
+### 6. Memory rule
+
+`mem://index.md` Core:
+
+> If Petal asks a clarifying question, the turn must NOT also edit files or deploy. Answer first, build second.
+
+## Technical details
+
+- New SSE event types: `question`, `result_question`. Backwards-compatible — older clients just ignore them and see no result, which is fine since no files were written.
+- `FileOp` discriminator gains `"ask"`. AST-patch labs flag is untouched.
+- The triage downgrade is deterministic and runs **before** the SSE `intent` event, so the client never flips to build mode for a bare question.
+- No DB schema change. Questions ride existing `messages.suggestions` column.
+
+## Files touched
+
+- `src/routes/api/triage.ts` — prompt tightening + `looksLikeBareQuestion` downgrade
+- `src/routes/api/generate.ts` — `ask` op handling, post-gen guard, new SSE events, credit settlement branch
+- `src/server/generate.server.ts` — extend `FileOp`, prompt block, `applyOps` early-return
+- `src/lib/stream.ts` — parse `question` / `result_question` events
+- `src/routes/builder.tsx` — render question turns without build chrome, set `forceBuild` on the next send
+- `mem://index.md` — add the rule
