@@ -27,7 +27,9 @@ type Props = {
 export function BuildTargetChips({ projectId, value, onChange, compact = false }: Props) {
   const [internal, setInternal] = useState<BuildTargetId>("web");
   const [open, setOpen] = useState(false);
+  const [placement, setPlacement] = useState<"top" | "bottom">("top");
   const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   // Hydrate from localStorage when uncontrolled.
   useEffect(() => {
