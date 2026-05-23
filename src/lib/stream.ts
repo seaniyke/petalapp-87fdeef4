@@ -354,6 +354,13 @@ export async function streamResumeTurn(
               evt.index as number,
             );
             break;
+          case "file_validated":
+            handlers.onFileValidated?.(
+              (evt.path as string) ?? "",
+              Boolean(evt.ok),
+              evt.errors as string[] | undefined,
+            );
+            break;
           case "narration":
             handlers.onNarration?.((evt.path as string) ?? "", (evt.text as string) ?? "");
             break;
