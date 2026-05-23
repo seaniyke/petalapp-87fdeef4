@@ -142,7 +142,7 @@ import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { SharePreviewDialog } from "@/components/SharePreviewDialog";
 import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
-import { BuildTargetChips } from "@/components/BuildTargetChips";
+// BuildTargetChips import removed — chip rail retired from the composer.
 import { DevicePreviewFrame } from "@/components/DevicePreviewFrame";
 const SnackPreview = lazy(() =>
   import("@/components/SnackPreview").then((m) => ({ default: m.SnackPreview })),
@@ -3354,6 +3354,7 @@ function Builder() {
                              the app is actually live. */}
                          {i === messages.length - 1 &&
                            !petalIsWorking &&
+                           !pendingQuestion &&
                            isLive &&
                            !friendlyError &&
                            files.length > 0 &&
@@ -4454,27 +4455,10 @@ function Builder() {
               </div>
             </div>
 
-            {/* Build-target chip rail — Google AI Studio style. Tells Petal
-                what stack to scaffold (Web / Android / iOS / Backend /
-                Extension) and drives the preview-frame chrome. */}
-            <div className="mt-1.5 flex items-center gap-1.5 px-1">
-              <BuildTargetChips
-                projectId={project?.id ?? null}
-                value={buildTarget}
-                onChange={setBuildTarget}
-                compact
-              />
-              {(buildTarget === "mobile" || buildTarget === "ios" || buildTarget === "android") && (
-                <button
-                  type="button"
-                  onClick={() => setMobilePublishOpen(true)}
-                  className="ml-auto inline-flex h-7 items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-2.5 text-[11.5px] text-foreground/80 transition hover:bg-foreground/[0.05] hover:text-foreground"
-                  title="Ship this app to the App Store / Play"
-                >
-                  <Smartphone className="h-3 w-3" /> Publish
-                </button>
-              )}
-            </div>
+            {/* Build-target chip rail removed per product decision —
+                target is inferred from the prompt; mobile publish lives in
+                the actions sheet. */}
+
             <Suspense fallback={null}>
               {mobilePublishOpen && (
                 <MobilePublishSheet
