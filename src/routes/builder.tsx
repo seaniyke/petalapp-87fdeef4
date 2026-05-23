@@ -2028,6 +2028,10 @@ function Builder() {
             content: preambleText ? `${preambleText}\n\n${fallbackText}` : fallbackText,
             plan: resultPlan,
             recap: resultRecap,
+            // Question-first: when the server detected a clarifying question
+            // it forwards suggested answer chips here. Surface them so the
+            // user has tap-to-answer options instead of staring at a wall.
+            ...(resultSuggestions.length > 0 ? { suggestions: resultSuggestions } : {}),
           };
           noEditRecoveryRef.current.attempts = 0;
           transientGenerateRecoveryRef.current.attempts = 0;
