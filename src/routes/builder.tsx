@@ -3297,7 +3297,7 @@ function Builder() {
                             answered={answeredQuestionAt === messages.length}
                             onSend={(text: string) => {
                               setAnsweredQuestionAt(messages.length);
-                              submitPrompt(text);
+                              submitPrompt(text, { bypassQuestionGate: true });
                             }}
                             onSkip={() => {
                               setAnsweredQuestionAt(messages.length);
