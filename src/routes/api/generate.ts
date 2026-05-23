@@ -1594,7 +1594,7 @@ Forbidden defaults
   let archetypeBlock = "";
   try {
     const { buildBlueprintFor } = await import("@/server/app-composer.server");
-    const composed = buildBlueprintFor(lastUserText);
+    const composed = buildBlueprintFor(lastUserText, { hasBackend: Boolean(backend) });
     if (composed) archetypeBlock = composed.promptBlock;
   } catch {
     // Never block a build on composer failure.
@@ -2047,7 +2047,7 @@ Forbidden defaults
             const { composeAppBlueprint, scaffoldRouteStubs } = await import(
               "@/server/app-composer.server"
             );
-            const bp = composeAppBlueprint(lastUserText);
+            const bp = composeAppBlueprint(lastUserText, { hasBackend: Boolean(backend) });
             if (bp) {
               const have = new Set(nextFiles.map((f) => f.path));
               for (const stub of scaffoldRouteStubs(bp)) {
