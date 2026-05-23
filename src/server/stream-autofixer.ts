@@ -252,6 +252,38 @@ function fixLazyNamedExports(files: ProjectFile[], report: AutofixReport): Proje
   });
 }
 
+/**
+ * Strip JSX comment blocks that wrap commented-out JSX elements.
+ *
+ * Pattern: `{ /* <Foo .../> *\/ }` (with or without inner braces / props).
+ *
+ * Why: esbuild's JSX parser rejects empty-comment-only expression containers
+ * with "Expected ... but found }" — and even when accepted, inner braces
+ * from props like `onClick={fn}` confuse downstream tooling. The model
+ * occasionally produces these when it tries to disable a feature (e.g.
+ * SignInCard when no backend is connected). Cleanest fix: delete the
+ * commented JSX outright. Plain prose comments without a JSX tag are kept.
+ */
+function stripCommentedOutJsx(content: string, report: AutofixReport): string {
+  const re = /\{\s*\/\*[\s\S]*?\*\/\s*\}/g;
+  let fixedCount = 0;
+  const out = content.replace(re, (match) => {
+    const start = match.indexOf("/*") + 2;
+    const end = match.lastIndexOf("*/");
+    const body = match.slice(start, end);
+    if (/<\/?[A-Za-z]/.test(body)) {
+      fixedCount++;
+      return "";
+    }
+    return match;
+  });
+  if (fixedCount > 0) {
+    report.fixedCount += fixedCount;
+    report.notes.push(`Stripped ${fixedCount} commented-out JSX block(s)`);
+  }
+  return out;
+}
+
 /** Apply autofixers to a single file. Returns the (possibly modified) file. */
 export function autofixFile(file: ProjectFile, report: AutofixReport, hasBackendKit = false): ProjectFile {
   // Only run on text files we'd ship to the build. Skip binaries, lockfiles.
@@ -265,8 +297,12 @@ export function autofixFile(file: ProjectFile, report: AutofixReport, hasBackend
   content = fixBadImports(content, report, hasBackendKit);
   content = fixLucideIcons(content, report);
   content = capPetalImages(content, report);
+  if (/\.(tsx|jsx)$/.test(file.path)) {
+    content = stripCommentedOutJsx(content, report);
+  }
   return content === file.content ? file : { ...file, content };
 }
+
 
 /** Apply autofixers across the whole file set. Returns new files + report. */
 export function autofixFiles(files: ProjectFile[]): { files: ProjectFile[]; report: AutofixReport } {

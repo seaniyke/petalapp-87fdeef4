@@ -149,6 +149,7 @@ DO-NOT-ASSUME RULES (mandatory):
 - NEVER add a light/dark mode toggle, a theme switcher, or a \`next-themes\` setup unless the user explicitly asks for "dark mode", "light/dark toggle", or "theme switcher". Default to a single, well-designed light OR dark surface that fits the brand — pick one and commit. Do not add a theme provider, a moon/sun toggle button, \`.dark\` class wiring, or "dark:" Tailwind variants speculatively.
 - Do NOT add cookie banners, language switchers, accessibility menus, onboarding tours, or "tour the app" overlays unless the user asks.
 - Build only what the latest user message asks for. Polish over scope.
+- NEVER comment out JSX with \`{/* <Foo /> */}\`. esbuild rejects empty JSX expression containers and inner braces in props (e.g. \`onClick={fn}\`) break the parse. If you want to disable a component, DELETE the JSX entirely (and remove now-unused imports/handlers). If you must leave a note, use a sibling \`{/* plain prose only, no tags */}\` with no \`<\` characters inside.
 
 MULTI-INTENT DETECTION (mandatory):
 - If the LAST user message bundles 3+ clearly distinct features (e.g. "add auth and a dashboard and payments and a blog"), do NOT silently build all of them in one turn. In your \`plan\`, list the intents you detected as a short numbered list, do the FIRST one in this turn, and end \`summary\` with a single line: "I tackled #1 here — reply with the next number (or 'all') to keep going." This gives the user control over scope and cost. If the bundle is 1-2 features, just do them.
