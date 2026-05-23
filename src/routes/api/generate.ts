@@ -819,7 +819,7 @@ async function recoverMissingToolOutput(args: {
 function emitConversationalFallback(
   controller: ReadableStreamDefaultController<Uint8Array>,
   encoder: TextEncoder,
-  args: { summary: string; files: ProjectFile[] },
+  args: { summary: string; files: ProjectFile[]; suggestions?: string[] },
 ): void {
   controller.enqueue(
     encoder.encode(sse({ type: "summary_delta", delta: args.summary })),
@@ -834,9 +834,62 @@ function emitConversationalFallback(
         recap: undefined,
         creditsCharged: 0,
         noFileChanges: true,
+        ...(args.suggestions && args.suggestions.length > 0
+          ? { suggestions: args.suggestions }
+          : {}),
       }),
     ),
   );
+}
+
+/**
+ * Question-first guard. If the model's summary is shaped like a clarifying
+ * question (ends with `?`, contains a question word, and has no past-tense
+ * edit verb like "added"/"wrapped"/"created"), the turn must NOT also ship
+ * file edits. Returns the question + extracted answer chips when matched,
+ * or `null` when the summary is a normal "I did X" build report.
+ *
+ * Rationale: Petal should never deploy on a guess. If it needs information,
+ * it asks and waits. Build runs on the next turn once the user answers.
+ */
+function detectClarifyingQuestion(
+  summary: string,
+): { question: string; chips: string[] } | null {
+  const s = (summary ?? "").trim();
+  if (!s) return null;
+  // Past-tense edit verbs → it's a build report, not a question.
+  if (
+    /\b(?:added|created|wrapped|updated|changed|fixed|removed|deleted|installed|wired|built|implemented|refactored|renamed|introduced|replaced|enabled|disabled|migrated|scaffolded|generated|configured|patched|polished|tightened)\b/i.test(
+      s,
+    )
+  ) {
+    return null;
+  }
+  const sentences = s.split(/(?<=[.!?])\s+/);
+  const lastQ = [...sentences].reverse().find((x) => /\?\s*$/.test(x));
+  if (!lastQ) return null;
+  if (
+    !/\b(?:what|why|how|where|when|which|who|whose|whom|is|are|was|were|do|does|did|can|could|should|would|will|may|might|have|has|had)\b/i.test(
+      lastQ.slice(0, 80),
+    )
+  ) {
+    return null;
+  }
+  const chips: string[] = [];
+  const orMatch = lastQ.match(/([^?.!,;:]+(?:,\s*[^?.!,;:]+)+\s*,?\s*or\s+[^?.!]+)\?/i);
+  if (orMatch) {
+    const parts = orMatch[1]
+      .split(/,\s*|\s+or\s+/i)
+      .map((p) => p.replace(/^(?:the|a|an)\s+/i, "").trim())
+      .filter((p) => p.length > 0 && p.length <= 40);
+    for (const p of parts) {
+      if (chips.length >= 3) break;
+      if (!chips.includes(p)) chips.push(p);
+    }
+  } else if (/^(?:is|are|was|were|do|does|did|can|could|should|would|will|have|has|had)\b/i.test(lastQ.trim())) {
+    chips.push("Yes", "No");
+  }
+  return { question: s, chips };
 }
 
 function ensureRenderableShell(files: ProjectFile[]): { files: ProjectFile[]; fixed: string[] } {
