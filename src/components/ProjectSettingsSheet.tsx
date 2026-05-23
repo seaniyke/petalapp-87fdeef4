@@ -35,7 +35,10 @@ import {
 } from "@/lib/projects";
 import { DomainsSection } from "@/components/DomainsSection";
 import { EmailSection } from "@/components/EmailSection";
-import { MobileAppPanel } from "@/components/MobileAppPanel";
+// MobileAppPanel intentionally not imported — the legacy Codemagic + GitHub
+// mirror flow is superseded by the in-builder Expo/EAS pipeline
+// (DevicePreviewFrame + MobilePublishSheet). Surfacing it caused
+// PETAL_GITHUB_MIRROR_ORG errors and a second, confusing mobile setup.
 import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { LabsSection } from "@/components/LabsSection";
 // ProjectMemorySection is intentionally not imported — memory is internal.
@@ -245,8 +248,8 @@ export function ProjectSettingsSheet({
           <EmailSection projectId={project.id} />
         </div>
 
-        {/* Mobile app section (Tier 2 native shell) */}
-        <MobileAppPanel projectId={project.id} />
+        {/* Legacy mobile panel removed — mobile lives in the builder now
+            (device preview + Ship sheet). */}
 
         <div id="settings-knowledge" className="mt-8 scroll-mt-4 border-t border-border pt-6">
           <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
