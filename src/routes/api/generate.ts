@@ -1554,36 +1554,76 @@ Forbidden defaults
   }
 
 
+  // ---------------------------------------------------------------------------
+  // Prompt caching: split the system message into a STABLE PREFIX and a
+  // DYNAMIC SUFFIX. The prefix is byte-for-byte identical across consecutive
+  // turns in a session — that's what lets OpenAI/Anthropic/Gemini serve it
+  // from cache (Anthropic gets an explicit `cache_control` marker; OpenAI
+  // and Gemini auto-cache stable prefixes ≥1024 tokens). The suffix carries
+  // anything that legitimately changes per turn: current files, the date,
+  // keyword-triggered snippets, plan results, vision addendum, etc.
+  // Rule: NEVER move per-turn content into the prefix. Drift kills cache hits.
+  // ---------------------------------------------------------------------------
+  const staticPrefixText =
+    baseSystem +
+    buildTargetBlock +
+    designQualityBlock +
+    capabilitiesBlock +
+    multiEditBlock +
+    backendBlock +
+    integrationsBlock +
+    knowledgeBlock +
+    memoryBlock +
+    preservationBlock +
+    designBlock +
+    appShapeBlock +
+    mobileBlock +
+    gameBlock +
+    archetypeBlock;
+
+  const dynamicSuffixText =
+    dateBlock +
+    suggestionsBlock +
+    resolvedBlock +
+    (approvedPlan ? renderApprovedPlanBlock(approvedPlan) : "") +
+    dynamic.text +
+    learningBlock +
+    highStakesBlock +
+    visionAddendum +
+    filesContext;
+
+  // Short stable hash of the prefix — logged with each call so we can see at
+  // a glance whether the prefix is drifting (which would kill cache hits).
+  // Tiny FNV-1a is enough; this is for ops, not security.
+  const staticPrefixHash = (() => {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < staticPrefixText.length; i++) {
+      h ^= staticPrefixText.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    return (h >>> 0).toString(16);
+  })();
+
   const chatMessages = [
     {
+      // STATIC PREFIX. Content uses the array shape so we can attach
+      // Anthropic-style `cache_control: { type: "ephemeral" }`. Gemini /
+      // OpenAI via OpenRouter ignore the marker safely and rely on
+      // automatic prefix-cache matching — which works because the text
+      // above is stable across turns.
       role: "system",
-      content:
-        baseSystem +
-        buildTargetBlock +
-        designQualityBlock +
-
-
-        dateBlock +
-        capabilitiesBlock +
-        multiEditBlock +
-        backendBlock +
-        integrationsBlock +
-        suggestionsBlock +
-        resolvedBlock +
-        knowledgeBlock +
-        memoryBlock +
-        preservationBlock +
-        (approvedPlan ? renderApprovedPlanBlock(approvedPlan) : "") +
-        designBlock +
-        dynamic.text +
-        learningBlock +
-        highStakesBlock +
-        appShapeBlock +
-        mobileBlock +
-        gameBlock +
-        archetypeBlock +
-        visionAddendum +
-        filesContext,
+      content: [
+        {
+          type: "text",
+          text: staticPrefixText,
+          cache_control: { type: "ephemeral" as const },
+        },
+      ],
+    },
+    {
+      // DYNAMIC SUFFIX. Everything below the cache boundary.
+      role: "system",
+      content: dynamicSuffixText,
     },
     ...messages.map((m, i) => {
       if (i === lastUserIdx && hasVisionTurn) {
@@ -1601,6 +1641,10 @@ Forbidden defaults
       return { role: m.role, content: m.content };
     }),
   ];
+
+  console.log(
+    `[prompt-cache] prefix_chars=${staticPrefixText.length} prefix_hash=${staticPrefixHash} suffix_chars=${dynamicSuffixText.length} files=${isInitial ? 0 : (promptBudget.files?.length ?? 0)}`,
+  );
 
   // Tier 3 — phase classifier. Tags the turn (implement/debug/refactor/
   // plan/docs) so we can route mechanical work to a cheap model and
