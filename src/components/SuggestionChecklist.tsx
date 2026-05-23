@@ -66,11 +66,11 @@ export function SuggestionChecklist({
     <div
       className="mt-3 overflow-hidden rounded-2xl border border-primary/40 bg-card/80 shadow-sm ring-1 ring-primary/10 animate-in fade-in slide-in-from-bottom-1 duration-300"
       role="group"
-      aria-label="Petal needs an answer to continue"
+      aria-label="Quick replies — optional"
     >
       <div className="flex items-center gap-2 border-b border-border/60 bg-primary/[0.06] px-3.5 py-2 text-[11.5px] font-medium text-foreground/80">
         <ListChecks className="h-3.5 w-3.5" />
-        <span>{question ?? "Petal needs an answer to continue"}</span>
+        <span>{question ?? "Quick replies — tap one or keep typing"}</span>
       </div>
 
       <ul className="divide-y divide-border/50">
@@ -130,7 +130,7 @@ export function SuggestionChecklist({
           disabled={answered || pending}
           className="text-[11px] text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline disabled:cursor-default disabled:opacity-50"
         >
-          Skip question
+          Dismiss
         </button>
         <button
           type="button"

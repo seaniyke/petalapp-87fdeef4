@@ -2500,12 +2500,16 @@ function Builder() {
   );
 
   const submitPrompt = useCallback(
-    (text: string, opts: { bypassQuestionGate?: boolean } = {}) => {
+    (text: string, _opts: { bypassQuestionGate?: boolean } = {}) => {
       const trimmed = text.trim();
       if (!trimmed || bootstrapping) return;
-      // If Petal is waiting on a clarifying answer the only valid submit path
-      // is through the SuggestionChecklist, which passes `bypassQuestionGate`.
-      if (pendingQuestion && !opts.bypassQuestionGate) return;
+      // Non-blocking question UX: if Petal asked something, the user can
+      // still type freely. Typing past the chips is treated as a free-text
+      // answer/continuation — we just dismiss the checklist so it doesn't
+      // re-render stale chips after the next turn.
+      if (pendingQuestion) {
+        setAnsweredQuestionAt(messages.length);
+      }
       if (busy || discussBusy) {
         setPendingQueue((q) => [
           ...q,
@@ -2530,8 +2534,9 @@ function Builder() {
       if (mode === "discuss") void discuss(trimmed);
       else void send(trimmed, { planFirst: planFirst && !proposedPlan });
     },
-    [bootstrapping, busy, discussBusy, mode, discuss, send, lastDiscussIndex, APPLY_AFFIRMATIONS, applyDiscussedPlan, pendingQuestion, planFirst, proposedPlan],
+    [bootstrapping, busy, discussBusy, mode, discuss, send, lastDiscussIndex, APPLY_AFFIRMATIONS, applyDiscussedPlan, pendingQuestion, messages.length, planFirst, proposedPlan],
   );
+
 
   // Auto-dequeue the next prompt as soon as Petal frees up.
   useEffect(() => {
@@ -4357,24 +4362,21 @@ function Builder() {
                   // Enter inserts a newline (default). Cmd/Ctrl+Enter sends.
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     e.preventDefault();
-                    if (pendingQuestion) return;
                     submitPrompt(input);
                   }
                 }}
                 placeholder={
-                  pendingQuestion
-                    ? "Answer Petal's question above to continue…"
-                    : busy || discussBusy
-                      ? "Type to queue your next message…"
-                      : mode === "discuss"
-                        ? "Ask Petal anything about your app…"
-                        : files.length
-                          ? "Ask for a change…"
-                          : "Describe the app you want to build…"
+                  busy || discussBusy
+                    ? "Type to queue your next message…"
+                    : mode === "discuss"
+                      ? "Ask Petal anything about your app…"
+                      : files.length
+                        ? "Ask for a change…"
+                        : "Describe the app you want to build…"
                 }
                 rows={1}
                 className="max-h-[200px] min-h-[44px] w-full resize-none overflow-y-auto bg-transparent px-2 py-1.5 text-sm font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground disabled:opacity-50"
-                disabled={bootstrapping || pendingQuestion}
+                disabled={bootstrapping}
               />
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
@@ -4434,7 +4436,7 @@ function Builder() {
                   ) : (
                     <button
                       type="submit"
-                      disabled={bootstrapping || pendingQuestion || !input.trim()}
+                      disabled={bootstrapping || !input.trim()}
                       className="grid h-9 w-9 place-items-center rounded-full bg-[oklch(0.62_0.19_255)] text-white shadow-[0_2px_8px_-2px_oklch(0.62_0.19_255/0.5)] transition hover:brightness-110 active:scale-95 disabled:bg-foreground/20 disabled:text-foreground/40 disabled:shadow-none"
                       title={
                         discussBusy
