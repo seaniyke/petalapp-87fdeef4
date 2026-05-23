@@ -2500,12 +2500,16 @@ function Builder() {
   );
 
   const submitPrompt = useCallback(
-    (text: string, opts: { bypassQuestionGate?: boolean } = {}) => {
+    (text: string, _opts: { bypassQuestionGate?: boolean } = {}) => {
       const trimmed = text.trim();
       if (!trimmed || bootstrapping) return;
-      // If Petal is waiting on a clarifying answer the only valid submit path
-      // is through the SuggestionChecklist, which passes `bypassQuestionGate`.
-      if (pendingQuestion && !opts.bypassQuestionGate) return;
+      // Non-blocking question UX: if Petal asked something, the user can
+      // still type freely. Typing past the chips is treated as a free-text
+      // answer/continuation — we just dismiss the checklist so it doesn't
+      // re-render stale chips after the next turn.
+      if (pendingQuestion) {
+        setAnsweredQuestionAt(messages.length);
+      }
       if (busy || discussBusy) {
         setPendingQueue((q) => [
           ...q,
@@ -2530,8 +2534,9 @@ function Builder() {
       if (mode === "discuss") void discuss(trimmed);
       else void send(trimmed, { planFirst: planFirst && !proposedPlan });
     },
-    [bootstrapping, busy, discussBusy, mode, discuss, send, lastDiscussIndex, APPLY_AFFIRMATIONS, applyDiscussedPlan, pendingQuestion, planFirst, proposedPlan],
+    [bootstrapping, busy, discussBusy, mode, discuss, send, lastDiscussIndex, APPLY_AFFIRMATIONS, applyDiscussedPlan, pendingQuestion, messages.length, planFirst, proposedPlan],
   );
+
 
   // Auto-dequeue the next prompt as soon as Petal frees up.
   useEffect(() => {
