@@ -2069,6 +2069,27 @@ Forbidden defaults
         }
 
         let { parsed, summary, plan, recap } = payload;
+
+        // Question-first guard. If the model asked a clarifying question
+        // instead of describing edits, do NOT apply any file ops — even if
+        // the model also emitted some. Petal asks → user answers → next
+        // turn builds. This prevents the "ask + deploy in the same turn"
+        // UX where the user sees "Your app is live" alongside a question.
+        {
+          const q = detectClarifyingQuestion(summary);
+          if (q) {
+            console.warn(
+              `[question-first] aborting build — model asked a clarifying question; discarding ${parsed.files?.length ?? 0} file(s) / ${parsed.ops?.length ?? 0} op(s)`,
+            );
+            emitConversationalFallback(controller, encoder, {
+              files: currentFiles,
+              summary: q.question,
+              suggestions: q.chips,
+            });
+            return;
+          }
+        }
+
         let nextFiles: ProjectFile[];
         if (collected.name === "write_project") {
           if (!parsed.files?.length) throw new Error("AI returned no files.");
