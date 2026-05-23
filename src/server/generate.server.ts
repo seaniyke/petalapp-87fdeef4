@@ -453,7 +453,14 @@ export type FileOp =
   | { op: "create"; path: string; content: string }
   | { op: "update"; path: string; content: string }
   | { op: "replace"; path: string; search: string; replace: string }
-  | { op: "delete"; path: string };
+  | { op: "delete"; path: string }
+  /**
+   * Plan #4 — AST-level diff edits (labs-flagged: `ast_patches`).
+   * Targets named JS/TS constructs by identifier or JSX anchor rather
+   * than exact-text snippets. Rejected before this point when the flag
+   * is off. See `src/server/ast-patch.server.ts` for the patch grammar.
+   */
+  | { op: "ast-patch"; path: string; patches: import("./ast-patch.server").AstPatch[] };
 
 export type WriteProjectArgs = {
   plan?: string;
