@@ -217,6 +217,10 @@ export async function updateLastCallUsage(args: {
   promptTokens: number | null;
   completionTokens: number | null;
   totalTokens: number | null;
+  cachedPromptTokens?: number | null;
+  staticPrefixChars?: number | null;
+  staticPrefixHash?: string | null;
+  filesSent?: number | null;
 }): Promise<void> {
   if (!args.promptTokens && !args.completionTokens) return;
   try {
@@ -237,14 +241,16 @@ export async function updateLastCallUsage(args: {
     const { data: rows } = await q;
     const id = rows?.[0]?.id;
     if (!id) return;
-    await supabaseAdmin
-      .from("ai_call_log")
-      .update({
-        prompt_tokens: args.promptTokens,
-        completion_tokens: args.completionTokens,
-        total_tokens: args.totalTokens,
-      })
-      .eq("id", id);
+    const patch: Record<string, unknown> = {
+      prompt_tokens: args.promptTokens,
+      completion_tokens: args.completionTokens,
+      total_tokens: args.totalTokens,
+    };
+    if (args.cachedPromptTokens != null) patch.cached_prompt_tokens = args.cachedPromptTokens;
+    if (args.staticPrefixChars != null) patch.static_prefix_chars = args.staticPrefixChars;
+    if (args.staticPrefixHash != null) patch.static_prefix_hash = args.staticPrefixHash;
+    if (args.filesSent != null) patch.files_sent = args.filesSent;
+    await supabaseAdmin.from("ai_call_log").update(patch).eq("id", id);
   } catch (err) {
     console.warn("[ai-provider] usage backfill failed", err);
   }
