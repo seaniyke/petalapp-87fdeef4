@@ -1922,6 +1922,13 @@ function Builder() {
                 return next;
               });
             },
+            onFileValidated: (path, ok, errors) => {
+              if (!ok && errors && errors.length > 0) {
+                setLatestCycleProgress(
+                  `Spotted an issue in ${path.split("/").pop()} — will repair after stream`,
+                );
+              }
+            },
             onNarration: (path, text) => {
               setLatestPath((curr) => {
                 if (curr === path || curr === undefined) setLatestNarration(text);
