@@ -29,6 +29,7 @@ import {
 import { resolveFromUserPaste } from "@/server/integrations/user-paste-resolver.server";
 import { detectIntegrationRequests } from "@/lib/integration-request-intent";
 import { validateStylesCss } from "@/server/validate-styles.server";
+import { verifyFileLocal } from "@/server/local-verifier";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
