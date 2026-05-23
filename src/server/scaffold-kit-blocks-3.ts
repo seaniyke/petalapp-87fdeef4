@@ -2,8 +2,8 @@
  * Phase-3 expansion of the Petal scaffold (workstream B).
  *
  * What's new vs blocks-1 / blocks-2:
- *   - Auth blocks pre-wired to `@/integrations/backend/auth` so the model
- *     never hand-rolls auth screens again.
+ *   - Auth blocks live in a separate backend-only export so no-backend
+ *     projects never receive imports that cannot resolve.
  *   - Data display blocks (StatCard / KpiGrid / ComparisonTable / PricingTable
  *     / ActivityFeed) — the things the model previously hand-styled poorly.
  *   - Form blocks (MultiStepWizard / FileUploadDropzone / OtpInputGroup /
@@ -33,7 +33,7 @@ import type { ProjectFile } from "./generate.server";
 type KitFile = ProjectFile & { overwrite: boolean };
 
 // =============================================================================
-// AUTH — pre-wired to @/integrations/backend/auth.
+// AUTH — pre-wired to @/integrations/backend/auth, injected only with backend kit.
 // =============================================================================
 
 const SIGN_IN_CARD = `import * as React from "react";
@@ -928,11 +928,13 @@ export function CheckoutSummary({
 // REGISTRY
 // =============================================================================
 
-export const KIT_BLOCK_FILES_3: KitFile[] = [
-  // Auth
+export const BACKEND_KIT_BLOCK_FILES_3: KitFile[] = [
   { path: "src/components/blocks/auth-sign-in-card.tsx", content: SIGN_IN_CARD, overwrite: true },
   { path: "src/components/blocks/auth-sign-up-card.tsx", content: SIGN_UP_CARD, overwrite: true },
   { path: "src/components/blocks/auth-forgot-password-card.tsx", content: FORGOT_PASSWORD_CARD, overwrite: true },
+];
+
+export const KIT_BLOCK_FILES_3: KitFile[] = [
   // Data display
   { path: "src/components/blocks/stat-card.tsx", content: STAT_CARD, overwrite: true },
   { path: "src/components/blocks/kpi-grid.tsx", content: KPI_GRID, overwrite: true },
