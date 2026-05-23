@@ -326,6 +326,10 @@ function Builder() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [input, setInput] = useState("");
+  // Tracks `messages.length` at the moment the user answered or skipped the
+  // most recent clarifying question. The composer stays hard-blocked until
+  // this matches the current message count.
+  const [answeredQuestionAt, setAnsweredQuestionAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [bootstrapping, setBootstrapping] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -846,6 +850,18 @@ function Builder() {
   //   - isDeploying: Cloudflare deploy not yet ready/failed
   //   - awaitingBuild: post-generation, pre-deploy bridge (no flash)
   const petalIsWorking = busy || discussBusy || isDeploying || awaitingBuild;
+
+  // Pending clarifying question gate. When the LAST message is an assistant
+  // turn with `suggestions`, Petal is asking the user to choose. Until the
+  // user sends an answer or taps "Skip question" the composer is hard-blocked
+  // and the SuggestionChecklist is the only way to proceed.
+  const _lastMsg = messages[messages.length - 1];
+  const pendingQuestion =
+    !!_lastMsg &&
+    _lastMsg.role === "assistant" &&
+    (_lastMsg.suggestions?.length ?? 0) > 0 &&
+    answeredQuestionAt !== messages.length &&
+    !petalIsWorking;
 
   // Long-wait escalation for the deploy phase. We escalate copy at 60s/90s
   // and surface a friendly "deploy stalled" card at 150s so the user always
@@ -2460,9 +2476,12 @@ function Builder() {
   );
 
   const submitPrompt = useCallback(
-    (text: string) => {
+    (text: string, opts: { bypassQuestionGate?: boolean } = {}) => {
       const trimmed = text.trim();
       if (!trimmed || bootstrapping) return;
+      // If Petal is waiting on a clarifying answer the only valid submit path
+      // is through the SuggestionChecklist, which passes `bypassQuestionGate`.
+      if (pendingQuestion && !opts.bypassQuestionGate) return;
       if (busy || discussBusy) {
         setPendingQueue((q) => [
           ...q,
@@ -2487,7 +2506,7 @@ function Builder() {
       if (mode === "discuss") void discuss(trimmed);
       else void send(trimmed, { planFirst: planFirst && !proposedPlan });
     },
-    [bootstrapping, busy, discussBusy, mode, discuss, send, lastDiscussIndex, APPLY_AFFIRMATIONS, applyDiscussedPlan],
+    [bootstrapping, busy, discussBusy, mode, discuss, send, lastDiscussIndex, APPLY_AFFIRMATIONS, applyDiscussedPlan, pendingQuestion, planFirst, proposedPlan],
   );
 
   // Auto-dequeue the next prompt as soon as Petal frees up.
@@ -3267,16 +3286,21 @@ function Builder() {
                         <Suspense fallback={<div className="whitespace-pre-wrap">{sanitizeNarrative(m.content)}</div>}>
                           <MarkdownMessage content={sanitizeNarrative(m.content)} projectId={project?.id ?? null} />
                         </Suspense>
-                        {/* Clarifying-question chips. Only render when the
-                            post-build NextStepsCard is NOT shown (no files
-                            yet) — once a build exists, suggestions are folded
-                            into the "Keep building" action below to keep the
-                            thread calm. */}
-                        {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && files.length === 0 && (
+                        {/* Required clarifying-question answer card. Renders
+                            whenever the latest assistant turn carries
+                            `suggestions`, before AND after a build. The
+                            composer is hard-blocked above until the user
+                            sends an answer or taps Skip. */}
+                        {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && (
                           <SuggestionChecklist
                             options={m.suggestions}
-                            onPick={(text: string) => {
-                              setInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+                            answered={answeredQuestionAt === messages.length}
+                            onSend={(text: string) => {
+                              setAnsweredQuestionAt(messages.length);
+                              submitPrompt(text, { bypassQuestionGate: true });
+                            }}
+                            onSkip={() => {
+                              setAnsweredQuestionAt(messages.length);
                             }}
                           />
                         )}
@@ -3322,12 +3346,11 @@ function Builder() {
                                 if (isMobile) setMobileTab("chat");
                                 composerTextareaRef.current?.focus();
                               }}
-                              suggestions={m.suggestions}
-                              onSuggest={(s) => {
-                                setInput((prev) => (prev.trim() ? `${prev.trim()} ${s}` : s));
-                                if (isMobile) setMobileTab("chat");
-                                composerTextareaRef.current?.focus();
-                              }}
+                              /* `suggestions` are intentionally NOT forwarded:
+                                 clarifying questions are owned by the
+                                 SuggestionChecklist above so the post-build
+                                 NextStepsCard never duplicates them. */
+
 
                             />
                           )}
@@ -4309,21 +4332,24 @@ function Builder() {
                   // Enter inserts a newline (default). Cmd/Ctrl+Enter sends.
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     e.preventDefault();
+                    if (pendingQuestion) return;
                     submitPrompt(input);
                   }
                 }}
                 placeholder={
-                  busy || discussBusy
-                    ? "Type to queue your next message…"
-                    : mode === "discuss"
-                      ? "Ask Petal anything about your app…"
-                      : files.length
-                        ? "Ask for a change…"
-                        : "Describe the app you want to build…"
+                  pendingQuestion
+                    ? "Answer Petal's question above to continue…"
+                    : busy || discussBusy
+                      ? "Type to queue your next message…"
+                      : mode === "discuss"
+                        ? "Ask Petal anything about your app…"
+                        : files.length
+                          ? "Ask for a change…"
+                          : "Describe the app you want to build…"
                 }
                 rows={1}
-                className="max-h-[200px] min-h-[44px] w-full resize-none overflow-y-auto bg-transparent px-2 py-1.5 text-sm font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground"
-                disabled={bootstrapping}
+                className="max-h-[200px] min-h-[44px] w-full resize-none overflow-y-auto bg-transparent px-2 py-1.5 text-sm font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground disabled:opacity-50"
+                disabled={bootstrapping || pendingQuestion}
               />
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
@@ -4383,7 +4409,7 @@ function Builder() {
                   ) : (
                     <button
                       type="submit"
-                      disabled={bootstrapping || !input.trim()}
+                      disabled={bootstrapping || pendingQuestion || !input.trim()}
                       className="grid h-9 w-9 place-items-center rounded-full bg-[oklch(0.62_0.19_255)] text-white shadow-[0_2px_8px_-2px_oklch(0.62_0.19_255/0.5)] transition hover:brightness-110 active:scale-95 disabled:bg-foreground/20 disabled:text-foreground/40 disabled:shadow-none"
                       title={
                         discussBusy
