@@ -4362,24 +4362,21 @@ function Builder() {
                   // Enter inserts a newline (default). Cmd/Ctrl+Enter sends.
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     e.preventDefault();
-                    if (pendingQuestion) return;
                     submitPrompt(input);
                   }
                 }}
                 placeholder={
-                  pendingQuestion
-                    ? "Answer Petal's question above to continue…"
-                    : busy || discussBusy
-                      ? "Type to queue your next message…"
-                      : mode === "discuss"
-                        ? "Ask Petal anything about your app…"
-                        : files.length
-                          ? "Ask for a change…"
-                          : "Describe the app you want to build…"
+                  busy || discussBusy
+                    ? "Type to queue your next message…"
+                    : mode === "discuss"
+                      ? "Ask Petal anything about your app…"
+                      : files.length
+                        ? "Ask for a change…"
+                        : "Describe the app you want to build…"
                 }
                 rows={1}
                 className="max-h-[200px] min-h-[44px] w-full resize-none overflow-y-auto bg-transparent px-2 py-1.5 text-sm font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground disabled:opacity-50"
-                disabled={bootstrapping || pendingQuestion}
+                disabled={bootstrapping}
               />
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
