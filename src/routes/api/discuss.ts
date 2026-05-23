@@ -24,6 +24,7 @@ import {
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import { renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
 import { renderPetalCapabilitiesBlock } from "@/server/petal-capabilities.server";
+import { synthesizeAnswerOptions } from "@/server/answer-options.server";
 
 type Body = {
   messages: ChatMessage[];
@@ -267,6 +268,23 @@ export const Route = createFileRoute("/api/discuss")({
             /* malformed JSON — drop the chips, keep the prose */
           }
           cleanReply = reply.slice(0, suggestionsMatch.index).trimEnd();
+        }
+
+        // Safety net: if the assistant asked a question but didn't ship chips,
+        // synthesize 2–3 tap-ready answers so the user always has something
+        // to click. Skipped if cleanReply has no question mark.
+        if (chipSuggestions.length === 0 && /\?/.test(cleanReply)) {
+          const sentences = cleanReply.split(/(?<=[.!?])\s+/);
+          const lastQ = [...sentences].reverse().find((x) => /\?\s*$/.test(x));
+          if (lastQ) {
+            const lastUser = [...body.messages]
+              .reverse()
+              .find((m) => m.role === "user")?.content;
+            const synth = await synthesizeAnswerOptions(lastQ, {
+              lastUserMessage: typeof lastUser === "string" ? lastUser : undefined,
+            });
+            if (synth.length >= 2) chipSuggestions = synth;
+          }
         }
 
         // Charge ONCE, after success. If the wallet emptied between the
