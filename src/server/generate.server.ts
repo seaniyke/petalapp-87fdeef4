@@ -475,6 +475,22 @@ export type StreamEvent =
   | { type: "file_progress"; written: number; latestPath?: string }
   | { type: "file_complete"; path: string; bytes: number; index: number }
   /**
+   * Per-file validate-then-continue (plan #2). Emitted immediately after
+   * `file_complete` once the file's content has been parsed out of the
+   * tool-call buffer and run through the cheap structural verifier
+   * (`verifyFileLocal`). `ok:true` → the file looks healthy; `ok:false`
+   * carries a small array of human-readable error strings the client
+   * can surface as a sub-caption on the activity card. This is a live
+   * signal only — actual repair still happens in the post-stream
+   * autofix tier, which is already bounded to 2 passes.
+   */
+  | {
+      type: "file_validated";
+      path: string;
+      ok: boolean;
+      errors?: string[];
+    }
+  /**
    * Pre-apply diff summary. Emitted ONCE per edit turn, immediately before
    * `applyOps` runs, so the client can render a "what's about to change"
    * card. Does NOT block apply — this is informational; revert remains the

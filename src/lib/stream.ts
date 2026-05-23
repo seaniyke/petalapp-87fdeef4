@@ -11,6 +11,10 @@ type Handlers = {
   onDesignVibe?: (vibe: string, rationale: string) => void;
   onFileProgress?: (written: number, latestPath?: string) => void;
   onFileComplete?: (path: string, bytes: number, index: number) => void;
+  /** Per-file structural validator result (plan #2). `ok:false` means the
+   *  cheap local verifier found a structural issue; the post-stream
+   *  autofix tier will attempt repair. */
+  onFileValidated?: (path: string, ok: boolean, errors?: string[]) => void;
   /** Model-written one-liner about the file it's about to build. */
   onNarration?: (path: string, text: string) => void;
   /** Agentic-loop cycle started (initial write or a bounded fix round). */
@@ -186,6 +190,9 @@ export async function streamGenerate(
           case "file_complete":
             handlers.onFileComplete?.(evt.path, evt.bytes, evt.index);
             break;
+          case "file_validated":
+            handlers.onFileValidated?.(evt.path, evt.ok, evt.errors);
+            break;
           case "narration":
             handlers.onNarration?.(evt.path, evt.text);
             break;
@@ -345,6 +352,13 @@ export async function streamResumeTurn(
               evt.path as string,
               evt.bytes as number,
               evt.index as number,
+            );
+            break;
+          case "file_validated":
+            handlers.onFileValidated?.(
+              (evt.path as string) ?? "",
+              Boolean(evt.ok),
+              evt.errors as string[] | undefined,
             );
             break;
           case "narration":

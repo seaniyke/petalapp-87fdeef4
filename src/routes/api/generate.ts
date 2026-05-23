@@ -29,6 +29,7 @@ import {
 import { resolveFromUserPaste } from "@/server/integrations/user-paste-resolver.server";
 import { detectIntegrationRequests } from "@/lib/integration-request-intent";
 import { validateStylesCss } from "@/server/validate-styles.server";
+import { verifyFileLocal } from "@/server/local-verifier";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -614,6 +615,42 @@ async function relayAndCollect(
                 }),
               ),
             );
+
+            // Plan #2 — per-file validate-then-continue (live signal).
+            // Decode the JSON string content and run the cheap structural
+            // verifier. We never block the stream on validation; the
+            // post-stream autofix tier owns repair (bounded to 2 passes).
+            try {
+              let decoded = "";
+              try {
+                decoded = JSON.parse(`"${cm[1]}"`);
+              } catch {
+                // Fallback: best-effort unescape of the most common escapes.
+                decoded = cm[1]
+                  .replace(/\\n/g, "\n")
+                  .replace(/\\r/g, "\r")
+                  .replace(/\\t/g, "\t")
+                  .replace(/\\"/g, '"')
+                  .replace(/\\\\/g, "\\");
+              }
+              const issues = verifyFileLocal(owner, decoded);
+              const ok = issues.length === 0;
+              const errors = ok
+                ? undefined
+                : issues.slice(0, 4).map((i) => `${i.kind}: ${i.detail}`);
+              controller.enqueue(
+                encoder.encode(
+                  sse({
+                    type: "file_validated",
+                    path: owner,
+                    ok,
+                    errors,
+                  }),
+                ),
+              );
+            } catch {
+              /* validation is best-effort; never break the stream */
+            }
           }
         }
       }
