@@ -1247,6 +1247,42 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     ? `\n\n### Build target (HARD CONSTRAINT)\n${buildTarget.systemPromptAddendum}\n`
     : "";
 
+  // Design + craft bar (applies to EVERY target). Petal apps must look
+  // hand-designed, not template-y. Keep this short and specific — the
+  // model is much better at executing concrete rules than vibes.
+  const designQualityBlock = `\n\n### Design & craft (HARD CONSTRAINT — applies to every UI you generate)
+Petal apps must feel hand-crafted, not AI-generic. Hold yourself to an Awwwards bar.
+
+Typography
+- Pair a distinctive display font with a refined body font (Google Fonts is fine). NEVER default to Inter+Poppins or Inter alone. Examples that work: Space Grotesk + DM Sans, Instrument Serif + Work Sans, Bricolage Grotesque + Inter Tight, Fraunces + Geist, General Sans + Söhne-ish.
+- Set type scale with intent: large editorial display sizes for hero, tight tracking on display, generous leading on body.
+
+Color & surfaces
+- Define semantic tokens in \`src/styles.css\` using \`oklch()\`. NEVER hard-code colors (\`text-white\`, \`bg-[#xxx]\`) in components — always go through tokens (\`bg-background\`, \`text-foreground\`, \`bg-primary\`, etc.).
+- Add at least one gradient token (\`--gradient-primary\`) and one shadow token (\`--shadow-elegant\`) and USE them on hero / CTA / cards.
+- Both light and dark mode must be tuned — no auto-inverted afterthought.
+
+Layout & space
+- Asymmetric, intentional whitespace. No "stacked card on white" defaults. Use a real grid (12-col, bento, split, masonry) chosen for the content.
+- Hero section must have a strong focal point: oversized type, an image with depth, or a single bold visual. Not three centered lines + a button.
+
+Motion
+- Use \`framer-motion\` for entry transitions, hover micro-interactions, and one signature hero animation. Stagger lists. Animate on scroll for marketing surfaces.
+- Respect \`prefers-reduced-motion\`.
+
+Iconography & components
+- Icons: \`lucide-react\` only, sized consistently per surface (16/20/24).
+- Build on shadcn/ui primitives but customize variants (\`buttonVariants\` etc.) — don't ship default-looking buttons. Add a \`premium\` / \`hero\` variant when the page calls for it.
+
+Imagery
+- For hero/feature/empty-state images use \`generate_image\` to produce custom art that matches the palette — never generic stock-y placeholders or solid blocks. Always set proper alt text.
+
+Forbidden defaults
+- Purple-gradient-on-white SaaS look, three equal feature cards centered under "Why us", emoji-as-icon for serious products, untouched shadcn button on a hero CTA, "lorem ipsum" anywhere shipped.
+`;
+
+
+
 
   // Look up the project's attached backend (BYO Supabase). When present,
   // we both inject the pre-configured client and tell the AI it exists.
