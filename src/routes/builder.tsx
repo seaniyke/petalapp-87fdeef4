@@ -142,7 +142,7 @@ import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { SharePreviewDialog } from "@/components/SharePreviewDialog";
 import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 import { detectBackendIntentInTurn } from "@/lib/backend-intent";
-import { BuildTargetChips } from "@/components/BuildTargetChips";
+// BuildTargetChips import removed — chip rail retired from the composer.
 import { DevicePreviewFrame } from "@/components/DevicePreviewFrame";
 const SnackPreview = lazy(() =>
   import("@/components/SnackPreview").then((m) => ({ default: m.SnackPreview })),
