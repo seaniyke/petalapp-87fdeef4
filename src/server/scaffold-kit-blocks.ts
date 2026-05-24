@@ -922,11 +922,12 @@ export function FeaturesAlternatingRows({
   items: AlternatingFeature[];
   className?: string;
 }) {
+  const list = Array.isArray(items) ? items : [];
   return (
     <Container size="xl" className={className}>
       <Section eyebrow={eyebrow} title={title} description={description}>
         <div className="space-y-20 md:space-y-28">
-          {items.map((it, i) => {
+          {list.map((it, i) => {
             const flip = i % 2 === 1;
             return (
               <div key={i} className={cn("grid items-center gap-10 md:grid-cols-2 md:gap-16", flip && "md:[&>*:first-child]:order-2")}>
