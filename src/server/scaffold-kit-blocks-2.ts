@@ -378,8 +378,10 @@ import { Container } from "@/components/ui/container";
 import { cn } from "@/lib/utils";
 
 export interface FaqColumnItem {
-  q: React.ReactNode;
-  a: React.ReactNode;
+  q?: React.ReactNode;
+  a?: React.ReactNode;
+  question?: React.ReactNode;
+  answer?: React.ReactNode;
 }
 
 /**
@@ -392,14 +394,17 @@ export function FaqTwoColumn({
   title,
   description,
   items,
+  faqs,
   className,
 }: {
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   description?: React.ReactNode;
-  items: FaqColumnItem[];
+  items?: FaqColumnItem[];
+  faqs?: FaqColumnItem[];
   className?: string;
 }) {
+  const list = Array.isArray(items) ? items : Array.isArray(faqs) ? faqs : [];
   return (
     <Container size="xl" className={className}>
       <section className={cn("py-20 md:py-28", className)}>
@@ -412,10 +417,10 @@ export function FaqTwoColumn({
             {description && <p className="mt-4 text-base text-muted-foreground">{description}</p>}
           </div>
           <dl className="lg:col-span-7 lg:divide-y lg:divide-border">
-            {items.map((it, i) => (
+            {list.map((it, i) => (
               <div key={i} className="border-b border-border py-6 first:border-t lg:border-b-0 lg:border-t-0 lg:first:border-t-0">
-                <dt className="text-base font-semibold text-foreground">{it.q}</dt>
-                <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">{it.a}</dd>
+                <dt className="text-base font-semibold text-foreground">{it.q ?? it.question}</dt>
+                <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">{it.a ?? it.answer}</dd>
               </div>
             ))}
           </dl>
