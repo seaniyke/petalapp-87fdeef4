@@ -112,7 +112,7 @@ export function injectPreviewGuard(files: ProjectFile[]): { files: ProjectFile[]
   const versionAttr = `data-petal-preview-guard-version="${GUARD_VERSION}"`;
   const guardTag = `<script src="/__petal_guard.js" ${versionAttr}></script>`;
   const stripped = index.replace(/\s*<script\s+src=["']\/__petal_guard\.js["'][^>]*><\/script>/gi, "");
-  const moduleScript = /<script\b[^>]*\btype=["']module["'][^>]*\bsrc=["']\/src\/main\.tsx["'][^>]*><\/script>/i;
+  const moduleScript = /<script\b(?=[^>]*\btype=["']module["'])(?=[^>]*\bsrc=["']\/src\/main\.tsx["'])[^>]*><\/script>/i;
   const moduleMatch = stripped.match(moduleScript)?.[0];
   const next = stripped.includes(guardTag)
     ? stripped
