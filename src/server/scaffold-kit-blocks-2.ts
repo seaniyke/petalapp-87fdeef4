@@ -1185,6 +1185,7 @@ export function LogosGrid({
   logos: { name: string; src?: string }[];
   className?: string;
 }) {
+  const list = Array.isArray(logos) ? logos.map((l, i) => typeof l === "string" ? { name: \`logo-\${i + 1}\`, src: l } : l) : [];
   return (
     <section className={cn("py-12 md:py-16", className)}>
       <Container size="xl">
@@ -1192,7 +1193,7 @@ export function LogosGrid({
           <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{eyebrow}</p>
         )}
         <div className="mt-8 grid grid-cols-2 items-center gap-x-10 gap-y-8 sm:grid-cols-3 md:grid-cols-6">
-          {logos.map((l, i) =>
+          {list.map((l, i) =>
             l.src ? (
               <img
                 key={i}
@@ -1305,6 +1306,7 @@ export function StatsBand({
   tone?: "muted" | "primary";
   className?: string;
 }) {
+  const list = Array.isArray(items) ? items : [];
   const bg = tone === "primary" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-foreground";
   const labelTone = tone === "primary" ? "text-primary-foreground/80" : "text-muted-foreground";
   const dividers = tone === "primary" ? "divide-primary-foreground/20" : "divide-border";
@@ -1312,7 +1314,7 @@ export function StatsBand({
     <section className={cn("border-y border-border", bg, className)}>
       <Container size="xl">
         <dl className={cn("grid grid-cols-2 divide-y md:grid-cols-4 md:divide-x md:divide-y-0", dividers)}>
-          {items.map((s, i) => (
+          {list.map((s, i) => (
             <div key={i} className="px-6 py-10 text-center md:py-12">
               <dt className={cn("text-xs font-semibold uppercase tracking-wider", labelTone)}>{s.label}</dt>
               <dd className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">{s.value}</dd>
@@ -1358,12 +1360,13 @@ export function StatsGrid({
   cols?: 2 | 3 | 4;
   className?: string;
 }) {
+  const list = Array.isArray(items) ? items : [];
   const grid = cols === 4 ? "md:grid-cols-2 lg:grid-cols-4" : cols === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
   return (
     <Container size="lg" className={className}>
       <Section eyebrow={eyebrow} title={title} description={description}>
         <div className={cn("grid grid-cols-1 gap-4", grid)}>
-          {items.map((s, i) => (
+          {list.map((s, i) => (
             <Stat key={i} label={s.label} value={s.value} delta={s.delta} hint={s.hint} />
           ))}
         </div>
