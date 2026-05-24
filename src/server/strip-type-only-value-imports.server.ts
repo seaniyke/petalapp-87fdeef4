@@ -1,26 +1,25 @@
 /**
  * Build-time codemod: detect named imports where the imported name is ONLY
  * declared as a TypeScript type/interface in the target file (no runtime
- * value), and strip those names from the import clause.
+ * value), and HEAL the target file by appending a passthrough value export
+ * under the same name.
  *
  * Why this exists:
  *   `import { NavLink } from "@/components/blocks/nav-with-cta"` where
  *   nav-with-cta.tsx only declares `export interface NavLink { … }` passes
- *   `tsc --noEmit` (TS allows it) but Rollup's production build fails hard:
- *     `"NavLink" is not exported by "src/components/blocks/nav-with-cta.tsx"`
- *   because the interface is erased before bundling. The model frequently
- *   conflates a block's exported INTERFACE name with a component name and
- *   imports it as a value, blanking the deployed preview.
+ *   `tsc --noEmit` (TS allows it) but Rollup's prod build fails:
+ *     `"NavLink" is not exported by "src/components/blocks/nav-with-cta.tsx"`.
+ *   And if we instead strip the import, any remaining `<NavLink … />` JSX
+ *   crashes at runtime with `Can't find variable: NavLink`. So we inject a
+ *   runtime stub `export const NavLink: any = (props) => props.children ?? null`.
+ *   The interface keeps living in type-space; the const lives in value-space
+ *   (TS allows the same name in both). Build + runtime both resolve, and the
+ *   preview renders something instead of going blank.
  *
- * Strategy:
- *   - Build an index of value vs. type-only exports for every project file.
- *   - For each named import from a local / aliased path, drop any specifier
- *     whose original name is type-only in the target.
- *   - If the entire braces clause becomes empty AND there's no default/
- *     namespace import alongside it, remove the whole import statement.
- *   - Idempotent and conservative: skips packages, `export * from`, and
- *     anything we can't resolve.
+ *   Conservative: skips packages, `export * from`, the ui kit, and
+ *   integrations. Idempotent: a stub is only injected once per name.
  */
+
 import type { ProjectFile } from "./generate.server";
 
 interface FileExports {
