@@ -851,6 +851,63 @@ function emitConversationalFallback(
 // something rhetorical in its summary, that ships alongside the build.
 
 
+/**
+ * Target-shape validator. Returns null when the generated file set
+ * matches what the chosen build target should produce, or a friendly
+ * one-paragraph error message describing what went wrong.
+ *
+ * The point of this guard is to STOP the generator from quietly shipping
+ * a web app when the user asked for a Chrome extension, a backend, or a
+ * mobile app. Each target has a few unambiguous "this file MUST exist"
+ * checks. If they fail, we revert the turn and ask the user to retry —
+ * far better than dropping a generic React landing page into a Chrome
+ * extension preview frame.
+ */
+function validateTargetShape(
+  files: ProjectFile[],
+  targetId: string,
+): string | null {
+  const paths = new Set(files.map((f) => f.path));
+  const has = (p: string) => paths.has(p);
+  const hasAny = (pred: (p: string) => boolean) => files.some((f) => pred(f.path));
+
+  if (targetId === "extension") {
+    if (!has("manifest.json") && !has("public/manifest.json") && !has("src/manifest.json")) {
+      return "I started building this as a Chrome extension but didn't ship a manifest.json, so I rolled it back instead of handing you a regular web app. Send your prompt again with the word 'Chrome extension' near the top and I'll scaffold the popup, background worker, and manifest properly.";
+    }
+    return null;
+  }
+
+  if (targetId === "backend") {
+    if (!hasAny((p) => p.startsWith("src/routes/api/")) && !hasAny((p) => p.includes(".server."))) {
+      return "I started building this as a backend / API but didn't ship any server routes, so I rolled it back. Re-send the prompt and tell me which endpoints you want (e.g. 'POST /invoices, GET /invoices/:id') and I'll wire them up.";
+    }
+    return null;
+  }
+
+  if (targetId === "mobile" || targetId === "ios" || targetId === "android") {
+    const hasExpo = hasAny((p) => p === "app.json") || hasAny((p) => p.startsWith("app/")) || hasAny((p) => p.startsWith("mobile/"));
+    const hasRNImport = files.some((f) => /from\s+["']react-native["']/.test(f.content) || /from\s+["']expo-/.test(f.content));
+    if (!hasExpo && !hasRNImport) {
+      return "I started building this as a mobile app (Expo / React Native) but the output came back as a web app, so I rolled it back. Re-send the prompt with 'mobile app' or 'iOS/Android app' so I lock onto the native scaffold.";
+    }
+    return null;
+  }
+
+  if (targetId === "web-mobile") {
+    const hasWeb = has("src/App.tsx") || has("src/main.tsx") || hasAny((p) => p.startsWith("src/pages/"));
+    const hasMobile = hasAny((p) => p.startsWith("mobile/")) || hasAny((p) => p === "mobile/app.json");
+    if (!hasWeb || !hasMobile) {
+      return "I started building this as a web + mobile project but only shipped one side, so I rolled it back. Re-send the prompt and confirm you want both clients sharing a backend, and I'll scaffold `src/` for web and `mobile/` for the Expo app together.";
+    }
+    return null;
+  }
+
+  // web (default): no extra shape checks — the renderable-shell guard
+  // already covers the "no real App.tsx" case for this target.
+  return null;
+}
+
 function ensureRenderableShell(
   files: ProjectFile[],
   subtypeHint?: "marketing" | "app" | "fullstack",
@@ -1631,9 +1688,23 @@ Forbidden defaults
   // only block. Falls back silently if no confident match.
   let archetypeBlock = "";
   try {
-    const { buildBlueprintFor } = await import("@/server/app-composer.server");
+    const { buildBlueprintFor, renderBlueprintBlock } = await import("@/server/app-composer.server");
     const composed = buildBlueprintFor(lastUserText, { hasBackend: Boolean(backend) });
-    if (composed) archetypeBlock = composed.promptBlock;
+    if (composed) {
+      // Marketing subtype gate: strip auth/account routes from any matched
+      // template before they hit the prompt. Otherwise the model gets
+      // contradictory instructions — the subtype addendum says "no auth
+      // shells" while the blueprint lists `/auth/sign-in` as a route to
+      // scaffold, and it either ships auth on a landing page or freezes.
+      if (detectedWebSubtype === "marketing") {
+        composed.blueprint.routes = composed.blueprint.routes.filter(
+          (r) => !r.startsWith("/auth") && r !== "/account" && r !== "/dashboard",
+        );
+        archetypeBlock = renderBlueprintBlock(composed.blueprint);
+      } else {
+        archetypeBlock = composed.promptBlock;
+      }
+    }
   } catch {
     // Never block a build on composer failure.
   }
@@ -2079,22 +2150,15 @@ Forbidden defaults
           nextFiles = applyScaffoldKit(parsed.files, {
             backend: backend ?? undefined,
           });
-          // Step 5: fill in any blueprint route the model forgot to emit so
-          // every nav link in the generated UI lands on a real screen.
-          try {
-            const { composeAppBlueprint, scaffoldRouteStubs } = await import(
-              "@/server/app-composer.server"
-            );
-            const bp = composeAppBlueprint(lastUserText, { hasBackend: Boolean(backend) });
-            if (bp) {
-              const have = new Set(nextFiles.map((f) => f.path));
-              for (const stub of scaffoldRouteStubs(bp)) {
-                if (!have.has(stub.path)) nextFiles.push(stub);
-              }
-            }
-          } catch {
-            // Never block a build on composer failure.
-          }
+          // NOTE: Previously we called scaffoldRouteStubs() here to emit
+          // TanStack `src/routes/*.tsx` files for routes the model didn't
+          // ship. That was wrong for this scaffold: the generated app
+          // runtime is Vite + react-router-dom via `src/main.tsx → <App />`,
+          // so TanStack route files NEVER render — they were inert dead
+          // weight that bloated context and made follow-up edits confusing.
+          // The model is now solely responsible for emitting pages under
+          // `src/pages/*` and wiring them in App.tsx (the system prompt
+          // already requires this). No stub injection.
         } else {
           // Empty / missing ops on an edit turn = the model decided
 
@@ -2292,12 +2356,45 @@ Forbidden defaults
         }
 
         const shellGuard = ensureRenderableShell(nextFiles, detectedWebSubtype);
+        // ROOT-CAUSE GATE: if the model failed to emit a real src/App.tsx,
+        // we used to silently inject a "Your app is being prepared"
+        // placeholder and ship it as a successful build. That's the bug
+        // class behind every "Petal built a blank app" report — a placeholder
+        // screen shipped as a finished product. Treat it as a turn failure
+        // instead: revert files, never charge credits, and ask the user to
+        // retry with a more concrete prompt. index.html + main.tsx repairs
+        // are still safe to keep (they only restore the mount point).
+        if (shellGuard.fixed.includes("src/App.tsx") && collected.name === "write_project") {
+          console.warn("[renderable-shell] model emitted empty/placeholder App.tsx — failing turn");
+          emitConversationalFallback(controller, encoder, {
+            files: currentFiles,
+            summary:
+              "I drafted the files but the home screen came back empty, so I rolled it back instead of shipping a placeholder. Could you send your prompt again with a bit more detail about what the first screen should show? Even one sentence like 'a hero with the headline X and a Get Started button' is enough.",
+          });
+          return;
+        }
         nextFiles = shellGuard.files;
         if (shellGuard.fixed.length > 0) {
           console.warn("[renderable-shell] repaired", shellGuard.fixed.join(", "));
           controller.enqueue(
             encoder.encode(sse({ type: "status", message: "Restored the app shell so the preview can render." })),
           );
+        }
+
+        // Target-shape validation. For non-default targets, the generated
+        // file set MUST match the target's expected shape, or we're about
+        // to ship a web app dressed as something else. Fail conversationally
+        // so the user can retry instead of shipping a wrong-category build.
+        if (collected.name === "write_project") {
+          const targetIssue = validateTargetShape(nextFiles, buildTarget.id);
+          if (targetIssue) {
+            console.warn(`[target-shape] ${buildTarget.id} build failed validation: ${targetIssue}`);
+            emitConversationalFallback(controller, encoder, {
+              files: currentFiles,
+              summary: targetIssue,
+            });
+            return;
+          }
         }
 
         // Last-mile guard: if the AI emitted (or patched in) a broken

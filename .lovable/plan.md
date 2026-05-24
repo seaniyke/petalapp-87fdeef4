@@ -1,59 +1,102 @@
-## What's already in place (do NOT rebuild)
+## Root cause
 
-- 5 build targets with strong system-prompt addenda — `web`, `mobile`, `web-mobile`, `backend`, `extension` (`src/lib/build-targets.ts`).
-- Target inferred from the prompt and ridden as `x-petal-target` into `/api/generate`. Chip rail intentionally removed.
-- Per-target preview chrome (`DevicePreviewFrame`, phone frame, extension popup sim).
-- Mobile scaffold kit (`scaffold-kit-mobile.ts`) + Snack preview path.
-- Build pipeline now self-heals hallucinated UI primitives (shim added last turn) so the preview cannot go blank from a missing `ui/<x>` import.
+Yes — the recent preview guards are band-aids. They only try to reveal a blank preview after Petal has already produced a bad build.
 
-## The actual gap
+The deeper issue is that the generation pipeline has drifted into conflicting instructions and incomplete composition:
 
-The "blank `Your app is ready` card" in your screenshot is the **scaffold's placeholder index** rendering before the model's first edit lands — that's a preview/UX bug, not a wrong-target bug. Separately, within the `web` target there is **no sub-type routing**: a "landing page" and a "CRM dashboard" both get the same generic web prompt, so the model defaults to whatever it feels like, which often reads as app-shell-y on mobile viewports.
+1. **Two routing systems are mixed**
+   - The main prompt tells the builder to use a simple Vite app with `src/App.tsx` and `react-router-dom` through Petal’s UI router.
+   - The newer app-composer stubs generate TanStack route files under `src/routes/*`.
+   - Those files are not connected to the generated Vite entrypoint, so Petal can “build files” that never render.
 
-We fix this in three sequenced phases. Phase 1 alone resolves the screenshot.
+2. **The blueprint stubber can create placeholder pages after generation**
+   - If the model forgets a route, the server adds a stub page like “Replace this stub…” after the build.
+   - That is not a real app. It can make the build appear complete while the meaningful screen is missing or unreachable.
 
-## Phase 1 — Web sub-type router (Marketing / App / Fullstack)
+3. **Target classification is still only a prompt hint, not an enforced architecture**
+   - `web`, `mobile`, `extension`, `backend`, and `web-mobile` exist as labels/addenda, but the downstream generators and blueprint composer are still web/Vite-biased.
+   - Chrome extension and mobile prompts can still fall back into ordinary web-app behavior unless the generated file set is validated by target.
 
-1. New module `src/lib/web-subtype.ts`:
-   - Type `WebSubtype = "marketing" | "app" | "fullstack"`.
-   - `inferWebSubtype(prompt)` — keyword + phrase heuristics ("landing page", "portfolio", "waitlist", "homepage" → marketing; "dashboard", "CRM", "admin", "SaaS tool", "analytics" → app; "marketplace", "platform", "with auth + payments" → fullstack).
-   - Per-subtype system-prompt addendum block. Marketing block forbids sidebars/auth shells and mandates hero + features + testimonials + pricing + FAQ + footer with marketing typography. App block mandates app shell + sidebar + tables/forms, forbids giant hero. Fullstack inherits app + adds auth/db/payments guidance.
+4. **Verification checks syntax/imports, not whether the app actually has a visible first screen**
+   - A project can pass local/esbuild checks while rendering nothing useful, rendering only an empty router, or leaving the main requested product outside the mounted app.
 
-2. Wire into `src/routes/api/generate.ts` right after `buildTarget` resolution: when target is `web`, compute subtype, append the subtype block to `buildTargetBlock`. Log the detection so we can tune heuristics.
+## Plan
 
-3. Stretch (same phase): when the subtype is `marketing`, swap the initial index placeholder copy from "Your app is ready" to "Generating your landing page…" with a skeleton hero. Pure UX fix in `DevicePreviewFrame` blank-state, no pipeline change.
+### 1. Make one canonical runtime per target
 
-## Phase 2 — Pre-generation "Build Blueprint" surface
+For the current generated-project scaffold, keep the default **web runtime** as:
 
-Add a lightweight blueprint that the model echoes back BEFORE files:
+```text
+index.html
+src/main.tsx
+src/App.tsx
+src/pages/* optional
+src/components/* optional
+@/components/ui/router for multi-page routing
+```
 
-1. New helper in `generate.server.ts` that prefixes the model output with a one-screen blueprint block: `{ projectType, sections, navigation, designLanguage, backend, files }`. Server parses + persists to a new `project_blueprints` table (or column on `projects`) so subsequent turns stay consistent.
-2. Reuse this blueprint to seed the design tokens (fonts, palette presets from memory) deterministically instead of letting the model re-pick each turn.
+Then update the app-composer so it no longer creates TanStack `src/routes/*` stubs for generated Vite apps. Instead it will generate route/page guidance compatible with `src/App.tsx` and `src/pages/*`.
 
-## Phase 3 — Generation quality gate (auto-repair)
+This removes the “files exist but nothing renders” failure mode.
 
-Tier-2 verifier check after the model returns:
+### 2. Stop shipping placeholder route stubs as completed builds
 
-1. If subtype = `marketing` and the file tree contains `Sidebar`, `DashboardLayout`, or auth route files → flag, regenerate just the index+layout with a corrective prompt.
-2. If subtype = `app` and the index file is a single hero section with no nav → flag, regenerate shell.
-3. Runs inside the existing `runLocalVerifyTier` + `postStreamAutofix` loop so the user never sees a mismatched first render.
+Replace `scaffoldRouteStubs()` behavior with either:
 
-## Out of scope for this batch (handle in follow-ups)
+- no automatic stubs, or
+- real minimal page modules only when they are also wired into `App.tsx` routing.
 
-- Chrome-extension scaffold kit (target exists, scaffold doesn't — separate ticket).
-- Multi-platform "Build Uber" decomposition into `mobile/` + `src/` + `packages/shared/` (the `web-mobile` target already declares this shape; needs its own scaffold kit).
-- Snack/Expo preview mode toggle on the existing mobile preview.
+If Petal cannot produce the real app shell, the request should fail/retry internally instead of returning a placeholder app to the user.
 
-## Why this order
+### 3. Add target-specific file-shape validation before final result
 
-Phase 1 ships the visible win (landing prompts → marketing layout) in one focused change set against files I already know. Phase 2/3 require schema work and verifier changes that are safer once Phase 1 is proven in production. Trying to land all 11 sections of the prompt at once would touch every server-side file in the generate pipeline simultaneously — high regression risk on a live system.
+Add a deterministic validator after generation and autofix:
 
-## Technical surface (Phase 1 only)
+- **Marketing web / landing page** must have a visible hero on the mounted route, no dashboard/sidebar/auth shell unless explicitly requested.
+- **Web app/dashboard** must have a mounted app shell, dashboard/workspace content, realistic data UI.
+- **Mobile app** must emit the expected mobile/Expo shape and not raw web-only app output.
+- **Chrome extension** must include `manifest.json`, popup entry, and extension-specific files; if not, retry instead of showing a web app.
+- **Backend/API** must emit API/server-route structure and a minimal endpoint index, not a marketing UI.
+- **Web + mobile** must include both web and mobile client structures, not just one side.
 
-- New: `src/lib/web-subtype.ts` (~80 lines, pure functions + addenda).
-- Edit: `src/routes/api/generate.ts` — ~15 lines around the `buildTargetBlock` assembly.
-- Edit: `src/components/DevicePreviewFrame.tsx` (or scaffold's blank index) — copy + skeleton swap.
-- Test: extend `src/server/__tests__/pipeline.test.ts` with subtype inference fixtures.
-- Zero schema changes, zero migrations, fully reversible.
+The validator should block “successful” builds that do not match the selected/inferred target.
 
-Approve and I'll implement Phase 1 immediately. Say "all phases" and I'll sequence 1 → 2 → 3 across the next turns.
+### 4. Reconcile blueprint and subtype routing
+
+Wire the web subtype (`marketing`, `app`, `fullstack`) into the composer/template layer, not just the system prompt:
+
+- Marketing prompts choose marketing/site templates only.
+- App prompts choose dashboard/tool templates only.
+- Fullstack prompts choose platform templates with customer/admin surfaces.
+
+Also remove auth routes from marketing templates unless the user explicitly requests auth/backend.
+
+### 5. Add mounted-home validation
+
+Before returning files to the UI, inspect the final file map to confirm:
+
+- `index.html` has `#root` and loads `src/main.tsx`.
+- `src/main.tsx` imports and renders `App`.
+- `src/App.tsx` returns visible JSX.
+- If `App.tsx` uses routes, `/` has a visible route element.
+- Imported home/page components exist and are not placeholder/null.
+
+If this fails, run a targeted internal retry to regenerate the app shell, not a preview overlay.
+
+### 6. Keep preview guards, but demote them to last-resort diagnostics
+
+Leave the crash/blank preview guard in place only as a safety net. It should not be the main solution, and it should not mask bad generation as success.
+
+### 7. Verification
+
+After implementing, verify with representative prompts:
+
+```text
+Build a landing page
+Build a banking app
+Build a Chrome extension that summarizes any page
+Build a backend API for invoices
+Build web and mobile app for food delivery
+```
+
+Expected outcome: each prompt produces the correct project category and a visible first screen, with invalid file shapes rejected before the user sees a blank or toy app.
