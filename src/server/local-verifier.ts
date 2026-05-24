@@ -10,6 +10,8 @@
  * post-stream autofix recovery. Treat its findings as ground truth — if
  * the brace count is off, the file will not compile.
  */
+import { getKitManifest } from "./kit-manifest.server";
+
 
 export interface LocalIssue {
   path: string;
