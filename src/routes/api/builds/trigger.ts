@@ -187,11 +187,11 @@ export const Route = createFileRoute("/api/builds/trigger")({
         //     undefined values and silently no-op at runtime. Failures here
         //     are non-fatal — we log and continue with no env file rather
         //     than blocking the deploy.
-        let withEnv = buildFiles;
+        let withEnv = shimmedFiles;
         try {
-          const envBundle = await buildIntegrationEnvFiles(projectId, buildFiles);
+          const envBundle = await buildIntegrationEnvFiles(projectId, shimmedFiles);
           if (envBundle.files.length > 0) {
-            withEnv = mergeFilesIntoPayload(buildFiles, envBundle.files);
+            withEnv = mergeFilesIntoPayload(shimmedFiles, envBundle.files);
             console.log(
               `[integrations] project=${projectId} injected env from ${envBundle.integrationCount} integration(s): ${envBundle.envKeys.join(", ")}`
             );
