@@ -114,7 +114,7 @@ export function inferWebSubtype(prompt: string): WebSubtype {
   }
   // Fullstack signals dominate if present at all (marketplace beats dashboard
   // even if both fire, because fullstack IS a superset of dashboard).
-  if (scores.fullstack >= 4) return "fullstack";
+  if (scores.fullstack >= 2) return "fullstack";
   if (scores.marketing > scores.app && scores.marketing >= 2) return "marketing";
   if (scores.app > 0) return "app";
   if (scores.marketing > 0) return "marketing";
