@@ -238,9 +238,10 @@ export interface TimelineItem {
  *   <Timeline items={[{ title: "Signed up", description: "...", meta: "2d ago" }]} />
  */
 export function Timeline({ items, className }: { items: TimelineItem[]; className?: string }) {
+  const list = Array.isArray(items) ? items : [];
   return (
     <ol className={cn("relative space-y-6 border-l border-border pl-6", className)}>
-      {items.map((it, i) => {
+      {list.map((it, i) => {
         const Icon = it.icon;
         return (
           <li key={i} className="relative">
