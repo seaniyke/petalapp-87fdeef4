@@ -924,7 +924,7 @@ function findMissingNamedExports(
         const key = `${f.path}|${spec}|${original}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        const isTypeOnly = exp.typeOnly.has(original);
+        const isTypeOnlyExport = exp.typeOnly.has(original);
         issues.push({
           path: f.path,
           kind: "missing-export",
