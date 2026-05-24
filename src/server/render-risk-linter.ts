@@ -664,6 +664,17 @@ export function lintRenderRisks(
         });
       }
     }
+
+    // R4 — known scaffold section block rendered without required list props.
+    if (ENABLED_RULES.has("R4")) {
+      for (const issue of findKitListPropOmissions(f.content)) {
+        issues.push({
+          path: f.path,
+          kind: "render-risk",
+          detail: `<${issue.component}> is missing ${issue.missing}; this block maps over that data and can crash at runtime`,
+        });
+      }
+    }
   }
 
   return issues;
