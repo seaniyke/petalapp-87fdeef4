@@ -31,6 +31,7 @@ import { syncViteAliasesWithTsconfig } from "@/server/sync-vite-aliases.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { autofixFiles } from "@/server/stream-autofixer";
 import { shimMissingUiPrimitives } from "@/server/shim-missing-ui.server";
+import { stripTypeOnlyValueImports } from "@/server/strip-type-only-value-imports.server";
 import { injectPreviewGuard } from "@/server/preview-guard.server";
 import {
   buildIntegrationEnvFiles,
