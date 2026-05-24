@@ -59,7 +59,7 @@ export function TestimonialsCards({
   eyebrow?: React.ReactNode;
   title?: React.ReactNode;
   description?: React.ReactNode;
-  /** Preferred. \\`testimonials\\` is accepted as an alias. */
+  /** Preferred. \`testimonials\` is accepted as an alias. */
   items?: Testimonial[];
   testimonials?: Testimonial[];
   className?: string;
