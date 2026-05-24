@@ -30,6 +30,7 @@ import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { syncViteAliasesWithTsconfig } from "@/server/sync-vite-aliases.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { autofixFiles } from "@/server/stream-autofixer";
+import { shimMissingUiPrimitives } from "@/server/shim-missing-ui.server";
 import {
   buildIntegrationEnvFiles,
   mergeFilesIntoPayload,
@@ -164,6 +165,19 @@ export const Route = createFileRoute("/api/builds/trigger")({
           );
         }
 
+        // 2e-bis) Synthesize shims for any `@/components/ui/<x>` or
+        //     `@/components/blocks/<x>` import that does NOT resolve to a real
+        //     file in the project. Without this, a hallucinated primitive
+        //     (carousel, command, menubar, sidebar, …) hard-fails the Rollup
+        //     resolver and the deployed preview goes blank. The shim is a
+        //     forgiving passthrough <div> — ugly but mounted.
+        const { files: shimmedFiles, shimmed } = shimMissingUiPrimitives(buildFiles);
+        if (shimmed.length > 0) {
+          console.warn(
+            `[ui-shim] project=${projectId} synthesized ${shimmed.length} missing primitive(s): ${shimmed.join(", ")}`,
+          );
+        }
+
         // 2f) Inject env files for installed integrations. This loads each
         //     integration's public options + decrypted secrets and renders
         //     `.env.production` (Vite-consumed at build time) and `.dev.vars`
@@ -173,11 +187,11 @@ export const Route = createFileRoute("/api/builds/trigger")({
         //     undefined values and silently no-op at runtime. Failures here
         //     are non-fatal — we log and continue with no env file rather
         //     than blocking the deploy.
-        let withEnv = buildFiles;
+        let withEnv = shimmedFiles;
         try {
-          const envBundle = await buildIntegrationEnvFiles(projectId, buildFiles);
+          const envBundle = await buildIntegrationEnvFiles(projectId, shimmedFiles);
           if (envBundle.files.length > 0) {
-            withEnv = mergeFilesIntoPayload(buildFiles, envBundle.files);
+            withEnv = mergeFilesIntoPayload(shimmedFiles, envBundle.files);
             console.log(
               `[integrations] project=${projectId} injected env from ${envBundle.integrationCount} integration(s): ${envBundle.envKeys.join(", ")}`
             );
