@@ -1,66 +1,59 @@
-## What I found
+## What's already in place (do NOT rebuild)
 
-Two distinct bugs, both rooted in "two systems doing one job" — same theme as the earlier audit.
+- 5 build targets with strong system-prompt addenda — `web`, `mobile`, `web-mobile`, `backend`, `extension` (`src/lib/build-targets.ts`).
+- Target inferred from the prompt and ridden as `x-petal-target` into `/api/generate`. Chip rail intentionally removed.
+- Per-target preview chrome (`DevicePreviewFrame`, phone frame, extension popup sim).
+- Mobile scaffold kit (`scaffold-kit-mobile.ts`) + Snack preview path.
+- Build pipeline now self-heals hallucinated UI primitives (shim added last turn) so the preview cannot go blank from a missing `ui/<x>` import.
 
-### Bug 1 — "Pick an option" card appears on a successful build (image 2)
+## The actual gap
 
-`src/routes/builder.tsx` has ONE renderer for the `message.suggestions` field (`SuggestionChecklist`, line 3326) but TWO writers feeding it:
+The "blank `Your app is ready` card" in your screenshot is the **scaffold's placeholder index** rendering before the model's first edit lands — that's a preview/UX bug, not a wrong-target bug. Separately, within the `web` target there is **no sub-type routing**: a "landing page" and a "CRM dashboard" both get the same generic web prompt, so the model defaults to whatever it feels like, which often reads as app-shell-y on mobile viewports.
 
-- `onResult.extras.suggestions` — true clarifying questions / backend chips Petal wants the user to confirm.
-- `onSelfCheck(v).suggestions` (line 1962) — post-build "next move" ideas like "Add appointment booking form".
+We fix this in three sequenced phases. Phase 1 alone resolves the screenshot.
 
-Both write to the same `m.suggestions`, so the next-move list renders as a radio-style "Pick an option" card *and* the `NextStepsCard` ("READY — WHAT'S NEXT?") renders right below it. Duplicate surface, and it looks like Petal is asking a question when it isn't.
+## Phase 1 — Web sub-type router (Marketing / App / Fullstack)
 
-Per project memory: "Petal asks at most ONE question per reply and only when truly ambiguous." Post-build next-step ideas are not questions.
+1. New module `src/lib/web-subtype.ts`:
+   - Type `WebSubtype = "marketing" | "app" | "fullstack"`.
+   - `inferWebSubtype(prompt)` — keyword + phrase heuristics ("landing page", "portfolio", "waitlist", "homepage" → marketing; "dashboard", "CRM", "admin", "SaaS tool", "analytics" → app; "marketplace", "platform", "with auth + payments" → fullstack).
+   - Per-subtype system-prompt addendum block. Marketing block forbids sidebars/auth shells and mandates hero + features + testimonials + pricing + FAQ + footer with marketing typography. App block mandates app shell + sidebar + tables/forms, forbids giant hero. Fullstack inherits app + adds auth/db/payments guidance.
 
-### Bug 2 — Blank preview / repeated build failures (image 1)
+2. Wire into `src/routes/api/generate.ts` right after `buildTarget` resolution: when target is `web`, compute subtype, append the subtype block to `buildTargetBlock`. Log the detection so we can tune heuristics.
 
-Looking at the last 6 builds for project `cbfeb89f` (the hospital landing page):
+3. Stretch (same phase): when the subtype is `marketing`, swap the initial index placeholder copy from "Your app is ready" to "Generating your landing page…" with a skeleton hero. Pure UX fix in `DevicePreviewFrame` blank-state, no pipeline change.
 
-```
-17 modules  → SignInPage.tsx broken JSX  (latest)
- 8 modules  → SignInPage.tsx broken JSX
-15 modules  → SignInPage.tsx broken JSX
-1612 mods   → @/integrations/backend/auth missing
-1591 mods   → same
-1042 mods   → same
-```
+## Phase 2 — Pre-generation "Build Blueprint" surface
 
-The model keeps scaffolding `src/pages/SignInPage.tsx` for a hospital landing page even though the project has NO backend. Each "fix" attempt then tries to "disable" the sign-in form and produces broken JSX (unclosed tags, `<Stack>` inside props, etc.). The autofixer can't recover, build fails, preview goes blank.
+Add a lightweight blueprint that the model echoes back BEFORE files:
 
-Root cause: nothing in the prompt or pipeline tells the model "if no backend, do not create auth pages at all." We added rules about commented-out JSX but not about scaffolding auth pages speculatively.
+1. New helper in `generate.server.ts` that prefixes the model output with a one-screen blueprint block: `{ projectType, sections, navigation, designLanguage, backend, files }`. Server parses + persists to a new `project_blueprints` table (or column on `projects`) so subsequent turns stay consistent.
+2. Reuse this blueprint to seed the design tokens (fonts, palette presets from memory) deterministically instead of letting the model re-pick each turn.
 
-## Plan
+## Phase 3 — Generation quality gate (auto-repair)
 
-### Fix 1 — Stop duplicate suggestion surface (UI only)
+Tier-2 verifier check after the model returns:
 
-In `src/routes/builder.tsx`:
+1. If subtype = `marketing` and the file tree contains `Sidebar`, `DashboardLayout`, or auth route files → flag, regenerate just the index+layout with a corrective prompt.
+2. If subtype = `app` and the index file is a single hero section with no nav → flag, regenerate shell.
+3. Runs inside the existing `runLocalVerifyTier` + `postStreamAutofix` loop so the user never sees a mismatched first render.
 
-- Only render `SuggestionChecklist` when the assistant message text actually contains a question mark (real clarifying question). Today the title falls back to "Pick an option" when no `?` is found — that's the exact failure mode in the screenshot.
-- When there's no question mark, treat `m.suggestions` as next-step ideas and let `NextStepsCard` own them (it already exists below and is the canonical post-build surface).
+## Out of scope for this batch (handle in follow-ups)
 
-This is a 1-file frontend change, no business logic touched.
+- Chrome-extension scaffold kit (target exists, scaffold doesn't — separate ticket).
+- Multi-platform "Build Uber" decomposition into `mobile/` + `src/` + `packages/shared/` (the `web-mobile` target already declares this shape; needs its own scaffold kit).
+- Snack/Expo preview mode toggle on the existing mobile preview.
 
-### Fix 2 — Stop the auth-page build loop (prompt + autofix)
+## Why this order
 
-Two coordinated changes:
+Phase 1 ships the visible win (landing prompts → marketing layout) in one focused change set against files I already know. Phase 2/3 require schema work and verifier changes that are safer once Phase 1 is proven in production. Trying to land all 11 sections of the prompt at once would touch every server-side file in the generate pipeline simultaneously — high regression risk on a live system.
 
-1. **Prompt rule** in `src/server/generate.server.ts` (BACKEND / AUTH RULES section, ~line 111): add a hard rule — "If `src/integrations/backend/` does NOT exist, do NOT create any sign-in, sign-up, login, register, reset-password, or auth-* page or component. Do NOT add 'Sign in' links to navigation. Auth is a backend-gated feature; without backend, omit it entirely."
+## Technical surface (Phase 1 only)
 
-2. **Defensive autofix** in `src/server/stream-autofixer.ts`: when no backend is present, drop any newly-emitted files matching `src/pages/(SignIn|SignUp|Login|Register|ResetPassword)Page.tsx` (and similar under `src/components/auth*`) before they ever reach the build. Strip matching nav links/imports. This is the same pattern as the existing `fixBadImports` — it runs after the model and prevents the broken file from being written.
+- New: `src/lib/web-subtype.ts` (~80 lines, pure functions + addenda).
+- Edit: `src/routes/api/generate.ts` — ~15 lines around the `buildTargetBlock` assembly.
+- Edit: `src/components/DevicePreviewFrame.tsx` (or scaffold's blank index) — copy + skeleton swap.
+- Test: extend `src/server/__tests__/pipeline.test.ts` with subtype inference fixtures.
+- Zero schema changes, zero migrations, fully reversible.
 
-Both changes are server-side only and additive — no existing passing project is affected.
-
-### Out of scope (intentionally)
-
-- Not touching the broader audit work (intent registry, etc.) — those changes already landed and aren't implicated here.
-- Not changing the question pipeline / triage — the question wasn't actually asked; the UI just looked like a question.
-- Not redesigning `NextStepsCard` or `SuggestionChecklist`.
-
-## Files I'll edit
-
-- `src/routes/builder.tsx` — gate `SuggestionChecklist` on real-question detection.
-- `src/server/generate.server.ts` — add no-backend = no-auth-pages rule.
-- `src/server/stream-autofixer.ts` — strip auth pages when no backend; remove stale "Sign in" nav links.
-
-After edits I'll re-read each touched file to confirm syntax, and rely on the harness build to confirm typecheck.
+Approve and I'll implement Phase 1 immediately. Say "all phases" and I'll sequence 1 → 2 → 3 across the next turns.
