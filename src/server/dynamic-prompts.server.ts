@@ -150,6 +150,14 @@ Available section blocks:
 - CTA: <CtaCentered>, <CtaSplit>, <CtaGradientBand>
 - Footer: <FooterColumns>, <FooterMinimal>, <FooterNewsletter>
 
+Exact data prop names for blocks that render lists:
+- <TestimonialsCards items={[{ quote, name, role }]} /> (alias accepted: testimonials)
+- <LogosMarquee logos={[{ name, src }]} /> or logos={["/logo.svg"]}
+- <PricingTable tiers={[{ name, price, features, cta: { label, href } }]} />
+- <FaqAccordion items={[{ q, a }]} /> (aliases accepted: faqs with question/answer)
+- <FeaturesGrid3 items={[{ icon: Film, title, description }]} />
+- <StatsBand items={[{ label, value }]} />
+
 Reference page assemblies — READ ONE before composing a similar page:
 - src/components/examples/landing-saas-product.tsx — SaaS / dev tools / B2B
 - src/components/examples/landing-editorial-portfolio.tsx — agency / studio / portfolio
