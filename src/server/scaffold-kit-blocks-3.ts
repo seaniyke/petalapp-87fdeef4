@@ -350,13 +350,15 @@ export function ComparisonTable({
   columns: ComparisonColumn[];
   className?: string;
 }) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const safeColumns = Array.isArray(columns) ? columns : [];
   return (
     <div className={cn("w-full overflow-x-auto", className)}>
       <table className="w-full border-separate border-spacing-0 text-sm">
         <thead>
           <tr>
             <th className="sticky left-0 bg-background py-4 pr-4 text-left text-muted-foreground font-medium">Feature</th>
-            {columns.map((c) => (
+            {safeColumns.map((c) => (
               <th key={c.name} className={cn("py-4 px-4 text-left font-semibold text-foreground", c.highlight && "text-primary")}>
                 {c.name}
               </th>
@@ -364,10 +366,10 @@ export function ComparisonTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
+          {safeRows.map((r) => (
             <tr key={r.key} className="border-t border-border">
               <td className="sticky left-0 bg-background py-3 pr-4 font-medium text-foreground">{r.label}</td>
-              {columns.map((c) => {
+              {safeColumns.map((c) => {
                 const v = c.values[r.key];
                 return (
                   <td key={c.name} className={cn("py-3 px-4 text-muted-foreground", c.highlight && "bg-primary/5")}>
