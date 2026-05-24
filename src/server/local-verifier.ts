@@ -616,15 +616,12 @@ function findUnresolvedImports(
   // the file ships.
   const kitUiPaths = new Set<string>();
   try {
-    // Lazy import to avoid a circular module-init dependency with scaffold-kit.
-    // `getKitManifest()` is sync and memoized.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { getKitManifest } = require("./kit-manifest.server") as typeof import("./kit-manifest.server");
     for (const entry of getKitManifest()) kitUiPaths.add(entry.importPath);
   } catch {
     // If the manifest can't be derived for any reason, fall back to the
     // permissive behavior (skip the check) rather than block valid builds.
   }
+
   function isKnownKitAlias(spec: string): boolean {
     if (kitUiPaths.size === 0) return true; // fail open
     if (!spec.startsWith("@/components/ui/") && !spec.startsWith("@/components/blocks/")) {
