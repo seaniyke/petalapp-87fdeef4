@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, Sparkles, AlertCircle, RotateCw, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { PreviewCrashFallback } from "@/components/PreviewCrashFallback";
 
 type BuildStatus = "pending" | "building" | "ready" | "failed";
 
@@ -39,6 +40,7 @@ export function MobilePreviewFallback({
   const [build, setBuild] = useState<BuildRow | null>(null);
   const [latestReadyBuild, setLatestReadyBuild] = useState<BuildRow | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
+  const [crashReason, setCrashReason] = useState<string | null>(null);
   const [pendingTooLong, setPendingTooLong] = useState(false);
 
   // Load the current latest build and a fallback ready build. We also poll the
@@ -204,7 +206,12 @@ export function MobilePreviewFallback({
       <PreviewFrame
         src={previewBuild.dist_path}
         iframeKey={iframeKey}
-        onReload={() => setIframeKey((k) => k + 1)}
+            crashReason={crashReason}
+            onCrash={setCrashReason}
+            onReload={() => {
+              setCrashReason(null);
+              setIframeKey((k) => k + 1);
+            }}
         badge="Updating preview…"
         cacheBust={previewBuild.id}
       />
@@ -247,7 +254,12 @@ export function MobilePreviewFallback({
         <PreviewFrame
           src={previewBuild.dist_path}
           iframeKey={iframeKey}
-          onReload={() => setIframeKey((k) => k + 1)}
+          crashReason={crashReason}
+          onCrash={setCrashReason}
+          onReload={() => {
+            setCrashReason(null);
+            setIframeKey((k) => k + 1);
+          }}
           badge="Latest build failed — showing previous preview"
           cacheBust={previewBuild.id}
         />
@@ -288,7 +300,12 @@ export function MobilePreviewFallback({
     <PreviewFrame
       src={build.dist_path}
       iframeKey={iframeKey}
-      onReload={() => setIframeKey((k) => k + 1)}
+      crashReason={crashReason}
+      onCrash={setCrashReason}
+      onReload={() => {
+        setCrashReason(null);
+        setIframeKey((k) => k + 1);
+      }}
       cacheBust={build.id}
     />
   );
