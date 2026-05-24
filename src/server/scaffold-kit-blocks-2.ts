@@ -1192,9 +1192,16 @@ import { Container } from "@/components/ui/container";
 import { Marquee } from "@/components/ui/marquee";
 import { cn } from "@/lib/utils";
 
+type LogoEntry = string | { name?: string; src?: string; url?: string };
+
+function normalizeLogo(l: LogoEntry, i: number): { name: string; src?: string } {
+  if (typeof l === "string") return { name: \`logo-\${i + 1}\`, src: l };
+  return { name: l.name ?? \`logo-\${i + 1}\`, src: l.src ?? l.url };
+}
+
 /**
- * Infinite-scroll logo strip. Better than LogosGrid when you have 8+ logos
- * or want subtle motion in the page. Fades at the edges via mask-image.
+ * Infinite-scroll logo strip. Accepts either an array of \`{ name, src }\`
+ * objects or a plain string[] of image URLs.
  */
 export function LogosMarquee({
   eyebrow,
@@ -1203,10 +1210,11 @@ export function LogosMarquee({
   className,
 }: {
   eyebrow?: React.ReactNode;
-  logos: { name: string; src?: string }[];
+  logos: LogoEntry[];
   speed?: number;
   className?: string;
 }) {
+  const list = Array.isArray(logos) ? logos.map(normalizeLogo) : [];
   return (
     <section className={cn("py-12 md:py-16", className)}>
       <Container size="xl">
@@ -1217,7 +1225,7 @@ export function LogosMarquee({
         )}
         <div className="[mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
           <Marquee speed={speed}>
-            {logos.map((l, i) =>
+            {list.map((l, i) =>
               l.src ? (
                 <img
                   key={i}
