@@ -398,10 +398,29 @@ export interface PricingTier {
   price: string;
   period?: string;
   description?: string;
-  features: string[];
-  cta: { label: string; href?: string; onClick?: () => void };
+  features?: string[];
+  /** Preferred. Falls back to button / buttonText / buttonLabel / ctaLabel. */
+  cta?: { label: string; href?: string; onClick?: () => void };
+  button?: { label?: string; text?: string; href?: string; onClick?: () => void };
+  buttonText?: string;
+  buttonLabel?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+  href?: string;
+  /** Preferred. \`featured\` is also accepted as an alias. */
   highlight?: boolean;
+  featured?: boolean;
   badge?: string;
+}
+
+function normalizeCta(t: PricingTier): { label: string; href?: string; onClick?: () => void } {
+  if (t.cta && (t.cta.label || t.cta.href)) return t.cta;
+  if (t.button && (t.button.label || t.button.text || t.button.href)) {
+    return { label: t.button.label ?? t.button.text ?? "Get started", href: t.button.href, onClick: t.button.onClick };
+  }
+  const label = t.buttonText ?? t.buttonLabel ?? t.ctaLabel ?? "Get started";
+  const href = t.ctaHref ?? t.href;
+  return { label, href };
 }
 
 /** Three-tier pricing grid. Pass 1-4 tiers. */
@@ -412,39 +431,45 @@ export function PricingTable({
   tiers: PricingTier[];
   className?: string;
 }) {
-  const cols = tiers.length === 1 ? "max-w-sm mx-auto" : tiers.length === 2 ? "md:grid-cols-2" : tiers.length >= 4 ? "md:grid-cols-2 lg:grid-cols-4" : "md:grid-cols-3";
+  const safe = Array.isArray(tiers) ? tiers : [];
+  const cols = safe.length === 1 ? "max-w-sm mx-auto" : safe.length === 2 ? "md:grid-cols-2" : safe.length >= 4 ? "md:grid-cols-2 lg:grid-cols-4" : "md:grid-cols-3";
   return (
     <div className={cn("grid grid-cols-1 gap-6", cols, className)}>
-      {tiers.map((t) => (
-        <Card key={t.name} className={cn("relative flex flex-col", t.highlight && "border-primary shadow-lg")}>
-          {t.badge && (
-            <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">{t.badge}</Badge>
-          )}
-          <CardHeader>
-            <CardTitle className="text-lg">{t.name}</CardTitle>
-            {t.description && <CardDescription>{t.description}</CardDescription>}
-            <div className="mt-3 flex items-baseline gap-1">
-              <span className="text-4xl font-semibold tracking-tight text-foreground">{t.price}</span>
-              {t.period && <span className="text-sm text-muted-foreground">/ {t.period}</span>}
-            </div>
-          </CardHeader>
-          <CardContent className="flex-1">
-            <ul className="space-y-2.5">
-              {t.features.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-foreground">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span>{f}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-          <CardFooter>
-            <Button asChild={!!t.cta.href} variant={t.highlight ? "default" : "outline"} className="w-full" onClick={t.cta.onClick}>
-              {t.cta.href ? <a href={t.cta.href}>{t.cta.label}</a> : <span>{t.cta.label}</span>}
-            </Button>
-          </CardFooter>
-        </Card>
-      ))}
+      {safe.map((t, idx) => {
+        const cta = normalizeCta(t);
+        const highlight = t.highlight ?? t.featured ?? false;
+        const features = Array.isArray(t.features) ? t.features : [];
+        return (
+          <Card key={t.name ?? idx} className={cn("relative flex flex-col", highlight && "border-primary shadow-lg")}>
+            {t.badge && (
+              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">{t.badge}</Badge>
+            )}
+            <CardHeader>
+              <CardTitle className="text-lg">{t.name}</CardTitle>
+              {t.description && <CardDescription>{t.description}</CardDescription>}
+              <div className="mt-3 flex items-baseline gap-1">
+                <span className="text-4xl font-semibold tracking-tight text-foreground">{t.price}</span>
+                {t.period && <span className="text-sm text-muted-foreground">/ {t.period}</span>}
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1">
+              <ul className="space-y-2.5">
+                {features.map((f, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <Button asChild={!!cta.href} variant={highlight ? "default" : "outline"} className="w-full" onClick={cta.onClick}>
+                {cta.href ? <a href={cta.href}>{cta.label}</a> : <span>{cta.label}</span>}
+              </Button>
+            </CardFooter>
+          </Card>
+        );
+      })}
     </div>
   );
 }
