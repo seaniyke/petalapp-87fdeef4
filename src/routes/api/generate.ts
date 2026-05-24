@@ -1688,9 +1688,23 @@ Forbidden defaults
   // only block. Falls back silently if no confident match.
   let archetypeBlock = "";
   try {
-    const { buildBlueprintFor } = await import("@/server/app-composer.server");
+    const { buildBlueprintFor, renderBlueprintBlock } = await import("@/server/app-composer.server");
     const composed = buildBlueprintFor(lastUserText, { hasBackend: Boolean(backend) });
-    if (composed) archetypeBlock = composed.promptBlock;
+    if (composed) {
+      // Marketing subtype gate: strip auth/account routes from any matched
+      // template before they hit the prompt. Otherwise the model gets
+      // contradictory instructions — the subtype addendum says "no auth
+      // shells" while the blueprint lists `/auth/sign-in` as a route to
+      // scaffold, and it either ships auth on a landing page or freezes.
+      if (detectedWebSubtype === "marketing") {
+        composed.blueprint.routes = composed.blueprint.routes.filter(
+          (r) => !r.startsWith("/auth") && r !== "/account" && r !== "/dashboard",
+        );
+        archetypeBlock = renderBlueprintBlock(composed.blueprint);
+      } else {
+        archetypeBlock = composed.promptBlock;
+      }
+    }
   } catch {
     // Never block a build on composer failure.
   }
