@@ -1301,9 +1301,22 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   // model scaffolds the right stack.
   const buildTargetId = request.headers.get("x-petal-target") ?? "web";
   const buildTarget = getBuildTarget(buildTargetId);
+
+  // Sub-type routing for the catch-all `web` target. Without this a
+  // "landing page for X" and a "CRM for Y" both get the same generic web
+  // prompt and the model picks an app-shell vs marketing layout at random.
+  // Only consulted on initial generation — subsequent turns inherit the
+  // shape already in `currentFiles`.
+  let webSubtypeBlock = "";
+  if (buildTarget.id === "web" && isInitial) {
+    const subtype = inferWebSubtype(lastContent);
+    webSubtypeBlock = `\n\n${getWebSubtypeAddendum(subtype)}\n`;
+    console.log(`[web-subtype] project=${body.projectId ?? "n/a"} detected="${subtype}"`);
+  }
+
   const buildTargetBlock = buildTarget.systemPromptAddendum
-    ? `\n\n### Build target (HARD CONSTRAINT)\n${buildTarget.systemPromptAddendum}\n`
-    : "";
+    ? `\n\n### Build target (HARD CONSTRAINT)\n${buildTarget.systemPromptAddendum}\n${webSubtypeBlock}`
+    : webSubtypeBlock;
 
   // Design + craft bar (applies to EVERY target). Petal apps must look
   // hand-designed, not template-y. Keep this short and specific — the
