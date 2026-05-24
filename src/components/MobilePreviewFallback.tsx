@@ -315,12 +315,16 @@ function PreviewFrame({
   src,
   iframeKey,
   onReload,
+  crashReason,
+  onCrash,
   badge,
   cacheBust,
 }: {
   src: string;
   iframeKey: number;
   onReload: () => void;
+  crashReason?: string | null;
+  onCrash: (reason: string | null) => void;
   badge?: string;
   /** Optional value appended as ?v=<cacheBust> to bypass edge cache after a fresh deploy. */
   cacheBust?: string;
@@ -331,6 +335,32 @@ function PreviewFrame({
   const finalSrc = cacheBust
     ? `${src}${src.includes("?") ? "&" : "?"}v=${encodeURIComponent(cacheBust)}`
     : src;
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      const data = event.data as { type?: string; payload?: { message?: unknown } } | null;
+      if (!data || typeof data !== "object") return;
+      if (data.type !== "petal:runtime:error" && data.type !== "petal:preview:blank") return;
+      const message =
+        typeof data.payload?.message === "string"
+          ? data.payload.message
+          : data.type === "petal:preview:blank"
+            ? "Preview rendered blank"
+            : "Preview crashed";
+      onCrash(message.slice(0, 240));
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [onCrash]);
+
+  if (crashReason) {
+    return (
+      <PreviewCrashFallback
+        reason={crashReason}
+        lastPath={src}
+        onRetry={onReload}
+      />
+    );
+  }
   return (
     <div className="relative flex h-full w-full flex-col">
       {badge && (
