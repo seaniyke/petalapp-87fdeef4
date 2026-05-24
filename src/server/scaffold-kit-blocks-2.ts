@@ -623,6 +623,7 @@ export function CtaGradientBand({
 
 const FOOTER_COLUMNS = `import * as React from "react";
 import { Container } from "@/components/ui/container";
+import { Github, Twitter, Instagram, Facebook, Linkedin, Youtube, Globe, Mail, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface FooterColumn {
@@ -630,41 +631,74 @@ export interface FooterColumn {
   links: { label: string; href: string }[];
 }
 
+type SocialEntry = {
+  href: string;
+  label?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  platform?: string;
+};
+
+const PLATFORM_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  github: Github,
+  twitter: Twitter,
+  x: Twitter,
+  instagram: Instagram,
+  facebook: Facebook,
+  linkedin: Linkedin,
+  youtube: Youtube,
+  web: Globe,
+  website: Globe,
+  email: Mail,
+  mail: Mail,
+};
+
+function resolveSocialIcon(s: SocialEntry): React.ComponentType<{ className?: string }> {
+  if (typeof s.icon === "function") return s.icon;
+  const key = (s.platform ?? s.label ?? "").toLowerCase();
+  return PLATFORM_ICONS[key] ?? Circle;
+}
+
 /**
  * Multi-column footer with brand block + link columns + bottom bar.
- * Default for SaaS / agencies / anything content-heavy.
+ * Accepts \`social\` (preferred) or \`socialLinks\` (alias). Each entry may
+ * provide \`{ icon }\` or \`{ platform: "twitter" }\` — unknown platforms
+ * fall back to a neutral icon.
  */
 export function FooterColumns({
   brand,
   tagline,
   columns,
   social,
+  socialLinks,
   copyright,
   className,
 }: {
-  brand: React.ReactNode;
+  brand?: React.ReactNode;
   tagline?: React.ReactNode;
-  columns: FooterColumn[];
-  social?: { icon: React.ComponentType<{ className?: string }>; href: string; label: string }[];
+  columns?: FooterColumn[];
+  social?: SocialEntry[];
+  socialLinks?: SocialEntry[];
   copyright?: React.ReactNode;
   className?: string;
 }) {
+  const socials = Array.isArray(social) && social.length > 0 ? social : Array.isArray(socialLinks) ? socialLinks : [];
+  const cols = Array.isArray(columns) ? columns : [];
   return (
     <footer className={cn("border-t border-border bg-muted/30 py-16", className)}>
       <Container size="xl">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="md:col-span-4">
-            <div className="text-base font-semibold text-foreground">{brand}</div>
+            {brand && <div className="text-base font-semibold text-foreground">{brand}</div>}
             {tagline && <p className="mt-2 max-w-xs text-sm text-muted-foreground">{tagline}</p>}
-            {social && social.length > 0 && (
+            {socials.length > 0 && (
               <div className="mt-5 flex gap-3">
-                {social.map((s, i) => {
-                  const Icon = s.icon;
+                {socials.map((s, i) => {
+                  const Icon = resolveSocialIcon(s);
                   return (
                     <a
                       key={i}
                       href={s.href}
-                      aria-label={s.label}
+                      aria-label={s.label ?? s.platform ?? "social"}
                       className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition hover:text-foreground"
                     >
                       <Icon className="h-4 w-4" />
@@ -675,11 +709,11 @@ export function FooterColumns({
             )}
           </div>
           <div className="grid grid-cols-2 gap-8 md:col-span-8 md:grid-cols-4">
-            {columns.map((col, i) => (
+            {cols.map((col, i) => (
               <div key={i}>
                 <div className="text-xs font-semibold uppercase tracking-wider text-foreground">{col.title}</div>
                 <ul className="mt-4 space-y-2.5">
-                  {col.links.map((l, j) => (
+                  {(col.links ?? []).map((l, j) => (
                     <li key={j}>
                       <a href={l.href} className="text-sm text-muted-foreground transition hover:text-foreground">
                         {l.label}
