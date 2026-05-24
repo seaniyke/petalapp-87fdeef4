@@ -14,6 +14,7 @@ import {
 } from "@/server/generate.server";
 import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { getBuildTarget } from "@/lib/build-targets";
+import { inferWebSubtype, getWebSubtypeAddendum } from "@/lib/web-subtype";
 
 import { lookupBackendForGenerate } from "@/server/backend-connector.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
@@ -849,7 +850,10 @@ function emitConversationalFallback(
 // something rhetorical in its summary, that ships alongside the build.
 
 
-function ensureRenderableShell(files: ProjectFile[]): { files: ProjectFile[]; fixed: string[] } {
+function ensureRenderableShell(
+  files: ProjectFile[],
+  subtypeHint?: "marketing" | "app" | "fullstack",
+): { files: ProjectFile[]; fixed: string[] } {
   const byPath = new Map(files.map((f) => [f.path, f.content]));
   const fixed: string[] = [];
   if (!byPath.has("index.html")) {
@@ -863,7 +867,26 @@ function ensureRenderableShell(files: ProjectFile[]): { files: ProjectFile[]; fi
   }
   const app = byPath.get("src/App.tsx") ?? "";
   if (!app.trim() || /PlaceholderIndex|data-lovable-blank-page-placeholder|REPLACE this/i.test(app) || /return\s+(?:null|<><\/>)\s*;/.test(app)) {
-    byPath.set("src/App.tsx", 'export default function App() {\n  return (\n    <main className="min-h-screen bg-background px-6 py-16 text-foreground">\n      <section className="mx-auto max-w-3xl space-y-4">\n        <p className="text-sm font-medium text-muted-foreground">Starter app</p>\n        <h1 className="text-4xl font-bold">Your app is ready</h1>\n        <p className="text-lg text-muted-foreground">Ask for the next section or feature and this page will update safely.</p>\n      </section>\n    </main>\n  );\n}\n');
+    // Subtype-aware placeholder. The model failed to produce App.tsx for
+    // this turn — instead of a generic "Your app is ready" card that
+    // reads as a wrong-target mobile app at small viewports, hint at
+    // what's actually coming so the user trusts the next turn.
+    const eyebrow =
+      subtypeHint === "marketing" ? "Landing page" :
+      subtypeHint === "fullstack" ? "Platform" :
+      "Web app";
+    const headline =
+      subtypeHint === "marketing" ? "Your landing page is being prepared" :
+      subtypeHint === "fullstack" ? "Your platform is being prepared" :
+      "Your app is being prepared";
+    const sub =
+      subtypeHint === "marketing"
+        ? "The first generation didn't ship a homepage. Ask Petal to retry — the next turn will scaffold the hero, features, and footer."
+        : "The first generation didn't ship a root view. Ask Petal to retry and your screens will appear here.";
+    byPath.set(
+      "src/App.tsx",
+      `export default function App() {\n  return (\n    <main className="min-h-screen bg-background px-6 py-16 text-foreground">\n      <section className="mx-auto max-w-3xl space-y-4">\n        <p className="text-sm font-medium text-muted-foreground">${eyebrow}</p>\n        <h1 className="text-4xl font-bold tracking-tight">${headline}</h1>\n        <p className="text-lg text-muted-foreground">${sub}</p>\n      </section>\n    </main>\n  );\n}\n`,
+    );
     fixed.push("src/App.tsx");
   }
   return { files: Array.from(byPath, ([path, content]) => ({ path, content })), fixed };
@@ -1300,9 +1323,23 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   // model scaffolds the right stack.
   const buildTargetId = request.headers.get("x-petal-target") ?? "web";
   const buildTarget = getBuildTarget(buildTargetId);
+
+  // Sub-type routing for the catch-all `web` target. Without this a
+  // "landing page for X" and a "CRM for Y" both get the same generic web
+  // prompt and the model picks an app-shell vs marketing layout at random.
+  // Only consulted on initial generation — subsequent turns inherit the
+  // shape already in `currentFiles`.
+  let webSubtypeBlock = "";
+  let detectedWebSubtype: "marketing" | "app" | "fullstack" | undefined;
+  if (buildTarget.id === "web" && isInitial) {
+    detectedWebSubtype = inferWebSubtype(lastContent);
+    webSubtypeBlock = `\n\n${getWebSubtypeAddendum(detectedWebSubtype)}\n`;
+    console.log(`[web-subtype] project=${body.projectId ?? "n/a"} detected="${detectedWebSubtype}"`);
+  }
+
   const buildTargetBlock = buildTarget.systemPromptAddendum
-    ? `\n\n### Build target (HARD CONSTRAINT)\n${buildTarget.systemPromptAddendum}\n`
-    : "";
+    ? `\n\n### Build target (HARD CONSTRAINT)\n${buildTarget.systemPromptAddendum}\n${webSubtypeBlock}`
+    : webSubtypeBlock;
 
   // Design + craft bar (applies to EVERY target). Petal apps must look
   // hand-designed, not template-y. Keep this short and specific — the
@@ -2253,7 +2290,7 @@ Forbidden defaults
           throw new Error("Project is missing index.html.");
         }
 
-        const shellGuard = ensureRenderableShell(nextFiles);
+        const shellGuard = ensureRenderableShell(nextFiles, detectedWebSubtype);
         nextFiles = shellGuard.files;
         if (shellGuard.fixed.length > 0) {
           console.warn("[renderable-shell] repaired", shellGuard.fixed.join(", "));
