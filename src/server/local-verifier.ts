@@ -924,10 +924,13 @@ function findMissingNamedExports(
         const key = `${f.path}|${spec}|${original}`;
         if (seen.has(key)) continue;
         seen.add(key);
+        const isTypeOnly = exp.typeOnly.has(original);
         issues.push({
           path: f.path,
           kind: "missing-export",
-          detail: `import { ${original} } from "${spec}" — ${targetPath} does not export "${original}"`,
+          detail: isTypeOnly
+            ? `import { ${original} } from "${spec}" — "${original}" is exported as a TYPE/INTERFACE only and is stripped at build time. Either remove this import (it has no runtime value) or change the target to export a value (e.g. \`export const ${original} = …\`).`
+            : `import { ${original} } from "${spec}" — ${targetPath} does not export "${original}"`,
         });
       }
     }
