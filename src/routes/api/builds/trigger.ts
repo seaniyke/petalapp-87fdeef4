@@ -165,6 +165,19 @@ export const Route = createFileRoute("/api/builds/trigger")({
           );
         }
 
+        // 2e-bis) Synthesize shims for any `@/components/ui/<x>` or
+        //     `@/components/blocks/<x>` import that does NOT resolve to a real
+        //     file in the project. Without this, a hallucinated primitive
+        //     (carousel, command, menubar, sidebar, …) hard-fails the Rollup
+        //     resolver and the deployed preview goes blank. The shim is a
+        //     forgiving passthrough <div> — ugly but mounted.
+        const { files: shimmedFiles, shimmed } = shimMissingUiPrimitives(buildFiles);
+        if (shimmed.length > 0) {
+          console.warn(
+            `[ui-shim] project=${projectId} synthesized ${shimmed.length} missing primitive(s): ${shimmed.join(", ")}`,
+          );
+        }
+
         // 2f) Inject env files for installed integrations. This loads each
         //     integration's public options + decrypted secrets and renders
         //     `.env.production` (Vite-consumed at build time) and `.dev.vars`
