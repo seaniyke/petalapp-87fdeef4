@@ -1,26 +1,25 @@
 /**
  * Build-time codemod: detect named imports where the imported name is ONLY
  * declared as a TypeScript type/interface in the target file (no runtime
- * value), and strip those names from the import clause.
+ * value), and HEAL the target file by appending a passthrough value export
+ * under the same name.
  *
  * Why this exists:
  *   `import { NavLink } from "@/components/blocks/nav-with-cta"` where
  *   nav-with-cta.tsx only declares `export interface NavLink { … }` passes
- *   `tsc --noEmit` (TS allows it) but Rollup's production build fails hard:
- *     `"NavLink" is not exported by "src/components/blocks/nav-with-cta.tsx"`
- *   because the interface is erased before bundling. The model frequently
- *   conflates a block's exported INTERFACE name with a component name and
- *   imports it as a value, blanking the deployed preview.
+ *   `tsc --noEmit` (TS allows it) but Rollup's prod build fails:
+ *     `"NavLink" is not exported by "src/components/blocks/nav-with-cta.tsx"`.
+ *   And if we instead strip the import, any remaining `<NavLink … />` JSX
+ *   crashes at runtime with `Can't find variable: NavLink`. So we inject a
+ *   runtime stub `export const NavLink: any = (props) => props.children ?? null`.
+ *   The interface keeps living in type-space; the const lives in value-space
+ *   (TS allows the same name in both). Build + runtime both resolve, and the
+ *   preview renders something instead of going blank.
  *
- * Strategy:
- *   - Build an index of value vs. type-only exports for every project file.
- *   - For each named import from a local / aliased path, drop any specifier
- *     whose original name is type-only in the target.
- *   - If the entire braces clause becomes empty AND there's no default/
- *     namespace import alongside it, remove the whole import statement.
- *   - Idempotent and conservative: skips packages, `export * from`, and
- *     anything we can't resolve.
+ *   Conservative: skips packages, `export * from`, the ui kit, and
+ *   integrations. Idempotent: a stub is only injected once per name.
  */
+
 import type { ProjectFile } from "./generate.server";
 
 interface FileExports {
@@ -127,10 +126,12 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
 
   const stripped: { file: string; spec: string; names: string[] }[] = [];
   const out: ProjectFile[] = files.map((f) => ({ ...f }));
+  const outByPath = new Map(out.map((f) => [f.path, f]));
 
-  // Match a full import statement; capture default/namespace prefix, braces clause, spec.
-  // `import [type] [Default[, ]] [* as Ns] [{ … }] from "spec";`
-  // Keep it permissive — we only mutate the braces clause.
+  // Track stubs to inject per target file: targetPath -> set of names.
+  const stubs = new Map<string, Set<string>>();
+
+  // Match named-value imports (skip `import type …`).
   const importRe = /import\s+(?!type\b)([^"';]+?)\s+from\s+["']([^"']+)["'];?/g;
 
   for (const f of out) {
@@ -138,70 +139,67 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
     if (f.path.startsWith("src/components/ui/")) continue;
     if (f.path.startsWith("src/integrations/")) continue;
 
-    let changed = false;
-    const newContent = f.content.replace(importRe, (whole, clause: string, spec: string) => {
-      if (!spec.startsWith(".") && !spec.startsWith("@/")) return whole;
+    let m: RegExpExecArray | null;
+    importRe.lastIndex = 0;
+    while ((m = importRe.exec(f.content))) {
+      const clause = m[1];
+      const spec = m[2];
+      if (!spec.startsWith(".") && !spec.startsWith("@/")) continue;
       const target = resolveImportPath(f.path, spec, byPath);
-      if (!target) return whole;
+      if (!target) continue;
       const exp = exportsOf(target);
-      if (exp.hasStar) return whole;
+      if (exp.hasStar) continue;
 
       const braceStart = clause.indexOf("{");
-      if (braceStart < 0) return whole;
+      if (braceStart < 0) continue;
       const braceEnd = clause.indexOf("}", braceStart);
-      if (braceEnd < 0) return whole;
-
-      const prefix = clause.slice(0, braceStart).replace(/,\s*$/, "").trim();
+      if (braceEnd < 0) continue;
       const inside = clause.slice(braceStart + 1, braceEnd);
-      const suffix = clause.slice(braceEnd + 1).trim();
 
-      const keptSpecs: string[] = [];
-      const droppedNames: string[] = [];
+      const needStub: string[] = [];
       for (const raw of inside.split(",")) {
         const piece = raw.trim();
         if (!piece) continue;
-        // Per-specifier `type X` is already type-only — preserve as-is.
-        if (/^type\s+/i.test(piece)) {
-          keptSpecs.push(piece);
-          continue;
-        }
+        if (/^type\s+/i.test(piece)) continue;
         const original = piece.split(/\s+as\s+/i)[0].trim();
-        if (!/^[A-Za-z_$][\w$]*$/.test(original)) {
-          keptSpecs.push(piece);
-          continue;
-        }
-        if (exp.value.has(original)) {
-          keptSpecs.push(piece);
-          continue;
-        }
-        if (exp.typeOnly.has(original)) {
-          droppedNames.push(original);
-          continue; // drop — would crash Rollup
-        }
-        // Unknown name: leave it. Other guards (missing-export) handle it.
-        keptSpecs.push(piece);
+        if (!/^[A-Za-z_$][\w$]*$/.test(original)) continue;
+        if (exp.value.has(original)) continue;
+        if (exp.typeOnly.has(original)) needStub.push(original);
       }
+      if (needStub.length === 0) continue;
 
-      if (droppedNames.length === 0) return whole;
-      changed = true;
-      stripped.push({ file: f.path, spec, names: droppedNames });
-
-      const hasOtherBinding = prefix.length > 0 || suffix.length > 0;
-      if (keptSpecs.length === 0) {
-        if (!hasOtherBinding) {
-          // Remove the entire import statement.
-          return "";
-        }
-        // Rebuild clause without the braces.
-        const rebuilt = [prefix, suffix].filter(Boolean).join(" ").trim();
-        return `import ${rebuilt} from "${spec}";`;
+      let set = stubs.get(target);
+      if (!set) {
+        set = new Set();
+        stubs.set(target, set);
       }
-      const braces = `{ ${keptSpecs.join(", ")} }`;
-      const parts = [prefix, braces, suffix].filter(Boolean).join(", ");
-      return `import ${parts.replace(/,\s*\{/, " { ").replace(/^,\s*/, "")} from "${spec}";`;
-    });
+      for (const n of needStub) set.add(n);
+      stripped.push({ file: f.path, spec, names: needStub });
+    }
+  }
 
-    if (changed) f.content = newContent;
+  // Inject stubs into target files and promote the name from typeOnly→value
+  // so subsequent passes (and future calls) see it as a value export.
+  for (const [target, names] of stubs) {
+    const file = outByPath.get(target);
+    if (!file) continue;
+    const exp = exportsOf(target);
+    const lines: string[] = [];
+    for (const n of names) {
+      if (exp.value.has(n)) continue;
+      lines.push(
+        `// Auto-injected runtime stub: \`${n}\` was declared only as a type/interface ` +
+        `but imported as a value. Renders children as a passthrough so the preview does not crash.`,
+      );
+      lines.push(
+        `export const ${n}: any = (props: any) => (props && props.children) ? props.children : null;`,
+      );
+      exp.value.add(n);
+      exp.typeOnly.delete(n);
+    }
+    if (lines.length === 0) continue;
+    const sep = file.content.endsWith("\n") ? "\n" : "\n\n";
+    file.content = `${file.content}${sep}${lines.join("\n")}\n`;
   }
 
   return { files: out, stripped };
