@@ -1330,10 +1330,11 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   // Only consulted on initial generation — subsequent turns inherit the
   // shape already in `currentFiles`.
   let webSubtypeBlock = "";
+  let detectedWebSubtype: "marketing" | "app" | "fullstack" | undefined;
   if (buildTarget.id === "web" && isInitial) {
-    const subtype = inferWebSubtype(lastContent);
-    webSubtypeBlock = `\n\n${getWebSubtypeAddendum(subtype)}\n`;
-    console.log(`[web-subtype] project=${body.projectId ?? "n/a"} detected="${subtype}"`);
+    detectedWebSubtype = inferWebSubtype(lastContent);
+    webSubtypeBlock = `\n\n${getWebSubtypeAddendum(detectedWebSubtype)}\n`;
+    console.log(`[web-subtype] project=${body.projectId ?? "n/a"} detected="${detectedWebSubtype}"`);
   }
 
   const buildTargetBlock = buildTarget.systemPromptAddendum
