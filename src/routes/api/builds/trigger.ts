@@ -205,7 +205,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
         //     undefined values and silently no-op at runtime. Failures here
         //     are non-fatal — we log and continue with no env file rather
         //     than blocking the deploy.
-        let withEnv = injectPreviewGuard(shimmedFiles).files;
+        let withEnv = injectPreviewGuard(typeStrippedFiles).files;
         try {
           const envBundle = await buildIntegrationEnvFiles(projectId, withEnv);
           if (envBundle.files.length > 0) {
