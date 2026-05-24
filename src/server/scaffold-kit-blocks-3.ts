@@ -734,6 +734,7 @@ export function SidebarShell({
   className?: string;
 }) {
   const [open, setOpen] = React.useState(false);
+  const items = Array.isArray(nav) ? nav : [];
   return (
     <div className={cn("min-h-screen bg-background", className)}>
       <aside className={cn("fixed inset-y-0 left-0 z-40 w-64 border-r border-border bg-card transition-transform md:translate-x-0", open ? "translate-x-0" : "-translate-x-full")}>
@@ -743,7 +744,7 @@ export function SidebarShell({
         </div>
         <ScrollArea className="h-[calc(100vh-3.5rem-3rem)]">
           <nav className="space-y-1 p-3">
-            {nav.map((it) => (
+            {items.map((it) => (
               <a key={it.id} href={it.href ?? "#"} onClick={(e) => { if (it.onClick) { e.preventDefault(); it.onClick(); } }}
                 className={cn("flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground", it.active && "bg-muted text-foreground font-medium")}>
                 {it.icon && <span className="text-muted-foreground">{it.icon}</span>}
@@ -782,6 +783,8 @@ export function SectionHeader({
   actions?: React.ReactNode;
   className?: string;
 }) {
+  const safeLines = Array.isArray(lines) ? lines : [];
+  const safeTotal = total ?? { label: "Total", value: "—" };
   return (
     <div className={cn("mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between", className)}>
       <div>
@@ -945,7 +948,7 @@ export function CheckoutSummary({
       <CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         <dl className="space-y-2 text-sm">
-          {lines.map((l) => (
+          {safeLines.map((l) => (
             <div key={l.label} className={cn("flex justify-between", l.emphasis ? "text-foreground font-medium" : "text-muted-foreground")}>
               <dt>{l.label}</dt>
               <dd>{l.value}</dd>
@@ -954,8 +957,8 @@ export function CheckoutSummary({
         </dl>
         <Separator />
         <div className="flex items-baseline justify-between">
-          <span className="text-sm font-medium text-foreground">{total.label}</span>
-          <span className="text-xl font-semibold tracking-tight text-foreground">{total.value}</span>
+          <span className="text-sm font-medium text-foreground">{safeTotal.label}</span>
+          <span className="text-xl font-semibold tracking-tight text-foreground">{safeTotal.value}</span>
         </div>
         <Button className="w-full" onClick={onCheckout}>{ctaLabel}</Button>
         {note && <div className="text-xs text-muted-foreground">{note}</div>}
