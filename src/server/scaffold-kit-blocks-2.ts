@@ -105,7 +105,10 @@ export interface MarqueeTestimonial {
   quote: string;
   name: string;
   role?: string;
+  title?: string;
   avatarSrc?: string;
+  image?: string;
+  avatar?: string;
 }
 
 /**
@@ -118,28 +121,31 @@ export function TestimonialsMarquee({
   title,
   description,
   items,
+  testimonials,
   className,
 }: {
   eyebrow?: React.ReactNode;
   title?: React.ReactNode;
   description?: React.ReactNode;
-  items: MarqueeTestimonial[];
+  items?: MarqueeTestimonial[];
+  testimonials?: MarqueeTestimonial[];
   className?: string;
 }) {
-  const half = Math.ceil(items.length / 2);
-  const rowA = items.slice(0, half);
-  const rowB = items.slice(half).length ? items.slice(half) : items;
+  const list = Array.isArray(items) ? items : Array.isArray(testimonials) ? testimonials : [];
+  const half = Math.ceil(list.length / 2);
+  const rowA = list.slice(0, half);
+  const rowB = list.slice(half).length ? list.slice(half) : list;
   const Card = ({ t }: { t: MarqueeTestimonial }) => (
     <figure className="mx-3 w-[320px] shrink-0 rounded-2xl border border-border bg-card p-5">
       <blockquote className="text-sm leading-relaxed text-foreground/90">&ldquo;{t.quote}&rdquo;</blockquote>
       <figcaption className="mt-4 flex items-center gap-3">
         <Avatar className="h-9 w-9">
-          {t.avatarSrc && <AvatarImage src={t.avatarSrc} alt={t.name} />}
+          {(t.avatarSrc || t.image || t.avatar) && <AvatarImage src={t.avatarSrc ?? t.image ?? t.avatar} alt={t.name} />}
           <AvatarFallback>{t.name.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-foreground">{t.name}</div>
-          {t.role && <div className="truncate text-xs text-muted-foreground">{t.role}</div>}
+          {(t.role || t.title) && <div className="truncate text-xs text-muted-foreground">{t.role ?? t.title}</div>}
         </div>
       </figcaption>
     </figure>
@@ -243,6 +249,11 @@ export function PricingSingleProduct({
   originalPrice,
   features,
   cta,
+  buttonText,
+  buttonLabel,
+  ctaLabel,
+  href,
+  ctaHref,
   footnote,
   className,
 }: {
@@ -254,11 +265,18 @@ export function PricingSingleProduct({
   price: string;
   period?: string;
   originalPrice?: string;
-  features: string[];
-  cta: { label: string; href?: string; onClick?: () => void };
+  features?: string[];
+  cta?: { label: string; href?: string; onClick?: () => void };
+  buttonText?: string;
+  buttonLabel?: string;
+  ctaLabel?: string;
+  href?: string;
+  ctaHref?: string;
   footnote?: React.ReactNode;
   className?: string;
 }) {
+  const safeFeatures = Array.isArray(features) ? features : [];
+  const safeCta = cta ?? { label: buttonText ?? buttonLabel ?? ctaLabel ?? "Get started", href: ctaHref ?? href };
   return (
     <Container size="md" className={className}>
       <Section eyebrow={eyebrow} title={heading} description={description} align="center">
@@ -276,15 +294,15 @@ export function PricingSingleProduct({
               {period && <span className="text-sm text-muted-foreground">/{period}</span>}
             </div>
             <ul className="mt-8 space-y-3">
-              {features.map((f, i) => (
+              {safeFeatures.map((f, i) => (
                 <li key={i} className="flex items-start gap-3 text-sm">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <span className="text-foreground">{f}</span>
                 </li>
               ))}
             </ul>
-            <Button className="mt-8 w-full" size="lg" onClick={cta.onClick} asChild={!!cta.href}>
-              {cta.href ? <a href={cta.href}>{cta.label}</a> : cta.label}
+            <Button className="mt-8 w-full" size="lg" onClick={safeCta.onClick} asChild={!!safeCta.href}>
+              {safeCta.href ? <a href={safeCta.href}>{safeCta.label}</a> : safeCta.label}
             </Button>
             {footnote && <p className="mt-4 text-center text-xs text-muted-foreground">{footnote}</p>}
           </div>
