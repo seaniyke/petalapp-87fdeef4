@@ -31,7 +31,7 @@ export type RuntimeError = {
   source: string | null;
   lineno: number | null;
   colno: number | null;
-  kind: "error" | "unhandledrejection";
+  kind: "error" | "unhandledrejection" | "blank";
 };
 
 type Phase = "idle" | "booting" | "installing" | "starting" | "ready" | "error" | "unsupported";
@@ -212,9 +212,13 @@ export function WebContainerPreview({
         setPickerWarning(null);
         return;
       }
-      if (data.type === "petal:runtime:error" && data.payload && onRuntimeError) {
+      if ((data.type === "petal:runtime:error" || data.type === "petal:preview:blank") && data.payload) {
         const payload = data.payload as RuntimeError;
-        onRuntimeError(payload);
+        onRuntimeError?.(payload);
+        if (data.type === "petal:preview:blank") {
+          setCrashReason(payload?.message?.slice(0, 240) || "Preview rendered blank");
+          return;
+        }
         // Plan #3 — sliding-window crash detector. Count errors in last 5s;
         // if 2+ pile up the preview is effectively dead — swap to fallback.
         const now = Date.now();

@@ -31,6 +31,7 @@ import { syncViteAliasesWithTsconfig } from "@/server/sync-vite-aliases.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { autofixFiles } from "@/server/stream-autofixer";
 import { shimMissingUiPrimitives } from "@/server/shim-missing-ui.server";
+import { injectPreviewGuard } from "@/server/preview-guard.server";
 import {
   buildIntegrationEnvFiles,
   mergeFilesIntoPayload,
@@ -187,11 +188,11 @@ export const Route = createFileRoute("/api/builds/trigger")({
         //     undefined values and silently no-op at runtime. Failures here
         //     are non-fatal — we log and continue with no env file rather
         //     than blocking the deploy.
-        let withEnv = shimmedFiles;
+        let withEnv = injectPreviewGuard(shimmedFiles).files;
         try {
-          const envBundle = await buildIntegrationEnvFiles(projectId, shimmedFiles);
+          const envBundle = await buildIntegrationEnvFiles(projectId, withEnv);
           if (envBundle.files.length > 0) {
-            withEnv = mergeFilesIntoPayload(shimmedFiles, envBundle.files);
+            withEnv = mergeFilesIntoPayload(withEnv, envBundle.files);
             console.log(
               `[integrations] project=${projectId} injected env from ${envBundle.integrationCount} integration(s): ${envBundle.envKeys.join(", ")}`
             );

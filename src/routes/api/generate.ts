@@ -73,6 +73,7 @@ import { runRlsSanityTier } from "@/server/pipeline/tier-rls-sanity";
 import { TurnRecorder } from "@/server/pipeline-telemetry.server";
 import { stripHallucinatedImports } from "@/server/strip-hallucinated-imports.server";
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
+import { injectPreviewGuard } from "@/server/preview-guard.server";
 import {
   checkFileBudgets,
   enforceFileBudgets,
@@ -2992,6 +2993,17 @@ Forbidden defaults
           return;
         }
         nextFiles = guardOut.files;
+
+        // Final runtime guard: every generated app gets a tiny public script
+        // that surfaces render crashes or truly blank roots inside the preview
+        // iframe. This must run late so post-stream repairs/images cannot drop it.
+        const previewGuard = injectPreviewGuard(nextFiles);
+        nextFiles = previewGuard.files;
+        if (previewGuard.injected) {
+          controller.enqueue(
+            encoder.encode(sse({ type: "status", message: "Added preview crash protection." })),
+          );
+        }
 
         // Charge ONCE, after the build succeeds. Cost is computed from
         // the MAIN generate call's token usage only — `collected.usage`

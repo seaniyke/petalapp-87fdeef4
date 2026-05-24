@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, Sparkles, AlertCircle, RotateCw, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { PreviewCrashFallback } from "@/components/PreviewCrashFallback";
 
 type BuildStatus = "pending" | "building" | "ready" | "failed";
 
@@ -39,7 +40,12 @@ export function MobilePreviewFallback({
   const [build, setBuild] = useState<BuildRow | null>(null);
   const [latestReadyBuild, setLatestReadyBuild] = useState<BuildRow | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
+  const [crashReason, setCrashReason] = useState<string | null>(null);
   const [pendingTooLong, setPendingTooLong] = useState(false);
+
+  useEffect(() => {
+    setCrashReason(null);
+  }, [latestBuildId]);
 
   // Load the current latest build and a fallback ready build. We also poll the
   // latest row because realtime delivery can be delayed or unavailable on some
@@ -204,7 +210,12 @@ export function MobilePreviewFallback({
       <PreviewFrame
         src={previewBuild.dist_path}
         iframeKey={iframeKey}
-        onReload={() => setIframeKey((k) => k + 1)}
+            crashReason={crashReason}
+            onCrash={setCrashReason}
+            onReload={() => {
+              setCrashReason(null);
+              setIframeKey((k) => k + 1);
+            }}
         badge="Updating preview…"
         cacheBust={previewBuild.id}
       />
@@ -247,7 +258,12 @@ export function MobilePreviewFallback({
         <PreviewFrame
           src={previewBuild.dist_path}
           iframeKey={iframeKey}
-          onReload={() => setIframeKey((k) => k + 1)}
+          crashReason={crashReason}
+          onCrash={setCrashReason}
+          onReload={() => {
+            setCrashReason(null);
+            setIframeKey((k) => k + 1);
+          }}
           badge="Latest build failed — showing previous preview"
           cacheBust={previewBuild.id}
         />
@@ -288,7 +304,12 @@ export function MobilePreviewFallback({
     <PreviewFrame
       src={build.dist_path}
       iframeKey={iframeKey}
-      onReload={() => setIframeKey((k) => k + 1)}
+      crashReason={crashReason}
+      onCrash={setCrashReason}
+      onReload={() => {
+        setCrashReason(null);
+        setIframeKey((k) => k + 1);
+      }}
       cacheBust={build.id}
     />
   );
@@ -298,12 +319,16 @@ function PreviewFrame({
   src,
   iframeKey,
   onReload,
+  crashReason,
+  onCrash,
   badge,
   cacheBust,
 }: {
   src: string;
   iframeKey: number;
   onReload: () => void;
+  crashReason?: string | null;
+  onCrash: (reason: string | null) => void;
   badge?: string;
   /** Optional value appended as ?v=<cacheBust> to bypass edge cache after a fresh deploy. */
   cacheBust?: string;
@@ -314,6 +339,32 @@ function PreviewFrame({
   const finalSrc = cacheBust
     ? `${src}${src.includes("?") ? "&" : "?"}v=${encodeURIComponent(cacheBust)}`
     : src;
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      const data = event.data as { type?: string; payload?: { message?: unknown } } | null;
+      if (!data || typeof data !== "object") return;
+      if (data.type !== "petal:runtime:error" && data.type !== "petal:preview:blank") return;
+      const message =
+        typeof data.payload?.message === "string"
+          ? data.payload.message
+          : data.type === "petal:preview:blank"
+            ? "Preview rendered blank"
+            : "Preview crashed";
+      onCrash(message.slice(0, 240));
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [onCrash]);
+
+  if (crashReason) {
+    return (
+      <PreviewCrashFallback
+        reason={crashReason}
+        lastPath={src}
+        onRetry={onReload}
+      />
+    );
+  }
   return (
     <div className="relative flex h-full w-full flex-col">
       {badge && (
