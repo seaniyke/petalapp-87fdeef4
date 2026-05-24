@@ -36,7 +36,10 @@ export interface Testimonial {
   quote: string;
   name: string;
   role?: string;
+  title?: string;
   avatarSrc?: string;
+  image?: string;
+  avatar?: string;
   rating?: number;
 }
 
@@ -50,19 +53,23 @@ export function TestimonialsCards({
   title,
   description,
   items,
+  testimonials,
   className,
 }: {
   eyebrow?: React.ReactNode;
   title?: React.ReactNode;
   description?: React.ReactNode;
-  items: Testimonial[];
+  /** Preferred. \\`testimonials\\` is accepted as an alias. */
+  items?: Testimonial[];
+  testimonials?: Testimonial[];
   className?: string;
 }) {
+  const list = Array.isArray(items) ? items : Array.isArray(testimonials) ? testimonials : [];
   return (
     <Container size="lg" className={className}>
       <Section eyebrow={eyebrow} title={title} description={description} align="center">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {items.map((t, i) => (
+          {list.map((t, i) => (
             <figure key={i} className="flex h-full flex-col rounded-2xl border border-border bg-card p-6">
               {t.rating != null && <Rating value={t.rating} className="mb-4" />}
               <blockquote className="flex-1 text-sm leading-relaxed text-foreground/90">
@@ -70,12 +77,12 @@ export function TestimonialsCards({
               </blockquote>
               <figcaption className="mt-6 flex items-center gap-3">
                 <Avatar className="h-10 w-10">
-                  {t.avatarSrc && <AvatarImage src={t.avatarSrc} alt={t.name} />}
+                  {(t.avatarSrc || t.image || t.avatar) && <AvatarImage src={t.avatarSrc ?? t.image ?? t.avatar} alt={t.name} />}
                   <AvatarFallback>{t.name.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-foreground">{t.name}</div>
-                  {t.role && <div className="truncate text-xs text-muted-foreground">{t.role}</div>}
+                  {(t.role || t.title) && <div className="truncate text-xs text-muted-foreground">{t.role ?? t.title}</div>}
                 </div>
               </figcaption>
             </figure>
