@@ -10,6 +10,8 @@
  * post-stream autofix recovery. Treat its findings as ground truth — if
  * the brace count is off, the file will not compile.
  */
+import { getKitManifest } from "./kit-manifest.server";
+
 
 export interface LocalIssue {
   path: string;
@@ -596,7 +598,6 @@ function findUnresolvedImports(
   // Scaffold prefixes that always resolve via the kit even when no file map
   // entry exists yet (the kit injects them post-AI).
   const SCAFFOLD_PREFIXES = [
-    "@/components/ui/",
     "@/integrations/supabase/",
     "@/integrations/lovable/",
     "@/lib/utils",
@@ -605,6 +606,30 @@ function findUnresolvedImports(
   ];
   function isScaffoldAlias(spec: string): boolean {
     return SCAFFOLD_PREFIXES.some((p) => spec === p || spec.startsWith(p));
+  }
+
+  // Build the set of REAL @/components/ui/* and @/components/blocks/* import
+  // paths from the actual scaffold. Any `@/components/ui/<x>` import that is
+  // not in this set is a hallucinated primitive (e.g. carousel, command,
+  // menubar) and WILL fail the vite build with "Could not load …/ui/<x>".
+  // We flag it here so the autofix tier can drop or substitute it before
+  // the file ships.
+  const kitUiPaths = new Set<string>();
+  try {
+    for (const entry of getKitManifest()) kitUiPaths.add(entry.importPath);
+  } catch {
+    // If the manifest can't be derived for any reason, fall back to the
+    // permissive behavior (skip the check) rather than block valid builds.
+  }
+
+  function isKnownKitAlias(spec: string): boolean {
+    if (kitUiPaths.size === 0) return true; // fail open
+    if (!spec.startsWith("@/components/ui/") && !spec.startsWith("@/components/blocks/")) {
+      return true;
+    }
+    // Strip optional sub-path (most kit modules don't have one, but allow it).
+    const base = spec.split("/").slice(0, 4).join("/");
+    return kitUiPaths.has(spec) || kitUiPaths.has(base);
   }
 
   // Bare specifier → npm package name (handles scoped: `@scope/pkg` and
@@ -639,6 +664,20 @@ function findUnresolvedImports(
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
 
+      // Hallucinated kit primitive (e.g. "@/components/ui/carousel" when
+      // the scaffold doesn't ship one). Hard fail — vite will not recover.
+      if (
+        (spec.startsWith("@/components/ui/") || spec.startsWith("@/components/blocks/")) &&
+        !isKnownKitAlias(spec)
+      ) {
+        issues.push({
+          path: f.path,
+          kind: "missing-sibling",
+          detail: `import "${spec}" — that kit primitive does not exist in the scaffold. Build it inline under src/components/ instead.`,
+        });
+        continue;
+      }
+
       // Relative or alias import → resolve against the file map.
       if (spec.startsWith(".") || spec.startsWith("@/")) {
         if (isScaffoldAlias(spec)) continue;
@@ -652,6 +691,7 @@ function findUnresolvedImports(
         }
         continue;
       }
+
 
       // Node.js built-in modules (e.g. `node:path`, `path`, `fs`, `crypto`).
       // The server runtime ships nodejs_compat — these always resolve and

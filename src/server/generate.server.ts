@@ -21,7 +21,7 @@ KIT COMPONENT CATEGORIES (specific signatures for the components you'll need thi
 - Routing: Router (re-exports react-router-dom).
 - Theming: ThemeProvider, ThemeToggle.
 - Toasts: Toaster + toast.success/.error/.* (from sonner, re-exported).
-If you need a component that isn't appended in detail below, the import path is "@/components/ui/<kebab-name>" and you can rely on the standard shadcn surface — but prefer to ask the user only when the kit truly lacks something.
+The kit is a CLOSED SET. Only the components listed in the [Kit manifest — ...] section further down actually exist as files. NEVER import "@/components/ui/<name>" for any name not in that manifest (e.g. carousel, command, menubar, navigation-menu, hover-card, context-menu, breadcrumb, toggle, toggle-group, resizable, sidebar, aspect-ratio, collapsible). If you need a pattern the kit doesn't ship (e.g. a carousel), build it INLINE in a new "src/components/<Name>.tsx" using Tailwind + the kit's atoms — do NOT import a non-existent ui/* file. Importing a missing ui/* path is a HARD build failure.
 
 DARK MODE (built-in, automatic):
 The scaffold ships dark-mode tokens out of the box. The \`.dark\` class on <html> swaps every semantic color automatically, and the system preference is respected when no class is set.
