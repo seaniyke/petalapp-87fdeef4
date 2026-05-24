@@ -2079,22 +2079,15 @@ Forbidden defaults
           nextFiles = applyScaffoldKit(parsed.files, {
             backend: backend ?? undefined,
           });
-          // Step 5: fill in any blueprint route the model forgot to emit so
-          // every nav link in the generated UI lands on a real screen.
-          try {
-            const { composeAppBlueprint, scaffoldRouteStubs } = await import(
-              "@/server/app-composer.server"
-            );
-            const bp = composeAppBlueprint(lastUserText, { hasBackend: Boolean(backend) });
-            if (bp) {
-              const have = new Set(nextFiles.map((f) => f.path));
-              for (const stub of scaffoldRouteStubs(bp)) {
-                if (!have.has(stub.path)) nextFiles.push(stub);
-              }
-            }
-          } catch {
-            // Never block a build on composer failure.
-          }
+          // NOTE: Previously we called scaffoldRouteStubs() here to emit
+          // TanStack `src/routes/*.tsx` files for routes the model didn't
+          // ship. That was wrong for this scaffold: the generated app
+          // runtime is Vite + react-router-dom via `src/main.tsx → <App />`,
+          // so TanStack route files NEVER render — they were inert dead
+          // weight that bloated context and made follow-up edits confusing.
+          // The model is now solely responsible for emitting pages under
+          // `src/pages/*` and wiring them in App.tsx (the system prompt
+          // already requires this). No stub injection.
         } else {
           // Empty / missing ops on an edit turn = the model decided
 
