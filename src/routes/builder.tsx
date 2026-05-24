@@ -664,7 +664,7 @@ function Builder() {
     source: string | null;
     lineno: number | null;
     colno: number | null;
-    kind: "error" | "unhandledrejection";
+    kind: "error" | "unhandledrejection" | "blank";
     /** When the user already asked Petal to fix this exact error. */
     fixed: boolean;
   };
