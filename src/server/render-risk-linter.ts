@@ -33,6 +33,13 @@
  *     declared anywhere in the file (no import, no local var, no prop,
  *     not a React/global). Catches typos like `{titel}` → `{title}`.
  *
+ *   R4 — Known kit list-prop omission.
+ *     A generated page renders a scaffold section block that internally maps
+ *     over data, but omits the required list prop (or accepted alias). This
+ *     catches prop-contract mismatches that compile but white-screen at first
+ *     render, e.g. <TestimonialsCards testimonials=...> before the block knew
+ *     that alias.
+ *
  * SKIPS:
  *   - src/components/ui/ (scaffold)
  *   - src/integrations/   (scaffold)
@@ -46,7 +53,7 @@
 import type { LocalIssue } from "@/server/local-verifier";
 
 /** Limit which rules fire. Edit to disable individual rules in production. */
-const ENABLED_RULES = new Set<"R1" | "R2" | "R3">(["R1", "R2", "R3"]);
+const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4">(["R1", "R2", "R3", "R4"]);
 
 const SCANNABLE = /\.(tsx|jsx)$/;
 // Skip the same scaffold paths the other verifiers skip.
@@ -91,6 +98,31 @@ const HOOKS = [
   "useSyncExternalStore",
   "useId",
 ];
+
+const KIT_LIST_PROP_CONTRACTS: Record<string, string[][]> = {
+  TestimonialsCards: [["items", "testimonials"]],
+  TestimonialsMarquee: [["items", "testimonials"]],
+  FaqAccordion: [["items", "faqs"]],
+  FaqTwoColumn: [["items", "faqs"]],
+  LogosGrid: [["logos"]],
+  LogosMarquee: [["logos"]],
+  FeaturesGrid3: [["items"]],
+  FeaturesBento: [["items"]],
+  FeaturesAlternatingRows: [["items"]],
+  StatsBand: [["items"]],
+  StatsGrid: [["items"]],
+  StatsWithChart: [["kpis"], ["data"]],
+  PricingTable: [["tiers"]],
+  PricingSingleProduct: [["features"]],
+  ComparisonTable: [["rows"], ["columns"]],
+  ActivityFeed: [["items"]],
+  MultiStepWizard: [["steps"]],
+  SidebarShell: [["nav"]],
+  CheckoutSummary: [["lines"]],
+  TeamGrid: [["members"]],
+  WorkGrid: [["items"]],
+  CaseStudy: [["sections"]],
+};
 
 /** Strip strings and comments so regex scans aren't poisoned by literals. */
 function stripStringsAndComments(src: string): string {
