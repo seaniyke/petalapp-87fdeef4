@@ -491,12 +491,13 @@ export interface ActivityItem {
 
 /** Vertical activity / audit feed. */
 export function ActivityFeed({ items, className }: { items: ActivityItem[]; className?: string }) {
-  if (items.length === 0) {
+  const list = Array.isArray(items) ? items : [];
+  if (list.length === 0) {
     return <div className={cn("rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground", className)}>No activity yet.</div>;
   }
   return (
     <ol className={cn("space-y-5", className)}>
-      {items.map((it) => (
+      {list.map((it) => (
         <li key={it.id} className="flex gap-3">
           <Avatar className="h-9 w-9">
             {it.actor.avatarUrl && <AvatarImage src={it.actor.avatarUrl} alt={it.actor.name} />}
@@ -544,10 +545,11 @@ export function MultiStepWizard({
   className?: string;
   submitLabel?: string;
 }) {
-  const total = steps.length;
+  const safeSteps = Array.isArray(steps) ? steps : [];
+  const total = safeSteps.length;
   const isLast = step === total - 1;
-  const progress = ((step + 1) / total) * 100;
-  const current = steps[step];
+  const progress = total > 0 ? ((step + 1) / total) * 100 : 0;
+  const current = safeSteps[step];
   if (!current) return null;
   return (
     <div className={cn("space-y-6", className)}>
@@ -559,7 +561,7 @@ export function MultiStepWizard({
         <Progress value={progress} className="mt-2" />
       </div>
       <ol className="flex items-center gap-3 text-xs text-muted-foreground">
-        {steps.map((s, i) => (
+        {safeSteps.map((s, i) => (
           <li key={s.id} className={cn("flex items-center gap-1.5", i <= step && "text-foreground")}>
             <span className={cn("flex h-5 w-5 items-center justify-center rounded-full border border-border text-[10px]", i < step && "border-primary bg-primary text-primary-foreground", i === step && "border-primary text-primary")}>
               {i < step ? <Check className="h-3 w-3" /> : i + 1}
