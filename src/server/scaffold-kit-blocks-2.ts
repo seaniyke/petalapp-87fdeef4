@@ -32,6 +32,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Rating } from "@/components/ui/rating";
 import { cn } from "@/lib/utils";
 
+type LogoGridEntry = string | { name?: string; src?: string; url?: string };
+
 export interface Testimonial {
   quote: string;
   name: string;
@@ -1182,10 +1184,10 @@ export function LogosGrid({
   className,
 }: {
   eyebrow?: React.ReactNode;
-  logos: { name: string; src?: string }[];
+  logos: LogoGridEntry[];
   className?: string;
 }) {
-  const list = Array.isArray(logos) ? logos.map((l, i) => typeof l === "string" ? { name: \`logo-\${i + 1}\`, src: l } : l) : [];
+  const list = Array.isArray(logos) ? logos.map((l, i) => typeof l === "string" ? { name: \`logo-\${i + 1}\`, src: l } : { name: l.name ?? \`logo-\${i + 1}\`, src: l.src ?? l.url }) : [];
   return (
     <section className={cn("py-12 md:py-16", className)}>
       <Container size="xl">
