@@ -532,58 +532,84 @@ import { Container } from "@/components/ui/container";
 import { GradientBlob } from "@/components/ui/gradient-blob";
 import { cn } from "@/lib/utils";
 
+type CtaLike = {
+  label?: React.ReactNode;
+  text?: React.ReactNode;
+  children?: React.ReactNode;
+  href?: string;
+  onClick?: () => void;
+};
+
+function normalizeCta(c: CtaLike | undefined): { label: React.ReactNode; href?: string; onClick?: () => void } | null {
+  if (!c) return null;
+  const label = c.label ?? c.children ?? c.text ?? "";
+  if (!label && !c.href && !c.onClick) return null;
+  return { label, href: c.href, onClick: c.onClick };
+}
+
 /**
  * Bold full-bleed gradient CTA band. Use sparingly — high visual weight,
- * great for the FINAL section of a marketing page. Pairs with playful or
- * maximalist vibes.
+ * great for the FINAL section of a marketing page.
+ *
+ * Accepts \`primaryCta\` / \`secondaryCta\` (preferred) OR
+ * \`primaryLink\` / \`secondaryLink\` (alias). CTA objects may use
+ * { label } or { children } / { text }.
  */
 export function CtaGradientBand({
   title,
   description,
   primaryCta,
   secondaryCta,
+  primaryLink,
+  secondaryLink,
   className,
 }: {
-  title: React.ReactNode;
+  title?: React.ReactNode;
   description?: React.ReactNode;
-  primaryCta: { label: string; href?: string; onClick?: () => void };
-  secondaryCta?: { label: string; href?: string; onClick?: () => void };
+  primaryCta?: CtaLike;
+  secondaryCta?: CtaLike;
+  primaryLink?: CtaLike;
+  secondaryLink?: CtaLike;
   className?: string;
 }) {
+  const primary = normalizeCta(primaryCta ?? primaryLink);
+  const secondary = normalizeCta(secondaryCta ?? secondaryLink);
   return (
     <section className={cn("relative overflow-hidden bg-primary py-20 text-primary-foreground md:py-28", className)}>
       <GradientBlob className="-bottom-40 -right-20" size="xl" tone="accent" />
       <GradientBlob className="-top-32 -left-10" size="lg" tone="muted" />
       <Container size="lg">
         <div className="relative mx-auto max-w-3xl text-center">
-          <h2 className="text-balance text-4xl font-semibold tracking-tight md:text-5xl">{title}</h2>
+          {title && <h2 className="text-balance text-4xl font-semibold tracking-tight md:text-5xl">{title}</h2>}
           {description && (
             <p className="mx-auto mt-5 max-w-xl text-base text-primary-foreground/80 md:text-lg">{description}</p>
           )}
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <Button size="lg" variant="secondary" onClick={primaryCta.onClick} asChild={!!primaryCta.href}>
-              {primaryCta.href ? (
-                <a href={primaryCta.href}>
-                  {primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" />
-                </a>
-              ) : (
-                <>
-                  {primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" />
-                </>
+          {(primary || secondary) && (
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+              {primary && (
+                <Button size="lg" variant="secondary" onClick={primary.onClick} asChild={!!primary.href}>
+                  {primary.href ? (
+                    <a href={primary.href}>
+                      {primary.label} <ArrowRight className="ml-2 h-4 w-4" />
+                    </a>
+                  ) : (
+                    <>{primary.label} <ArrowRight className="ml-2 h-4 w-4" /></>
+                  )}
+                </Button>
               )}
-            </Button>
-            {secondaryCta && (
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
-                onClick={secondaryCta.onClick}
-                asChild={!!secondaryCta.href}
-              >
-                {secondaryCta.href ? <a href={secondaryCta.href}>{secondaryCta.label}</a> : secondaryCta.label}
-              </Button>
-            )}
-          </div>
+              {secondary && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+                  onClick={secondary.onClick}
+                  asChild={!!secondary.href}
+                >
+                  {secondary.href ? <a href={secondary.href}>{secondary.label}</a> : secondary.label}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </Container>
     </section>
