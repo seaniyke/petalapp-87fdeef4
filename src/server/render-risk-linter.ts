@@ -570,6 +570,31 @@ function findUndeclaredJsxIdentifiers(src: string, clean: string): string[] {
   return [...missing];
 }
 
+// =============================================================================
+// R4 — Known kit list-prop omission
+// =============================================================================
+
+function findKitListPropOmissions(src: string): { component: string; missing: string }[] {
+  const issues: { component: string; missing: string }[] = [];
+  for (const [component, groups] of Object.entries(KIT_LIST_PROP_CONTRACTS)) {
+    const tagRe = new RegExp(`<${component}\\b([^>]*)>`, "g");
+    let m: RegExpExecArray | null;
+    while ((m = tagRe.exec(src))) {
+      const attrs = m[1] ?? "";
+      if (/\{\s*\.\.\./.test(attrs)) continue;
+      const present = new Set<string>();
+      const attrRe = /(?:^|\s)([A-Za-z_$][\w$-]*)\s*=/g;
+      let a: RegExpExecArray | null;
+      while ((a = attrRe.exec(attrs))) present.add(a[1]);
+      for (const aliases of groups) {
+        if (aliases.some((name) => present.has(name))) continue;
+        issues.push({ component, missing: aliases.join(" or ") });
+      }
+    }
+  }
+  return issues;
+}
+
 function extractIdents(block: string): string[] {
   const out: string[] = [];
   // Strip nested `{...}` (rare in destructure) by collapsing them.
