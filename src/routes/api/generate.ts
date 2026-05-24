@@ -2285,12 +2285,45 @@ Forbidden defaults
         }
 
         const shellGuard = ensureRenderableShell(nextFiles, detectedWebSubtype);
+        // ROOT-CAUSE GATE: if the model failed to emit a real src/App.tsx,
+        // we used to silently inject a "Your app is being prepared"
+        // placeholder and ship it as a successful build. That's the bug
+        // class behind every "Petal built a blank app" report — a placeholder
+        // screen shipped as a finished product. Treat it as a turn failure
+        // instead: revert files, never charge credits, and ask the user to
+        // retry with a more concrete prompt. index.html + main.tsx repairs
+        // are still safe to keep (they only restore the mount point).
+        if (shellGuard.fixed.includes("src/App.tsx") && collected.name === "write_project") {
+          console.warn("[renderable-shell] model emitted empty/placeholder App.tsx — failing turn");
+          emitConversationalFallback(controller, encoder, {
+            files: currentFiles,
+            summary:
+              "I drafted the files but the home screen came back empty, so I rolled it back instead of shipping a placeholder. Could you send your prompt again with a bit more detail about what the first screen should show? Even one sentence like 'a hero with the headline X and a Get Started button' is enough.",
+          });
+          return;
+        }
         nextFiles = shellGuard.files;
         if (shellGuard.fixed.length > 0) {
           console.warn("[renderable-shell] repaired", shellGuard.fixed.join(", "));
           controller.enqueue(
             encoder.encode(sse({ type: "status", message: "Restored the app shell so the preview can render." })),
           );
+        }
+
+        // Target-shape validation. For non-default targets, the generated
+        // file set MUST match the target's expected shape, or we're about
+        // to ship a web app dressed as something else. Fail conversationally
+        // so the user can retry instead of shipping a wrong-category build.
+        if (collected.name === "write_project") {
+          const targetIssue = validateTargetShape(nextFiles, buildTarget.id);
+          if (targetIssue) {
+            console.warn(`[target-shape] ${buildTarget.id} build failed validation: ${targetIssue}`);
+            emitConversationalFallback(controller, encoder, {
+              files: currentFiles,
+              summary: targetIssue,
+            });
+            return;
+          }
         }
 
         // Last-mile guard: if the AI emitted (or patched in) a broken
