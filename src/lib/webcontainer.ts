@@ -228,13 +228,15 @@ const PICKER_SCRIPT = `(() => {
  * Throttled to one message per 1.5s + dedupe on identical message+source so a
  * crashing render loop doesn't flood the parent.
  */
-const RUNTIME_BRIDGE_VERSION = 1;
+const RUNTIME_BRIDGE_VERSION = 2;
 const RUNTIME_BRIDGE_SCRIPT = `(() => {
   var VERSION = ${RUNTIME_BRIDGE_VERSION};
   if (window.__petalRuntimeBridgeVersion && window.__petalRuntimeBridgeVersion >= VERSION) return;
   window.__petalRuntimeBridgeVersion = VERSION;
   var lastKey = '';
   var lastAt = 0;
+  var lastError = null;
+  var blankSent = false;
   function send(payload) {
     try {
       var key = (payload.message || '') + '|' + (payload.source || '') + ':' + (payload.lineno || '');
@@ -244,11 +246,49 @@ const RUNTIME_BRIDGE_SCRIPT = `(() => {
       parent.postMessage({ type: 'petal:runtime:error', payload: payload }, '*');
     } catch (_) {}
   }
+  function textOf(value) {
+    if (!value) return 'Unknown preview error';
+    if (value.message) return String(value.message);
+    return typeof value === 'string' ? value : String(value);
+  }
+  function stackOf(value) {
+    return value && value.stack ? String(value.stack).slice(0, 4000) : null;
+  }
+  function visibleRoot(root) {
+    if (!root) return false;
+    if ((root.textContent || '').trim()) return true;
+    var nodes = root.querySelectorAll('canvas,svg,img,video,button,a,input,textarea,select,[role]');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var style = getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
+      var rect = el.getBoundingClientRect();
+      if (rect.width > 2 && rect.height > 2) return true;
+    }
+    return false;
+  }
+  function checkBlank() {
+    if (blankSent) return;
+    var root = document.getElementById('root');
+    if (visibleRoot(root)) return;
+    blankSent = true;
+    try {
+      parent.postMessage({ type: 'petal:preview:blank', payload: {
+        message: lastError ? textOf(lastError) : 'The app loaded, but nothing visible was rendered into #root.',
+        stack: lastError ? stackOf(lastError) : null,
+        source: null,
+        lineno: null,
+        colno: null,
+        kind: 'blank'
+      } }, '*');
+    } catch (_) {}
+  }
   window.addEventListener('error', function (e) {
     if (!e) return;
     // Ignore script-load CORS errors (no useful info) and ResizeObserver noise.
     var msg = e.message || '';
     if (!msg || msg === 'Script error.' || msg.indexOf('ResizeObserver loop') === 0) return;
+    lastError = e.error || msg;
     send({
       message: msg,
       stack: e.error && e.error.stack ? String(e.error.stack).slice(0, 4000) : null,
@@ -261,6 +301,7 @@ const RUNTIME_BRIDGE_SCRIPT = `(() => {
   window.addEventListener('unhandledrejection', function (e) {
     if (!e) return;
     var reason = e.reason;
+    lastError = reason;
     var msg = reason && reason.message ? reason.message : (typeof reason === 'string' ? reason : 'Unhandled promise rejection');
     send({
       message: msg,
@@ -271,6 +312,8 @@ const RUNTIME_BRIDGE_SCRIPT = `(() => {
       kind: 'unhandledrejection',
     });
   });
+  setTimeout(checkBlank, 2500);
+  setTimeout(checkBlank, 6500);
 })();`;
 
 /**
