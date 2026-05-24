@@ -2290,7 +2290,7 @@ Forbidden defaults
           throw new Error("Project is missing index.html.");
         }
 
-        const shellGuard = ensureRenderableShell(nextFiles);
+        const shellGuard = ensureRenderableShell(nextFiles, detectedWebSubtype);
         nextFiles = shellGuard.files;
         if (shellGuard.fixed.length > 0) {
           console.warn("[renderable-shell] repaired", shellGuard.fixed.join(", "));
