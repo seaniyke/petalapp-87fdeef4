@@ -296,42 +296,51 @@ const FAQ_ACCORDION = `import * as React from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
-import { cn } from "@/lib/utils";
 
 export interface FaqItem {
-  q: React.ReactNode;
-  a: React.ReactNode;
+  q?: React.ReactNode;
+  a?: React.ReactNode;
+  question?: React.ReactNode;
+  answer?: React.ReactNode;
 }
 
 /**
  * Centered accordion FAQ. Default safe choice. For magazine-style layouts,
  * use FaqTwoColumn instead.
+ *
+ * Accepts either { items } or { faqs }, and each entry may use { q, a } or
+ * { question, answer }.
  */
 export function FaqAccordion({
   eyebrow,
   title,
   description,
   items,
+  faqs,
   className,
 }: {
   eyebrow?: React.ReactNode;
   title?: React.ReactNode;
   description?: React.ReactNode;
-  items: FaqItem[];
+  items?: FaqItem[];
+  faqs?: FaqItem[];
   className?: string;
 }) {
+  const list = Array.isArray(items) && items.length > 0 ? items : Array.isArray(faqs) ? faqs : [];
   return (
     <Container size="md" className={className}>
       <Section eyebrow={eyebrow} title={title} description={description} align="center">
         <Accordion type="single" collapsible className="w-full">
-          {items.map((it, i) => (
-            <AccordionItem key={i} value={\`item-\${i}\`}>
-              <AccordionTrigger className="text-left text-base font-medium">{it.q}</AccordionTrigger>
-              <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
-                {it.a}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
+          {list.map((it, i) => {
+            const q = it.q ?? it.question ?? "";
+            const a = it.a ?? it.answer ?? "";
+            return (
+              <AccordionItem key={i} value={\`item-\${i}\`}>
+                <AccordionTrigger className="text-left text-base font-medium">{q}</AccordionTrigger>
+                <AccordionContent className="text-sm leading-relaxed text-muted-foreground">{a}</AccordionContent>
+              </AccordionItem>
+            );
+          })}
         </Accordion>
       </Section>
     </Container>
