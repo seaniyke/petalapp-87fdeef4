@@ -296,42 +296,51 @@ const FAQ_ACCORDION = `import * as React from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
-import { cn } from "@/lib/utils";
 
 export interface FaqItem {
-  q: React.ReactNode;
-  a: React.ReactNode;
+  q?: React.ReactNode;
+  a?: React.ReactNode;
+  question?: React.ReactNode;
+  answer?: React.ReactNode;
 }
 
 /**
  * Centered accordion FAQ. Default safe choice. For magazine-style layouts,
  * use FaqTwoColumn instead.
+ *
+ * Accepts either { items } or { faqs }, and each entry may use { q, a } or
+ * { question, answer }.
  */
 export function FaqAccordion({
   eyebrow,
   title,
   description,
   items,
+  faqs,
   className,
 }: {
   eyebrow?: React.ReactNode;
   title?: React.ReactNode;
   description?: React.ReactNode;
-  items: FaqItem[];
+  items?: FaqItem[];
+  faqs?: FaqItem[];
   className?: string;
 }) {
+  const list = Array.isArray(items) && items.length > 0 ? items : Array.isArray(faqs) ? faqs : [];
   return (
     <Container size="md" className={className}>
       <Section eyebrow={eyebrow} title={title} description={description} align="center">
         <Accordion type="single" collapsible className="w-full">
-          {items.map((it, i) => (
-            <AccordionItem key={i} value={\`item-\${i}\`}>
-              <AccordionTrigger className="text-left text-base font-medium">{it.q}</AccordionTrigger>
-              <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
-                {it.a}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
+          {list.map((it, i) => {
+            const q = it.q ?? it.question ?? "";
+            const a = it.a ?? it.answer ?? "";
+            return (
+              <AccordionItem key={i} value={\`item-\${i}\`}>
+                <AccordionTrigger className="text-left text-base font-medium">{q}</AccordionTrigger>
+                <AccordionContent className="text-sm leading-relaxed text-muted-foreground">{a}</AccordionContent>
+              </AccordionItem>
+            );
+          })}
         </Accordion>
       </Section>
     </Container>
@@ -523,58 +532,84 @@ import { Container } from "@/components/ui/container";
 import { GradientBlob } from "@/components/ui/gradient-blob";
 import { cn } from "@/lib/utils";
 
+type CtaLike = {
+  label?: React.ReactNode;
+  text?: React.ReactNode;
+  children?: React.ReactNode;
+  href?: string;
+  onClick?: () => void;
+};
+
+function normalizeCta(c: CtaLike | undefined): { label: React.ReactNode; href?: string; onClick?: () => void } | null {
+  if (!c) return null;
+  const label = c.label ?? c.children ?? c.text ?? "";
+  if (!label && !c.href && !c.onClick) return null;
+  return { label, href: c.href, onClick: c.onClick };
+}
+
 /**
  * Bold full-bleed gradient CTA band. Use sparingly — high visual weight,
- * great for the FINAL section of a marketing page. Pairs with playful or
- * maximalist vibes.
+ * great for the FINAL section of a marketing page.
+ *
+ * Accepts \`primaryCta\` / \`secondaryCta\` (preferred) OR
+ * \`primaryLink\` / \`secondaryLink\` (alias). CTA objects may use
+ * { label } or { children } / { text }.
  */
 export function CtaGradientBand({
   title,
   description,
   primaryCta,
   secondaryCta,
+  primaryLink,
+  secondaryLink,
   className,
 }: {
-  title: React.ReactNode;
+  title?: React.ReactNode;
   description?: React.ReactNode;
-  primaryCta: { label: string; href?: string; onClick?: () => void };
-  secondaryCta?: { label: string; href?: string; onClick?: () => void };
+  primaryCta?: CtaLike;
+  secondaryCta?: CtaLike;
+  primaryLink?: CtaLike;
+  secondaryLink?: CtaLike;
   className?: string;
 }) {
+  const primary = normalizeCta(primaryCta ?? primaryLink);
+  const secondary = normalizeCta(secondaryCta ?? secondaryLink);
   return (
     <section className={cn("relative overflow-hidden bg-primary py-20 text-primary-foreground md:py-28", className)}>
       <GradientBlob className="-bottom-40 -right-20" size="xl" tone="accent" />
       <GradientBlob className="-top-32 -left-10" size="lg" tone="muted" />
       <Container size="lg">
         <div className="relative mx-auto max-w-3xl text-center">
-          <h2 className="text-balance text-4xl font-semibold tracking-tight md:text-5xl">{title}</h2>
+          {title && <h2 className="text-balance text-4xl font-semibold tracking-tight md:text-5xl">{title}</h2>}
           {description && (
             <p className="mx-auto mt-5 max-w-xl text-base text-primary-foreground/80 md:text-lg">{description}</p>
           )}
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <Button size="lg" variant="secondary" onClick={primaryCta.onClick} asChild={!!primaryCta.href}>
-              {primaryCta.href ? (
-                <a href={primaryCta.href}>
-                  {primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" />
-                </a>
-              ) : (
-                <>
-                  {primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" />
-                </>
+          {(primary || secondary) && (
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+              {primary && (
+                <Button size="lg" variant="secondary" onClick={primary.onClick} asChild={!!primary.href}>
+                  {primary.href ? (
+                    <a href={primary.href}>
+                      {primary.label} <ArrowRight className="ml-2 h-4 w-4" />
+                    </a>
+                  ) : (
+                    <>{primary.label} <ArrowRight className="ml-2 h-4 w-4" /></>
+                  )}
+                </Button>
               )}
-            </Button>
-            {secondaryCta && (
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
-                onClick={secondaryCta.onClick}
-                asChild={!!secondaryCta.href}
-              >
-                {secondaryCta.href ? <a href={secondaryCta.href}>{secondaryCta.label}</a> : secondaryCta.label}
-              </Button>
-            )}
-          </div>
+              {secondary && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+                  onClick={secondary.onClick}
+                  asChild={!!secondary.href}
+                >
+                  {secondary.href ? <a href={secondary.href}>{secondary.label}</a> : secondary.label}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </Container>
     </section>
@@ -588,6 +623,7 @@ export function CtaGradientBand({
 
 const FOOTER_COLUMNS = `import * as React from "react";
 import { Container } from "@/components/ui/container";
+import { Github, Twitter, Instagram, Facebook, Linkedin, Youtube, Globe, Mail, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface FooterColumn {
@@ -595,41 +631,74 @@ export interface FooterColumn {
   links: { label: string; href: string }[];
 }
 
+type SocialEntry = {
+  href: string;
+  label?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  platform?: string;
+};
+
+const PLATFORM_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  github: Github,
+  twitter: Twitter,
+  x: Twitter,
+  instagram: Instagram,
+  facebook: Facebook,
+  linkedin: Linkedin,
+  youtube: Youtube,
+  web: Globe,
+  website: Globe,
+  email: Mail,
+  mail: Mail,
+};
+
+function resolveSocialIcon(s: SocialEntry): React.ComponentType<{ className?: string }> {
+  if (typeof s.icon === "function") return s.icon;
+  const key = (s.platform ?? s.label ?? "").toLowerCase();
+  return PLATFORM_ICONS[key] ?? Circle;
+}
+
 /**
  * Multi-column footer with brand block + link columns + bottom bar.
- * Default for SaaS / agencies / anything content-heavy.
+ * Accepts \`social\` (preferred) or \`socialLinks\` (alias). Each entry may
+ * provide \`{ icon }\` or \`{ platform: "twitter" }\` — unknown platforms
+ * fall back to a neutral icon.
  */
 export function FooterColumns({
   brand,
   tagline,
   columns,
   social,
+  socialLinks,
   copyright,
   className,
 }: {
-  brand: React.ReactNode;
+  brand?: React.ReactNode;
   tagline?: React.ReactNode;
-  columns: FooterColumn[];
-  social?: { icon: React.ComponentType<{ className?: string }>; href: string; label: string }[];
+  columns?: FooterColumn[];
+  social?: SocialEntry[];
+  socialLinks?: SocialEntry[];
   copyright?: React.ReactNode;
   className?: string;
 }) {
+  const socials = Array.isArray(social) && social.length > 0 ? social : Array.isArray(socialLinks) ? socialLinks : [];
+  const cols = Array.isArray(columns) ? columns : [];
   return (
     <footer className={cn("border-t border-border bg-muted/30 py-16", className)}>
       <Container size="xl">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="md:col-span-4">
-            <div className="text-base font-semibold text-foreground">{brand}</div>
+            {brand && <div className="text-base font-semibold text-foreground">{brand}</div>}
             {tagline && <p className="mt-2 max-w-xs text-sm text-muted-foreground">{tagline}</p>}
-            {social && social.length > 0 && (
+            {socials.length > 0 && (
               <div className="mt-5 flex gap-3">
-                {social.map((s, i) => {
-                  const Icon = s.icon;
+                {socials.map((s, i) => {
+                  const Icon = resolveSocialIcon(s);
                   return (
                     <a
                       key={i}
                       href={s.href}
-                      aria-label={s.label}
+                      aria-label={s.label ?? s.platform ?? "social"}
                       className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition hover:text-foreground"
                     >
                       <Icon className="h-4 w-4" />
@@ -640,11 +709,11 @@ export function FooterColumns({
             )}
           </div>
           <div className="grid grid-cols-2 gap-8 md:col-span-8 md:grid-cols-4">
-            {columns.map((col, i) => (
+            {cols.map((col, i) => (
               <div key={i}>
                 <div className="text-xs font-semibold uppercase tracking-wider text-foreground">{col.title}</div>
                 <ul className="mt-4 space-y-2.5">
-                  {col.links.map((l, j) => (
+                  {(col.links ?? []).map((l, j) => (
                     <li key={j}>
                       <a href={l.href} className="text-sm text-muted-foreground transition hover:text-foreground">
                         {l.label}
@@ -1123,9 +1192,16 @@ import { Container } from "@/components/ui/container";
 import { Marquee } from "@/components/ui/marquee";
 import { cn } from "@/lib/utils";
 
+type LogoEntry = string | { name?: string; src?: string; url?: string };
+
+function normalizeLogo(l: LogoEntry, i: number): { name: string; src?: string } {
+  if (typeof l === "string") return { name: \`logo-\${i + 1}\`, src: l };
+  return { name: l.name ?? \`logo-\${i + 1}\`, src: l.src ?? l.url };
+}
+
 /**
- * Infinite-scroll logo strip. Better than LogosGrid when you have 8+ logos
- * or want subtle motion in the page. Fades at the edges via mask-image.
+ * Infinite-scroll logo strip. Accepts either an array of \`{ name, src }\`
+ * objects or a plain string[] of image URLs.
  */
 export function LogosMarquee({
   eyebrow,
@@ -1134,10 +1210,11 @@ export function LogosMarquee({
   className,
 }: {
   eyebrow?: React.ReactNode;
-  logos: { name: string; src?: string }[];
+  logos: LogoEntry[];
   speed?: number;
   className?: string;
 }) {
+  const list = Array.isArray(logos) ? logos.map(normalizeLogo) : [];
   return (
     <section className={cn("py-12 md:py-16", className)}>
       <Container size="xl">
@@ -1148,7 +1225,7 @@ export function LogosMarquee({
         )}
         <div className="[mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
           <Marquee speed={speed}>
-            {logos.map((l, i) =>
+            {list.map((l, i) =>
               l.src ? (
                 <img
                   key={i}

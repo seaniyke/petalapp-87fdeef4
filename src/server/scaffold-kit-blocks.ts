@@ -261,23 +261,44 @@ export function Timeline({ items, className }: { items: TimelineItem[]; classNam
 `;
 
 const FEATURE_ICON = `import * as React from "react";
+import * as LucideIcons from "lucide-react";
+import { Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
  * Bordered/tinted icon tile. Use as the leading mark of a feature card.
- *   <FeatureIcon icon={Bolt} variant="solid" />
+ *
+ * Preferred:  <FeatureIcon icon={Bolt} variant="solid" />
+ * Tolerated:  <FeatureIcon name="bolt" />  // kebab/lower/Pascal lucide name
+ *
+ * If neither resolves to a real component, falls back to <Circle/> so the
+ * page still renders instead of throwing React error #130.
  */
-export function FeatureIcon({
-  icon: Icon,
-  variant = "soft",
-  size = "md",
-  className,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
+function resolveIcon(
+  iconProp: unknown,
+  nameProp: unknown,
+): React.ComponentType<{ className?: string }> {
+  if (typeof iconProp === "function") return iconProp as React.ComponentType<{ className?: string }>;
+  const raw = typeof nameProp === "string" ? nameProp : typeof iconProp === "string" ? iconProp : "";
+  if (raw) {
+    const pascal = raw
+      .replace(/(?:^|[-_\\s])(\\w)/g, (_m, c: string) => (c ? c.toUpperCase() : ""))
+      .replace(/[^A-Za-z0-9]/g, "");
+    const reg = LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>;
+    if (pascal && typeof reg[pascal] === "function") return reg[pascal];
+  }
+  return Circle;
+}
+
+export function FeatureIcon(props: {
+  icon?: React.ComponentType<{ className?: string }> | string;
+  name?: string;
   variant?: "soft" | "solid" | "outline";
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
+  const { variant = "soft", size = "md", className } = props;
+  const Icon = resolveIcon(props.icon, props.name);
   const sz = size === "sm" ? "h-8 w-8" : size === "lg" ? "h-14 w-14" : "h-11 w-11";
   const ic = size === "sm" ? "h-3.5 w-3.5" : size === "lg" ? "h-6 w-6" : "h-5 w-5";
   const v =
