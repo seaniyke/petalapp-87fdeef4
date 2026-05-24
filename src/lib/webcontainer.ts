@@ -228,7 +228,7 @@ const PICKER_SCRIPT = `(() => {
  * Throttled to one message per 1.5s + dedupe on identical message+source so a
  * crashing render loop doesn't flood the parent.
  */
-const RUNTIME_BRIDGE_VERSION = 2;
+const RUNTIME_BRIDGE_VERSION = 3;
 const RUNTIME_BRIDGE_SCRIPT = `(() => {
   var VERSION = ${RUNTIME_BRIDGE_VERSION};
   if (window.__petalRuntimeBridgeVersion && window.__petalRuntimeBridgeVersion >= VERSION) return;
@@ -254,6 +254,15 @@ const RUNTIME_BRIDGE_SCRIPT = `(() => {
   function stackOf(value) {
     return value && value.stack ? String(value.stack).slice(0, 4000) : null;
   }
+  function normalizeMessage(msg) {
+    msg = String(msg || 'Unknown preview error');
+    if (msg.indexOf("undefined is not an object (evaluating '") >= 0) return msg;
+    var safariMatch = /undefined is not an object \(evaluating '([^']+)'\)/.exec(msg);
+    if (safariMatch) return msg;
+    var chromeMatch = /Cannot read (?:properties|property) of undefined \(reading '([^']+)'\)/.exec(msg);
+    if (chromeMatch) return "undefined is not an object (evaluating '" + chromeMatch[1] + "')";
+    return msg;
+  }
   function visibleRoot(root) {
     if (!root) return false;
     if ((root.textContent || '').trim()) return true;
@@ -274,7 +283,7 @@ const RUNTIME_BRIDGE_SCRIPT = `(() => {
     blankSent = true;
     try {
       parent.postMessage({ type: 'petal:preview:blank', payload: {
-        message: lastError ? textOf(lastError) : 'The app loaded, but nothing visible was rendered into #root.',
+        message: lastError ? normalizeMessage(textOf(lastError)) : 'The app loaded, but nothing visible was rendered into #root.',
         stack: lastError ? stackOf(lastError) : null,
         source: null,
         lineno: null,
@@ -286,7 +295,7 @@ const RUNTIME_BRIDGE_SCRIPT = `(() => {
   window.addEventListener('error', function (e) {
     if (!e) return;
     // Ignore script-load CORS errors (no useful info) and ResizeObserver noise.
-    var msg = e.message || '';
+    var msg = normalizeMessage(e.message || '');
     if (!msg || msg === 'Script error.' || msg.indexOf('ResizeObserver loop') === 0) return;
     lastError = e.error || msg;
     send({
@@ -302,7 +311,7 @@ const RUNTIME_BRIDGE_SCRIPT = `(() => {
     if (!e) return;
     var reason = e.reason;
     lastError = reason;
-    var msg = reason && reason.message ? reason.message : (typeof reason === 'string' ? reason : 'Unhandled promise rejection');
+    var msg = normalizeMessage(reason && reason.message ? reason.message : (typeof reason === 'string' ? reason : 'Unhandled promise rejection'));
     send({
       message: msg,
       stack: reason && reason.stack ? String(reason.stack).slice(0, 4000) : null,
