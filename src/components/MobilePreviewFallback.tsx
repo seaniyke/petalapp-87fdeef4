@@ -43,6 +43,10 @@ export function MobilePreviewFallback({
   const [crashReason, setCrashReason] = useState<string | null>(null);
   const [pendingTooLong, setPendingTooLong] = useState(false);
 
+  useEffect(() => {
+    setCrashReason(null);
+  }, [latestBuildId]);
+
   // Load the current latest build and a fallback ready build. We also poll the
   // latest row because realtime delivery can be delayed or unavailable on some
   // mobile browsers/network conditions.
