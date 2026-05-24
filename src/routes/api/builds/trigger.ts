@@ -179,6 +179,22 @@ export const Route = createFileRoute("/api/builds/trigger")({
           );
         }
 
+        // 2e-ter) Strip named imports that target ONLY a `type`/`interface`
+        //     export in the destination file. Rollup erases types before
+        //     bundling, so `import { NavLink } from "@/components/blocks/nav-with-cta"`
+        //     (where NavLink is `export interface NavLink`) hard-fails the
+        //     production build even though tsc tolerates it. This is the
+        //     single most common cause of "the preview went blank after I
+        //     asked Petal to add a header/section" — the model conflates an
+        //     exported interface name with a component name.
+        const { files: typeStrippedFiles, stripped: typeStripped } = stripTypeOnlyValueImports(shimmedFiles);
+        if (typeStripped.length > 0) {
+          console.warn(
+            `[type-only-import-strip] project=${projectId} dropped ${typeStripped.length} invalid value import(s): ` +
+              typeStripped.map((s) => `${s.file}: { ${s.names.join(", ")} } from "${s.spec}"`).join(" | "),
+          );
+        }
+
         // 2f) Inject env files for installed integrations. This loads each
         //     integration's public options + decrypted secrets and renders
         //     `.env.production` (Vite-consumed at build time) and `.dev.vars`
