@@ -759,7 +759,7 @@ import { FeatureIcon } from "@/components/ui/feature-icon";
 import { cn } from "@/lib/utils";
 
 export interface FeatureItem {
-  icon: React.ComponentType<{ className?: string }>;
+  icon?: React.ComponentType<{ className?: string }> | string;
   title: string;
   description: string;
 }
@@ -784,14 +784,15 @@ export function FeaturesGrid3({
   cols?: 2 | 3 | 4;
   className?: string;
 }) {
+  const list = Array.isArray(items) ? items : [];
   const grid = cols === 4 ? "md:grid-cols-2 lg:grid-cols-4" : cols === 2 ? "md:grid-cols-2" : "md:grid-cols-2 lg:grid-cols-3";
   return (
     <Container size="lg" className={className}>
       <Section eyebrow={eyebrow} title={title} description={description} align="center">
         <div className={cn("grid grid-cols-1 gap-6", grid)}>
-          {items.map((it, i) => (
+          {list.map((it, i) => (
             <div key={i} className="rounded-2xl border border-border bg-card p-6 transition hover:border-primary/30">
-              <FeatureIcon icon={it.icon} variant="soft" />
+              {it.icon && <FeatureIcon icon={it.icon} variant="soft" />}
               <h3 className="mt-4 text-base font-semibold text-foreground">{it.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{it.description}</p>
             </div>
@@ -810,7 +811,7 @@ import { FeatureIcon } from "@/components/ui/feature-icon";
 import { cn } from "@/lib/utils";
 
 export interface BentoItem {
-  icon?: React.ComponentType<{ className?: string }>;
+  icon?: React.ComponentType<{ className?: string }> | string;
   title: string;
   description: string;
   /** Mosaic span — 1, 2, or 3 columns wide on md+. Defaults to 1. */
@@ -839,11 +840,12 @@ export function FeaturesBento({
   items: BentoItem[];
   className?: string;
 }) {
+  const list = Array.isArray(items) ? items : [];
   return (
     <Container size="xl" className={className}>
       <Section eyebrow={eyebrow} title={title} description={description}>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
-          {items.map((it, i) => {
+          {list.map((it, i) => {
             const span = it.span ?? 1;
             const colSpan = span === 3 ? "md:col-span-3" : span === 2 ? "md:col-span-3 lg:col-span-2" : "md:col-span-3 lg:col-span-2";
             const cellSpan = span === 3 ? "md:col-span-6 lg:col-span-3" : colSpan;
