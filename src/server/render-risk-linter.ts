@@ -33,6 +33,13 @@
  *     declared anywhere in the file (no import, no local var, no prop,
  *     not a React/global). Catches typos like `{titel}` → `{title}`.
  *
+ *   R4 — Known kit list-prop omission.
+ *     A generated page renders a scaffold section block that internally maps
+ *     over data, but omits the required list prop (or accepted alias). This
+ *     catches prop-contract mismatches that compile but white-screen at first
+ *     render, e.g. <TestimonialsCards testimonials=...> before the block knew
+ *     that alias.
+ *
  * SKIPS:
  *   - src/components/ui/ (scaffold)
  *   - src/integrations/   (scaffold)
@@ -46,7 +53,7 @@
 import type { LocalIssue } from "@/server/local-verifier";
 
 /** Limit which rules fire. Edit to disable individual rules in production. */
-const ENABLED_RULES = new Set<"R1" | "R2" | "R3">(["R1", "R2", "R3"]);
+const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4">(["R1", "R2", "R3", "R4"]);
 
 const SCANNABLE = /\.(tsx|jsx)$/;
 // Skip the same scaffold paths the other verifiers skip.
@@ -91,6 +98,31 @@ const HOOKS = [
   "useSyncExternalStore",
   "useId",
 ];
+
+const KIT_LIST_PROP_CONTRACTS: Record<string, string[][]> = {
+  TestimonialsCards: [["items", "testimonials"]],
+  TestimonialsMarquee: [["items", "testimonials"]],
+  FaqAccordion: [["items", "faqs"]],
+  FaqTwoColumn: [["items", "faqs"]],
+  LogosGrid: [["logos"]],
+  LogosMarquee: [["logos"]],
+  FeaturesGrid3: [["items"]],
+  FeaturesBento: [["items"]],
+  FeaturesAlternatingRows: [["items"]],
+  StatsBand: [["items"]],
+  StatsGrid: [["items"]],
+  StatsWithChart: [["kpis"], ["data"]],
+  PricingTable: [["tiers"]],
+  PricingSingleProduct: [["features"]],
+  ComparisonTable: [["rows"], ["columns"]],
+  ActivityFeed: [["items"]],
+  MultiStepWizard: [["steps"]],
+  SidebarShell: [["nav"]],
+  CheckoutSummary: [["lines"]],
+  TeamGrid: [["members"]],
+  WorkGrid: [["items"]],
+  CaseStudy: [["sections"]],
+};
 
 /** Strip strings and comments so regex scans aren't poisoned by literals. */
 function stripStringsAndComments(src: string): string {
@@ -538,6 +570,31 @@ function findUndeclaredJsxIdentifiers(src: string, clean: string): string[] {
   return [...missing];
 }
 
+// =============================================================================
+// R4 — Known kit list-prop omission
+// =============================================================================
+
+function findKitListPropOmissions(src: string): { component: string; missing: string }[] {
+  const issues: { component: string; missing: string }[] = [];
+  for (const [component, groups] of Object.entries(KIT_LIST_PROP_CONTRACTS)) {
+    const tagRe = new RegExp(`<${component}\\b([^>]*)>`, "g");
+    let m: RegExpExecArray | null;
+    while ((m = tagRe.exec(src))) {
+      const attrs = m[1] ?? "";
+      if (/\{\s*\.\.\./.test(attrs)) continue;
+      const present = new Set<string>();
+      const attrRe = /(?:^|\s)([A-Za-z_$][\w$-]*)\s*=/g;
+      let a: RegExpExecArray | null;
+      while ((a = attrRe.exec(attrs))) present.add(a[1]);
+      for (const aliases of groups) {
+        if (aliases.some((name) => present.has(name))) continue;
+        issues.push({ component, missing: aliases.join(" or ") });
+      }
+    }
+  }
+  return issues;
+}
+
 function extractIdents(block: string): string[] {
   const out: string[] = [];
   // Strip nested `{...}` (rare in destructure) by collapsing them.
@@ -604,6 +661,17 @@ export function lintRenderRisks(
           path: f.path,
           kind: "render-risk",
           detail: `JSX references undeclared identifier(s): ${missing.slice(0, 5).join(", ")}${missing.length > 5 ? "…" : ""}`,
+        });
+      }
+    }
+
+    // R4 — known scaffold section block rendered without required list props.
+    if (ENABLED_RULES.has("R4")) {
+      for (const issue of findKitListPropOmissions(f.content)) {
+        issues.push({
+          path: f.path,
+          kind: "render-risk",
+          detail: `<${issue.component}> is missing ${issue.missing}; this block maps over that data and can crash at runtime`,
         });
       }
     }

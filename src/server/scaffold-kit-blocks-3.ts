@@ -350,13 +350,15 @@ export function ComparisonTable({
   columns: ComparisonColumn[];
   className?: string;
 }) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const safeColumns = Array.isArray(columns) ? columns : [];
   return (
     <div className={cn("w-full overflow-x-auto", className)}>
       <table className="w-full border-separate border-spacing-0 text-sm">
         <thead>
           <tr>
             <th className="sticky left-0 bg-background py-4 pr-4 text-left text-muted-foreground font-medium">Feature</th>
-            {columns.map((c) => (
+            {safeColumns.map((c) => (
               <th key={c.name} className={cn("py-4 px-4 text-left font-semibold text-foreground", c.highlight && "text-primary")}>
                 {c.name}
               </th>
@@ -364,10 +366,10 @@ export function ComparisonTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
+          {safeRows.map((r) => (
             <tr key={r.key} className="border-t border-border">
               <td className="sticky left-0 bg-background py-3 pr-4 font-medium text-foreground">{r.label}</td>
-              {columns.map((c) => {
+              {safeColumns.map((c) => {
                 const v = c.values[r.key];
                 return (
                   <td key={c.name} className={cn("py-3 px-4 text-muted-foreground", c.highlight && "bg-primary/5")}>
@@ -489,12 +491,13 @@ export interface ActivityItem {
 
 /** Vertical activity / audit feed. */
 export function ActivityFeed({ items, className }: { items: ActivityItem[]; className?: string }) {
-  if (items.length === 0) {
+  const list = Array.isArray(items) ? items : [];
+  if (list.length === 0) {
     return <div className={cn("rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground", className)}>No activity yet.</div>;
   }
   return (
     <ol className={cn("space-y-5", className)}>
-      {items.map((it) => (
+      {list.map((it) => (
         <li key={it.id} className="flex gap-3">
           <Avatar className="h-9 w-9">
             {it.actor.avatarUrl && <AvatarImage src={it.actor.avatarUrl} alt={it.actor.name} />}
@@ -542,10 +545,11 @@ export function MultiStepWizard({
   className?: string;
   submitLabel?: string;
 }) {
-  const total = steps.length;
+  const safeSteps = Array.isArray(steps) ? steps : [];
+  const total = safeSteps.length;
   const isLast = step === total - 1;
-  const progress = ((step + 1) / total) * 100;
-  const current = steps[step];
+  const progress = total > 0 ? ((step + 1) / total) * 100 : 0;
+  const current = safeSteps[step];
   if (!current) return null;
   return (
     <div className={cn("space-y-6", className)}>
@@ -557,7 +561,7 @@ export function MultiStepWizard({
         <Progress value={progress} className="mt-2" />
       </div>
       <ol className="flex items-center gap-3 text-xs text-muted-foreground">
-        {steps.map((s, i) => (
+        {safeSteps.map((s, i) => (
           <li key={s.id} className={cn("flex items-center gap-1.5", i <= step && "text-foreground")}>
             <span className={cn("flex h-5 w-5 items-center justify-center rounded-full border border-border text-[10px]", i < step && "border-primary bg-primary text-primary-foreground", i === step && "border-primary text-primary")}>
               {i < step ? <Check className="h-3 w-3" /> : i + 1}
@@ -730,6 +734,7 @@ export function SidebarShell({
   className?: string;
 }) {
   const [open, setOpen] = React.useState(false);
+  const items = Array.isArray(nav) ? nav : [];
   return (
     <div className={cn("min-h-screen bg-background", className)}>
       <aside className={cn("fixed inset-y-0 left-0 z-40 w-64 border-r border-border bg-card transition-transform md:translate-x-0", open ? "translate-x-0" : "-translate-x-full")}>
@@ -739,7 +744,7 @@ export function SidebarShell({
         </div>
         <ScrollArea className="h-[calc(100vh-3.5rem-3rem)]">
           <nav className="space-y-1 p-3">
-            {nav.map((it) => (
+            {items.map((it) => (
               <a key={it.id} href={it.href ?? "#"} onClick={(e) => { if (it.onClick) { e.preventDefault(); it.onClick(); } }}
                 className={cn("flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground", it.active && "bg-muted text-foreground font-medium")}>
                 {it.icon && <span className="text-muted-foreground">{it.icon}</span>}
@@ -778,6 +783,8 @@ export function SectionHeader({
   actions?: React.ReactNode;
   className?: string;
 }) {
+  const safeLines = Array.isArray(lines) ? lines : [];
+  const safeTotal = total ?? { label: "Total", value: "—" };
   return (
     <div className={cn("mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between", className)}>
       <div>
@@ -941,7 +948,7 @@ export function CheckoutSummary({
       <CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         <dl className="space-y-2 text-sm">
-          {lines.map((l) => (
+          {safeLines.map((l) => (
             <div key={l.label} className={cn("flex justify-between", l.emphasis ? "text-foreground font-medium" : "text-muted-foreground")}>
               <dt>{l.label}</dt>
               <dd>{l.value}</dd>
@@ -950,8 +957,8 @@ export function CheckoutSummary({
         </dl>
         <Separator />
         <div className="flex items-baseline justify-between">
-          <span className="text-sm font-medium text-foreground">{total.label}</span>
-          <span className="text-xl font-semibold tracking-tight text-foreground">{total.value}</span>
+          <span className="text-sm font-medium text-foreground">{safeTotal.label}</span>
+          <span className="text-xl font-semibold tracking-tight text-foreground">{safeTotal.value}</span>
         </div>
         <Button className="w-full" onClick={onCheckout}>{ctaLabel}</Button>
         {note && <div className="text-xs text-muted-foreground">{note}</div>}

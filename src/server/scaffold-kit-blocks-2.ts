@@ -32,11 +32,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Rating } from "@/components/ui/rating";
 import { cn } from "@/lib/utils";
 
+type LogoGridEntry = string | { name?: string; src?: string; url?: string };
+
 export interface Testimonial {
   quote: string;
   name: string;
   role?: string;
+  title?: string;
   avatarSrc?: string;
+  image?: string;
+  avatar?: string;
   rating?: number;
 }
 
@@ -50,19 +55,23 @@ export function TestimonialsCards({
   title,
   description,
   items,
+  testimonials,
   className,
 }: {
   eyebrow?: React.ReactNode;
   title?: React.ReactNode;
   description?: React.ReactNode;
-  items: Testimonial[];
+  /** Preferred. \`testimonials\` is accepted as an alias. */
+  items?: Testimonial[];
+  testimonials?: Testimonial[];
   className?: string;
 }) {
+  const list = Array.isArray(items) ? items : Array.isArray(testimonials) ? testimonials : [];
   return (
     <Container size="lg" className={className}>
       <Section eyebrow={eyebrow} title={title} description={description} align="center">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {items.map((t, i) => (
+          {list.map((t, i) => (
             <figure key={i} className="flex h-full flex-col rounded-2xl border border-border bg-card p-6">
               {t.rating != null && <Rating value={t.rating} className="mb-4" />}
               <blockquote className="flex-1 text-sm leading-relaxed text-foreground/90">
@@ -70,12 +79,12 @@ export function TestimonialsCards({
               </blockquote>
               <figcaption className="mt-6 flex items-center gap-3">
                 <Avatar className="h-10 w-10">
-                  {t.avatarSrc && <AvatarImage src={t.avatarSrc} alt={t.name} />}
+                  {(t.avatarSrc || t.image || t.avatar) && <AvatarImage src={t.avatarSrc ?? t.image ?? t.avatar} alt={t.name} />}
                   <AvatarFallback>{t.name.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-foreground">{t.name}</div>
-                  {t.role && <div className="truncate text-xs text-muted-foreground">{t.role}</div>}
+                  {(t.role || t.title) && <div className="truncate text-xs text-muted-foreground">{t.role ?? t.title}</div>}
                 </div>
               </figcaption>
             </figure>
@@ -98,7 +107,10 @@ export interface MarqueeTestimonial {
   quote: string;
   name: string;
   role?: string;
+  title?: string;
   avatarSrc?: string;
+  image?: string;
+  avatar?: string;
 }
 
 /**
@@ -111,28 +123,31 @@ export function TestimonialsMarquee({
   title,
   description,
   items,
+  testimonials,
   className,
 }: {
   eyebrow?: React.ReactNode;
   title?: React.ReactNode;
   description?: React.ReactNode;
-  items: MarqueeTestimonial[];
+  items?: MarqueeTestimonial[];
+  testimonials?: MarqueeTestimonial[];
   className?: string;
 }) {
-  const half = Math.ceil(items.length / 2);
-  const rowA = items.slice(0, half);
-  const rowB = items.slice(half).length ? items.slice(half) : items;
+  const list = Array.isArray(items) ? items : Array.isArray(testimonials) ? testimonials : [];
+  const half = Math.ceil(list.length / 2);
+  const rowA = list.slice(0, half);
+  const rowB = list.slice(half).length ? list.slice(half) : list;
   const Card = ({ t }: { t: MarqueeTestimonial }) => (
     <figure className="mx-3 w-[320px] shrink-0 rounded-2xl border border-border bg-card p-5">
       <blockquote className="text-sm leading-relaxed text-foreground/90">&ldquo;{t.quote}&rdquo;</blockquote>
       <figcaption className="mt-4 flex items-center gap-3">
         <Avatar className="h-9 w-9">
-          {t.avatarSrc && <AvatarImage src={t.avatarSrc} alt={t.name} />}
+          {(t.avatarSrc || t.image || t.avatar) && <AvatarImage src={t.avatarSrc ?? t.image ?? t.avatar} alt={t.name} />}
           <AvatarFallback>{t.name.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-foreground">{t.name}</div>
-          {t.role && <div className="truncate text-xs text-muted-foreground">{t.role}</div>}
+          {(t.role || t.title) && <div className="truncate text-xs text-muted-foreground">{t.role ?? t.title}</div>}
         </div>
       </figcaption>
     </figure>
@@ -236,6 +251,11 @@ export function PricingSingleProduct({
   originalPrice,
   features,
   cta,
+  buttonText,
+  buttonLabel,
+  ctaLabel,
+  href,
+  ctaHref,
   footnote,
   className,
 }: {
@@ -247,11 +267,18 @@ export function PricingSingleProduct({
   price: string;
   period?: string;
   originalPrice?: string;
-  features: string[];
-  cta: { label: string; href?: string; onClick?: () => void };
+  features?: string[];
+  cta?: { label: string; href?: string; onClick?: () => void };
+  buttonText?: string;
+  buttonLabel?: string;
+  ctaLabel?: string;
+  href?: string;
+  ctaHref?: string;
   footnote?: React.ReactNode;
   className?: string;
 }) {
+  const safeFeatures = Array.isArray(features) ? features : [];
+  const safeCta = cta ?? { label: buttonText ?? buttonLabel ?? ctaLabel ?? "Get started", href: ctaHref ?? href };
   return (
     <Container size="md" className={className}>
       <Section eyebrow={eyebrow} title={heading} description={description} align="center">
@@ -269,15 +296,15 @@ export function PricingSingleProduct({
               {period && <span className="text-sm text-muted-foreground">/{period}</span>}
             </div>
             <ul className="mt-8 space-y-3">
-              {features.map((f, i) => (
+              {safeFeatures.map((f, i) => (
                 <li key={i} className="flex items-start gap-3 text-sm">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <span className="text-foreground">{f}</span>
                 </li>
               ))}
             </ul>
-            <Button className="mt-8 w-full" size="lg" onClick={cta.onClick} asChild={!!cta.href}>
-              {cta.href ? <a href={cta.href}>{cta.label}</a> : cta.label}
+            <Button className="mt-8 w-full" size="lg" onClick={safeCta.onClick} asChild={!!safeCta.href}>
+              {safeCta.href ? <a href={safeCta.href}>{safeCta.label}</a> : safeCta.label}
             </Button>
             {footnote && <p className="mt-4 text-center text-xs text-muted-foreground">{footnote}</p>}
           </div>
@@ -353,8 +380,10 @@ import { Container } from "@/components/ui/container";
 import { cn } from "@/lib/utils";
 
 export interface FaqColumnItem {
-  q: React.ReactNode;
-  a: React.ReactNode;
+  q?: React.ReactNode;
+  a?: React.ReactNode;
+  question?: React.ReactNode;
+  answer?: React.ReactNode;
 }
 
 /**
@@ -367,14 +396,17 @@ export function FaqTwoColumn({
   title,
   description,
   items,
+  faqs,
   className,
 }: {
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   description?: React.ReactNode;
-  items: FaqColumnItem[];
+  items?: FaqColumnItem[];
+  faqs?: FaqColumnItem[];
   className?: string;
 }) {
+  const list = Array.isArray(items) ? items : Array.isArray(faqs) ? faqs : [];
   return (
     <Container size="xl" className={className}>
       <section className={cn("py-20 md:py-28", className)}>
@@ -387,10 +419,10 @@ export function FaqTwoColumn({
             {description && <p className="mt-4 text-base text-muted-foreground">{description}</p>}
           </div>
           <dl className="lg:col-span-7 lg:divide-y lg:divide-border">
-            {items.map((it, i) => (
+            {list.map((it, i) => (
               <div key={i} className="border-b border-border py-6 first:border-t lg:border-b-0 lg:border-t-0 lg:first:border-t-0">
-                <dt className="text-base font-semibold text-foreground">{it.q}</dt>
-                <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">{it.a}</dd>
+                <dt className="text-base font-semibold text-foreground">{it.q ?? it.question}</dt>
+                <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">{it.a ?? it.answer}</dd>
               </div>
             ))}
           </dl>
@@ -1152,9 +1184,10 @@ export function LogosGrid({
   className,
 }: {
   eyebrow?: React.ReactNode;
-  logos: { name: string; src?: string }[];
+  logos: LogoGridEntry[];
   className?: string;
 }) {
+  const list = Array.isArray(logos) ? logos.map((l, i) => typeof l === "string" ? { name: \`logo-\${i + 1}\`, src: l } : { name: l.name ?? \`logo-\${i + 1}\`, src: l.src ?? l.url }) : [];
   return (
     <section className={cn("py-12 md:py-16", className)}>
       <Container size="xl">
@@ -1162,7 +1195,7 @@ export function LogosGrid({
           <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{eyebrow}</p>
         )}
         <div className="mt-8 grid grid-cols-2 items-center gap-x-10 gap-y-8 sm:grid-cols-3 md:grid-cols-6">
-          {logos.map((l, i) =>
+          {list.map((l, i) =>
             l.src ? (
               <img
                 key={i}
@@ -1275,6 +1308,7 @@ export function StatsBand({
   tone?: "muted" | "primary";
   className?: string;
 }) {
+  const list = Array.isArray(items) ? items : [];
   const bg = tone === "primary" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-foreground";
   const labelTone = tone === "primary" ? "text-primary-foreground/80" : "text-muted-foreground";
   const dividers = tone === "primary" ? "divide-primary-foreground/20" : "divide-border";
@@ -1282,7 +1316,7 @@ export function StatsBand({
     <section className={cn("border-y border-border", bg, className)}>
       <Container size="xl">
         <dl className={cn("grid grid-cols-2 divide-y md:grid-cols-4 md:divide-x md:divide-y-0", dividers)}>
-          {items.map((s, i) => (
+          {list.map((s, i) => (
             <div key={i} className="px-6 py-10 text-center md:py-12">
               <dt className={cn("text-xs font-semibold uppercase tracking-wider", labelTone)}>{s.label}</dt>
               <dd className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">{s.value}</dd>
@@ -1328,12 +1362,13 @@ export function StatsGrid({
   cols?: 2 | 3 | 4;
   className?: string;
 }) {
+  const list = Array.isArray(items) ? items : [];
   const grid = cols === 4 ? "md:grid-cols-2 lg:grid-cols-4" : cols === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
   return (
     <Container size="lg" className={className}>
       <Section eyebrow={eyebrow} title={title} description={description}>
         <div className={cn("grid grid-cols-1 gap-4", grid)}>
-          {items.map((s, i) => (
+          {list.map((s, i) => (
             <Stat key={i} label={s.label} value={s.value} delta={s.delta} hint={s.hint} />
           ))}
         </div>
