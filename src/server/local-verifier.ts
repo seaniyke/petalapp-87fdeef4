@@ -784,28 +784,38 @@ function isNodeBuiltin(spec: string): boolean {
  *   export type Foo / export interface Foo / export enum Foo
  */
 interface FileExports {
-  named: Set<string>;
+  named: Set<string>;        // value exports (runtime-visible)
+  typeOnly: Set<string>;     // exported interface/type — stripped at build time
   hasDefault: boolean;
   starReexports: string[]; // unresolved specifiers — treat as "exports anything"
 }
 
 function collectExports(src: string): FileExports {
   const named = new Set<string>();
+  const typeOnly = new Set<string>();
   let hasDefault = false;
   const starReexports: string[] = [];
 
   // export default …
   if (/(^|\n)\s*export\s+default\b/.test(src)) hasDefault = true;
 
-  // export {const|let|var|function|class|type|interface|enum} Name
-  const declRe = /(^|\n)\s*export\s+(?:async\s+)?(?:const|let|var|function|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g;
+  // Value declarations: const/let/var/function/class/enum → runtime-visible.
+  const valueDeclRe = /(^|\n)\s*export\s+(?:async\s+)?(?:const|let|var|function|class|enum)\s+([A-Za-z_$][\w$]*)/g;
   let m: RegExpExecArray | null;
-  while ((m = declRe.exec(src))) named.add(m[2]);
+  while ((m = valueDeclRe.exec(src))) named.add(m[2]);
 
-  // export { A, B as C } [from "..."]
-  const groupRe = /export\s*\{([^}]+)\}/g;
+  // Type-only declarations: `export type Foo` / `export interface Foo`.
+  // These get stripped by tsc/rollup, so a VALUE import of this name fails
+  // at production build with "X is not exported by …" even though TS dev
+  // tolerates it. Track separately so findMissingNamedExports can flag it.
+  const typeDeclRe = /(^|\n)\s*export\s+(?:type|interface)\s+([A-Za-z_$][\w$]*)/g;
+  while ((m = typeDeclRe.exec(src))) typeOnly.add(m[2]);
+
+  // export { A, B as C } [from "..."] — treat as value exports unless the
+  // group is prefixed with `type`. `export type { … }` is handled below.
+  const groupRe = /(^|[^A-Za-z_$])export\s*\{([^}]+)\}/g;
   while ((m = groupRe.exec(src))) {
-    for (const part of m[1].split(",")) {
+    for (const part of m[2].split(",")) {
       const piece = part.trim();
       if (!piece) continue;
       const name = piece.split(/\s+as\s+/i).pop()?.trim();
@@ -813,11 +823,25 @@ function collectExports(src: string): FileExports {
     }
   }
 
+  // export type { A, B as C } [from "..."] → type-only
+  const typeGroupRe = /export\s+type\s*\{([^}]+)\}/g;
+  while ((m = typeGroupRe.exec(src))) {
+    for (const part of m[1].split(",")) {
+      const piece = part.trim();
+      if (!piece) continue;
+      const name = piece.split(/\s+as\s+/i).pop()?.trim();
+      if (name && /^[A-Za-z_$][\w$]*$/.test(name)) {
+        typeOnly.add(name);
+        named.delete(name);
+      }
+    }
+  }
+
   // export * from "spec"
   const starRe = /export\s*\*\s*from\s*["']([^"']+)["']/g;
   while ((m = starRe.exec(src))) starReexports.push(m[1]);
 
-  return { named, hasDefault, starReexports };
+  return { named, typeOnly, hasDefault, starReexports };
 }
 
 /**
