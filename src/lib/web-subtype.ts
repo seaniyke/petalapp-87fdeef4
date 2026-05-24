@@ -72,8 +72,8 @@ const RULES: Rule[] = [
     patterns: [
       /\bauth(entication)?\b.*\b(payments?|stripe|checkout|billing)\b/i,
       /\b(payments?|stripe|checkout|billing)\b.*\bauth(entication)?\b/i,
-      /\bplatform\b/i,
-      /\bfintech\b/i,
+      /\bfintech\s+(app|platform|product)?\b/i,
+      /\b(saas|b2c|b2b)\s+platform\b/i,
     ],
   },
 
