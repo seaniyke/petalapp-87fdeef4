@@ -1,8 +1,7 @@
 /**
- * Build-time codemod: detect named imports where the imported name is ONLY
- * declared as a TypeScript type/interface in the target file (no runtime
- * value), and HEAL the target file by appending a passthrough value export
- * under the same name.
+ * Build-time codemod: detect named imports where the imported name does not
+ * have a runtime export in the target file, and HEAL the target file by
+ * appending a passthrough value export under the same name.
  *
  * Why this exists:
  *   `import { NavLink } from "@/components/blocks/nav-with-cta"` where
@@ -16,8 +15,11 @@
  *   (TS allows the same name in both). Build + runtime both resolve, and the
  *   preview renders something instead of going blank.
  *
- *   Conservative: skips packages, `export * from`, the ui kit, and
- *   integrations. Idempotent: a stub is only injected once per name.
+ *   Also covers alias-only exports such as `export { BrowserRouter as Router }`:
+ *   importing `{ BrowserRouter }` from that module is still a missing runtime
+ *   export unless the original name is exported too. Conservative: skips
+ *   packages, `export * from`, importers inside the ui kit, and integrations.
+ *   Idempotent: a stub is only injected once per name.
  */
 
 import type { ProjectFile } from "./generate.server";
@@ -27,6 +29,8 @@ interface FileExports {
   typeOnly: Set<string>;
   hasStar: boolean;
 }
+
+type StubReason = "type-only" | "missing";
 
 function collectExports(src: string): FileExports {
   const value = new Set<string>();
