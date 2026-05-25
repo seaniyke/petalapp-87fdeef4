@@ -3132,6 +3132,17 @@ Forbidden defaults
           );
         }
 
+        await saveProjectBlueprint(
+          body.projectId,
+          makeBuildBlueprint({
+            projectType: detectedWebSubtype ?? "app",
+            prompt: lastUserContent,
+            files: nextFiles,
+            designDirection,
+            hasBackend: Boolean(backend),
+          }),
+        );
+
         // Charge ONCE, after the build succeeds. Cost is computed from
         // the MAIN generate call's token usage only — `collected.usage`
         // covers the patch_files / write_project completion, not the
