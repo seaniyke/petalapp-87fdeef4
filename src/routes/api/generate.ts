@@ -2392,6 +2392,15 @@ Forbidden defaults
           );
         }
 
+        const healedImports = stripTypeOnlyValueImports(nextFiles);
+        nextFiles = healedImports.files;
+        if (healedImports.stripped.length > 0) {
+          console.warn(
+            `[local-import-heal] healed ${healedImports.stripped.length} invalid value import(s):`,
+            healedImports.stripped.map((s) => `${s.file}: { ${s.names.join(", ")} } from "${s.spec}"`).join(" | "),
+          );
+        }
+
         // Target-shape validation. For non-default targets, the generated
         // file set MUST match the target's expected shape, or we're about
         // to ship a web app dressed as something else. Fail conversationally
