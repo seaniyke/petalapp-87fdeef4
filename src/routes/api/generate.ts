@@ -72,6 +72,14 @@ import { runRenderRiskTier } from "@/server/pipeline/tier-render-risk";
 import { runRlsSanityTier } from "@/server/pipeline/tier-rls-sanity";
 import { TurnRecorder } from "@/server/pipeline-telemetry.server";
 import { stripHallucinatedImports } from "@/server/strip-hallucinated-imports.server";
+import { stripTypeOnlyValueImports } from "@/server/strip-type-only-value-imports.server";
+import {
+  loadProjectBlueprint,
+  makeBuildBlueprint,
+  renderBuildBlueprintBlock,
+  saveProjectBlueprint,
+} from "@/server/build-blueprint.server";
+import { findGenerationQualityIssues } from "@/server/generation-quality-gate.server";
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import { injectPreviewGuard } from "@/server/preview-guard.server";
 import {
@@ -1625,6 +1633,8 @@ Forbidden defaults
         })
       : null;
   const designBlock = designDirection ? renderDesignDirectionBlock(designDirection) : "";
+  const persistedBlueprint = !isInitial ? await loadProjectBlueprint(body.projectId) : null;
+  const blueprintBlock = renderBuildBlueprintBlock(persistedBlueprint);
 
   // Filter out files Petal manages itself before showing the project to the
   // model. The AI never edits these (we drop ops that touch them), but feeding
@@ -1773,6 +1783,7 @@ Forbidden defaults
     memoryBlock +
     preservationBlock +
     designBlock +
+    blueprintBlock +
     appShapeBlock +
     mobileBlock +
     gameBlock +
@@ -2381,6 +2392,15 @@ Forbidden defaults
           );
         }
 
+        const healedImports = stripTypeOnlyValueImports(nextFiles);
+        nextFiles = healedImports.files;
+        if (healedImports.stripped.length > 0) {
+          console.warn(
+            `[local-import-heal] healed ${healedImports.stripped.length} invalid value import(s):`,
+            healedImports.stripped.map((s) => `${s.file}: { ${s.names.join(", ")} } from "${s.spec}"`).join(" | "),
+          );
+        }
+
         // Target-shape validation. For non-default targets, the generated
         // file set MUST match the target's expected shape, or we're about
         // to ship a web app dressed as something else. Fail conversationally
@@ -2753,6 +2773,14 @@ Forbidden defaults
           },
         });
 
+        const generationQualityIssues = findGenerationQualityIssues(nextFiles, detectedWebSubtype);
+        if (generationQualityIssues.length > 0) {
+          console.warn(
+            `[generation-quality] ${generationQualityIssues.length} issue(s):`,
+            generationQualityIssues.map((i) => `${i.path}: ${i.detail}`).join("; "),
+          );
+        }
+
         // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
         // pass that ONLY fixes obvious build-breakers.
         //
@@ -2770,6 +2798,7 @@ Forbidden defaults
         const autofixGateOpen =
           !localVerdict.ok ||
           !esbuildVerdict.ok ||
+          generationQualityIssues.length > 0 ||
           renderRiskIssues.length > 0 ||
           budgetWarnings.length > 0 ||
           autofixOut.report.fixedCount >= 2;
@@ -2788,6 +2817,7 @@ Forbidden defaults
           // Render-risk issues open the gate: compile-clean code can still
           // white-screen at runtime (for example undefined.includes()).
           // RLS sanity remains advisory only.
+          ...generationQualityIssues,
           ...renderRiskIssues,
           ...rlsSanityIssues,
         ];
@@ -3101,6 +3131,17 @@ Forbidden defaults
             encoder.encode(sse({ type: "status", message: "Added preview crash protection." })),
           );
         }
+
+        await saveProjectBlueprint(
+          body.projectId,
+          makeBuildBlueprint({
+            projectType: detectedWebSubtype ?? "app",
+            prompt: lastUserContent,
+            files: nextFiles,
+            designDirection,
+            hasBackend: Boolean(backend),
+          }),
+        );
 
         // Charge ONCE, after the build succeeds. Cost is computed from
         // the MAIN generate call's token usage only — `collected.usage`

@@ -1798,6 +1798,7 @@ const ROUTER = `/**
  * active styling.
  */
 export {
+  BrowserRouter,
   BrowserRouter as Router,
   Routes,
   Route,

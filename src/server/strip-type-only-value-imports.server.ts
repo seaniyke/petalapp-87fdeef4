@@ -1,8 +1,7 @@
 /**
- * Build-time codemod: detect named imports where the imported name is ONLY
- * declared as a TypeScript type/interface in the target file (no runtime
- * value), and HEAL the target file by appending a passthrough value export
- * under the same name.
+ * Build-time codemod: detect named imports where the imported name does not
+ * have a runtime export in the target file, and HEAL the target file by
+ * appending a passthrough value export under the same name.
  *
  * Why this exists:
  *   `import { NavLink } from "@/components/blocks/nav-with-cta"` where
@@ -16,8 +15,11 @@
  *   (TS allows the same name in both). Build + runtime both resolve, and the
  *   preview renders something instead of going blank.
  *
- *   Conservative: skips packages, `export * from`, the ui kit, and
- *   integrations. Idempotent: a stub is only injected once per name.
+ *   Also covers alias-only exports such as `export { BrowserRouter as Router }`:
+ *   importing `{ BrowserRouter }` from that module is still a missing runtime
+ *   export unless the original name is exported too. Conservative: skips
+ *   packages, `export * from`, importers inside the ui kit, and integrations.
+ *   Idempotent: a stub is only injected once per name.
  */
 
 import type { ProjectFile } from "./generate.server";
@@ -27,6 +29,8 @@ interface FileExports {
   typeOnly: Set<string>;
   hasStar: boolean;
 }
+
+type StubReason = "type-only" | "missing";
 
 function collectExports(src: string): FileExports {
   const value = new Set<string>();
@@ -128,8 +132,8 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
   const out: ProjectFile[] = files.map((f) => ({ ...f }));
   const outByPath = new Map(out.map((f) => [f.path, f]));
 
-  // Track stubs to inject per target file: targetPath -> set of names.
-  const stubs = new Map<string, Set<string>>();
+  // Track stubs to inject per target file: targetPath -> name -> reason.
+  const stubs = new Map<string, Map<string, StubReason>>();
 
   // Match named-value imports (skip `import type …`).
   const importRe = /import\s+(?!type\b)([^"';]+?)\s+from\s+["']([^"']+)["'];?/g;
@@ -156,7 +160,7 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
       if (braceEnd < 0) continue;
       const inside = clause.slice(braceStart + 1, braceEnd);
 
-      const needStub: string[] = [];
+      const needStub: Array<{ name: string; reason: StubReason }> = [];
       for (const raw of inside.split(",")) {
         const piece = raw.trim();
         if (!piece) continue;
@@ -164,17 +168,20 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
         const original = piece.split(/\s+as\s+/i)[0].trim();
         if (!/^[A-Za-z_$][\w$]*$/.test(original)) continue;
         if (exp.value.has(original)) continue;
-        if (exp.typeOnly.has(original)) needStub.push(original);
+        needStub.push({
+          name: original,
+          reason: exp.typeOnly.has(original) ? "type-only" : "missing",
+        });
       }
       if (needStub.length === 0) continue;
 
-      let set = stubs.get(target);
-      if (!set) {
-        set = new Set();
-        stubs.set(target, set);
+      let targetStubs = stubs.get(target);
+      if (!targetStubs) {
+        targetStubs = new Map();
+        stubs.set(target, targetStubs);
       }
-      for (const n of needStub) set.add(n);
-      stripped.push({ file: f.path, spec, names: needStub });
+      for (const s of needStub) targetStubs.set(s.name, s.reason);
+      stripped.push({ file: f.path, spec, names: needStub.map((s) => s.name) });
     }
   }
 
@@ -185,10 +192,13 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
     if (!file) continue;
     const exp = exportsOf(target);
     const lines: string[] = [];
-    for (const n of names) {
+    for (const [n, reason] of names) {
       if (exp.value.has(n)) continue;
+      const reasonText = reason === "type-only"
+        ? "was declared only as a type/interface"
+        : "was imported as a named value but is not exported by this module";
       lines.push(
-        `// Auto-injected runtime stub: \`${n}\` was declared only as a type/interface ` +
+        `// Auto-injected runtime stub: \`${n}\` ${reasonText} ` +
         `but imported as a value. Renders children as a passthrough so the preview does not crash.`,
       );
       lines.push(

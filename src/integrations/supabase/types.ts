@@ -1810,6 +1810,56 @@ export type Database = {
           },
         ]
       }
+      project_blueprints: {
+        Row: {
+          backend: string | null
+          blueprint: Json
+          created_at: string
+          design_language: string | null
+          files: string[]
+          id: string
+          navigation: string[]
+          project_id: string
+          project_type: string
+          sections: string[]
+          updated_at: string
+        }
+        Insert: {
+          backend?: string | null
+          blueprint?: Json
+          created_at?: string
+          design_language?: string | null
+          files?: string[]
+          id?: string
+          navigation?: string[]
+          project_id: string
+          project_type?: string
+          sections?: string[]
+          updated_at?: string
+        }
+        Update: {
+          backend?: string | null
+          blueprint?: Json
+          created_at?: string
+          design_language?: string | null
+          files?: string[]
+          id?: string
+          navigation?: string[]
+          project_id?: string
+          project_type?: string
+          sections?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_blueprints_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_builds: {
         Row: {
           created_at: string
