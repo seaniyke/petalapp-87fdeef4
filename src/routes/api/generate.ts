@@ -1633,6 +1633,8 @@ Forbidden defaults
         })
       : null;
   const designBlock = designDirection ? renderDesignDirectionBlock(designDirection) : "";
+  const persistedBlueprint = !isInitial ? await loadProjectBlueprint(body.projectId) : null;
+  const blueprintBlock = renderBuildBlueprintBlock(persistedBlueprint);
 
   // Filter out files Petal manages itself before showing the project to the
   // model. The AI never edits these (we drop ops that touch them), but feeding
@@ -1781,6 +1783,7 @@ Forbidden defaults
     memoryBlock +
     preservationBlock +
     designBlock +
+    blueprintBlock +
     appShapeBlock +
     mobileBlock +
     gameBlock +
