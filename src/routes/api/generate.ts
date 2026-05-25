@@ -2773,6 +2773,14 @@ Forbidden defaults
           },
         });
 
+        const generationQualityIssues = findGenerationQualityIssues(nextFiles, detectedWebSubtype);
+        if (generationQualityIssues.length > 0) {
+          console.warn(
+            `[generation-quality] ${generationQualityIssues.length} issue(s):`,
+            generationQualityIssues.map((i) => `${i.path}: ${i.detail}`).join("; "),
+          );
+        }
+
         // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
         // pass that ONLY fixes obvious build-breakers.
         //
@@ -2790,6 +2798,7 @@ Forbidden defaults
         const autofixGateOpen =
           !localVerdict.ok ||
           !esbuildVerdict.ok ||
+          generationQualityIssues.length > 0 ||
           renderRiskIssues.length > 0 ||
           budgetWarnings.length > 0 ||
           autofixOut.report.fixedCount >= 2;
@@ -2808,6 +2817,7 @@ Forbidden defaults
           // Render-risk issues open the gate: compile-clean code can still
           // white-screen at runtime (for example undefined.includes()).
           // RLS sanity remains advisory only.
+          ...generationQualityIssues,
           ...renderRiskIssues,
           ...rlsSanityIssues,
         ];
