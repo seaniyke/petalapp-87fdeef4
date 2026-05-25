@@ -192,10 +192,13 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
     if (!file) continue;
     const exp = exportsOf(target);
     const lines: string[] = [];
-    for (const n of names) {
+    for (const [n, reason] of names) {
       if (exp.value.has(n)) continue;
+      const reasonText = reason === "type-only"
+        ? "was declared only as a type/interface"
+        : "was imported as a named value but is not exported by this module";
       lines.push(
-        `// Auto-injected runtime stub: \`${n}\` was declared only as a type/interface ` +
+        `// Auto-injected runtime stub: \`${n}\` ${reasonText} ` +
         `but imported as a value. Renders children as a passthrough so the preview does not crash.`,
       );
       lines.push(
