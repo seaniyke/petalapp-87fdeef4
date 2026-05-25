@@ -132,8 +132,8 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
   const out: ProjectFile[] = files.map((f) => ({ ...f }));
   const outByPath = new Map(out.map((f) => [f.path, f]));
 
-  // Track stubs to inject per target file: targetPath -> set of names.
-  const stubs = new Map<string, Set<string>>();
+  // Track stubs to inject per target file: targetPath -> name -> reason.
+  const stubs = new Map<string, Map<string, StubReason>>();
 
   // Match named-value imports (skip `import type …`).
   const importRe = /import\s+(?!type\b)([^"';]+?)\s+from\s+["']([^"']+)["'];?/g;
@@ -160,7 +160,7 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
       if (braceEnd < 0) continue;
       const inside = clause.slice(braceStart + 1, braceEnd);
 
-      const needStub: string[] = [];
+      const needStub: Array<{ name: string; reason: StubReason }> = [];
       for (const raw of inside.split(",")) {
         const piece = raw.trim();
         if (!piece) continue;
@@ -168,17 +168,20 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
         const original = piece.split(/\s+as\s+/i)[0].trim();
         if (!/^[A-Za-z_$][\w$]*$/.test(original)) continue;
         if (exp.value.has(original)) continue;
-        if (exp.typeOnly.has(original)) needStub.push(original);
+        needStub.push({
+          name: original,
+          reason: exp.typeOnly.has(original) ? "type-only" : "missing",
+        });
       }
       if (needStub.length === 0) continue;
 
-      let set = stubs.get(target);
-      if (!set) {
-        set = new Set();
-        stubs.set(target, set);
+      let targetStubs = stubs.get(target);
+      if (!targetStubs) {
+        targetStubs = new Map();
+        stubs.set(target, targetStubs);
       }
-      for (const n of needStub) set.add(n);
-      stripped.push({ file: f.path, spec, names: needStub });
+      for (const s of needStub) targetStubs.set(s.name, s.reason);
+      stripped.push({ file: f.path, spec, names: needStub.map((s) => s.name) });
     }
   }
 
