@@ -180,18 +180,16 @@ export const Route = createFileRoute("/api/builds/trigger")({
           );
         }
 
-        // 2e-ter) Strip named imports that target ONLY a `type`/`interface`
-        //     export in the destination file. Rollup erases types before
-        //     bundling, so `import { NavLink } from "@/components/blocks/nav-with-cta"`
-        //     (where NavLink is `export interface NavLink`) hard-fails the
-        //     production build even though tsc tolerates it. This is the
-        //     single most common cause of "the preview went blank after I
-        //     asked Petal to add a header/section" — the model conflates an
-        //     exported interface name with a component name.
+        // 2e-ter) Heal named imports that target a local module but do not
+        //     have a runtime export there. This covers type/interface-only
+        //     exports (`NavLink`) and alias-only exports (`BrowserRouter` when
+        //     a module only exports `BrowserRouter as Router`). Rollup checks
+        //     runtime exports exactly, so these otherwise hard-fail production
+        //     builds or crash the live preview.
         const { files: typeStrippedFiles, stripped: typeStripped } = stripTypeOnlyValueImports(shimmedFiles);
         if (typeStripped.length > 0) {
           console.warn(
-            `[type-only-import-strip] project=${projectId} dropped ${typeStripped.length} invalid value import(s): ` +
+            `[local-import-heal] project=${projectId} healed ${typeStripped.length} invalid value import(s): ` +
               typeStripped.map((s) => `${s.file}: { ${s.names.join(", ")} } from "${s.spec}"`).join(" | "),
           );
         }
