@@ -45,6 +45,15 @@ export function SiteHeader() {
   }, []);
 
   const initial = (user?.email ?? "?")[0]?.toUpperCase() ?? "?";
+  // Pull a profile picture from Google OAuth (or any provider that sets it).
+  // Supabase exposes provider metadata under user_metadata; check both common
+  // keys. Falls back to the initial letter chip when no avatar is present.
+  const meta = (user as unknown as { user_metadata?: Record<string, unknown> } | null | undefined)
+    ?.user_metadata;
+  const avatarUrl =
+    (typeof meta?.avatar_url === "string" && meta.avatar_url) ||
+    (typeof meta?.picture === "string" && (meta.picture as string)) ||
+    "";
 
   return (
     <>
