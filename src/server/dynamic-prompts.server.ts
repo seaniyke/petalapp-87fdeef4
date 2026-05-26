@@ -37,7 +37,9 @@ export type DynamicSnippetKey =
   | "feedback"
   | "sections"
   | "multiPage"
-  | "mobileApp";
+  | "mobileApp"
+  | "navbarBrand"
+  | "mobileNative";
 
 interface SnippetDef {
   /** Substrings that trigger this snippet (lowercased match against prompt). */
@@ -301,7 +303,39 @@ What to say:
     triggers:
       /\b(image|photo|picture|hero|illustration|avatar|background|banner|cover|logo|gallery)\b/i,
     body: `\n\n[Reinforcement — Images]
-Use \`petal-image://<descriptive-prompt>\` for any AI-generated visual. Be SPECIFIC (e.g. "petal-image://cozy-coffee-shop-hero-warm-morning-light"). Max 6 unique placeholders per turn — extras silently fall back to picsum. NEVER use unsplash.com / placeholder.com / picsum.photos when petal-image:// fits. Fake testimonial avatars MAY use https://i.pravatar.cc/150?u=<seed>.`,
+Use \`petal-image://<descriptive-prompt>\` for any AI-generated visual. Be SPECIFIC (e.g. "petal-image://cozy-coffee-shop-hero-warm-morning-light"). Max 6 unique placeholders per turn — extras silently fall back to picsum. NEVER use unsplash.com / placeholder.com / picsum.photos when petal-image:// fits. Fake testimonial avatars MAY use https://i.pravatar.cc/150?u=<seed>.
+
+CRITICAL — no gratuitous photo grids: do NOT add a generic "Gallery / Recent Work / Our Projects / Portfolio" grid of 3-6 stock photos on a service-business landing page (plumber, electrician, lawyer, dentist, restaurant, salon, etc.) UNLESS the user explicitly asked for a gallery / portfolio / case studies. These grids land as random grayscale picsum fallbacks and look amateur. Default to FeaturesGrid3 (icon + title + copy) or StatsBand for trust signals instead. Use GalleryGrid ONLY for: photographer / designer / architect / restaurant menu / real-estate portfolios, and ONLY when the brief implies showcasing visual work.`,
+  },
+  navbarBrand: {
+    triggers: /\b(nav|navbar|header|landing|marketing site|site|website|portfolio|saas|product page|app|dashboard|home ?page)\b/i,
+    body: `\n\n[Reinforcement — Navbar brand mark is REQUIRED]
+Every NavBar / NavWithCta / NavWithSearch MUST render a visible brand mark on the left: an icon (lucide-react icon themed via primary color OR a small <img> logo) PAIRED WITH the brand name as text. Never pass an empty string, null, or only an icon to \`brand\`. Pattern:
+
+  <NavBar brand={<span className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /><span className="font-semibold">BrandName</span></span>} links={...} />
+
+If the user provided a business name, use it verbatim. If not, infer one from the brief and tell the user in the summary that they can rename it. A header with only a hamburger menu and no brand is a render-quality FAILURE.`,
+  },
+  mobileNative: {
+    triggers: /\b(mobile app|native app|ios app|android app|phone app|app from scratch)\b/i,
+    body: `\n\n[Reinforcement — Mobile-native aesthetic]
+For mobile-target builds, the result must FEEL native, not like a shrunk website. ALWAYS use the mobile primitives from "@/components/mobile/*":
+- <SafeArea> as the root of every screen (respects notch + home-indicator)
+- <MobileHeader title back action /> — compact 44-56px header, NOT a desktop NavBar
+- <BottomTabBar tabs={[{ key, label, icon, href }]} /> — 3-5 tabs, fixed bottom, the primary nav
+- <MobileScreen> convenience wrapper combining the three above
+
+Visual rules (MWM / Linear-mobile / Apple-app quality bar):
+- Full-bleed hero cards with rounded-3xl corners and dramatic shadows; never a desktop-style centered hero.
+- Stacks of cards with generous padding (p-4 to p-5), 16-20px gap between cards.
+- Large touch targets: buttons min-h-12, list rows min-h-14.
+- Use bold display type for screen titles (text-2xl to text-3xl font-semibold), tight line-height.
+- Bottom tab bar is non-negotiable for any multi-screen mobile app — never put primary nav in a hamburger on mobile-native.
+- Status-bar-aware: top padding from SafeArea, not hardcoded.
+- Prefer vertical scroll + horizontal card carousels (overflow-x-auto snap-x) over multi-column grids — phones are portrait.
+- Sheets and modals slide up from the bottom (use Sheet with side="bottom"), never centered desktop dialogs.
+
+If the user references an app by name (Spotify, Notion, Linear, MWM, Headspace, Calm), match THAT app's information density and chrome — do not regress to generic web hero + 3-card grid.`,
   },
   tailwindv4: {
     triggers: /\b(theme|color|palette|brand color|dark mode|styles?\.css|@theme|tailwind)\b/i,
