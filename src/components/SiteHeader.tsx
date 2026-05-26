@@ -154,9 +154,21 @@ export function SiteHeader() {
                   <DropdownMenuTrigger asChild>
                     <button
                       aria-label="Account menu"
-                      className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-sm font-medium text-background ring-1 ring-foreground/10 transition hover:brightness-110 hover:ring-foreground/20"
+                      className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-foreground text-sm font-medium text-background ring-1 ring-foreground/10 transition hover:brightness-110 hover:ring-foreground/20"
                     >
-                      {initial}
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt={user.email ?? "Account"}
+                          referrerPolicy="no-referrer"
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        initial
+                      )}
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
