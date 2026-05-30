@@ -1423,6 +1423,59 @@ export type Database = {
         }
         Relationships: []
       }
+      petal_runtime_errors: {
+        Row: {
+          build_id: string | null
+          colno: number | null
+          created_at: string
+          id: string
+          kind: string
+          lineno: number | null
+          message: string
+          page_url: string | null
+          project_id: string
+          source: string | null
+          stack: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          build_id?: string | null
+          colno?: number | null
+          created_at?: string
+          id?: string
+          kind: string
+          lineno?: number | null
+          message: string
+          page_url?: string | null
+          project_id: string
+          source?: string | null
+          stack?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          build_id?: string | null
+          colno?: number | null
+          created_at?: string
+          id?: string
+          kind?: string
+          lineno?: number | null
+          message?: string
+          page_url?: string | null
+          project_id?: string
+          source?: string | null
+          stack?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "petal_runtime_errors_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       petal_self_learning_digests: {
         Row: {
           avg_autofix_count: number | null
@@ -1866,8 +1919,10 @@ export type Database = {
           dist_path: string | null
           error_message: string | null
           id: string
+          last_retry_at: string | null
           project_id: string
           ready_at: string | null
+          retry_count: number
           status: string
         }
         Insert: {
@@ -1875,8 +1930,10 @@ export type Database = {
           dist_path?: string | null
           error_message?: string | null
           id?: string
+          last_retry_at?: string | null
           project_id: string
           ready_at?: string | null
+          retry_count?: number
           status?: string
         }
         Update: {
@@ -1884,8 +1941,10 @@ export type Database = {
           dist_path?: string | null
           error_message?: string | null
           id?: string
+          last_retry_at?: string | null
           project_id?: string
           ready_at?: string | null
+          retry_count?: number
           status?: string
         }
         Relationships: [
