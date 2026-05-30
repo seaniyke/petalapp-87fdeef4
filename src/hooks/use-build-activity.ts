@@ -45,6 +45,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
     }
     let cancelled = false;
     let terminalSince: number | null = null;
+    let latestStatus: BuildSnapshot["status"] = "pending";
     const startedAt = Date.now();
     let watchdogPokedAt = 0;
 
@@ -87,6 +88,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
         if (next.status === "ready" || next.status === "failed") {
           if (terminalSince == null) terminalSince = Date.now();
         }
+        latestStatus = next.status;
         // Avoid pointless re-renders when polling returns identical rows.
         if (
           prev &&
