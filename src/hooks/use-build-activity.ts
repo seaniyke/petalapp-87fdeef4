@@ -167,11 +167,10 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       // If the build has been pending for ~90s without ever moving to
       // 'building', poke the watchdog. It will re-post to Railway if the
       // first webhook was lost, or mark the row failed if retries are spent.
-      const current = snap?.status ?? "pending";
       if (
         elapsed > 90_000 &&
         terminalSince == null &&
-        current === "pending"
+        latestStatus === "pending"
       ) {
         void pokeWatchdog();
       }
