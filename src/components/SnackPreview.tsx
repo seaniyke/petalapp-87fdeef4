@@ -52,21 +52,30 @@ const SKIP_FILES = new Set([
   "pnpm-lock.yaml",
   ".gitignore",
 ]);
-// Asset extensions are technically supported by Snack as `ASSET` entries
-// but require an upload roundtrip. For Milestone 3 we skip them so the
-// hot-reload loop stays snappy; Milestone 4 will wire `uploadAssetAsync`.
+// Assets must be present in the Snack session — otherwise an `import logo
+// from './assets/logo.png'` hard-fails the RN bundler and the preview goes
+// blank. We can't upload real binary content from the browser cheaply, so
+// we register every asset path as a 1x1 transparent PNG placeholder. The
+// app still renders; the developer sees a visible "missing image" outline
+// instead of a crash. Real binary upload is a future milestone.
 const ASSET_EXTS = /\.(png|jpe?g|gif|webp|svg|mp3|mp4|ttf|otf|woff2?)$/i;
+const PLACEHOLDER_PNG_DATA_URI =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 
-function toSnackFiles(files: ProjectFile[]): Record<
-  string,
-  { type: "CODE"; contents: string }
-> {
-  const out: Record<string, { type: "CODE"; contents: string }> = {};
+type SnackFile =
+  | { type: "CODE"; contents: string }
+  | { type: "ASSET"; contents: string };
+
+function toSnackFiles(files: ProjectFile[]): Record<string, SnackFile> {
+  const out: Record<string, SnackFile> = {};
   for (const f of files) {
     if (!f.path) continue;
     if (SKIP_FILES.has(f.path)) continue;
     if (SKIP_PREFIXES.some((p) => f.path.startsWith(p))) continue;
-    if (ASSET_EXTS.test(f.path)) continue;
+    if (ASSET_EXTS.test(f.path)) {
+      out[f.path] = { type: "ASSET", contents: PLACEHOLDER_PNG_DATA_URI };
+      continue;
+    }
     out[f.path] = { type: "CODE", contents: f.content ?? "" };
   }
   // Snack requires at least one entry file. If the project doesn't have
