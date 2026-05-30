@@ -45,7 +45,30 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
     }
     let cancelled = false;
     let terminalSince: number | null = null;
+    let latestStatus: BuildSnapshot["status"] = "pending";
     const startedAt = Date.now();
+    let watchdogPokedAt = 0;
+
+    const pokeWatchdog = async () => {
+      // Throttle: at most once every 60s per build to avoid hammering.
+      if (Date.now() - watchdogPokedAt < 60_000) return;
+      watchdogPokedAt = Date.now();
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        const token = session.session?.access_token;
+        if (!token) return;
+        await fetch("/api/builds/watchdog", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ buildId: latestBuildId }),
+        });
+      } catch (e) {
+        console.warn("[useBuildActivity] watchdog poke failed", e);
+      }
+    };
 
     const apply = (data: {
       status: string | null;
@@ -65,6 +88,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
         if (next.status === "ready" || next.status === "failed") {
           if (terminalSince == null) terminalSince = Date.now();
         }
+        latestStatus = next.status;
         // Avoid pointless re-renders when polling returns identical rows.
         if (
           prev &&
@@ -140,9 +164,15 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       if (terminalSince != null && Date.now() - terminalSince > 30_000) return;
       void fetchOnce();
       if (elapsed > 15_000 && terminalSince == null) void fetchProjectLatestBuild();
-      // Slow the cadence after the deploy window.
-      if (elapsed > 90_000 && terminalSince == null) {
-        // no-op — interval already runs at base cadence; we just gate the call.
+      // If the build has been pending for ~90s without ever moving to
+      // 'building', poke the watchdog. It will re-post to Railway if the
+      // first webhook was lost, or mark the row failed if retries are spent.
+      if (
+        elapsed > 90_000 &&
+        terminalSince == null &&
+        latestStatus === "pending"
+      ) {
+        void pokeWatchdog();
       }
     }, 4_000);
 

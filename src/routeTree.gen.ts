@@ -54,12 +54,14 @@ import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/em
 import { Route as ApiRegistrarSearchRouteImport } from './routes/api/registrar/search'
 import { Route as ApiRegistrarPurchaseRouteImport } from './routes/api/registrar/purchase'
 import { Route as ApiRegistrarPollRouteImport } from './routes/api/registrar/poll'
+import { Route as ApiPublicTrackRuntimeErrorRouteImport } from './routes/api/public/track-runtime-error'
 import { Route as ApiPublicTrackFailureRouteImport } from './routes/api/public/track-failure'
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
 import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
 import { Route as ApiMobileEasBuildRouteImport } from './routes/api/mobile/eas-build'
 import { Route as ApiDomainsDnsCheckRouteImport } from './routes/api/domains/dns-check'
+import { Route as ApiBuildsWatchdogRouteImport } from './routes/api/builds/watchdog'
 import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigger'
 import { Route as ApiBuildsCallbackRouteImport } from './routes/api/builds/callback'
 import { Route as ApiBillingVerifyRouteImport } from './routes/api/billing/verify'
@@ -310,6 +312,12 @@ const ApiRegistrarPollRoute = ApiRegistrarPollRouteImport.update({
   path: '/api/registrar/poll',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTrackRuntimeErrorRoute =
+  ApiPublicTrackRuntimeErrorRouteImport.update({
+    id: '/api/public/track-runtime-error',
+    path: '/api/public/track-runtime-error',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicTrackFailureRoute = ApiPublicTrackFailureRouteImport.update({
   id: '/api/public/track-failure',
   path: '/api/public/track-failure',
@@ -339,6 +347,11 @@ const ApiDomainsDnsCheckRoute = ApiDomainsDnsCheckRouteImport.update({
   id: '/dns-check',
   path: '/dns-check',
   getParentRoute: () => ApiDomainsRoute,
+} as any)
+const ApiBuildsWatchdogRoute = ApiBuildsWatchdogRouteImport.update({
+  id: '/api/builds/watchdog',
+  path: '/api/builds/watchdog',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiBuildsTriggerRoute = ApiBuildsTriggerRouteImport.update({
   id: '/api/builds/trigger',
@@ -521,12 +534,14 @@ export interface FileRoutesByFullPath {
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
+  '/api/builds/watchdog': typeof ApiBuildsWatchdogRoute
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
+  '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
@@ -598,12 +613,14 @@ export interface FileRoutesByTo {
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
+  '/api/builds/watchdog': typeof ApiBuildsWatchdogRoute
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
+  '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
@@ -676,12 +693,14 @@ export interface FileRoutesById {
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
+  '/api/builds/watchdog': typeof ApiBuildsWatchdogRoute
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
+  '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
@@ -755,12 +774,14 @@ export interface FileRouteTypes {
     | '/api/billing/verify'
     | '/api/builds/callback'
     | '/api/builds/trigger'
+    | '/api/builds/watchdog'
     | '/api/domains/dns-check'
     | '/api/mobile/eas-build'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
     | '/api/public/track-failure'
+    | '/api/public/track-runtime-error'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
@@ -832,12 +853,14 @@ export interface FileRouteTypes {
     | '/api/billing/verify'
     | '/api/builds/callback'
     | '/api/builds/trigger'
+    | '/api/builds/watchdog'
     | '/api/domains/dns-check'
     | '/api/mobile/eas-build'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
     | '/api/public/track-failure'
+    | '/api/public/track-runtime-error'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
@@ -909,12 +932,14 @@ export interface FileRouteTypes {
     | '/api/billing/verify'
     | '/api/builds/callback'
     | '/api/builds/trigger'
+    | '/api/builds/watchdog'
     | '/api/domains/dns-check'
     | '/api/mobile/eas-build'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
     | '/api/public/track-failure'
+    | '/api/public/track-runtime-error'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
@@ -986,11 +1011,13 @@ export interface RootRouteChildren {
   ApiBillingVerifyRoute: typeof ApiBillingVerifyRoute
   ApiBuildsCallbackRoute: typeof ApiBuildsCallbackRoute
   ApiBuildsTriggerRoute: typeof ApiBuildsTriggerRoute
+  ApiBuildsWatchdogRoute: typeof ApiBuildsWatchdogRoute
   ApiMobileEasBuildRoute: typeof ApiMobileEasBuildRoute
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
   ApiPublicHostLookupRoute: typeof ApiPublicHostLookupRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
   ApiPublicTrackFailureRoute: typeof ApiPublicTrackFailureRoute
+  ApiPublicTrackRuntimeErrorRoute: typeof ApiPublicTrackRuntimeErrorRoute
   ApiRegistrarPollRoute: typeof ApiRegistrarPollRoute
   ApiRegistrarPurchaseRoute: typeof ApiRegistrarPurchaseRoute
   ApiRegistrarSearchRoute: typeof ApiRegistrarSearchRoute
@@ -1330,6 +1357,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRegistrarPollRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/track-runtime-error': {
+      id: '/api/public/track-runtime-error'
+      path: '/api/public/track-runtime-error'
+      fullPath: '/api/public/track-runtime-error'
+      preLoaderRoute: typeof ApiPublicTrackRuntimeErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/track-failure': {
       id: '/api/public/track-failure'
       path: '/api/public/track-failure'
@@ -1371,6 +1405,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/domains/dns-check'
       preLoaderRoute: typeof ApiDomainsDnsCheckRouteImport
       parentRoute: typeof ApiDomainsRoute
+    }
+    '/api/builds/watchdog': {
+      id: '/api/builds/watchdog'
+      path: '/api/builds/watchdog'
+      fullPath: '/api/builds/watchdog'
+      preLoaderRoute: typeof ApiBuildsWatchdogRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/builds/trigger': {
       id: '/api/builds/trigger'
@@ -1614,11 +1655,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBillingVerifyRoute: ApiBillingVerifyRoute,
   ApiBuildsCallbackRoute: ApiBuildsCallbackRoute,
   ApiBuildsTriggerRoute: ApiBuildsTriggerRoute,
+  ApiBuildsWatchdogRoute: ApiBuildsWatchdogRoute,
   ApiMobileEasBuildRoute: ApiMobileEasBuildRoute,
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
   ApiPublicHostLookupRoute: ApiPublicHostLookupRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
   ApiPublicTrackFailureRoute: ApiPublicTrackFailureRoute,
+  ApiPublicTrackRuntimeErrorRoute: ApiPublicTrackRuntimeErrorRoute,
   ApiRegistrarPollRoute: ApiRegistrarPollRoute,
   ApiRegistrarPurchaseRoute: ApiRegistrarPurchaseRoute,
   ApiRegistrarSearchRoute: ApiRegistrarSearchRoute,

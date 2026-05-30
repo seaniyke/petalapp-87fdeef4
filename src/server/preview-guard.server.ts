@@ -1,14 +1,31 @@
 import type { ProjectFile } from "./generate.server";
 
 const GUARD_PATH = "public/__petal_guard.js";
-const GUARD_VERSION = 1;
+const GUARD_VERSION = 2;
+const DEFAULT_INGEST_URL =
+  "https://buildwithpetal.com/api/public/track-runtime-error";
 
-const PREVIEW_GUARD_SCRIPT = `(() => {
+interface GuardOptions {
+  /** Petal project UUID. When present, the guard POSTs runtime errors to
+   *  the ingest endpoint so deployed/CDN previews surface crashes back to
+   *  Petal even when there's no parent iframe to receive postMessage. */
+  projectId?: string;
+  /** Override the ingest URL (used for staging/preview environments). */
+  ingestUrl?: string;
+}
+
+function buildGuardScript(opts: GuardOptions): string {
+  const projectId = opts.projectId ? JSON.stringify(opts.projectId) : "null";
+  const ingestUrl = JSON.stringify(opts.ingestUrl || DEFAULT_INGEST_URL);
+  return `(() => {
   var VERSION = ${GUARD_VERSION};
   if (window.__petalPreviewGuardVersion && window.__petalPreviewGuardVersion >= VERSION) return;
   window.__petalPreviewGuardVersion = VERSION;
+  var PROJECT_ID = ${projectId};
+  var INGEST_URL = ${ingestUrl};
   var lastError = null;
   var overlayShown = false;
+  var posted = false;
 
   function asText(value) {
     if (!value) return "Unknown preview error";
@@ -23,6 +40,36 @@ const PREVIEW_GUARD_SCRIPT = `(() => {
 
   function post(type, payload) {
     try { parent.postMessage({ type: type, payload: payload }, "*"); } catch (_) {}
+    // Also POST to Petal's ingest endpoint so deployed apps (no parent
+    // iframe) surface crashes back to the project owner. Best-effort; we
+    // never let an analytics failure break the user's app.
+    if (!PROJECT_ID || posted) return;
+    posted = true;
+    try {
+      var body = JSON.stringify({
+        projectId: PROJECT_ID,
+        kind: payload && payload.kind ? payload.kind : "error",
+        message: (payload && payload.message) || "Unknown error",
+        stack: (payload && payload.stack) || null,
+        source: (payload && payload.source) || null,
+        lineno: (payload && payload.lineno) || null,
+        colno: (payload && payload.colno) || null,
+        pageUrl: (location && location.href) ? String(location.href).slice(0, 1000) : null,
+      });
+      if (navigator && typeof navigator.sendBeacon === "function") {
+        try {
+          var blob = new Blob([body], { type: "application/json" });
+          if (navigator.sendBeacon(INGEST_URL, blob)) return;
+        } catch (_) {}
+      }
+      fetch(INGEST_URL, {
+        method: "POST",
+        mode: "cors",
+        keepalive: true,
+        headers: { "Content-Type": "application/json" },
+        body: body,
+      }).catch(function () {});
+    } catch (_) {}
   }
 
   function showOverlay(title, detail, stack) {
@@ -99,10 +146,15 @@ const PREVIEW_GUARD_SCRIPT = `(() => {
   setTimeout(checkBlank, 6500);
 })();
 `;
+}
 
-export function injectPreviewGuard(files: ProjectFile[]): { files: ProjectFile[]; injected: boolean } {
+export function injectPreviewGuard(
+  files: ProjectFile[],
+  opts: GuardOptions = {},
+): { files: ProjectFile[]; injected: boolean } {
+  const script = buildGuardScript(opts);
   const byPath = new Map(files.map((file) => [file.path, file.content]));
-  byPath.set(GUARD_PATH, PREVIEW_GUARD_SCRIPT);
+  byPath.set(GUARD_PATH, script);
 
   const index = byPath.get("index.html");
   if (!index) {
