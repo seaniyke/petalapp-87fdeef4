@@ -2944,7 +2944,14 @@ Forbidden defaults
         // Billing: cycles 3..N push usage into `agentLoopUsages` and are
         // folded into the single user charge via priceTurn(). Cycle 2 (the
         // default polish pass above) is still on Petal's tab.
-        if (labsFlags.agent_loop && !body.isAutoFix) {
+        // P0-D: the bounded agent loop now runs for every user (the labs
+        // flag was the kill switch during early testing). All safety limits
+        // below remain — 3 cycles max, 90s wall budget, converges the
+        // moment local+esbuild verifiers pass, hard-stops on zero progress.
+        // Still suppressed for user-initiated "try to fix" turns
+        // (`isAutoFix`) so we never recurse into another loop.
+        if (!body.isAutoFix) {
+
           const AGENT_LOOP_MAX_CYCLES = 3;
           const AGENT_LOOP_WALL_MS = 90_000;
           const loopT0 = Date.now();
