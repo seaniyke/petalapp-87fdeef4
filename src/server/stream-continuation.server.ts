@@ -67,81 +67,88 @@ export async function runContinuation(args: {
   const notes: string[] = [];
   let count = 0;
 
-  // Limit blast radius — at most 3 continuation calls per turn.
+  // Escalation ladder: if attempt 1 still leaves the file broken, attempt 2
+  // promotes to a stronger model. Provider-neutral aliases — the gateway
+  // routes by name.
+  const escalate = (m: string): string | null => {
+    if (/flash-lite/i.test(m)) return m.replace(/flash-lite/i, "flash");
+    if (/gpt-5-nano/i.test(m)) return "openai/gpt-5-mini";
+    if (/gpt-5-mini/i.test(m)) return "openai/gpt-5";
+    if (/gemini-2\.5-flash$/i.test(m)) return "google/gemini-2.5-pro";
+    return null;
+  };
+
+  // Send only the last ~6KB of the file as anchor context. The full head
+  // doesn't help the model emit the tail and burns the response budget.
+  const tailAnchor = (s: string): string => (s.length > 6000 ? s.slice(-6000) : s);
+
+  async function attempt(file: ProjectFile, model: string): Promise<string | null> {
+    const resp = await aiChatCompletions({
+      feature: "recovery",
+      body: {
+        model,
+        messages: [
+          { role: "system", content: SYSTEM },
+          {
+            role: "user",
+            content: `Path: ${file.path}\n\nPartial contents (truncated mid-stream; tail shown):\n\n${tailAnchor(file.content)}`,
+          },
+        ],
+        max_tokens: 2000,
+        temperature: 0.1,
+      },
+    });
+    if (!resp.ok) return null;
+    const data = (await resp.json()) as { choices?: { message?: { content?: string } }[] };
+    let tail = data.choices?.[0]?.message?.content ?? "";
+    if (!tail.trim()) return null;
+    tail = tail.replace(/^```[a-zA-Z]*\n?/g, "").replace(/```\s*$/g, "");
+    const overlapWindow = file.content.slice(-200);
+    const overlapIdx = tail.indexOf(overlapWindow);
+    if (overlapIdx !== -1) tail = tail.slice(overlapIdx + overlapWindow.length);
+    return tail;
+  }
+
+  // Limit blast radius — at most 3 files per turn.
   for (const issue of uniq.slice(0, 3)) {
     const file = byPath.get(issue.path);
     if (!file) continue;
 
-    try {
-      const resp = await aiChatCompletions({
-        feature: "recovery",
-        body: {
-          model: args.model,
-          messages: [
-            { role: "system", content: SYSTEM },
-            {
-              role: "user",
-              content: `Path: ${file.path}\n\nPartial contents (truncated mid-stream):\n\n${file.content}`,
-            },
-          ],
-          max_tokens: 2000,
-          temperature: 0.1,
-        },
-      });
+    const ladder = [args.model, escalate(args.model)].filter(Boolean) as string[];
+    let healed = false;
+    let lastNote = "";
 
-      if (!resp.ok) {
-        notes.push(`${file.path}: HTTP ${resp.status}`);
-        continue;
+    for (const model of ladder) {
+      try {
+        const tail = await attempt(file, model);
+        if (!tail) {
+          lastNote = `${file.path}: empty/failed completion (${model})`;
+          continue;
+        }
+        const merged = `${file.content}${tail}`;
+        const after = verifyFileLocal(file.path, merged);
+        const stillBroken = after.some(
+          (i) =>
+            i.kind === "truncation" ||
+            i.kind === "unterminated-string" ||
+            i.kind === "braces",
+        );
+        if (stillBroken) {
+          lastNote = `${file.path}: still broken after ${model}`;
+          continue;
+        }
+        byPath.set(file.path, { path: file.path, content: merged });
+        notes.push(
+          `${file.path}: appended ${tail.length} bytes (${model}${model !== args.model ? " — escalated" : ""})`,
+        );
+        count++;
+        healed = true;
+        break;
+      } catch (e) {
+        lastNote = `${file.path}: ${e instanceof Error ? e.message : "continuation failed"} (${model})`;
       }
-
-      const data = (await resp.json()) as {
-        choices?: { message?: { content?: string } }[];
-      };
-      let tail = data.choices?.[0]?.message?.content ?? "";
-      if (!tail.trim()) {
-        notes.push(`${file.path}: empty completion`);
-        continue;
-      }
-
-      // Strip accidental fences.
-      tail = tail.replace(/^```[a-zA-Z]*\n?/g, "").replace(/```\s*$/g, "");
-
-      // If the model accidentally re-emitted the head, drop the overlap.
-      const overlapWindow = file.content.slice(-200);
-      const overlapIdx = tail.indexOf(overlapWindow);
-      if (overlapIdx !== -1) {
-        tail = tail.slice(overlapIdx + overlapWindow.length);
-      }
-
-      // Append the continuation bytes exactly where the stream stopped. Do
-      // NOT insert a newline first: many real truncations stop mid-string,
-      // mid-JSX attribute, or mid-token, and adding a newline corrupts the
-      // file we are trying to complete.
-      const merged = `${file.content}${tail}`;
-
-      // Verify the continuation actually helped — if it's still truncated
-      // OR braces are still wildly unbalanced, keep the original (the
-      // post-stream autofix model gets a shot next).
-      const after = verifyFileLocal(file.path, merged);
-      const stillBroken = after.some(
-        (i) =>
-          i.kind === "truncation" ||
-          i.kind === "unterminated-string" ||
-          i.kind === "braces",
-      );
-      if (stillBroken) {
-        notes.push(`${file.path}: continuation still broken, skipping`);
-        continue;
-      }
-
-      byPath.set(file.path, { path: file.path, content: merged });
-      notes.push(`${file.path}: appended ${tail.length} bytes`);
-      count++;
-    } catch (e) {
-      notes.push(
-        `${file.path}: ${e instanceof Error ? e.message : "continuation failed"}`,
-      );
     }
+    if (!healed) notes.push(lastNote || `${file.path}: persistent truncation, dropping`);
   }
 
   return {
