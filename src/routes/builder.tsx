@@ -723,10 +723,17 @@ function Builder() {
   });
   const isMobile = useIsMobile();
   const webContainerSupported = useWebContainerSupported();
+  // P0-E: flip true when WebContainer boot rejects at runtime (network
+  // blip pulling the runtime, OOM, etc). Once flipped we fall back to the
+  // deployed CDN preview for the rest of the session instead of stranding
+  // the user on an error card.
+  const [webContainerBootFailed, setWebContainerBootFailed] = useState(false);
   // Use the deployed-build iframe fallback whenever WebContainers can't run
   // here — narrow viewport (mobile) OR an unsupported browser (iOS Safari,
-  // Android non-Chromium, no SharedArrayBuffer, etc.).
-  const useDeployedFallback = isMobile || !webContainerSupported;
+  // Android non-Chromium, no SharedArrayBuffer, etc.) OR an in-session
+  // WebContainer boot failure.
+  const useDeployedFallback = isMobile || !webContainerSupported || webContainerBootFailed;
+
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
