@@ -577,8 +577,13 @@ export type StreamEvent =
       recap?: string;
       creditsCharged?: number;
       noFileChanges?: boolean;
+      /** P0-A: true when the server already wrote `files` to project_files
+       *  before emitting this event. Lets the client skip its own write and
+       *  trust the durable copy. */
+      persisted?: boolean;
       /** Two-phase gate: backend chips proposed for the NEXT turn. */
       suggestions?: string[];
+
     }
   | {
       type: "self_check";
