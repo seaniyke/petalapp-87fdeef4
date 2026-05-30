@@ -150,21 +150,25 @@ export function WebContainerPreview({
           // Hard cap install + dev start — surfaces an error instead of spinning forever.
           timeoutRef.current = setTimeout(() => {
             if (cancelled) return;
-            setError(
-              "Setup is taking longer than 5 minutes. Check the logs below, or try reloading."
-            );
+            const msg =
+              "Setup is taking longer than 5 minutes. Check the logs below, or try reloading.";
+            setError(msg);
             setPhase("error");
             setShowLogs(true);
+            onBootFailed?.(msg);
           }, INSTALL_TIMEOUT_MS);
           const code = await installDeps();
           if (cancelled) return;
           if (code !== 0) {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            setError(`npm install failed (exit ${code}). See logs.`);
+            const msg = `npm install failed (exit ${code}). See logs.`;
+            setError(msg);
             setPhase("error");
             setShowLogs(true);
+            onBootFailed?.(msg);
             return;
           }
+
           setPhase("starting");
           await startDevServer();
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
