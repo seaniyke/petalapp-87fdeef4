@@ -162,9 +162,16 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       if (terminalSince != null && Date.now() - terminalSince > 30_000) return;
       void fetchOnce();
       if (elapsed > 15_000 && terminalSince == null) void fetchProjectLatestBuild();
-      // Slow the cadence after the deploy window.
-      if (elapsed > 90_000 && terminalSince == null) {
-        // no-op — interval already runs at base cadence; we just gate the call.
+      // If the build has been pending for ~90s without ever moving to
+      // 'building', poke the watchdog. It will re-post to Railway if the
+      // first webhook was lost, or mark the row failed if retries are spent.
+      const current = snap?.status ?? "pending";
+      if (
+        elapsed > 90_000 &&
+        terminalSince == null &&
+        current === "pending"
+      ) {
+        void pokeWatchdog();
       }
     }, 4_000);
 
