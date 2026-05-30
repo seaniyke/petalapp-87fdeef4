@@ -50,6 +50,7 @@ export function WebContainerPreview({
   onPick,
   onRuntimeError,
   onAskRepair,
+  onBootFailed,
   lastNarration,
 }: {
   files: ProjectFile[];
@@ -61,9 +62,14 @@ export function WebContainerPreview({
   onRuntimeError?: (err: RuntimeError) => void;
   /** Plan #3 — user clicked "Ask Petal to repair" on the crash fallback. */
   onAskRepair?: (reason: string) => void;
+  /** P0-E — WebContainer boot/install/dev rejected. Parent should fall
+   *  back to the deployed CDN preview instead of leaving the user on the
+   *  error card. Fired once per mount. */
+  onBootFailed?: (reason: string) => void;
   /** Plan #3 — last build narration to surface on the crash fallback as context. */
   lastNarration?: string | null;
 }) {
+
   const [phase, setPhase] = useState<Phase>("idle");
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
@@ -144,21 +150,25 @@ export function WebContainerPreview({
           // Hard cap install + dev start — surfaces an error instead of spinning forever.
           timeoutRef.current = setTimeout(() => {
             if (cancelled) return;
-            setError(
-              "Setup is taking longer than 5 minutes. Check the logs below, or try reloading."
-            );
+            const msg =
+              "Setup is taking longer than 5 minutes. Check the logs below, or try reloading.";
+            setError(msg);
             setPhase("error");
             setShowLogs(true);
+            onBootFailed?.(msg);
           }, INSTALL_TIMEOUT_MS);
           const code = await installDeps();
           if (cancelled) return;
           if (code !== 0) {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            setError(`npm install failed (exit ${code}). See logs.`);
+            const msg = `npm install failed (exit ${code}). See logs.`;
+            setError(msg);
             setPhase("error");
             setShowLogs(true);
+            onBootFailed?.(msg);
             return;
           }
+
           setPhase("starting");
           await startDevServer();
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -175,10 +185,14 @@ export function WebContainerPreview({
       } catch (e) {
         if (cancelled) return;
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        setError(e instanceof Error ? e.message : "WebContainer failed to start.");
+        const msg = e instanceof Error ? e.message : "WebContainer failed to start.";
+        setError(msg);
         setPhase("error");
         setShowLogs(true);
+        // P0-E — let the parent swap to the deployed CDN preview.
+        onBootFailed?.(msg);
       }
+
     })();
 
     return () => {

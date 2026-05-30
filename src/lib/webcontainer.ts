@@ -428,8 +428,20 @@ export async function installDeps(): Promise<number> {
   return installPromise;
 }
 
-/** Start `npm run dev`. Kills any previous dev process first. */
+/** Start `npm run dev`. Kills any previous dev process first.
+ *  P0-H: explicitly wait for any in-flight `installDeps()` to finish before
+ *  spawning `npm run dev` — otherwise a fast re-mount can race the install
+ *  and start the dev server against an incomplete `node_modules`, which
+ *  manifests as "module not found" / blank preview with no clear cause. */
 export async function startDevServer(): Promise<void> {
+  if (installPromise) {
+    emitLog({ stream: "system", text: "waiting for npm install to finish before starting dev server…" });
+    try {
+      await installPromise;
+    } catch {
+      // installDeps surfaces its own error in logs; nothing to add here.
+    }
+  }
   const wc = await getContainer();
   if (devProcess) {
     devProcess.kill();
@@ -441,6 +453,7 @@ export async function startDevServer(): Promise<void> {
   devProcess = proc;
   void pipeProcess("npm run dev", proc);
 }
+
 
 /** Stop the dev server (e.g. when leaving the builder). */
 export function stopDevServer() {

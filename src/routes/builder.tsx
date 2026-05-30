@@ -210,10 +210,18 @@ const FirstRunTour = lazy(() =>
 function useWebContainerSupported(): boolean {
   const [supported, setSupported] = useState<boolean>(false);
   useEffect(() => {
-    setSupported(detectUnsupportedWebContainerBrowser() === null);
+    // P0-E: also require cross-origin isolation. Without it WebContainer
+    // boots and then hangs forever waiting for SharedArrayBuffer — a worse
+    // UX than failing fast over to the deployed CDN preview.
+    const browserOk = detectUnsupportedWebContainerBrowser() === null;
+    const coiOk =
+      typeof window !== "undefined" &&
+      (window as Window).crossOriginIsolated === true;
+    setSupported(browserOk && coiOk);
   }, []);
   return supported;
 }
+
 type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
 function isBuildFailureCardTitle(title: string | undefined): boolean {
@@ -715,10 +723,17 @@ function Builder() {
   });
   const isMobile = useIsMobile();
   const webContainerSupported = useWebContainerSupported();
+  // P0-E: flip true when WebContainer boot rejects at runtime (network
+  // blip pulling the runtime, OOM, etc). Once flipped we fall back to the
+  // deployed CDN preview for the rest of the session instead of stranding
+  // the user on an error card.
+  const [webContainerBootFailed, setWebContainerBootFailed] = useState(false);
   // Use the deployed-build iframe fallback whenever WebContainers can't run
   // here — narrow viewport (mobile) OR an unsupported browser (iOS Safari,
-  // Android non-Chromium, no SharedArrayBuffer, etc.).
-  const useDeployedFallback = isMobile || !webContainerSupported;
+  // Android non-Chromium, no SharedArrayBuffer, etc.) OR an in-session
+  // WebContainer boot failure.
+  const useDeployedFallback = isMobile || !webContainerSupported || webContainerBootFailed;
+
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -4625,6 +4640,10 @@ function Builder() {
                             });
                           }}
                           lastNarration={latestNarration ?? null}
+                          onBootFailed={(reason) => {
+                            console.warn("[preview] WebContainer boot failed, switching to CDN fallback:", reason);
+                            setWebContainerBootFailed(true);
+                          }}
                           onAskRepair={(reason) => {
                             // Plan #3 — pre-fill the composer with a repair
                             // request seeded by the runtime crash reason.
@@ -4633,6 +4652,7 @@ function Builder() {
                               `The preview just crashed with: "${reason}". Please diagnose and fix it.`,
                             );
                           }}
+
                         />
                       </Suspense>
                     ) : (
