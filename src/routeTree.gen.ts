@@ -54,6 +54,7 @@ import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/em
 import { Route as ApiRegistrarSearchRouteImport } from './routes/api/registrar/search'
 import { Route as ApiRegistrarPurchaseRouteImport } from './routes/api/registrar/purchase'
 import { Route as ApiRegistrarPollRouteImport } from './routes/api/registrar/poll'
+import { Route as ApiPublicTrackRuntimeErrorRouteImport } from './routes/api/public/track-runtime-error'
 import { Route as ApiPublicTrackFailureRouteImport } from './routes/api/public/track-failure'
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
 import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
@@ -310,6 +311,12 @@ const ApiRegistrarPollRoute = ApiRegistrarPollRouteImport.update({
   path: '/api/registrar/poll',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTrackRuntimeErrorRoute =
+  ApiPublicTrackRuntimeErrorRouteImport.update({
+    id: '/api/public/track-runtime-error',
+    path: '/api/public/track-runtime-error',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicTrackFailureRoute = ApiPublicTrackFailureRouteImport.update({
   id: '/api/public/track-failure',
   path: '/api/public/track-failure',
@@ -527,6 +534,7 @@ export interface FileRoutesByFullPath {
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
+  '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
@@ -604,6 +612,7 @@ export interface FileRoutesByTo {
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
+  '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
@@ -682,6 +691,7 @@ export interface FileRoutesById {
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
+  '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
@@ -761,6 +771,7 @@ export interface FileRouteTypes {
     | '/api/public/host-lookup'
     | '/api/public/track'
     | '/api/public/track-failure'
+    | '/api/public/track-runtime-error'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
@@ -838,6 +849,7 @@ export interface FileRouteTypes {
     | '/api/public/host-lookup'
     | '/api/public/track'
     | '/api/public/track-failure'
+    | '/api/public/track-runtime-error'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
@@ -915,6 +927,7 @@ export interface FileRouteTypes {
     | '/api/public/host-lookup'
     | '/api/public/track'
     | '/api/public/track-failure'
+    | '/api/public/track-runtime-error'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
@@ -991,6 +1004,7 @@ export interface RootRouteChildren {
   ApiPublicHostLookupRoute: typeof ApiPublicHostLookupRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
   ApiPublicTrackFailureRoute: typeof ApiPublicTrackFailureRoute
+  ApiPublicTrackRuntimeErrorRoute: typeof ApiPublicTrackRuntimeErrorRoute
   ApiRegistrarPollRoute: typeof ApiRegistrarPollRoute
   ApiRegistrarPurchaseRoute: typeof ApiRegistrarPurchaseRoute
   ApiRegistrarSearchRoute: typeof ApiRegistrarSearchRoute
@@ -1330,6 +1344,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRegistrarPollRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/track-runtime-error': {
+      id: '/api/public/track-runtime-error'
+      path: '/api/public/track-runtime-error'
+      fullPath: '/api/public/track-runtime-error'
+      preLoaderRoute: typeof ApiPublicTrackRuntimeErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/track-failure': {
       id: '/api/public/track-failure'
       path: '/api/public/track-failure'
@@ -1619,6 +1640,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHostLookupRoute: ApiPublicHostLookupRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
   ApiPublicTrackFailureRoute: ApiPublicTrackFailureRoute,
+  ApiPublicTrackRuntimeErrorRoute: ApiPublicTrackRuntimeErrorRoute,
   ApiRegistrarPollRoute: ApiRegistrarPollRoute,
   ApiRegistrarPurchaseRoute: ApiRegistrarPurchaseRoute,
   ApiRegistrarSearchRoute: ApiRegistrarSearchRoute,
