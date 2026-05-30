@@ -3262,6 +3262,43 @@ Forbidden defaults
           encoder.encode(sse({ type: "cycle_end", cycle: 1, outcome: "clean" })),
         );
 
+        // P0-A: Server-side file persistence. Historically the client wrote
+        // `project_files` after receiving the `result` SSE event. If the SSE
+        // connection dropped, the tab closed, or the user navigated away
+        // between `result` and the client write, the entire generation was
+        // lost. Write authoritatively from the server here, BEFORE the
+        // result event, so the work is durable even if delivery to the
+        // client fails. Client still updates its local file map from the
+        // SSE payload for instant preview without an extra round-trip.
+        if (body.projectId && nextFiles.length > 0) {
+          try {
+            const cleanFiles = (() => {
+              const byPath = new Map<string, { path: string; content: string }>();
+              for (const f of nextFiles) {
+                const p = f.path.trim();
+                if (!p) continue;
+                byPath.set(p, { path: p, content: f.content ?? "" });
+              }
+              return Array.from(byPath.values());
+            })();
+            const { error: persistErr } = await supabaseAdmin.rpc(
+              "replace_project_files",
+              { _project_id: body.projectId, _files: cleanFiles } as never,
+            );
+            if (persistErr) {
+              console.error(
+                "[persistence] server-side replace_project_files failed",
+                { projectId: body.projectId, error: persistErr.message },
+              );
+            }
+          } catch (e) {
+            console.error(
+              "[persistence] server-side file write threw",
+              (e as Error).message,
+            );
+          }
+        }
+
         controller.enqueue(
           encoder.encode(
             sse({
@@ -3271,12 +3308,14 @@ Forbidden defaults
               plan,
               recap,
               creditsCharged: finalCharged,
+              persisted: Boolean(body.projectId && nextFiles.length > 0),
               ...(backendGate.gated && backendGate.suggestions.length > 0
                 ? { suggestions: backendGate.suggestions }
                 : {}),
             }),
           ),
         );
+
 
         // Phase B — record outcome telemetry. Pairs this generation
         // with its local-verifier verdict + autofix count so the smart
