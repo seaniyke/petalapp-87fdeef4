@@ -50,6 +50,7 @@ export function WebContainerPreview({
   onPick,
   onRuntimeError,
   onAskRepair,
+  onBootFailed,
   lastNarration,
 }: {
   files: ProjectFile[];
@@ -61,9 +62,14 @@ export function WebContainerPreview({
   onRuntimeError?: (err: RuntimeError) => void;
   /** Plan #3 — user clicked "Ask Petal to repair" on the crash fallback. */
   onAskRepair?: (reason: string) => void;
+  /** P0-E — WebContainer boot/install/dev rejected. Parent should fall
+   *  back to the deployed CDN preview instead of leaving the user on the
+   *  error card. Fired once per mount. */
+  onBootFailed?: (reason: string) => void;
   /** Plan #3 — last build narration to surface on the crash fallback as context. */
   lastNarration?: string | null;
 }) {
+
   const [phase, setPhase] = useState<Phase>("idle");
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
