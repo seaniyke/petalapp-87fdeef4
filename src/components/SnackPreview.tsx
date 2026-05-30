@@ -141,7 +141,7 @@ export function SnackPreview({ files, projectName }: Props) {
         }) as {
           getState(): { webPreviewURL?: string; url?: string };
           addStateListener(fn: (state: { webPreviewURL?: string; url?: string }) => void): () => void;
-          updateFiles(files: Record<string, { type: "CODE"; contents: string } | null>): void;
+          updateFiles(files: Record<string, SnackFile | null>): void;
           setOnline(online: boolean): void;
         };
         snackRef.current = snack;
@@ -191,7 +191,7 @@ export function SnackPreview({ files, projectName }: Props) {
   // Stream Petal's file writes into the live Snack session.
   useEffect(() => {
     const snack = snackRef.current as
-      | { updateFiles(f: Record<string, { type: "CODE"; contents: string } | null>): void }
+      | { updateFiles(f: Record<string, SnackFile | null>): void }
       | null;
     if (!snack) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
