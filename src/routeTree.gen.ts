@@ -61,6 +61,7 @@ import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/hos
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
 import { Route as ApiMobileEasBuildRouteImport } from './routes/api/mobile/eas-build'
 import { Route as ApiDomainsDnsCheckRouteImport } from './routes/api/domains/dns-check'
+import { Route as ApiBuildsWatchdogRouteImport } from './routes/api/builds/watchdog'
 import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigger'
 import { Route as ApiBuildsCallbackRouteImport } from './routes/api/builds/callback'
 import { Route as ApiBillingVerifyRouteImport } from './routes/api/billing/verify'
@@ -347,6 +348,11 @@ const ApiDomainsDnsCheckRoute = ApiDomainsDnsCheckRouteImport.update({
   path: '/dns-check',
   getParentRoute: () => ApiDomainsRoute,
 } as any)
+const ApiBuildsWatchdogRoute = ApiBuildsWatchdogRouteImport.update({
+  id: '/api/builds/watchdog',
+  path: '/api/builds/watchdog',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiBuildsTriggerRoute = ApiBuildsTriggerRouteImport.update({
   id: '/api/builds/trigger',
   path: '/api/builds/trigger',
@@ -528,6 +534,7 @@ export interface FileRoutesByFullPath {
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
+  '/api/builds/watchdog': typeof ApiBuildsWatchdogRoute
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
@@ -606,6 +613,7 @@ export interface FileRoutesByTo {
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
+  '/api/builds/watchdog': typeof ApiBuildsWatchdogRoute
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
@@ -685,6 +693,7 @@ export interface FileRoutesById {
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
+  '/api/builds/watchdog': typeof ApiBuildsWatchdogRoute
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
   '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
@@ -765,6 +774,7 @@ export interface FileRouteTypes {
     | '/api/billing/verify'
     | '/api/builds/callback'
     | '/api/builds/trigger'
+    | '/api/builds/watchdog'
     | '/api/domains/dns-check'
     | '/api/mobile/eas-build'
     | '/api/preview/$projectId'
@@ -843,6 +853,7 @@ export interface FileRouteTypes {
     | '/api/billing/verify'
     | '/api/builds/callback'
     | '/api/builds/trigger'
+    | '/api/builds/watchdog'
     | '/api/domains/dns-check'
     | '/api/mobile/eas-build'
     | '/api/preview/$projectId'
@@ -921,6 +932,7 @@ export interface FileRouteTypes {
     | '/api/billing/verify'
     | '/api/builds/callback'
     | '/api/builds/trigger'
+    | '/api/builds/watchdog'
     | '/api/domains/dns-check'
     | '/api/mobile/eas-build'
     | '/api/preview/$projectId'
@@ -999,6 +1011,7 @@ export interface RootRouteChildren {
   ApiBillingVerifyRoute: typeof ApiBillingVerifyRoute
   ApiBuildsCallbackRoute: typeof ApiBuildsCallbackRoute
   ApiBuildsTriggerRoute: typeof ApiBuildsTriggerRoute
+  ApiBuildsWatchdogRoute: typeof ApiBuildsWatchdogRoute
   ApiMobileEasBuildRoute: typeof ApiMobileEasBuildRoute
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
   ApiPublicHostLookupRoute: typeof ApiPublicHostLookupRoute
@@ -1393,6 +1406,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDomainsDnsCheckRouteImport
       parentRoute: typeof ApiDomainsRoute
     }
+    '/api/builds/watchdog': {
+      id: '/api/builds/watchdog'
+      path: '/api/builds/watchdog'
+      fullPath: '/api/builds/watchdog'
+      preLoaderRoute: typeof ApiBuildsWatchdogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/builds/trigger': {
       id: '/api/builds/trigger'
       path: '/api/builds/trigger'
@@ -1635,6 +1655,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBillingVerifyRoute: ApiBillingVerifyRoute,
   ApiBuildsCallbackRoute: ApiBuildsCallbackRoute,
   ApiBuildsTriggerRoute: ApiBuildsTriggerRoute,
+  ApiBuildsWatchdogRoute: ApiBuildsWatchdogRoute,
   ApiMobileEasBuildRoute: ApiMobileEasBuildRoute,
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
   ApiPublicHostLookupRoute: ApiPublicHostLookupRoute,

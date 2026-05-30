@@ -46,6 +46,28 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
     let cancelled = false;
     let terminalSince: number | null = null;
     const startedAt = Date.now();
+    let watchdogPokedAt = 0;
+
+    const pokeWatchdog = async () => {
+      // Throttle: at most once every 60s per build to avoid hammering.
+      if (Date.now() - watchdogPokedAt < 60_000) return;
+      watchdogPokedAt = Date.now();
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        const token = session.session?.access_token;
+        if (!token) return;
+        await fetch("/api/builds/watchdog", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ buildId: latestBuildId }),
+        });
+      } catch (e) {
+        console.warn("[useBuildActivity] watchdog poke failed", e);
+      }
+    };
 
     const apply = (data: {
       status: string | null;
