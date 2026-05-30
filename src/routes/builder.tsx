@@ -210,10 +210,18 @@ const FirstRunTour = lazy(() =>
 function useWebContainerSupported(): boolean {
   const [supported, setSupported] = useState<boolean>(false);
   useEffect(() => {
-    setSupported(detectUnsupportedWebContainerBrowser() === null);
+    // P0-E: also require cross-origin isolation. Without it WebContainer
+    // boots and then hangs forever waiting for SharedArrayBuffer — a worse
+    // UX than failing fast over to the deployed CDN preview.
+    const browserOk = detectUnsupportedWebContainerBrowser() === null;
+    const coiOk =
+      typeof window !== "undefined" &&
+      (window as Window).crossOriginIsolated === true;
+    setSupported(browserOk && coiOk);
   }, []);
   return supported;
 }
+
 type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 
 function isBuildFailureCardTitle(title: string | undefined): boolean {
