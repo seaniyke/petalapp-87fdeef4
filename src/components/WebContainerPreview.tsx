@@ -181,10 +181,14 @@ export function WebContainerPreview({
       } catch (e) {
         if (cancelled) return;
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        setError(e instanceof Error ? e.message : "WebContainer failed to start.");
+        const msg = e instanceof Error ? e.message : "WebContainer failed to start.";
+        setError(msg);
         setPhase("error");
         setShowLogs(true);
+        // P0-E — let the parent swap to the deployed CDN preview.
+        onBootFailed?.(msg);
       }
+
     })();
 
     return () => {
