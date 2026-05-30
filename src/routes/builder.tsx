@@ -4640,6 +4640,10 @@ function Builder() {
                             });
                           }}
                           lastNarration={latestNarration ?? null}
+                          onBootFailed={(reason) => {
+                            console.warn("[preview] WebContainer boot failed, switching to CDN fallback:", reason);
+                            setWebContainerBootFailed(true);
+                          }}
                           onAskRepair={(reason) => {
                             // Plan #3 — pre-fill the composer with a repair
                             // request seeded by the runtime crash reason.
@@ -4648,6 +4652,7 @@ function Builder() {
                               `The preview just crashed with: "${reason}". Please diagnose and fix it.`,
                             );
                           }}
+
                         />
                       </Suspense>
                     ) : (
