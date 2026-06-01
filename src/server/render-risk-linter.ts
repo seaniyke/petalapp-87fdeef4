@@ -621,6 +621,75 @@ function findKitListPropOmissions(src: string): { component: string; missing: st
   return issues;
 }
 
+// =============================================================================
+// R5 — forwardRef icon rendered as a JSX child expression (React error #31)
+// =============================================================================
+
+function findForwardRefIconRenders(
+  src: string,
+  clean: string,
+): { ident: string; reason: string }[] {
+  const issues: { ident: string; reason: string }[] = [];
+
+  const iconNames = new Set<string>();
+  const importRe =
+    /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*from\s*["']([^"']+)["']/g;
+  let im: RegExpExecArray | null;
+  while ((im = importRe.exec(src))) {
+    const source = im[3];
+    const matched = FORWARD_REF_ICON_PACKAGES.some(
+      (p) => source === p || source.startsWith(`${p}/`),
+    );
+    if (!matched) continue;
+    if (im[1]) iconNames.add(im[1]);
+    if (im[2]) {
+      for (const part of im[2].split(",")) {
+        const name = part.trim().split(/\s+as\s+/i).pop()?.trim();
+        if (name) iconNames.add(name);
+      }
+    }
+  }
+
+  if (iconNames.size === 0) return issues;
+
+  for (const ident of iconNames) {
+    const re = new RegExp(
+      `(^|[^A-Za-z0-9_$=:.])\\{\\s*${escapeRe(ident)}\\s*\\}`,
+      "g",
+    );
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(clean))) {
+      const before = clean.slice(Math.max(0, m.index - 80), m.index + m[1].length);
+      if (!/>[^<{]*$/.test(before)) continue;
+      issues.push({
+        ident,
+        reason: `render <${ident} /> instead of {${ident}} — passing the forwardRef object as a child throws React error #31`,
+      });
+      break;
+    }
+  }
+
+  const hasIconField = [...iconNames].some((n) =>
+    new RegExp(`\\bicon\\s*:\\s*${escapeRe(n)}\\b`).test(clean),
+  );
+  if (hasIconField) {
+    const dotRe = /(^|[^A-Za-z0-9_$=:.])\{\s*[A-Za-z_$][\w$]*\.icon\s*\}/g;
+    let dm: RegExpExecArray | null;
+    while ((dm = dotRe.exec(clean))) {
+      const before = clean.slice(Math.max(0, dm.index - 80), dm.index + dm[1].length);
+      if (!/>[^<{]*$/.test(before)) continue;
+      issues.push({
+        ident: ".icon",
+        reason:
+          "render `<Item.icon />` (or `const Icon = item.icon; <Icon />`) instead of `{item.icon}` — the icon field is a forwardRef component, not a renderable value",
+      });
+      break;
+    }
+  }
+
+  return issues;
+}
+
 function extractIdents(block: string): string[] {
   const out: string[] = [];
   // Strip nested `{...}` (rare in destructure) by collapsing them.
