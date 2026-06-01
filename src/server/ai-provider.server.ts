@@ -109,8 +109,6 @@ export function invalidateProviderCache(): void {
 // ---------------- Resolution ----------------
 
 async function resolveProvider(feature: AiFeature): Promise<Provider> {
-  if (feature === "image") return "lovable";
-
   const settings = await loadDbSettings();
   const dbChoice = settings.get(feature)?.provider;
   if (dbChoice) return dbChoice;
@@ -119,6 +117,12 @@ async function resolveProvider(feature: AiFeature): Promise<Provider> {
   const envGlobal = process.env.AI_PROVIDER?.toLowerCase();
   const choice = envOverride || envGlobal || "lovable";
   return choice === "openrouter" ? "openrouter" : "lovable";
+}
+
+/** Public: resolve which provider a given feature is configured to use.
+ *  Used by image-generation.server.ts to pick the right gateway URL/key. */
+export async function getProviderForFeature(feature: AiFeature): Promise<Provider> {
+  return resolveProvider(feature);
 }
 
 async function resolveModelOverride(
