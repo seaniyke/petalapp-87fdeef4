@@ -360,13 +360,16 @@ export async function runStagePlan(args: {
       }
     }
 
-    // business-app surface-presence guard. Don't drop files (both sides are
-    // legitimate); just log so we can spot it in pipeline telemetry. The
-    // scaffold + wireup stages will still produce a runnable shell.
+    // business-app surface-presence repair. Previously this only warned;
+    // now we synthesise the missing surface deterministically so wire-up
+    // always has both halves of the product.
     if (ctx.archetypeHint === "business-app") {
       const gap = detectBusinessAppGap(files);
       if (gap) {
-        console.warn(`[stage-plan] business-app ${gap} — plan: ${files.map((f) => f.path).join(", ")}`);
+        console.warn(
+          `[stage-plan] business-app ${gap} — repairing with domain=${ctx.businessDomain ?? "generic"}; plan before: ${files.map((f) => f.path).join(", ")}`,
+        );
+        files = repairBusinessAppPlan(files, gap, ctx.businessDomain, args.brief);
       }
     }
 
