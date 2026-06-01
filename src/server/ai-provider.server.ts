@@ -245,6 +245,7 @@ export async function updateLastCallUsage(args: {
       prompt_tokens: number | null;
       completion_tokens: number | null;
       total_tokens: number | null;
+      cost_usd_micro?: number | null;
       cached_prompt_tokens?: number | null;
       static_prefix_chars?: number | null;
       static_prefix_hash?: string | null;
@@ -254,6 +255,12 @@ export async function updateLastCallUsage(args: {
       completion_tokens: args.completionTokens,
       total_tokens: args.totalTokens,
     };
+    const cost = estimateCostUsdMicro(
+      args.model,
+      args.promptTokens,
+      args.completionTokens,
+    );
+    if (cost != null) patch.cost_usd_micro = cost;
     if (args.cachedPromptTokens != null) patch.cached_prompt_tokens = args.cachedPromptTokens;
     if (args.staticPrefixChars != null) patch.static_prefix_chars = args.staticPrefixChars;
     if (args.staticPrefixHash != null) patch.static_prefix_hash = args.staticPrefixHash;
