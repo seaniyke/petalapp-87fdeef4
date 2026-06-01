@@ -142,13 +142,31 @@ async function resolveModelOverride(
  * accepts most `provider/model` slugs unchanged).
  */
 const OPENROUTER_MODEL_MAP: Record<string, string> = {
+  // Gemini — preview-only slugs map to the closest stable OpenRouter slug.
   "google/gemini-3-flash-preview": "google/gemini-2.5-flash",
+  "google/gemini-3.1-flash-lite-preview": "google/gemini-2.5-flash-lite",
+  "google/gemini-3.1-pro-preview": "google/gemini-2.5-pro",
+  "google/gemini-3.5-flash": "google/gemini-2.5-flash",
   "google/gemini-2.5-flash": "google/gemini-2.5-flash",
   "google/gemini-2.5-flash-lite": "google/gemini-2.5-flash-lite",
   "google/gemini-2.5-pro": "google/gemini-2.5-pro",
+  // OpenAI — GPT-5.x preview/pro slugs route to their nearest live OpenRouter
+  // counterpart until OpenRouter exposes the exact slug.
   "openai/gpt-5": "openai/gpt-5",
   "openai/gpt-5-mini": "openai/gpt-5-mini",
   "openai/gpt-5-nano": "openai/gpt-5-nano",
+  "openai/gpt-5.2": "openai/gpt-5",
+  "openai/gpt-5.4": "openai/gpt-5",
+  "openai/gpt-5.4-mini": "openai/gpt-5-mini",
+  "openai/gpt-5.4-nano": "openai/gpt-5-nano",
+  "openai/gpt-5.4-pro": "openai/gpt-5",
+  "openai/gpt-5.5": "openai/gpt-5",
+  "openai/gpt-5.5-pro": "openai/gpt-5",
+  // Anthropic — only reachable via OpenRouter today. Used by curated-briefs
+  // and (soon) the smart-router as candidates for implement/debug phases.
+  "anthropic/claude-sonnet-4.5": "anthropic/claude-sonnet-4.5",
+  "anthropic/claude-haiku-4.5": "anthropic/claude-haiku-4.5",
+  "claude-sonnet-4-5": "anthropic/claude-sonnet-4.5",
 };
 
 function remapModelForOpenRouter(model: string | undefined): string | undefined {

@@ -1,73 +1,110 @@
-## Status
 
-P0 audit + Phase 1 (scaffolding) shipped previously.
+# Petal Builder — Senior Engineering Audit
 
-Phase 2 (verifier upgrades) — shipped this loop:
-- #5 server-fn contract verifier — `findServerFnContractIssues` in `src/server/local-verifier.ts` (catches missing `.inputValidator`, missing zod, module-scope `process.env`, client-bundle leak of `client.server`).
-- #6 RLS sanity — already wired (`findRlsSanityIssues`).
-- #7 auth-loader trap verifier — `findAuthLoaderIssues` (rejects `requireSupabaseAuth` server-fns called from public route loaders).
-- #4 real `tsc --noEmit` tier — deferred; cost/latency too high without worker pool infra.
+I read the whole pipeline: `/api/generate.ts` (3.7K lines), the `pipeline/*` tiers, `ai-provider.server.ts`, `smart-router`, `phase-classifier`, `local-verifier`, `render-risk-linter`, `self-recovery`, `two-phase-gate`, `staged-orchestrator`, `scaffold-kit*` (9.6K lines of pre-baked UI), `dynamic-prompts`, `petal-capabilities`, the integrations registry, the Railway builder service, `/api/discuss`, `/api/triage`, and the golden-app eval harness. Below is the honest scorecard against Lovable / Bolt.new / v0 / Cursor.
 
-Phase 3 (capability prompt blocks) — shipped this loop in `src/server/dynamic-prompts.server.ts`:
-- #8 `fileUpload` (storage buckets + signed URLs + path convention)
-- #9 `webhook` (`/api/public/*` + HMAC verify + `supabaseAdmin` + idempotency)
-- #10 `cronJob` (pg_cron SQL-only OR pg_net + public cron route)
-- #11 `payments` (provider gating, server-fn checkout, webhook-driven status)
+---
 
-Phase 4 — shipped this loop:
-- #12 per-file streaming preview — `file_complete` SSE carries content; `streamWriteFile` writes mid-turn for HMR.
-- #13 interactive per-turn diff drawer — BuildActivityCard collapsed success line now exposes "Review changes" which opens `PartialRevertDialog` against a snapshot captured at send() entry (`preTurnFilesRef`). Users can accept/reject individual files from the latest turn without reverting the entire project.
+## What we're genuinely strong at
 
+1. **Deterministic verifier stack is excellent.** The tiered model — `local-verifier` (JSX balance, brace/paren, unterminated strings, undefined components, scope leaks, lazy named exports, unresolved imports, blank-render, RLS sanity, server-fn contract, auth loader) → `tier-render-risk` (optional-prop crash, conditional hooks, undeclared JSX idents, kit list-prop omission) → `tier-esbuild` → `tier-continuation` (true truncation re-ask) → `post-stream-autofix` — is more rigorous than anything Bolt or v0 ship publicly. This is our moat.
+2. **`file-budget` hard cap (180 lines / 6 KB, hard-reject at 280/10 KB)** is a smart, production-proven anti-truncation lever competitors don't have.
+3. **`scaffold-kit` (~9.6K lines of pre-baked shadcn primitives + composed `blocks-*` sections)** lets the model assemble instead of writing primitives — biggest single quality lever we have, and it's already injected as a closed set.
+4. **`smart-router` (Tier 4)** with `ai_call_log` + `ai_call_outcomes` + Thompson-sampling-lite scoring on success/cost/latency, plus `model-kill-switch` cool-offs, is more sophisticated than the static model pickers Lovable and Bolt use.
+5. **`two-phase-gate`** (defer backend on turn 1 unless explicitly asked) is a quietly brilliant UX win — first preview ships in seconds, backend lands turn 2 after user opts in.
+6. **`petal-capabilities` self-knowledge block** keeps the model honest about Cloud / Mobile / Domains / Email surfaces — competitors regularly hallucinate features they don't have.
+7. **Golden-app eval harness** (`src/server/__tests__/golden-apps/`) with live + replay runners + grader is a real eval loop. Most competitors don't have this committed.
+8. **`render-risk-linter` R1–R4** (optional-prop crash, conditional hooks, JSX undeclared ident, kit list-prop) catches white-screen bugs that pass syntax — uncommon and high-value.
 
-## What's missing for true full-stack parity
+---
 
-The audit's P1/P2 list is where competitors pull ahead on *full-stack* output. Petal today generates good frontend + Cloud-wired Supabase, but generated apps frequently miss: server functions written end-to-end (route + handler + types + client call), schema-aware queries, auth-gated routes wired into the layout tree, file uploads, background jobs/webhooks, payments, email — and the verifier never typechecks against the live DB schema. This plan turns those gaps into shippable work.
+## Where we're behind competitors (ranked by impact)
 
-## Goal
+### P0 — Will move build-success rate the most
 
-Make a single Petal turn produce a complete vertical slice — DB migration + RLS + server function + typed client call + UI + auth gating + tests of the happy path — and verify it before saving.
+**1. No true agentic read/search/edit loop.** Petal emits ONE `write_project` or `patch_files` tool call per turn. Cursor, Claude Code, Lovable's newer pipeline, and Bolt all give the model `read_file` / `list_files` / `grep` / `run_tests` / `edit_file` tools and let it iterate inside a single turn (5–20 tool calls). Petal's `agent_loop` labs flag is opt-in-only and still a bounded autofix loop, not a real agentic edit loop. **This is the single biggest capability gap.**
 
-## Phase 1 — Full-stack scaffolding the generator can rely on
+**2. Monolithic generate path is the default; `staged_pipeline` is labs-only.** The plan→scaffold-in-parallel→wireup orchestrator is exactly the right architecture — but only enabled behind `labs.staged_pipeline` for initial builds. Bolt's parallel-file emission is its main speed/quality story. We have it sitting in the drawer. **Promote staged pipeline to default for `isInitial` after a short rollout window.**
 
-1. **Vertical-slice generator template** (`src/server/scaffold-kit-blocks*.ts`): add a `fullstack_feature` block that emits, in one shot, the four-file pattern competitors hard-bake: `migrations/*.sql` (table+GRANT+RLS), `lib/<feature>.functions.ts` (`createServerFn` + Zod), `lib/<feature>.server.ts` (admin queries), and `routes/<feature>.tsx` (loader + component). Wire it into `dynamic-prompts.server.ts` so the model is steered to this shape when intent is "build feature X".
-2. **Schema-aware prompt injection**: read `src/integrations/supabase/types.ts` (already auto-generated) and inject the relevant table types into the prompt's "available data" section so generated server fns reference real columns, not hallucinated ones. Cap by token budget; pick tables by name match against the user prompt.
-3. **Auth-gated layout pattern**: standardize `src/routes/_authenticated.tsx` usage. Generator must place protected feature routes under `_authenticated/` and never call `requireSupabaseAuth` fns from public loaders (the known SSR 401 trap). Add a verifier rule for this.
+**3. No semantic / embedding index of the project's own code.** Every turn we ship raw file content into the prompt (gated by `trimFilesForPrompt` + `context-budget`). On medium projects (>20 files) that means truncating the oldest files. Cursor, Lovable, and Bolt all maintain a per-project embedding index and retrieve only the K files relevant to the user's turn. We should index `project_files` (pgvector on the Cloud Postgres we already have) keyed by `(project_id, path)`, refresh on write, retrieve top-K on each turn.
 
-## Phase 2 — Verifier upgrades (catch full-stack breakage before save)
+**4. Default models are stale & single-vendor.** Every default in the tree is `google/gemini-3-flash-preview` (a preview slug) or `gemini-2.5-flash-lite`. No `gpt-5.4`, no `claude-sonnet-4.5`, no Anthropic at all in the rotation despite the curated-briefs proving the key works. The smart-router can only pick among models that actually log telemetry; right now it has effectively one family to choose between. **Add `openai/gpt-5.4`, `openai/gpt-5.4-mini`, `anthropic/claude-sonnet-4.5` (via OpenRouter) as candidates for `generate.implement` and `generate.debug` phases and let the router pick.**
 
-4. **Real `tsc --noEmit` tier** on changed files only, worker-pooled. Today esbuild parses but doesn't typecheck — so server fns calling `supabase.from('wrong_table')` ship green. Promote from P2 to P1.
-5. **Server-fn contract verifier**: AST-walk every `createServerFn` change to enforce: `.inputValidator` before `.handler`, Zod schema present on POST, no `process.env.*` read at module scope, no `client.server.ts` import from non-server file. Issues feed the existing autofix loop.
-6. **RLS sanity check**: for every `CREATE TABLE public.*` in a new migration, require matching `GRANT` + `ENABLE ROW LEVEL SECURITY` + at least one `CREATE POLICY`. Reject the migration in the same pass that catches truncation.
-7. **Auth-middleware call-site check**: any serverFn with `requireSupabaseAuth` must not be invoked from a loader on a non-`_authenticated/` route. Static check on the route tree.
+### P1 — Quality / UX gaps
 
-## Phase 3 — Capability blocks (parity with Lovable/Bolt/v0)
+**5. No in-loop test execution.** We have the verifier but no `vitest run` step. Cursor / Claude Code can write a test, run it, fix the failing assertion, repeat. Adding a "run vitest in the Railway builder" tool would close the loop on logic bugs the verifier can't see.
 
-8. **File upload block**: storage bucket migration + signed-URL server fn + client uploader component, behind a single intent ("let users upload …").
-9. **Webhook block**: `routes/api/public/<name>.ts` with HMAC verification template + `supabaseAdmin` write, gated by a generated secret request via `add_secret`.
-10. **Cron/background job block**: pg_cron + `routes/api/public/cron/<name>.ts` pattern already used internally — expose to user-app generation.
-11. **Payments + email**: lean on existing Paystack/Stripe/Resend integration definitions in `src/server/integrations/registry.server.ts`; add intent → install → scaffold flow so "add Stripe checkout" produces working server route + client button in one turn.
+**6. No screenshot / visual diff feedback.** Lovable and v0 both screenshot the rendered preview and feed it back to the model for "does this look right?" critique. We have a vision-capable model (`gemini-2.5-pro` on attachment turns) but no automated capture loop.
 
-## Phase 4 — Streaming + diff UX (competitor parity)
+**7. `generate.ts` is a 3,720-line monolith.** This is a maintenance liability and makes the staged pipeline migration painful. The four phases (authorize → assemble prompt → stream+verify → post-stream autofix) should be extracted into named modules.
 
-12. **Per-file streaming preview**: as each file finishes parsing, push it into WebContainer for HMR instead of waiting for the full turn. Cuts time-to-first-pixel by ~40% per Bolt's blog.
-13. **Interactive file diff before commit**: surface the diff drawer (data already in `turn.events`) with accept/reject per file. Today it's all-or-nothing via partial revert.
+**8. `discuss` and `generate` re-implement prompt assembly separately.** Capabilities block, dynamic snippets, vision addendum, kit manifest, schema block, memory block — all assembled twice with subtle drift. Extract a single `assemblePromptContext({ mode })` helper.
 
-## Out of scope this loop
+**9. No streaming-friendly partial-file editing.** `patch_files` exists but the model still resends whole files for "small changes" most of the time. The `ast_patches` labs flag is the right idea but opt-in. Promote it and enforce it for files >100 lines.
 
-Visual edits / click-to-source (separate Vite plugin workstream), full RN scaffold replacement, WebContainer → Fly.io migration. Same boundaries as the previous plan.
+**10. `post-stream-autofix` runs once.** Per the comment in `tier-local-verify`, the Tier 3 model verifier was removed because "Phase D one-round autofix cap" made the recovery pass useless. With an agentic loop in place, autofix should iterate up to N times against the verifier until clean.
 
-## Order of work after approval
+### P2 — Operational / observability
 
-1. Seed Phase 1–4 items as tracker tasks.
-2. Ship Phase 1 (#1–#3) first — biggest leverage; everything else gets better once the generator emits real vertical slices.
-3. Ship Phase 2 verifier upgrades (#4–#7) so the new templates self-heal.
-4. Ship Phase 3 capability blocks (#8–#11) one block per turn, each behind an intent flag.
-5. Ship Phase 4 (#12–#13) last — pure UX polish on top of a now-reliable generator.
-6. Stop after each phase for review.
+**11. Image-gen now routes through OpenRouter (recent fix) but the rest of the AI-provider abstraction still hard-codes Lovable URL fallbacks and a static `OPENROUTER_MODEL_MAP` of only 7 entries.** Add Anthropic + GPT-5.4 slugs, and pull the map from `ai_provider_settings` so admins can override without a deploy.
 
-## Verification per phase
+**12. `MAX_AUTOFIX` / loop bounds are scattered.** Centralize all budget knobs (autofix rounds, agent-loop steps, retry counts, token ceilings, file-count caps) in one `pipeline-budgets.ts` so they can be tuned per plan tier.
 
-- Phase 1: prompt "build a todo app with auth" → generated turn contains migration + serverFn + protected route + UI, runs green in preview without manual edits.
-- Phase 2: intentionally inject `supabase.from('bogus')` mid-stream → tsc tier flags it, autofix corrects, final file is clean.
-- Phase 3: each block has a smoke test prompt that produces a working end-to-end flow.
-- Phase 4: measure time-to-first-render on a 6-file generation; diff drawer accept/reject persists correctly via `replace_project_files` RPC.
+**13. No per-project context pinning.** When a user says "always use Framer Motion for animations" or "this is a Next.js-style app", we have project-memory but the model doesn't reliably honor it because it's appended late in the prompt. Move project-memory above the kit manifest and add a hard `MUST FOLLOW` framing.
+
+**14. No build-time bundle-size or perf budget.** The builder/Railway service deploys to Cloudflare Pages but doesn't enforce a max-bundle-size, doesn't run `vite build --report`, and doesn't surface unused-imports. Easy to add as a post-build check.
+
+---
+
+## Recommended sequenced roadmap
+
+```text
+Week 1 — Default-on the wins we already shipped
+  • Flip staged_pipeline ON for all isInitial builds (keep monolith as fallback)
+  • Promote ast_patches to default for files >100 lines
+  • Add gpt-5.4, gpt-5.4-mini, claude-sonnet-4.5 as smart-router candidates
+  • Centralize budgets in pipeline-budgets.ts
+
+Week 2 — Agentic loop (P0 #1)
+  • Define read/grep/edit/run_tests tools wired to the in-memory ProjectFile[]
+  • Bounded loop: max 12 tool calls / turn, hard token ceiling, billed per cycle
+  • Run verifier between each edit; loop exits when verifier clean + brief satisfied
+
+Week 3 — Semantic project index (P0 #3)
+  • pgvector table indexed on commit; embed with text-embedding-3-small
+  • Replace trimFilesForPrompt with retrieve-top-K(prompt, K=8)
+  • Keep "always include" list for App.tsx + router + styles.css
+
+Week 4 — Visual + test feedback (P1 #5–6)
+  • Builder: run vitest after build; surface failures as tool result
+  • Builder: headless-chromium screenshot of "/" after deploy
+  • Generate route: when verifier clean but build_success_rate<0.7 model row, feed screenshot to vision model for critique
+```
+
+---
+
+## Technical details (for engineers reading)
+
+**Files that need the heaviest changes:**
+- `src/routes/api/generate.ts` — break into `generate/authorize.ts`, `generate/assemble.ts`, `generate/stream.ts`, `generate/post.ts`.
+- `src/server/ai-provider.server.ts` — expand `OPENROUTER_MODEL_MAP`, add Anthropic; move model catalog into DB.
+- `src/server/pipeline/staged-orchestrator.server.ts` — already orchestrator-shaped; needs an `agentic_loop` stage between scaffold and wireup.
+- `src/server/labs-flags.server.ts` — flip `staged_pipeline` default from opt-in to opt-out.
+- New: `src/server/pipeline/tools/` — `read_file.ts`, `grep.ts`, `edit_file.ts`, `run_tests.ts` (tool schemas + handlers operating on `ProjectFile[]`).
+- New: `src/server/project-index.server.ts` — pgvector index maintenance + retrieval.
+- New: `src/server/pipeline-budgets.ts` — single source of truth for all limits.
+- `builder/src/build.ts` — add post-build `vitest run` + `playwright screenshot` steps; sign + return results in the existing callback.
+
+**What we should NOT touch:**
+- `scaffold-kit*.ts` — it's working; don't churn the closed-set primitives.
+- `local-verifier.ts` / `render-risk-linter.ts` — best part of the stack.
+- `petal-capabilities.server.ts` — high-signal, low-churn.
+- `two-phase-gate.server.ts` — keep the UX behavior exactly as is.
+
+---
+
+## Bottom line
+
+Petal's verifier + scaffold-kit + smart-router stack is already *better* than what Bolt and Lovable advertise publicly. The two gaps that actually matter are **(a) no agentic read/edit loop** and **(b) no semantic project retrieval** — competitors lean on those for "feels like it understands my codebase" and "fixes its own bugs". Closing those, plus flipping the staged pipeline on by default and broadening the model rotation, would put Petal at parity-or-better across the board within ~4 weeks.
+
+Want me to start with **Week 1** (low-risk: flip flags, add model candidates, centralize budgets) so we get measurable wins immediately, or jump straight to the **agentic loop** for the biggest capability leap?
