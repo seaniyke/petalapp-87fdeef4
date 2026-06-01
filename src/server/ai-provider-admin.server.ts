@@ -75,16 +75,13 @@ export async function listProviderSettings(): Promise<{
   }
 
   const rows: AiFeatureRow[] = ALL_AI_FEATURES.map((feature) => {
-    const locked = feature === "image";
     const r = overrides.get(feature);
     const override =
       r?.provider === "openrouter" || r?.provider === "lovable"
         ? (r.provider as Provider)
         : null;
     const envChoice = envChoiceFor(feature);
-    const effective: Provider = locked
-      ? "lovable"
-      : (override ?? envChoice ?? "lovable");
+    const effective: Provider = override ?? envChoice ?? "lovable";
     return {
       feature,
       effective,
@@ -92,7 +89,7 @@ export async function listProviderSettings(): Promise<{
       envChoice,
       model: r?.model ?? null,
       fallbackModel: r?.fallback_model ?? null,
-      locked,
+      locked: false,
     };
   });
 
