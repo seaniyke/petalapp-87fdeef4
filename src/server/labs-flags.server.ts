@@ -42,32 +42,26 @@ export async function loadLabsFlagsForRequest(jwt: string | null | undefined): P
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // Admin short-circuit. Most experimental flags are auto-on for admins
-    // so they can dogfood, BUT `staged_pipeline` is explicit-opt-in only:
-    // it's an unfinished alternate codepath that has produced wrong-app
-    // outputs (e.g. a collage app for a "car rental" prompt). Until we're
-    // confident it's better than the monolithic path, admins must turn it
-    // on manually in Labs.
+    // Admin short-circuit. Admins dogfood every experimental flag by
+    // default — including `staged_pipeline`, `agent_loop`, and
+    // `ast_patches`. These have historically been opt-in even for admins
+    // out of caution (e.g. staged_pipeline once produced a collage app
+    // for a "car rental" prompt), but keeping them off means we never
+    // get telemetry from the people best equipped to spot regressions.
+    // Admins can still turn any flag OFF explicitly via their labs_flags
+    // row — if `flags[name] === false` we respect it; otherwise default on.
     const { data: claimsRow } = await supabase
       .from("user_roles")
       .select("role")
       .eq("role", "admin")
       .maybeSingle();
     if (claimsRow) {
-      // Most experimental flags are auto-on for admins so they can dogfood,
-      // BUT `staged_pipeline` and `agent_loop` are explicit-opt-in only:
-      // both are unfinished alternate codepaths. Until they're proven
-      // better than the monolithic path, admins must turn them on
-      // manually in Labs.
-      const optInOnly = new Set<LabsFlagName>(["staged_pipeline", "agent_loop", "ast_patches"]);
-      const adminFlags = Object.fromEntries(
-        ALL_FLAGS.filter((f) => !optInOnly.has(f)).map((f) => [f, true]),
-      ) as LabsFlags;
       const { data: row } = await supabase.from("labs_flags").select("flags").maybeSingle();
       const userFlags = (row?.flags ?? {}) as LabsFlags;
-      if (userFlags.staged_pipeline) adminFlags.staged_pipeline = true;
-      if (userFlags.agent_loop) adminFlags.agent_loop = true;
-      if (userFlags.ast_patches) adminFlags.ast_patches = true;
+      const adminFlags: LabsFlags = {};
+      for (const f of ALL_FLAGS) {
+        adminFlags[f] = userFlags[f] === false ? false : true;
+      }
       return adminFlags;
     }
 
