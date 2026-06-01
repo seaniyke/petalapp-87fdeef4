@@ -31,7 +31,8 @@ export interface LocalIssue {
     | "blank-render"
     | "rls-sanity"
     | "server-fn-contract"
-    | "auth-loader-trap";
+    | "auth-loader-trap"
+    | "scope";
   detail: string;
 }
 
@@ -403,6 +404,47 @@ function findUndefinedComponents(src: string, clean: string): string[] {
     missing.push(tag);
   }
   return missing;
+}
+
+const BUILTIN_GLOBALS = new Set([
+  "Array", "Boolean", "Date", "Error", "Intl", "JSON", "Map", "Math", "Number", "Object", "Promise", "React", "RegExp", "Set", "String", "URL",
+  "console", "document", "globalThis", "localStorage", "navigator", "sessionStorage", "window",
+]);
+
+function findObviousScopeLeaks(src: string): string[] {
+  const declared = new Set<string>(BUILTIN_GLOBALS);
+  let m: RegExpExecArray | null;
+  const declRe = /\b(?:const|let|var|function|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/g;
+  while ((m = declRe.exec(src))) declared.add(m[1]);
+  const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
+  while ((m = importRe.exec(src))) {
+    if (m[1]) declared.add(m[1]);
+    if (m[3]) declared.add(m[3]);
+    if (m[2]) for (const part of m[2].split(",")) {
+      const piece = part.trim().replace(/^type\s+/i, "");
+      const name = piece.split(/\s+as\s+/i).pop()?.trim();
+      if (name) declared.add(name);
+    }
+  }
+  const paramRe = /\(([^)]{1,240})\)\s*(?::\s*[^=]+)?=>|function\s*[A-Za-z_$]*\s*\(([^)]{0,240})\)/g;
+  while ((m = paramRe.exec(src))) {
+    const params = (m[1] || m[2] || "").replace(/:[^,=}]+/g, "");
+    for (const name of params.matchAll(/\b[A-Za-z_$][\w$]*\b/g)) declared.add(name[0]);
+  }
+
+  const clean = stripNoise(src)
+    .replace(/\b(?:const|let|var|function|class|interface|type|enum|import|export|return|if|else|for|while|switch|case|break|continue|new|typeof|instanceof|in|of|as|from|extends|async|await|try|catch|finally|true|false|null|undefined)\b/g, " ")
+    .replace(/\.[A-Za-z_$][\w$]*/g, " ")
+    .replace(/<\/?[A-Za-z][\w.]*/g, " ");
+  const missing: string[] = [];
+  const seen = new Set<string>();
+  for (const hit of clean.matchAll(/(?<!["'`\w$])([a-z][A-Za-z0-9_$]*)\b/g)) {
+    const name = hit[1];
+    if (declared.has(name) || seen.has(name)) continue;
+    seen.add(name);
+    missing.push(name);
+  }
+  return missing.slice(0, 8);
 }
 
 function normalizePath(path: string): string {
