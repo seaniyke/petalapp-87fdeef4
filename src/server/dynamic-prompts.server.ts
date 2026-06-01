@@ -44,7 +44,8 @@ export type DynamicSnippetKey =
   | "fileUpload"
   | "webhook"
   | "cronJob"
-  | "payments";
+  | "payments"
+  | "businessApp";
 
 interface SnippetDef {
   /** Substrings that trigger this snippet (lowercased match against prompt). */
