@@ -17,10 +17,13 @@
  */
 import { createHash } from "node:crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getProviderForFeature } from "./ai-provider.server";
 import type { ProjectFile } from "./generate.server";
 
 const BUCKET = "petal-images";
 const IMAGE_MODEL = "google/gemini-2.5-flash-image";
+const LOVABLE_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 /** Hard cap — protects against an AI that emits 50 placeholder URLs in one turn. */
 const MAX_IMAGES_PER_GENERATION = 6;
