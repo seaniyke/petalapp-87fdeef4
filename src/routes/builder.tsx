@@ -1476,13 +1476,22 @@ function Builder() {
               setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
             }
           },
-          onFileComplete: (path) => {
+          onFileComplete: (path, _bytes, _index, content) => {
             setCompletedPaths((prev) => {
               if (prev.has(path)) return prev;
               const next = new Set(prev);
               next.add(path);
               return next;
             });
+            // Phase 4 #12 — stream the file into the WebContainer the
+            // moment it parses out of the tool call. No-op when the
+            // container hasn't booted yet (initial turn) or the file is
+            // server-only (sql / lockfiles). HMR picks it up in-place.
+            if (content) {
+              void import("@/lib/webcontainer").then(({ streamWriteFile }) =>
+                streamWriteFile(path, content),
+              );
+            }
           },
           onFileValidated: (path, ok, errors) => {
             // Plan #2 — live structural-validation signal. Surface the
