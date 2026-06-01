@@ -815,6 +815,17 @@ export function lintRenderRisks(
         });
       }
     }
+
+    // R6 — bare grid-cols-N without responsive prefix or mobile-1 base.
+    if (ENABLED_RULES.has("R6")) {
+      for (const issue of findBareGridCols(f.content)) {
+        issues.push({
+          path: f.path,
+          kind: "render-risk",
+          detail: `bare responsive grid \`${issue.snippet}\` — collapses on mobile; use \`grid-cols-1 sm:grid-cols-N\` so 430px viewports don't leave empty columns`,
+        });
+      }
+    }
   }
 
   return issues;
