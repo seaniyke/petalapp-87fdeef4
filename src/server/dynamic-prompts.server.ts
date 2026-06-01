@@ -276,6 +276,46 @@ PAGE EXPORTS: prefer plain named exports + eager imports. React.lazy(() => impor
     body: `\n\n[Reinforcement — Auth (only if backend is connected)]
 Use ONLY the helpers exported from "@/integrations/backend/auth": useAuth(), signUpWithPassword, signInWithPassword, signInWithOtp, verifyOtp, verifySignupOtp, resendSignupOtp, resetPasswordForEmail, updatePassword, signOut, signInWithGoogle. After signUpWithPassword, verify with verifySignupOtp (NOT verifyOtp). For Google / "Continue with Google" / social login, call \`signInWithGoogle()\` from useAuth() — it returns \`{ error }\` and redirects the browser. NEVER call supabase.auth.signInWithOAuth directly. NEVER call supabase.auth.* directly. NEVER import from "@supabase/supabase-js". Read "src/components/examples/BACKEND.md" for full reference.`,
   },
+  // Fires when the user asked for a data-shaped feature AND a backend is
+  // already connected. Teaches the complete vertical-slice pattern in one
+  // block so a single turn produces working CRUD instead of half-wired
+  // queries against hallucinated tables. Pairs with the optional schema
+  // injection (see renderSchemaBlock) which lists real table names.
+  fullstackFeature: {
+    triggers:
+      /\b(crud|create.*read|todo|notes?|posts?|comments?|orders?|tasks?|messages?|chat|projects?|listings?|reviews?|reservations?|bookings?|appointments?|tickets?|invoices?|customers?|leads?|likes?|favorites?|bookmarks?|follows?|threads?|votes?|polls?|saved items?|wish ?list|cart|cms|dashboard.*(data|records|rows)|admin panel|build .* (app|tool|tracker|manager))\b/i,
+    body: `\n\n[Reinforcement — Full-stack feature pattern]
+A backend IS connected. When the user asks for a data feature (todo list, comments, bookings, etc.), you MUST ship a complete vertical slice in ONE turn — not a half-wired UI.
+
+A complete slice = four coordinated pieces:
+
+1. MIGRATION (end your summary with a fenced \`MIGRATION:\` sql block — the user runs it):
+   - \`CREATE TABLE public.<name> (id uuid primary key default gen_random_uuid(), user_id uuid not null, ...domain columns..., created_at timestamptz not null default now())\`
+   - \`GRANT SELECT, INSERT, UPDATE, DELETE ON public.<name> TO authenticated;\` and \`GRANT ALL ON public.<name> TO service_role;\` (add \`GRANT SELECT ... TO anon\` ONLY if rows should be world-readable)
+   - \`ALTER TABLE public.<name> ENABLE ROW LEVEL SECURITY;\`
+   - At least ONE \`CREATE POLICY\` scoped to \`auth.uid() = user_id\` (or \`true\` for genuinely public rows). Missing any of GRANT / RLS / POLICY means the app cannot read the table at all — it's a hard failure, not a polish item.
+
+2. TYPED CLIENT QUERIES via the existing helpers:
+   - \`import { supabase } from "@/integrations/backend/client"\`
+   - All inserts MUST set \`user_id\` from \`useAuth().user?.id\` so the RLS policy lets the row through.
+   - Wrap every \`.select / .insert / .update / .delete\` in try/catch with a toast on error and an optimistic local update.
+
+3. AUTH-GATED ROUTE — if the data is per-user, render a sign-in CTA when \`useAuth().user\` is null instead of an empty list. Never expose a write form to an unauthenticated user. Public reads stay open.
+
+4. LIVE UX:
+   - Loading skeletons (not blank screens) while the first fetch resolves.
+   - Empty state with a clear primary action ("Add your first note").
+   - Visible success/error toast on every mutation.
+   - Refetch (or local-state update) AFTER each mutation so the UI matches the DB.
+
+Forbidden in this turn:
+- Writing the table name with no migration. The user will paste the SQL — you MUST emit it.
+- \`supabase.from('<some_table_you_invented>')\` without the matching CREATE TABLE in the same MIGRATION block. Use exact column names you just declared.
+- Calling \`supabase.auth.*\` directly — go through \`useAuth()\`.
+- Importing \`@supabase/supabase-js\`, \`createClient\`, or any service-role key.
+
+If the user named a table that already exists in the [Connected backend tables] block below, REUSE it — do not emit a duplicate CREATE TABLE. If they asked for a new table, pick a short snake_case name and follow the four-piece pattern above.`,
+  },
   // Fires when the user asked for auth / data / accounts / uploads / realtime
   // BUT no backend is connected to this project. Triggers are matched in
   // pickDynamicSnippets only when args.hasBackend === false. This is a
