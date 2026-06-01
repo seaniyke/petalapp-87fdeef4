@@ -93,11 +93,11 @@ function buildPlanTool(maxFiles: number) {
 }
 
 const SYSTEM_PROMPT = `You plan MVPs for a Vite + React + TypeScript app using Tailwind v4 and the bundled shadcn UI kit at "@/components/ui/*".
-Always call emit_plan — never reply in prose. Cap at 10 files.
+Always call emit_plan — never reply in prose.
 
 HARD RULES:
 1. src/App.tsx is ALWAYS the root view and MUST be file #1 in the plan. It renders the full MVP shell (header + primary content showing the actual feature + nav/footer where appropriate). Never a placeholder.
-2. Other files are components imported by src/App.tsx (e.g. src/components/PostCard.tsx, src/components/Composer.tsx). Aim for 3–7 components total.
+2. Other files are components imported by src/App.tsx (e.g. src/components/PostCard.tsx, src/components/Composer.tsx). Aim for 3–7 components total for a single-surface app, 8–14 for a business-app (marketing + product).
 3. NEVER plan index.html, src/main.tsx, or src/styles.css — Petal writes those itself.
 4. NEVER plan src/routes/* — this is NOT TanStack Start. Routing, if needed, lives inside src/App.tsx with simple state or react-router.
 5. Skip backend wiring unless explicitly required by the brief.
@@ -109,10 +109,12 @@ LAYOUT ARCHETYPE (choose ONE, drive the file plan from it):
 - tool → centered canvas/workspace (calculator, editor, generator). Minimal chrome.
 - game → full-bleed play surface + score HUD. No marketing chrome.
 - content → reader layout (article list + detail), generous whitespace.
+- business-app → BOTH a public marketing site AND an authenticated app shell, shipped together. Think Stripe/Linear/Notion: a customer-facing landing site that sells the product, plus a real logged-in product behind sign-up. Plan ~6 marketing components (Hero, Features, Pricing, Testimonials, FAQ, Footer) AND ~4–6 app components (AuthCard, AppShell with sidebar, Dashboard with domain-specific widgets, SettingsPanel, plus 1–2 surfaces matching the domain — e.g. CRM → ContactsTable + Pipeline; fintech → Wallet + Transactions; AI startup → Workspace + UsageMeter). src/App.tsx does lightweight routing between marketing and app sections (hash router, simple state, or react-router) and gates app routes behind a mock <AuthGate>. NEVER ship only the marketing site or only the dashboard for a business-app brief — both surfaces must exist in the same plan.
 
 If you plan a "Sidebar" or "DashboardPage" component for a feed/marketing/tool/game/content brief, that is a PLANNING ERROR — pick the right archetype instead.
+If you plan ONLY a dashboard (no Hero/Pricing) or ONLY a landing page (no Dashboard/AuthCard) for a business-app brief, that is a PLANNING ERROR — both surfaces are required.
 
-Component naming must reflect the domain (PostCard, Composer, FeedFilter), not generic chrome (Dashboard, Sidebar, MainPanel).`;
+Component naming must reflect the domain (PostCard, Composer, FeedFilter, ContactsTable, Pipeline), not generic chrome (Dashboard, Sidebar, MainPanel).`;
 
 interface PlanContext {
   /**
