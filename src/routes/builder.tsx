@@ -4694,8 +4694,22 @@ function Builder() {
                             // Plan #3 — pre-fill the composer with a repair
                             // request seeded by the runtime crash reason.
                             // User can edit then send.
+                            //
+                            // Known-pattern hints: some minified runtime errors
+                            // map deterministically to a known root cause. Add
+                            // a one-line hint so the model fixes the actual
+                            // bug instead of guessing.
+                            let hint = "";
+                            const r = reason || "";
+                            if (/is not a constructor/i.test(r) && /new\s+[A-Z][a-zA-Z0-9_$]{0,3}\(/.test(r)) {
+                              hint =
+                                "\n\nLikely cause: a React-ecosystem version mismatch — most commonly @react-three/fiber v9 / @react-three/drei v10 installed against React 18. Fix package.json by pinning `@react-three/fiber` to ^8.17.10, `@react-three/drei` to ^9.117.3, and `three` to ^0.170.0, then reinstall.";
+                            } else if (/Minified React error #(?:130|310|321)/i.test(r)) {
+                              hint =
+                                "\n\nLikely cause: rendering an object or undefined as a React child, or a hook called conditionally. Check the most recently edited component.";
+                            }
                             setInput(
-                              `The preview just crashed with: "${reason}". Please diagnose and fix it.`,
+                              `The preview just crashed with: "${reason}". Please diagnose and fix it.${hint}`,
                             );
                           }}
 
