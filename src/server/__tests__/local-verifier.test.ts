@@ -168,5 +168,20 @@ function Body(p) { return null }
   assert("unclosed <Body> still flagged", jsx.length > 0);
 });
 
+run("Regression — stale lowercase variables are blocked before runtime", () => {
+  const broken = `
+export function SectionHeader({ title }) {
+  return Array.isArray(lines) && lines, total, <div>{title}</div>;
+}
+`;
+  const v = verifyFilesLocal(
+    [{ path: "src/components/blocks/section-header.tsx", content: broken }],
+    ["src/components/blocks/section-header.tsx"],
+  );
+  const scope = v.issues.filter((i) => i.kind === "scope").map((i) => i.detail).join(" | ");
+  assert("undeclared `lines` is flagged", scope.includes("lines"), scope);
+  assert("undeclared `total` is flagged", scope.includes("total"), scope);
+});
+
 console.log(`\n${failed === 0 ? "✓ all assertions passed" : `✗ ${failed} assertion(s) failed`}`);
 process.exit(failed === 0 ? 0 : 1);
