@@ -168,13 +168,13 @@ function injectRootViewIfMissing(
   // them up.
   const deps = cleaned.map((f) => f.path);
   const purpose = archetype === "business-app"
-    ? `Root view — renders BOTH the public marketing site (Hero/Features/Pricing/etc.) AND the authenticated app shell (Dashboard/Settings) with a lightweight route switch (hash router or simple state) for: ${brief.slice(0, 140)}. Gate app routes behind a mock <AuthGate>. Import and wire every listed component dep.`
+    ? `Root view — renders BOTH the public marketing site AND the authenticated app shell with a lightweight route switch (hash router or simple state) for: ${brief.slice(0, 140)}. Required route map: '/' → Hero+Features+Pricing+Footer; '/auth' → AuthCard; '/app' → AppShell with sidebar + main domain components; '/app/settings' → SettingsPanel. Gate '/app/*' behind a mock <AuthGate>. Import and wire every listed component dep. NEVER render only the dashboard or only the landing — both surfaces must mount.`
     : `Root view — renders the full MVP shell with real domain UI for: ${brief.slice(0, 160)}. Import and use the listed component deps.`;
   const rootEntry: PlannedFile = {
     path: "src/App.tsx",
     purpose,
     deps,
-    est_lines: archetype === "business-app" ? 200 : 140,
+    est_lines: archetype === "business-app" ? 240 : 140,
   };
   return [rootEntry, ...cleaned];
 }
@@ -189,7 +189,6 @@ function detectArchetypeMismatch(
   archetype: PlanContext["archetypeHint"],
 ): string[] {
   if (!archetype) return [];
-  // business-app handled below via missing-surface check, not banned names.
   if (archetype === "dashboard" || archetype === "business-app") return [];
   const bannedForNonDashboard =
     /(Sidebar|Dashboard(Page|Layout)?|AdminPanel|MainPanel)\b/;
@@ -202,15 +201,81 @@ function detectArchetypeMismatch(
  * For business-app, both surfaces (marketing + product) must be present.
  * Returns a reason string if either side is missing, else null.
  */
-function detectBusinessAppGap(files: PlannedFile[]): string | null {
+function detectBusinessAppGap(files: PlannedFile[]): "missing_both_surfaces" | "missing_marketing_surface" | "missing_app_surface" | null {
   const paths = files.map((f) => f.path).join(" ");
   const hasMarketing = /(Hero|Landing|Pricing|Features|Testimonial|Faq|FAQ|Footer)/i.test(paths);
-  const hasApp = /(Dashboard|AppShell|AuthCard|Sidebar|Settings|Workspace|Pipeline|Contacts|Wallet|Transactions|Inbox)/i.test(paths);
+  const hasApp = /(Dashboard|AppShell|AuthCard|Settings|Workspace|Pipeline|Contacts|Wallet|Transactions|Inbox|Ticket|Project|Candidate|Employee|Invoice|Course|Stock|Campaign|Booking|Availability)/i.test(paths);
   if (!hasMarketing && !hasApp) return "missing_both_surfaces";
   if (!hasMarketing) return "missing_marketing_surface";
   if (!hasApp) return "missing_app_surface";
   return null;
 }
+
+const MARKETING_SYNTH: PlannedFile[] = [
+  { path: "src/components/marketing/Hero.tsx", purpose: "Marketing hero: bold headline, subhead, primary CTA to /auth, secondary CTA to /pricing. Real domain-specific copy — never lorem ipsum.", deps: [], est_lines: 90 },
+  { path: "src/components/marketing/Features.tsx", purpose: "Three-to-six feature cards explaining what the product does, each with an icon and one sentence of value. Mobile: grid-cols-1; sm: grid-cols-2; lg: grid-cols-3.", deps: [], est_lines: 120 },
+  { path: "src/components/marketing/Pricing.tsx", purpose: "Three pricing tiers (Free / Pro / Team) with feature checklists and a Start button per tier. Mobile: grid-cols-1; md: grid-cols-3.", deps: [], est_lines: 140 },
+  { path: "src/components/marketing/Footer.tsx", purpose: "Footer with product/company/legal columns and a copyright line. Mobile: stacked; sm: grid-cols-3.", deps: [], est_lines: 80 },
+];
+
+function synthAppSurfaceFor(domain: BusinessDomain | undefined): PlannedFile[] {
+  const comps = (domain && DOMAIN_COMPONENTS[domain]) || ["DataTable", "DetailPanel"];
+  const out: PlannedFile[] = [
+    { path: "src/components/app/AuthCard.tsx", purpose: "Mock sign-in / sign-up card with email + password tabs, Google button placeholder, and a 'Continue as demo' button that flips an in-memory auth flag.", deps: [], est_lines: 130 },
+    { path: "src/components/app/AppShell.tsx", purpose: "Authenticated app shell: collapsible sidebar with nav (Overview, plus one nav item per primary domain component) + top bar + <main> outlet area. Mobile: sidebar collapses to a Sheet drawer. Use semantic tokens only.", deps: [], est_lines: 160 },
+    { path: "src/components/app/SettingsPanel.tsx", purpose: "Settings page: profile section, workspace section, danger zone. Real form controls, not placeholders.", deps: [], est_lines: 130 },
+  ];
+  for (const c of comps) {
+    out.push({
+      path: `src/components/app/${c}.tsx`,
+      purpose: `Real ${domain ?? "product"} ${c}: build the actual workflow this component implies (not a KPI card). Use realistic seed data and shadcn primitives. Mobile-first: stack on small screens, use sm:/md:/lg: prefixes on every multi-column grid.`,
+      deps: [],
+      est_lines: 180,
+    });
+  }
+  return out;
+}
+
+/**
+ * When the model returns a business-app plan that's missing a surface,
+ * we DON'T retry the LLM — we synthesise the missing pieces deterministically.
+ * Stage 2 will then generate the actual code for each synthesised file
+ * using its `purpose` string. This is the difference between "warned"
+ * (current) and "repaired" (new). Returns the patched file list.
+ */
+function repairBusinessAppPlan(
+  files: PlannedFile[],
+  gap: ReturnType<typeof detectBusinessAppGap>,
+  domain: BusinessDomain | undefined,
+  brief: string,
+): PlannedFile[] {
+  if (!gap) return files;
+  const additions: PlannedFile[] = [];
+  if (gap === "missing_marketing_surface" || gap === "missing_both_surfaces") {
+    additions.push(...MARKETING_SYNTH);
+  }
+  if (gap === "missing_app_surface" || gap === "missing_both_surfaces") {
+    additions.push(...synthAppSurfaceFor(domain));
+  }
+  // De-dupe by path so we never re-add something the model already had.
+  const seen = new Set(files.map((f) => f.path));
+  const merged = [...files];
+  for (const a of additions) if (!seen.has(a.path)) merged.push(a);
+
+  // Re-write App.tsx so wire-up actually mounts the synthesised pieces.
+  const appIdx = merged.findIndex((f) => f.path === "src/App.tsx");
+  if (appIdx >= 0) {
+    const deps = merged.filter((f) => f.path !== "src/App.tsx").map((f) => f.path);
+    merged[appIdx] = {
+      ...merged[appIdx],
+      deps,
+      purpose: `Root view — business-app for: ${brief.slice(0, 140)}. Route map: '/' renders Hero+Features+Pricing+Footer (marketing); '/auth' renders AuthCard; '/app/*' renders AppShell with sidebar + each domain component as a sub-route; '/app/settings' renders SettingsPanel. Use a hash router or simple state for routing; gate '/app/*' behind a mock <AuthGate>. Import every dep listed and ensure both marketing AND product surfaces mount.`,
+      est_lines: 260,
+    };
+  }
+  return merged;
+}
+
 
 export async function runStagePlan(args: {
   brief: string;
