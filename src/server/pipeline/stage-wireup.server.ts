@@ -55,6 +55,20 @@ export async function runStageWireup(args: {
     );
   }
 
+  // 0b. Deterministic array-safety autofix. Wraps `IDENT.filter(...)` /
+  // `IDENT.map(...)` / `IDENT.length` etc with `(IDENT ?? [])` when IDENT
+  // is provably-possibly-undefined (useState w/o array default, useQuery
+  // `data`, supabase `data`). Catches the "undefined is not an object
+  // (evaluating 'e.filter')" white-screen class at the source.
+  const arrFix = fixArraySafety(files);
+  files = arrFix.files;
+  if (arrFix.fixes.length > 0) {
+    const totalRewrites = arrFix.fixes.reduce((n, f) => n + f.rewrites, 0);
+    notes.push(
+      `array-safety: hardened ${totalRewrites} access(es) across ${arrFix.fixes.length} file(s)`,
+    );
+  }
+
   const allPaths = files.map((f) => f.path);
 
   // 1. Local verifier — parse + imports + exports.
