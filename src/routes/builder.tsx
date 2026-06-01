@@ -1756,6 +1756,12 @@ function Builder() {
       // the strongest model on every subsequent turn. They can re-toggle.
       if (deepThink && !opts.isAutoFix) setDeepThink(false);
       setBusy(true);
+      // Snapshot files BEFORE the turn mutates them, so the post-turn
+      // "Review changes" diff drawer has a clean baseline. Skip on auto-fix
+      // / auto-continue — those aren't user-visible turns.
+      if (!opts.isAutoFix && !opts.isAutoContinue) {
+        preTurnFilesRef.current = files.map((f) => ({ path: f.path, content: f.content }));
+      }
       // Clear any stale "couldn't auto-fix" / build-failure card the moment
       // Petal starts working again. It's confusing to show a give-up card
       // next to an active "Petal is working" indicator.
