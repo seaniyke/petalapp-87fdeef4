@@ -270,7 +270,7 @@ export async function runStagePlan(args: {
     const parsed = JSON.parse(argsStr) as { summary?: string; files?: PlannedFile[] };
     if (!parsed.files?.length) return { ok: false, reason: "empty_plan" };
 
-    let files = injectRootViewIfMissing(parsed.files, args.brief);
+    let files = injectRootViewIfMissing(parsed.files, args.brief, ctx.archetypeHint);
 
     // Hard-reject archetype mismatches: drop offending files so wire-up
     // doesn't ship a "Sidebar" component for a feed app. The scaffold
@@ -284,7 +284,7 @@ export async function runStagePlan(args: {
       // Re-check the root view: dropping a dep doesn't invalidate App.tsx
       // but we want to make sure App.tsx didn't get dropped.
       if (!files.some((f) => f.path === "src/App.tsx")) {
-        files = injectRootViewIfMissing(files, args.brief);
+        files = injectRootViewIfMissing(files, args.brief, ctx.archetypeHint);
       }
     }
 
