@@ -168,7 +168,7 @@ function injectRootViewIfMissing(
   // them up.
   const deps = cleaned.map((f) => f.path);
   const purpose = archetype === "business-app"
-    ? `Root view — renders BOTH the public marketing site AND the authenticated app shell with a lightweight route switch (hash router or simple state) for: ${brief.slice(0, 140)}. Required route map: '/' → Hero+Features+Pricing+Footer; '/auth' → AuthCard; '/app' → AppShell with sidebar + main domain components; '/app/settings' → SettingsPanel. Gate '/app/*' behind a mock <AuthGate>. Import and wire every listed component dep. NEVER render only the dashboard or only the landing — both surfaces must mount.`
+    ? `Root view — renders BOTH the public marketing site AND the authenticated app shell with a lightweight route switch (hash router or simple state) for: ${brief.slice(0, 140)}. Required route map: '/' → <main> stacking Navbar + Hero + Features + SocialProof + Pricing + Faq + Footer in THAT order; '/auth' → AuthCard; '/app' → AppShell with sidebar + main domain components; '/app/settings' → SettingsPanel. Gate '/app/*' behind a mock <AuthGate>. Import and wire every listed component dep. NEVER render only the dashboard or only the landing — both surfaces must mount. NEVER render the marketing surface as just a centered headline with Login/Sign-Up buttons — the Navbar and all seven marketing components must be present.`
     : `Root view — renders the full MVP shell with real domain UI for: ${brief.slice(0, 160)}. Import and use the listed component deps.`;
   const rootEntry: PlannedFile = {
     path: "src/App.tsx",
