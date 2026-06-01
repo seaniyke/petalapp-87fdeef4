@@ -439,6 +439,7 @@ export function pickDynamicSnippets(args: {
     if (key === "kitCore") continue;
     if (key === "noBackendGate") continue; // handled above
     if (key === "auth" && !args.hasBackend) continue;
+    if (key === "fullstackFeature" && !args.hasBackend) continue;
     const def = SNIPPETS[key];
     // "always" snippets are baseline reinforcements (e.g. verifyBeforeDone)
     // and ALWAYS go in. Topical snippets only fire on a keyword match.
