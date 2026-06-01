@@ -154,6 +154,43 @@ function remapModelForOpenRouter(model: string | undefined): string | undefined 
 
 // ---------------- Telemetry ----------------
 
+/**
+ * Per-million-token USD price (rough, blended input+output) for the models we
+ * route through the gateway. Used to populate `ai_call_log.cost_usd_micro` so
+ * the admin dashboard shows a non-zero "Estimated cost" — the gateway doesn't
+ * return a $ amount, only token counts. Prices are conservative averages of
+ * OpenRouter list prices as of mid-2026; close enough for an internal
+ * estimate, OpenRouter remains the source of truth for actual billing.
+ */
+const MODEL_PRICE_PER_M_TOKENS: Array<{ match: RegExp; inUsd: number; outUsd: number }> = [
+  { match: /claude-(sonnet|opus)-4/i, inUsd: 3.0, outUsd: 15.0 },
+  { match: /claude-haiku/i, inUsd: 0.8, outUsd: 4.0 },
+  { match: /gpt-5(\.\d+)?-(nano|mini)/i, inUsd: 0.25, outUsd: 2.0 },
+  { match: /gpt-5(\.\d+)?-pro/i, inUsd: 10.0, outUsd: 40.0 },
+  { match: /gpt-5(\.\d+)?$/i, inUsd: 1.25, outUsd: 10.0 },
+  { match: /gemini-(2\.5|3\.?\d?)-pro/i, inUsd: 1.25, outUsd: 5.0 },
+  { match: /gemini-(2\.5|3\.?\d?)-flash-lite/i, inUsd: 0.1, outUsd: 0.4 },
+  { match: /gemini-(2\.5|3\.?\d?)-flash/i, inUsd: 0.3, outUsd: 1.2 },
+  { match: /deepseek/i, inUsd: 0.3, outUsd: 1.2 },
+];
+
+function estimateCostUsdMicro(
+  model: string | null | undefined,
+  promptTokens: number | null | undefined,
+  completionTokens: number | null | undefined,
+): number | null {
+  if (!model) return null;
+  const pin = promptTokens ?? 0;
+  const pout = completionTokens ?? 0;
+  if (pin <= 0 && pout <= 0) return null;
+  const entry =
+    MODEL_PRICE_PER_M_TOKENS.find((e) => e.match.test(model)) ??
+    { inUsd: 0.5, outUsd: 2.0 }; // generic fallback
+  const usd = (pin / 1_000_000) * entry.inUsd + (pout / 1_000_000) * entry.outUsd;
+  return Math.round(usd * 1_000_000);
+}
+
+
 interface TelemetryArgs {
   feature: AiFeature;
   provider: Provider;
