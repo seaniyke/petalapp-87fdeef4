@@ -1783,6 +1783,7 @@ Forbidden defaults
     capabilitiesBlock +
     multiEditBlock +
     backendBlock +
+    schemaBlock +
     integrationsBlock +
     knowledgeBlock +
     memoryBlock +
