@@ -1721,16 +1721,10 @@ function Builder() {
       const nextMessages: ChatMessage[] = opts.isRetry ? messages : [...messages, aiUserMsg];
       if (!opts.isRetry) {
         if (opts.isAutoFix) {
-          // Replace the giant error-log prompt with a friendly system note
-          // in the visible thread. The AI still receives the full prompt
-          // via `nextMessages` above.
-          const note: ChatMessage = {
-            role: "system",
-            system: true,
-            content:
-              "🔧 Petal noticed a build error and is fixing it automatically. This fix is on us — no credits used.",
-          };
-          setMessages([...messages, note]);
+          // Autofix is silent. The activity card already shows progress;
+          // a chat-level "Petal noticed a build error" note was redundant
+          // noise that made our seams visible. The AI still receives the
+          // full error-log prompt via `nextMessages` above.
         } else if (opts.isAutoContinue) {
           // Friendly system note instead of the internal "wire it up" prompt.
           const note: ChatMessage = {

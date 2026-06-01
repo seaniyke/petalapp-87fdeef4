@@ -1591,19 +1591,11 @@ Forbidden defaults
       `keep-existing-expander and replace/update remain the fallback.\n`
     : "";
 
-  // Staged pipeline (Labs). When the user has the staged_pipeline flag on,
-  // initial builds run through Plan → parallel-Scaffold → Wire-up instead
-  // of the monolithic write_project call. The orchestrator returns null
-  // on any pre-stream failure so we can fall through to the existing
-  // path with no behavior change for everyone else.
-  if (isInitial && labsFlags.staged_pipeline) {
-    const stagedResp = await runStagedPipelineStream({
-      brief: lastUserContent,
-      hasBackend: Boolean(backend),
-    });
-    if (stagedResp) return stagedResp;
-    console.warn("[staged] orchestrator returned null — falling back to monolithic path");
-  }
+  // Compute the design direction up-front so BOTH the staged pipeline and
+  // the monolithic path see the same brief. Previously this lived below
+  // the staged branch and the staged path got a generic plan with no
+  // committed aesthetic — the root cause of "every Petal app looks the
+  // same / sidebar + dashboard for a feed prompt".
   const designDirection =
     isInitial && userJwt
       ? await pickDesignDirection({
@@ -1614,6 +1606,37 @@ Forbidden defaults
         })
       : null;
   const designBlock = designDirection ? renderDesignDirectionBlock(designDirection) : "";
+
+  // Staged pipeline (Labs). When the user has the staged_pipeline flag on,
+  // initial builds run through Plan → parallel-Scaffold → Wire-up instead
+  // of the monolithic write_project call. The orchestrator returns null
+  // on any pre-stream failure so we can fall through to the existing
+  // path with no behavior change for everyone else.
+  if (isInitial && labsFlags.staged_pipeline) {
+    // Compute the app-shape block here too (the monolithic path computes
+    // it again ~100 lines below; cheap pure function, OK to call twice).
+    let stagedAppShape: import("@/lib/app-shape-classifier").AppShape | undefined;
+    let stagedAppShapeBlock = "";
+    try {
+      const { classifyAppShape, renderShapeBlock } = await import("@/lib/app-shape-classifier");
+      stagedAppShape = classifyAppShape(lastUserContent);
+      stagedAppShapeBlock = renderShapeBlock(stagedAppShape);
+    } catch {
+      /* classifier failure must never block the build */
+    }
+    const stagedResp = await runStagedPipelineStream({
+      brief: lastUserContent,
+      hasBackend: Boolean(backend),
+      context: {
+        appShape: stagedAppShape,
+        appShapeBlock: stagedAppShapeBlock,
+        designDirection,
+        designDirectionBlock: designBlock,
+      },
+    });
+    if (stagedResp) return stagedResp;
+    console.warn("[staged] orchestrator returned null — falling back to monolithic path");
+  }
   const persistedBlueprint = !isInitial ? await loadProjectBlueprint(body.projectId) : null;
   const blueprintBlock = renderBuildBlueprintBlock(persistedBlueprint);
 

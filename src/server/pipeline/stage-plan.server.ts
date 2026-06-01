@@ -1,23 +1,34 @@
 /**
  * Staged Pipeline — Stage 1: PLAN
  *
- * Asks a small/cheap model to emit a file MANIFEST for an MVP, NOT code.
- * The manifest is later consumed by Stage 2 (scaffold) which generates
- * each file in parallel, isolated calls.
+ * Asks a model to emit a file MANIFEST for an MVP, NOT code. The manifest
+ * is later consumed by Stage 2 (scaffold) which generates each file in
+ * parallel, isolated calls.
  *
- * CONTRACT (post-fix):
+ * CONTRACT:
  *   - Target stack is Vite + React + TS + Tailwind v4 (NOT TanStack Start).
  *     The user-app kit mounts via src/main.tsx → <App /> in src/App.tsx.
  *   - src/App.tsx is ALWAYS the root view and is ALWAYS file #1 in the
  *     plan. If the model omits it, we inject it deterministically below.
  *   - index.html and src/main.tsx are Petal-owned and must NEVER appear
  *     in the plan — the renderable-shell guard writes them.
+ *   - src/styles.css is Petal-owned and must NEVER appear in the plan —
+ *     the orchestrator pre-writes it from the chosen theme tokens.
  *   - src/routes/* is NEVER planned — this is not TanStack.
  *
- * Why this matters: before the fix the plan stage's prompt mentioned
- * "TanStack Start" and the model would happily plan src/routes/index.tsx,
- * leaving no real root view. Stage 3 then shipped the "Your app is being
- * prepared" placeholder.
+ * Quality inputs (Phase 1 + 3 of the staged-pipeline rebuild):
+ *   - appShapeBlock — rendered output of classifyAppShape(brief). Tells
+ *     the planner the category + surfaces so it picks the right layout
+ *     archetype (feed, marketing, dashboard, tool, game) instead of
+ *     defaulting to "sidebar + dashboard" for everything.
+ *   - designDirectionBlock — rendered output of pickDesignDirection().
+ *     Tells the planner the vibe + typography + density so component
+ *     names and counts match the aesthetic.
+ *
+ * Why this matters: before the fix the plan stage had a thin prompt and
+ * received no shape/design context. Even when the monolithic path had
+ * already computed both, the staged path threw them away. Result:
+ * "sidebar + dashboard" plans for prompts that obviously wanted a feed.
  */
 
 import { aiChatCompletions } from "@/server/ai-provider.server";
@@ -80,15 +91,42 @@ const PLAN_TOOL = {
   },
 };
 
-const SYSTEM_PROMPT =
-  "You plan MVPs for a Vite + React + TypeScript app using Tailwind v4 and the bundled shadcn UI kit at \"@/components/ui/*\". " +
-  "Always call emit_plan — never reply in prose. Cap at 10 files. " +
-  "RULES:\n" +
-  "1. src/App.tsx is ALWAYS the root view and MUST be file #1 in the plan. It renders the full MVP shell (header, main content showing the actual feature, footer/nav). Never a placeholder.\n" +
-  "2. Other files are components imported by src/App.tsx (e.g. src/components/PostList.tsx, src/components/ComposeForm.tsx). Aim for 3–7 components.\n" +
-  "3. NEVER plan index.html or src/main.tsx — Petal writes those itself.\n" +
-  "4. NEVER plan src/routes/* — this is NOT TanStack Start. Routing, if needed, lives inside src/App.tsx with simple state or react-router.\n" +
-  "5. Skip backend wiring unless explicitly required by the brief.";
+const SYSTEM_PROMPT = `You plan MVPs for a Vite + React + TypeScript app using Tailwind v4 and the bundled shadcn UI kit at "@/components/ui/*".
+Always call emit_plan — never reply in prose. Cap at 10 files.
+
+HARD RULES:
+1. src/App.tsx is ALWAYS the root view and MUST be file #1 in the plan. It renders the full MVP shell (header + primary content showing the actual feature + nav/footer where appropriate). Never a placeholder.
+2. Other files are components imported by src/App.tsx (e.g. src/components/PostCard.tsx, src/components/Composer.tsx). Aim for 3–7 components total.
+3. NEVER plan index.html, src/main.tsx, or src/styles.css — Petal writes those itself.
+4. NEVER plan src/routes/* — this is NOT TanStack Start. Routing, if needed, lives inside src/App.tsx with simple state or react-router.
+5. Skip backend wiring unless explicitly required by the brief.
+
+LAYOUT ARCHETYPE (choose ONE, drive the file plan from it):
+- feed → single-column. Composer at top + post cards stream below. Optional tag/sort chip rail. NO sidebar, NO "DashboardPage" component, NO admin panel.
+- marketing → hero + 3–5 stacked sections (features, social proof, CTA) + footer. NO auth shells.
+- dashboard → sidebar + main content area. ONLY use this when the user explicitly asked for a dashboard, admin tool, analytics surface, or internal tool.
+- tool → centered canvas/workspace (calculator, editor, generator). Minimal chrome.
+- game → full-bleed play surface + score HUD. No marketing chrome.
+- content → reader layout (article list + detail), generous whitespace.
+
+If you plan a "Sidebar" or "DashboardPage" component for a feed/marketing/tool/game/content brief, that is a PLANNING ERROR — pick the right archetype instead.
+
+Component naming must reflect the domain (PostCard, Composer, FeedFilter), not generic chrome (Dashboard, Sidebar, MainPanel).`;
+
+interface PlanContext {
+  /**
+   * Rendered output of classifyAppShape(brief). When present, the planner
+   * is told the category + surfaces so it picks the right archetype.
+   */
+  appShapeBlock?: string;
+  /**
+   * Rendered output of pickDesignDirection(). When present, the planner
+   * knows the vibe so component counts/names align with the aesthetic.
+   */
+  designDirectionBlock?: string;
+  /** Hint for the LAYOUT ARCHETYPE block — when known, we tell the model directly. */
+  archetypeHint?: "feed" | "marketing" | "dashboard" | "tool" | "game" | "content";
+}
 
 function injectRootViewIfMissing(plan: PlannedFile[], brief: string): PlannedFile[] {
   // Drop forbidden paths the model may have planned despite the prompt.
@@ -96,6 +134,7 @@ function injectRootViewIfMissing(plan: PlannedFile[], brief: string): PlannedFil
     (f) =>
       f.path !== "index.html" &&
       f.path !== "src/main.tsx" &&
+      f.path !== "src/styles.css" &&
       !f.path.startsWith("src/routes/"),
   );
 
@@ -123,28 +162,62 @@ function injectRootViewIfMissing(plan: PlannedFile[], brief: string): PlannedFil
   return [rootEntry, ...cleaned];
 }
 
+/**
+ * Cheap sanity check: catch the "I planned a dashboard for a feed" failure
+ * mode where the model ignored the archetype block and emitted Sidebar +
+ * DashboardPage anyway. Returns a list of offending paths.
+ */
+function detectArchetypeMismatch(
+  files: PlannedFile[],
+  archetype: PlanContext["archetypeHint"],
+): string[] {
+  if (!archetype || archetype === "dashboard") return [];
+  const bannedForNonDashboard =
+    /(Sidebar|Dashboard(Page|Layout)?|AdminPanel|MainPanel)\b/;
+  return files
+    .map((f) => f.path)
+    .filter((p) => bannedForNonDashboard.test(p));
+}
+
 export async function runStagePlan(args: {
   brief: string;
   hasBackend: boolean;
+  context?: PlanContext;
 }): Promise<StagePlanResult | StagePlanFailure> {
   try {
+    const ctx = args.context ?? {};
+    const archetypeLine = ctx.archetypeHint
+      ? `\n\nARCHETYPE FOR THIS BRIEF: **${ctx.archetypeHint}**. Pick the matching layout from the rules above and reject components that contradict it.`
+      : "";
+
+    const contextBlocks = [
+      ctx.appShapeBlock?.trim(),
+      ctx.designDirectionBlock?.trim(),
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
     const upstream = await aiChatCompletions({
       feature: "generate",
       body: {
-        model: "google/gemini-3-flash-preview",
+        // gemini-3.5-flash is a touch stronger than 3-flash-preview at
+        // following multi-clause prompts (the archetype + design + rules
+        // stack), still cheap, still fast. Worth the small bump.
+        model: "google/gemini-3.5-flash",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: SYSTEM_PROMPT + archetypeLine },
           {
             role: "user",
             content:
               `Brief: ${args.brief}\n\n` +
               `Backend connected: ${args.hasBackend ? "yes" : "no"}\n\n` +
-              `Plan the MVP file manifest now. Remember: src/App.tsx must be file #1.`,
+              (contextBlocks ? `${contextBlocks}\n\n` : "") +
+              `Plan the MVP file manifest now. Remember: src/App.tsx must be file #1, the archetype rules are HARD, and never plan index.html / src/main.tsx / src/styles.css.`,
           },
         ],
         tools: [PLAN_TOOL],
         tool_choice: { type: "function", function: { name: "emit_plan" } },
-        max_tokens: 1000,
+        max_tokens: 1200,
         stream: false,
       },
       timeoutTier: "default",
@@ -166,7 +239,23 @@ export async function runStagePlan(args: {
     const parsed = JSON.parse(argsStr) as { summary?: string; files?: PlannedFile[] };
     if (!parsed.files?.length) return { ok: false, reason: "empty_plan" };
 
-    const files = injectRootViewIfMissing(parsed.files, args.brief);
+    let files = injectRootViewIfMissing(parsed.files, args.brief);
+
+    // Hard-reject archetype mismatches: drop offending files so wire-up
+    // doesn't ship a "Sidebar" component for a feed app. The scaffold
+    // stage will still build the legitimate components.
+    const mismatched = detectArchetypeMismatch(files, ctx.archetypeHint);
+    if (mismatched.length > 0) {
+      console.warn(
+        `[stage-plan] archetype=${ctx.archetypeHint} but model planned ${mismatched.join(", ")} — dropping`,
+      );
+      files = files.filter((f) => !mismatched.includes(f.path));
+      // Re-check the root view: dropping a dep doesn't invalidate App.tsx
+      // but we want to make sure App.tsx didn't get dropped.
+      if (!files.some((f) => f.path === "src/App.tsx")) {
+        files = injectRootViewIfMissing(files, args.brief);
+      }
+    }
 
     return {
       ok: true,
