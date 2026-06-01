@@ -174,12 +174,28 @@ function detectArchetypeMismatch(
   files: PlannedFile[],
   archetype: PlanContext["archetypeHint"],
 ): string[] {
-  if (!archetype || archetype === "dashboard") return [];
+  if (!archetype) return [];
+  // business-app handled below via missing-surface check, not banned names.
+  if (archetype === "dashboard" || archetype === "business-app") return [];
   const bannedForNonDashboard =
     /(Sidebar|Dashboard(Page|Layout)?|AdminPanel|MainPanel)\b/;
   return files
     .map((f) => f.path)
     .filter((p) => bannedForNonDashboard.test(p));
+}
+
+/**
+ * For business-app, both surfaces (marketing + product) must be present.
+ * Returns a reason string if either side is missing, else null.
+ */
+function detectBusinessAppGap(files: PlannedFile[]): string | null {
+  const paths = files.map((f) => f.path).join(" ");
+  const hasMarketing = /(Hero|Landing|Pricing|Features|Testimonial|Faq|FAQ|Footer)/i.test(paths);
+  const hasApp = /(Dashboard|AppShell|AuthCard|Sidebar|Settings|Workspace|Pipeline|Contacts|Wallet|Transactions|Inbox)/i.test(paths);
+  if (!hasMarketing && !hasApp) return "missing_both_surfaces";
+  if (!hasMarketing) return "missing_marketing_surface";
+  if (!hasApp) return "missing_app_surface";
+  return null;
 }
 
 export async function runStagePlan(args: {
