@@ -58,16 +58,79 @@ export type CloudFeature =
   | "ai"
   | "analytics";
 
+/**
+ * Narrow product domain within a `business-app` category. Drives the
+ * concrete component checklist the planner is required to ship
+ * (CRM → ContactsTable + Pipeline; helpdesk → TicketQueue; etc).
+ * Without this layer, "Build me a CRM SaaS" reliably degrades to
+ * generic KPI cards because the planner has no domain anchor.
+ */
+export type BusinessDomain =
+  | "crm"
+  | "helpdesk"
+  | "hris"
+  | "pm"
+  | "ats"
+  | "billing"
+  | "analytics"
+  | "lms"
+  | "cms"
+  | "inventory"
+  | "email-marketing"
+  | "scheduling";
+
 export type AppShape = {
   surfaces: Surface[];
   category: ShapeCategory;
   cloudFeatures: CloudFeature[];
   integrationsLikely: string[];
+  /** Narrow product domain inside a business-app brief. */
+  businessDomain?: BusinessDomain;
   /** Plain-English reason — surfaced in the prompt so the LLM understands why. */
   rationale: string;
   /** Confidence 0–1. Below 0.4 the classifier won't inject the block. */
   confidence: number;
 };
+
+/**
+ * Per-domain required product components. Surfaced verbatim to the
+ * planner so it stops emitting generic "Dashboard + KPI cards" for every
+ * business brief. PascalCase (component-shaped) names.
+ */
+export const DOMAIN_COMPONENTS: Record<BusinessDomain, string[]> = {
+  crm: ["ContactsTable", "Pipeline", "DealDetail", "ActivityLog"],
+  helpdesk: ["TicketQueue", "ConversationThread", "MacrosPanel"],
+  hris: ["EmployeeDirectory", "TimeOffRequests", "OrgChart"],
+  pm: ["ProjectBoard", "TaskDetail", "TimelineGantt"],
+  ats: ["CandidateList", "PipelineStages", "InterviewScorecard"],
+  billing: ["InvoicesTable", "InvoiceDetail", "RevenueChart"],
+  analytics: ["MetricsGrid", "QueryBuilder", "ChartCanvas"],
+  lms: ["CourseCatalog", "LessonPlayer", "ProgressTracker"],
+  cms: ["ContentList", "Editor", "PublishingPanel"],
+  inventory: ["StockTable", "ProductDetail", "PurchaseOrder"],
+  "email-marketing": ["CampaignsTable", "TemplateEditor", "SubscribersList"],
+  scheduling: ["AvailabilityCalendar", "BookingsList", "ResourceSchedule"],
+};
+
+const DOMAIN_RULES: Array<{ domain: BusinessDomain; match: RegExp }> = [
+  { domain: "crm", match: /\b(crm|customer\s+relationship|sales\s+pipeline|lead\s+(management|tracker|gen(eration)?))\b/i },
+  { domain: "helpdesk", match: /\b(help[- ]?desk|support\s+(desk|tickets?)|ticketing\s+system|zendesk[- ]?like|intercom[- ]?like)\b/i },
+  { domain: "hris", match: /\b(hris|hr\s+(platform|software|system)|people\s+ops|employee\s+(records|directory))\b/i },
+  { domain: "ats", match: /\b(ats|applicant\s+tracking|recruit(ing|ment)\s+(platform|software))\b/i },
+  { domain: "pm", match: /\b(project\s+management|task\s+tracker|asana[- ]?like|trello[- ]?like|linear[- ]?like|jira[- ]?like|kanban\s+(app|tool))\b/i },
+  { domain: "billing", match: /\b(invoicing\s+platform|billing\s+platform|accounts\s+receivable|subscription\s+billing)\b/i },
+  { domain: "analytics", match: /\b(analytics\s+platform|bi\s+tool|dashboard\s+builder|metabase[- ]?like|amplitude[- ]?like)\b/i },
+  { domain: "lms", match: /\b(lms|learning\s+management|course\s+platform|teachable[- ]?like|udemy[- ]?like)\b/i },
+  { domain: "cms", match: /\b(cms|headless\s+cms|content\s+management)\b/i },
+  { domain: "inventory", match: /\b(inventory\s+(system|management|tracker)|warehouse\s+management|stock\s+management)\b/i },
+  { domain: "email-marketing", match: /\b(email\s+marketing|mailchimp[- ]?like|campaign\s+builder|drip\s+campaigns?)\b/i },
+  { domain: "scheduling", match: /\b(scheduling\s+platform|calendly[- ]?like|appointment\s+platform)\b/i },
+];
+
+function detectBusinessDomain(text: string): BusinessDomain | undefined {
+  for (const r of DOMAIN_RULES) if (r.match.test(text)) return r.domain;
+  return undefined;
+}
 
 type Rule = {
   category: ShapeCategory;
