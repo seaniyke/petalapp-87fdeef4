@@ -29,9 +29,12 @@ export interface LocalIssue {
     | "oversize"
     | "render-risk"
     | "blank-render"
-    | "rls-sanity";
+    | "rls-sanity"
+    | "server-fn-contract"
+    | "auth-loader-trap";
   detail: string;
 }
+
 
 export interface LocalVerdict {
   ok: boolean;
