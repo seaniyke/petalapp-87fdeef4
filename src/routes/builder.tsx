@@ -4173,6 +4173,22 @@ function Builder() {
                 }
                 onAskFix={askPetalToFix}
                 onDismissError={() => setFriendlyError(null)}
+                onReviewChanges={
+                  isLive && preTurnFilesRef.current
+                    ? () => {
+                        const baseline = preTurnFilesRef.current;
+                        if (!baseline) return;
+                        setTurnDiffVersion({
+                          id: "turn-diff",
+                          label: "Before this turn",
+                          summary: null,
+                          origin: "auto",
+                          created_at: new Date().toISOString(),
+                          files: baseline,
+                        });
+                      }
+                    : undefined
+                }
               />
             )}
             <div ref={chatEndRef} />
