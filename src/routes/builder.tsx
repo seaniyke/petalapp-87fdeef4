@@ -3488,6 +3488,7 @@ function Builder() {
                         {project &&
                           i === messages.length - 1 &&
                           !petalIsWorking &&
+                          !proposedPlan &&
                           hasBackend === false &&
                           !dismissedBackendChips.has(i) &&
                           (() => {
