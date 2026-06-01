@@ -385,11 +385,14 @@ export function classifyAppShape(prompt: string): AppShape {
   const totalHits = matched.reduce((s, m) => s + m.hits * (m.rule.weight ?? 1), 0);
   const confidence = Math.min(1, 0.4 + totalHits * 0.15);
 
+  const businessDomain = detectBusinessDomain(text);
+
   return {
     surfaces: orderSurfaces(surfaces),
     category: anchor.category,
     cloudFeatures: cloud,
     integrationsLikely: integrations,
+    businessDomain,
     rationale: rationaleFor(anchor.category, surfaces, integrations),
     confidence,
   };
