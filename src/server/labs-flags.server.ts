@@ -42,35 +42,48 @@ export async function loadLabsFlagsForRequest(jwt: string | null | undefined): P
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // Admin short-circuit. Admins dogfood every experimental flag by
-    // default — including `staged_pipeline`, `agent_loop`, and
-    // `ast_patches`. These have historically been opt-in even for admins
-    // out of caution (e.g. staged_pipeline once produced a collage app
-    // for a "car rental" prompt), but keeping them off means we never
-    // get telemetry from the people best equipped to spot regressions.
-    // Admins can still turn any flag OFF explicitly via their labs_flags
-    // row — if `flags[name] === false` we respect it; otherwise default on.
+    // Global defaults — `staged_pipeline` and `ast_patches` are now ON
+    // for every signed-in user unless they explicitly opted out
+    // (`flags[name] === false`). They graduated out of admin-only labs
+    // after enough dogfood telemetry showed parity-or-better outcomes.
+    // `agent_loop` remains admin-default-on / user-opt-in because each
+    // step is billed and the tool surface is still settling. Other
+    // experimental flags (integrations_marketplace, pwa_template) stay
+    // strictly opt-in.
+    const GLOBAL_DEFAULT_ON: LabsFlagName[] = ["staged_pipeline", "ast_patches"];
+    const ADMIN_DEFAULT_ON: LabsFlagName[] = ["agent_loop"];
+
     const { data: claimsRow } = await supabase
       .from("user_roles")
       .select("role")
       .eq("role", "admin")
       .maybeSingle();
-    if (claimsRow) {
-      const { data: row } = await supabase.from("labs_flags").select("flags").maybeSingle();
-      const userFlags = (row?.flags ?? {}) as LabsFlags;
-      const adminFlags: LabsFlags = {};
-      for (const f of ALL_FLAGS) {
-        adminFlags[f] = userFlags[f] === false ? false : true;
-      }
-      return adminFlags;
-    }
+    const isAdmin = Boolean(claimsRow);
 
-    const { data, error } = await supabase
+    const { data: row } = await supabase
       .from("labs_flags")
       .select("flags")
       .maybeSingle();
-    if (error || !data?.flags) return {};
-    return data.flags as LabsFlags;
+    const userFlags = (row?.flags ?? {}) as LabsFlags;
+
+    const resolved: LabsFlags = {};
+    for (const f of ALL_FLAGS) {
+      const explicit = userFlags[f];
+      if (explicit === false) {
+        resolved[f] = false;
+        continue;
+      }
+      if (explicit === true) {
+        resolved[f] = true;
+        continue;
+      }
+      if (GLOBAL_DEFAULT_ON.includes(f)) {
+        resolved[f] = true;
+      } else if (isAdmin && ADMIN_DEFAULT_ON.includes(f)) {
+        resolved[f] = true;
+      }
+    }
+    return resolved;
   } catch (e) {
     console.warn("[labs-flags] load failed:", e);
     return {};
