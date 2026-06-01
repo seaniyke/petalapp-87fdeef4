@@ -4793,6 +4793,36 @@ function Builder() {
         onConfirm={commitRevertToMessage}
         confirmLabel="Revert to here"
       />
+      <PartialRevertDialog
+        version={turnDiffVersion}
+        currentFiles={files}
+        open={turnDiffVersion !== null}
+        onOpenChange={(o) => {
+          if (!o) setTurnDiffVersion(null);
+        }}
+        onApply={async (mergedFiles) => {
+          if (!project) return;
+          if (files.length) {
+            await createVersion(project.id, files, {
+              origin: "auto",
+              label: "Before partial revert",
+            });
+          }
+          await saveProjectFiles(project.id, mergedFiles);
+          setFiles(mergedFiles);
+          setPreviewKey((k) => k + 1);
+          setHistoryKey((k) => k + 1);
+          setAwaitingBuild(true);
+          void triggerBuild(project.id)
+            .then((build) => {
+              startedBuildIdsRef.current.add(build.buildId);
+            })
+            .catch((err: unknown) => {
+              setAwaitingBuild(false);
+              console.error("triggerBuild failed", err);
+            });
+        }}
+      />
       {pickedElement && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4 backdrop-blur-sm"
