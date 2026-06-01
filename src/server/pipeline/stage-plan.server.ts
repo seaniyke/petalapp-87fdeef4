@@ -130,6 +130,12 @@ interface PlanContext {
   designDirectionBlock?: string;
   /** Hint for the LAYOUT ARCHETYPE block — when known, we tell the model directly. */
   archetypeHint?: "feed" | "marketing" | "dashboard" | "tool" | "game" | "content" | "business-app";
+  /**
+   * Narrow product vertical inside a business-app brief. Used to seed the
+   * required component list (CRM → ContactsTable + Pipeline …) so the
+   * planner can't substitute generic KPI cards.
+   */
+  businessDomain?: BusinessDomain;
 }
 
 function injectRootViewIfMissing(
