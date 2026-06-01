@@ -123,12 +123,17 @@ async function scaffoldOne(
   const { file, brief, manifestSummary, designSummary, previousAttempt } = args;
   const isRoot = file.path === "src/App.tsx";
   const isMarketing = file.path.startsWith("src/components/marketing/");
-  // Marketing components need more room — a real hero/pricing section is
-  // 180-260 lines once you include the visual mock panel + trust row.
+  const isApp = file.path.startsWith("src/components/app/");
+  const isAuthCard = file.path.endsWith("/AuthCard.tsx");
+  const isAppShell = file.path.endsWith("/AppShell.tsx");
+  // Marketing + app-surface components need more room — a real hero, pricing
+  // section, or AppShell with sidebar+topbar is 200-280 lines once chrome is real.
   const lineCap = isMarketing
     ? Math.min(300, file.est_lines + 80)
-    : Math.min(240, file.est_lines + 60);
-  const tokenCap = isRoot ? 3200 : isMarketing ? 3600 : 2800;
+    : isApp
+      ? Math.min(320, file.est_lines + 80)
+      : Math.min(240, file.est_lines + 60);
+  const tokenCap = isRoot ? 3200 : isMarketing ? 3600 : isApp ? 3800 : 2800;
 
   const rootRules = isRoot
     ? `\nTHIS IS THE ROOT VIEW (src/App.tsx). Extra rules:\n` +
@@ -152,6 +157,24 @@ async function scaffoldOne(
       `- Use lucide-react for ALL icons. Use shadcn primitives (Button, Badge, Accordion, Avatar) — never raw <button>.`
     : "";
 
+  const appRules = isApp
+    ? `\nTHIS IS AN AUTHENTICATED APP-SURFACE COMPONENT (${file.path}). You are building a Linear/Notion/Stripe-grade product surface. Extra rules:\n` +
+      `- FORBIDDEN: three placeholder cards in a centered grid, "Coming soon" panels, lorem-ish row data ("Item 1", "Item 2"), a single empty Card with a "Save" button as an entire settings page, or a dashboard that is just 3 stat tiles and nothing else.\n` +
+      `- FORBIDDEN copy: "Welcome to your dashboard", "Manage your X here", any generic chrome text. Use real domain language tied to the brief.\n` +
+      `- Seed data MUST be realistic: 8-20 rows for tables, real-sounding names (Sarah Chen, Marcus Webb), companies (Acme, Linear, Vercel), amounts ($12,450), dates (Mar 14), statuses (Qualified, In review, Closed). Define seed data as a local const array at the top of the file — do NOT generate it inline.\n` +
+      `- Layout rhythm: page-level surfaces use \`p-6 md:p-8 space-y-6\`; section cards use \`rounded-xl border bg-card p-6\`; headings use \`text-2xl font-bold tracking-tight\` (page) or \`text-lg font-semibold\` (section).\n` +
+      `- Tables: shadcn \`Table\` with TableHeader/TableRow/TableHead/TableCell, sticky header (sticky top-0 bg-background), row hover \`hover:bg-muted/50\`, status cells use shadcn \`Badge\` with semantic variants, action cells use \`DropdownMenu\` + MoreHorizontal icon. Avatar + name + sub-line pattern for primary-identity cells.\n` +
+      `- Empty states: centered icon in a \`rounded-full bg-muted size-12 flex items-center justify-center\`, headline \`text-sm font-medium\`, muted line, CTA Button. BUT render the populated state by default — empty is only a fallback.\n` +
+      `- Mobile-first: tables collapse to stacked cards under \`sm:\`, sidebar collapses to a shadcn \`Sheet\` triggered by a Menu icon button (\`md:hidden\`), all multi-column grids declare \`grid-cols-1\` base before \`sm:/md:/lg:\`.\n` +
+      `- Use lucide-react for ALL icons. Use shadcn primitives (Button, Input, Select, Badge, Avatar, Table, Tabs, DropdownMenu, Switch, Sheet) — never raw <button>, <input>, hand-rolled cards.` +
+      (isAppShell
+        ? `\n- AppShell-specific: MUST render a left sidebar (\`w-64 shrink-0 border-r bg-card/30 hidden md:flex flex-col\`) with logo + workspace switcher + nav list + user card, AND a top bar (\`h-14 border-b flex items-center justify-between px-6\`) with mobile Sheet trigger + breadcrumb + search + Bell + Avatar, AND a \`<main class="flex-1 overflow-y-auto">\` content area. Maintain an \`activeRoute\` state and render the matching child component inside main. Active nav item gets \`bg-accent text-accent-foreground\`.`
+        : "") +
+      (isAuthCard
+        ? `\n- AuthCard-specific: MUST be a 2-pane layout (\`min-h-screen grid lg:grid-cols-2\`) with a branded left pane (\`hidden lg:flex bg-gradient-to-br from-primary/10 via-background to-background\` with headline + testimonial card) and a right pane with Tabs (signin/signup) containing Email + Password Inputs, primary Button w-full, a divider, Google + GitHub outline buttons, and a 'Continue as demo' link. NOT a single centered card on white.`
+        : "")
+    : "";
+
   const designLine = designSummary
     ? `\nDesign direction (committed for this build): ${designSummary}. Use these tokens and typography choices, not generic shadcn defaults.`
     : "";
@@ -166,7 +189,8 @@ async function scaffoldOne(
     `Import only files that exist either in the manifest below or in the standard scaffold (src/components/ui/*, src/lib/utils, src/integrations/backend/*).` +
     designLine +
     rootRules +
-    marketingRules;
+    marketingRules +
+    appRules;
 
   const retryBlock = previousAttempt
     ? `\n\nPREVIOUS ATTEMPT FAILED to parse with: ${previousAttempt.parserError}\nDo not repeat the same mistake. Re-emit the COMPLETE file (not a diff) with the syntax fixed. Your previous attempt began:\n\n${previousAttempt.content.slice(0, 600)}…`
