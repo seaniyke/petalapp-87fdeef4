@@ -281,6 +281,17 @@ export async function runStagePlan(args: {
       }
     }
 
+    // business-app surface-presence guard. Don't drop files (both sides are
+    // legitimate); just log so we can spot it in pipeline telemetry. The
+    // scaffold + wireup stages will still produce a runnable shell.
+    if (ctx.archetypeHint === "business-app") {
+      const gap = detectBusinessAppGap(files);
+      if (gap) {
+        console.warn(`[stage-plan] business-app ${gap} — plan: ${files.map((f) => f.path).join(", ")}`);
+      }
+    }
+
+
     return {
       ok: true,
       files,
