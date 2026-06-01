@@ -241,13 +241,24 @@ export function BuildActivityCard({
             </span>
           )}
         </span>
-        <button
-          type="button"
-          onClick={() => setCollapsed(false)}
-          className="text-[10px] text-muted-foreground hover:text-foreground"
-        >
-          show steps
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {onReviewChanges && (
+            <button
+              type="button"
+              onClick={onReviewChanges}
+              className="text-[10px] font-medium text-foreground/80 hover:text-foreground hover:underline"
+            >
+              Review changes
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setCollapsed(false)}
+            className="text-[10px] text-muted-foreground hover:text-foreground"
+          >
+            show steps
+          </button>
+        </div>
       </div>
     );
   }
