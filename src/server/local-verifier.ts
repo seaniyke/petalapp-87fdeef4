@@ -1033,6 +1033,15 @@ function findMissingNamedExports(
   // Match `import [type] { A, B as C } from "spec"` — captures the brace
   // contents and the specifier. Skips type-only imports and default/namespace-only.
   const importRe = /import\s+(?:type\s+)?(?:[A-Za-z_$][\w$]*\s*,\s*)?\{([^}]+)\}\s*from\s*["']([^"']+)["']/g;
+  // Match `import Foo from "spec"` or `import Foo, { … } from "spec"` or
+  // `import Foo, * as N from "spec"` — captures the default binding and the
+  // specifier. Skips `import type Foo from …`. We use this to catch the
+  // common scaffold bug where the model writes a component with NAMED
+  // exports (`export function Sidebar`) but a sibling file default-imports
+  // it (`import Sidebar from "./Sidebar"`). Rollup hard-fails the build
+  // with `"default" is not exported by …` — we want to repair it locally
+  // instead of letting it slip through to a Cloudflare build error.
+  const defaultImportRe = /import\s+(?!type\s)([A-Za-z_$][\w$]*)(?:\s*,\s*(?:\{[^}]+\}|\*\s+as\s+[A-Za-z_$][\w$]*))?\s+from\s*["']([^"']+)["']/g;
 
   const seen = new Set<string>();
   for (const f of files) {
