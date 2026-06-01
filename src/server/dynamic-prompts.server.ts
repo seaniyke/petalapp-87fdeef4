@@ -76,7 +76,12 @@ Before you emit the recap (the past-tense "I added / wired up / shipped" sentenc
 4. Every NEW form has BOTH a submit handler AND a visible success/error state. No dead buttons.
 5. Every state change the user requested is observable in the UI — not just stored in state.
 If ANY of these is missing, FIX IT in this same turn instead of writing the recap. The recap must describe what is actually true after this turn lands. "I added a profiles page" must mean the page renders, is linked, and shows real data — not just that a file was created.
-Speed is not a virtue here. A turn that takes 10s longer but ships working code is worth far more than a turn that streams fast and leaves the user with broken links.`,
+Speed is not a virtue here. A turn that takes 10s longer but ships working code is worth far more than a turn that streams fast and leaves the user with broken links.
+
+JSX correctness — prevents the most common runtime crash (React error #31 "objects are not valid as a React child", object with keys {$$typeof, render, displayName}):
+- A component is NEVER a valid React child by itself. Write \`<Icon />\`, never \`{Icon}\`. Lucide icons and any \`forwardRef\` component are objects at the value level; React throws #31 if you drop one into JSX.
+- Slots typed as \`ReactNode\` / \`children\` / \`label\` / \`title\` / \`description\` / \`heading\` / \`cta\` accept RENDERED elements (strings, numbers, \`<Foo />\`), NOT component references. Only props explicitly typed as a component (e.g. \`icon: LucideIcon\` on kit blocks like \`<EmptyState icon={Inbox} />\` or \`<FeaturesGrid3 items={[{ icon: Film }]} />\`) accept a bare component value.
+- When in doubt, render it: \`label: <><Icon className="h-4 w-4" /> Save</>\` — not \`label: Icon\`.`,
   },
   // Fires on multi-section / landing / dashboard / page-shaped requests —
   // the exact turns that historically blew past the 180-line cap and got
