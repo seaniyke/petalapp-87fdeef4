@@ -770,6 +770,17 @@ export function lintRenderRisks(
         });
       }
     }
+
+    // R5 — forwardRef icon rendered as a JSX child expression (React #31).
+    if (ENABLED_RULES.has("R5")) {
+      for (const issue of findForwardRefIconRenders(f.content, clean)) {
+        issues.push({
+          path: f.path,
+          kind: "render-risk",
+          detail: `forwardRef icon "${issue.ident}" rendered as a child — ${issue.reason}`,
+        });
+      }
+    }
   }
 
   return issues;
