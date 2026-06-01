@@ -1947,7 +1947,7 @@ function Builder() {
                 setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
               }
             },
-            onFileComplete: (path) => {
+            onFileComplete: (path, _bytes, _index, content) => {
               // Phase D step 9 — flip this file's row to ✓ the moment its
               // streaming content closes, without waiting for the whole turn.
               setCompletedPaths((prev) => {
@@ -1956,6 +1956,12 @@ function Builder() {
                 next.add(path);
                 return next;
               });
+              // Phase 4 #12 — stream the file into the WebContainer mid-turn.
+              if (content) {
+                void import("@/lib/webcontainer").then(({ streamWriteFile }) =>
+                  streamWriteFile(path, content),
+                );
+              }
             },
             onFileValidated: (path, ok, errors) => {
               if (!ok && errors && errors.length > 0) {
