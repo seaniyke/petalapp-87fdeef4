@@ -705,8 +705,41 @@ function extractIdents(block: string): string[] {
 }
 
 // =============================================================================
+// R6 — bare grid-cols-N at all widths (mobile layout collapse)
+// =============================================================================
+//
+// Catches `className="… grid-cols-2 …"` / `grid-cols-3` / `grid-cols-4` that
+// applies at all viewports and has no `grid-cols-1` base or `sm:`/`md:`/`lg:`
+// prefix. On a 430px viewport this leaves empty columns or clips content —
+// the exact CRM "Lead Overview" failure where the right half of every KPI
+// card was blank.
+//
+// We DON'T flag responsive forms (sm:grid-cols-2, lg:grid-cols-3) and we
+// DON'T flag grid-cols-1 (already mobile-safe).
+
+function findBareGridCols(src: string): { snippet: string }[] {
+  const issues: { snippet: string }[] = [];
+  const classAttrRe = /className\s*=\s*(?:"([^"]+)"|'([^']+)'|\{`([^`]+)`\})/g;
+  let m: RegExpExecArray | null;
+  while ((m = classAttrRe.exec(src))) {
+    const cls = (m[1] ?? m[2] ?? m[3] ?? "").trim();
+    if (!cls) continue;
+    // Must contain a bare grid-cols-N (N >= 2) with no prefix.
+    const bare = /(?:^|\s)grid-cols-([2-9]|1[0-2])(?:\s|$)/.test(cls);
+    if (!bare) continue;
+    // Skip if there's also a responsive override OR a grid-cols-1 base.
+    const hasResponsive = /(?:^|\s)(?:sm|md|lg|xl|2xl):grid-cols-\d+/.test(cls);
+    const hasMobileBase = /(?:^|\s)grid-cols-1(?:\s|$)/.test(cls);
+    if (hasResponsive || hasMobileBase) continue;
+    issues.push({ snippet: cls.length > 80 ? cls.slice(0, 80) + "…" : cls });
+  }
+  return issues;
+}
+
+// =============================================================================
 // Entry point
 // =============================================================================
+
 
 export function lintRenderRisks(
   files: { path: string; content: string }[],
