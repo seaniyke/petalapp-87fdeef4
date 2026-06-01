@@ -10,7 +10,7 @@ type Handlers = {
   onPhase?: (phase: "thinking" | "designing" | "writing" | "polishing") => void;
   onDesignVibe?: (vibe: string, rationale: string) => void;
   onFileProgress?: (written: number, latestPath?: string) => void;
-  onFileComplete?: (path: string, bytes: number, index: number) => void;
+  onFileComplete?: (path: string, bytes: number, index: number, content?: string) => void;
   /** Per-file structural validator result (plan #2). `ok:false` means the
    *  cheap local verifier found a structural issue; the post-stream
    *  autofix tier will attempt repair. */
