@@ -941,6 +941,8 @@ export function CheckoutSummary({
   note?: React.ReactNode;
   className?: string;
 }) {
+  const safeLines = Array.isArray(lines) ? lines : [];
+  const safeTotal = total ?? { label: "Total", value: "—" };
   return (
     <Card className={cn("sticky top-6", className)}>
       <CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader>
