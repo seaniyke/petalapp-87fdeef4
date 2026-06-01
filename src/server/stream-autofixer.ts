@@ -20,6 +20,7 @@
 import dynamicIconImports from "lucide-react/dynamicIconImports.mjs";
 import type { ProjectFile } from "@/server/generate.server";
 import { fixMissingShadcnImports } from "@/server/shadcn-imports.server";
+import { fixArraySafety } from "@/server/array-safety-fixer.server";
 
 export interface AutofixReport {
   fixedCount: number;
@@ -323,7 +324,7 @@ export function autofixFiles(files: ProjectFile[]): { files: ProjectFile[]; repo
   // Deterministic shadcn missing-import repair (Avatar/AvatarImage,
   // Tabs/TabsTrigger, etc.). Runs last so it sees imports added by
   // upstream passes.
-  const { files: out, fixes } = fixMissingShadcnImports(perFile);
+  const { files: shadcnOut, fixes } = fixMissingShadcnImports(perFile);
   if (fixes.length > 0) {
     const totalAdded = fixes.reduce((n, f) => n + f.added.length, 0);
     report.fixedCount += totalAdded;
@@ -332,6 +333,17 @@ export function autofixFiles(files: ProjectFile[]): { files: ProjectFile[]; repo
         .slice(0, 3)
         .map((f) => `${f.path}: ${f.added.join(",")}`)
         .join("; ")}${fixes.length > 3 ? "…" : ""})`,
+    );
+  }
+  // Deterministic array-safety hardener. See array-safety-fixer.server.ts
+  // for the rule set. Runs after shadcn so it sees the final import shape.
+  const arrFix = fixArraySafety(shadcnOut);
+  const out = arrFix.files;
+  if (arrFix.fixes.length > 0) {
+    const totalRewrites = arrFix.fixes.reduce((n, f) => n + f.rewrites, 0);
+    report.fixedCount += totalRewrites;
+    report.notes.push(
+      `array-safety: hardened ${totalRewrites} access(es) across ${arrFix.fixes.length} file(s)`,
     );
   }
   return { files: out, report };

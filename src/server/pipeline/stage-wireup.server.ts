@@ -19,6 +19,7 @@ import { verifyFilesLocal } from "@/server/local-verifier";
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import { ensureRenderableShell } from "@/server/renderable-shell.server";
 import { fixMissingShadcnImports } from "@/server/shadcn-imports.server";
+import { fixArraySafety } from "@/server/array-safety-fixer.server";
 import type { ProjectFile } from "@/server/generate.server";
 
 export interface StageWireupResult {
@@ -51,6 +52,20 @@ export async function runStageWireup(args: {
     const totalAdded = shadcnFix.fixes.reduce((n, f) => n + f.added.length, 0);
     notes.push(
       `shadcn-imports: injected ${totalAdded} missing import(s) across ${shadcnFix.fixes.length} file(s)`,
+    );
+  }
+
+  // 0b. Deterministic array-safety autofix. Wraps `IDENT.filter(...)` /
+  // `IDENT.map(...)` / `IDENT.length` etc with `(IDENT ?? [])` when IDENT
+  // is provably-possibly-undefined (useState w/o array default, useQuery
+  // `data`, supabase `data`). Catches the "undefined is not an object
+  // (evaluating 'e.filter')" white-screen class at the source.
+  const arrFix = fixArraySafety(files);
+  files = arrFix.files;
+  if (arrFix.fixes.length > 0) {
+    const totalRewrites = arrFix.fixes.reduce((n, f) => n + f.rewrites, 0);
+    notes.push(
+      `array-safety: hardened ${totalRewrites} access(es) across ${arrFix.fixes.length} file(s)`,
     );
   }
 
