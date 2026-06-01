@@ -1,18 +1,22 @@
 /**
  * Staged Pipeline — orchestrator entrypoint.
  *
- * Runs Plan → Scaffold (parallel) → Wire-up and streams the result as
- * a server-sent event (SSE) Response in the same shape the existing
- * monolithic /api/generate path emits. The client reads either path
- * identically — no UI work needed.
+ * Runs Plan → Scaffold (parallel) → Wire-up to completion BEFORE opening
+ * the SSE response. This lets us return `null` (caller falls back to the
+ * monolithic path) for any condition that should not surface to the user
+ * — most importantly `missing_root_view`, which means the model produced
+ * no real src/App.tsx and the monolithic path's retry/continuation
+ * budget is the user's best chance at a real app this turn.
  *
  * Behavior contract:
- *   - Returns `null` when the pipeline could not finish; the caller
- *     MUST fall back to the monolithic path. Never throws.
- *   - Returns a Response when the pipeline succeeded end-to-end.
- *   - Each SSE event is appended in the order the user expects:
- *     phase("thinking") → status → phase("writing") → file_complete*
- *     → phase("polishing") → status → result.
+ *   - Returns `null` when the pipeline could not finish OR when the
+ *     monolithic path would do better; the caller MUST fall back.
+ *   - Returns a Response when the pipeline succeeded end-to-end with a
+ *     real, renderable result. Never throws.
+ *
+ * The SSE events are emitted in the order the existing client expects
+ * (phase → status → file_complete* → phase → status → result) so the
+ * activity card renders identically to the monolithic path.
  */
 
 import { runStagePlan } from "./stage-plan.server";
@@ -28,137 +32,66 @@ export async function runStagedPipelineStream(args: {
   brief: string;
   hasBackend: boolean;
 }): Promise<Response | null> {
-  // Run plan first. If plan fails we fall back to monolithic — no
-  // partial results to stream.
+  // STAGE 1 — plan.
   const plan = await runStagePlan({ brief: args.brief, hasBackend: args.hasBackend });
   if (!plan.ok) {
     console.warn("[staged] plan failed:", plan.reason);
     return null;
   }
 
-  // From here on we own the response stream. Stage failures inside the
-  // stream emit a friendly `error` event and close cleanly — the client
-  // shows the same retry card it always does.
+  // STAGE 2 — parallel scaffold.
+  const scaffold = await runStageScaffold({
+    plan: plan.files,
+    brief: args.brief,
+    manifestSummary: plan.summary,
+  });
+  if (!scaffold.ok) {
+    console.warn("[staged] scaffold failed:", scaffold.reason);
+    return null;
+  }
+
+  // STAGE 3 — wireup + renderable-shell guard.
+  const wireup = await runStageWireup({ files: scaffold.files, brief: args.brief });
+  if (!wireup.ok) {
+    // missing_root_view / verifier failures all warrant a silent fallback
+    // — the monolithic path has retries and continuation we don't have
+    // here, and giving the user a real app beats surfacing the failure.
+    console.warn(
+      `[staged] wireup failed (${wireup.reason}) — falling back to monolithic:`,
+      wireup.blockingIssues.join(" | "),
+    );
+    return null;
+  }
+
+  // All three stages succeeded. Replay the events as an SSE stream so the
+  // client renders the same progress UI it always does.
   const encoder = new TextEncoder();
+  const events: StreamEvent[] = [
+    { type: "phase", phase: "thinking" },
+    { type: "status", message: `Planning ${plan.files.length} files…` },
+    { type: "phase", phase: "writing" },
+    { type: "status", message: "Writing files in parallel…" },
+    ...scaffold.files.map((f, i) => ({
+      type: "file_complete" as const,
+      path: f.path,
+      bytes: f.content.length,
+      index: i,
+    })),
+    { type: "phase", phase: "polishing" },
+    { type: "status", message: "Verifying the build…" },
+    {
+      type: "result",
+      files: wireup.files as ProjectFile[],
+      summary: wireup.summary,
+    },
+  ];
+
   const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      try {
-        controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
-        controller.enqueue(
-          encoder.encode(
-            sse({ type: "status", message: `Planning ${plan.files.length} files…` }),
-          ),
-        );
-
-        controller.enqueue(encoder.encode(sse({ type: "phase", phase: "writing" })));
-        controller.enqueue(
-          encoder.encode(sse({ type: "status", message: "Writing files in parallel…" })),
-        );
-
-        const scaffold = await runStageScaffold({
-          plan: plan.files,
-          brief: args.brief,
-          manifestSummary: plan.summary,
-        });
-
-        if (!scaffold.ok) {
-          controller.enqueue(
-            encoder.encode(
-              sse({
-                type: "error",
-                message:
-                  "Petal couldn't finish writing the files this turn. Try again — usually a one-time hiccup.",
-                kind: "generation_incomplete",
-                raw: `staged_pipeline:scaffold_failed:${scaffold.reason}`,
-              }),
-            ),
-          );
-          controller.close();
-          return;
-        }
-
-        // Emit a file_complete event per file so the activity card shows
-        // realtime progress instead of one big blob at the end.
-        scaffold.files.forEach((f, i) => {
-          controller.enqueue(
-            encoder.encode(
-              sse({
-                type: "file_complete",
-                path: f.path,
-                bytes: f.content.length,
-                index: i,
-              }),
-            ),
-          );
-        });
-
-        controller.enqueue(encoder.encode(sse({ type: "phase", phase: "polishing" })));
-        controller.enqueue(
-          encoder.encode(sse({ type: "status", message: "Verifying the build…" })),
-        );
-
-        const wireup = await runStageWireup({
-          files: scaffold.files,
-          brief: args.brief,
-        });
-
-        if (!wireup.ok) {
-          // missing_root_view means the model didn't ship a real
-          // src/App.tsx. Don't surface the failure to the user — close
-          // this stream cleanly and signal the caller (via a special
-          // SSE event the route handler consumes) to fall back to the
-          // monolithic path so the user still gets a real app this turn.
-          if (wireup.reason === "missing_root_view") {
-            console.warn("[staged] missing_root_view — signaling fallback");
-            controller.enqueue(
-              encoder.encode(
-                sse({
-                  type: "status",
-                  message: "__petal_staged_fallback__",
-                }),
-              ),
-            );
-            controller.close();
-            return;
-          }
-          controller.enqueue(
-            encoder.encode(
-              sse({
-                type: "error",
-                message:
-                  "Petal built the files but they didn't pass the safety check. Try again with a slightly clearer prompt.",
-                kind: "generation_incomplete",
-                raw: `staged_pipeline:wireup_failed:${wireup.reason}`,
-              }),
-            ),
-          );
-          controller.close();
-          return;
-        }
-
-        controller.enqueue(
-          encoder.encode(
-            sse({
-              type: "result",
-              files: wireup.files as ProjectFile[],
-              summary: wireup.summary,
-            }),
-          ),
-        );
-        controller.close();
-      } catch (e) {
-        controller.enqueue(
-          encoder.encode(
-            sse({
-              type: "error",
-              message: "Petal ran into an unexpected hiccup. Try again.",
-              kind: "unknown",
-              raw: e instanceof Error ? e.message : String(e),
-            }),
-          ),
-        );
-        controller.close();
+    start(controller) {
+      for (const ev of events) {
+        controller.enqueue(encoder.encode(sse(ev)));
       }
+      controller.close();
     },
   });
 
