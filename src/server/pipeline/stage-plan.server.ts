@@ -55,41 +55,42 @@ export interface StagePlanFailure {
   reason: string;
 }
 
-const PLAN_TOOL = {
-  type: "function" as const,
-  function: {
-    name: "emit_plan",
-    description:
-      "Emit a file manifest for an MVP. Cap at 10 files. Each file gets a path, a one-sentence purpose, its dependency list, and an estimated line count.",
-    parameters: {
-      type: "object",
-      properties: {
-        summary: {
-          type: "string",
-          description: "One sentence describing the app being planned.",
-        },
-        files: {
-          type: "array",
-          minItems: 1,
-          maxItems: 10,
-          items: {
-            type: "object",
-            properties: {
-              path: { type: "string" },
-              purpose: { type: "string" },
-              deps: { type: "array", items: { type: "string" } },
-              est_lines: { type: "number" },
+function buildPlanTool(maxFiles: number) {
+  return {
+    type: "function" as const,
+    function: {
+      name: "emit_plan",
+      description: `Emit a file manifest for an MVP. Cap at ${maxFiles} files. Each file gets a path, a one-sentence purpose, its dependency list, and an estimated line count.`,
+      parameters: {
+        type: "object",
+        properties: {
+          summary: {
+            type: "string",
+            description: "One sentence describing the app being planned.",
+          },
+          files: {
+            type: "array",
+            minItems: 1,
+            maxItems: maxFiles,
+            items: {
+              type: "object",
+              properties: {
+                path: { type: "string" },
+                purpose: { type: "string" },
+                deps: { type: "array", items: { type: "string" } },
+                est_lines: { type: "number" },
+              },
+              required: ["path", "purpose", "deps", "est_lines"],
+              additionalProperties: false,
             },
-            required: ["path", "purpose", "deps", "est_lines"],
-            additionalProperties: false,
           },
         },
+        required: ["summary", "files"],
+        additionalProperties: false,
       },
-      required: ["summary", "files"],
-      additionalProperties: false,
     },
-  },
-};
+  };
+}
 
 const SYSTEM_PROMPT = `You plan MVPs for a Vite + React + TypeScript app using Tailwind v4 and the bundled shadcn UI kit at "@/components/ui/*".
 Always call emit_plan — never reply in prose. Cap at 10 files.
