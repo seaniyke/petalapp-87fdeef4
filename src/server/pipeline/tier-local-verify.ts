@@ -84,7 +84,7 @@ export async function runLocalVerifyTier(args: RunArgs): Promise<LocalVerifyTier
   // braces + JSX + parse + undefined are real structural problems; the rest
   // (missing-dep, missing-sibling, missing-export, oversize, render-risk,
   // rls-sanity, lazy-export) are softer signals.
-  const STRUCTURAL = new Set(["truncation", "braces", "jsx", "parse", "undefined", "unterminated-string"]);
+  const STRUCTURAL = new Set(["truncation", "braces", "jsx", "parse", "undefined", "unterminated-string", "scope"]);
   const structuralCount = verdict.issues.filter((i) => STRUCTURAL.has(i.kind)).length;
   const importCount = verdict.issues.filter((i) => i.kind === "missing-dep" || i.kind === "missing-sibling").length;
   const otherCount = verdict.issues.length - structuralCount - importCount;
