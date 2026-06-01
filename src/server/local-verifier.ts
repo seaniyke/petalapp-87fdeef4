@@ -565,6 +565,35 @@ function findUnresolvedImports(
       };
       for (const k of Object.keys(pkg.dependencies ?? {})) deps.add(k);
       for (const k of Object.keys(pkg.devDependencies ?? {})) deps.add(k);
+
+      // React-ecosystem version-compat guard. The scaffold ships React 18,
+      // and several popular libs require React 19 in their latest majors.
+      // Mismatches surface in the preview as cryptic minified errors like
+      // `function is not a constructor (evaluating 'new Um({})')` — the
+      // class constructor in @react-three/fiber's v9 reconciler that
+      // expects React 19's internal scheduler. Surface a deterministic
+      // issue so autofix can downgrade the pin.
+      const allDeps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
+      const reactRange = allDeps["react"] ?? "";
+      const reactMajor = /(\d+)/.exec(reactRange.replace(/^[\^~>=<\s]+/, ""))?.[1];
+      if (reactMajor === "18") {
+        const incompat: Array<{ name: string; badMajor: number; safe: string; reason: string }> = [
+          { name: "@react-three/fiber", badMajor: 9, safe: "^8.17.10", reason: "v9 requires React 19" },
+          { name: "@react-three/drei", badMajor: 10, safe: "^9.117.3", reason: "v10 requires fiber v9 / React 19" },
+        ];
+        for (const { name, badMajor, safe, reason } of incompat) {
+          const range = allDeps[name];
+          if (!range) continue;
+          const major = Number(/(\d+)/.exec(range.replace(/^[\^~>=<\s]+/, ""))?.[1] ?? "0");
+          if (major >= badMajor) {
+            issues.push({
+              path: "package.json",
+              kind: "missing-dep",
+              detail: `"${name}": "${range}" is incompatible with React 18 (${reason}). Pin to "${safe}" to avoid the "new Um({})" runtime crash in the live preview.`,
+            });
+          }
+        }
+      }
     } catch {
       /* malformed package.json — handled elsewhere */
     }
