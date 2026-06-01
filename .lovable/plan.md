@@ -14,7 +14,9 @@ Phase 3 (capability prompt blocks) — shipped this loop in `src/server/dynamic-
 - #10 `cronJob` (pg_cron SQL-only OR pg_net + public cron route)
 - #11 `payments` (provider gating, server-fn checkout, webhook-driven status)
 
-Phase 4 — deferred. Per-file streaming + interactive diff drawer are large infra/UI changes that need their own loop; current generator+verifier is the higher leverage path.
+Phase 4 — shipped this loop:
+- #12 per-file streaming preview — `file_complete` SSE carries content; `streamWriteFile` writes mid-turn for HMR.
+- #13 interactive per-turn diff drawer — BuildActivityCard collapsed success line now exposes "Review changes" which opens `PartialRevertDialog` against a snapshot captured at send() entry (`preTurnFilesRef`). Users can accept/reject individual files from the latest turn without reverting the entire project.
 
 
 ## What's missing for true full-stack parity

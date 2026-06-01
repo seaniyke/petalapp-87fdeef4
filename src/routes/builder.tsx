@@ -115,6 +115,8 @@ import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
 import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
 import { RevertPreviewDialog } from "@/components/RevertPreviewDialog";
+import { PartialRevertDialog } from "@/components/PartialRevertDialog";
+import type { VersionRow } from "@/lib/versions";
 import { BuilderActionsSheet } from "@/components/BuilderActionsSheet";
 import { PublishSheet } from "@/components/PublishSheet";
 import { RenameProjectDialog } from "@/components/RenameProjectDialog";
@@ -349,6 +351,12 @@ function Builder() {
   const [designCaption, setDesignCaption] = useState<string>("");
   const [filesWritten, setFilesWritten] = useState<number>(0);
   const [lastBuildCredits, setLastBuildCredits] = useState<number | null>(null);
+  // Snapshot of `files` captured at the start of the current turn. Drives the
+  // "Review changes" per-file diff drawer surfaced on the BuildActivityCard
+  // success line — so users can accept/reject individual files from a turn
+  // without nuking the whole result via Time Machine.
+  const preTurnFilesRef = useRef<ProjectFile[] | null>(null);
+  const [turnDiffVersion, setTurnDiffVersion] = useState<VersionRow | null>(null);
   const [latestPath, setLatestPath] = useState<string | undefined>(undefined);
   // Model-written sentence for the most recent file ("Building the upload
   // screen…"). When present, the activity card shows this instead of the
@@ -1748,6 +1756,12 @@ function Builder() {
       // the strongest model on every subsequent turn. They can re-toggle.
       if (deepThink && !opts.isAutoFix) setDeepThink(false);
       setBusy(true);
+      // Snapshot files BEFORE the turn mutates them, so the post-turn
+      // "Review changes" diff drawer has a clean baseline. Skip on auto-fix
+      // / auto-continue — those aren't user-visible turns.
+      if (!opts.isAutoFix && !opts.isAutoContinue) {
+        preTurnFilesRef.current = files.map((f) => ({ path: f.path, content: f.content }));
+      }
       // Clear any stale "couldn't auto-fix" / build-failure card the moment
       // Petal starts working again. It's confusing to show a give-up card
       // next to an active "Petal is working" indicator.
@@ -4159,6 +4173,23 @@ function Builder() {
                 }
                 onAskFix={askPetalToFix}
                 onDismissError={() => setFriendlyError(null)}
+                onReviewChanges={
+                  isLive && preTurnFilesRef.current
+                    ? () => {
+                        const baseline = preTurnFilesRef.current;
+                        if (!baseline) return;
+                        setTurnDiffVersion({
+                          id: "turn-diff",
+                          project_id: project?.id ?? "",
+                          label: "Before this turn",
+                          summary: null,
+                          origin: "auto",
+                          created_at: new Date().toISOString(),
+                          files: baseline,
+                        });
+                      }
+                    : undefined
+                }
               />
             )}
             <div ref={chatEndRef} />
@@ -4761,6 +4792,36 @@ function Builder() {
         busy={revertingIndex !== null}
         onConfirm={commitRevertToMessage}
         confirmLabel="Revert to here"
+      />
+      <PartialRevertDialog
+        version={turnDiffVersion}
+        currentFiles={files}
+        open={turnDiffVersion !== null}
+        onOpenChange={(o) => {
+          if (!o) setTurnDiffVersion(null);
+        }}
+        onApply={async (mergedFiles) => {
+          if (!project) return;
+          if (files.length) {
+            await createVersion(project.id, files, {
+              origin: "auto",
+              label: "Before partial revert",
+            });
+          }
+          await saveProjectFiles(project.id, mergedFiles);
+          setFiles(mergedFiles);
+          setPreviewKey((k) => k + 1);
+          setHistoryKey((k) => k + 1);
+          setAwaitingBuild(true);
+          void triggerBuild(project.id)
+            .then((build) => {
+              startedBuildIdsRef.current.add(build.buildId);
+            })
+            .catch((err: unknown) => {
+              setAwaitingBuild(false);
+              console.error("triggerBuild failed", err);
+            });
+        }}
       />
       {pickedElement && (
         <div
