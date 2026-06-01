@@ -142,6 +142,7 @@ export function BuildActivityCard({
   onRetry,
   onAskFix,
   onDismissError,
+  onReviewChanges,
 }: Props) {
   // Auto-collapse 3s after success.
   const [collapsed, setCollapsed] = useState(false);
