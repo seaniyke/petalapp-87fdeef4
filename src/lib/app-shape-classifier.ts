@@ -402,11 +402,17 @@ export function classifyAppShape(prompt: string): AppShape {
 
 export function renderShapeBlock(shape: AppShape): string {
   if (shape.confidence < 0.4 || shape.surfaces.length <= 1) return "";
+  const domainComponents = shape.businessDomain
+    ? DOMAIN_COMPONENTS[shape.businessDomain]
+    : null;
   const lines = [
     "",
     "",
     "## Predicted app shape",
     `Category: **${shape.category}** (confidence ${shape.confidence.toFixed(2)})`,
+    shape.businessDomain
+      ? `Business domain: **${shape.businessDomain}** — this is a real product vertical, not a generic dashboard.`
+      : "",
     `Surfaces to scaffold (do not stop after the first one): ${shape.surfaces.map((s) => `\`${s}\``).join(", ")}`,
     shape.cloudFeatures.length
       ? `Cloud features to enable: ${shape.cloudFeatures.map((c) => `\`${c}\``).join(", ")}`
@@ -414,9 +420,12 @@ export function renderShapeBlock(shape: AppShape): string {
     shape.integrationsLikely.length
       ? `Likely integrations: ${shape.integrationsLikely.map((i) => `\`${i}\``).join(", ")}. Check the integration briefs above before improvising.`
       : "",
+    domainComponents && domainComponents.length
+      ? `Required product components (build ALL of these — generic KPI cards do not satisfy this list): ${domainComponents.map((c) => `\`${c}\``).join(", ")}.`
+      : "",
     `Why: ${shape.rationale}`,
     "",
-    "Use this shape as the floor, not the ceiling — if the user asked for more, build more. But never produce fewer surfaces than predicted: a fintech app missing /admin or /webhooks is incomplete.",
+    "Use this shape as the floor, not the ceiling — if the user asked for more, build more. But never produce fewer surfaces than predicted: a fintech app missing /admin or /webhooks is incomplete, and a CRM missing ContactsTable + Pipeline is not a CRM.",
   ].filter(Boolean);
   return lines.join("\n");
 }
