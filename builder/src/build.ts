@@ -184,3 +184,53 @@ export async function buildAndDeploy(
     durationMs: Date.now() - startedAt,
   };
 }
+
+/**
+ * Ensure a Cloudflare Pages project exists. Uses the REST API directly:
+ *  - GET /accounts/:id/pages/projects/:name → 200 if it exists, 404 if not.
+ *  - POST /accounts/:id/pages/projects     → create when missing.
+ *
+ * This sidesteps wrangler's habit of mapping "already exists" to an opaque
+ * `code: 8000000` error on some accounts, which blocked every redeploy.
+ */
+async function ensurePagesProject(
+  projectName: string,
+  cloudflare: { apiToken: string; accountId: string }
+): Promise<void> {
+  const base = `https://api.cloudflare.com/client/v4/accounts/${cloudflare.accountId}/pages/projects`;
+  const headers = {
+    Authorization: `Bearer ${cloudflare.apiToken}`,
+    "Content-Type": "application/json",
+  };
+
+  const getRes = await fetch(`${base}/${projectName}`, { headers });
+  if (getRes.ok) return; // already exists
+  if (getRes.status !== 404) {
+    // Some other failure (auth, rate limit, etc.) — surface it.
+    const body = await getRes.text().catch(() => "");
+    if (getRes.status !== 410) {
+      throw new BuildError(
+        `Cloudflare Pages GET project failed (${getRes.status})`,
+        body
+      );
+    }
+  }
+
+  const createRes = await fetch(base, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      name: projectName,
+      production_branch: "main",
+    }),
+  });
+  if (createRes.ok) return;
+
+  const body = await createRes.text().catch(() => "");
+  // Treat "already exists" race as success regardless of how Cloudflare phrases it.
+  if (/already exists|duplicate/i.test(body)) return;
+  throw new BuildError(
+    `Cloudflare Pages create project failed (${createRes.status})`,
+    body
+  );
+}
