@@ -128,7 +128,7 @@ interface PlanContext {
    */
   designDirectionBlock?: string;
   /** Hint for the LAYOUT ARCHETYPE block — when known, we tell the model directly. */
-  archetypeHint?: "feed" | "marketing" | "dashboard" | "tool" | "game" | "content";
+  archetypeHint?: "feed" | "marketing" | "dashboard" | "tool" | "game" | "content" | "business-app";
 }
 
 function injectRootViewIfMissing(plan: PlannedFile[], brief: string): PlannedFile[] {
