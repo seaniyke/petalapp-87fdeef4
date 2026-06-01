@@ -159,6 +159,14 @@ function isManagedScaffoldPath(path: string): boolean {
 
 const MODEL_FAST = "google/gemini-3-flash-preview";
 const MODEL_BEST = "google/gemini-2.5-pro";
+// Phase-aware reasoning candidates. Added to the smart-router pool so
+// the telemetry-driven picker (`pickBestModel`) can promote whichever
+// model is winning on success_rate / cost / latency for a given
+// (feature, phase). They fall back to the Gemini defaults when no
+// telemetry exists yet, and the phase_router cheap-direct path still
+// short-circuits to MODEL_FAST for trivial turns.
+const MODEL_REASONING = "openai/gpt-5.4";
+const MODEL_CLAUDE = "anthropic/claude-sonnet-4.5";
 /** Escalation model used when the primary returned prose / no tool call.
  *  This must be a model that is known-good on the Lovable AI gateway for
  *  streamed tool calls. GPT-5 was returning HTTP 400 in production retry
