@@ -1452,6 +1452,11 @@ Forbidden defaults
     ? `\n\n### Backend (auth + database + storage) is connected\nThe project has a backend. Use the pre-configured client — never call createClient yourself, never import from @supabase/supabase-js directly, never hard-code URLs or keys.\n\nImports:\n- import { supabase } from "@/integrations/backend/client"\n- import { useAuth, AuthProvider } from "@/integrations/backend/auth"\n- import { uploadFile, getPublicUrl } from "@/integrations/backend/storage"\n\nWrap the app once with <AuthProvider>. Never overwrite anything under src/integrations/backend/ — those files are protected.\n\nIf you need a new table, end your summary with a fenced sql block prefixed "MIGRATION:" — do not try to run it. The user runs migrations manually.\n`
     : "";
 
+  // Live schema injection: best-effort, soft-fails, cached. Lists existing
+  // tables + key columns so the model reuses real tables instead of
+  // hallucinating ones, and so column names in queries match reality.
+  const schemaBlock = await renderSchemaBlock({ backend, projectId: body.projectId });
+
   // Marketplace integrations (Resend, Plausible, etc.) — tells Petal
   // which helpers exist so it uses them instead of reinventing.
   const integrationsBlock = body.projectId
