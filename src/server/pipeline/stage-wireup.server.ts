@@ -85,7 +85,7 @@ export async function runStageWireup(args: {
 
   // 2. Esbuild verifier — real parser.
   try {
-    const esbuildVerdict = await verifyFilesEsbuild(args.files, allPaths);
+    const esbuildVerdict = await verifyFilesEsbuild(files, allPaths);
     if (!esbuildVerdict.ok) {
       return {
         ok: false,
@@ -104,7 +104,7 @@ export async function runStageWireup(args: {
   // model produced no real root view, we MUST fail the stage so the
   // orchestrator falls back to the monolithic path (which has its own
   // retry/continuation budget) instead of shipping the placeholder.
-  const shell = ensureRenderableShell(args.files);
+  const shell = ensureRenderableShell(files);
   if (shell.degraded.includes("src/App.tsx")) {
     return {
       ok: false,
