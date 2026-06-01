@@ -110,7 +110,7 @@ LAYOUT ARCHETYPE (choose ONE, drive the file plan from it):
 - tool → centered canvas/workspace (calculator, editor, generator). Minimal chrome.
 - game → full-bleed play surface + score HUD. No marketing chrome.
 - content → reader layout (article list + detail), generous whitespace.
-- business-app → BOTH a public marketing site AND an authenticated app shell, shipped together. Think Stripe/Linear/Notion: a customer-facing landing site that sells the product, plus a real logged-in product behind sign-up. Plan ~6 marketing components (Hero, Features, Pricing, Testimonials, FAQ, Footer) AND ~4–6 app components (AuthCard, AppShell with sidebar, Dashboard with domain-specific widgets, SettingsPanel, plus 1–2 surfaces matching the domain — e.g. CRM → ContactsTable + Pipeline; fintech → Wallet + Transactions; AI startup → Workspace + UsageMeter). src/App.tsx does lightweight routing between marketing and app sections (hash router, simple state, or react-router) and gates app routes behind a mock <AuthGate>. NEVER ship only the marketing site or only the dashboard for a business-app brief — both surfaces must exist in the same plan.
+- business-app → BOTH a public marketing site AND an authenticated app shell, shipped together. Think Stripe/Linear/Notion: a customer-facing landing site that sells the product, plus a real logged-in product behind sign-up. Plan SEVEN marketing components (Navbar, Hero, Features, SocialProof/Testimonials, Pricing, Faq, Footer) AND ~4–6 app components (AuthCard, AppShell with sidebar, Dashboard with domain-specific widgets, SettingsPanel, plus 1–2 surfaces matching the domain — e.g. CRM → ContactsTable + Pipeline; fintech → Wallet + Transactions; AI startup → Workspace + UsageMeter). The Hero MUST include an eyebrow badge, a gradient text accent, a trust row, and a mocked product-visual panel — never just a centered headline with two buttons. src/App.tsx does lightweight routing between marketing and app sections (hash router, simple state, or react-router) and gates app routes behind a mock <AuthGate>. NEVER ship only the marketing site or only the dashboard for a business-app brief — both surfaces must exist in the same plan.
 
 If you plan a "Sidebar" or "DashboardPage" component for a feed/marketing/tool/game/content brief, that is a PLANNING ERROR — pick the right archetype instead.
 If you plan ONLY a dashboard (no Hero/Pricing) or ONLY a landing page (no Dashboard/AuthCard) for a business-app brief, that is a PLANNING ERROR — both surfaces are required.
@@ -168,7 +168,7 @@ function injectRootViewIfMissing(
   // them up.
   const deps = cleaned.map((f) => f.path);
   const purpose = archetype === "business-app"
-    ? `Root view — renders BOTH the public marketing site AND the authenticated app shell with a lightweight route switch (hash router or simple state) for: ${brief.slice(0, 140)}. Required route map: '/' → Hero+Features+Pricing+Footer; '/auth' → AuthCard; '/app' → AppShell with sidebar + main domain components; '/app/settings' → SettingsPanel. Gate '/app/*' behind a mock <AuthGate>. Import and wire every listed component dep. NEVER render only the dashboard or only the landing — both surfaces must mount.`
+    ? `Root view — renders BOTH the public marketing site AND the authenticated app shell with a lightweight route switch (hash router or simple state) for: ${brief.slice(0, 140)}. Required route map: '/' → <main> stacking Navbar + Hero + Features + SocialProof + Pricing + Faq + Footer in THAT order; '/auth' → AuthCard; '/app' → AppShell with sidebar + main domain components; '/app/settings' → SettingsPanel. Gate '/app/*' behind a mock <AuthGate>. Import and wire every listed component dep. NEVER render only the dashboard or only the landing — both surfaces must mount. NEVER render the marketing surface as just a centered headline with Login/Sign-Up buttons — the Navbar and all seven marketing components must be present.`
     : `Root view — renders the full MVP shell with real domain UI for: ${brief.slice(0, 160)}. Import and use the listed component deps.`;
   const rootEntry: PlannedFile = {
     path: "src/App.tsx",
@@ -203,7 +203,7 @@ function detectArchetypeMismatch(
  */
 function detectBusinessAppGap(files: PlannedFile[]): "missing_both_surfaces" | "missing_marketing_surface" | "missing_app_surface" | null {
   const paths = files.map((f) => f.path).join(" ");
-  const hasMarketing = /(Hero|Landing|Pricing|Features|Testimonial|Faq|FAQ|Footer)/i.test(paths);
+  const hasMarketing = /(Hero|Landing|Pricing|Features|Testimonial|Faq|FAQ|Footer|Navbar)/i.test(paths);
   const hasApp = /(Dashboard|AppShell|AuthCard|Settings|Workspace|Pipeline|Contacts|Wallet|Transactions|Inbox|Ticket|Project|Candidate|Employee|Invoice|Course|Stock|Campaign|Booking|Availability)/i.test(paths);
   if (!hasMarketing && !hasApp) return "missing_both_surfaces";
   if (!hasMarketing) return "missing_marketing_surface";
@@ -211,11 +211,17 @@ function detectBusinessAppGap(files: PlannedFile[]): "missing_both_surfaces" | "
   return null;
 }
 
+// Seven-component marketing surface. Each `purpose` is composition-specific
+// so Stage 2 produces a Stripe/Linear-grade landing — NOT a centered headline
+// with two buttons and three plain bordered cards (the old failure mode).
 const MARKETING_SYNTH: PlannedFile[] = [
-  { path: "src/components/marketing/Hero.tsx", purpose: "Marketing hero: bold headline, subhead, primary CTA to /auth, secondary CTA to /pricing. Real domain-specific copy — never lorem ipsum.", deps: [], est_lines: 90 },
-  { path: "src/components/marketing/Features.tsx", purpose: "Three-to-six feature cards explaining what the product does, each with an icon and one sentence of value. Mobile: grid-cols-1; sm: grid-cols-2; lg: grid-cols-3.", deps: [], est_lines: 120 },
-  { path: "src/components/marketing/Pricing.tsx", purpose: "Three pricing tiers (Free / Pro / Team) with feature checklists and a Start button per tier. Mobile: grid-cols-1; md: grid-cols-3.", deps: [], est_lines: 140 },
-  { path: "src/components/marketing/Footer.tsx", purpose: "Footer with product/company/legal columns and a copyright line. Mobile: stacked; sm: grid-cols-3.", deps: [], est_lines: 80 },
+  { path: "src/components/marketing/Navbar.tsx", purpose: "Sticky top navbar with backdrop-blur background (bg-background/70 backdrop-blur-md border-b). Left: small logo dot + wordmark. Center (hidden on mobile, md:flex): Product, Pricing, Customers, Docs links scrolling to section ids. Right: 'Sign in' ghost button + primary CTA button to /auth. Mobile: replace center links with a Sheet-based menu trigger. Height h-16, container mx-auto px-6.", deps: [], est_lines: 130 },
+  { path: "src/components/marketing/Hero.tsx", purpose: "Marketing hero with serious composition — NOT a centered headline with two buttons. Layout: container mx-auto px-6 pt-24 pb-20 sm:pt-32 sm:pb-28. Top: small pill/badge ('New' dot + short tagline, rounded-full border bg-muted/50 text-xs px-3 py-1). Headline: two lines, text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight, ONE phrase wrapped in a span with bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent. Subhead: text-lg text-muted-foreground max-w-2xl. Dual CTA row: primary Button size='lg' → /auth, ghost Button size='lg' with ArrowRight icon. Trust row below CTAs: small text-xs text-muted-foreground 'Trusted by 2,000+ teams' + flex row of 5 muted logo-style wordmarks. Then a hero visual: a large rounded-2xl border bg-card/50 backdrop-blur p-2 shadow-2xl panel containing a mocked product dashboard chrome (top bar with 3 dots + window title, sidebar stub, content area with 2-3 stat tiles and a fake chart bars). Real domain copy specific to the brief — never 'Welcome to Our X'.", deps: [], est_lines: 220 },
+  { path: "src/components/marketing/Features.tsx", purpose: "Features section. Section wrapper: py-20 sm:py-28 container mx-auto px-6 with id='product'. Section header: small uppercase eyebrow text-xs text-primary tracking-wider, h2 text-3xl sm:text-4xl font-bold tracking-tight, one-line muted subtitle. Then a bento-style 6-card grid: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6. Each card: rounded-2xl border bg-card/50 p-6 hover:border-primary/40 transition, with a lucide icon in a rounded-lg bg-primary/10 text-primary p-2 size-10 wrapper at top, then h3 font-semibold, then text-sm text-muted-foreground description. Real domain features — pick 6 specific to the brief.", deps: [], est_lines: 160 },
+  { path: "src/components/marketing/SocialProof.tsx", purpose: "Testimonials section. py-20 sm:py-28 container mx-auto px-6 with id='customers'. Section header same pattern as Features. Then a 3-card grid: grid grid-cols-1 md:grid-cols-3 gap-6. Each testimonial card: rounded-2xl border bg-card/50 p-6, with a Quote icon (lucide) top-left in text-primary/40, a 3-4 line quote (text-foreground/90), and a footer row with an Avatar (initials in bg-primary/10 text-primary rounded-full size-10) + name + role · company. Real-sounding names and roles relevant to the domain.", deps: [], est_lines: 140 },
+  { path: "src/components/marketing/Pricing.tsx", purpose: "Pricing section. py-20 sm:py-28 container mx-auto px-6 with id='pricing'. Section header pattern. Three tier cards in grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto. Each card: rounded-2xl border p-8 flex flex-col, with tier name (font-semibold), price (text-4xl font-bold + /mo muted), one-line description, then a divider, then a feature checklist (Check icon from lucide in text-primary + text-sm) — 5-7 items per tier, then a Button at the bottom (mt-auto). Middle tier is 'Pro' / Most popular: add ring-2 ring-primary, a small Badge at top 'Most popular', and a solid primary Button; other tiers use variant='outline'. Real per-domain feature lines.", deps: [], est_lines: 200 },
+  { path: "src/components/marketing/Faq.tsx", purpose: "FAQ section using the shadcn Accordion (import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'). py-20 sm:py-28 container mx-auto px-6 max-w-3xl with id='faq'. Section header pattern. Then an Accordion type='single' collapsible with 6 real domain-relevant Q&A items. AccordionTrigger: text-left font-medium. AccordionContent: text-muted-foreground.", deps: [], est_lines: 130 },
+  { path: "src/components/marketing/Footer.tsx", purpose: "Footer. border-t bg-card/30. Inner container mx-auto px-6 py-16. Top: grid grid-cols-2 md:grid-cols-5 gap-8. First column (md:col-span-2): logo dot + wordmark, one-line tagline (text-sm text-muted-foreground max-w-xs), then a small row of social icon buttons (Twitter, Github, Linkedin from lucide). Then 3 link columns: Product (Features, Pricing, Changelog, Roadmap), Company (About, Customers, Careers, Contact), Legal (Privacy, Terms, Security, DPA). Bottom row: border-t mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground — copyright on the left, 'All systems operational' with a small green dot on the right.", deps: [], est_lines: 150 },
 ];
 
 function synthAppSurfaceFor(domain: BusinessDomain | undefined): PlannedFile[] {
@@ -269,7 +275,7 @@ function repairBusinessAppPlan(
     merged[appIdx] = {
       ...merged[appIdx],
       deps,
-      purpose: `Root view — business-app for: ${brief.slice(0, 140)}. Route map: '/' renders Hero+Features+Pricing+Footer (marketing); '/auth' renders AuthCard; '/app/*' renders AppShell with sidebar + each domain component as a sub-route; '/app/settings' renders SettingsPanel. Use a hash router or simple state for routing; gate '/app/*' behind a mock <AuthGate>. Import every dep listed and ensure both marketing AND product surfaces mount.`,
+      purpose: `Root view — business-app for: ${brief.slice(0, 140)}. Route map: '/' renders <main> with Navbar + Hero + Features + SocialProof + Pricing + Faq + Footer stacked in that exact order (marketing); '/auth' renders AuthCard; '/app/*' renders AppShell with sidebar + each domain component as a sub-route; '/app/settings' renders SettingsPanel. Use a hash router or simple state for routing; gate '/app/*' behind a mock <AuthGate>. Import every dep listed and ensure both marketing AND product surfaces mount. NEVER ship a marketing surface that is just a centered headline + two buttons + bordered cards — the Navbar, hero visual panel, social proof, pricing, FAQ, and footer columns MUST all render.`,
       est_lines: 260,
     };
   }
@@ -300,7 +306,7 @@ export async function runStagePlan(args: {
 
     // business-app needs more files (marketing + product); other archetypes
     // stay at 10 to keep latency predictable.
-    const maxFiles = ctx.archetypeHint === "business-app" ? 22 : 10;
+    const maxFiles = ctx.archetypeHint === "business-app" ? 25 : 10;
     const planTool = buildPlanTool(maxFiles);
 
     const upstream = await aiChatCompletions({

@@ -1,50 +1,53 @@
-## Goal
+## Problem
 
-When the user describes a **business** (SaaS, fintech, CRM, marketplace, AI startup, booking, edtech, healthtech, ecommerce platform, social platform), Petal should generate two coordinated surfaces in one plan:
+Same "Build me a CRM SaaS" prompt → the marketing surface still looks like a generic AI placeholder: a centered H1, one subhead, Login/Sign Up buttons, three bordered cards. No navbar, no hero visual, no social proof, no pricing, no footer above the fold, and no real composition.
 
-1. **Public marketing site** — `/`, `/features`, `/pricing`, `/about`, `/contact` (Stripe/Linear/Notion-grade, not a dashboard).
-2. **Private application** — `/auth`, `/app` (dashboard), `/settings`, `/profile`, plus 1–2 domain surfaces (CRM → contacts/pipeline; fintech → wallet/transactions; AI → workspace/usage).
+Two root causes in the pipeline (no UI changes needed):
 
-Today both the staged planner and the orchestrator collapse these categories to a **single** archetype (`marketing` or `dashboard`), and the 10-file cap makes a combined plan impossible. This change keeps existing behavior for everything else and only upgrades business prompts.
+1. **Synthesised marketing plan is too thin.** `MARKETING_SURFACE_FILES` in `src/server/pipeline/stage-plan.server.ts` only seeds Hero / Features / Pricing / Footer with one-line `purpose` strings. There's no Navbar, no Testimonials/Logos, no FAQ, no CTA band. The Hero `purpose` doesn't demand a navbar, eyebrow badge, gradient/visual, or trust row — so the model ships the bare minimum.
+2. **Scaffold prompt has no marketing quality bar.** `scaffoldOne` in `src/server/pipeline/stage-scaffold.server.ts` uses one generic system prompt for every file. There are extra `rootRules` for `src/App.tsx`, but nothing for `src/components/marketing/*`. The line cap (240) and token cap (2800) are also tight for a real hero/pricing section.
 
-Builds on what we already have — does NOT replace:
-- `classifyAppShape` (already predicts multi-surface shapes incl. `landing` + `auth` + `dashboard`).
-- Staged orchestrator's archetype + design + theme injection.
-- `src/App.tsx`-as-root-view contract and renderable-shell guard.
-- Recent array-safety, missing-export, and verifying-phase fixes — untouched.
+## Changes (server-only, no UI work)
 
-## Changes
+### 1. `src/server/pipeline/stage-plan.server.ts` — richer marketing scaffold
 
-### 1. `src/server/pipeline/staged-orchestrator.server.ts`
-- Widen the archetype union to add `"business-app"`.
-- `archetypeFromShape`: for `saas | fintech | crypto | marketplace | ecommerce | booking | social | ai-tool | consultancy | real-estate` → return `"business-app"`. Keep `internal-tool` → `"dashboard"` (exception). Keep `marketing`-only categories (`local-business`, `restaurant`, `creator`, `directory`, `newsletter`, `content`) as-is.
-- Honor explicit user opt-outs detected from the brief (regex sniff): `/admin (only|dashboard)|internal tool|back office|analytics dashboard|chrome extension|mobile app only|api only/i` → force `"dashboard"` / `"tool"` and short-circuit business-app upgrade.
+- Expand `MARKETING_SURFACE_FILES` to seven components in this order:
+  - `Navbar.tsx` — sticky top nav, logo wordmark, product/pricing/docs links, Sign in + primary CTA.
+  - `Hero.tsx` — eyebrow badge, two-line headline with gradient accent on one phrase, supporting subhead, dual CTA (primary → `/auth`, secondary ghost), trust row ("Trusted by 2,000+ teams" + 4–6 muted logo wordmarks), product mock visual (gradient panel with mocked dashboard chrome — no external image).
+  - `Features.tsx` — bento/3-col grid, 6 cards with lucide icons, domain-specific copy. Mobile `grid-cols-1`, `sm:grid-cols-2`, `lg:grid-cols-3`.
+  - `SocialProof.tsx` — 3 testimonial cards with avatar initials, role, company. Mobile stacked, `md:grid-cols-3`.
+  - `Pricing.tsx` — 3 tiers (Free / Pro / Team) with feature checklists, "Most popular" ring on Pro, CTA per tier.
+  - `Faq.tsx` — 5–6 Q&A using shadcn Accordion.
+  - `Footer.tsx` — 4 columns (Product / Company / Resources / Legal) + copyright + small wordmark.
+- Update each `purpose` string to be specific and composition-aware (mention navbar height offset, hero min-h, gradient direction, badge style, container max-w, spacing rhythm `py-20 sm:py-28`).
+- Update `injectRootViewIfMissing` so the `/` route renders `Navbar + Hero + Features + SocialProof + Pricing + Faq + Footer` in that order, and the marketing surface is wrapped in `<main>` with proper semantic landmarks.
+- Bump `business-app` file budget by +3 to accommodate Navbar/SocialProof/Faq.
 
-### 2. `src/server/pipeline/stage-plan.server.ts`
-- Add `"business-app"` to the `archetypeHint` union and to the system-prompt LAYOUT ARCHETYPE block:
-  > `business-app` → BOTH a public marketing site AND an authenticated app shell. Plan ~6 marketing components (`Hero`, `Features`, `Pricing`, `FAQ`, `Testimonials`, `Footer`) + ~4 app components (`AuthCard`, `AppShell` with sidebar, `Dashboard` with domain widgets, `SettingsPanel`). `src/App.tsx` does lightweight routing (react-router or hash/state) between marketing and app sections; uses `<AuthGate>` for app routes.
-- Raise file cap from **10 → 16** only when `archetypeHint === "business-app"` (pass a second arg into `PLAN_TOOL` or build the schema dynamically). Keep 10 for every other archetype.
-- Update `detectArchetypeMismatch`: for `business-app`, require at least one marketing-shaped component (`Hero|Landing|Pricing|Features`) AND one app-shaped component (`Dashboard|AppShell|AuthCard`); flag plans missing either side.
-- Update `injectRootViewIfMissing` purpose string for `business-app` so the auto-injected `App.tsx` mentions "renders marketing site + authenticated app with simple route switch".
+### 2. `src/server/pipeline/stage-scaffold.server.ts` — marketing quality rules
 
-### 3. `src/lib/app-shape-classifier.ts`
-- For business categories, ensure `surfaces` always includes both `landing` and `dashboard` (already true for `saas`, `fintech`, `marketplace`, `ecommerce`; verify `ai-tool`, `crypto`, `booking`, `social` and add where missing).
-- Tighten `rationaleFor` for `saas`, `fintech`, `marketplace`, `ecommerce`, `ai-tool`: explicit "ship marketing site AND authenticated product in the SAME build — not one or the other."
+Add a `marketingRules` block (sibling to `rootRules`) that activates when `file.path.startsWith("src/components/marketing/")`:
 
-### 4. `src/server/dynamic-prompts.server.ts` (monolithic path)
-- Add a `business-app` rule alongside the existing landing/marketing rules: triggers on `\b(saas|crm|fintech|marketplace|platform|startup|edtech|healthtech|booking system|ai (product|startup|tool))\b`. Injects an instruction block listing the same dual decomposition (public routes + private routes + backend) so the monolithic fallback path produces the same shape as the staged path.
+- Mandatory: real domain copy (no "Welcome to Our X"), navbar must be sticky with backdrop-blur, hero must include eyebrow badge + gradient text accent + trust row + visual mock panel, every section needs `container mx-auto px-6` + `py-20 sm:py-28`, headings use `text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight`, sub copy `text-lg text-muted-foreground`, cards use `rounded-2xl border bg-card/50 backdrop-blur` with hover states, all grids declare a mobile base (`grid-cols-1`) before responsive prefixes.
+- Forbidden: centered single-column hero with just headline+buttons, plain bordered cards with no icon/visual, "Welcome to Our …", lorem-ish copy, missing navbar, missing footer.
+- Raise caps for marketing files: `lineCap = min(280, est_lines + 80)`, `tokenCap = 3400`.
 
-### 5. Tests
-- Extend `src/server/__tests__` (whichever file covers `app-shape-classifier` / `stage-plan`) with cases: `"Build me a CRM SaaS"`, `"Build a fintech for invoicing"`, `"Build an AI startup"` → assert classifier returns landing+auth+dashboard, archetype maps to `business-app`, planner's mismatch detector accepts a 10–14 file plan with both marketing and app components.
-- Exception cases: `"Build me an internal admin dashboard"`, `"Chrome extension for X"` → must NOT upgrade to `business-app`.
+### 3. `src/lib/app-shape-classifier.ts` — propagate to renderShapeBlock
 
-## Non-goals (out of scope this turn)
+Append a "Marketing surface bar" line to the prompt block whenever `archetype === "business-app"`: lists the seven required components and the "no centered-headline-only hero" rule, so even the monolithic path (not just the staged synthesizer) gets the bar.
 
-- No changes to backend provisioning logic, auth wiring, or RLS templates — Cloud features are already inferred by the classifier.
-- No new design tokens / themes.
-- No edit to `client.ts`, `types.ts`, or generated route trees.
+### 4. `src/server/render-risk-linter.ts` — R7 landing-page smell
 
-## Risk / rollback
+Add a soft warning (no autofix) when `src/App.tsx` for a `business-app` brief mounts fewer than 4 of `[Navbar, Hero, Features, SocialProof, Pricing, Faq, Footer]`. Logged to telemetry so we can measure improvement; doesn't block ship.
 
-- Single-flag rollback: revert `archetypeFromShape`'s business-category branch and the file-cap bump. All other archetypes keep their current behavior.
-- The 16-file ceiling for `business-app` only fires when the classifier is confident; low-confidence prompts still take the existing path.
+## Out of scope
+
+- No composer / preview / device-frame UI changes.
+- No model swap.
+- No design-system token changes — using existing semantic tokens only.
+- Dashboard/product surface untouched; this plan only fixes the marketing side.
+
+## Technical notes
+
+- Files edited: `src/server/pipeline/stage-plan.server.ts`, `src/server/pipeline/stage-scaffold.server.ts`, `src/lib/app-shape-classifier.ts`, `src/server/render-risk-linter.ts`.
+- No new dependencies. All icons come from existing `lucide-react`; Accordion from existing `@/components/ui/accordion`.
+- Token budget impact: +3 files × ~3000 tokens ≈ one extra Stage-2 batch round-trip per business-app build. Acceptable.

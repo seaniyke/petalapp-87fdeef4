@@ -122,11 +122,13 @@ async function scaffoldOne(
 ): Promise<{ ok: true; file: ProjectFile } | { ok: false; reason: string; lastContent?: string }> {
   const { file, brief, manifestSummary, designSummary, previousAttempt } = args;
   const isRoot = file.path === "src/App.tsx";
-  // Full budget on every call. The recent "don't shrink the root view"
-  // rule is now generalized to every file — shrinking caused most of the
-  // mid-file truncations we used to blame on the model.
-  const lineCap = Math.min(240, file.est_lines + 60);
-  const tokenCap = isRoot ? 3200 : 2800;
+  const isMarketing = file.path.startsWith("src/components/marketing/");
+  // Marketing components need more room — a real hero/pricing section is
+  // 180-260 lines once you include the visual mock panel + trust row.
+  const lineCap = isMarketing
+    ? Math.min(300, file.est_lines + 80)
+    : Math.min(240, file.est_lines + 60);
+  const tokenCap = isRoot ? 3200 : isMarketing ? 3600 : 2800;
 
   const rootRules = isRoot
     ? `\nTHIS IS THE ROOT VIEW (src/App.tsx). Extra rules:\n` +
@@ -134,6 +136,20 @@ async function scaffoldOne(
       `- NEVER return a "coming soon", "placeholder", "is being prepared", or "ask Petal to retry" card. That is a bug, not a valid output.\n` +
       `- Import and use the components listed in deps so the screen actually renders content.\n` +
       `- Default export must be \`function App\` returning visible JSX.`
+    : "";
+
+  const marketingRules = isMarketing
+    ? `\nTHIS IS A MARKETING COMPONENT (${file.path}). You are building a Stripe/Linear/Notion-grade landing page section. Extra rules:\n` +
+      `- FORBIDDEN: a centered single-column hero with only headline + Login/Sign-Up buttons + plain bordered cards. That is a placeholder, not a landing page.\n` +
+      `- FORBIDDEN copy: "Welcome to Our X", "Streamline your X with our powerful and intuitive X solution", any lorem-ish filler. Write specific, opinionated copy tied to the brief's actual domain.\n` +
+      `- Section wrapper rhythm: \`py-20 sm:py-28\` with \`container mx-auto px-6\` (Navbar/Footer use their own padding).\n` +
+      `- Headings: \`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight\`. Subheads: \`text-lg text-muted-foreground\` max-w-2xl.\n` +
+      `- Cards: \`rounded-2xl border bg-card/50 backdrop-blur p-6\` with hover state \`hover:border-primary/40 transition\`. Always include an icon (lucide-react) in a \`rounded-lg bg-primary/10 text-primary size-10 p-2\` wrapper.\n` +
+      `- Grids: ALWAYS declare the mobile base before responsive prefixes — e.g. \`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3\`. Never bare \`grid-cols-2\`.\n` +
+      `- Hero specifically: must include an eyebrow pill/badge, ONE phrase in the headline wrapped with a gradient span (\`bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent\`), a dual CTA row, a trust row with muted logo wordmarks, AND a mocked product visual panel (rounded-2xl border bg-card/50 shadow-2xl with fake dashboard chrome). No external images.\n` +
+      `- Navbar: sticky top-0 z-50 with \`bg-background/70 backdrop-blur-md border-b\`, height h-16.\n` +
+      `- Footer: 4-column link grid + bottom row with copyright. Not a single centered line.\n` +
+      `- Use lucide-react for ALL icons. Use shadcn primitives (Button, Badge, Accordion, Avatar) — never raw <button>.`
     : "";
 
   const designLine = designSummary
@@ -149,7 +165,8 @@ async function scaffoldOne(
     `Use kit primitives (Button, Card, Input, etc.) — never raw <button>, <input>, hand-rolled cards. ` +
     `Import only files that exist either in the manifest below or in the standard scaffold (src/components/ui/*, src/lib/utils, src/integrations/backend/*).` +
     designLine +
-    rootRules;
+    rootRules +
+    marketingRules;
 
   const retryBlock = previousAttempt
     ? `\n\nPREVIOUS ATTEMPT FAILED to parse with: ${previousAttempt.parserError}\nDo not repeat the same mistake. Re-emit the COMPLETE file (not a diff) with the syntax fixed. Your previous attempt began:\n\n${previousAttempt.content.slice(0, 600)}…`
