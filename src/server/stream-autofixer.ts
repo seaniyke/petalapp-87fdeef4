@@ -319,6 +319,20 @@ export function autofixFiles(files: ProjectFile[]): { files: ProjectFile[]; repo
   const report: AutofixReport = { fixedCount: 0, notes: [] };
   const hasBackendKit = files.some((f) => f.path === "src/integrations/backend/client.ts");
   const lazyFixed = fixLazyNamedExports(files, report);
-  const out = lazyFixed.map((f) => autofixFile(f, report, hasBackendKit));
+  const perFile = lazyFixed.map((f) => autofixFile(f, report, hasBackendKit));
+  // Deterministic shadcn missing-import repair (Avatar/AvatarImage,
+  // Tabs/TabsTrigger, etc.). Runs last so it sees imports added by
+  // upstream passes.
+  const { files: out, fixes } = fixMissingShadcnImports(perFile);
+  if (fixes.length > 0) {
+    const totalAdded = fixes.reduce((n, f) => n + f.added.length, 0);
+    report.fixedCount += totalAdded;
+    report.notes.push(
+      `shadcn-imports: added ${totalAdded} missing import(s) (${fixes
+        .slice(0, 3)
+        .map((f) => `${f.path}: ${f.added.join(",")}`)
+        .join("; ")}${fixes.length > 3 ? "…" : ""})`,
+    );
+  }
   return { files: out, report };
 }
