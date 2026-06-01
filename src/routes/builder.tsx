@@ -4180,6 +4180,7 @@ function Builder() {
                         if (!baseline) return;
                         setTurnDiffVersion({
                           id: "turn-diff",
+                          project_id: project?.id ?? "",
                           label: "Before this turn",
                           summary: null,
                           origin: "auto",
