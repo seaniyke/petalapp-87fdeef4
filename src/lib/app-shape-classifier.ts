@@ -423,6 +423,9 @@ export function renderShapeBlock(shape: AppShape): string {
     domainComponents && domainComponents.length
       ? `Required product components (build ALL of these — generic KPI cards do not satisfy this list): ${domainComponents.map((c) => `\`${c}\``).join(", ")}.`
       : "",
+    shape.category === "saas" || shape.category === "fintech" || shape.category === "marketplace" || shape.category === "ecommerce" || shape.category === "ai-tool" || shape.category === "social" || shape.category === "booking"
+      ? "Marketing surface bar (build ALL seven for the landing page, in this order): `Navbar`, `Hero` (eyebrow badge + gradient text accent + dual CTA + trust row + mocked product visual panel), `Features` (bento 3-col grid, 6 icon cards), `SocialProof` (3 testimonial cards), `Pricing` (3 tiers with feature checklists, Pro highlighted), `Faq` (accordion), `Footer` (4 columns + bottom row). NEVER ship a landing page that is just a centered headline with Login/Sign-Up buttons and three plain bordered cards — that is a placeholder, not a marketing site."
+      : "",
     `Why: ${shape.rationale}`,
     "",
     "Use this shape as the floor, not the ceiling — if the user asked for more, build more. But never produce fewer surfaces than predicted: a fintech app missing /admin or /webhooks is incomplete, and a CRM missing ContactsTable + Pipeline is not a CRM.",
