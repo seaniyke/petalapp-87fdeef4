@@ -485,3 +485,78 @@ export function renderCurrentDateBlock(now: Date = new Date()): string {
 Today is ${human} (${iso}). The current year is ${year}.
 When writing footers, copyright notices ("© ${year}"), "last updated" labels, blog post dates, or any other user-facing date, use ${year} (or a sensible recent year). Never default to 2023 or 2024.`;
 }
+
+/**
+ * Best-effort schema introspection for the connected backend.
+ *
+ * Hits PostgREST's OpenAPI endpoint with the anon key, parses the table
+ * list (and a few column names per table), and returns a compact prompt
+ * block. Soft-fails on any error / timeout — we never want a missing
+ * schema block to break a generation turn.
+ *
+ * Cached in-process for 60s per project to avoid hammering PostgREST
+ * across rapid follow-up turns.
+ */
+type SchemaCacheEntry = { at: number; block: string };
+const SCHEMA_CACHE = new Map<string, SchemaCacheEntry>();
+const SCHEMA_TTL_MS = 60_000;
+
+export async function renderSchemaBlock(args: {
+  backend: { url: string; anonKey: string } | null;
+  projectId?: string;
+}): Promise<string> {
+  if (!args.backend) return "";
+  const cacheKey = args.projectId ?? args.backend.url;
+  const now = Date.now();
+  const cached = SCHEMA_CACHE.get(cacheKey);
+  if (cached && now - cached.at < SCHEMA_TTL_MS) return cached.block;
+
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 3000);
+    const res = await fetch(`${args.backend.url.replace(/\/+$/, "")}/rest/v1/`, {
+      headers: {
+        apikey: args.backend.anonKey,
+        Authorization: `Bearer ${args.backend.anonKey}`,
+        Accept: "application/openapi+json",
+      },
+      signal: ctrl.signal,
+    });
+    clearTimeout(t);
+    if (!res.ok) {
+      SCHEMA_CACHE.set(cacheKey, { at: now, block: "" });
+      return "";
+    }
+    const spec = (await res.json()) as {
+      definitions?: Record<string, { properties?: Record<string, { type?: string; format?: string }> }>;
+    };
+    const defs = spec.definitions ?? {};
+    const tables = Object.keys(defs).filter(
+      (n) => !n.startsWith("rpc/") && !/^(?:objects|buckets)$/.test(n),
+    );
+    if (tables.length === 0) {
+      SCHEMA_CACHE.set(cacheKey, { at: now, block: "" });
+      return "";
+    }
+    const lines = tables.slice(0, 30).map((t) => {
+      const props = defs[t]?.properties ?? {};
+      const cols = Object.entries(props)
+        .slice(0, 12)
+        .map(([k, v]) => `${k}:${v.format || v.type || "?"}`)
+        .join(", ");
+      return `- ${t} (${cols})`;
+    });
+    const more = tables.length > 30 ? `\n…and ${tables.length - 30} more` : "";
+    const block = `\n\n[Connected backend tables — REAL schema, prefer reusing these]
+Tables already exist in this project's database. When the user asks for a feature whose name matches one of these, query that table instead of inventing a new one. Column names listed are authoritative — do not hallucinate columns that aren't here.
+
+${lines.join("\n")}${more}
+
+If you need a column or table that isn't listed, add it via a fenced MIGRATION sql block at the end of your summary (with GRANT + RLS + POLICY per the full-stack feature pattern).`;
+    SCHEMA_CACHE.set(cacheKey, { at: now, block });
+    return block;
+  } catch {
+    SCHEMA_CACHE.set(cacheKey, { at: now, block: "" });
+    return "";
+  }
+}
