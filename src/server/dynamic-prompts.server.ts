@@ -507,6 +507,43 @@ The user asked to take real money. Do NOT scaffold a fake Stripe form. The corre
    - Mark a subscription "active" from the client. Only the verified webhook flips status.
    - Hardcode price ids in components. Read from a \`prices\` table or env.`,
   },
+  // Business-app dual-surface rule. Fires when the user describes a business
+  // (SaaS, CRM, fintech, marketplace, AI startup, edtech, healthtech, booking).
+  // Tells the monolithic path to ship the marketing site AND the auth'd
+  // product in the SAME build — the staged path already does this via the
+  // "business-app" archetype, but the monolithic fallback needs the same
+  // floor.
+  businessApp: {
+    triggers:
+      /\b(saas|crm|fintech|marketplace|platform|startup|edtech|healthtech|booking system|ai (product|startup|tool)|build (me )?an? (saas|startup|platform))\b/i,
+    body: `\n\n[Reinforcement — Business product = marketing site + authenticated app]
+The user described a BUSINESS, not a single screen. Ship BOTH surfaces in the same build, defaulting to:
+
+PUBLIC (marketing site — Stripe / Linear / Notion grade, NOT a dashboard):
+- src/routes/index.tsx — Hero + value prop + primary CTA
+- src/routes/features.tsx (or /product) — what it does, with real component examples
+- src/routes/pricing.tsx — tiered pricing or "contact us" if enterprise
+- src/routes/about.tsx — story / team / mission
+- src/routes/contact.tsx — form + alternate channels
+- (optional) src/routes/faq.tsx, /testimonials, /blog.index.tsx
+
+PRIVATE (authenticated product):
+- src/routes/auth.tsx (or /login + /signup) — real Supabase email/password + Google
+- src/routes/app/index.tsx — Dashboard with REAL domain widgets (CRM → ContactsTable + Pipeline; fintech → Wallet + Transactions; AI → Workspace + UsageMeter; booking → Schedule + Bookings)
+- src/routes/app/settings.tsx
+- src/routes/app/profile.tsx
+
+BACKEND:
+- Auth (email/password + Google), profiles table, user_roles table, domain tables with RLS scoped to auth.uid().
+
+EXCEPTIONS — do NOT generate a marketing site when the brief explicitly asks for:
+- "admin dashboard only" / "internal tool" / "back office"
+- "chrome extension" / "browser extension"
+- "mobile app only"
+- "API only"
+
+In your reply: tell the user which marketing pages AND which app routes you scaffolded, and that they can run the product end-to-end after signing up. Do NOT ship only a landing page or only a dashboard — that's the most common failure mode for business briefs.`,
+  },
 };
 
 
