@@ -1,42 +1,35 @@
 /**
  * Staged Pipeline — Stage 3: WIRE-UP
  *
- * Takes the parallel-scaffold output and runs it through the same
- * deterministic verifiers the monolithic path uses, so behavior at the
- * file level is identical regardless of which pipeline produced it:
+ * Runs the parallel-scaffold output through the same deterministic
+ * verifiers the monolithic path uses, then through ensureRenderableShell
+ * so the entry trio (index.html, src/main.tsx, src/App.tsx) is always
+ * present.
  *
- *   1. Local verifier (parse + import + named-export checks).
- *   2. Esbuild verifier (real parser; catches syntax the regex pass misses).
- *
- * If either verifier surfaces hard issues we cannot mechanically resolve
- * here, we hand control back to the orchestrator with `ok: false` and let
- * it fall back to the existing autofix/continuation path. We do not
- * duplicate the autofix logic — it lives in the existing tier helpers and
- * is already battle-tested on the monolithic path.
- *
- * Why no continuation pass here yet:
- *   - Stage 2 already retries any truncated file with a smaller cap.
- *   - The continuation tier requires the original tool-stream context
- *     which we don't have in the staged pipeline. We'd rather surface
- *     the failure honestly than fabricate a fake continuation.
+ * Returns:
+ *   - ok:true with files when everything passed.
+ *   - ok:false reason="missing_root_view" when the model produced no real
+ *     src/App.tsx — the orchestrator turns this into a silent fallback
+ *     to the monolithic path so the user still gets a real app this turn.
+ *   - ok:false reason="local_verifier_fatal" / "esbuild_parse_failed"
+ *     for unfixable parse errors.
  */
 
 import { verifyFilesLocal } from "@/server/local-verifier";
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
+import { ensureRenderableShell } from "@/server/renderable-shell.server";
 import type { ProjectFile } from "@/server/generate.server";
 
 export interface StageWireupResult {
   ok: true;
   files: ProjectFile[];
   summary: string;
-  /** Verifier diagnostics, surfaced for telemetry but already non-fatal. */
   notes: string[];
 }
 
 export interface StageWireupFailure {
   ok: false;
   reason: string;
-  /** Verifier issues that blocked the wire-up — for orchestrator logs. */
   blockingIssues: string[];
 }
 
@@ -60,15 +53,12 @@ export async function runStageWireup(args: {
         blockingIssues: fatal.map((i) => `${i.path}: ${i.kind} — ${i.detail ?? ""}`).slice(0, 8),
       };
     }
-    // Non-fatal issues (missing imports, missing exports) are recoverable
-    // by the orchestrator's existing autofix tier — we just note them.
     notes.push(
       `local-verifier: ${localVerdict.issues.length} non-fatal issue(s) deferred to autofix`,
     );
   }
 
-  // 2. Esbuild verifier — real parser. Fatal here means the file is
-  // syntactically broken in a way local-verifier missed.
+  // 2. Esbuild verifier — real parser.
   try {
     const esbuildVerdict = await verifyFilesEsbuild(args.files, allPaths);
     if (!esbuildVerdict.ok) {
@@ -84,10 +74,28 @@ export async function runStageWireup(args: {
     notes.push(`esbuild-verifier threw: ${e instanceof Error ? e.message : String(e)}`);
   }
 
+  // 3. Entry trio + root view. index.html / src/main.tsx are safe to inject
+  // unconditionally — Petal owns them. src/App.tsx is the contract: if the
+  // model produced no real root view, we MUST fail the stage so the
+  // orchestrator falls back to the monolithic path (which has its own
+  // retry/continuation budget) instead of shipping the placeholder.
+  const shell = ensureRenderableShell(args.files);
+  if (shell.degraded.includes("src/App.tsx")) {
+    return {
+      ok: false,
+      reason: "missing_root_view",
+      blockingIssues: ["src/App.tsx was empty or a placeholder — falling back to monolithic path"],
+    };
+  }
+
+  if (shell.fixed.length > 0) {
+    notes.push(`renderable-shell repaired: ${shell.fixed.join(", ")}`);
+  }
+
   return {
     ok: true,
-    files: args.files,
-    summary: `Built ${args.files.length} file${args.files.length === 1 ? "" : "s"} for: ${args.brief.slice(0, 80)}`,
+    files: shell.files,
+    summary: `Built ${shell.files.length} file${shell.files.length === 1 ? "" : "s"} for: ${args.brief.slice(0, 80)}`,
     notes,
   };
 }
