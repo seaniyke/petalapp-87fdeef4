@@ -53,7 +53,33 @@
 import type { LocalIssue } from "@/server/local-verifier";
 
 /** Limit which rules fire. Edit to disable individual rules in production. */
-const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4">(["R1", "R2", "R3", "R4"]);
+const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5">([
+  "R1",
+  "R2",
+  "R3",
+  "R4",
+  "R5",
+]);
+
+/**
+ * Packages whose default exports are React.forwardRef objects. Rendering one
+ * of these as a JSX child expression (e.g. `{Icon}` or `{item.icon}`) instead
+ * of as a JSX element (`<Icon />`) throws the minified React error #31:
+ *   "Objects are not valid as a React child (found: object with keys
+ *    {$$typeof, render, displayName})."
+ * Every entry here ships icons as forwardRef components, so the same crash
+ * pattern applies uniformly.
+ */
+const FORWARD_REF_ICON_PACKAGES = [
+  "lucide-react",
+  "react-icons",
+  "@radix-ui/react-icons",
+  "@heroicons/react",
+  "@heroicons/react/24/outline",
+  "@heroicons/react/24/solid",
+  "@heroicons/react/20/solid",
+  "@phosphor-icons/react",
+];
 
 const SCANNABLE = /\.(tsx|jsx)$/;
 // Skip the same scaffold paths the other verifiers skip.
@@ -595,6 +621,75 @@ function findKitListPropOmissions(src: string): { component: string; missing: st
   return issues;
 }
 
+// =============================================================================
+// R5 — forwardRef icon rendered as a JSX child expression (React error #31)
+// =============================================================================
+
+function findForwardRefIconRenders(
+  src: string,
+  clean: string,
+): { ident: string; reason: string }[] {
+  const issues: { ident: string; reason: string }[] = [];
+
+  const iconNames = new Set<string>();
+  const importRe =
+    /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*from\s*["']([^"']+)["']/g;
+  let im: RegExpExecArray | null;
+  while ((im = importRe.exec(src))) {
+    const source = im[3];
+    const matched = FORWARD_REF_ICON_PACKAGES.some(
+      (p) => source === p || source.startsWith(`${p}/`),
+    );
+    if (!matched) continue;
+    if (im[1]) iconNames.add(im[1]);
+    if (im[2]) {
+      for (const part of im[2].split(",")) {
+        const name = part.trim().split(/\s+as\s+/i).pop()?.trim();
+        if (name) iconNames.add(name);
+      }
+    }
+  }
+
+  if (iconNames.size === 0) return issues;
+
+  for (const ident of iconNames) {
+    const re = new RegExp(
+      `(^|[^A-Za-z0-9_$=:.])\\{\\s*${escapeRe(ident)}\\s*\\}`,
+      "g",
+    );
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(clean))) {
+      const before = clean.slice(Math.max(0, m.index - 80), m.index + m[1].length);
+      if (!/>[^<{]*$/.test(before)) continue;
+      issues.push({
+        ident,
+        reason: `render <${ident} /> instead of {${ident}} — passing the forwardRef object as a child throws React error #31`,
+      });
+      break;
+    }
+  }
+
+  const hasIconField = [...iconNames].some((n) =>
+    new RegExp(`\\bicon\\s*:\\s*${escapeRe(n)}\\b`).test(clean),
+  );
+  if (hasIconField) {
+    const dotRe = /(^|[^A-Za-z0-9_$=:.])\{\s*[A-Za-z_$][\w$]*\.icon\s*\}/g;
+    let dm: RegExpExecArray | null;
+    while ((dm = dotRe.exec(clean))) {
+      const before = clean.slice(Math.max(0, dm.index - 80), dm.index + dm[1].length);
+      if (!/>[^<{]*$/.test(before)) continue;
+      issues.push({
+        ident: ".icon",
+        reason:
+          "render `<Item.icon />` (or `const Icon = item.icon; <Icon />`) instead of `{item.icon}` — the icon field is a forwardRef component, not a renderable value",
+      });
+      break;
+    }
+  }
+
+  return issues;
+}
+
 function extractIdents(block: string): string[] {
   const out: string[] = [];
   // Strip nested `{...}` (rare in destructure) by collapsing them.
@@ -672,6 +767,17 @@ export function lintRenderRisks(
           path: f.path,
           kind: "render-risk",
           detail: `<${issue.component}> is missing ${issue.missing}; this block maps over that data and can crash at runtime`,
+        });
+      }
+    }
+
+    // R5 — forwardRef icon rendered as a JSX child expression (React #31).
+    if (ENABLED_RULES.has("R5")) {
+      for (const issue of findForwardRefIconRenders(f.content, clean)) {
+        issues.push({
+          path: f.path,
+          kind: "render-risk",
+          detail: `forwardRef icon "${issue.ident}" rendered as a child — ${issue.reason}`,
         });
       }
     }
