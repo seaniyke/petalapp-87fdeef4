@@ -2345,8 +2345,9 @@ Forbidden defaults
               if (!applied) {
                 emitConversationalFallback(controller, encoder, {
                   files: currentFiles,
-                  summary:
-                    "I couldn't safely apply that edit on this pass. Tell me the exact bit you want changed (e.g. 'change the hero headline to …') and I'll target it precisely.",
+                  summary: body.isAutoFix
+                    ? "Reverted to the last working version — the automatic repair couldn't be applied safely."
+                    : "I wasn't able to apply that change on this pass. Could you rephrase what you'd like adjusted, or point me at the specific section?",
                 });
                 return;
               }
