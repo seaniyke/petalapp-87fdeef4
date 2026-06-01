@@ -53,12 +53,13 @@
 import type { LocalIssue } from "@/server/local-verifier";
 
 /** Limit which rules fire. Edit to disable individual rules in production. */
-const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5">([
+const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5" | "R6">([
   "R1",
   "R2",
   "R3",
   "R4",
   "R5",
+  "R6",
 ]);
 
 /**
