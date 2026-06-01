@@ -39,7 +39,8 @@ export type DynamicSnippetKey =
   | "multiPage"
   | "mobileApp"
   | "navbarBrand"
-  | "mobileNative";
+  | "mobileNative"
+  | "fullstackFeature";
 
 interface SnippetDef {
   /** Substrings that trigger this snippet (lowercased match against prompt). */
@@ -275,6 +276,46 @@ PAGE EXPORTS: prefer plain named exports + eager imports. React.lazy(() => impor
     body: `\n\n[Reinforcement — Auth (only if backend is connected)]
 Use ONLY the helpers exported from "@/integrations/backend/auth": useAuth(), signUpWithPassword, signInWithPassword, signInWithOtp, verifyOtp, verifySignupOtp, resendSignupOtp, resetPasswordForEmail, updatePassword, signOut, signInWithGoogle. After signUpWithPassword, verify with verifySignupOtp (NOT verifyOtp). For Google / "Continue with Google" / social login, call \`signInWithGoogle()\` from useAuth() — it returns \`{ error }\` and redirects the browser. NEVER call supabase.auth.signInWithOAuth directly. NEVER call supabase.auth.* directly. NEVER import from "@supabase/supabase-js". Read "src/components/examples/BACKEND.md" for full reference.`,
   },
+  // Fires when the user asked for a data-shaped feature AND a backend is
+  // already connected. Teaches the complete vertical-slice pattern in one
+  // block so a single turn produces working CRUD instead of half-wired
+  // queries against hallucinated tables. Pairs with the optional schema
+  // injection (see renderSchemaBlock) which lists real table names.
+  fullstackFeature: {
+    triggers:
+      /\b(crud|create.*read|todo|notes?|posts?|comments?|orders?|tasks?|messages?|chat|projects?|listings?|reviews?|reservations?|bookings?|appointments?|tickets?|invoices?|customers?|leads?|likes?|favorites?|bookmarks?|follows?|threads?|votes?|polls?|saved items?|wish ?list|cart|cms|dashboard.*(data|records|rows)|admin panel|build .* (app|tool|tracker|manager))\b/i,
+    body: `\n\n[Reinforcement — Full-stack feature pattern]
+A backend IS connected. When the user asks for a data feature (todo list, comments, bookings, etc.), you MUST ship a complete vertical slice in ONE turn — not a half-wired UI.
+
+A complete slice = four coordinated pieces:
+
+1. MIGRATION (end your summary with a fenced \`MIGRATION:\` sql block — the user runs it):
+   - \`CREATE TABLE public.<name> (id uuid primary key default gen_random_uuid(), user_id uuid not null, ...domain columns..., created_at timestamptz not null default now())\`
+   - \`GRANT SELECT, INSERT, UPDATE, DELETE ON public.<name> TO authenticated;\` and \`GRANT ALL ON public.<name> TO service_role;\` (add \`GRANT SELECT ... TO anon\` ONLY if rows should be world-readable)
+   - \`ALTER TABLE public.<name> ENABLE ROW LEVEL SECURITY;\`
+   - At least ONE \`CREATE POLICY\` scoped to \`auth.uid() = user_id\` (or \`true\` for genuinely public rows). Missing any of GRANT / RLS / POLICY means the app cannot read the table at all — it's a hard failure, not a polish item.
+
+2. TYPED CLIENT QUERIES via the existing helpers:
+   - \`import { supabase } from "@/integrations/backend/client"\`
+   - All inserts MUST set \`user_id\` from \`useAuth().user?.id\` so the RLS policy lets the row through.
+   - Wrap every \`.select / .insert / .update / .delete\` in try/catch with a toast on error and an optimistic local update.
+
+3. AUTH-GATED ROUTE — if the data is per-user, render a sign-in CTA when \`useAuth().user\` is null instead of an empty list. Never expose a write form to an unauthenticated user. Public reads stay open.
+
+4. LIVE UX:
+   - Loading skeletons (not blank screens) while the first fetch resolves.
+   - Empty state with a clear primary action ("Add your first note").
+   - Visible success/error toast on every mutation.
+   - Refetch (or local-state update) AFTER each mutation so the UI matches the DB.
+
+Forbidden in this turn:
+- Writing the table name with no migration. The user will paste the SQL — you MUST emit it.
+- \`supabase.from('<some_table_you_invented>')\` without the matching CREATE TABLE in the same MIGRATION block. Use exact column names you just declared.
+- Calling \`supabase.auth.*\` directly — go through \`useAuth()\`.
+- Importing \`@supabase/supabase-js\`, \`createClient\`, or any service-role key.
+
+If the user named a table that already exists in the [Connected backend tables] block below, REUSE it — do not emit a duplicate CREATE TABLE. If they asked for a new table, pick a short snake_case name and follow the four-piece pattern above.`,
+  },
   // Fires when the user asked for auth / data / accounts / uploads / realtime
   // BUT no backend is connected to this project. Triggers are matched in
   // pickDynamicSnippets only when args.hasBackend === false. This is a
@@ -398,6 +439,7 @@ export function pickDynamicSnippets(args: {
     if (key === "kitCore") continue;
     if (key === "noBackendGate") continue; // handled above
     if (key === "auth" && !args.hasBackend) continue;
+    if (key === "fullstackFeature" && !args.hasBackend) continue;
     const def = SNIPPETS[key];
     // "always" snippets are baseline reinforcements (e.g. verifyBeforeDone)
     // and ALWAYS go in. Topical snippets only fire on a keyword match.
@@ -442,4 +484,79 @@ export function renderCurrentDateBlock(now: Date = new Date()): string {
   return `\n\n[Current date — use this, not your training cutoff]
 Today is ${human} (${iso}). The current year is ${year}.
 When writing footers, copyright notices ("© ${year}"), "last updated" labels, blog post dates, or any other user-facing date, use ${year} (or a sensible recent year). Never default to 2023 or 2024.`;
+}
+
+/**
+ * Best-effort schema introspection for the connected backend.
+ *
+ * Hits PostgREST's OpenAPI endpoint with the anon key, parses the table
+ * list (and a few column names per table), and returns a compact prompt
+ * block. Soft-fails on any error / timeout — we never want a missing
+ * schema block to break a generation turn.
+ *
+ * Cached in-process for 60s per project to avoid hammering PostgREST
+ * across rapid follow-up turns.
+ */
+type SchemaCacheEntry = { at: number; block: string };
+const SCHEMA_CACHE = new Map<string, SchemaCacheEntry>();
+const SCHEMA_TTL_MS = 60_000;
+
+export async function renderSchemaBlock(args: {
+  backend: { url: string; anonKey: string } | null;
+  projectId?: string;
+}): Promise<string> {
+  if (!args.backend) return "";
+  const cacheKey = args.projectId ?? args.backend.url;
+  const now = Date.now();
+  const cached = SCHEMA_CACHE.get(cacheKey);
+  if (cached && now - cached.at < SCHEMA_TTL_MS) return cached.block;
+
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 3000);
+    const res = await fetch(`${args.backend.url.replace(/\/+$/, "")}/rest/v1/`, {
+      headers: {
+        apikey: args.backend.anonKey,
+        Authorization: `Bearer ${args.backend.anonKey}`,
+        Accept: "application/openapi+json",
+      },
+      signal: ctrl.signal,
+    });
+    clearTimeout(t);
+    if (!res.ok) {
+      SCHEMA_CACHE.set(cacheKey, { at: now, block: "" });
+      return "";
+    }
+    const spec = (await res.json()) as {
+      definitions?: Record<string, { properties?: Record<string, { type?: string; format?: string }> }>;
+    };
+    const defs = spec.definitions ?? {};
+    const tables = Object.keys(defs).filter(
+      (n) => !n.startsWith("rpc/") && !/^(?:objects|buckets)$/.test(n),
+    );
+    if (tables.length === 0) {
+      SCHEMA_CACHE.set(cacheKey, { at: now, block: "" });
+      return "";
+    }
+    const lines = tables.slice(0, 30).map((t) => {
+      const props = defs[t]?.properties ?? {};
+      const cols = Object.entries(props)
+        .slice(0, 12)
+        .map(([k, v]) => `${k}:${v.format || v.type || "?"}`)
+        .join(", ");
+      return `- ${t} (${cols})`;
+    });
+    const more = tables.length > 30 ? `\n…and ${tables.length - 30} more` : "";
+    const block = `\n\n[Connected backend tables — REAL schema, prefer reusing these]
+Tables already exist in this project's database. When the user asks for a feature whose name matches one of these, query that table instead of inventing a new one. Column names listed are authoritative — do not hallucinate columns that aren't here.
+
+${lines.join("\n")}${more}
+
+If you need a column or table that isn't listed, add it via a fenced MIGRATION sql block at the end of your summary (with GRANT + RLS + POLICY per the full-stack feature pattern).`;
+    SCHEMA_CACHE.set(cacheKey, { at: now, block });
+    return block;
+  } catch {
+    SCHEMA_CACHE.set(cacheKey, { at: now, block: "" });
+    return "";
+  }
 }
