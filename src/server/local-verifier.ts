@@ -373,7 +373,7 @@ function findUndefinedComponents(src: string, clean: string): string[] {
   const declared = new Set<string>();
 
   // Imports: import X, {A, B as C}, * as NS from "..."
-  const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
+  const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,?\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
   let m: RegExpExecArray | null;
   while ((m = importRe.exec(src))) {
     if (m[1]) declared.add(m[1]);
@@ -432,17 +432,21 @@ function findObviousScopeLeaks(src: string): string[] {
     for (const name of params.matchAll(/\b[A-Za-z_$][\w$]*\b/g)) declared.add(name[0]);
   }
 
-  const clean = stripNoise(src)
-    .replace(/\b(?:const|let|var|function|class|interface|type|enum|import|export|return|if|else|for|while|switch|case|break|continue|new|typeof|instanceof|in|of|as|from|extends|async|await|try|catch|finally|true|false|null|undefined)\b/g, " ")
-    .replace(/\.[A-Za-z_$][\w$]*/g, " ")
-    .replace(/<\/?[A-Za-z][\w.]*/g, " ");
+  const clean = stripNoise(src).replace(/\.[A-Za-z_$][\w$]*/g, " ");
   const missing: string[] = [];
   const seen = new Set<string>();
-  for (const hit of clean.matchAll(/(?<!["'`\w$])([a-z][A-Za-z0-9_$]*)\b/g)) {
-    const name = hit[1];
-    if (declared.has(name) || seen.has(name)) continue;
+  const add = (name: string | undefined) => {
+    if (!name || declared.has(name) || seen.has(name)) return;
     seen.add(name);
     missing.push(name);
+  };
+  const candidateRes = [
+    /\bArray\s*\.\s*isArray\s*\(\s*([a-z][\w$]*)\s*\)/g,
+    /\b([a-z][\w$]*)\s*(?:&&|\|\||\?\?|,)/g,
+    /(?:^|[({[,])\s*([a-z][\w$]*)\s*[,)]/g,
+  ];
+  for (const re of candidateRes) {
+    while ((m = re.exec(clean))) add(m[1]);
   }
   return missing.slice(0, 8);
 }
