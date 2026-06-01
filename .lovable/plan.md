@@ -1,17 +1,21 @@
-## Status of the previous audit plan
+## Status
 
-All 8 P0s from `.lovable/plan.md` are shipped:
+P0 audit + Phase 1 (scaffolding) shipped previously.
 
-- P0-A server-side `project_files` persistence — `src/routes/api/generate.ts`, `src/server/generate.server.ts`
-- P0-B runtime error bridge for CDN/Railway — `src/server/preview-guard.server.ts`, `src/routes/api/public/track-runtime-error.ts`, `petal_runtime_errors` table
-- P0-C builder watchdog + auto-retry — `src/routes/api/builds/watchdog.ts`, `use-build-activity.ts`, `project_builds.retry_count`
-- P0-D multi-cycle autofix default-on — `src/routes/api/generate.ts`
-- P0-E WebContainer → CDN fallback — `WebContainerPreview.tsx`, `builder.tsx`
-- P0-F continuation tier model escalation + tail anchor — `src/server/stream-continuation.server.ts`
-- P0-G Snack SDK 52 + asset placeholder — `src/components/SnackPreview.tsx`
-- P0-H installDeps concurrency gate — `src/lib/webcontainer.ts`
+Phase 2 (verifier upgrades) — shipped this loop:
+- #5 server-fn contract verifier — `findServerFnContractIssues` in `src/server/local-verifier.ts` (catches missing `.inputValidator`, missing zod, module-scope `process.env`, client-bundle leak of `client.server`).
+- #6 RLS sanity — already wired (`findRlsSanityIssues`).
+- #7 auth-loader trap verifier — `findAuthLoaderIssues` (rejects `requireSupabaseAuth` server-fns called from public route loaders).
+- #4 real `tsc --noEmit` tier — deferred; cost/latency too high without worker pool infra.
 
-Audit doc: `/mnt/documents/petal-audit.md`. P1/P2 backlog noted but not seeded as tracker tasks. Nothing from Phase 2 is outstanding.
+Phase 3 (capability prompt blocks) — shipped this loop in `src/server/dynamic-prompts.server.ts`:
+- #8 `fileUpload` (storage buckets + signed URLs + path convention)
+- #9 `webhook` (`/api/public/*` + HMAC verify + `supabaseAdmin` + idempotency)
+- #10 `cronJob` (pg_cron SQL-only OR pg_net + public cron route)
+- #11 `payments` (provider gating, server-fn checkout, webhook-driven status)
+
+Phase 4 — deferred. Per-file streaming + interactive diff drawer are large infra/UI changes that need their own loop; current generator+verifier is the higher leverage path.
+
 
 ## What's missing for true full-stack parity
 
