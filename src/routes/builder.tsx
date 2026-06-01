@@ -1143,7 +1143,11 @@ function Builder() {
       // started processing the job.
       setPhases((p) => advanceTo(p, "deploying"));
     } else if (effectiveBuildSnap.status === "failed") {
-      setPhases((p) => markFailed(p, "deploying"));
+      // Ensure the "Verifying the changes" (polishing) row is marked done
+      // before we flip "deploying" to failed. Otherwise a failure that
+      // arrives without going through pending/building leaves the
+      // verifying spinner stuck at "44s" *underneath* the failure card.
+      setPhases((p) => markFailed(completeThrough(p, "polishing"), "deploying"));
 
       // Infrastructure failures (build service unreachable, Cloudflare 403,
       // upstream 5xx) are NOT the user's code. Don't burn auto-fix attempts

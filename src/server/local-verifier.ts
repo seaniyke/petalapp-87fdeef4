@@ -1033,6 +1033,15 @@ function findMissingNamedExports(
   // Match `import [type] { A, B as C } from "spec"` — captures the brace
   // contents and the specifier. Skips type-only imports and default/namespace-only.
   const importRe = /import\s+(?:type\s+)?(?:[A-Za-z_$][\w$]*\s*,\s*)?\{([^}]+)\}\s*from\s*["']([^"']+)["']/g;
+  // Match `import Foo from "spec"` or `import Foo, { … } from "spec"` or
+  // `import Foo, * as N from "spec"` — captures the default binding and the
+  // specifier. Skips `import type Foo from …`. We use this to catch the
+  // common scaffold bug where the model writes a component with NAMED
+  // exports (`export function Sidebar`) but a sibling file default-imports
+  // it (`import Sidebar from "./Sidebar"`). Rollup hard-fails the build
+  // with `"default" is not exported by …` — we want to repair it locally
+  // instead of letting it slip through to a Cloudflare build error.
+  const defaultImportRe = /import\s+(?!type\s)([A-Za-z_$][\w$]*)(?:\s*,\s*(?:\{[^}]+\}|\*\s+as\s+[A-Za-z_$][\w$]*))?\s+from\s*["']([^"']+)["']/g;
 
   const seen = new Set<string>();
   for (const f of files) {
@@ -1092,6 +1101,34 @@ function findMissingNamedExports(
             : `import { ${original} } from "${spec}" — ${targetPath} does not export "${original}"`,
         });
       }
+    }
+
+    // Default-import check: `import Foo from "./bar"` against a target with
+    // only named exports (the Rollup build-killer we hit in production).
+    defaultImportRe.lastIndex = 0;
+    let dm: RegExpExecArray | null;
+    while ((dm = defaultImportRe.exec(f.content))) {
+      const localName = dm[1];
+      const spec = dm[2];
+      if (!spec.startsWith(".") && !spec.startsWith("@/")) continue;
+      const targetPath = resolveImportPath(f.path, spec, byPath);
+      if (!targetPath) continue;
+      const exp = exportsOf(targetPath);
+      if (exp.starReexports.length > 0) continue; // can't judge through `export *`
+      if (exp.hasDefault) continue;
+      const key = `${f.path}|${spec}|__default__`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      // If a named export with the same identifier exists, give the model
+      // a concrete fix hint — this is by far the most common shape.
+      const sameNamed = exp.named.has(localName);
+      issues.push({
+        path: f.path,
+        kind: "missing-export",
+        detail: sameNamed
+          ? `import ${localName} from "${spec}" — ${targetPath} has no default export, but does export "${localName}" as a named export. Change to \`import { ${localName} } from "${spec}"\` or add \`export default ${localName}\` to ${targetPath}.`
+          : `import ${localName} from "${spec}" — ${targetPath} has no default export. Either add \`export default …\` to that file or switch to a named import.`,
+      });
     }
   }
   return issues;
