@@ -134,25 +134,12 @@ export async function buildAndDeploy(
   const headersFile = `/*\n  Cross-Origin-Resource-Policy: cross-origin\n  Access-Control-Allow-Origin: *\n`;
   await writeFile(join(distDir, "_headers"), headersFile, "utf8");
 
-  // 3) Ensure the Cloudflare Pages project exists. Recent wrangler versions no
-  //    longer reliably auto-create a project from `pages deploy --project-name`,
-  //    so we create it explicitly and ignore the "already exists" case.
-  const createProject = await run(
-    "npx",
-    ["wrangler", "pages", "project", "create", projectName, "--production-branch", "main"],
-    {
-      cwd: projectDir,
-      env,
-      timeoutMs: 90 * 1000,
-    }
-  );
-  const createLogs = createProject.stdout + "\n" + createProject.stderr;
-  if (createProject.code !== 0 && !/already exists|Project name already exists/i.test(createLogs)) {
-    throw new BuildError(
-      `wrangler pages project create failed (exit ${createProject.code})`,
-      createLogs
-    );
-  }
+  // 3) Ensure the Cloudflare Pages project exists. We hit the Cloudflare REST
+  //    API directly instead of `wrangler pages project create` because wrangler
+  //    surfaces the "already exists" case as an opaque `code: 8000000` unknown
+  //    error on some accounts, which is indistinguishable from a real failure.
+  //    GET-then-POST is unambiguous: 200 = exists, 404 = create it.
+  await ensurePagesProject(projectName, cloudflare);
 
   // 4) Deploy to Cloudflare Pages. --branch=main makes this a production deploy
   //    so the URL `<project>.pages.dev` updates. --commit-dirty avoids the "you
@@ -196,4 +183,54 @@ export async function buildAndDeploy(
     deploymentId: aliasMatch?.[0]?.split("//")[1]?.split(".")[0],
     durationMs: Date.now() - startedAt,
   };
+}
+
+/**
+ * Ensure a Cloudflare Pages project exists. Uses the REST API directly:
+ *  - GET /accounts/:id/pages/projects/:name → 200 if it exists, 404 if not.
+ *  - POST /accounts/:id/pages/projects     → create when missing.
+ *
+ * This sidesteps wrangler's habit of mapping "already exists" to an opaque
+ * `code: 8000000` error on some accounts, which blocked every redeploy.
+ */
+async function ensurePagesProject(
+  projectName: string,
+  cloudflare: { apiToken: string; accountId: string }
+): Promise<void> {
+  const base = `https://api.cloudflare.com/client/v4/accounts/${cloudflare.accountId}/pages/projects`;
+  const headers = {
+    Authorization: `Bearer ${cloudflare.apiToken}`,
+    "Content-Type": "application/json",
+  };
+
+  const getRes = await fetch(`${base}/${projectName}`, { headers });
+  if (getRes.ok) return; // already exists
+  if (getRes.status !== 404) {
+    // Some other failure (auth, rate limit, etc.) — surface it.
+    const body = await getRes.text().catch(() => "");
+    if (getRes.status !== 410) {
+      throw new BuildError(
+        `Cloudflare Pages GET project failed (${getRes.status})`,
+        body
+      );
+    }
+  }
+
+  const createRes = await fetch(base, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      name: projectName,
+      production_branch: "main",
+    }),
+  });
+  if (createRes.ok) return;
+
+  const body = await createRes.text().catch(() => "");
+  // Treat "already exists" race as success regardless of how Cloudflare phrases it.
+  if (/already exists|duplicate/i.test(body)) return;
+  throw new BuildError(
+    `Cloudflare Pages create project failed (${createRes.status})`,
+    body
+  );
 }
