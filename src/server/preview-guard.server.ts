@@ -1,7 +1,7 @@
 import type { ProjectFile } from "./generate.server";
 
 const GUARD_PATH = "public/__petal_guard.js";
-const GUARD_VERSION = 2;
+const GUARD_VERSION = 3;
 const DEFAULT_INGEST_URL =
   "https://buildwithpetal.com/api/public/track-runtime-error";
 
