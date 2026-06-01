@@ -216,6 +216,11 @@ export async function runStagePlan(args: {
       .filter(Boolean)
       .join("\n\n");
 
+    // business-app needs more files (marketing + product); other archetypes
+    // stay at 10 to keep latency predictable.
+    const maxFiles = ctx.archetypeHint === "business-app" ? 16 : 10;
+    const planTool = buildPlanTool(maxFiles);
+
     const upstream = await aiChatCompletions({
       feature: "generate",
       body: {
@@ -231,12 +236,12 @@ export async function runStagePlan(args: {
               `Brief: ${args.brief}\n\n` +
               `Backend connected: ${args.hasBackend ? "yes" : "no"}\n\n` +
               (contextBlocks ? `${contextBlocks}\n\n` : "") +
-              `Plan the MVP file manifest now. Remember: src/App.tsx must be file #1, the archetype rules are HARD, and never plan index.html / src/main.tsx / src/styles.css.`,
+              `Plan the MVP file manifest now (max ${maxFiles} files). Remember: src/App.tsx must be file #1, the archetype rules are HARD, and never plan index.html / src/main.tsx / src/styles.css.`,
           },
         ],
-        tools: [PLAN_TOOL],
+        tools: [planTool],
         tool_choice: { type: "function", function: { name: "emit_plan" } },
-        max_tokens: 1200,
+        max_tokens: ctx.archetypeHint === "business-app" ? 1800 : 1200,
         stream: false,
       },
       timeoutTier: "default",
