@@ -783,8 +783,6 @@ export function SectionHeader({
   actions?: React.ReactNode;
   className?: string;
 }) {
-  const safeLines = Array.isArray(lines) ? lines : [];
-  const safeTotal = total ?? { label: "Total", value: "—" };
   return (
     <div className={cn("mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between", className)}>
       <div>
