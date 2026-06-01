@@ -422,11 +422,18 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   const latency = Date.now() - t0;
 
   // Decide whether to retry on fallback model (same provider).
+  // Retry on 5xx, 429 (rate-limit), 402 (credits), AND 400/404 — the latter
+  // catches "invalid model slug" / "model not found" so a typo in the admin
+  // override doesn't burn 100% of that feature's calls.
   const shouldRetry =
     !primary.ok &&
     fallback &&
     fallback !== primaryModel &&
-    (primary.status === 429 || primary.status === 402 || primary.status >= 500);
+    (primary.status === 429 ||
+      primary.status === 402 ||
+      primary.status === 400 ||
+      primary.status === 404 ||
+      primary.status >= 500);
 
   if (!shouldRetry) {
     // Fire-and-forget telemetry; do NOT await — keep latency tight.
