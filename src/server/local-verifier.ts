@@ -752,6 +752,78 @@ function findBlankRenderIssues(
 }
 
 /**
+ * RLS sanity check for new migrations.
+ *
+ * For every `CREATE TABLE public.<name>` in a changed migration file, the
+ * same file must also contain:
+ *   - a GRANT on that table (Data API access)
+ *   - `ENABLE ROW LEVEL SECURITY` on that table
+ *   - at least one `CREATE POLICY ... ON public.<name>`
+ *
+ * Missing any of these is the most common cause of "the AI created the
+ * table but the app can't read it" / "table is wide open" bugs that ship
+ * to production. We flag in the same verifier pass that catches
+ * truncation, so the autofix loop can repair before save.
+ */
+function findRlsSanityIssues(
+  files: { path: string; content: string }[],
+  changedPaths: Set<string>,
+): LocalIssue[] {
+  const issues: LocalIssue[] = [];
+  for (const f of files) {
+    if (!changedPaths.has(f.path)) continue;
+    if (!/\.sql$/i.test(f.path)) continue;
+    if (!/migrations?\//i.test(f.path)) continue;
+
+    const sql = f.content;
+    // Strip line + block comments so commented-out CREATE TABLE doesn't trip the rule.
+    const stripped = sql
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/--[^\n]*/g, "");
+
+    const tableRx =
+      /create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\s*\.\s*)?["`]?([a-z_][a-z0-9_]*)["`]?/gi;
+    const tables: string[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = tableRx.exec(stripped)) !== null) {
+      tables.push(m[1]);
+    }
+    if (tables.length === 0) continue;
+
+    for (const t of tables) {
+      const tRx = new RegExp(`\\b(?:public\\s*\\.\\s*)?["\`]?${t}["\`]?\\b`, "i");
+      const hasGrant = new RegExp(
+        `grant\\s+[^;]+\\bon\\s+(?:table\\s+)?(?:public\\s*\\.\\s*)?["\`]?${t}["\`]?`,
+        "i",
+      ).test(stripped);
+      const hasRls = new RegExp(
+        `alter\\s+table\\s+(?:public\\s*\\.\\s*)?["\`]?${t}["\`]?[^;]*enable\\s+row\\s+level\\s+security`,
+        "i",
+      ).test(stripped);
+      const hasPolicy = new RegExp(
+        `create\\s+policy\\s+[^;]+\\son\\s+(?:public\\s*\\.\\s*)?["\`]?${t}["\`]?`,
+        "i",
+      ).test(stripped);
+
+      const missing: string[] = [];
+      if (!hasGrant) missing.push("GRANT");
+      if (!hasRls) missing.push("ENABLE ROW LEVEL SECURITY");
+      if (!hasPolicy) missing.push("CREATE POLICY");
+      if (missing.length) {
+        issues.push({
+          path: f.path,
+          kind: "rls-sanity",
+          detail: `public.${t} is missing ${missing.join(" + ")} in the same migration. Add them before this migration ships — otherwise the Data API will reject reads or rows leak.`,
+        });
+      }
+      // touch tRx to avoid unused var lint
+      void tRx;
+    }
+  }
+  return issues;
+}
+
+/**
  * Node.js built-in modules supported by the Worker runtime (nodejs_compat).
  * Accepts both bare (`path`) and prefixed (`node:path`) forms. Anything
  * matching this set is always resolvable and must not be flagged as a
