@@ -287,6 +287,9 @@ export async function runStagePlan(args: {
     const archetypeLine = ctx.archetypeHint
       ? `\n\nARCHETYPE FOR THIS BRIEF: **${ctx.archetypeHint}**. Pick the matching layout from the rules above and reject components that contradict it.`
       : "";
+    const domainLine = ctx.businessDomain
+      ? `\n\nBUSINESS DOMAIN: **${ctx.businessDomain}**. Required product components (build ALL of these — generic KPI cards do NOT satisfy this list): ${DOMAIN_COMPONENTS[ctx.businessDomain].join(", ")}.`
+      : "";
 
     const contextBlocks = [
       ctx.appShapeBlock?.trim(),
@@ -303,12 +306,9 @@ export async function runStagePlan(args: {
     const upstream = await aiChatCompletions({
       feature: "generate",
       body: {
-        // gemini-3.5-flash is a touch stronger than 3-flash-preview at
-        // following multi-clause prompts (the archetype + design + rules
-        // stack), still cheap, still fast. Worth the small bump.
         model: "google/gemini-3.5-flash",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT + archetypeLine },
+          { role: "system", content: SYSTEM_PROMPT + archetypeLine + domainLine },
           {
             role: "user",
             content:
