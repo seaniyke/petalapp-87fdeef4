@@ -113,11 +113,8 @@ export async function setProviderSetting(
   if (!ALL_AI_FEATURES.includes(input.feature)) {
     throw new Error(`Unknown feature: ${input.feature}`);
   }
-  if (input.feature === "image") {
-    throw new Error(
-      "Image generation is hard-pinned to Lovable AI and cannot be changed.",
-    );
-  }
+  // Image generation can now route through OpenRouter too — both providers
+  // expose Gemini image models via the chat-completions `modalities` shape.
   if (
     input.provider !== null &&
     input.provider !== "lovable" &&
