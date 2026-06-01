@@ -25,7 +25,9 @@ function libraryRecommendation(genre: GameGenre, needs3D: boolean, needsPhysics:
   if (needs3D || genre === "3d") {
     return [
       "**Stack:** three.js + @react-three/fiber + @react-three/drei.",
-      "  - Install: `bun add three @react-three/fiber @react-three/drei`.",
+      "  - Install (PIN these versions — the scaffold ships React 18, and @react-three/fiber v9 requires React 19, which crashes at runtime with `function is not a constructor (evaluating 'new Um({})')`):",
+      "    `bun add three@^0.170.0 @react-three/fiber@^8.17.10 @react-three/drei@^9.117.3 && bun add -d @types/three@^0.170.0`",
+      "  - NEVER run `bun add three @react-three/fiber @react-three/drei` without version pins on this scaffold — it pulls fiber v9 and breaks the preview.",
       "  - Mount the `<Canvas>` once at the top of the game route. Keep React HUD outside the canvas.",
       "  - Use drei helpers (`OrbitControls`, `useGLTF`, `Environment`) — don't roll your own loaders.",
     ].join("\n");
