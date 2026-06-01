@@ -399,6 +399,56 @@ export async function patchFiles(
   }
 }
 
+/**
+ * Phase 4 #12 — stream a single file into a running container WITHOUT
+ * booting one if it isn't already up. Called from the SSE stream handler
+ * on every `file_complete` event so HMR can pick up changes mid-turn
+ * instead of waiting for the entire write_project/patch_files to land.
+ *
+ * No-ops (returns false) when:
+ *  - the container hasn't booted yet (we don't want to race the initial
+ *    mountProject + installDeps with a partial tree)
+ *  - the path isn't a runtime file (skip lockfiles, .env, migrations)
+ *  - content is empty / undefined
+ *
+ * Errors are swallowed — streaming preview is a perceived-latency
+ * optimization, never the source of truth. The final patchFiles call
+ * after the turn ends still runs and reconciles state.
+ */
+export async function streamWriteFile(path: string, content: string): Promise<boolean> {
+  if (!instance) return false; // container not booted yet
+  if (!content) return false;
+  // Skip files that shouldn't trigger HMR or that the dev server doesn't
+  // serve. Migrations + lockfiles are persisted server-side only.
+  if (
+    path.startsWith("supabase/") ||
+    path.startsWith("supabase\\") ||
+    path === "package-lock.json" ||
+    path === "bun.lockb" ||
+    path === "yarn.lock" ||
+    path === ".env" ||
+    path.endsWith(".sql")
+  ) {
+    return false;
+  }
+  try {
+    const dir = path.split("/").slice(0, -1).join("/");
+    if (dir) {
+      try {
+        await instance.fs.mkdir(dir, { recursive: true });
+      } catch {
+        /* exists */
+      }
+    }
+    await instance.fs.writeFile(path, content);
+    return true;
+  } catch (e) {
+    emitLog({ stream: "stderr", text: `streamWriteFile(${path}) failed: ${String(e)}` });
+    return false;
+  }
+}
+
+
 async function pipeProcess(label: string, process: { output: ReadableStream<string>; exit: Promise<number> }) {
   const reader = process.output.getReader();
   void (async () => {

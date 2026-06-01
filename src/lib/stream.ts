@@ -10,7 +10,7 @@ type Handlers = {
   onPhase?: (phase: "thinking" | "designing" | "writing" | "polishing") => void;
   onDesignVibe?: (vibe: string, rationale: string) => void;
   onFileProgress?: (written: number, latestPath?: string) => void;
-  onFileComplete?: (path: string, bytes: number, index: number) => void;
+  onFileComplete?: (path: string, bytes: number, index: number, content?: string) => void;
   /** Per-file structural validator result (plan #2). `ok:false` means the
    *  cheap local verifier found a structural issue; the post-stream
    *  autofix tier will attempt repair. */
@@ -188,7 +188,7 @@ export async function streamGenerate(
             handlers.onFileProgress?.(evt.written, evt.latestPath);
             break;
           case "file_complete":
-            handlers.onFileComplete?.(evt.path, evt.bytes, evt.index);
+            handlers.onFileComplete?.(evt.path, evt.bytes, evt.index, evt.content);
             break;
           case "file_validated":
             handlers.onFileValidated?.(evt.path, evt.ok, evt.errors);
@@ -352,6 +352,7 @@ export async function streamResumeTurn(
               evt.path as string,
               evt.bytes as number,
               evt.index as number,
+              evt.content as string | undefined,
             );
             break;
           case "file_validated":

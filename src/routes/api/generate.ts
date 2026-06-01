@@ -615,6 +615,27 @@ async function relayAndCollect(
             if (!owner || completedPaths.has(owner)) continue;
             completedPaths.add(owner);
             completedCount += 1;
+
+            // Decode once — used for BOTH the streaming-preview payload
+            // (Phase 4 #12) and the structural validator below.
+            let decoded = "";
+            try {
+              decoded = JSON.parse(`"${cm[1]}"`);
+            } catch {
+              decoded = cm[1]
+                .replace(/\\n/g, "\n")
+                .replace(/\\r/g, "\r")
+                .replace(/\\t/g, "\t")
+                .replace(/\\"/g, '"')
+                .replace(/\\\\/g, "\\");
+            }
+
+            // Cap inline payload at 256KB to keep SSE frames sane. Larger
+            // files just omit `content` — the client falls back to the
+            // final `result` event for those.
+            const STREAM_CONTENT_CAP = 256 * 1024;
+            const includeContent = decoded.length > 0 && decoded.length <= STREAM_CONTENT_CAP;
+
             controller.enqueue(
               encoder.encode(
                 sse({
@@ -622,27 +643,13 @@ async function relayAndCollect(
                   path: owner,
                   bytes: contentBytes,
                   index: completedCount,
+                  ...(includeContent ? { content: decoded } : {}),
                 }),
               ),
             );
 
             // Plan #2 — per-file validate-then-continue (live signal).
-            // Decode the JSON string content and run the cheap structural
-            // verifier. We never block the stream on validation; the
-            // post-stream autofix tier owns repair (bounded to 2 passes).
             try {
-              let decoded = "";
-              try {
-                decoded = JSON.parse(`"${cm[1]}"`);
-              } catch {
-                // Fallback: best-effort unescape of the most common escapes.
-                decoded = cm[1]
-                  .replace(/\\n/g, "\n")
-                  .replace(/\\r/g, "\r")
-                  .replace(/\\t/g, "\t")
-                  .replace(/\\"/g, '"')
-                  .replace(/\\\\/g, "\\");
-              }
               const issues = verifyFileLocal(owner, decoded);
               const ok = issues.length === 0;
               const errors = ok
@@ -662,6 +669,7 @@ async function relayAndCollect(
               /* validation is best-effort; never break the stream */
             }
           }
+
         }
       }
     }
