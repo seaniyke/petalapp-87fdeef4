@@ -58,29 +58,47 @@ export interface StagedPipelineContext {
 function archetypeFromShape(
   shape: AppShape | undefined,
   brief: string,
-): "feed" | "marketing" | "dashboard" | "tool" | "game" | "content" | undefined {
+): "feed" | "marketing" | "dashboard" | "tool" | "game" | "content" | "business-app" | undefined {
+  const b = brief.toLowerCase();
+
+  // Explicit user opt-outs — these short-circuit any business-app upgrade.
+  // The user asked for a single surface; honour it.
+  if (/\b(admin (only|dashboard)|internal tool|back ?office|analytics dashboard|chrome extension|browser extension|mobile app only|api only)\b/.test(b)) {
+    if (/\b(chrome extension|browser extension|mobile app only)\b/.test(b)) return "tool";
+    return "dashboard";
+  }
+
   if (!shape) {
     // Fall back to a tiny brief sniff so this doesn't no-op without context.
-    const b = brief.toLowerCase();
     if (/\b(feed|post|share|community|anonymous|wall|board)\b/.test(b)) return "feed";
     if (/\b(game|play|score|leaderboard|arcade)\b/.test(b)) return "game";
+    // Brief-only sniff for business prompts when classifier is silent.
+    if (/\b(saas|crm|fintech|marketplace|platform|startup|edtech|healthtech|booking system|ai (product|startup|tool))\b/.test(b)) {
+      return "business-app";
+    }
     return undefined;
   }
-  if (shape.category === "social") return "feed";
+
+  if (shape.category === "internal-tool") return "dashboard";
   if (shape.category === "game") return "game";
   if (shape.category === "content" || shape.category === "newsletter") return "content";
+
+  // Business categories — generate marketing site + auth'd app together.
   if (
     shape.category === "saas" ||
     shape.category === "fintech" ||
     shape.category === "crypto" ||
-    shape.category === "internal-tool"
-  ) {
-    return "dashboard";
-  }
-  if (shape.category === "ai-tool") return "tool";
-  if (
-    shape.category === "ecommerce" ||
     shape.category === "marketplace" ||
+    shape.category === "ecommerce" ||
+    shape.category === "booking" ||
+    shape.category === "social" ||
+    shape.category === "ai-tool"
+  ) {
+    return "business-app";
+  }
+
+  // Marketing-only categories (no logged-in product surface).
+  if (
     shape.category === "consultancy" ||
     shape.category === "local-business" ||
     shape.category === "restaurant" ||
