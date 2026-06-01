@@ -1923,7 +1923,7 @@ Forbidden defaults
         const pick = await pickBestModel({
           feature: "generate",
           phase: phaseTag.phase,
-          candidates: [MODEL_FAST, MODEL_BEST],
+          candidates: [MODEL_FAST, MODEL_BEST, MODEL_REASONING, MODEL_CLAUDE],
           defaultModel: phaseDefault,
         });
         model = pick.model;
