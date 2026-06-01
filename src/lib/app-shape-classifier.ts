@@ -385,23 +385,23 @@ function rationaleFor(
 ): string {
   switch (category) {
     case "fintech":
-      return "Fintech apps need a public landing for trust, authenticated dashboard for account data, admin for operations, and webhook endpoints for provider callbacks. Money movement requires idempotency and signature verification — never trust client input.";
+      return "Fintech apps ship BOTH a public marketing site (landing, features, pricing, trust indicators) AND an authenticated product (wallet/dashboard, transactions, KYC, admin) in the same build — never one without the other. Money movement requires idempotency and signature verification — never trust client input.";
     case "crypto":
-      return "Crypto/web3 apps need a wallet-connect entrypoint, dashboard for balances/transactions, and provider integrations for chain data. Private keys NEVER live in the browser code or database; rely on wallet providers (RainbowKit/wagmi) for signing.";
+      return "Crypto/web3 apps ship BOTH a public marketing site AND a wallet-connect product (dashboard, balances, transactions). Private keys NEVER live in browser code or the database; rely on wallet providers (RainbowKit/wagmi) for signing.";
     case "marketplace":
-      return "Two-sided marketplaces need separate seller and buyer flows, public listing detail pages, in-app messaging, checkout via Stripe Connect, and webhooks for payout/refund events.";
+      return "Two-sided marketplaces ship BOTH a public marketing site AND the full authenticated product (separate seller/buyer flows, listing detail, messaging, checkout via Stripe Connect, webhooks). Both surfaces in the same build.";
     case "ecommerce":
-      return "Storefront needs landing, browseable product detail, cart + checkout, customer auth, and an admin to manage inventory.";
+      return "Ecommerce ships BOTH a public storefront (landing, product detail, cart/checkout) AND the merchant admin (orders, inventory, customer auth). Both in the same build, not one or the other.";
     case "saas":
-      return "SaaS apps need a marketing landing, auth, a tiered paywall (Stripe/Paddle), a logged-in dashboard with user-scoped data via RLS, and webhooks for subscription events.";
+      return "SaaS ships BOTH a Stripe/Linear/Notion-grade marketing site (landing, features, pricing, testimonials, FAQ, footer) AND the authenticated product (auth, dashboard with real domain widgets, settings, billing). Never ship only the marketing site or only the dashboard — both surfaces are required.";
     case "booking":
-      return "Booking apps need a public services page, a slot picker with conflict detection, payment, customer dashboard, and an admin schedule view. Email + calendar invite on confirmation.";
+      return "Booking apps ship BOTH a public services page AND the authenticated product (slot picker with conflict detection, payment, customer dashboard, admin schedule). Email + calendar invite on confirmation.";
     case "messaging":
       return "Messaging/bot apps need a public webhook endpoint with signature verification, an admin dashboard for handover/monitoring, and persistent conversation threads.";
     case "social":
-      return "Social/creator apps need public profile pages, an authenticated dashboard, content composer/inbox, and per-user OAuth to upstream platforms (not workspace connectors).";
+      return "Social/creator apps ship BOTH a public marketing/profile surface AND the authenticated product (feed, composer, inbox, settings). Per-user OAuth to upstream platforms (not workspace connectors).";
     case "ai-tool":
-      return "AI tools need auth, a chat/composer surface, settings for model/preferences, and storage for uploaded context. Default to Lovable AI Gateway over BYO keys.";
+      return "AI tools ship BOTH a public marketing site (hero, demo, pricing, waitlist if pre-launch) AND the authenticated product (workspace/composer, settings, usage tracking, storage). Default to Lovable AI Gateway over BYO keys.";
     case "internal-tool":
       return "Internal tools skip the marketing landing and focus on auth + admin/data CRUD with role checks. Use the user_roles pattern, never store role on profiles.";
     case "game":
