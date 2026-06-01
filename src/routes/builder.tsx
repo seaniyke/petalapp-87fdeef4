@@ -351,6 +351,12 @@ function Builder() {
   const [designCaption, setDesignCaption] = useState<string>("");
   const [filesWritten, setFilesWritten] = useState<number>(0);
   const [lastBuildCredits, setLastBuildCredits] = useState<number | null>(null);
+  // Snapshot of `files` captured at the start of the current turn. Drives the
+  // "Review changes" per-file diff drawer surfaced on the BuildActivityCard
+  // success line — so users can accept/reject individual files from a turn
+  // without nuking the whole result via Time Machine.
+  const preTurnFilesRef = useRef<ProjectFile[] | null>(null);
+  const [turnDiffVersion, setTurnDiffVersion] = useState<VersionRow | null>(null);
   const [latestPath, setLatestPath] = useState<string | undefined>(undefined);
   // Model-written sentence for the most recent file ("Building the upload
   // screen…"). When present, the activity card shows this instead of the
