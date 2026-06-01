@@ -131,7 +131,11 @@ interface PlanContext {
   archetypeHint?: "feed" | "marketing" | "dashboard" | "tool" | "game" | "content" | "business-app";
 }
 
-function injectRootViewIfMissing(plan: PlannedFile[], brief: string): PlannedFile[] {
+function injectRootViewIfMissing(
+  plan: PlannedFile[],
+  brief: string,
+  archetype?: PlanContext["archetypeHint"],
+): PlannedFile[] {
   // Drop forbidden paths the model may have planned despite the prompt.
   const cleaned = plan.filter(
     (f) =>
@@ -156,11 +160,14 @@ function injectRootViewIfMissing(plan: PlannedFile[], brief: string): PlannedFil
   // every other planned component so the scaffold prompt tells it to wire
   // them up.
   const deps = cleaned.map((f) => f.path);
+  const purpose = archetype === "business-app"
+    ? `Root view — renders BOTH the public marketing site (Hero/Features/Pricing/etc.) AND the authenticated app shell (Dashboard/Settings) with a lightweight route switch (hash router or simple state) for: ${brief.slice(0, 140)}. Gate app routes behind a mock <AuthGate>. Import and wire every listed component dep.`
+    : `Root view — renders the full MVP shell with real domain UI for: ${brief.slice(0, 160)}. Import and use the listed component deps.`;
   const rootEntry: PlannedFile = {
     path: "src/App.tsx",
-    purpose: `Root view — renders the full MVP shell with real domain UI for: ${brief.slice(0, 160)}. Import and use the listed component deps.`,
+    purpose,
     deps,
-    est_lines: 140,
+    est_lines: archetype === "business-app" ? 200 : 140,
   };
   return [rootEntry, ...cleaned];
 }
