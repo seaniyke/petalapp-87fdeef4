@@ -1102,6 +1102,34 @@ function findMissingNamedExports(
         });
       }
     }
+
+    // Default-import check: `import Foo from "./bar"` against a target with
+    // only named exports (the Rollup build-killer we hit in production).
+    defaultImportRe.lastIndex = 0;
+    let dm: RegExpExecArray | null;
+    while ((dm = defaultImportRe.exec(f.content))) {
+      const localName = dm[1];
+      const spec = dm[2];
+      if (!spec.startsWith(".") && !spec.startsWith("@/")) continue;
+      const targetPath = resolveImportPath(f.path, spec, byPath);
+      if (!targetPath) continue;
+      const exp = exportsOf(targetPath);
+      if (exp.starReexports.length > 0) continue; // can't judge through `export *`
+      if (exp.hasDefault) continue;
+      const key = `${f.path}|${spec}|__default__`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      // If a named export with the same identifier exists, give the model
+      // a concrete fix hint — this is by far the most common shape.
+      const sameNamed = exp.named.has(localName);
+      issues.push({
+        path: f.path,
+        kind: "missing-export",
+        detail: sameNamed
+          ? `import ${localName} from "${spec}" — ${targetPath} has no default export, but does export "${localName}" as a named export. Change to \`import { ${localName} } from "${spec}"\` or add \`export default ${localName}\` to ${targetPath}.`
+          : `import ${localName} from "${spec}" — ${targetPath} has no default export. Either add \`export default …\` to that file or switch to a named import.`,
+      });
+    }
   }
   return issues;
 }
