@@ -306,7 +306,7 @@ export async function runStagePlan(args: {
 
     // business-app needs more files (marketing + product); other archetypes
     // stay at 10 to keep latency predictable.
-    const maxFiles = ctx.archetypeHint === "business-app" ? 22 : 10;
+    const maxFiles = ctx.archetypeHint === "business-app" ? 25 : 10;
     const planTool = buildPlanTool(maxFiles);
 
     const upstream = await aiChatCompletions({
