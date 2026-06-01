@@ -53,7 +53,33 @@
 import type { LocalIssue } from "@/server/local-verifier";
 
 /** Limit which rules fire. Edit to disable individual rules in production. */
-const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4">(["R1", "R2", "R3", "R4"]);
+const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5">([
+  "R1",
+  "R2",
+  "R3",
+  "R4",
+  "R5",
+]);
+
+/**
+ * Packages whose default exports are React.forwardRef objects. Rendering one
+ * of these as a JSX child expression (e.g. `{Icon}` or `{item.icon}`) instead
+ * of as a JSX element (`<Icon />`) throws the minified React error #31:
+ *   "Objects are not valid as a React child (found: object with keys
+ *    {$$typeof, render, displayName})."
+ * Every entry here ships icons as forwardRef components, so the same crash
+ * pattern applies uniformly.
+ */
+const FORWARD_REF_ICON_PACKAGES = [
+  "lucide-react",
+  "react-icons",
+  "@radix-ui/react-icons",
+  "@heroicons/react",
+  "@heroicons/react/24/outline",
+  "@heroicons/react/24/solid",
+  "@heroicons/react/20/solid",
+  "@phosphor-icons/react",
+];
 
 const SCANNABLE = /\.(tsx|jsx)$/;
 // Skip the same scaffold paths the other verifiers skip.
