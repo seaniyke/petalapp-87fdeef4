@@ -115,6 +115,8 @@ import { HistoryPanel } from "@/components/HistoryPanel";
 import { SharePopover } from "@/components/SharePopover";
 import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
 import { RevertPreviewDialog } from "@/components/RevertPreviewDialog";
+import { PartialRevertDialog } from "@/components/PartialRevertDialog";
+import type { VersionRow } from "@/lib/versions";
 import { BuilderActionsSheet } from "@/components/BuilderActionsSheet";
 import { PublishSheet } from "@/components/PublishSheet";
 import { RenameProjectDialog } from "@/components/RenameProjectDialog";
