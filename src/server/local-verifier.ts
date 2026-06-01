@@ -570,6 +570,15 @@ export function verifyFileLocal(path: string, content: string): LocalIssue[] {
     });
   }
 
+  const scopeLeaks = findObviousScopeLeaks(content);
+  if (scopeLeaks.length > 0) {
+    issues.push({
+      path,
+      kind: "scope",
+      detail: `references undeclared variable(s): ${scopeLeaks.join(", ")}. Declare them, add them to the component props/destructure, or remove the stale expression before shipping.`,
+    });
+  }
+
   return issues;
 }
 
