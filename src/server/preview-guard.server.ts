@@ -1,7 +1,7 @@
 import type { ProjectFile } from "./generate.server";
 
 const GUARD_PATH = "public/__petal_guard.js";
-const GUARD_VERSION = 2;
+const GUARD_VERSION = 3;
 const DEFAULT_INGEST_URL =
   "https://buildwithpetal.com/api/public/track-runtime-error";
 
@@ -119,8 +119,15 @@ function buildGuardScript(opts: GuardOptions): string {
 
   window.addEventListener("error", function (event) {
     var target = event && event.target;
-    if (target && target !== window && (target.tagName === "SCRIPT" || target.tagName === "LINK")) {
-      reportError("error", new Error("Failed to load " + target.tagName.toLowerCase() + ": " + (target.src || target.href || "unknown asset")), target.src || target.href || null, null, null);
+    if (target && target !== window && (target.tagName === "SCRIPT" || target.tagName === "LINK" || target.tagName === "IMG")) {
+      // A failed stylesheet / font / image / async script DOES NOT crash the
+      // app. React still mounts, fonts fall back, images show broken icons.
+      // Showing the unrecoverable "Preview crashed" overlay here is wrong —
+      // users saw a fully-working app behind a fatal error card. Post a
+      // non-fatal telemetry ping so Petal can still suggest a fix, but do
+      // NOT show the overlay.
+      var url = target.src || target.href || "unknown asset";
+      try { parent.postMessage({ type: "petal:runtime:asset-error", payload: { tag: String(target.tagName).toLowerCase(), url: String(url).slice(0, 500) } }, "*"); } catch (_) {}
       return;
     }
     if (!event || !event.message || event.message === "Script error." || event.message.indexOf("ResizeObserver loop") === 0) return;

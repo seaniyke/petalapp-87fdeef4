@@ -75,16 +75,13 @@ export async function listProviderSettings(): Promise<{
   }
 
   const rows: AiFeatureRow[] = ALL_AI_FEATURES.map((feature) => {
-    const locked = feature === "image";
     const r = overrides.get(feature);
     const override =
       r?.provider === "openrouter" || r?.provider === "lovable"
         ? (r.provider as Provider)
         : null;
     const envChoice = envChoiceFor(feature);
-    const effective: Provider = locked
-      ? "lovable"
-      : (override ?? envChoice ?? "lovable");
+    const effective: Provider = override ?? envChoice ?? "lovable";
     return {
       feature,
       effective,
@@ -92,7 +89,7 @@ export async function listProviderSettings(): Promise<{
       envChoice,
       model: r?.model ?? null,
       fallbackModel: r?.fallback_model ?? null,
-      locked,
+      locked: false,
     };
   });
 
@@ -116,11 +113,8 @@ export async function setProviderSetting(
   if (!ALL_AI_FEATURES.includes(input.feature)) {
     throw new Error(`Unknown feature: ${input.feature}`);
   }
-  if (input.feature === "image") {
-    throw new Error(
-      "Image generation is hard-pinned to Lovable AI and cannot be changed.",
-    );
-  }
+  // Image generation can now route through OpenRouter too — both providers
+  // expose Gemini image models via the chat-completions `modalities` shape.
   if (
     input.provider !== null &&
     input.provider !== "lovable" &&

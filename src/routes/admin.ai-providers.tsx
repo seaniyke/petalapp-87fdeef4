@@ -133,9 +133,9 @@ const FEATURE_DETAILS: Record<AiFeature, { label: string; blurb: string; recomme
   },
   image: {
     label: "Image generation",
-    blurb: "Nano-banana / Gemini image gen. Locked to Petal AI.",
+    blurb: "Nano-banana / Gemini image gen. Routable through Petal AI or OpenRouter.",
     recommended: { lovable: "google/gemini-2.5-flash-image", openrouter: "google/gemini-2.5-flash-image" },
-    fallback: "",
+    fallback: "google/gemini-2.5-flash-image",
   },
 };
 
