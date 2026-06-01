@@ -89,6 +89,24 @@ function buildGuardScript(opts: GuardOptions): string {
     (document.body || document.documentElement).appendChild(panel);
   }
 
+  var badgeShown = false;
+  function showBadge(message) {
+    if (badgeShown || overlayShown) return;
+    badgeShown = true;
+    try {
+      var b = document.createElement("div");
+      b.setAttribute("data-petal-runtime-badge", "true");
+      b.style.cssText = "position:fixed;bottom:12px;right:12px;z-index:2147483646;max-width:320px;padding:10px 12px;border-radius:10px;background:#1f1f25;border:1px solid #3a3a44;color:#f5f5f7;font:12px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35);";
+      var safe = String(message || "Runtime error").replace(/[<>&]/g, function (c) { return ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]; });
+      b.innerHTML = '<div style="font-weight:600;margin-bottom:2px;color:#fff">Runtime error</div>' +
+        '<div style="color:#c7c7d1;word-break:break-word">' + safe + '</div>' +
+        '<button type="button" style="position:absolute;top:4px;right:6px;background:none;border:0;color:#9a9aa3;font-size:14px;cursor:pointer;line-height:1" aria-label="Dismiss">×</button>';
+      b.style.position = "fixed";
+      b.querySelector("button").addEventListener("click", function () { try { b.remove(); } catch (_) {} });
+      (document.body || document.documentElement).appendChild(b);
+    } catch (_) {}
+  }
+
   function visibleElementExists(root) {
     if (!root) return false;
     if ((root.textContent || "").trim().length > 0) return true;
@@ -114,7 +132,19 @@ function buildGuardScript(opts: GuardOptions): string {
       kind: kind,
     };
     post("petal:runtime:error", payload);
-    showOverlay("This preview crashed while rendering.", payload.message, payload.stack || "");
+    // Only show the unrecoverable full-screen overlay when the app actually
+    // failed to render anything. If #root already has visible content, the
+    // error came from an event handler / async callback / effect after first
+    // paint — the app is still usable, so surface a dismissible badge and
+    // let the user keep interacting. Fatal-vs-recoverable is decided by
+    // "did anything render?", not by error type.
+    var root = document.getElementById("root");
+    var rendered = root && visibleElementExists(root);
+    if (rendered) {
+      showBadge(payload.message);
+    } else {
+      showOverlay("This preview crashed while rendering.", payload.message, payload.stack || "");
+    }
   }
 
   window.addEventListener("error", function (event) {
@@ -133,6 +163,7 @@ function buildGuardScript(opts: GuardOptions): string {
     if (!event || !event.message || event.message === "Script error." || event.message.indexOf("ResizeObserver loop") === 0) return;
     reportError("error", event.error || event.message, event.filename, event.lineno, event.colno);
   }, true);
+
 
   window.addEventListener("unhandledrejection", function (event) {
     reportError("unhandledrejection", event && event.reason ? event.reason : "Unhandled promise rejection", null, null, null);
