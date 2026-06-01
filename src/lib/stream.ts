@@ -352,6 +352,7 @@ export async function streamResumeTurn(
               evt.path as string,
               evt.bytes as number,
               evt.index as number,
+              evt.content as string | undefined,
             );
             break;
           case "file_validated":
