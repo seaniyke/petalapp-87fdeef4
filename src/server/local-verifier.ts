@@ -1033,5 +1033,6 @@ export function verifyFilesLocal(
   issues.push(...findUnresolvedImports(files, changed));
   issues.push(...findMissingNamedExports(files, changed));
   issues.push(...findBlankRenderIssues(files, changed));
+  issues.push(...findRlsSanityIssues(files, changed));
   return { ok: issues.length === 0, issues };
 }
