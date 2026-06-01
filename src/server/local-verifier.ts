@@ -29,9 +29,12 @@ export interface LocalIssue {
     | "oversize"
     | "render-risk"
     | "blank-render"
-    | "rls-sanity";
+    | "rls-sanity"
+    | "server-fn-contract"
+    | "auth-loader-trap";
   detail: string;
 }
+
 
 export interface LocalVerdict {
   ok: boolean;
@@ -1010,6 +1013,169 @@ function findMissingNamedExports(
   return issues;
 }
 
+/**
+ * Server-fn contract checks — Phase 2 #5.
+ *
+ * Static regex audit on any *.functions.ts(x) or *.server.ts(x) file the
+ * model just touched. Catches the four breakages we've seen in shipped
+ * turns BEFORE they reach the autofix loop:
+ *  - createServerFn().handler() with no .inputValidator() before it
+ *  - POST server fn that doesn't import zod (no input validation)
+ *  - process.env.* read at module scope of a .functions file (bundled
+ *    into the client RPC stub as `undefined`)
+ *  - direct import of @/integrations/supabase/client.server from a file
+ *    that is not itself *.server.* (transitive client bundle leak)
+ */
+function findServerFnContractIssues(
+  files: { path: string; content: string }[],
+  changed: Set<string>,
+): LocalIssue[] {
+  const issues: LocalIssue[] = [];
+  for (const f of files) {
+    if (!changed.has(f.path)) continue;
+    if (!/\.(tsx?|jsx?)$/.test(f.path)) continue;
+
+    const src = f.content;
+    const isFunctionsFile = /\.functions\.tsx?$/.test(f.path);
+    const isServerFile = /\.server\.tsx?$/.test(f.path);
+
+    // Client-bundle leak: any non-server file pulling in the admin client.
+    if (
+      !isServerFile &&
+      !isFunctionsFile &&
+      /from\s+["']@\/integrations\/supabase\/client\.server["']/.test(src)
+    ) {
+      issues.push({
+        path: f.path,
+        kind: "server-fn-contract",
+        detail:
+          "Imports @/integrations/supabase/client.server from a non-server file — this leaks the service-role client into the client bundle. Move the code into a *.functions.ts createServerFn handler and import that instead.",
+      });
+    }
+
+    // Only the rest applies to files that actually declare server fns.
+    if (!/createServerFn\s*\(/.test(src)) continue;
+
+    // .handler() with no preceding .inputValidator() on the same chain.
+    // Conservative: split on `createServerFn(` and inspect each chain.
+    const chains = src.split(/createServerFn\s*\(/);
+    for (let i = 1; i < chains.length; i++) {
+      const tail = chains[i].slice(0, 800); // bound work; chains are short
+      if (!/\.handler\s*\(/.test(tail)) continue;
+      const hasValidator = /\.inputValidator\s*\(/.test(tail);
+      // Inspect method= setting; only POST/PUT/PATCH require a validator.
+      const methodMatch = /method\s*:\s*["'](GET|POST|PUT|PATCH|DELETE)["']/i.exec(
+        chains[i - 1].slice(-200) + tail.slice(0, 80),
+      );
+      const method = (methodMatch?.[1] ?? "GET").toUpperCase();
+      const needsValidator = method !== "GET";
+      if (needsValidator && !hasValidator) {
+        issues.push({
+          path: f.path,
+          kind: "server-fn-contract",
+          detail: `createServerFn({ method: "${method}" }) is missing .inputValidator() — POST/PUT/PATCH/DELETE handlers MUST validate input (use Zod) before .handler() to avoid trusting client-supplied data.`,
+        });
+      }
+      // POST with no zod import anywhere in the file = no schema validation.
+      if (needsValidator && !/from\s+["']zod["']/.test(src)) {
+        issues.push({
+          path: f.path,
+          kind: "server-fn-contract",
+          detail: `createServerFn({ method: "${method}" }) declared but the file does not import \`zod\`. Add \`import { z } from "zod"\` and parse the input inside .inputValidator().`,
+        });
+      }
+    }
+
+    // Module-scope process.env in a .functions file → undefined at runtime.
+    if (isFunctionsFile) {
+      // Strip handler bodies, then look for process.env at top level.
+      const stripped = src.replace(/\.handler\s*\(\s*async[^{]*\{[\s\S]*?\n\}\s*\)/g, ".handler()");
+      if (/(^|\n)\s*(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=\s*[^;]*process\.env\./.test(stripped)) {
+        issues.push({
+          path: f.path,
+          kind: "server-fn-contract",
+          detail:
+            "Reads process.env.* at module scope. Env injection happens per-request — move the read INSIDE .handler() so it resolves on the server at call time instead of being captured at import as undefined.",
+        });
+      }
+    }
+  }
+  return issues;
+}
+
+/**
+ * Auth-middleware loader trap — Phase 2 #7.
+ *
+ * A route under src/routes/ that is NOT inside an _authenticated layout
+ * must not call a serverFn protected by requireSupabaseAuth from its
+ * top-level `loader:` — SSR/prerender runs with no bearer token and the
+ * middleware rejects with 401, killing the build.
+ *
+ * Heuristic: for each public route file, find imported identifiers from
+ * any *.functions.* module that ALSO imports requireSupabaseAuth, and
+ * flag if they appear inside a `loader:` arrow.
+ */
+function findAuthLoaderIssues(
+  files: { path: string; content: string }[],
+  changed: Set<string>,
+): LocalIssue[] {
+  const issues: LocalIssue[] = [];
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+
+  // Pre-compute which *.functions.* files require auth.
+  const authProtectedExports = new Map<string, Set<string>>(); // path → exported fn names
+  for (const f of files) {
+    if (!/\.functions\.tsx?$/.test(f.path)) continue;
+    if (!/requireSupabaseAuth/.test(f.content)) continue;
+    const exp = collectExports(f.content);
+    authProtectedExports.set(f.path, exp.named);
+  }
+  if (authProtectedExports.size === 0) return issues;
+
+  for (const f of files) {
+    if (!changed.has(f.path)) continue;
+    if (!/^src\/routes\//.test(f.path)) continue;
+    // Routes inside an _authenticated/ subtree are gated by the layout —
+    // safe to call protected fns from their loader.
+    if (/\/_authenticated[./]/.test(f.path) || /_authenticated\.tsx?$/.test(f.path)) continue;
+    if (!/loader\s*:/.test(f.content)) continue;
+
+    // Find imports from *.functions.* and check if any are auth-protected.
+    const importRe = /import\s*\{([^}]+)\}\s*from\s*["']([^"']+)["']/g;
+    let m: RegExpExecArray | null;
+    while ((m = importRe.exec(f.content))) {
+      const spec = m[2];
+      if (!/\.functions$/.test(spec) && !spec.includes(".functions")) continue;
+      const target = resolveImportPath(f.path, spec, byPath);
+      if (!target) continue;
+      const protectedNames = authProtectedExports.get(target);
+      if (!protectedNames || protectedNames.size === 0) continue;
+
+      const imported = m[1]
+        .split(",")
+        .map((p) => p.trim().split(/\s+as\s+/i).pop()?.trim())
+        .filter((s): s is string => Boolean(s));
+
+      // Find the loader body and check for any protected name call.
+      const loaderMatch = /loader\s*:\s*(?:async\s*)?\(?[^)]*\)?\s*=>\s*([\s\S]*?)(?:,\s*\n\s*(?:component|errorComponent|notFoundComponent|beforeLoad)|\}\s*\))/.exec(
+        f.content,
+      );
+      const loaderBody = loaderMatch?.[1] ?? "";
+      for (const name of imported) {
+        if (!protectedNames.has(name)) continue;
+        if (loaderBody.includes(name + "(")) {
+          issues.push({
+            path: f.path,
+            kind: "auth-loader-trap",
+            detail: `loader calls ${name}() from ${spec}, which is protected by requireSupabaseAuth. Public route loaders run during SSR/prerender with no bearer token and will 401. Either move this route under src/routes/_authenticated/, or call ${name} from the component via useServerFn + useQuery instead of the loader.`,
+          });
+        }
+      }
+    }
+  }
+  return issues;
+}
+
 export function verifyFilesLocal(
   files: { path: string; content: string }[],
   changedPaths: string[],
@@ -1020,12 +1186,6 @@ export function verifyFilesLocal(
     if (!changed.has(f.path)) continue;
     if (f.path.startsWith("src/components/ui/")) continue;
     if (f.path.startsWith("src/integrations/")) continue;
-    // Reference snippets shipped by the scaffold (examples-pack). They are
-    // intentionally partial — generic identifiers like <Row>/<T>/<Step>, no
-    // closing tags on purpose — so the AI can read them as patterns. They
-    // are never imported by the app and never compiled. Verifying them
-    // produces dozens of phantom "truncation"/"jsx" issues every turn,
-    // which then triggers a continuation pass that corrupts real files.
     if (f.path.startsWith("src/components/examples/")) continue;
     issues.push(...verifyFileLocal(f.path, f.content));
   }
@@ -1034,5 +1194,8 @@ export function verifyFilesLocal(
   issues.push(...findMissingNamedExports(files, changed));
   issues.push(...findBlankRenderIssues(files, changed));
   issues.push(...findRlsSanityIssues(files, changed));
+  issues.push(...findServerFnContractIssues(files, changed));
+  issues.push(...findAuthLoaderIssues(files, changed));
   return { ok: issues.length === 0, issues };
 }
+

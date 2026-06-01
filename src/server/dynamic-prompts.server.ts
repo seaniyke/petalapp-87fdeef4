@@ -40,7 +40,11 @@ export type DynamicSnippetKey =
   | "mobileApp"
   | "navbarBrand"
   | "mobileNative"
-  | "fullstackFeature";
+  | "fullstackFeature"
+  | "fileUpload"
+  | "webhook"
+  | "cronJob"
+  | "payments";
 
 interface SnippetDef {
   /** Substrings that trigger this snippet (lowercased match against prompt). */
@@ -389,7 +393,116 @@ Tailwind v4 syntax ONLY: \`@import "tailwindcss";\` on line 1, then \`@theme { -
     body: `\n\n[Reinforcement — Toasts]
 Mount <Toaster /> ONCE in App.tsx (or main.tsx). Then call toast.success("Saved.") / toast.error("…") / toast("Default") from "@/components/ui/toast" anywhere. NEVER build a custom alert div for ephemeral feedback.`,
   },
+  fileUpload: {
+    triggers:
+      /\b(upload|file upload|attach(ment)?s?|avatar upload|profile (picture|photo)|image upload|drag.?and.?drop file|csv import|photo gallery upload)\b/i,
+    body: `\n\n[Reinforcement — File upload]
+The user asked for file uploads. Ship the full vertical slice in ONE turn:
+
+1. STORAGE BUCKET — emit a \`MIGRATION:\` block that creates the bucket and policies (skip CREATE TABLE if not needed):
+   - \`insert into storage.buckets (id, name, public) values ('<bucket>', '<bucket>', <true|false>) on conflict (id) do nothing;\`
+   - Private buckets: \`create policy "Users read own files" on storage.objects for select using (bucket_id = '<bucket>' and auth.uid()::text = (storage.foldername(name))[1]);\` plus matching insert/update/delete policies.
+   - Public buckets (avatars, public images): SELECT policy with \`using (bucket_id = '<bucket>')\` and INSERT scoped to \`auth.uid()::text = (storage.foldername(name))[1]\`.
+
+2. UPLOAD UI — use react-dropzone if installed, otherwise a styled \`<input type="file" />\`. Always:
+   - Show a preview thumbnail for images.
+   - Show upload progress (use \`onUploadProgress\` from the upload promise).
+   - Validate size/MIME client-side before calling supabase.
+   - Path convention: \`\${user.id}/\${crypto.randomUUID()}-\${file.name}\` so the RLS \`storage.foldername(name)[1]\` check passes.
+
+3. UPLOAD CALL: \`await supabase.storage.from('<bucket>').upload(path, file, { upsert: false, contentType: file.type })\`. For public buckets, render \`supabase.storage.from('<bucket>').getPublicUrl(path).data.publicUrl\`. For private buckets, render via \`createSignedUrl(path, 3600)\`.
+
+4. PERSIST the path in the related row (e.g. \`profiles.avatar_url\`) so the UI can re-render after refresh.
+
+Forbidden: storing base64 in a text column, uploading without an auth check, hardcoding bucket policies that allow \`true\` on insert.`,
+  },
+  webhook: {
+    triggers:
+      /\b(webhook|callback url|external (api )?callback|stripe webhook|paystack webhook|github webhook|inbound webhook|receive (events?|notifications?) from)\b/i,
+    body: `\n\n[Reinforcement — Inbound webhook]
+The user asked to receive a webhook from an external service. Build a TanStack server route under \`src/routes/api/public/\` — that prefix bypasses Lovable's published-site auth so external callers can reach it. ALWAYS implement these four pieces:
+
+1. ROUTE SHAPE (e.g. \`src/routes/api/public/<source>-webhook.ts\`):
+   \`\`\`ts
+   import { createFileRoute } from "@tanstack/react-router";
+   import { createHmac, timingSafeEqual } from "crypto";
+   import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+   export const Route = createFileRoute("/api/public/<source>-webhook")({
+     server: { handlers: { POST: async ({ request }) => {
+       const sig = request.headers.get("<provider-signature-header>") ?? "";
+       const body = await request.text();
+       const expected = createHmac("sha256", process.env.<SOURCE>_WEBHOOK_SECRET!).update(body).digest("hex");
+       if (sig.length !== expected.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+         return new Response("invalid signature", { status: 401 });
+       }
+       const payload = JSON.parse(body);
+       // … route by payload.type, write via supabaseAdmin …
+       return new Response("ok");
+     } } },
+   });
+   \`\`\`
+
+2. SECRET — the webhook secret MUST come from \`process.env.<SOURCE>_WEBHOOK_SECRET\` read INSIDE the handler. Tell the user in your summary that they need to add this secret (Lovable will prompt them). Never hardcode it.
+
+3. PERSISTENCE — use \`supabaseAdmin\` (service role) to write the event row; webhooks have no user session. If you also need a \`webhook_events\` audit table, include the MIGRATION (table + GRANT to service_role only + RLS enabled + no policies = nothing readable from the client).
+
+4. IDEMPOTENCY — if the provider sends an event id, dedupe on it (\`on conflict (event_id) do nothing\`) so retries don't double-process.
+
+Forbidden: skipping signature verification, returning 500 for replays, reading \`process.env\` at module scope, exposing PII in the response body. Never put inbound webhooks under \`/api/\` without the \`/public/\` segment — they'll 401 on production.`,
+  },
+  cronJob: {
+    triggers:
+      /\b(cron|scheduled (job|task)|every (hour|day|week|minute)|daily (digest|reminder|cleanup|report)|nightly|background job|periodic)\b/i,
+    body: `\n\n[Reinforcement — Scheduled / cron job]
+The user asked for recurring server work. Pick ONE of these two patterns:
+
+A) SQL-ONLY (cleanup, aggregation, no external calls) — emit a MIGRATION enabling \`pg_cron\` and scheduling the SQL directly:
+   \`\`\`sql
+   create extension if not exists pg_cron;
+   select cron.schedule('<job-name>', '<cron expr>', $$ <SQL to run> $$);
+   \`\`\`
+
+B) BUSINESS-LOGIC (send email, hit an API, call an LLM) — build a public route + cron caller:
+   - Create \`src/routes/api/public/cron/<job>.ts\` that validates a shared header OR a signed token, then runs the work using \`supabaseAdmin\`.
+   - Tell the user to run this SQL ONCE in their backend (do NOT put it in a migration — it embeds secrets):
+     \`\`\`sql
+     create extension if not exists pg_cron;
+     create extension if not exists pg_net;
+     select cron.schedule('<job-name>', '<cron expr>', $$
+       select net.http_post(
+         url := 'https://<their-domain>/api/public/cron/<job>',
+         headers := '{"Content-Type":"application/json","apikey":"<their anon key>"}'::jsonb,
+         body := '{}'::jsonb
+       );
+     $$);
+     \`\`\`
+
+Common cron expressions: \`* * * * *\` (every minute), \`0 * * * *\` (hourly), \`0 0 * * *\` (daily midnight), \`0 9 * * 1\` (Mondays 9am).
+
+Forbidden: relying on \`setInterval\` in the running app (workers are stateless), embedding service-role keys in the SQL, scheduling without an idempotency check on the called endpoint.`,
+  },
+  payments: {
+    triggers:
+      /\b(stripe|paystack|paddle|checkout|payment(s)?|subscribe|subscription|paywall|pricing page that charges|buy now|sell (a|my) (product|course|access))\b/i,
+    body: `\n\n[Reinforcement — Payments]
+The user asked to take real money. Do NOT scaffold a fake Stripe form. The correct pattern is:
+
+1. ASK FIRST — in your summary, tell the user which provider you'll use (Stripe for global cards / Paystack for Africa / Paddle for SaaS-MoR) and that they need to (a) connect that provider in Lovable Cloud → Integrations and (b) add API keys. STOP here if no provider is connected; do not invent client-side card UI.
+
+2. ONCE THE PROVIDER IS WIRED, build the slice as:
+   - \`src/lib/checkout.functions.ts\` — a POST \`createServerFn\` that takes \`{ priceId, quantity }\` via \`.inputValidator(z.object(...).parse)\`, reads the secret INSIDE the handler (\`process.env.STRIPE_SECRET_KEY!\`), creates the Checkout Session, and returns \`{ url }\`.
+   - Client button → \`const checkout = useServerFn(createCheckout); const { url } = await checkout({ data: { priceId } }); window.location.href = url;\`
+   - Webhook route at \`src/routes/api/public/<provider>-webhook.ts\` that verifies the signature (see the webhook reinforcement) and updates a \`payments\` or \`subscriptions\` table via \`supabaseAdmin\`.
+   - MIGRATION: \`payments(id, user_id, amount_cents, currency, status, provider, provider_ref, created_at)\` with RLS so users only see their own rows.
+
+3. NEVER do these — they're hard failures the user will catch in production:
+   - Collect raw card numbers in your UI. Always redirect to the provider's hosted Checkout.
+   - Mark a subscription "active" from the client. Only the verified webhook flips status.
+   - Hardcode price ids in components. Read from a \`prices\` table or env.`,
+  },
 };
+
 
 /** Extract plain-text content from a chat message (strips attachments shape). */
 function messageText(content: unknown): string {
@@ -440,6 +553,10 @@ export function pickDynamicSnippets(args: {
     if (key === "noBackendGate") continue; // handled above
     if (key === "auth" && !args.hasBackend) continue;
     if (key === "fullstackFeature" && !args.hasBackend) continue;
+    // Backend-dependent capability blocks: only fire when a backend is wired.
+    // Without one, the noBackendGate snippet already tells the model to
+    // scaffold UI-only and prompt the user to enable a backend.
+    if ((key === "fileUpload" || key === "webhook" || key === "cronJob" || key === "payments") && !args.hasBackend) continue;
     const def = SNIPPETS[key];
     // "always" snippets are baseline reinforcements (e.g. verifyBeforeDone)
     // and ALWAYS go in. Topical snippets only fire on a keyword match.
