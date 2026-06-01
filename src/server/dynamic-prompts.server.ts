@@ -553,6 +553,10 @@ export function pickDynamicSnippets(args: {
     if (key === "noBackendGate") continue; // handled above
     if (key === "auth" && !args.hasBackend) continue;
     if (key === "fullstackFeature" && !args.hasBackend) continue;
+    // Backend-dependent capability blocks: only fire when a backend is wired.
+    // Without one, the noBackendGate snippet already tells the model to
+    // scaffold UI-only and prompt the user to enable a backend.
+    if ((key === "fileUpload" || key === "webhook" || key === "cronJob" || key === "payments") && !args.hasBackend) continue;
     const def = SNIPPETS[key];
     // "always" snippets are baseline reinforcements (e.g. verifyBeforeDone)
     // and ALWAYS go in. Topical snippets only fire on a keyword match.
