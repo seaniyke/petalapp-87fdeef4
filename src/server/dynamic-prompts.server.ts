@@ -40,7 +40,11 @@ export type DynamicSnippetKey =
   | "mobileApp"
   | "navbarBrand"
   | "mobileNative"
-  | "fullstackFeature";
+  | "fullstackFeature"
+  | "fileUpload"
+  | "webhook"
+  | "cronJob"
+  | "payments";
 
 interface SnippetDef {
   /** Substrings that trigger this snippet (lowercased match against prompt). */
