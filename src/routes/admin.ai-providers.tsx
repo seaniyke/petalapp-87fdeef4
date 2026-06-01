@@ -795,7 +795,8 @@ function SmartRouterCard() {
             {snap.perFeaturePhase.map((row) => (
               <div key={`${row.feature}|${row.phase}`} className="rounded-md border border-border/60 p-3">
                 <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {row.feature} · {row.phase}
+                  {row.feature}
+                  {row.phase && row.phase !== "unknown" ? ` · ${row.phase}` : ""}
                 </div>
                 <div className="space-y-1.5">
                   {row.models.map((m, i) => (
