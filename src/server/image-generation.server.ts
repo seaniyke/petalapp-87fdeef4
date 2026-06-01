@@ -121,7 +121,16 @@ function extensionFor(mime: string): string {
 export async function generatePetalImage(
   opts: GenerateImageOptions,
 ): Promise<GenerateImageResult> {
-  const apiKey = process.env.LOVABLE_API_KEY;
+  // Resolve which provider serves image gen (admin-configurable).
+  const provider = await getProviderForFeature("image");
+  const lovableKey = process.env.LOVABLE_API_KEY;
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
+  // Prefer the configured provider; fall back to whichever key IS configured
+  // so a misconfigured admin setting never breaks image gen completely.
+  const usingOpenrouter =
+    provider === "openrouter" ? Boolean(openrouterKey) : false;
+  const apiKey = usingOpenrouter ? openrouterKey : lovableKey;
+  const upstreamUrl = usingOpenrouter ? OPENROUTER_URL : LOVABLE_URL;
   if (!apiKey) throw new Error("AI gateway is not configured.");
 
   const prompt = opts.prompt.trim();
@@ -137,11 +146,17 @@ export async function generatePetalImage(
 
   const fullPrompt = `${prompt}.${aspectGuidance(opts.aspectRatio)} High quality, professional, no watermarks, no text overlays.`;
 
-  const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const upstream = await fetch(upstreamUrl, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
+      ...(usingOpenrouter
+        ? {
+            "HTTP-Referer": "https://buildwithpetal.com",
+            "X-Title": "Petal",
+          }
+        : {}),
     },
     body: JSON.stringify({
       model: IMAGE_MODEL,
