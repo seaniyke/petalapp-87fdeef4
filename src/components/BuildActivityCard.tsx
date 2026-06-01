@@ -116,6 +116,9 @@ type Props = {
   onRetry?: () => void;
   onAskFix?: () => void;
   onDismissError?: () => void;
+  /** Opens the per-file diff drawer comparing the pre-turn snapshot to the
+   *  files Petal just wrote. Shown on the collapsed success line. */
+  onReviewChanges?: () => void;
 };
 
 export function BuildActivityCard({
