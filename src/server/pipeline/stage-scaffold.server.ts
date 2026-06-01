@@ -71,8 +71,20 @@ interface ScaffoldOneArgs {
 
 async function scaffoldOne(args: ScaffoldOneArgs): Promise<{ ok: true; file: ProjectFile } | { ok: false; reason: string }> {
   const { file, brief, manifestSummary, retryShrink } = args;
-  const lineCap = retryShrink ? Math.min(120, file.est_lines) : Math.min(180, file.est_lines + 40);
-  const tokenCap = retryShrink ? 1800 : 2500;
+  const isRoot = file.path === "src/App.tsx";
+  // Root view is too important to shrink on retry — losing App.tsx ships
+  // the placeholder, which is worse than the truncation risk.
+  const effectiveShrink = retryShrink && !isRoot;
+  const lineCap = effectiveShrink ? Math.min(120, file.est_lines) : Math.min(220, file.est_lines + 40);
+  const tokenCap = effectiveShrink ? 1800 : isRoot ? 3200 : 2500;
+
+  const rootRules = isRoot
+    ? `\nTHIS IS THE ROOT VIEW (src/App.tsx). Extra rules:\n` +
+      `- Must contain REAL domain UI matching the brief — header, primary content area showing the actual feature, and any nav.\n` +
+      `- NEVER return a "coming soon", "placeholder", "is being prepared", or "ask Petal to retry" card. That is a bug, not a valid output.\n` +
+      `- Import and use the components listed in deps so the screen actually renders content.\n` +
+      `- Default export must be \`function App\` returning visible JSX.`
+    : "";
 
   try {
     const upstream = await aiChatCompletions({
@@ -88,7 +100,8 @@ async function scaffoldOne(args: ScaffoldOneArgs): Promise<{ ok: true; file: Pro
               `Hard cap: ${lineCap} lines for this file. Stay well under it. ` +
               `Use semantic tokens (bg-background, text-foreground, bg-primary, etc.) — never raw colors. ` +
               `Use kit primitives (Button, Card, Input, etc.) — never raw <button>, <input>, hand-rolled cards. ` +
-              `Import only files that exist either in the manifest below or in the standard scaffold (src/components/ui/*, src/lib/utils, src/integrations/backend/*).`,
+              `Import only files that exist either in the manifest below or in the standard scaffold (src/components/ui/*, src/lib/utils, src/integrations/backend/*).` +
+              rootRules,
           },
           {
             role: "user",

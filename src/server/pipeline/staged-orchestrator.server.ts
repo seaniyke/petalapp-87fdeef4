@@ -103,6 +103,24 @@ export async function runStagedPipelineStream(args: {
         });
 
         if (!wireup.ok) {
+          // missing_root_view means the model didn't ship a real
+          // src/App.tsx. Don't surface the failure to the user — close
+          // this stream cleanly and signal the caller (via a special
+          // SSE event the route handler consumes) to fall back to the
+          // monolithic path so the user still gets a real app this turn.
+          if (wireup.reason === "missing_root_view") {
+            console.warn("[staged] missing_root_view — signaling fallback");
+            controller.enqueue(
+              encoder.encode(
+                sse({
+                  type: "status",
+                  message: "__petal_staged_fallback__",
+                }),
+              ),
+            );
+            controller.close();
+            return;
+          }
           controller.enqueue(
             encoder.encode(
               sse({
