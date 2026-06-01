@@ -20,6 +20,7 @@
 import dynamicIconImports from "lucide-react/dynamicIconImports.mjs";
 import type { ProjectFile } from "@/server/generate.server";
 import { fixMissingShadcnImports } from "@/server/shadcn-imports.server";
+import { fixArraySafety } from "@/server/array-safety-fixer.server";
 
 export interface AutofixReport {
   fixedCount: number;
