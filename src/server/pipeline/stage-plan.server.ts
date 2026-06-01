@@ -275,7 +275,7 @@ function repairBusinessAppPlan(
     merged[appIdx] = {
       ...merged[appIdx],
       deps,
-      purpose: `Root view — business-app for: ${brief.slice(0, 140)}. Route map: '/' renders Hero+Features+Pricing+Footer (marketing); '/auth' renders AuthCard; '/app/*' renders AppShell with sidebar + each domain component as a sub-route; '/app/settings' renders SettingsPanel. Use a hash router or simple state for routing; gate '/app/*' behind a mock <AuthGate>. Import every dep listed and ensure both marketing AND product surfaces mount.`,
+      purpose: `Root view — business-app for: ${brief.slice(0, 140)}. Route map: '/' renders <main> with Navbar + Hero + Features + SocialProof + Pricing + Faq + Footer stacked in that exact order (marketing); '/auth' renders AuthCard; '/app/*' renders AppShell with sidebar + each domain component as a sub-route; '/app/settings' renders SettingsPanel. Use a hash router or simple state for routing; gate '/app/*' behind a mock <AuthGate>. Import every dep listed and ensure both marketing AND product surfaces mount. NEVER ship a marketing surface that is just a centered headline + two buttons + bordered cards — the Navbar, hero visual panel, social proof, pricing, FAQ, and footer columns MUST all render.`,
       est_lines: 260,
     };
   }
