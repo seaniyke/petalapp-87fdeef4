@@ -497,7 +497,21 @@ export type StreamEvent =
   | { type: "phase"; phase: "thinking" | "designing" | "writing" | "polishing" }
   | { type: "design_vibe"; vibe: string; rationale: string }
   | { type: "file_progress"; written: number; latestPath?: string }
-  | { type: "file_complete"; path: string; bytes: number; index: number }
+  | {
+      type: "file_complete";
+      path: string;
+      bytes: number;
+      index: number;
+      /**
+       * Phase 4 #12 — decoded file content piggybacked onto the
+       * file_complete event so the client can stream-write it into the
+       * WebContainer for HMR before the full tool call lands. Capped at
+       * 256KB server-side to keep the SSE frame size sane. Absent for
+       * oversize files, in which case the client just waits for the
+       * final result event.
+       */
+      content?: string;
+    }
   /**
    * Per-file validate-then-continue (plan #2). Emitted immediately after
    * `file_complete` once the file's content has been parsed out of the
