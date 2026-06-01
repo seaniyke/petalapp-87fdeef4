@@ -134,25 +134,12 @@ export async function buildAndDeploy(
   const headersFile = `/*\n  Cross-Origin-Resource-Policy: cross-origin\n  Access-Control-Allow-Origin: *\n`;
   await writeFile(join(distDir, "_headers"), headersFile, "utf8");
 
-  // 3) Ensure the Cloudflare Pages project exists. Recent wrangler versions no
-  //    longer reliably auto-create a project from `pages deploy --project-name`,
-  //    so we create it explicitly and ignore the "already exists" case.
-  const createProject = await run(
-    "npx",
-    ["wrangler", "pages", "project", "create", projectName, "--production-branch", "main"],
-    {
-      cwd: projectDir,
-      env,
-      timeoutMs: 90 * 1000,
-    }
-  );
-  const createLogs = createProject.stdout + "\n" + createProject.stderr;
-  if (createProject.code !== 0 && !/already exists|Project name already exists/i.test(createLogs)) {
-    throw new BuildError(
-      `wrangler pages project create failed (exit ${createProject.code})`,
-      createLogs
-    );
-  }
+  // 3) Ensure the Cloudflare Pages project exists. We hit the Cloudflare REST
+  //    API directly instead of `wrangler pages project create` because wrangler
+  //    surfaces the "already exists" case as an opaque `code: 8000000` unknown
+  //    error on some accounts, which is indistinguishable from a real failure.
+  //    GET-then-POST is unambiguous: 200 = exists, 404 = create it.
+  await ensurePagesProject(projectName, cloudflare);
 
   // 4) Deploy to Cloudflare Pages. --branch=main makes this a production deploy
   //    so the URL `<project>.pages.dev` updates. --commit-dirty avoids the "you
