@@ -3301,6 +3301,11 @@ function Builder() {
                           ? askPetalToFix
                           : undefined
                       }
+                      onBuyCredits={
+                        m.error.actionKind === "buy-credits"
+                          ? () => setBillingOpen(true)
+                          : undefined
+                      }
                     />
                   </div>
                 );
