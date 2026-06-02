@@ -179,6 +179,7 @@ export async function runStagedPipelineStream(args: {
       designDirectionBlock: ctx.designDirectionBlock,
       archetypeHint,
       businessDomain: ctx.appShape?.businessDomain,
+      category: ctx.appShape?.category,
     },
   });
   if (!plan.ok) {
