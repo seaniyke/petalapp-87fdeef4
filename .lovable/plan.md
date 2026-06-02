@@ -1,127 +1,65 @@
-# Petal Launch Punch-List
+## Two fixes
 
-Ordered by **launch-blocking severity**. P0 = ship-stoppers, P1 = ship within 72h, P2 = week-1 fast-follows. Each item has a concrete file target + acceptance criteria so it's verifiable, not vibes.
+### 1. Don't show "Add backend" (or any other CTA chip) while a question is on screen
 
----
+In `src/routes/builder.tsx`, the inline suggestion chips (`EnableBackendSuggestionChip`, domain, email, payment, SEO, add-page, mobile, AI-feature, analytics, storage, realtime, cron — lines ~3486–3940) render whenever their heuristic fires on the latest assistant message. They don't check whether that same message is a **clarifying question** (the `SuggestionChecklist` poll at line 3379, which already gates the composer).
 
-## P0 — Ship-stoppers (must clear before "Publish" CTA goes live)
+Result: the screenshot the user attached — Petal asks "Build a demo / I have provider keys / …" and right under it a red "Add backend" chip appears, fighting for the user's attention.
 
-### 1. Delete the `/api/mobile/eas-build` 501 stub
-- **File:** `src/routes/api/mobile/eas-build.ts` → delete.
-- **Why:** Returns HTTP 501 today. Any external prober (or curious user hitting devtools) sees a broken endpoint on a production domain. Codemagic is the real path (`src/server/mobile-service.server.ts`); EAS-direct was abandoned.
-- **Also:** grep for any client call to `/api/mobile/eas-build` and remove.
-- **Done when:** route file gone, build green, `rg eas-build src/` returns 0 hits outside `routeTree.gen.ts`.
+**Fix:** compute a single boolean once per render:
 
-### 2. Verify & document prod env vars on Railway/Worker
-- **Vars to confirm present and non-empty in prod:**
-  - `BUILDER_URL`, `BUILDER_SHARED_SECRET` (snapshot → builder handoff)
-  - `CODEMAGIC_API_TOKEN`, `CODEMAGIC_APP_TEMPLATE_ID`
-  - `EXPO_ACCESS_TOKEN` (Petal's org token, server-side only)
-  - `MOBILE_SIGNING_KEY` (Android keystore passphrase)
-  - `PETAL_EMAIL_*`, `PADDLE_*` / `STRIPE_*`, `PAYSTACK_SECRET_KEY`, `FLUTTERWAVE_SECRET_KEY`
-- **Deliverable:** a `docs/ops/prod-env.md` checklist + a `/api/internal/health` route that reports `{present: [...], missing: [...]}` (no values) gated by `INTERNAL_HEALTH_TOKEN`.
-- **Done when:** health endpoint returns `missing: []` in prod and preview.
-
-### 3. Codemagic build watchdog
-- **File:** new `src/routes/api/public/mobile/cron-watchdog.ts` + DB function.
-- **What:** every 5 min, find `mobile_builds` rows in `queued` or `running` for >25 min, mark `stuck`, notify the user + admin Slack webhook, and offer retry.
-- **Why:** Codemagic builds occasionally hang (signing race, simulator boot). Without this, users sit watching a spinner forever.
-- **Done when:** synthetic stuck row gets flipped to `stuck` within 5 min in staging.
-
-### 4. App-level rate limit on `/api/generate`
-- **File:** `src/routes/api/generate.ts` (add middleware) + new `src/server/rate-limit.server.ts` (KV-backed, sliding window).
-- **Limits:** authed user → 30 req/min, 500 req/hr; per-IP fallback for anon → 10/min. 429 with `Retry-After`.
-- **Why:** today a single malicious tab can drain the wallet meter and torch our AI gateway budget.
-- **Done when:** unit test simulates 35 calls in 60s, 5 return 429.
-
----
-
-## P1 — Within 72 hours (operational gaps; not user-visible breakage, but high-blast-radius)
-
-### 5. Per-project AI spend attribution
-- **Files:** `src/server/ai-usage.server.ts`, `src/lib/cloud-ai-usage.functions.ts`, `CloudAiUsageView.tsx`.
-- **What:** add `project_id` to `ai_usage_events` insert path; group "AI usage" panel by project. Backfill existing rows with `project_id = NULL` → label "Workspace-wide".
-- **Why:** today owners can't see which project burned the meter. Blocks accurate cost-per-project for our own pricing model.
-
-### 6. Confirm runtime-hour cron scheduler
-- **What:** the 4¢/hr backend meter relies on a 5-min cron hitting `/api/public/billing/tick-backend-hours`. Verify the external scheduler (Cloudflare Cron Trigger or upstash-cron) is actually configured for prod, not just preview.
-- **Add:** a `last_tick_at` row in `billing_meta`; admin dashboard widget that goes red if >10 min stale.
-- **Done when:** widget reads `< 6 min` in prod for 24h continuous.
-
-### 7. Registrar end-to-end load test
-- **Files:** `src/routes/api/registrar/{search,purchase,poll}.ts`.
-- **What:** scripted test that races Cloudflare webhook arriving before the purchase response returns (real bug we've hit twice). Idempotency key on `domain_purchases` + UPSERT.
-- **Done when:** 50 concurrent purchases of distinct domains all land in exactly one row each.
-
-### 8. Mobile signing key rotation runbook
-- **File:** `docs/ops/mobile-signing-rotation.md`.
-- **Cover:** how to rotate `MOBILE_SIGNING_KEY` without invalidating already-published Play Store apps (Google Play App Signing v2 upload key swap procedure), and the DR steps if the keystore is lost.
-- **Why:** if we lose this key with even one published app, that app is dead forever. Policy gap, not a code gap.
-
----
-
-## P2 — Week-1 fast-follows
-
-### 9. Hide `/lovable/email/*` discovery on `buildwithpetal.com`
-- Add `Disallow: /lovable/` to `public/robots.txt` + 404 the path on the apex domain (keep working on `*--{id}.lovable.app`).
-
-### 10. GitHub export (read-only ZIP first, real sync later)
-- Phase 1: `Download as ZIP` button on Publish sheet (week 1).
-- Phase 2: real `git push` to user-owned repo (post-launch, separate epic).
-
----
-
-## Cross-cutting: African language support
-
-This is the moat — let's make it real, not just a triage trick.
-
-### 11. Expand language detection beyond Pidgin
-- **File:** `src/routes/api/triage.ts` (language register detector).
-- **Add detection for:**
-  - **Swahili** (KE/TZ/UG) — already partial, promote to first-class
-  - **Yoruba**, **Igbo**, **Hausa** (NG — together cover ~140M speakers)
-  - **Amharic** (ET — 50M, unique script ጥሩ ነው → strong signal)
-  - **Zulu** + **Xhosa** (ZA)
-  - **French (West African register)** — already covered by `fr`, but tune for Ivorian/Senegalese idioms
-  - **Arabic (Maghrebi)** — Egypt/Morocco/Tunisia
-- **Implementation:** keep it cheap — n-gram + stopword list per language in `src/server/lang-detect.server.ts`, not an LLM call. Falls back to LLM classify only when confidence <0.6.
-
-### 12. Localized system prompts per detected language
-- **File:** `src/server/prompts/locale/{sw,yo,ig,ha,am,zu,xh,ar-MA}.md`.
-- The model still *generates code in English* (variable names, comments), but **explains, asks clarifying questions, and writes UI copy** in the user's language when the project is for that market.
-- **Acceptance:** a Yoruba prompt "Ṣe app fún titaja aṣọ" → triage returns clarifying question in Yoruba, scaffolds e-commerce app with Yoruba placeholder copy.
-
-### 13. African market template pack
-- **File:** `src/server/templates.server.ts` — add: `okada-dispatch`, `chama-savings` (KE rotating-savings), `agritech-marketplace`, `mobile-money-wallet`, `church-tithing`, `street-food-pos`.
-- These show up in `StartIdeasPanel` only when geo or language signals an African user — invisible to others, so global UX stays clean.
-
----
-
-## Sequencing (recommended 5-day sprint)
-
-```
-Day 1: P0-1 (delete stub) + P0-2 (env audit)        → 1 dev
-Day 2: P0-3 (watchdog) + P0-4 (rate limit)          → 2 devs parallel
-Day 3: P1-5 (per-project AI) + P1-6 (cron check)    → 2 devs parallel
-Day 4: P1-7 (registrar test) + P1-8 (signing docs)  → 1 dev + you
-Day 5: P2-9, P2-10, P3-11..13 lang pack             → all hands
+```ts
+const lastMsg = messages[messages.length - 1];
+const isAskingClarifyingQuestion =
+  !!lastMsg &&
+  lastMsg.role === "assistant" &&
+  (lastMsg.suggestions?.length ?? 0) > 0 &&
+  /\?\s*$/.test(sanitizeNarrative(lastMsg.content ?? "").trim().split(/(?<=[.!?])\s+/).pop() ?? "") &&
+  answeredQuestionAt !== messages.length &&
+  !petalIsWorking;
 ```
 
-Ship `Publish` CTA after Day 2. Days 3–5 ride behind a flag if needed.
+Then add `!isAskingClarifyingQuestion &&` to the render condition of every inline suggestion-chip block (backend, domain, email, payment, SEO, add-page, mobile, AI-feature, analytics, storage, realtime, cron). One line per block; mechanical change.
 
----
+This preserves the rule "one thing at a time" — when there's a question, only the question (and the composer) are visible. Once the user picks an answer or hits Skip, chips can come back on the next turn.
 
-## Out of scope (intentionally deferred)
+### 2. Let Petal build crypto / banking / trading apps as polished demos (don't force a clarify stop)
 
-- Multiplayer / real-time co-editing — post-launch Q2.
-- Self-serve GitHub two-way sync — phase 2 of item 10.
-- Full Codemagic → in-house builder migration — only if Codemagic cost exceeds $X/mo.
-- iOS Test Flight automation — needs user's Apple Developer cert; deferred to user-onboarded flow.
+In `src/lib/high-stakes-intent.ts` + `src/routes/api/triage.ts`, when a prompt matches `crypto-wallet | neobank | trading | lending | kyc-identity`, triage currently **forces** `mode = "clarify"` and ships the 4-option poll the user just complained about. But `src/routes/api/generate.ts` already has a `highStakesBlock` that, when it runs, builds a polished demo with a visible "DEMO — simulated data" notice and fake balances. We just never get there because triage stops first.
 
----
+**Fix:** stop forcing clarify. Let Petal build the demo by default and only state the one-line honest caveat in the reply.
 
-## Open questions for you
+Concretely:
 
-1. **Lang priority:** do we ship all 8 African languages in item 11, or start with the 3 highest-volume (Swahili, Yoruba, Pidgin) and add the rest as a v1.1?
-2. **Rate limit numbers (item 4):** 30/min/user feels right for builders — too tight or too loose given your expected load?
-3. **Watchdog notifications (item 3):** Slack webhook for admin, but for the *user* — in-app toast only, or also email via Petal Email?
+- **`src/lib/high-stakes-intent.ts`** — rename / repurpose `highStakesClarifyInstruction` → `highStakesBuildInstruction(domain)`. New body, per domain:
+
+  > "HIGH-STAKES DOMAIN DETECTED ({domain}). Petal CANNOT custody real {crypto / money / trades / loans / identity} or connect to real {RPC / banking / brokerage / lender / KYC} providers. You CAN — and SHOULD — build a polished, realistic DEMO (fake balances, simulated transactions in the database, full UI). Do NOT stop to ask permission. In your one-line preamble, state the limitation honestly and mention that bringing provider keys later (e.g. Stripe, Plaid, Alchemy) can make it real. Then proceed to build."
+
+  Drop the `Set suggestions to […]` and `Set mode = "clarify"` lines.
+
+- **`src/routes/api/triage.ts`** (around line 348–369) — keep the detection, keep splicing the new build instruction into the system prompt so the warm preamble is honest, but **do not** force the mode. Let the existing triage classifier decide build vs clarify on its own; for clear builds like "Build me a crypto wallet exchange service", it will pick `build`.
+
+- **`src/routes/api/generate.ts`** (line ~1706, the existing `highStakesBlock`) — no change needed. It already forces the DEMO banner, the fake balances, and the "no on-chain / banking SDK" rule. This is the safety net that keeps the demo honest without blocking the build.
+
+Net effect:
+- "Build me a crypto wallet exchange service" → Petal says one honest line ("I can't custody real crypto, so I'll ship a realistic demo — bring Alchemy/Stripe keys later to wire it up for real"), then builds it.
+- The DEMO notice on the landing page + fake balances + no real on-chain SDK imports keep us honest.
+- The clarify poll only fires when triage genuinely can't tell what the user wants — not as a blanket stop on whole domains.
+
+## Technical details
+
+Files touched:
+- `src/routes/builder.tsx` — add `isAskingClarifyingQuestion` memo; gate ~12 inline suggestion-chip blocks with it.
+- `src/lib/high-stakes-intent.ts` — rewrite `highStakesClarifyInstruction` → `highStakesBuildInstruction` (build-mode wording, no `mode=clarify`, no preset suggestions).
+- `src/routes/api/triage.ts` — import renamed helper; keep prompt injection, drop the forced-clarify language. No other behavior changes.
+- `src/routes/api/generate.ts` — update the import name; existing `highStakesBlock` semantics stay (demo banner, fake balances, banned SDK imports).
+
+Out of scope (intentionally):
+- No change to the other clarify triggers (genuine ambiguity, missing scope).
+- No change to capability gating elsewhere (paid-plan, balance, etc.).
+- No new tests — these are surgical edits to existing wiring.
+
+## Out of scope / risks
+
+- Users who genuinely want to wire real provider keys on turn 1 will now have to say so ("…with Alchemy keys", "I have Stripe Issuing"). Acceptable trade — the demo path is honest, dismissible, and one prompt away from being upgraded.
+- The clarify poll for high-stakes domains disappears as a *default*. If you'd rather keep it as an opt-in (e.g. only when the user's prompt is short / vague), say so and I'll add a length-or-confidence gate before forcing the build path.
