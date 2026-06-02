@@ -4,6 +4,7 @@
  * builder can adapt its UI per turn.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { throwIfCreditsExhausted } from "@/lib/friendly-errors";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 
 export type TriageIntent = "chat" | "clarify" | "build";
