@@ -58,12 +58,16 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
               "mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
               isAskFix
                 ? "bg-[color-mix(in_oklab,var(--primary)_14%,transparent)] text-primary"
-                : "bg-[color-mix(in_oklab,#f59e0b_18%,transparent)] text-amber-600 dark:text-amber-400",
+                : isBuyCredits
+                  ? "bg-[color-mix(in_oklab,var(--primary)_14%,transparent)] text-primary"
+                  : "bg-[color-mix(in_oklab,#f59e0b_18%,transparent)] text-amber-600 dark:text-amber-400",
             ].join(" ")}
             aria-hidden
           >
             {isAskFix ? (
               <Wrench className="h-4 w-4" strokeWidth={2.25} />
+            ) : isBuyCredits ? (
+              <Sparkles className="h-4 w-4" strokeWidth={2.25} />
             ) : (
               // iOS-style "exclamationmark" in a circle — drawn with text for crispness
               <span className="text-[15px] font-semibold leading-none">!</span>
