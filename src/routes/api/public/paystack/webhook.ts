@@ -270,10 +270,12 @@ async function handleExpiringCards(payload: AnyEvent, origin: string): Promise<v
     if (!userId) continue;
     const link = await getSubscriptionManageLink(subCode).catch(() => null);
     if (!link) continue;
-    void sendBillingEmail({
+    const idempotencyKey = `expiring-card-${subCode}-${new Date().toISOString().slice(0, 7)}`;
+    console.info("[paystack webhook] enqueueing email", { template: "payment-failed", userId, idempotencyKey });
+    await sendBillingEmail({
       origin,
       templateName: "payment-failed",
-      idempotencyKey: `expiring-card-${subCode}-${new Date().toISOString().slice(0, 7)}`,
+      idempotencyKey,
       userId,
       templateData: {
         itemLabel: "subscription",
