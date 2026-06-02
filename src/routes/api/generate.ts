@@ -1704,10 +1704,24 @@ Forbidden defaults
   const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
   const lastUserText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
   const hs = detectHighStakesIntent(lastUserText);
+  // Pre-compute roadmap once so we can both inject into the prompt AND persist
+  // into the blueprint at end-of-turn. Only relevant when high-stakes fires.
+  let hsRoadmap: import("@/lib/high-stakes-intent").HighStakesRoadmap | null = null;
+  let hsRoadmapBlockText = "";
+  if (hs.detected && hs.domain) {
+    try {
+      const mod = await import("@/lib/high-stakes-intent");
+      hsRoadmap = mod.highStakesRoadmap(hs.domain);
+      hsRoadmapBlockText = "\n\n" + mod.highStakesRoadmapBlock(hs.domain);
+    } catch {
+      /* never block the build on roadmap failure */
+    }
+  }
   const highStakesBlock =
     hs.detected && hs.domain
-      ? `\n\n### High-stakes domain — DEMO ONLY\n${highStakesClarifyInstruction(hs.domain)}\nWhen you build, you MUST:\n- Render a visible, dismissible notice on the home/landing route stating this is a DEMO with simulated data, not a real ${hs.domain.replace("-", " ")}.\n- Use clearly fake placeholder balances/amounts (e.g. labelled "Demo balance").\n- NEVER import on-chain libraries (viem, ethers, web3.js), banking SDKs (Plaid, Increase, Unit), or write code that pretends to move real money or sign real transactions.\n- In your summary to the user, restate the limitation in one sentence and suggest which provider keys would be needed to make it real.\n`
+      ? `\n\n### High-stakes domain — DEMO ONLY\n${highStakesClarifyInstruction(hs.domain)}\nWhen you build, you MUST:\n- Render a visible, dismissible notice on the home/landing route stating this is a DEMO with simulated data, not a real ${hs.domain.replace("-", " ")}.\n- Use clearly fake placeholder balances/amounts (e.g. labelled "Demo balance").\n- NEVER import on-chain libraries (viem, ethers, web3.js), banking SDKs (Plaid, Increase, Unit), or write code that pretends to move real money or sign real transactions.\n- In your summary to the user, restate the limitation in one sentence and suggest which provider keys would be needed to make it real.\n${hsRoadmapBlockText}`
       : "";
+
 
   // App Composer (Step 5): collapse archetype + template + kit blocks +
   // examples into ONE structured blueprint. Replaces the legacy archetype-
