@@ -646,6 +646,7 @@ function PlanCard({
   priceLabel,
   isLocalPrice,
   isCurrent,
+  isRenew = false,
   busy,
   disabled,
   onClick,
@@ -654,14 +655,16 @@ function PlanCard({
   priceLabel: string;
   isLocalPrice: boolean;
   isCurrent: boolean;
+  isRenew?: boolean;
   busy: boolean;
   disabled: boolean;
   onClick: () => void;
 }) {
+  const highlight = isCurrent || isRenew;
   return (
     <div
       className={`rounded-2xl border p-4 ${
-        isCurrent ? "border-primary/60 bg-primary/5" : "border-border/60 bg-background"
+        highlight ? "border-primary/60 bg-primary/5" : "border-border/60 bg-background"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -708,11 +711,14 @@ function PlanCard({
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : isCurrent ? (
           "Current plan"
+        ) : isRenew ? (
+          `Renew ${plan.name}`
         ) : (
           `Upgrade to ${plan.name}`
         )}
       </Button>
     </div>
+
   );
 }
 
