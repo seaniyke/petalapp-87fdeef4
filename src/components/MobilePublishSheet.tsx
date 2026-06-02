@@ -25,11 +25,12 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { getMobileBuildReady } from "@/lib/expo.functions";
-import { startMobileBuild } from "@/lib/mobile-builds.functions";
+import { startMobileBuild, getLatestMobileBuild } from "@/lib/mobile-builds.functions";
 
 type Props = {
   open: boolean;
@@ -40,6 +41,7 @@ type Props = {
 export function MobilePublishSheet({ open, onOpenChange, projectId }: Props) {
   const fetchStatus = useServerFn(getMobileBuildReady);
   const triggerBuild = useServerFn(startMobileBuild);
+  const fetchLatestBuild = useServerFn(getLatestMobileBuild);
   const { data: status } = useQuery({
     queryKey: ["mobile-build-ready"],
     queryFn: () => fetchStatus(),
@@ -49,6 +51,52 @@ export function MobilePublishSheet({ open, onOpenChange, projectId }: Props) {
   const ready = Boolean(status?.ready);
   const [building, setBuilding] = useState<"android" | "ios" | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Watchdog: poll the latest mobile_build for this project. We only need
+  // to keep polling while the most recent build is non-terminal. On the
+  // queued→succeeded|failed transition we fire a sonner toast so the user
+  // hears about it even if the sheet is closed.
+  const { data: latest } = useQuery({
+    queryKey: ["mobile-build-latest", projectId],
+    queryFn: () => fetchLatestBuild({ data: { projectId: projectId! } }),
+    enabled: Boolean(projectId),
+    // Poll every 15s while in flight; back off to 5min when idle/terminal.
+    refetchInterval: (q) => {
+      const s = q.state.data?.status;
+      return s === "queued" || s === "running" ? 15_000 : 5 * 60_000;
+    },
+    refetchIntervalInBackground: true,
+  });
+  const lastNotifiedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!latest || !latest.id) return;
+    if (latest.status !== "succeeded" && latest.status !== "failed") return;
+    // De-dupe per build id — the same terminal row would otherwise re-toast
+    // on every refetch.
+    const key = `${latest.id}:${latest.status}`;
+    if (lastNotifiedRef.current === key) return;
+    lastNotifiedRef.current = key;
+
+    const platformLabel = latest.platform === "ios" ? "iOS" : "Android";
+    if (latest.status === "succeeded") {
+      toast.success(`${platformLabel} build is ready`, {
+        description: "Tap to download the artifact.",
+        duration: 10_000,
+        action: latest.artifact_url
+          ? {
+              label: "Download",
+              onClick: () => window.open(latest.artifact_url!, "_blank", "noopener"),
+            }
+          : undefined,
+      });
+    } else {
+      toast.error(`${platformLabel} build failed`, {
+        description: latest.error_message ?? "Open the sheet for details.",
+        duration: 12_000,
+      });
+    }
+  }, [latest]);
+
 
   const startBuild = async (platform: "android" | "ios") => {
     if (!projectId) return;
