@@ -390,10 +390,12 @@ async function handleChargeSuccess(payload: AnyEvent, origin: string): Promise<v
       _plan_code: planCode,
       _reference: ref,
     });
-    void sendBillingEmail({
+    const successKey = `billing-success-${ref}`;
+    console.info("[paystack webhook] enqueueing email", { template: "payment-success", userId, idempotencyKey: successKey });
+    await sendBillingEmail({
       origin,
       templateName: "payment-success",
-      idempotencyKey: `billing-success-${ref}`,
+      idempotencyKey: successKey,
       userId,
       templateData: {
         purpose: "plan",
