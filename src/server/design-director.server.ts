@@ -349,6 +349,19 @@ export async function pickDesignDirection(args: {
     ) {
       return null;
     }
+    // Part B — substitute generic font choices with the domain default.
+    // Triggers when the model returned display == body, both generic, or
+    // (display, body) ∈ generic set with no distinctive choice.
+    if (fontDefault) {
+      const dlow = parsed.display_font.trim().toLowerCase();
+      const blow = parsed.body_font.trim().toLowerCase();
+      const sameOrGeneric =
+        dlow === blow || (GENERIC_FONTS.has(dlow) && GENERIC_FONTS.has(blow));
+      if (sameOrGeneric) {
+        parsed.display_font = fontDefault.display;
+        parsed.body_font = fontDefault.body;
+      }
+    }
     // Workstream C1: assign a hidden theme key from the brief if the
     // model didn't pick one. Drives concrete oklch tokens via
     // renderThemeTokensBlock().
