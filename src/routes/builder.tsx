@@ -4715,13 +4715,14 @@ function Builder() {
                             if (/is not a constructor/i.test(r) && /new\s+[A-Z][a-zA-Z0-9_$]{0,3}\(/.test(r)) {
                               hint =
                                 "\n\nLikely cause: a React-ecosystem version mismatch — most commonly @react-three/fiber v9 / @react-three/drei v10 installed against React 18. Fix package.json by pinning `@react-three/fiber` to ^8.17.10, `@react-three/drei` to ^9.117.3, and `three` to ^0.170.0, then reinstall.";
-                             } else if (/Minified React error #31\b|error #31[^0-9]/i.test(r) || /\{\$\$typeof[,%]/.test(r)) {
+                             } else if (/Minified React error #31\b|error #31[^0-9]/i.test(r) || /\{\$\$typeof[,%]/.test(r) || /object%20with%20keys|object with keys/i.test(r)) {
                                hint =
-                                 "\n\nLikely cause: a component (often a lucide-react icon or a forwardRef component) is being rendered as a React child instead of as a JSX element. Look for `{Icon}` where it should be `<Icon />`, or an object/component passed into a text/children slot (e.g. label, title, description, children props). Render components with `<Component />`, and pass icon components as a prop (`icon={Inbox}`) only into slots whose type explicitly accepts a component — never into a `ReactNode`/`children`/`label`/`title` slot.";
+                                 "\n\nLikely cause: React error #31 — something other than text/JSX is being rendered as a React child. Common shapes: (1) a lucide-react or forwardRef icon used as `{Icon}` instead of `<Icon />`; (2) a whole state object (e.g. `{user}`, `{config}`, `{form}`) rendered directly instead of a field on it (`{user.name}`); (3) an object passed into a text/children/label/title slot. Open the file at `Last route` and look at every `{...}` expression inside JSX — fix the one that holds an object. Render components with `<Component />`, pass icon components only into props typed as a component, and never put a plain object into a `ReactNode`/`children`/`label`/`title` slot.";
                              } else if (/Minified React error #(?:130|310|321)/i.test(r)) {
                                hint =
                                  "\n\nLikely cause: rendering an object or undefined as a React child, or a hook called conditionally. Check the most recently edited component.";
                              }
+
                             setInput(
                               `The preview just crashed with: "${reason}". Please diagnose and fix it.${hint}`,
                             );
