@@ -271,7 +271,7 @@ async function loadSigningEnv(
     .maybeSingle();
   if (!profile) return null;
 
-  const { decryptForProject } = await import("./mobile-crypto.server");
+  const { decryptForProject } = await import("@/server/mobile-crypto.server");
   const env: Record<string, string> = {};
 
   if (platform === "ios") {

@@ -11,7 +11,7 @@ import {
   cancelSecretRequest,
   createSecretRequestFromChat,
   fulfillSecretRequest,
-} from "@/server/secrets/requests.functions";
+} from "@/lib/secrets/requests.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Lock, ExternalLink, CheckCircle2 } from "lucide-react";
