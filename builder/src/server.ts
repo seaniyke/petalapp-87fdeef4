@@ -47,9 +47,11 @@ const fastify = Fastify({
 fastify.addContentTypeParser(
   "application/json",
   { parseAs: "string" },
-  (_req, body, done) => {
+  (req, body, done) => {
+    const raw = String(body ?? "");
+    (req as unknown as { rawBody: string }).rawBody = raw;
     try {
-      const parsed = body.length ? JSON.parse(body as string) : {};
+      const parsed = raw.length ? JSON.parse(raw) : {};
       done(null, parsed);
     } catch (err) {
       done(err as Error, undefined);
@@ -57,9 +59,10 @@ fastify.addContentTypeParser(
   }
 );
 fastify.addHook("preHandler", async (req) => {
-  // Stash raw body for HMAC verification (Fastify drops it after parsing).
-  // For our small JSON payloads this is fine — we re-stringify deterministically.
-  (req as unknown as { rawBody: string }).rawBody = JSON.stringify(req.body ?? {});
+  // Keep a defensive fallback for non-JSON requests, but normal build requests
+  // are verified against the exact raw JSON captured in the parser above.
+  const target = req as unknown as { rawBody?: string };
+  if (target.rawBody === undefined) target.rawBody = JSON.stringify(req.body ?? {});
 });
 
 const FileSchema = z.object({
