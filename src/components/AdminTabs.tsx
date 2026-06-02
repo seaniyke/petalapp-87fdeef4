@@ -4,7 +4,7 @@
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 
-type Tab = { to: "/admin" | "/admin/users" | "/admin/projects" | "/admin/ledgers" | "/admin/billing" | "/admin/ai-providers" | "/admin/ai-spend" | "/admin/pipeline" | "/admin/failures" | "/admin/digest" | "/admin/qa"; label: string; exact?: boolean };
+type Tab = { to: "/admin" | "/admin/users" | "/admin/projects" | "/admin/ledgers" | "/admin/billing" | "/admin/ai-providers" | "/admin/ai-spend" | "/admin/pipeline" | "/admin/failures" | "/admin/digest" | "/admin/qa" | "/admin/mobile-signing"; label: string; exact?: boolean };
 
 const TABS: Tab[] = [
   { to: "/admin", label: "Overview", exact: true },
@@ -18,6 +18,7 @@ const TABS: Tab[] = [
   { to: "/admin/failures", label: "Failures" },
   { to: "/admin/digest", label: "Digest" },
   { to: "/admin/qa", label: "Catalog QA" },
+  { to: "/admin/mobile-signing", label: "Mobile Signing" },
 ];
 
 
