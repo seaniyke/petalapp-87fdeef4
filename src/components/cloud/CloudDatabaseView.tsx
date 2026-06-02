@@ -18,7 +18,7 @@ import {
   listProjectTables,
   sampleProjectTable,
   type CloudTableSummary,
-} from "@/server/cloud-database.functions";
+} from "@/lib/cloud-database.functions";
 import {
   getMigrationHistory,
   runProjectMigrations,

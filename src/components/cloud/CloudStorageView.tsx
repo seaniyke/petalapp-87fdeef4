@@ -27,7 +27,7 @@ import {
   createProjectObjectDownloadUrl,
   type CloudBucket,
   type CloudObject,
-} from "@/server/cloud-storage.functions";
+} from "@/lib/cloud-storage.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";

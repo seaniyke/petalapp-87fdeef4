@@ -10,7 +10,7 @@ import {
   upsertProjectSecret,
   deleteProjectSecret,
   type CloudSecretRow,
-} from "@/server/cloud-secrets.functions";
+} from "@/lib/cloud-secrets.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";

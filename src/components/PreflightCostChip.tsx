@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Loader2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { estimatePromptCostFn } from "@/server/preflight-estimate.functions";
+import { estimatePromptCostFn } from "@/lib/preflight-estimate.functions";
 import type { PreflightEstimate, PreflightKind } from "@/server/preflight-estimate.server";
 
 const KIND_LABEL: Record<PreflightKind, string> = {
