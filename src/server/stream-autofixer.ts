@@ -160,6 +160,62 @@ function fixBadImports(content: string, report: AutofixReport, hasBackendKit: bo
     report.notes.push('react-router-dom → @/components/ui/router');
   }
 
+  // 1b. Next.js imports — this is a Vite + react-router-dom kit, NOT Next.js.
+  //     The model occasionally hallucinates `next/*` (especially next/link in
+  //     marketing components). Rewrite to kit equivalents so a single stray
+  //     import never breaks the build.
+  const nextLinkDefault = /import\s+([A-Za-z_$][\w$]*)\s+from\s+["']next\/link["']\s*;?/g;
+  if (nextLinkDefault.test(out)) {
+    out = out.replace(nextLinkDefault, (_w, local: string) =>
+      local === "Link"
+        ? `import { Link } from "@/components/ui/router";`
+        : `import { Link as ${local} } from "@/components/ui/router";`,
+    );
+    report.fixedCount++;
+    report.notes.push('next/link → @/components/ui/router (Link)');
+  }
+  out = out.replace(
+    /import\s+([A-Za-z_$][\w$]*)\s*,\s*\{[^}]*\}\s*from\s+["']next\/link["']\s*;?/g,
+    (_w, local: string) =>
+      local === "Link"
+        ? `import { Link } from "@/components/ui/router";`
+        : `import { Link as ${local} } from "@/components/ui/router";`,
+  );
+
+  const nextNav = /from\s+["']next\/(?:navigation|router)["']/g;
+  if (nextNav.test(out)) {
+    out = out.replace(nextNav, 'from "@/components/ui/router"');
+    report.fixedCount++;
+    report.notes.push('next/navigation|router → @/components/ui/router');
+  }
+
+  const nextImage = /import\s+([A-Za-z_$][\w$]*)\s+from\s+["']next\/image["']\s*;?/g;
+  if (nextImage.test(out)) {
+    out = out.replace(
+      nextImage,
+      (_w, local: string) =>
+        `const ${local} = (p: any) => { const { src, alt = "", width, height, fill, priority, loader, placeholder, blurDataURL, quality, sizes, ...rest } = p; void fill; void priority; void loader; void placeholder; void blurDataURL; void quality; void sizes; return <img src={typeof src === "string" ? src : src?.src} alt={alt} width={width} height={height} {...rest} />; };`,
+    );
+    report.fixedCount++;
+    report.notes.push('next/image → inline <img> shim');
+  }
+
+  for (const mod of ["head", "script"] as const) {
+    const re = new RegExp(
+      `import\\s+([A-Za-z_$][\\w$]*)\\s+from\\s+["']next\\/${mod}["']\\s*;?`,
+      "g",
+    );
+    if (re.test(out)) {
+      out = out.replace(
+        re,
+        (_w, local: string) =>
+          `const ${local} = ({ children }: any) => { void children; return null; };`,
+      );
+      report.fixedCount++;
+      report.notes.push(`next/${mod} → no-op shim`);
+    }
+  }
+
   // 2. Direct supabase-js client → backend kit, but only when that kit exists.
   //    Without this guard, no-backend projects get rewritten to an alias that
   //    cannot resolve, causing the exact Vite load-fallback failure reported.
