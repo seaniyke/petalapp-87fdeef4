@@ -35,6 +35,7 @@ export async function requestCoachTurn(
 
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
+    throwIfCreditsExhausted(resp, text);
     const err = new Error(text || `Request failed (${resp.status})`) as Error & {
       status?: number;
     };
