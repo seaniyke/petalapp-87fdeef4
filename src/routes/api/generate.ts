@@ -820,6 +820,8 @@ async function recoverMissingToolOutput(args: {
       promptChars: args.lastUserContent.length,
       hadAttachments: args.hasVisionTurn,
       chosenBy: "tool_recovery",
+      projectId: args.projectId ?? null,
+      userId: args.userId ?? null,
     },
   });
   if (!recovery.ok || !recovery.body) return null;
