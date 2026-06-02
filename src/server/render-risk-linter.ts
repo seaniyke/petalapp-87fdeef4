@@ -848,6 +848,18 @@ export function lintRenderRisks(
         });
       }
     }
+
+    // R7 — app-surface tables that map rows but never handle the empty case.
+    // Scoped to src/app/** so marketing tables (rare) don't trigger.
+    if (ENABLED_RULES.has("R7") && f.path.startsWith("src/app/")) {
+      if (fileMissingTableEmptyState(f.content, clean)) {
+        issues.push({
+          path: f.path,
+          kind: "render-risk",
+          detail: `<Table> renders mapped rows but the file has no \`length === 0\` empty-state branch — empty data will ship an empty <tbody>. Add a TableEmpty fallback (icon + headline + muted line + CTA).`,
+        });
+      }
+    }
   }
 
   return issues;
