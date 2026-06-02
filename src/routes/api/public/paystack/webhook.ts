@@ -571,10 +571,12 @@ async function markChargeFailed(
     .eq("reference", ref)
     .maybeSingle();
   if (failedTx?.user_id) {
-    void sendBillingEmail({
+    const failKey = `billing-failed-${ref}`;
+    console.info("[paystack webhook] enqueueing email", { template: "payment-failed", userId: failedTx.user_id, idempotencyKey: failKey });
+    await sendBillingEmail({
       origin,
       templateName: "payment-failed",
-      idempotencyKey: `billing-failed-${ref}`,
+      idempotencyKey: failKey,
       userId: failedTx.user_id,
       templateData: {
         itemLabel: billingItemLabel({
