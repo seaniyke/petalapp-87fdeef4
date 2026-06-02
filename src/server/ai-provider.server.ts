@@ -505,6 +505,8 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     promptChars: opts.meta?.promptChars ?? null,
     hadAttachments: opts.meta?.hadAttachments ?? false,
     chosenBy: opts.meta?.chosenBy ?? null,
+    projectId: opts.meta?.projectId ?? null,
+    userId: opts.meta?.userId ?? null,
   });
 
   const fallbackBody = { ...opts.body, model: fallback };
@@ -524,6 +526,8 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     promptChars: opts.meta?.promptChars ?? null,
     hadAttachments: opts.meta?.hadAttachments ?? false,
     chosenBy: opts.meta?.chosenBy ?? null,
+    projectId: opts.meta?.projectId ?? null,
+    userId: opts.meta?.userId ?? null,
   });
 
   return retried;
