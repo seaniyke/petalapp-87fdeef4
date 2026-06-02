@@ -36,6 +36,7 @@ export const runProjectMigrations = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<MigrationOutcome> => {
     const { supabase, userId } = context;
     await assertOwns(supabase, data.projectId, userId);
+    const { applyPendingMigrations } = await import("./managed-migrations.server");
     return applyPendingMigrations(data.projectId);
   });
 
@@ -45,5 +46,6 @@ export const getMigrationHistory = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertOwns(supabase, data.projectId, userId);
+    const { listMigrationHistory } = await import("./managed-migrations.server");
     return { entries: await listMigrationHistory(data.projectId) };
   });
