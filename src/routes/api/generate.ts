@@ -784,6 +784,8 @@ async function recoverMissingToolOutput(args: {
   signal: AbortSignal;
   controller: ReadableStreamDefaultController<Uint8Array>;
   encoder: TextEncoder;
+  projectId?: string | null;
+  userId?: string | null;
 }): Promise<ToolRecoveryPayload | null> {
   const assistantText = assistantTextFromCollected(args.collected);
   if (!assistantText) return null;
