@@ -2114,6 +2114,8 @@ Forbidden defaults
                   signal: request.signal,
                   controller,
                   encoder,
+                  projectId: body.projectId ?? null,
+                  userId,
                 }).catch((recoveryErr) => {
                   console.warn(
                     "[generate] tool recovery failed:",
