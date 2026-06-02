@@ -955,7 +955,19 @@ export function lintRenderRisks(
         });
       }
     }
+
+    // R8 — plain object rendered as a JSX child (React error #31).
+    if (ENABLED_RULES.has("R8")) {
+      for (const issue of findObjectAsJsxChild(f.content, clean)) {
+        issues.push({
+          path: f.path,
+          kind: "render-risk",
+          detail: `\`{${issue.expr}}\` renders an object as a React child — will throw React error #31 ("object with keys {...}"). Render a specific field (e.g. \`{${issue.ident}.name}\`) or stringify it (\`{JSON.stringify(${issue.ident})}\`).`,
+        });
+      }
+    }
   }
+
 
   return issues;
 }
