@@ -37,6 +37,7 @@ export async function requestDiscussion(
 
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
+    throwIfCreditsExhausted(resp, text);
     throw new Error(text || `Request failed (${resp.status})`);
   }
   const json = (await resp.json()) as { reply?: string };
