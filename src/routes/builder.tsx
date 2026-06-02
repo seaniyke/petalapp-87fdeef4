@@ -3485,7 +3485,7 @@ function Builder() {
                             fires on either the user prompt or Petal's reply. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !petalIsWorking &&
+                          !petalIsWorking && !pendingQuestion &&
                           !proposedPlan &&
                           hasBackend === false &&
                           !dismissedBackendChips.has(i) &&
@@ -3515,7 +3515,7 @@ function Builder() {
                         {/* Domain suggestion — same rules as backend chip. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !petalIsWorking &&
+                          !petalIsWorking && !pendingQuestion &&
                           hasDomain === false &&
                           !dismissedDomainChips.has(i) &&
                           (() => {
@@ -3549,7 +3549,7 @@ function Builder() {
                             sending needs a backend. Non-techie copy. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !petalIsWorking &&
+                          !petalIsWorking && !pendingQuestion &&
                           !dismissedEmailChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3602,7 +3602,7 @@ function Builder() {
                             since checkout webhooks need somewhere to run. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !petalIsWorking &&
+                          !petalIsWorking && !pendingQuestion &&
                           !dismissedPaymentChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3656,7 +3656,7 @@ function Builder() {
                         {/* SEO suggestion — pure frontend, no backend gate. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !petalIsWorking &&
+                          !petalIsWorking && !pendingQuestion &&
                           !dismissedSeoChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3686,7 +3686,7 @@ function Builder() {
                             when their message implies extra pages. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !petalIsWorking &&
+                          !petalIsWorking && !pendingQuestion &&
                           !dismissedAddPageChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3713,7 +3713,7 @@ function Builder() {
                             section. Free users see Upgrade, never a top-up. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !petalIsWorking &&
+                          !petalIsWorking && !pendingQuestion &&
                           !dismissedMobileChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3742,7 +3742,7 @@ function Builder() {
                             Petal doesn't ask for an OpenAI key. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !petalIsWorking &&
+                          !petalIsWorking && !pendingQuestion &&
                           !dismissedAiFeatureChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3770,7 +3770,7 @@ function Builder() {
                         {/* Analytics suggestion — backend-first when no Cloud. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !petalIsWorking &&
+                          !petalIsWorking && !pendingQuestion &&
                           !dismissedAnalyticsChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3814,7 +3814,7 @@ function Builder() {
                         {/* Storage suggestion — backend-first when no Cloud. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !petalIsWorking &&
+                          !petalIsWorking && !pendingQuestion &&
                           !dismissedStorageChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3858,7 +3858,7 @@ function Builder() {
                         {/* Realtime suggestion — backend-first when no Cloud. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !petalIsWorking &&
+                          !petalIsWorking && !pendingQuestion &&
                           !dismissedRealtimeChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
@@ -3902,7 +3902,7 @@ function Builder() {
                         {/* Cron suggestion — backend-first when no Cloud. */}
                         {project &&
                           i === messages.length - 1 &&
-                          !petalIsWorking &&
+                          !petalIsWorking && !pendingQuestion &&
                           !dismissedCronChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
