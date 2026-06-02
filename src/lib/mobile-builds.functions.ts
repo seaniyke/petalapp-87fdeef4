@@ -110,6 +110,32 @@ export const getMobileAppStatus = createServerFn({ method: "POST" })
     };
   });
 
+/**
+ * Lightweight read for the publish-sheet watchdog. Returns the most
+ * recent mobile_build row for the project (any platform) so the UI can
+ * detect terminal status transitions (queued → succeeded | failed) and
+ * surface a toast + artifact link without the user reopening the sheet.
+ *
+ * Returns null when no build has ever been started for the project.
+ */
+export const getLatestMobileBuild = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => StatusSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: row } = await supabase
+      .from("mobile_builds")
+      .select(
+        "id, platform, kind, status, artifact_url, error_message, started_at, finished_at, created_at",
+      )
+      .eq("project_id", data.projectId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return row ?? null;
+  });
+
+
 type StartBuildOk = {
   ok: true;
   buildId: string;
