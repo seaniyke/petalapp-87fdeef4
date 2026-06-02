@@ -737,6 +737,27 @@ function findBareGridCols(src: string): { snippet: string }[] {
   return issues;
 }
 
+/**
+ * R7 — app-surface tables with no empty-state handling.
+ *
+ * App-surface components (src/app/**) that render shadcn `<Table>` over a
+ * mapped collection must also handle the `.length === 0` case. When the
+ * collection is empty, an empty `<tbody>` ships to production — visually
+ * an indistinguishable bug. Heuristic: file imports `Table` from
+ * `@/components/ui/table`, renders `<Table` and `.map(`, AND has no
+ * `length === 0` / `length > 0` / `length ? ` guard anywhere. Cheap, no
+ * false positives on marketing pages (skipped by path) or static tables
+ * (no `.map(` call).
+ */
+function fileMissingTableEmptyState(src: string, clean: string): boolean {
+  if (!/from\s+["']@\/components\/ui\/table["']/.test(src)) return false;
+  if (!/<Table[\s>]/.test(clean)) return false;
+  if (!/\.map\s*\(/.test(clean)) return false;
+  if (/\.length\s*(===?\s*0|>\s*0|\?\s*)/.test(clean)) return false;
+  if (/TableEmpty|EmptyState|Empty\s+\w+/i.test(clean)) return false;
+  return true;
+}
+
 // =============================================================================
 // Entry point
 // =============================================================================
