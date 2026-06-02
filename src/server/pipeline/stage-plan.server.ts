@@ -322,9 +322,14 @@ export async function runStagePlan(args: {
     const archetypeLine = ctx.archetypeHint
       ? `\n\nARCHETYPE FOR THIS BRIEF: **${ctx.archetypeHint}**. Pick the matching layout from the rules above and reject components that contradict it.`
       : "";
+    const pack = ctx.businessDomain
+      ? (DOMAIN_FEATURE_PACKS[ctx.businessDomain] ?? [])
+      : (ctx.category ? (CATEGORY_FEATURE_PACKS[ctx.category] ?? []) : []);
     const domainLine = ctx.businessDomain
-      ? `\n\nBUSINESS DOMAIN: **${ctx.businessDomain}**. Required product components (build ALL of these — generic KPI cards do NOT satisfy this list): ${DOMAIN_COMPONENTS[ctx.businessDomain].join(", ")}.`
-      : "";
+      ? `\n\nBUSINESS DOMAIN: **${ctx.businessDomain}**. Required core components (build ALL — generic KPI cards do NOT satisfy this list): ${DOMAIN_COMPONENTS[ctx.businessDomain].join(", ")}.${pack.length ? `\nFEATURE PACK (also required — turns the screen into a product, not a demo): ${pack.join(", ")}.` : ""}`
+      : pack.length
+        ? `\n\nFEATURE PACK for category **${ctx.category}** (also required alongside any core components): ${pack.join(", ")}.`
+        : "";
 
     const contextBlocks = [
       ctx.appShapeBlock?.trim(),
@@ -333,9 +338,9 @@ export async function runStagePlan(args: {
       .filter(Boolean)
       .join("\n\n");
 
-    // business-app needs more files (marketing + product); other archetypes
-    // stay at 10 to keep latency predictable.
-    const maxFiles = ctx.archetypeHint === "business-app" ? 25 : 10;
+    // business-app needs more files (marketing + product + feature pack);
+    // other archetypes stay at 10 to keep latency predictable.
+    const maxFiles = ctx.archetypeHint === "business-app" ? 28 : 10;
     const planTool = buildPlanTool(maxFiles);
 
     const upstream = await aiChatCompletions({
