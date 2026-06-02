@@ -142,6 +142,12 @@ interface PlanContext {
    * planner can't substitute generic KPI cards.
    */
   businessDomain?: BusinessDomain;
+  /**
+   * Top-level shape category. Used to compute the category-level feature
+   * pack (fintech → KYC + AuditLog, marketplace → Ratings + Messaging)
+   * when there is no narrow businessDomain.
+   */
+  category?: ShapeCategory;
 }
 
 function injectRootViewIfMissing(
