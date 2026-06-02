@@ -384,6 +384,10 @@ export interface AiCallMeta {
   hadAttachments?: boolean | null;
   /** Who picked the model: "smart_router" | "phase_router" | "default" | … */
   chosenBy?: string | null;
+  /** P1-5: project this AI call is attributed to (null = workspace-wide). */
+  projectId?: string | null;
+  /** P1-5: user who triggered this AI call. */
+  userId?: string | null;
 }
 
 /**
