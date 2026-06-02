@@ -7,8 +7,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { isValidSecretName, normalizeSecretName, createPendingSecretRequest } from "./requests.server";
-import { encryptSecret } from "./crypto.server";
+import { isValidSecretName, normalizeSecretName, createPendingSecretRequest } from "@/server/secrets/requests.server";
+import { encryptSecret } from "@/server/secrets/crypto.server";
 
 const CreateInput = z.object({
   projectId: z.string().uuid(),
