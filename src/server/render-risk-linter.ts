@@ -53,7 +53,7 @@
 import type { LocalIssue } from "@/server/local-verifier";
 
 /** Limit which rules fire. Edit to disable individual rules in production. */
-const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7">([
+const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8">([
   "R1",
   "R2",
   "R3",
@@ -61,7 +61,9 @@ const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7">([
   "R5",
   "R6",
   "R7",
+  "R8",
 ]);
+
 
 /**
  * Packages whose default exports are React.forwardRef objects. Rendering one
