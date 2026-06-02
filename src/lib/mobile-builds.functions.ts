@@ -532,6 +532,26 @@ export const upsertSigningProfile = createServerFn({ method: "POST" })
       update.apple_app_store_connect_key_ciphertext = await enc(
         data.apple.appStoreConnectKeyP8,
       );
+      // Record provisioning-profile expiry at upload time so the daily
+      // expiry-warning job can find soon-to-expire creds without ever
+      // decrypting the blob. Failure to parse is intentionally soft —
+      // we don't want a malformed profile to block the whole upsert.
+      const { parseProvisioningProfileExpiry, parseP12NotAfter } = await import(
+        "@/server/apple-cert-expiry.server"
+      );
+      const profileExpiry = parseProvisioningProfileExpiry(
+        data.apple.provisioningProfileBase64,
+      );
+      if (profileExpiry) {
+        update.apple_provisioning_profile_not_after = profileExpiry.toISOString();
+      }
+      const p12Expiry = parseP12NotAfter(
+        data.apple.p12Base64,
+        data.apple.p12Password,
+      );
+      if (p12Expiry) {
+        update.apple_p12_not_after = p12Expiry.toISOString();
+      }
     }
     if (data.android) {
       update.android_keystore_ciphertext = await enc(data.android.keystoreBase64);
