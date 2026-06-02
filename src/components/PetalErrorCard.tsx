@@ -10,7 +10,7 @@
  * and secondary glass button — matches iOS 17 system alerts / banners.
  */
 import { useState } from "react";
-import { RefreshCcw, Wrench, X, ChevronDown } from "lucide-react";
+import { RefreshCcw, Wrench, X, ChevronDown, Sparkles } from "lucide-react";
 import type { FriendlyError } from "@/lib/friendly-errors";
 
 type Props = {
@@ -18,17 +18,20 @@ type Props = {
   onRetry?: () => void;
   onAskFix?: () => void;
   onDismiss?: () => void;
+  /** Opens the billing sheet for the "buy-credits" action kind. */
+  onBuyCredits?: () => void;
   /** When true, the card is being shown from history — hide live-only
    *  affordances like the dismiss "X" if no handler was provided. */
   persisted?: boolean;
 };
 
-export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss }: Props) {
+export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredits }: Props) {
   const [showDetails, setShowDetails] = useState(false);
 
   const isAskFix = error.actionKind === "ask-fix";
   const isRetry = error.actionKind === "retry";
   const isDismiss = error.actionKind === "dismiss";
+  const isBuyCredits = error.actionKind === "buy-credits";
 
   return (
     <div className="mr-2 w-full max-w-[520px]">
