@@ -24,7 +24,7 @@ import {
   setProjectUserBan,
   sendProjectUserRecovery,
   type CloudAuthUser,
-} from "@/server/cloud-users.functions";
+} from "@/lib/cloud-users.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
