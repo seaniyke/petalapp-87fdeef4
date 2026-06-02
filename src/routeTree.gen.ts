@@ -45,6 +45,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminQaRouteImport } from './routes/admin.qa'
 import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
+import { Route as AdminMobileSigningRouteImport } from './routes/admin.mobile-signing'
 import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
 import { Route as AdminFailuresRouteImport } from './routes/admin.failures'
 import { Route as AdminDigestRouteImport } from './routes/admin.digest'
@@ -267,6 +268,11 @@ const AdminProjectsRoute = AdminProjectsRouteImport.update({
 const AdminPipelineRoute = AdminPipelineRouteImport.update({
   id: '/admin/pipeline',
   path: '/admin/pipeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminMobileSigningRoute = AdminMobileSigningRouteImport.update({
+  id: '/admin/mobile-signing',
+  path: '/admin/mobile-signing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLedgersRoute = AdminLedgersRouteImport.update({
@@ -516,6 +522,7 @@ export interface FileRoutesByFullPath {
   '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
+  '/admin/mobile-signing': typeof AdminMobileSigningRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
@@ -597,6 +604,7 @@ export interface FileRoutesByTo {
   '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
+  '/admin/mobile-signing': typeof AdminMobileSigningRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
@@ -679,6 +687,7 @@ export interface FileRoutesById {
   '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
+  '/admin/mobile-signing': typeof AdminMobileSigningRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
@@ -762,6 +771,7 @@ export interface FileRouteTypes {
     | '/admin/digest'
     | '/admin/failures'
     | '/admin/ledgers'
+    | '/admin/mobile-signing'
     | '/admin/pipeline'
     | '/admin/projects'
     | '/admin/qa'
@@ -843,6 +853,7 @@ export interface FileRouteTypes {
     | '/admin/digest'
     | '/admin/failures'
     | '/admin/ledgers'
+    | '/admin/mobile-signing'
     | '/admin/pipeline'
     | '/admin/projects'
     | '/admin/qa'
@@ -924,6 +935,7 @@ export interface FileRouteTypes {
     | '/admin/digest'
     | '/admin/failures'
     | '/admin/ledgers'
+    | '/admin/mobile-signing'
     | '/admin/pipeline'
     | '/admin/projects'
     | '/admin/qa'
@@ -1006,6 +1018,7 @@ export interface RootRouteChildren {
   AdminDigestRoute: typeof AdminDigestRoute
   AdminFailuresRoute: typeof AdminFailuresRoute
   AdminLedgersRoute: typeof AdminLedgersRoute
+  AdminMobileSigningRoute: typeof AdminMobileSigningRoute
   AdminPipelineRoute: typeof AdminPipelineRoute
   AdminProjectsRoute: typeof AdminProjectsRoute
   AdminQaRoute: typeof AdminQaRoute
@@ -1319,6 +1332,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/pipeline'
       fullPath: '/admin/pipeline'
       preLoaderRoute: typeof AdminPipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/mobile-signing': {
+      id: '/admin/mobile-signing'
+      path: '/admin/mobile-signing'
+      fullPath: '/admin/mobile-signing'
+      preLoaderRoute: typeof AdminMobileSigningRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/ledgers': {
@@ -1666,6 +1686,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminDigestRoute: AdminDigestRoute,
   AdminFailuresRoute: AdminFailuresRoute,
   AdminLedgersRoute: AdminLedgersRoute,
+  AdminMobileSigningRoute: AdminMobileSigningRoute,
   AdminPipelineRoute: AdminPipelineRoute,
   AdminProjectsRoute: AdminProjectsRoute,
   AdminQaRoute: AdminQaRoute,
