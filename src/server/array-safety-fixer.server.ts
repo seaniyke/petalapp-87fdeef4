@@ -115,8 +115,33 @@ function collectUnsafeIdents(src: string): Set<string> {
     }
   }
 
+  // 4. Component prop destructuring WITHOUT a default value. The dominant
+  //    landing-page crash source: `function Hero({ features }) { features.map(...) }`.
+  //    The parent forgot to pass `features`, child crashes. We rewrite the
+  //    body access defensively. Match `function Name({ a, b: c, d = [] }: ...)`
+  //    and `const Name = ({ ... }: ...) => ...`. Only flag bindings with NO
+  //    `= default` (those already have a default and are safe).
+  const propsRe =
+    /(?:function\s+[A-Z]\w*\s*\(|const\s+[A-Z]\w*\s*[:=][^=]*?=\s*\(|\(\s*)\{\s*([^}]+?)\s*\}\s*(?::\s*[^)=]+)?\s*\)\s*(?:=>|\{)/g;
+  while ((m = propsRe.exec(src))) {
+    for (const raw of m[1].split(",")) {
+      const part = raw.trim();
+      if (!part || part.startsWith("...")) continue;
+      // Skip if it has a default value: `name = something`
+      if (/=/.test(part)) continue;
+      // Strip alias: `data: rows` → use `rows`
+      const alias = /^[A-Za-z_$][\w$]*\s*:\s*([A-Za-z_$][\w$]*)/.exec(part);
+      const name = alias ? alias[1] : (/^([A-Za-z_$][\w$]*)/.exec(part)?.[1] ?? "");
+      if (!name) continue;
+      // Don't touch obviously-non-array props
+      if (/^(children|className|style|id|key|ref|onClick|on[A-Z])/.test(name)) continue;
+      idents.add(name);
+    }
+  }
+
   return idents;
 }
+
 
 function rewriteFile(src: string, idents: Set<string>): { src: string; rewrites: number } {
   if (idents.size === 0) return { src, rewrites: 0 };
@@ -146,7 +171,6 @@ export function fixArraySafety(files: ProjectFile[]): ArraySafetyResult {
   const fixes: ArraySafetyFix[] = [];
   const next = files.map((f) => {
     if (!SCANNABLE.test(f.path)) return f;
-    // Skip scaffold / generated.
     if (
       f.path.startsWith("src/components/ui/") ||
       f.path.startsWith("src/integrations/") ||
@@ -155,8 +179,28 @@ export function fixArraySafety(files: ProjectFile[]): ArraySafetyResult {
       return f;
     }
     const idents = collectUnsafeIdents(f.content);
-    if (idents.size === 0) return f;
-    const { src, rewrites } = rewriteFile(f.content, idents);
+    let src = f.content;
+    let rewrites = 0;
+    if (idents.size > 0) {
+      const r = rewriteFile(src, idents);
+      src = r.src;
+      rewrites += r.rewrites;
+    }
+
+    // Final safety net: wrap ANY `{IDENT.map(` / `{IDENT.filter(` inside JSX
+    // expression containers. Catches props/derived values we didn't track.
+    // Only matches when preceded by `{` (JSX expression start) and the ident
+    // is bare (not `obj.IDENT`, not `IDENT?.`, not already wrapped).
+    const jsxRe = /(\{|\{\s)([A-Za-z_$][\w$]*)\.(map|filter|forEach|reduce|some|every|find|flatMap|slice|sort)\(/g;
+    src = src.replace(jsxRe, (_m, lead: string, id: string, method: string) => {
+      // Skip if identifier is a known global / safe name
+      if (["Array", "Object", "JSON", "Math", "React", "console"].includes(id)) {
+        return _m;
+      }
+      rewrites++;
+      return `${lead}(${id} ?? []).${method}(`;
+    });
+
     if (rewrites === 0) return f;
     fixes.push({ path: f.path, identifiers: [...idents], rewrites });
     return { ...f, content: src };
@@ -164,3 +208,4 @@ export function fixArraySafety(files: ProjectFile[]): ArraySafetyResult {
 
   return { files: next, fixes };
 }
+
