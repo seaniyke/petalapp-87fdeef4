@@ -3187,8 +3187,10 @@ Forbidden defaults
             files: nextFiles,
             designDirection,
             hasBackend: Boolean(backend),
+            highStakes: hs.detected && hs.domain && hsRoadmap ? { domain: hs.domain, roadmap: hsRoadmap } : null,
           }),
         );
+
 
         // Charge ONCE, after the build succeeds. Cost is computed from
         // the MAIN generate call's token usage only — `collected.usage`
