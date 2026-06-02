@@ -32,7 +32,13 @@
  */
 
 import { aiChatCompletions } from "@/server/ai-provider.server";
-import { DOMAIN_COMPONENTS, type BusinessDomain } from "@/lib/app-shape-classifier";
+import {
+  DOMAIN_COMPONENTS,
+  DOMAIN_FEATURE_PACKS,
+  CATEGORY_FEATURE_PACKS,
+  type BusinessDomain,
+  type ShapeCategory,
+} from "@/lib/app-shape-classifier";
 
 export interface PlannedFile {
   /** App-relative path, e.g. "src/App.tsx". */
