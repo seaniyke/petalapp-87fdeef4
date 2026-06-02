@@ -71,3 +71,161 @@ export function highStakesBuildInstruction(domain: HighStakesDomain): string {
 /** @deprecated Kept as an alias so older imports don't break. Use highStakesBuildInstruction. */
 export const highStakesClarifyInstruction = highStakesBuildInstruction;
 
+/**
+ * Canned product roadmap for each high-stakes domain. Used by the
+ * landing-first flow: when the first turn of a project matches a
+ * high-stakes pattern, Petal saves this roadmap into the build blueprint
+ * so subsequent turns iterate against a known plan instead of re-planning
+ * from scratch on every message.
+ */
+export interface HighStakesRoadmap {
+  productLabel: string;
+  landingSections: string[];
+  futureFeatures: string[];
+  providersToWireLater: string[];
+}
+
+export function highStakesRoadmap(domain: HighStakesDomain): HighStakesRoadmap {
+  switch (domain) {
+    case "crypto-wallet":
+      return {
+        productLabel: "Crypto wallet / exchange",
+        landingSections: [
+          "Hero with value prop + waitlist CTA",
+          "Supported chains & assets grid",
+          "Send / Receive / Swap / Stake feature trio",
+          "Security & self-custody explainer",
+          "Fees & rates comparison",
+          "Testimonials / social proof",
+          "FAQ (custody, gas, KYC)",
+          "Footer with legal disclaimers",
+        ],
+        futureFeatures: [
+          "Wallet-connect flow (read-only address linking)",
+          "Portfolio dashboard (mock balances → real via RPC)",
+          "Send screen (UX only; signing is provider-side)",
+          "Swap quote UI",
+          "Transaction history",
+        ],
+        providersToWireLater: [
+          "Alchemy or Infura (RPC)",
+          "viem (signing)",
+          "WalletConnect / Reown",
+          "CoinGecko (prices)",
+        ],
+      };
+    case "neobank":
+      return {
+        productLabel: "Neobank / digital bank",
+        landingSections: [
+          "Hero + waitlist CTA",
+          "Accounts & cards overview",
+          "Money movement (ACH / wire / instant)",
+          "Security & FDIC partner disclosure",
+          "Pricing tiers",
+          "Testimonials",
+          "FAQ",
+          "Footer with legal disclaimers",
+        ],
+        futureFeatures: [
+          "Account opening flow (KYC stub)",
+          "Card management UI",
+          "Transfers UI",
+          "Statements & exports",
+        ],
+        providersToWireLater: [
+          "Plaid / Increase / Unit",
+          "Stripe Issuing",
+          "Persona or Onfido (KYC)",
+        ],
+      };
+    case "trading":
+      return {
+        productLabel: "Trading / brokerage",
+        landingSections: [
+          "Hero + waitlist CTA",
+          "Asset universe (stocks / ETFs / options)",
+          "Order types & fees",
+          "Charts & research preview",
+          "Security & SIPC disclosure",
+          "Pricing",
+          "FAQ",
+          "Footer with legal disclaimers",
+        ],
+        futureFeatures: [
+          "Watchlist",
+          "Order ticket UI",
+          "Positions dashboard",
+          "Tax docs surface",
+        ],
+        providersToWireLater: ["Alpaca / IBKR / DriveWealth", "Polygon.io (market data)"],
+      };
+    case "lending":
+      return {
+        productLabel: "Lending platform",
+        landingSections: [
+          "Hero + apply CTA",
+          "Loan products & rates",
+          "Eligibility & how it works",
+          "Compliance disclosures",
+          "Testimonials",
+          "FAQ",
+          "Footer",
+        ],
+        futureFeatures: [
+          "Pre-qualification form",
+          "Application wizard",
+          "Decision screen",
+          "Disbursement status",
+        ],
+        providersToWireLater: [
+          "Plaid (income / employment)",
+          "Persona (KYC)",
+          "Loan-origination partner",
+        ],
+      };
+    case "kyc-identity":
+      return {
+        productLabel: "Identity / KYC product",
+        landingSections: [
+          "Hero",
+          "How verification works",
+          "Coverage & document types",
+          "Compliance & data handling",
+          "Pricing",
+          "FAQ",
+          "Footer",
+        ],
+        futureFeatures: [
+          "Verification flow UI",
+          "Admin review dashboard",
+          "Webhook delivery status",
+        ],
+        providersToWireLater: ["Persona / Onfido / Sumsub", "Stripe Identity"],
+      };
+  }
+}
+
+/**
+ * Renders the roadmap as a prompt block: tells the model exactly which
+ * landing sections to build NOW and which features to defer. Keeps Petal
+ * landing-first instead of shipping a fake in-app dashboard on turn 1.
+ */
+export function highStakesRoadmapBlock(domain: HighStakesDomain): string {
+  const r = highStakesRoadmap(domain);
+  return [
+    `### Saved roadmap — ${r.productLabel}`,
+    `On THIS turn, build ONLY the marketing landing page with these sections (in order):`,
+    ...r.landingSections.map((s, i) => `  ${i + 1}. ${s}`),
+    ``,
+    `DO NOT build the in-app product yet. These are saved for future turns; the user will pick which one to iterate on next:`,
+    ...r.futureFeatures.map((s, i) => `  ${i + 1}. ${s}`),
+    ``,
+    `Providers the user will eventually need keys for (mention briefly in your preamble — do NOT import these libraries today):`,
+    `  ${r.providersToWireLater.join(", ")}`,
+    ``,
+    `Preamble requirement: open your reply with ONE short paragraph that (a) names the product, (b) says "I'm shipping the landing page first and saved the roadmap so we can iterate", (c) lists the next 2-3 features by name, (d) names the providers in one phrase. Then build.`,
+  ].join("\n");
+}
+
+

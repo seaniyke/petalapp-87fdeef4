@@ -1,92 +1,55 @@
+## What's happening
 
-## What's actually happening
+The screenshot shows the user-generated app crashing with **Minified React error #31** ("Objects are not valid as a React child, found: object with keys {...}"). This is a generation-quality bug in the code Petal emitted for the "crypto wallet exchange" prompt — not a Petal-platform crash. Two things need to change:
 
-I traced the affected user (`ikemadu32@gmail.com`, sub `SUB_07cz5x57yw5aqbs`, plan Starter Pro NGN ₦1,600) end‑to‑end against `paystack_events`, `paystack_invoices`, `subscriptions` and `email_send_log`. The story is:
+1. **Catch the crash class earlier** so this prompt (and similar ones) stop shipping broken code.
+2. **Make the landing-first plan-and-save flow stronger for high-stakes prompts** like "crypto wallet exchange", as the user describes.
 
-- **2026‑04‑30** `subscription.create` received → `next_payment_date = 2026‑05‑28`.
-- **2026‑05‑28** Paystack fired `invoice.update` + `invoice.payment_failed`. The charge attempt against authorization `AUTH_ipkyt2xeaw` (Verve, last4 9598, PAYCOM) came back `status: failed`. Paystack rescheduled `next_payment_date` to `2026‑06‑28`.
-- Our webhook ran `handleInvoiceFailed` → flipped the subscription to `status='attention'` and called `sendBillingEmail("payment-failed", …)`.
-- **No row in `email_send_log`** for this user. The email was never even enqueued.
-- **No "your plan is about to renew/expire" email** was ever sent either — because no such job exists in the project.
-
-So this is really **two separate bugs**, both real, both my fault as the senior on this codebase:
-
-### Bug 1 — Renewal/expiry reminder never existed for plan subscriptions
-`src/lib/email-templates/backend-renewal-reminder.tsx` exists but is wired only to the *managed‑backend slot* cron (`runtime-backend-hour.ts`). Nothing scans `public.subscriptions` looking at `current_period_end` / `next_payment_date`, so users get zero warning before Paystack tries the renewal charge.
-
-### Bug 2 — Renewal charge "fails silently" from the user's perspective
-Two sub‑causes:
-
-a. **The payment‑failed email is dropped by the Worker runtime.** In `src/routes/api/public/paystack/webhook.ts`, `handleInvoiceFailed` calls `sendBillingEmail(...)` with bare `void` (fire‑and‑forget). We're on Cloudflare workerd; when the webhook returns `200`, any in‑flight `fetch` from a non‑awaited promise is cancelled. That's why `email_send_log` has zero rows for this user even though Paystack delivered the event correctly (verified in `paystack_events`).
-
-b. **We never actually re‑attempt or escalate the failed renewal.** Paystack only retries on its own monthly cadence (`cron_expression: "37 19 28 * *"` for this sub → next attempt 2026‑06‑28, a full month later). We don't tell the user "your card was declined, update it now" beyond a single best‑effort email, and we don't expose the Paystack manage link in the UI in this state.
-
-Paystack docs confirm: for subscriptions, `charge.success` / `invoice.payment_failed` / `subscription.not_renew` / `subscription.disable` are the source of truth, and the standard recovery flow is "email the user the subscription **manage link** so they re‑authorize a card" — Paystack does *not* auto‑retry within the same billing period.
+The HMAC/builder issue from earlier turns appears resolved (no `Invalid signature` in the screenshot — the build went out, deployed to `petal-0f64a3aa37bc.pages.dev`, and the runtime is the failure now).
 
 ---
 
-## Fix plan
+## Part 1 — Eliminate React #31 in generated apps
 
-### 1. Make webhook‑triggered emails actually leave the box
-In `src/routes/api/public/paystack/webhook.ts`:
-- Replace every `void sendBillingEmail(...)` in `handleChargeSuccess`, `handleInvoiceFailed`, `handleExpiringCards`, `markChargeFailed` with `await sendBillingEmail(...)` inside the existing `try`. The handler already returns 200 on success — awaiting only adds the time for one `fetch` to our own `/lovable/email/transactional/send`, which enqueues into pgmq and returns immediately. This is the actual root cause of "no email sent".
-- Keep `sendBillingEmail` non‑throwing (it already swallows internally) so a flaky email still doesn't 500 the webhook back to Paystack.
-- Add a single defensive `console.info("[paystack webhook] email enqueued", { template, userId, idempotencyKey })` so future "did we send it?" questions are answerable from worker logs.
+Today `src/server/render-risk-linter.ts` rule **R5** only catches forwardRef icons rendered as `{Icon}`. The actual #31 the user hit (`object with keys {...}` — not the icon-shaped `{$$typeof,render,displayName}`) is the more general pattern: a plain object/state/config rendered directly in JSX. Add a new rule:
 
-### 2. Add a real "subscription renewing / failed / expiring" cron
-New file `src/routes/api/public/cron/subscription-renewal-reminder.ts` (public route, `apikey` header pattern like the other crons). It does three passes against `public.subscriptions WHERE provider='paystack'`:
+**R8 — object-as-JSX-child.** Scan `.tsx/.jsx` for `{ident}` and `{a.b}` expressions that sit as a JSX child (not in an attribute, not in a callback) where `ident` is locally bound to a plain object literal, `useState` initializer that's an object, or a destructured prop whose type is `Record<...>` / `{...}`. Emit a `render-risk` issue with autofix hint ("render `{ident.field}` or `JSON.stringify(ident)` — passing an object renders React error #31").
 
-a. **Pre‑renewal reminders** (T‑7 / T‑3 / T‑1 days before `next_payment_date`, status `active`, `cancel_at_period_end=false`) → send a *new* template `subscription-renewal-reminder` ("Your *Starter Pro* plan renews on 28 May for ₦1,600").
+Wire R8 into `ENABLED_RULES` and into the same feed-to-autofix gate as R1–R7 (already handled by `local-verifier.ts` consumers).
 
-b. **Payment‑failed nudges** (status `attention`, last reminder >72h ago, no successful invoice since) → send `subscription-payment-failed-followup` with the Paystack **manage link** (`getSubscriptionManageLink(subCode)`), so the user can swap card. Cap at 3 nudges over 14 days.
+Also tighten `src/routes/builder.tsx` line 4718 (the existing #31 sniffer): when the preview reports #31 at runtime, auto-attach the offending file+line to the next "Try to fix" prompt so the autofix model gets the exact crash site instead of a generic message.
 
-c. **Expired/canceled** (`current_period_end < now()` AND no successful charge since, OR `cancel_at_period_end=true` AND `current_period_end < now()`) → send `subscription-expired` once, flip wallet `plan_code` back to `free` via existing `cancel_paystack_plan` RPC.
+## Part 2 — Landing-first flow for high-stakes prompts
 
-Idempotency: use `idempotencyKey` shaped `sub-renewal-{subCode}-{YYYY-MM-DD}-{phase}` so re‑runs in the same day don't double‑send (the existing email queue already dedupes by `message_id`).
+`src/lib/high-stakes-intent.ts` already detects crypto-wallet / neobank / trading / lending / kyc and tells the model "build a marketing landing page, not a fake dashboard." Two gaps remain:
 
-Schedule via `pg_cron` once a day at 09:00 UTC, calling
-`https://project--fe869ce3-50d8-49d0-b2fe-829b0f7b4b1c.lovable.app/api/public/cron/subscription-renewal-reminder` with the project's anon key in the `apikey` header (canonical pattern from `schedule-jobs-options`).
+**A. Persist the plan to project memory.** Today the landing instruction is splice-only — nothing is saved. Update `src/routes/api/generate.ts` (around line 1709 where `highStakesBlock` is built) so that on the **first turn** of a high-stakes project we:
+   1. Generate a short structured plan: `{ productName, sections[], futureFeatures[], providersToWireLater[] }` (e.g. for a crypto wallet: futureFeatures = [send, receive, swap, stake]; providers = [Alchemy, viem, WalletConnect]).
+   2. Save it via `saveProjectBlueprint(projectId, ...)` from `src/server/build-blueprint.server.ts` (already exists, already round-trips through `project_blueprints`).
+   3. Also write it to project memory via `src/lib/project-memory.functions.ts` so the user can see "What Petal remembers" reflects the plan (internally — the UI surface stays hidden per existing memory rule).
 
-### 3. Three new React Email templates
-Under `src/lib/email-templates/`, registered in `registry.ts`:
-- `subscription-renewal-reminder.tsx` — "Your {planName} renews on {date} for {amount}. Update card."
-- `subscription-payment-failed-followup.tsx` — "We couldn't charge your card. Update payment method to keep {planName} active." CTA → Paystack manage link.
-- `subscription-expired.tsx` — "Your {planName} plan ended. You're back on Free. Renew anytime."
+**B. Render the plan in the assistant preamble** so the user can iterate. The first response should say in one short paragraph: "Here's the roadmap I saved — landing first, then [feature 1], [feature 2]. Tell me which to build next." This matches how competitors do it (plan → landing → iterate).
 
-All three reuse `PetalEmailLayout` like `backend-renewal-reminder.tsx` does.
+Subsequent turns reuse `loadProjectBlueprint(projectId)` (already in the build path) so Petal doesn't re-plan on every message.
 
-### 4. UI surfacing of `status='attention'` (small, contained)
-In `src/components/BillingSheet.tsx`, when the user's row has `status='attention'`, show a red inline banner above the plan grid: *"Your last renewal charge failed on {date}. Update your card to keep {plan}."* with a button that POSTs to the existing `/api/billing/subscription/manage-link` and opens the returned Paystack URL. This is the same data path that already powers cancel/manage — just shown when relevant.
+## Out of scope
 
-### 5. One‑time backfill for the affected user
-After deploy, manually fire the cron once. The 28‑May failure on `SUB_07cz5x57yw5aqbs` will hit pass (b) and the user gets the "update your card" email with the manage link today. No DB write needed beyond what the cron does itself.
+- Builder HMAC / Railway signing: appears fixed; will only revisit if `Invalid signature` reappears in logs after this turn.
+- Cloud/billing copy and the broader `Build me a crypto wallet exchange` user journey beyond the landing-first behavior described above.
+- Any changes to KeshPay (project memory says ignore KeshPay rules here — already respected).
 
----
+## Files I'll touch
 
-## Files touched
+- `src/server/render-risk-linter.ts` — add R8 (object-as-JSX-child) + wire into ENABLED_RULES.
+- `src/server/local-verifier.ts` — surface R8 results in the same issue bucket already feeding autofix.
+- `src/routes/builder.tsx` — enrich the #31 runtime sniffer with file/line context for the next autofix turn.
+- `src/routes/api/generate.ts` — on first turn for a high-stakes project, build + save the blueprint and force a one-paragraph plan preamble.
+- `src/server/build-blueprint.server.ts` — extend `BuildBlueprint` with optional `futureFeatures[]` and `providersToWireLater[]` (additive, back-compat).
+- `src/lib/high-stakes-intent.ts` — add a small helper `highStakesRoadmap(domain)` returning the canned futureFeatures/providers list per domain.
 
-| File | Change |
-|---|---|
-| `src/routes/api/public/paystack/webhook.ts` | `await` the 4 `sendBillingEmail` calls; add log line |
-| `src/routes/api/public/cron/subscription-renewal-reminder.ts` | **new** — 3‑pass cron over `subscriptions` |
-| `src/lib/email-templates/subscription-renewal-reminder.tsx` | **new** |
-| `src/lib/email-templates/subscription-payment-failed-followup.tsx` | **new** |
-| `src/lib/email-templates/subscription-expired.tsx` | **new** |
-| `src/lib/email-templates/registry.ts` | register the 3 templates |
-| `src/components/BillingSheet.tsx` | `attention`‑state banner + manage‑link CTA |
-| migration | `pg_cron` schedule for the new endpoint, daily 09:00 UTC |
+No DB migration needed (the blueprint blob column already stores arbitrary JSON).
 
-## What I'm explicitly NOT changing
+## Verification
 
-- The Paystack webhook contract, signature verification, or idempotency on `paystack_events` — all of that is correct.
-- The `subscriptions` schema — `status='attention'`, `next_payment_date`, `current_period_end` are all already populated correctly by the existing handlers.
-- Paystack's own retry cadence (we can't override it). We compensate by emailing the user a manage link so they can self‑heal between Paystack's monthly attempts.
-- The first‑charge success path (`handleChargeSuccess` for one‑shots) — that one already works; we're only `await`ing what was previously `void`.
-
-## Verification after build
-
-1. Re‑POST the stored `invoice.payment_failed` event from `paystack_events` against `/api/public/paystack/webhook` with a valid signature and confirm a `payment-failed` row appears in `email_send_log` with `status='sent'`.
-2. Hit the new cron endpoint manually and confirm the affected user gets exactly one `subscription-payment-failed-followup` row.
-3. Open the BillingSheet as that user and confirm the red "card declined — update" banner is visible.
-
-Want me to proceed with this in build mode?
+- Add a unit-style test for R8 against three fixtures: `{user}` where `user` is `useState({})`, `{cfg.theme}` where `cfg` is an object literal, and a clean control that should NOT fire.
+- After deploy, retry "Build me a crypto wallet exchange" in a fresh project and confirm: (a) preview boots without #31, (b) "What Petal remembers" contains the saved roadmap, (c) assistant preamble names the next iteration steps.

@@ -53,7 +53,7 @@
 import type { LocalIssue } from "@/server/local-verifier";
 
 /** Limit which rules fire. Edit to disable individual rules in production. */
-const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7">([
+const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8">([
   "R1",
   "R2",
   "R3",
@@ -61,7 +61,9 @@ const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7">([
   "R5",
   "R6",
   "R7",
+  "R8",
 ]);
+
 
 /**
  * Packages whose default exports are React.forwardRef objects. Rendering one
@@ -759,8 +761,101 @@ function fileMissingTableEmptyState(src: string, clean: string): boolean {
 }
 
 // =============================================================================
+// R8 — object-as-JSX-child (React error #31)
+// =============================================================================
+//
+// Catches the dominant shape of React error #31 ("Objects are not valid as
+// a React child, found: object with keys {...}") that R5 misses. R5 only
+// covers forwardRef icons; R8 covers the more common case where a state /
+// config / prop object is rendered directly in JSX instead of a field on it.
+//
+// Heuristic — only fires on bindings we can prove are objects:
+//   1. `const NAME = { ... }` (object literal)
+//   2. `const [NAME, setX] = useState({ ... })` (object initial state)
+//   3. `const [NAME, setX] = useState<{ ... }>(...)` (typed object state)
+//   4. `const NAME = useMemo(() => ({ ... }), ...)` / useRef({ ... })
+//
+// Then we look for a JSX child expression of the form `{NAME}` or
+// `{NAME.field.subfield}` where the LAST segment is NOT called (no `(`) and
+// has no string-coercion (no `JSON.stringify`, no `String(`, no `+ ""`).
+// JSON.stringify, template strings, and attribute positions are all skipped.
+//
+// Conservative on purpose: we only emit if the binding is locally provable
+// as an object. Props with `Record<...>` types are NOT included here to
+// keep false-positives near zero.
+
+function findObjectChildBindings(src: string): Set<string> {
+  const out = new Set<string>();
+  // `const NAME = { ... }`
+  const litRe = /(?:^|\s)(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=\n]+)?\s*=\s*\{/g;
+  let m: RegExpExecArray | null;
+  while ((m = litRe.exec(src))) {
+    // Skip destructure (we already matched `=\s*\{` after an identifier — that's a literal).
+    out.add(m[1]);
+  }
+  // `const [NAME, setX] = useState({...})` / `useState<{...}>(...)` / useRef({...}) / useMemo(() => ({...}))
+  const hookRe =
+    /(?:^|\s)(?:const|let)\s+\[\s*([A-Za-z_$][\w$]*)\s*,\s*[A-Za-z_$][\w$]*\s*\]\s*=\s*(useState|useReducer)\s*(?:<\s*\{)?/g;
+  while ((m = hookRe.exec(src))) {
+    const after = src.slice(m.index + m[0].length, m.index + m[0].length + 200);
+    // Confirm it's object-shaped: either matched `<{` already, or first arg starts with `({` or `{`.
+    if (/^\s*\(\s*\(?\s*\{|^\s*\{|>\s*\(/.test(after) || m[0].includes("<")) {
+      out.add(m[1]);
+    }
+  }
+  const refMemoRe =
+    /(?:^|\s)(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*(useRef|useMemo)\s*\(/g;
+  while ((m = refMemoRe.exec(src))) {
+    const after = src.slice(m.index + m[0].length, m.index + m[0].length + 200);
+    // useRef({...}) or useMemo(() => ({...}), ...)
+    if (/^\s*\{|^\s*\(\s*\)\s*=>\s*\(\s*\{/.test(after)) {
+      out.add(m[1]);
+    }
+  }
+  return out;
+}
+
+function findObjectAsJsxChild(
+  src: string,
+  clean: string,
+): { ident: string; expr: string }[] {
+  const issues: { ident: string; expr: string }[] = [];
+  const bindings = findObjectChildBindings(src);
+  if (bindings.size === 0) return issues;
+
+  // Match `{IDENT}` or `{IDENT.a.b}` that sits as a JSX child. We approximate
+  // "JSX child position" with: preceded (within 80 chars) by a closing `>` of
+  // an open tag and not preceded immediately by `=` (attribute) or `${`
+  // (template literal). The trailing char must close the brace (`}`) with no
+  // trailing `(` (call) inside.
+  for (const ident of bindings) {
+    const re = new RegExp(
+      `(^|[^A-Za-z0-9_$=:.\\\`])\\{\\s*(${escapeRe(ident)}(?:\\.[A-Za-z_$][\\w$]*)*)\\s*\\}`,
+      "g",
+    );
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(clean))) {
+      const expr = m[2];
+      // Skip attribute positions: `attr={NAME}` — preceded by `=` immediately.
+      // The regex above already excludes `=` as the previous char, but be defensive.
+      const before = clean.slice(Math.max(0, m.index - 120), m.index + m[1].length);
+      // Must be inside JSX (closing `>` of an opening tag somewhere before, with no closing `</` in between).
+      if (!/>[^<{]*$/.test(before)) continue;
+      // Skip when the binding is also coerced to string nearby (best-effort).
+      if (new RegExp(`(?:JSON\\.stringify|String)\\s*\\(\\s*${escapeRe(ident)}\\b`).test(clean)) continue;
+      issues.push({ ident, expr });
+      break;
+    }
+  }
+  return issues;
+}
+
+// =============================================================================
 // Entry point
 // =============================================================================
+
+
+
 
 
 export function lintRenderRisks(
@@ -860,7 +955,19 @@ export function lintRenderRisks(
         });
       }
     }
+
+    // R8 — plain object rendered as a JSX child (React error #31).
+    if (ENABLED_RULES.has("R8")) {
+      for (const issue of findObjectAsJsxChild(f.content, clean)) {
+        issues.push({
+          path: f.path,
+          kind: "render-risk",
+          detail: `\`{${issue.expr}}\` renders an object as a React child — will throw React error #31 ("object with keys {...}"). Render a specific field (e.g. \`{${issue.ident}.name}\`) or stringify it (\`{JSON.stringify(${issue.ident})}\`).`,
+        });
+      }
+    }
   }
+
 
   return issues;
 }
