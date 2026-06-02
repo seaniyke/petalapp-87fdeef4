@@ -286,32 +286,6 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
         </SheetHeader>
 
         <div className="space-y-4 p-4">
-          {/* 0. Payment-failed (attention) banner */}
-          {subStatus?.status === "attention" && (
-            <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                <div className="flex-1">
-                  <div className="font-medium text-destructive">
-                    Your last renewal charge failed
-                  </div>
-                  <div className="mt-1 text-muted-foreground">
-                    We couldn't charge your card for {plan?.name ?? "your plan"}.
-                    Update your card to keep your plan active.
-                  </div>
-                </div>
-              </div>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="mt-3 w-full"
-                disabled={busyKey === "sub:manage"}
-                onClick={openManageCard}
-              >
-                {busyKey === "sub:manage" ? "Opening…" : "Update card"}
-              </Button>
-            </div>
-          )}
 
           {/* 1. Warning banner */}
 
