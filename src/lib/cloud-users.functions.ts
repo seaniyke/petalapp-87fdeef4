@@ -10,7 +10,7 @@ import {
   assertOwnsProject,
   getManagedBackendForProject,
   makeManagedClient,
-} from "./cloud-managed-client.server";
+} from "@/server/cloud-managed-client.server";
 
 const ProjectInput = z.object({ projectId: z.string().uuid() });
 
