@@ -1,5 +1,5 @@
 import { getSupabaseAccessToken } from "@/lib/auth-token";
-import { PipelineError } from "@/lib/friendly-errors";
+import { PipelineError, throwIfCreditsExhausted } from "@/lib/friendly-errors";
 import type { ChatMessage, ProjectFile, StreamEvent } from "@/server/generate.server";
 
 type Handlers = {
