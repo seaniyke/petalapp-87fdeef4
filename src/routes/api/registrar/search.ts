@@ -12,10 +12,23 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { searchDomains } from "@/server/cloudflare-registrar.server";
+import { checkRateLimit, rateLimitResponse } from "@/server/rate-limit.server";
 
 const Body = z.object({
   query: z.string().trim().min(1).max(64),
 });
+
+/**
+ * Short-lived in-memory cache for availability lookups. CF Registrar pricing
+ * doesn't change minute-to-minute and the same query is often retyped (e.g.
+ * the search field autosubmits on each keystroke). Caching for 60s cuts
+ * repeated API hits roughly 10× during interactive sessions while staying
+ * fresh enough that the pre-purchase recheck still catches real changes.
+ */
+type CacheEntry = { at: number; body: string };
+const CACHE_TTL_MS = 60_000;
+const cache = new Map<string, CacheEntry>();
+
 
 async function authorize(request: Request): Promise<string | Response> {
   const SUPABASE_URL = process.env.SUPABASE_URL;
