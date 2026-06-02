@@ -49,6 +49,7 @@ import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
 import { Route as AdminFailuresRouteImport } from './routes/admin.failures'
 import { Route as AdminDigestRouteImport } from './routes/admin.digest'
 import { Route as AdminBillingRouteImport } from './routes/admin.billing'
+import { Route as AdminAiSpendRouteImport } from './routes/admin.ai-spend'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiRegistrarSearchRouteImport } from './routes/api/registrar/search'
@@ -287,6 +288,11 @@ const AdminBillingRoute = AdminBillingRouteImport.update({
   path: '/admin/billing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAiSpendRoute = AdminAiSpendRouteImport.update({
+  id: '/admin/ai-spend',
+  path: '/admin/ai-spend',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminAiProvidersRoute = AdminAiProvidersRouteImport.update({
   id: '/admin/ai-providers',
   path: '/admin/ai-providers',
@@ -498,6 +504,7 @@ export interface FileRoutesByFullPath {
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
+  '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
@@ -577,6 +584,7 @@ export interface FileRoutesByTo {
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
+  '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
@@ -657,6 +665,7 @@ export interface FileRoutesById {
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
+  '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
@@ -738,6 +747,7 @@ export interface FileRouteTypes {
     | '/themes'
     | '/unsubscribe'
     | '/admin/ai-providers'
+    | '/admin/ai-spend'
     | '/admin/billing'
     | '/admin/digest'
     | '/admin/failures'
@@ -817,6 +827,7 @@ export interface FileRouteTypes {
     | '/themes'
     | '/unsubscribe'
     | '/admin/ai-providers'
+    | '/admin/ai-spend'
     | '/admin/billing'
     | '/admin/digest'
     | '/admin/failures'
@@ -896,6 +907,7 @@ export interface FileRouteTypes {
     | '/themes'
     | '/unsubscribe'
     | '/admin/ai-providers'
+    | '/admin/ai-spend'
     | '/admin/billing'
     | '/admin/digest'
     | '/admin/failures'
@@ -976,6 +988,7 @@ export interface RootRouteChildren {
   ThemesRoute: typeof ThemesRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
+  AdminAiSpendRoute: typeof AdminAiSpendRoute
   AdminBillingRoute: typeof AdminBillingRoute
   AdminDigestRoute: typeof AdminDigestRoute
   AdminFailuresRoute: typeof AdminFailuresRoute
@@ -1322,6 +1335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBillingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/ai-spend': {
+      id: '/admin/ai-spend'
+      path: '/admin/ai-spend'
+      fullPath: '/admin/ai-spend'
+      preLoaderRoute: typeof AdminAiSpendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/ai-providers': {
       id: '/admin/ai-providers'
       path: '/admin/ai-providers'
@@ -1620,6 +1640,7 @@ const rootRouteChildren: RootRouteChildren = {
   ThemesRoute: ThemesRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,
+  AdminAiSpendRoute: AdminAiSpendRoute,
   AdminBillingRoute: AdminBillingRoute,
   AdminDigestRoute: AdminDigestRoute,
   AdminFailuresRoute: AdminFailuresRoute,
