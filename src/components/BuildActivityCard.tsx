@@ -274,6 +274,7 @@ export function BuildActivityCard({
         onRetry={onRetry}
         onAskFix={onAskFix}
         onDismiss={onDismissError}
+        onBuyCredits={onBuyCredits}
       />
     );
   }
