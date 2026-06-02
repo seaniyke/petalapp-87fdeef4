@@ -10,7 +10,7 @@
  * and secondary glass button — matches iOS 17 system alerts / banners.
  */
 import { useState } from "react";
-import { RefreshCcw, Wrench, X, ChevronDown } from "lucide-react";
+import { RefreshCcw, Wrench, X, ChevronDown, Sparkles } from "lucide-react";
 import type { FriendlyError } from "@/lib/friendly-errors";
 
 type Props = {
@@ -18,17 +18,20 @@ type Props = {
   onRetry?: () => void;
   onAskFix?: () => void;
   onDismiss?: () => void;
+  /** Opens the billing sheet for the "buy-credits" action kind. */
+  onBuyCredits?: () => void;
   /** When true, the card is being shown from history — hide live-only
    *  affordances like the dismiss "X" if no handler was provided. */
   persisted?: boolean;
 };
 
-export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss }: Props) {
+export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredits }: Props) {
   const [showDetails, setShowDetails] = useState(false);
 
   const isAskFix = error.actionKind === "ask-fix";
   const isRetry = error.actionKind === "retry";
   const isDismiss = error.actionKind === "dismiss";
+  const isBuyCredits = error.actionKind === "buy-credits";
 
   return (
     <div className="mr-2 w-full max-w-[520px]">
@@ -55,12 +58,16 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss }: Props) {
               "mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
               isAskFix
                 ? "bg-[color-mix(in_oklab,var(--primary)_14%,transparent)] text-primary"
-                : "bg-[color-mix(in_oklab,#f59e0b_18%,transparent)] text-amber-600 dark:text-amber-400",
+                : isBuyCredits
+                  ? "bg-[color-mix(in_oklab,var(--primary)_14%,transparent)] text-primary"
+                  : "bg-[color-mix(in_oklab,#f59e0b_18%,transparent)] text-amber-600 dark:text-amber-400",
             ].join(" ")}
             aria-hidden
           >
             {isAskFix ? (
               <Wrench className="h-4 w-4" strokeWidth={2.25} />
+            ) : isBuyCredits ? (
+              <Sparkles className="h-4 w-4" strokeWidth={2.25} />
             ) : (
               // iOS-style "exclamationmark" in a circle — drawn with text for crispness
               <span className="text-[15px] font-semibold leading-none">!</span>
@@ -94,6 +101,16 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss }: Props) {
                   className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground transition active:scale-[0.97]"
                 >
                   <Wrench className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  {error.actionLabel}
+                </button>
+              )}
+              {isBuyCredits && onBuyCredits && (
+                <button
+                  type="button"
+                  onClick={onBuyCredits}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground transition active:scale-[0.97]"
+                >
+                  <Sparkles className="h-3.5 w-3.5" strokeWidth={2.5} />
                   {error.actionLabel}
                 </button>
               )}

@@ -461,7 +461,7 @@ export type ChatMessage = {
     title: string;
     message: string;
     actionLabel: string;
-    actionKind: "retry" | "ask-fix" | "dismiss";
+    actionKind: "retry" | "ask-fix" | "dismiss" | "buy-credits";
     technicalDetail?: string;
   };
 };

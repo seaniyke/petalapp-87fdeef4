@@ -3301,6 +3301,11 @@ function Builder() {
                           ? askPetalToFix
                           : undefined
                       }
+                      onBuyCredits={
+                        m.error.actionKind === "buy-credits"
+                          ? () => setBillingOpen(true)
+                          : undefined
+                      }
                     />
                   </div>
                 );
@@ -4172,6 +4177,7 @@ function Builder() {
                 }
                 onAskFix={askPetalToFix}
                 onDismissError={() => setFriendlyError(null)}
+                onBuyCredits={() => setBillingOpen(true)}
                 onReviewChanges={
                   isLive && preTurnFilesRef.current
                     ? () => {

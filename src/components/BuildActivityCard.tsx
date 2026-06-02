@@ -116,6 +116,8 @@ type Props = {
   onRetry?: () => void;
   onAskFix?: () => void;
   onDismissError?: () => void;
+  /** Opens the billing sheet for the "buy-credits" error action. */
+  onBuyCredits?: () => void;
   /** Opens the per-file diff drawer comparing the pre-turn snapshot to the
    *  files Petal just wrote. Shown on the collapsed success line. */
   onReviewChanges?: () => void;
@@ -142,6 +144,7 @@ export function BuildActivityCard({
   onRetry,
   onAskFix,
   onDismissError,
+  onBuyCredits,
   onReviewChanges,
 }: Props) {
   // Auto-collapse 3s after success.
@@ -271,6 +274,7 @@ export function BuildActivityCard({
         onRetry={onRetry}
         onAskFix={onAskFix}
         onDismiss={onDismissError}
+        onBuyCredits={onBuyCredits}
       />
     );
   }

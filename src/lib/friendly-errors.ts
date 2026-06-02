@@ -36,7 +36,7 @@ export type FriendlyError = {
   /** What the user should do next, e.g. "Try again". */
   actionLabel: string;
   /** Which kind of action button to render. */
-  actionKind: "retry" | "ask-fix" | "dismiss";
+  actionKind: "retry" | "ask-fix" | "dismiss" | "buy-credits";
   /** Original technical detail — hidden behind a "Show details" disclosure. */
   technicalDetail?: string;
 };
@@ -112,11 +112,11 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
     technicalDetail: raw,
   }),
   credits_exhausted: (raw) => ({
-    title: "Out of free generations",
+    title: "You're out of credits",
     message:
-      "We've used up today's free generations. Add credits in Settings → Workspace to keep going.",
-    actionLabel: "Try again",
-    actionKind: "retry",
+      "Your credit balance is empty, so Petal couldn't run this build. Top up to keep generating — your project is safe and nothing was charged.",
+    actionLabel: "Buy credits",
+    actionKind: "buy-credits",
     technicalDetail: raw,
   }),
   upstream_unavailable: (raw) => ({
