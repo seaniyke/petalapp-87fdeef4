@@ -2,6 +2,7 @@ import type { ProjectFile } from "@/server/generate.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { DesignDirection } from "@/server/design-director.server";
 import type { WebSubtype } from "@/lib/web-subtype";
+import type { HighStakesDomain, HighStakesRoadmap } from "@/lib/high-stakes-intent";
 
 export interface BuildBlueprint {
   projectType: WebSubtype | "mobile" | "extension" | "web-mobile" | "backend";
@@ -10,6 +11,15 @@ export interface BuildBlueprint {
   designLanguage: string;
   backend: string;
   files: string[];
+  /**
+   * Optional: present only when the first turn of a project matched a
+   * high-stakes pattern (crypto wallet, neobank, trading, etc.). Persisted
+   * so future turns reuse the same roadmap instead of re-planning.
+   */
+  highStakes?: {
+    domain: HighStakesDomain;
+    roadmap: HighStakesRoadmap;
+  };
 }
 
 function routeFromPath(path: string): string | null {
@@ -25,6 +35,7 @@ export function makeBuildBlueprint(args: {
   files: ProjectFile[];
   designDirection?: DesignDirection | null;
   hasBackend: boolean;
+  highStakes?: { domain: HighStakesDomain; roadmap: HighStakesRoadmap } | null;
 }): BuildBlueprint {
   const text = args.files.map((f) => f.content).join("\n").slice(0, 120_000);
   const routes = args.files.map((f) => routeFromPath(f.path)).filter((r): r is string => !!r);
@@ -43,13 +54,23 @@ export function makeBuildBlueprint(args: {
       : "Use the committed design direction and semantic theme tokens.",
     backend: args.hasBackend ? "connected" : "none",
     files: args.files.map((f) => f.path).filter((p) => !p.startsWith("src/components/ui/")).slice(0, 40),
+    highStakes: args.highStakes ?? undefined,
   };
 }
 
 export function renderBuildBlueprintBlock(blueprint: BuildBlueprint | null): string {
   if (!blueprint) return "";
-  return `\n\n### Build Blueprint (echo before files, then follow exactly)\n${JSON.stringify(blueprint, null, 2)}\nKeep this blueprint consistent on subsequent turns; do not switch app type, navigation model, fonts, or palette unless the user explicitly asks.`;
+  const base = `\n\n### Build Blueprint (echo before files, then follow exactly)\n${JSON.stringify(blueprint, null, 2)}\nKeep this blueprint consistent on subsequent turns; do not switch app type, navigation model, fonts, or palette unless the user explicitly asks.`;
+  if (!blueprint.highStakes) return base;
+  const r = blueprint.highStakes.roadmap;
+  return (
+    base +
+    `\n\n### Saved high-stakes roadmap (${r.productLabel})\nThe landing page already exists from turn 1. When the user asks for the next feature, pick from this saved list (in order) and build ONLY that one:\n` +
+    r.futureFeatures.map((f, i) => `  ${i + 1}. ${f}`).join("\n") +
+    `\nProviders that would make this real (mention by name when the user asks to wire one up): ${r.providersToWireLater.join(", ")}.`
+  );
 }
+
 
 export async function loadProjectBlueprint(projectId?: string | null): Promise<BuildBlueprint | null> {
   if (!projectId) return null;
