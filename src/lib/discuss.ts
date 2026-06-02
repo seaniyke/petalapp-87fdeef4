@@ -8,6 +8,7 @@
  * upstream by /api/triage. So this helper only returns a reply string.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { throwIfCreditsExhausted } from "@/lib/friendly-errors";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 
 export type DiscussResult = { reply: string };
