@@ -781,6 +781,78 @@ export const START_IDEAS: StartIdea[] = [
     accent: "mint",
     category: "AI tools",
   },
+
+  // ── African market pack ─────────────────────────────────────────────────
+  // Surfaced via geo/language signals (Pidgin, Swahili, Yoruba, etc.) and on
+  // /templates. Designed for SMB realities across the continent: mobile
+  // money, WhatsApp-first comms, low-bandwidth UIs, USSD-style flows.
+  {
+    title: "Okada / boda dispatch",
+    prompt:
+      "A motorcycle-taxi dispatch app: riders see ride requests on a map, riders/passengers chat over WhatsApp click-to-message, fares calculated by distance, cash + mobile-money payment options, daily earnings dashboard for riders, simple admin to onboard riders.",
+    Icon: Map,
+    accent: "butter",
+    category: "Local business",
+  },
+  {
+    title: "Chama / esusu savings group",
+    prompt:
+      "A rotating savings group (chama / esusu / susu / tontine) tracker: create a group, set contribution amount and schedule, members log contributions, app rotates the payout member each cycle, sends WhatsApp/SMS reminders, simple member view of total saved and next payout date.",
+    Icon: Users,
+    accent: "mint",
+    category: "Local business",
+    featured: true,
+  },
+  {
+    title: "Agritech marketplace",
+    prompt:
+      "A marketplace where smallholder farmers list produce (price, quantity, location) and buyers (restaurants, traders, exporters) place orders. WhatsApp click-to-message for negotiation, mobile-money checkout, basic logistics handoff to a transporter list, ratings for both sides.",
+    Icon: Store,
+    accent: "mint",
+    category: "Marketplace",
+  },
+  {
+    title: "Mobile-money mini-wallet",
+    prompt:
+      "A consumer wallet that connects to M-Pesa / MTN MoMo / Paystack: top up, send to a phone number, view transaction history, generate a payment link to share on WhatsApp, basic spend categorisation. Use Paystack for the live integration; mock the M-Pesa Daraja side until the user adds keys.",
+    Icon: Smartphone,
+    accent: "lilac",
+    category: "Mobile",
+    featured: true,
+  },
+  {
+    title: "Church / mosque tithing & events",
+    prompt:
+      "A small congregation app: weekly service schedule, sermon notes & audio, member directory, online tithing via Paystack/Flutterwave (mobile money + card), announcement broadcasts via WhatsApp click-to-message, simple admin for the pastor/imam.",
+    Icon: Heart,
+    accent: "pink",
+    category: "Local business",
+  },
+  {
+    title: "Street-food POS",
+    prompt:
+      "A point-of-sale for a single small food vendor (suya spot, mama-put, jollof joint): touch-friendly menu grid, running tab per customer, end-of-day cash + mobile-money reconciliation, daily sales chart, low-stock alerts for ingredients. Works fully offline; syncs when connection returns.",
+    Icon: Utensils,
+    accent: "butter",
+    category: "Local business",
+  },
+  {
+    title: "WhatsApp business catalog",
+    prompt:
+      "A product catalog small businesses can share on WhatsApp: gridded products with photo/price/description, a 'Order on WhatsApp' button on each item that opens a pre-filled message to the owner, simple admin to add/edit products, no checkout — the conversation closes the sale.",
+    Icon: ShoppingBag,
+    accent: "sky",
+    category: "E-commerce",
+    featured: true,
+  },
+  {
+    title: "USSD-style civic services portal",
+    prompt:
+      "A mobile-first portal modelled on USSD menus for a local government or utility: numbered menu items, pay bill, report fault, check status, top up — each step a single-question screen that works on a 2G connection. Mobile-money checkout, SMS confirmations.",
+    Icon: Building2,
+    accent: "lilac",
+    category: "Local business",
+  },
 ];
 
 export const FEATURED_IDEAS = START_IDEAS.filter((i) => i.featured);

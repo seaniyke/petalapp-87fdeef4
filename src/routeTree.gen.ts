@@ -59,7 +59,7 @@ import { Route as ApiPublicTrackFailureRouteImport } from './routes/api/public/t
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
 import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
-import { Route as ApiMobileEasBuildRouteImport } from './routes/api/mobile/eas-build'
+import { Route as ApiInternalHealthRouteImport } from './routes/api/internal/health'
 import { Route as ApiDomainsDnsCheckRouteImport } from './routes/api/domains/dns-check'
 import { Route as ApiBuildsWatchdogRouteImport } from './routes/api/builds/watchdog'
 import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigger'
@@ -338,9 +338,9 @@ const ApiPreviewProjectIdRoute = ApiPreviewProjectIdRouteImport.update({
   path: '/api/preview/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiMobileEasBuildRoute = ApiMobileEasBuildRouteImport.update({
-  id: '/api/mobile/eas-build',
-  path: '/api/mobile/eas-build',
+const ApiInternalHealthRoute = ApiInternalHealthRouteImport.update({
+  id: '/api/internal/health',
+  path: '/api/internal/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiDomainsDnsCheckRoute = ApiDomainsDnsCheckRouteImport.update({
@@ -536,7 +536,7 @@ export interface FileRoutesByFullPath {
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/builds/watchdog': typeof ApiBuildsWatchdogRoute
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
-  '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
+  '/api/internal/health': typeof ApiInternalHealthRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
@@ -615,7 +615,7 @@ export interface FileRoutesByTo {
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/builds/watchdog': typeof ApiBuildsWatchdogRoute
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
-  '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
+  '/api/internal/health': typeof ApiInternalHealthRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
@@ -695,7 +695,7 @@ export interface FileRoutesById {
   '/api/builds/trigger': typeof ApiBuildsTriggerRoute
   '/api/builds/watchdog': typeof ApiBuildsWatchdogRoute
   '/api/domains/dns-check': typeof ApiDomainsDnsCheckRoute
-  '/api/mobile/eas-build': typeof ApiMobileEasBuildRoute
+  '/api/internal/health': typeof ApiInternalHealthRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/track': typeof ApiPublicTrackRoute
@@ -776,7 +776,7 @@ export interface FileRouteTypes {
     | '/api/builds/trigger'
     | '/api/builds/watchdog'
     | '/api/domains/dns-check'
-    | '/api/mobile/eas-build'
+    | '/api/internal/health'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
@@ -855,7 +855,7 @@ export interface FileRouteTypes {
     | '/api/builds/trigger'
     | '/api/builds/watchdog'
     | '/api/domains/dns-check'
-    | '/api/mobile/eas-build'
+    | '/api/internal/health'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
@@ -934,7 +934,7 @@ export interface FileRouteTypes {
     | '/api/builds/trigger'
     | '/api/builds/watchdog'
     | '/api/domains/dns-check'
-    | '/api/mobile/eas-build'
+    | '/api/internal/health'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/track'
@@ -1012,7 +1012,7 @@ export interface RootRouteChildren {
   ApiBuildsCallbackRoute: typeof ApiBuildsCallbackRoute
   ApiBuildsTriggerRoute: typeof ApiBuildsTriggerRoute
   ApiBuildsWatchdogRoute: typeof ApiBuildsWatchdogRoute
-  ApiMobileEasBuildRoute: typeof ApiMobileEasBuildRoute
+  ApiInternalHealthRoute: typeof ApiInternalHealthRoute
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
   ApiPublicHostLookupRoute: typeof ApiPublicHostLookupRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
@@ -1392,11 +1392,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPreviewProjectIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/mobile/eas-build': {
-      id: '/api/mobile/eas-build'
-      path: '/api/mobile/eas-build'
-      fullPath: '/api/mobile/eas-build'
-      preLoaderRoute: typeof ApiMobileEasBuildRouteImport
+    '/api/internal/health': {
+      id: '/api/internal/health'
+      path: '/api/internal/health'
+      fullPath: '/api/internal/health'
+      preLoaderRoute: typeof ApiInternalHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/domains/dns-check': {
@@ -1656,7 +1656,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBuildsCallbackRoute: ApiBuildsCallbackRoute,
   ApiBuildsTriggerRoute: ApiBuildsTriggerRoute,
   ApiBuildsWatchdogRoute: ApiBuildsWatchdogRoute,
-  ApiMobileEasBuildRoute: ApiMobileEasBuildRoute,
+  ApiInternalHealthRoute: ApiInternalHealthRoute,
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
   ApiPublicHostLookupRoute: ApiPublicHostLookupRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
@@ -1686,13 +1686,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -40,6 +40,7 @@ import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 import { loadProjectMemoryBlock } from "@/server/project-memory.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import { detectHighStakesIntent, highStakesClarifyInstruction } from "@/lib/high-stakes-intent";
+import { detectLanguage, renderLanguageHint } from "@/server/lang-detect.server";
 
 type Body = {
   messages: ChatMessage[];
@@ -100,7 +101,7 @@ How to fill the tool fields:
 
 - confidence: 0..1, how sure you are about \`mode\` and \`brief\`. LOW CONFIDENCE IS NOT A REASON TO CLARIFY. Pick the most likely intent, state your assumption in \`reply\` ("I'll assume X — tell me if you'd rather Y"), and proceed. Only escalate to "clarify" when confidence is below ~0.25 AND a wrong guess would waste a real build.
 
-- language: short tag for the language they wrote in. Use "en" for standard English, "pidgin" for West African pidgin / broken English, "fr" for French, "es" for Spanish, "pt" for Portuguese, etc. Detect from the actual message — never assume English.
+- language: short tag for the language they wrote in. Detect from the actual message — never assume English. Use these tags when applicable: "en" (English), "pidgin" (West African pidgin / broken English — Nigerian, Ghanaian, etc.), "sw" (Swahili / Kiswahili — KE/TZ/UG), "yo" (Yoruba — NG), "ig" (Igbo — NG), "ha" (Hausa — NG/Niger), "am" (Amharic — ET), "zu" (Zulu / isiZulu — ZA), "xh" (Xhosa / isiXhosa — ZA), "fr" (French — including West African register), "ar" (Arabic — including Maghrebi Darija), "pt" (Portuguese), "es" (Spanish). For African languages especially, mirror their exact register — a Yoruba speaker who writes pure Yoruba expects a Yoruba reply, not English. Generated CODE stays in English regardless (variable names, comments, identifiers) — only the conversational reply mirrors their language.
 
 - audience_level: "non_technical" by default. Use "technical" only if they reference code, frameworks, APIs, or other engineer-speak. "mixed" if unclear.
 
@@ -350,6 +351,12 @@ export const Route = createFileRoute("/api/triage")({
             ? "\n\n" + highStakesClarifyInstruction(highStakes.domain)
             : "";
 
+        // Deterministic language pre-detect — runs zero-cost before the LLM
+        // and commits the model to African languages it sometimes hedges on
+        // (Yoruba/Igbo/Amharic).
+        const langHint = detectLanguage(lastUserText);
+        const langBlock = renderLanguageHint(langHint);
+
         const chatMessages = [
           {
             role: "system",
@@ -359,7 +366,8 @@ export const Route = createFileRoute("/api/triage")({
               stateLine +
               knowledgeBlock +
               memoryBlock +
-              highStakesBlock,
+              highStakesBlock +
+              langBlock,
           },
           ...messages.map((m) => ({
             role: m.role,

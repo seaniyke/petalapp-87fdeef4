@@ -1,140 +1,127 @@
-## Petal Quality Engine v1 — A + B + C
+# Petal Launch Punch-List
 
-Three small, surgical additions to the existing pipeline. No new architecture, no new turn stages, no per-build extra LLM passes. All three layer on top of the marketing/app quality bars we already shipped.
+Ordered by **launch-blocking severity**. P0 = ship-stoppers, P1 = ship within 72h, P2 = week-1 fast-follows. Each item has a concrete file target + acceptance criteria so it's verifiable, not vibes.
 
 ---
 
-### A. Domain Feature Packs
+## P0 — Ship-stoppers (must clear before "Publish" CTA goes live)
 
-**Problem:** `DOMAIN_COMPONENTS` in `src/lib/app-shape-classifier.ts` lists the 3–4 *core* components per vertical (CRM → ContactsTable, Pipeline, DealDetail, ActivityLog). It does not include the **secondary product surfaces** that turn a "CRM screen" into a "CRM product": activity timeline, notifications, reporting, onboarding, etc. As a result, every business-app vertical ships the same skeleton.
+### 1. Delete the `/api/mobile/eas-build` 501 stub
+- **File:** `src/routes/api/mobile/eas-build.ts` → delete.
+- **Why:** Returns HTTP 501 today. Any external prober (or curious user hitting devtools) sees a broken endpoint on a production domain. Codemagic is the real path (`src/server/mobile-service.server.ts`); EAS-direct was abandoned.
+- **Also:** grep for any client call to `/api/mobile/eas-build` and remove.
+- **Done when:** route file gone, build green, `rg eas-build src/` returns 0 hits outside `routeTree.gen.ts`.
 
-**Change:** Introduce a parallel `DOMAIN_FEATURE_PACKS` map in the same file. Each entry lists 2–4 *secondary* components that must also be planned for that domain.
+### 2. Verify & document prod env vars on Railway/Worker
+- **Vars to confirm present and non-empty in prod:**
+  - `BUILDER_URL`, `BUILDER_SHARED_SECRET` (snapshot → builder handoff)
+  - `CODEMAGIC_API_TOKEN`, `CODEMAGIC_APP_TEMPLATE_ID`
+  - `EXPO_ACCESS_TOKEN` (Petal's org token, server-side only)
+  - `MOBILE_SIGNING_KEY` (Android keystore passphrase)
+  - `PETAL_EMAIL_*`, `PADDLE_*` / `STRIPE_*`, `PAYSTACK_SECRET_KEY`, `FLUTTERWAVE_SECRET_KEY`
+- **Deliverable:** a `docs/ops/prod-env.md` checklist + a `/api/internal/health` route that reports `{present: [...], missing: [...]}` (no values) gated by `INTERNAL_HEALTH_TOKEN`.
+- **Done when:** health endpoint returns `missing: []` in prod and preview.
 
-```ts
-// src/lib/app-shape-classifier.ts
-export const DOMAIN_FEATURE_PACKS: Record<BusinessDomain, string[]> = {
-  crm:        ["ActivityTimeline", "ReportsPanel", "NotificationsCenter"],
-  helpdesk:   ["SlaTracker", "CannedResponses", "CustomerSidebar"],
-  ats:        ["InterviewScheduler", "OfferLetter", "CandidateNotes"],
-  pm:         ["TimelineGantt", "WorkloadView", "TimeTracking"],
-  billing:    ["RevenueChart", "DunningQueue", "TaxSettings"],
-  lms:        ["QuizRunner", "Certificates", "LearnerProgress"],
-  // … one row per BusinessDomain
-};
+### 3. Codemagic build watchdog
+- **File:** new `src/routes/api/public/mobile/cron-watchdog.ts` + DB function.
+- **What:** every 5 min, find `mobile_builds` rows in `queued` or `running` for >25 min, mark `stuck`, notify the user + admin Slack webhook, and offer retry.
+- **Why:** Codemagic builds occasionally hang (signing race, simulator boot). Without this, users sit watching a spinner forever.
+- **Done when:** synthetic stuck row gets flipped to `stuck` within 5 min in staging.
 
-// Also export fintech/marketplace/social/booking packs keyed off shape.category
-// when businessDomain is undefined (Part 3 of source prompt: marketplace →
-// ratings, reviews, messaging; fintech → KYC, audit log, transactions).
-export const CATEGORY_FEATURE_PACKS: Partial<Record<AppShape["category"], string[]>> = {
-  fintech:     ["TransactionsLedger", "KycPanel", "AuditLog"],
-  marketplace: ["RatingsAndReviews", "MessagingThread", "SellerAnalytics"],
-  social:      ["FeedTimeline", "NotificationsCenter", "ProfileHeader"],
-  booking:     ["AvailabilityCalendar", "BookingConfirmation", "ReviewsPanel"],
-};
+### 4. App-level rate limit on `/api/generate`
+- **File:** `src/routes/api/generate.ts` (add middleware) + new `src/server/rate-limit.server.ts` (KV-backed, sliding window).
+- **Limits:** authed user → 30 req/min, 500 req/hr; per-IP fallback for anon → 10/min. 429 with `Retry-After`.
+- **Why:** today a single malicious tab can drain the wallet meter and torch our AI gateway budget.
+- **Done when:** unit test simulates 35 calls in 60s, 5 return 429.
+
+---
+
+## P1 — Within 72 hours (operational gaps; not user-visible breakage, but high-blast-radius)
+
+### 5. Per-project AI spend attribution
+- **Files:** `src/server/ai-usage.server.ts`, `src/lib/cloud-ai-usage.functions.ts`, `CloudAiUsageView.tsx`.
+- **What:** add `project_id` to `ai_usage_events` insert path; group "AI usage" panel by project. Backfill existing rows with `project_id = NULL` → label "Workspace-wide".
+- **Why:** today owners can't see which project burned the meter. Blocks accurate cost-per-project for our own pricing model.
+
+### 6. Confirm runtime-hour cron scheduler
+- **What:** the 4¢/hr backend meter relies on a 5-min cron hitting `/api/public/billing/tick-backend-hours`. Verify the external scheduler (Cloudflare Cron Trigger or upstash-cron) is actually configured for prod, not just preview.
+- **Add:** a `last_tick_at` row in `billing_meta`; admin dashboard widget that goes red if >10 min stale.
+- **Done when:** widget reads `< 6 min` in prod for 24h continuous.
+
+### 7. Registrar end-to-end load test
+- **Files:** `src/routes/api/registrar/{search,purchase,poll}.ts`.
+- **What:** scripted test that races Cloudflare webhook arriving before the purchase response returns (real bug we've hit twice). Idempotency key on `domain_purchases` + UPSERT.
+- **Done when:** 50 concurrent purchases of distinct domains all land in exactly one row each.
+
+### 8. Mobile signing key rotation runbook
+- **File:** `docs/ops/mobile-signing-rotation.md`.
+- **Cover:** how to rotate `MOBILE_SIGNING_KEY` without invalidating already-published Play Store apps (Google Play App Signing v2 upload key swap procedure), and the DR steps if the keystore is lost.
+- **Why:** if we lose this key with even one published app, that app is dead forever. Policy gap, not a code gap.
+
+---
+
+## P2 — Week-1 fast-follows
+
+### 9. Hide `/lovable/email/*` discovery on `buildwithpetal.com`
+- Add `Disallow: /lovable/` to `public/robots.txt` + 404 the path on the apex domain (keep working on `*--{id}.lovable.app`).
+
+### 10. GitHub export (read-only ZIP first, real sync later)
+- Phase 1: `Download as ZIP` button on Publish sheet (week 1).
+- Phase 2: real `git push` to user-owned repo (post-launch, separate epic).
+
+---
+
+## Cross-cutting: African language support
+
+This is the moat — let's make it real, not just a triage trick.
+
+### 11. Expand language detection beyond Pidgin
+- **File:** `src/routes/api/triage.ts` (language register detector).
+- **Add detection for:**
+  - **Swahili** (KE/TZ/UG) — already partial, promote to first-class
+  - **Yoruba**, **Igbo**, **Hausa** (NG — together cover ~140M speakers)
+  - **Amharic** (ET — 50M, unique script ጥሩ ነው → strong signal)
+  - **Zulu** + **Xhosa** (ZA)
+  - **French (West African register)** — already covered by `fr`, but tune for Ivorian/Senegalese idioms
+  - **Arabic (Maghrebi)** — Egypt/Morocco/Tunisia
+- **Implementation:** keep it cheap — n-gram + stopword list per language in `src/server/lang-detect.server.ts`, not an LLM call. Falls back to LLM classify only when confidence <0.6.
+
+### 12. Localized system prompts per detected language
+- **File:** `src/server/prompts/locale/{sw,yo,ig,ha,am,zu,xh,ar-MA}.md`.
+- The model still *generates code in English* (variable names, comments), but **explains, asks clarifying questions, and writes UI copy** in the user's language when the project is for that market.
+- **Acceptance:** a Yoruba prompt "Ṣe app fún titaja aṣọ" → triage returns clarifying question in Yoruba, scaffolds e-commerce app with Yoruba placeholder copy.
+
+### 13. African market template pack
+- **File:** `src/server/templates.server.ts` — add: `okada-dispatch`, `chama-savings` (KE rotating-savings), `agritech-marketplace`, `mobile-money-wallet`, `church-tithing`, `street-food-pos`.
+- These show up in `StartIdeasPanel` only when geo or language signals an African user — invisible to others, so global UX stays clean.
+
+---
+
+## Sequencing (recommended 5-day sprint)
+
+```
+Day 1: P0-1 (delete stub) + P0-2 (env audit)        → 1 dev
+Day 2: P0-3 (watchdog) + P0-4 (rate limit)          → 2 devs parallel
+Day 3: P1-5 (per-project AI) + P1-6 (cron check)    → 2 devs parallel
+Day 4: P1-7 (registrar test) + P1-8 (signing docs)  → 1 dev + you
+Day 5: P2-9, P2-10, P3-11..13 lang pack             → all hands
 ```
 
-**Wire-up in `src/server/pipeline/stage-plan.server.ts`:**
-- Around line 296–297 (the `domainLine` block), append a second line that lists the feature pack as **also required** (separate from core components so the planner doesn't confuse them).
-- Update `repairBusinessAppPlan` (line 378) to consider feature-pack components when computing gaps.
-- Bump `business-app` file budget from 25 → **28** to accommodate the extra components (current cap from the last plan is 25).
-
-**Wire-up in `renderShapeBlock` (`src/lib/app-shape-classifier.ts` line 403):**
-- Add a "Domain feature pack (also required)" line after the existing "Required product components" line so monolithic single-call builds get the same signal.
-
-**Net effect:** A "Build me a CRM" prompt now plans ContactsTable + Pipeline + DealDetail + ActivityLog **plus** ActivityTimeline + ReportsPanel + NotificationsCenter — turning a CRM screen into a CRM product. Same fix lands for every vertical at once.
+Ship `Publish` CTA after Day 2. Days 3–5 ride behind a flag if needed.
 
 ---
 
-### B. Domain → Font-Pair Defaults
+## Out of scope (intentionally deferred)
 
-**Problem:** `src/server/design-director.server.ts` picks display/body fonts purely from the LLM's interpretation of vibe. Output drifts: a fintech build can land on Fraunces, an AI tool can land on Cormorant. No deterministic floor.
-
-**Change:** Add a small lookup that biases the design director toward domain-appropriate pairings. The director can still override when the user gave explicit design direction or the vibe strongly demands it — this is a **default**, not a lock.
-
-```ts
-// src/server/design-director.server.ts (new helper)
-const DOMAIN_FONT_DEFAULTS: Record<string, { display: string; body: string }> = {
-  fintech:     { display: "Inter Tight",   body: "Inter" },
-  "ai-tool":   { display: "Geist",         body: "Geist" },
-  saas:        { display: "Plus Jakarta Sans", body: "Inter" },
-  marketplace: { display: "Space Grotesk", body: "Inter" },
-  ecommerce:   { display: "Instrument Serif", body: "Inter" },
-  social:      { display: "Space Grotesk", body: "Inter" },
-  booking:     { display: "Bricolage Grotesque", body: "Inter" },
-  editorial:   { display: "Fraunces",      body: "Inter" },
-};
-```
-
-**Wire-up:**
-- Inject the matched default into the LLM prompt as a **suggested pairing** (not a hard rule) — phrased as "Default for this category: X (display) + Y (body). Override only if the vibe demands a clearly distinctive direction."
-- After the LLM responds, if it returned the same generic pair we already ban (Inter+Inter when no vibe distinction was made, or Poppins anywhere), substitute the domain default.
-
-**Net effect:** Predictable, on-brand typography across verticals without removing creative latitude. Fintech reliably ships in Inter; AI tools reliably ship in Geist.
-
-**Note:** Geist requires loading via Vercel's CDN or `@fontsource/geist`. The font-loader prompt already handles Google Fonts; we add a one-liner allowing the director to write `@fontsource/geist` into `index.html` when it picks Geist.
+- Multiplayer / real-time co-editing — post-launch Q2.
+- Self-serve GitHub two-way sync — phase 2 of item 10.
+- Full Codemagic → in-house builder migration — only if Codemagic cost exceeds $X/mo.
+- iOS Test Flight automation — needs user's Apple Developer cert; deferred to user-onboarded flow.
 
 ---
 
-### C. Component Contract Checklist (`/app/*` only)
+## Open questions for you
 
-**Problem:** Current `appRules` in `src/server/pipeline/stage-scaffold.server.ts` (line 160) forbids placeholders and mandates sidebar/topbar/seed-data, but talks about quality in prose. The LLM skips items.
-
-**Change:** Convert the `appRules` block into an **enumerated checklist** of component contracts the model must satisfy. Concrete, countable, lintable.
-
-```
-Component contracts (every component in /app/* MUST satisfy these — count them):
-
-BUTTONS
-- [ ] All primary actions have: default + hover + focus-visible + disabled states
-- [ ] Async actions render a loading state (spinner or skeleton), never freeze
-- [ ] Destructive actions use variant="destructive" + confirm dialog
-
-FORMS
-- [ ] Every <Input> has an associated <Label> and <FormMessage /> slot
-- [ ] Validation runs on blur AND submit (react-hook-form + zod)
-- [ ] Submit button shows loading + disables during submission
-- [ ] Success path shows toast (sonner) + redirects or resets
-
-TABLES (any list of 5+ items)
-- [ ] Search input filters client-side
-- [ ] At least one sortable column header
-- [ ] Empty state component (icon + message + primary CTA) when length === 0
-- [ ] Row actions via DropdownMenu (View / Edit / Delete)
-- [ ] Pagination OR virtualized scroll above 50 rows
-
-CARDS / DATA DISPLAY
-- [ ] Loading state uses Skeleton, not text "Loading…"
-- [ ] Error state uses Alert variant="destructive", not raw error string
-```
-
-**Wire-up:**
-- Append the checklist to `appRules` in `stage-scaffold.server.ts` (around line 160).
-- Add a tiny post-scaffold lint in `src/server/render-risk-linter.ts`: when a `/app/*` component contains a `<form>`, `<table>`, or `Table` import, verify the file also references `FormMessage` / `TableEmpty` / `Skeleton` etc. On miss, attach a warning to the file and re-prompt that single file (cheap — one file, not the whole build).
-
-**Net effect:** No more dashboards shipped with a `<Table>` and zero empty state, no more forms shipped without validation messages.
-
----
-
-### What this does NOT include (deliberately)
-
-- No "Feature Evolution Engine" / pattern-memory store — vague, no concrete mechanism, skipped.
-- No dark-mode default — violates Core memory rule.
-- No full pre-finalize self-check pass — too expensive in latency/credits. The Part C lint covers the cheap structural slice that actually matters.
-- No new font in the allowed list beyond what's already supported + Geist (the one genuinely missing distinctive sans for AI tools).
-- No changes to backend / auth / RLS rules — already enforced elsewhere; nothing in the source prompt is new there.
-
----
-
-### Files touched
-
-- `src/lib/app-shape-classifier.ts` — add `DOMAIN_FEATURE_PACKS`, `CATEGORY_FEATURE_PACKS`, extend `renderShapeBlock`.
-- `src/server/pipeline/stage-plan.server.ts` — inject feature pack into plan prompt + repair logic; bump file budget 25→28.
-- `src/server/design-director.server.ts` — add `DOMAIN_FONT_DEFAULTS`, suggest in prompt, substitute on generic output.
-- `src/server/pipeline/stage-scaffold.server.ts` — convert `appRules` prose into enumerated checklist.
-- `src/server/pipeline/tier-render-risk.ts` (or `render-risk-linter.ts`) — add component-contract structural lint for `/app/*` files.
-
-### Risks
-
-- Feature packs raise per-build token cost (~5–10%). Mitigated by the file budget bump being modest (3 files).
-- Font defaults may surprise users who expect more variety. Mitigated by treating the lookup as a suggestion the LLM can override when the vibe is strong.
-- Lint re-prompt loop must be bounded (max 1 retry per file) to avoid runaway cost.
+1. **Lang priority:** do we ship all 8 African languages in item 11, or start with the 3 highest-volume (Swahili, Yoruba, Pidgin) and add the rest as a v1.1?
+2. **Rate limit numbers (item 4):** 30/min/user feels right for builders — too tight or too loose given your expected load?
+3. **Watchdog notifications (item 3):** Slack webhook for admin, but for the *user* — in-app toast only, or also email via Petal Email?
