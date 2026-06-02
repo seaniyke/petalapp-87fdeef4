@@ -115,8 +115,33 @@ function collectUnsafeIdents(src: string): Set<string> {
     }
   }
 
+  // 4. Component prop destructuring WITHOUT a default value. The dominant
+  //    landing-page crash source: `function Hero({ features }) { features.map(...) }`.
+  //    The parent forgot to pass `features`, child crashes. We rewrite the
+  //    body access defensively. Match `function Name({ a, b: c, d = [] }: ...)`
+  //    and `const Name = ({ ... }: ...) => ...`. Only flag bindings with NO
+  //    `= default` (those already have a default and are safe).
+  const propsRe =
+    /(?:function\s+[A-Z]\w*\s*\(|const\s+[A-Z]\w*\s*[:=][^=]*?=\s*\(|\(\s*)\{\s*([^}]+?)\s*\}\s*(?::\s*[^)=]+)?\s*\)\s*(?:=>|\{)/g;
+  while ((m = propsRe.exec(src))) {
+    for (const raw of m[1].split(",")) {
+      const part = raw.trim();
+      if (!part || part.startsWith("...")) continue;
+      // Skip if it has a default value: `name = something`
+      if (/=/.test(part)) continue;
+      // Strip alias: `data: rows` → use `rows`
+      const alias = /^[A-Za-z_$][\w$]*\s*:\s*([A-Za-z_$][\w$]*)/.exec(part);
+      const name = alias ? alias[1] : (/^([A-Za-z_$][\w$]*)/.exec(part)?.[1] ?? "");
+      if (!name) continue;
+      // Don't touch obviously-non-array props
+      if (/^(children|className|style|id|key|ref|onClick|on[A-Z])/.test(name)) continue;
+      idents.add(name);
+    }
+  }
+
   return idents;
 }
+
 
 function rewriteFile(src: string, idents: Set<string>): { src: string; rewrites: number } {
   if (idents.size === 0) return { src, rewrites: 0 };
