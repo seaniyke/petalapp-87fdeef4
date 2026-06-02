@@ -6,6 +6,7 @@
  * back to the composer.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { throwIfCreditsExhausted } from "@/lib/friendly-errors";
 import type { CoachExchange, CoachTurnOutput } from "@/server/idea-coach.server";
 
 export type CoachTurnReply = CoachTurnOutput & {
