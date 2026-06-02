@@ -169,6 +169,17 @@ const PATTERNS: Array<{
   build: (raw: string) => FriendlyError;
 }> = [
   {
+    // Credit-exhaustion safety net. Most credit-out paths now throw
+    // PipelineError("credits_exhausted") via throwIfCreditsExhausted, but
+    // this regex catches any plain Error that slips through — e.g. a
+    // triage/discuss/coach 402 surfaced as `new Error(text)` where `text`
+    // is `{"error":"You're out of credits..."}`. Without this the user
+    // sees the generic "Petal hit a build issue" card instead of the
+    // dedicated "Buy credits" CTA.
+    test: /\bout of credits\b|credits?\s+exhaust|insufficient.*(credit|balance)/i,
+    build: (raw) => KIND_TO_FRIENDLY.credits_exhausted(raw),
+  },
+  {
     test: /\b(?:load failed|typeerror:\s*load failed|operation was aborted|lock:sb-.*auth-token|request stole it|error code:\s*1016)\b/i,
     build: (raw) => ({
       title: "Petal lost the connection for a moment",
