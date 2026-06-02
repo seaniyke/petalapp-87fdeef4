@@ -42,25 +42,29 @@ export function detectHighStakesIntent(text: string | null | undefined): HighSta
   return { detected: false };
 }
 
-/** Short instruction we splice into the triage system prompt when fired. */
-export function highStakesClarifyInstruction(domain: HighStakesDomain): string {
+/** Short instruction we splice into the system prompt when fired.
+ *  Build-mode default: state the limitation honestly in one line, then
+ *  ship a polished demo. Do NOT stop to ask permission. */
+export function highStakesBuildInstruction(domain: HighStakesDomain): string {
   const honesty: Record<HighStakesDomain, string> = {
     "crypto-wallet":
-      "The user mentioned a crypto wallet. Petal CANNOT custody real crypto, manage seed phrases securely, sign on-chain transactions, or connect to real RPC providers out of the box. It CAN build a realistic demo (mock balances, fake transactions in the database, polished wallet UI).",
+      "Petal CANNOT custody real crypto, manage seed phrases, sign on-chain transactions, or connect to real RPC providers. It CAN — and should — build a polished, realistic DEMO (mock balances, simulated transfers/swaps in the database, full wallet/exchange UI).",
     neobank:
-      "The user mentioned a bank / neobank / banking app. Petal CANNOT move real money, hold deposits, issue cards, run ACH/SWIFT, or do KYC/AML. It CAN build a realistic demo with simulated accounts, transfers as database rows, and a banking UI.",
+      "Petal CANNOT move real money, hold deposits, issue cards, run ACH/SWIFT, or do KYC/AML. It CAN — and should — build a polished, realistic DEMO with simulated accounts, transfers as database rows, and a full banking UI.",
     trading:
-      "The user mentioned a trading / brokerage app. Petal CANNOT execute real trades or connect to brokers. It CAN build a realistic demo with mock prices, a fake portfolio, and a trading UI.",
+      "Petal CANNOT execute real trades or connect to brokers. It CAN — and should — build a polished, realistic DEMO with mock prices, a fake portfolio, and a full trading UI.",
     lending:
-      "The user mentioned a lending product. Petal CANNOT originate, underwrite, or disburse real loans. It CAN build a demo loan application UI and fake approval flow.",
+      "Petal CANNOT originate, underwrite, or disburse real loans. It CAN — and should — build a polished, realistic DEMO of the application + approval flow.",
     "kyc-identity":
-      "The user asked for KYC / identity verification. Petal does NOT have a Plaid/Persona/Onfido/Sumsub connector. It CAN build the UI and store form submissions, but verification will be simulated.",
+      "Petal does NOT have a Plaid/Persona/Onfido/Sumsub connector. It CAN — and should — build the full UI and store submissions; verification will be simulated.",
   };
   return [
-    "HIGH-STAKES DOMAIN DETECTED.",
+    "HIGH-STAKES DOMAIN DETECTED (" + domain + ").",
     honesty[domain],
-    "You MUST set mode = \"clarify\" with a warm, honest one-liner explaining the limitation, then ask: \"Do you want me to build a realistic demo, or do you have provider keys (e.g. Stripe, Plaid, Alchemy) you want wired up?\"",
-    "Set suggestions to: [\"Build a demo\", \"I have provider keys\", \"Explain what's possible\"].",
-    "Do NOT silently proceed to build.",
+    "In your one-line preamble, state the limitation honestly and mention that bringing provider keys later (e.g. Stripe, Plaid, Alchemy) can wire it up for real. Then PROCEED TO BUILD — do not stop to ask permission, do not force a clarify, do not emit a multiple-choice question.",
   ].join(" ");
 }
+
+/** @deprecated Kept as an alias so older imports don't break. Use highStakesBuildInstruction. */
+export const highStakesClarifyInstruction = highStakesBuildInstruction;
+
