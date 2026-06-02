@@ -4177,6 +4177,7 @@ function Builder() {
                 }
                 onAskFix={askPetalToFix}
                 onDismissError={() => setFriendlyError(null)}
+                onBuyCredits={() => setBillingOpen(true)}
                 onReviewChanges={
                   isLive && preTurnFilesRef.current
                     ? () => {
