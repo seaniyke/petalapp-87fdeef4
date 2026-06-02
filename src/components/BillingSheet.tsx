@@ -75,6 +75,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
     hasPaystackSubscription: boolean;
     cancelAtPeriodEnd: boolean;
     nextPaymentDate: string | null;
+    status: string | null;
   } | null>(null);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const topupRef = useRef<HTMLDivElement | null>(null);
