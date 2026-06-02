@@ -144,6 +144,7 @@ export function BuildActivityCard({
   onRetry,
   onAskFix,
   onDismissError,
+  onBuyCredits,
   onReviewChanges,
 }: Props) {
   // Auto-collapse 3s after success.
