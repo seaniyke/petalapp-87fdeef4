@@ -22,7 +22,7 @@ import {
 import {
   getMigrationHistory,
   runProjectMigrations,
-} from "@/server/managed-migrations.functions";
+} from "@/lib/managed-migrations.functions";
 import { CloudEmptyState } from "./CloudEmptyState";
 
 type Props = { projectId: string };
