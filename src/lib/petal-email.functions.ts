@@ -11,7 +11,7 @@ import {
   rotateApiToken,
   FREE_PLAN,
   PRO_PLAN,
-} from "./petal-email.server";
+} from "@/server/petal-email.server";
 
 const ProjectIdInput = z.object({ projectId: z.string().uuid() });
 

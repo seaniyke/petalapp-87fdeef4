@@ -26,15 +26,15 @@ import {
   codemagicProvider,
   type MobileBuildKind,
   type MobilePlatform,
-} from "./mobile-service.server";
-import { chargeRuntime } from "./runtime-wallet.server";
+} from "@/server/mobile-service.server";
+import { chargeRuntime } from "@/server/runtime-wallet.server";
 import {
   ensureMirrorRepo,
   pushSnapshot,
   repoNameForProject,
-} from "./mobile-github.server";
-import { encryptForProject } from "./mobile-crypto.server";
-import { CODEMAGIC_YAML } from "./mobile-codemagic-template.server";
+} from "@/server/mobile-github.server";
+import { encryptForProject } from "@/server/mobile-crypto.server";
+import { CODEMAGIC_YAML } from "@/server/mobile-codemagic-template.server";
 import type { ProjectFile } from "@/server/generate.server";
 
 const PROJECT_ID = z.string().uuid();

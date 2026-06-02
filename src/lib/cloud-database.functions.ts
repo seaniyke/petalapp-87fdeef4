@@ -13,7 +13,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   assertOwnsProject,
   getManagedBackendForProject,
-} from "./cloud-managed-client.server";
+} from "@/server/cloud-managed-client.server";
 import { runQuery } from "@/server/supabase-mgmt.server";
 
 const ProjectInput = z.object({ projectId: z.string().uuid() });

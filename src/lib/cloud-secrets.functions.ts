@@ -9,7 +9,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { encryptSecret } from "./secrets/crypto.server";
-import { assertOwnsProject } from "./cloud-managed-client.server";
+import { assertOwnsProject } from "@/server/cloud-managed-client.server";
 
 const VALID = /^[A-Z][A-Z0-9_]{0,79}$/;
 function normalize(name: string): string {
