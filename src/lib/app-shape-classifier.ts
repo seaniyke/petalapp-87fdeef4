@@ -112,6 +112,56 @@ export const DOMAIN_COMPONENTS: Record<BusinessDomain, string[]> = {
   scheduling: ["AvailabilityCalendar", "BookingsList", "ResourceSchedule"],
 };
 
+/**
+ * Per-domain SECONDARY components — the things that turn a "CRM screen"
+ * into a "CRM product": activity timeline, notifications, reporting,
+ * onboarding. Petal Quality Engine v1 / Part A.
+ *
+ * Additive to DOMAIN_COMPONENTS, not a replacement. The planner is told
+ * to build BOTH lists.
+ */
+export const DOMAIN_FEATURE_PACKS: Record<BusinessDomain, string[]> = {
+  crm: ["ActivityTimeline", "ReportsPanel", "NotificationsCenter"],
+  helpdesk: ["SlaTracker", "CannedResponses", "CustomerSidebar"],
+  hris: ["PayrollSummary", "PerformanceReviews", "OnboardingChecklist"],
+  pm: ["WorkloadView", "TimeTracking", "ProjectReports"],
+  ats: ["InterviewScheduler", "OfferLetter", "CandidateNotes"],
+  billing: ["DunningQueue", "TaxSettings", "PaymentMethods"],
+  analytics: ["AlertsCenter", "ScheduledReports", "DataSources"],
+  lms: ["QuizRunner", "Certificates", "LearnerProgress"],
+  cms: ["MediaLibrary", "VersionHistory", "ContentScheduler"],
+  inventory: ["LowStockAlerts", "SupplierDirectory", "InventoryReports"],
+  "email-marketing": ["DeliverabilityPanel", "SegmentBuilder", "AbTestResults"],
+  scheduling: ["NoShowTracker", "BufferRules", "TeamAvailability"],
+};
+
+/**
+ * Category-level feature packs — used when the brief doesn't match a
+ * narrow business domain. Surfaces the same kind of secondary product
+ * depth (KYC, ratings, messaging, etc.) the user expects from a real
+ * product in that vertical.
+ */
+export const CATEGORY_FEATURE_PACKS: Partial<Record<ShapeCategory, string[]>> = {
+  fintech: ["TransactionsLedger", "KycPanel", "AuditLog"],
+  marketplace: ["RatingsAndReviews", "MessagingThread", "SellerAnalytics"],
+  social: ["FeedTimeline", "NotificationsCenter", "ProfileHeader"],
+  booking: ["BookingConfirmation", "ReviewsPanel", "WaitlistPanel"],
+  ecommerce: ["OrdersTable", "InventoryPanel", "CustomerList"],
+  "ai-tool": ["UsageDashboard", "PromptHistory", "ApiKeysPanel"],
+};
+
+/**
+ * Compute the secondary feature pack for a shape. Domain pack wins when a
+ * narrow business domain was detected; otherwise fall back to the
+ * category pack. Returns [] when neither applies.
+ */
+export function featurePackFor(shape: Pick<AppShape, "businessDomain" | "category">): string[] {
+  if (shape.businessDomain && DOMAIN_FEATURE_PACKS[shape.businessDomain]) {
+    return DOMAIN_FEATURE_PACKS[shape.businessDomain];
+  }
+  return CATEGORY_FEATURE_PACKS[shape.category] ?? [];
+}
+
 const DOMAIN_RULES: Array<{ domain: BusinessDomain; match: RegExp }> = [
   { domain: "crm", match: /\b(crm|customer\s+relationship|sales\s+pipeline|lead\s+(management|tracker|gen(eration)?))\b/i },
   { domain: "helpdesk", match: /\b(help[- ]?desk|support\s+(desk|tickets?)|ticketing\s+system|zendesk[- ]?like|intercom[- ]?like)\b/i },
