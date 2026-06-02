@@ -231,6 +231,9 @@ interface TelemetryArgs {
   promptChars?: number | null;
   hadAttachments?: boolean | null;
   chosenBy?: string | null;
+  // P1-5 — per-project / per-user attribution.
+  projectId?: string | null;
+  userId?: string | null;
 }
 
 async function recordTelemetry(args: TelemetryArgs): Promise<void> {
@@ -252,6 +255,8 @@ async function recordTelemetry(args: TelemetryArgs): Promise<void> {
       prompt_chars: args.promptChars ?? null,
       had_attachments: args.hadAttachments ?? false,
       chosen_by: args.chosenBy ?? null,
+      project_id: args.projectId ?? null,
+      user_id: args.userId ?? null,
     });
   } catch (err) {
     // Never break the AI call because logging failed.
