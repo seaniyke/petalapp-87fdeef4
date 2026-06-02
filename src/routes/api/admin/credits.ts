@@ -755,7 +755,106 @@ export const Route = createFileRoute("/api/admin/credits")({
             });
           }
 
+          if (body.action === "project_ai_spend") {
+            const sinceDays = Math.max(1, Math.min(90, Number(body.since_days ?? 30) | 0));
+            const limit = Math.max(10, Math.min(500, Number(body.limit ?? 100) | 0));
+            const since = new Date(Date.now() - sinceDays * 86_400_000).toISOString();
+
+            // Aggregate in-app — Supabase JS doesn't expose GROUP BY, and the
+            // dataset (last 30d of ai_call_log) is small enough to pull and
+            // bucket here.
+            const { data: rows, error: aiErr } = await supabaseAdmin
+              .from("ai_call_log")
+              .select("project_id, cost_usd_micro, total_tokens, status, created_at")
+              .gte("created_at", since)
+              .not("project_id", "is", null)
+              .limit(50000);
+            if (aiErr) return Response.json({ error: aiErr.message }, { status: 500 });
+
+            type Agg = {
+              project_id: string;
+              calls: number;
+              errors: number;
+              tokens: number;
+              cost_usd_cents: number;
+              last_call_at: string;
+            };
+            const byProject = new Map<string, Agg>();
+            for (const r of (rows ?? []) as Array<{
+              project_id: string | null;
+              cost_usd_micro: number | null;
+              total_tokens: number | null;
+              status: number | null;
+              created_at: string;
+            }>) {
+              if (!r.project_id) continue;
+              const a = byProject.get(r.project_id) ?? {
+                project_id: r.project_id,
+                calls: 0,
+                errors: 0,
+                tokens: 0,
+                cost_usd_cents: 0,
+                last_call_at: r.created_at,
+              };
+              a.calls += 1;
+              if ((r.status ?? 0) >= 400) a.errors += 1;
+              a.tokens += Number(r.total_tokens ?? 0);
+              // cost_usd_micro is USD × 1e6; convert to cents (× 1e-4).
+              a.cost_usd_cents += Number(r.cost_usd_micro ?? 0) / 10_000;
+              if (r.created_at > a.last_call_at) a.last_call_at = r.created_at;
+              byProject.set(r.project_id, a);
+            }
+
+            const ranked = Array.from(byProject.values())
+              .sort((a, b) => b.cost_usd_cents - a.cost_usd_cents)
+              .slice(0, limit);
+
+            // Hydrate with project title + owner email.
+            const projectIds = ranked.map((r) => r.project_id);
+            const [{ data: projects }, allUsers] = await Promise.all([
+              projectIds.length
+                ? supabaseAdmin
+                    .from("projects")
+                    .select("id, title, slug, owner_id, published_visibility")
+                    .in("id", projectIds)
+                : Promise.resolve({ data: [] as Array<{ id: string; title: string; slug: string; owner_id: string; published_visibility: string }> }),
+              fetchAllAuthUsers(),
+            ]);
+            const projMap = new Map((projects ?? []).map((p) => [p.id, p]));
+            const emailMap = new Map(allUsers.map((u) => [u.id, u.email]));
+
+            const total_cost_cents = Array.from(byProject.values()).reduce(
+              (s, a) => s + a.cost_usd_cents,
+              0,
+            );
+            const total_calls = Array.from(byProject.values()).reduce((s, a) => s + a.calls, 0);
+
+            return Response.json({
+              since_days: sinceDays,
+              total_projects: byProject.size,
+              total_cost_cents: Math.round(total_cost_cents),
+              total_calls,
+              projects: ranked.map((r) => {
+                const p = projMap.get(r.project_id);
+                return {
+                  project_id: r.project_id,
+                  title: p?.title ?? "(deleted)",
+                  slug: p?.slug ?? null,
+                  owner_id: p?.owner_id ?? null,
+                  owner_email: p ? emailMap.get(p.owner_id) ?? null : null,
+                  published: p?.published_visibility === "public",
+                  calls: r.calls,
+                  errors: r.errors,
+                  tokens: r.tokens,
+                  cost_usd_cents: Math.round(r.cost_usd_cents),
+                  last_call_at: r.last_call_at,
+                };
+              }),
+            });
+          }
+
           return Response.json({ error: "Unknown action" }, { status: 400 });
+
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Server error";
           return Response.json({ error: msg }, { status: 500 });
