@@ -62,6 +62,12 @@ export const Route = createFileRoute("/api/registrar/purchase")({
         const userId = userData.user.id;
         const userEmail = userData.user.email;
 
+        // Checkout starts are expensive (Paystack init, CF re-quote). Cap at
+        // 5/min, 30/hr per user — far above any legit human flow, well below
+        // anything that could be used to probe pricing or grief the API.
+        const rl = checkRateLimit("registrar-purchase", userId, 5, 30);
+        if (!rl.ok) return rateLimitResponse(rl);
+
         let parsed: z.infer<typeof Body>;
         try {
           parsed = Body.parse(await request.json());
