@@ -342,10 +342,12 @@ async function handleInvoiceFailed(payload: AnyEvent, origin: string): Promise<v
     .eq("paystack_subscription_code", subCode);
 
   const link = await getSubscriptionManageLink(subCode).catch(() => null);
-  void sendBillingEmail({
+  const idempotencyKey = `invoice-failed-${payload.data?.invoice_code ?? subCode}`;
+  console.info("[paystack webhook] enqueueing email", { template: "payment-failed", userId: subRow.user_id, idempotencyKey });
+  await sendBillingEmail({
     origin,
     templateName: "payment-failed",
-    idempotencyKey: `invoice-failed-${payload.data?.invoice_code ?? subCode}`,
+    idempotencyKey,
     userId: subRow.user_id,
     templateData: {
       itemLabel: subRow.plan_code ?? "subscription",
