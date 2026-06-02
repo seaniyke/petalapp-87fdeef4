@@ -8,6 +8,7 @@
  * upstream by /api/triage. So this helper only returns a reply string.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { throwIfCreditsExhausted } from "@/lib/friendly-errors";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 
 export type DiscussResult = { reply: string };
@@ -36,6 +37,7 @@ export async function requestDiscussion(
 
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
+    throwIfCreditsExhausted(resp, text);
     throw new Error(text || `Request failed (${resp.status})`);
   }
   const json = (await resp.json()) as { reply?: string };

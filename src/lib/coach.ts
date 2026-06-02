@@ -6,6 +6,7 @@
  * back to the composer.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { throwIfCreditsExhausted } from "@/lib/friendly-errors";
 import type { CoachExchange, CoachTurnOutput } from "@/server/idea-coach.server";
 
 export type CoachTurnReply = CoachTurnOutput & {
@@ -34,6 +35,7 @@ export async function requestCoachTurn(
 
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
+    throwIfCreditsExhausted(resp, text);
     const err = new Error(text || `Request failed (${resp.status})`) as Error & {
       status?: number;
     };

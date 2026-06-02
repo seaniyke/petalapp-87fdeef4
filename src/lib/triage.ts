@@ -4,6 +4,7 @@
  * builder can adapt its UI per turn.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { throwIfCreditsExhausted } from "@/lib/friendly-errors";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
 
 export type TriageIntent = "chat" | "clarify" | "build";
@@ -88,6 +89,7 @@ export async function streamTriage(
 
   if (!resp.ok || !resp.body) {
     const text = await resp.text().catch(() => "");
+    throwIfCreditsExhausted(resp, text);
     throw new Error(text || `Triage failed (${resp.status})`);
   }
 

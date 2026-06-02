@@ -2509,8 +2509,14 @@ function Builder() {
           console.error(persistErr);
         }
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Discussion failed.";
-        toast.error(msg);
+        // Out-of-credits surfaces as a dedicated "Buy credits" card, not a
+        // truncated JSON toast that the user can't act on.
+        if (e instanceof PipelineError && e.kind === "credits_exhausted") {
+          persistFriendlyError(toFriendlyError(e, { surface: "generate", projectId: proj.id }));
+        } else {
+          const msg = e instanceof Error ? e.message : "Discussion failed.";
+          toast.error(msg);
+        }
         // Roll back the unanswered user message so the chat doesn't look stuck.
         setMessages((prev) => prev.slice(0, -1));
         // Also drop the prompt from the DB so the next reload doesn't
