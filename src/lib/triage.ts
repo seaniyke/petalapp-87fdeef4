@@ -89,6 +89,7 @@ export async function streamTriage(
 
   if (!resp.ok || !resp.body) {
     const text = await resp.text().catch(() => "");
+    throwIfCreditsExhausted(resp, text);
     throw new Error(text || `Triage failed (${resp.status})`);
   }
 
