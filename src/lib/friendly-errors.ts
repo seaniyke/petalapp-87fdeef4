@@ -321,6 +321,25 @@ export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): Frien
   return { ...GENERIC, technicalDetail: text };
 }
 
+/**
+ * Shared 402 → credits_exhausted helper for every client-side fetch helper
+ * (stream.ts, triage.ts, discuss.ts, coach.ts). Call AFTER reading the
+ * response body. Throws PipelineError("credits_exhausted") when the server
+ * signals an empty wallet so the UI renders the dedicated "Buy credits"
+ * card instead of the generic "Petal hit a build issue" fallback.
+ */
+export function throwIfCreditsExhausted(resp: Response, rawText: string): void {
+  if (resp.status !== 402) return;
+  let friendly = "You're out of credits. Add credits to keep generating.";
+  try {
+    const parsed = JSON.parse(rawText) as { error?: string };
+    if (parsed?.error) friendly = parsed.error;
+  } catch {
+    if (rawText && rawText.length < 240) friendly = rawText;
+  }
+  throw new PipelineError(friendly, "credits_exhausted", rawText);
+}
+
 /** Shown while Petal is auto-fixing a failed build (Phase 2).
  *  This is purely informational — there's no action button because Petal is
  *  already on it. After 2 attempts we fall back to `friendlyBuildFailure`
