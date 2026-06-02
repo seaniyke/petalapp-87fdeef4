@@ -507,11 +507,13 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                         : `$${(p.price_cents / 100).toFixed(0)}`
                     }
                     isLocalPrice={conv?.source === "override"}
-                    isCurrent={isCurrent}
+                    isCurrent={isCurrent && !expired}
+                    isRenew={isCurrent && expired}
                     busy={busy}
                     disabled={!user || busy}
                     onClick={() => startCheckout("plan", p.code)}
                   />
+
                 );
               })}
             </div>
