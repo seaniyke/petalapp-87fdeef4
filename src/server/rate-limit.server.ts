@@ -20,18 +20,21 @@ const HOUR_MS = 60 * MINUTE_MS;
 const PER_MIN = 30;
 const PER_HOUR = 500;
 
-// Map<userId, number[]> of request timestamps (ms). Trimmed on every check.
-const hits = new Map<string, number[]>();
+// Map<bucket, Map<key, number[]>> of request timestamps (ms).
+const buckets = new Map<string, Map<string, number[]>>();
 
-// Periodic GC so the map can't grow unbounded across long-lived workers.
+// Periodic GC so the maps can't grow unbounded across long-lived workers.
 const GC_EVERY = 5_000;
 let opsSinceGc = 0;
 
 function gc(now: number) {
-  for (const [uid, arr] of hits) {
-    const trimmed = arr.filter((t) => now - t < HOUR_MS);
-    if (trimmed.length === 0) hits.delete(uid);
-    else hits.set(uid, trimmed);
+  for (const [bucket, inner] of buckets) {
+    for (const [key, arr] of inner) {
+      const trimmed = arr.filter((t) => now - t < HOUR_MS);
+      if (trimmed.length === 0) inner.delete(key);
+      else inner.set(key, trimmed);
+    }
+    if (inner.size === 0) buckets.delete(bucket);
   }
 }
 
@@ -41,7 +44,20 @@ export interface RateLimitResult {
   reason?: "per_minute" | "per_hour";
 }
 
-export function checkGenerateRateLimit(userId: string): RateLimitResult {
+/**
+ * Generic sliding-window limiter. Two windows per key:
+ *   - perMin  requests / minute / key  (burst protection)
+ *   - perHour requests / hour   / key  (sustained-abuse protection)
+ *
+ * `bucket` namespaces different surfaces (e.g. "generate", "registrar")
+ * so they don't share counters.
+ */
+export function checkRateLimit(
+  bucket: string,
+  key: string,
+  perMin: number,
+  perHour: number,
+): RateLimitResult {
   const now = Date.now();
   opsSinceGc++;
   if (opsSinceGc >= GC_EVERY) {
@@ -49,11 +65,16 @@ export function checkGenerateRateLimit(userId: string): RateLimitResult {
     gc(now);
   }
 
-  const arr = hits.get(userId) ?? [];
+  let inner = buckets.get(bucket);
+  if (!inner) {
+    inner = new Map();
+    buckets.set(bucket, inner);
+  }
+  const arr = inner.get(key) ?? [];
   const recentMin = arr.filter((t) => now - t < MINUTE_MS);
   const recentHr = arr.filter((t) => now - t < HOUR_MS);
 
-  if (recentMin.length >= PER_MIN) {
+  if (recentMin.length >= perMin) {
     const oldest = recentMin[0];
     return {
       ok: false,
@@ -61,7 +82,7 @@ export function checkGenerateRateLimit(userId: string): RateLimitResult {
       retryAfterSec: Math.max(1, Math.ceil((MINUTE_MS - (now - oldest)) / 1000)),
     };
   }
-  if (recentHr.length >= PER_HOUR) {
+  if (recentHr.length >= perHour) {
     const oldest = recentHr[0];
     return {
       ok: false,
@@ -71,8 +92,13 @@ export function checkGenerateRateLimit(userId: string): RateLimitResult {
   }
 
   recentHr.push(now);
-  hits.set(userId, recentHr);
+  inner.set(key, recentHr);
   return { ok: true };
+}
+
+/** Back-compat wrapper for /api/generate (30/min, 500/hr per user). */
+export function checkGenerateRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit("generate", userId, 30, 500);
 }
 
 export function rateLimitResponse(result: RateLimitResult): Response {
@@ -92,3 +118,4 @@ export function rateLimitResponse(result: RateLimitResult): Response {
     },
   });
 }
+

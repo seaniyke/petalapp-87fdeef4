@@ -12,10 +12,23 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { searchDomains } from "@/server/cloudflare-registrar.server";
+import { checkRateLimit, rateLimitResponse } from "@/server/rate-limit.server";
 
 const Body = z.object({
   query: z.string().trim().min(1).max(64),
 });
+
+/**
+ * Short-lived in-memory cache for availability lookups. CF Registrar pricing
+ * doesn't change minute-to-minute and the same query is often retyped (e.g.
+ * the search field autosubmits on each keystroke). Caching for 60s cuts
+ * repeated API hits roughly 10× during interactive sessions while staying
+ * fresh enough that the pre-purchase recheck still catches real changes.
+ */
+type CacheEntry = { at: number; body: string };
+const CACHE_TTL_MS = 60_000;
+const cache = new Map<string, CacheEntry>();
+
 
 async function authorize(request: Request): Promise<string | Response> {
   const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -44,12 +57,27 @@ export const Route = createFileRoute("/api/registrar/search")({
         const auth = await authorize(request);
         if (auth instanceof Response) return auth;
 
+        // 20 searches/min, 200/hr per user. Real users type a handful of
+        // candidates; anything higher is a scraper burning CF API quota.
+        const rl = checkRateLimit("registrar-search", auth, 20, 200);
+        if (!rl.ok) return rateLimitResponse(rl);
+
         let parsed: z.infer<typeof Body>;
         try {
           parsed = Body.parse(await request.json());
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Invalid input";
           return new Response(msg, { status: 400 });
+        }
+
+        const cacheKey = parsed.query.trim().toLowerCase();
+        const now = Date.now();
+        const cached = cache.get(cacheKey);
+        if (cached && now - cached.at < CACHE_TTL_MS) {
+          return new Response(cached.body, {
+            status: 200,
+            headers: { "Content-Type": "application/json", "X-Cache": "HIT" },
+          });
         }
 
         try {
@@ -64,12 +92,24 @@ export const Route = createFileRoute("/api/registrar/search")({
               tier: r.tier,
               reason: r.reason,
             }));
-          return Response.json(visible);
+          const body = JSON.stringify(visible);
+          cache.set(cacheKey, { at: now, body });
+          // Opportunistic GC so the map can't grow without bound.
+          if (cache.size > 1000) {
+            for (const [k, v] of cache) {
+              if (now - v.at >= CACHE_TTL_MS) cache.delete(k);
+            }
+          }
+          return new Response(body, {
+            status: 200,
+            headers: { "Content-Type": "application/json", "X-Cache": "MISS" },
+          });
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Search failed";
           return new Response(msg, { status: 502 });
         }
       },
+
     },
   },
 });
