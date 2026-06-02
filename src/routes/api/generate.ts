@@ -33,6 +33,7 @@ import { validateStylesCss } from "@/server/validate-styles.server";
 import { verifyFileLocal } from "@/server/local-verifier";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
+import { checkGenerateRateLimit, rateLimitResponse } from "@/server/rate-limit.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   aiChatCompletions,
@@ -1196,6 +1197,11 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   const authResult = await authorize(request);
   if (authResult instanceof Response) return authResult;
   const userId = authResult;
+
+  // P0-4: app-level abuse protection. Runs BEFORE the credit floor check
+  // so rate-limited requests never charge the wallet.
+  const rl = checkGenerateRateLimit(userId);
+  if (!rl.ok) return rateLimitResponse(rl);
 
   // Provider key check is handled inside aiChatCompletions; we only verify
   // here so we can surface the existing friendly 500 if no provider is set.
