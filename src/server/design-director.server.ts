@@ -292,10 +292,18 @@ export async function pickDesignDirection(args: {
     .map((e) => `- ${e.key}: ${e.value}`)
     .join("\n");
 
+  // Part B — pre-compute a domain/category font default. Surfaced as a
+  // SUGGESTION the model can accept or override with something better.
+  const fontDefault = pickFontDefault(trimmedBrief);
+  const fontHint = fontDefault
+    ? `\nSUGGESTED TYPOGRAPHY (defensible default for this ${fontDefault.reason}; override only if you have a more distinctive pairing):\n- display: ${fontDefault.display}\n- body: ${fontDefault.body}\n`
+    : "";
+
   const userPrompt =
     `BRIEF (user's words):\n"""${trimmedBrief}"""\n\n` +
-    `WHAT WE KNOW ABOUT THE PROJECT:\n${memContext || "(nothing yet)"}\n\n` +
-    `Pick one bold direction and call set_design_direction now.`;
+    `WHAT WE KNOW ABOUT THE PROJECT:\n${memContext || "(nothing yet)"}\n` +
+    fontHint +
+    `\nPick one bold direction and call set_design_direction now.`;
 
   let direction: DesignDirection | null = null;
   try {
