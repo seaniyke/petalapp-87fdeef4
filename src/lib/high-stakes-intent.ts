@@ -48,22 +48,25 @@ export function detectHighStakesIntent(text: string | null | undefined): HighSta
 export function highStakesBuildInstruction(domain: HighStakesDomain): string {
   const honesty: Record<HighStakesDomain, string> = {
     "crypto-wallet":
-      "Petal CANNOT custody real crypto, manage seed phrases, sign on-chain transactions, or connect to real RPC providers. It CAN — and should — build a polished, realistic DEMO (mock balances, simulated transfers/swaps in the database, full wallet/exchange UI).",
+      "Petal CANNOT custody real crypto, manage seed phrases, sign on-chain transactions, or connect to real RPC providers.",
     neobank:
-      "Petal CANNOT move real money, hold deposits, issue cards, run ACH/SWIFT, or do KYC/AML. It CAN — and should — build a polished, realistic DEMO with simulated accounts, transfers as database rows, and a full banking UI.",
+      "Petal CANNOT move real money, hold deposits, issue cards, run ACH/SWIFT, or do KYC/AML.",
     trading:
-      "Petal CANNOT execute real trades or connect to brokers. It CAN — and should — build a polished, realistic DEMO with mock prices, a fake portfolio, and a full trading UI.",
+      "Petal CANNOT execute real trades or connect to brokers.",
     lending:
-      "Petal CANNOT originate, underwrite, or disburse real loans. It CAN — and should — build a polished, realistic DEMO of the application + approval flow.",
+      "Petal CANNOT originate, underwrite, or disburse real loans.",
     "kyc-identity":
-      "Petal does NOT have a Plaid/Persona/Onfido/Sumsub connector. It CAN — and should — build the full UI and store submissions; verification will be simulated.",
+      "Petal does NOT have a Plaid/Persona/Onfido/Sumsub connector — verification will be simulated.",
   };
   return [
     "HIGH-STAKES DOMAIN DETECTED (" + domain + ").",
     honesty[domain],
-    "In your one-line preamble, state the limitation honestly and mention that bringing provider keys later (e.g. Stripe, Plaid, Alchemy) can wire it up for real. Then PROCEED TO BUILD — do not stop to ask permission, do not force a clarify, do not emit a multiple-choice question.",
+    "DEFAULT OUTPUT = a modern, beautiful MARKETING LANDING PAGE for this product (hero, value props, features grid, how-it-works, social proof, pricing, FAQ, footer with CTA). NOT an in-app dashboard. NOT a fake balance/wallet screen. Treat this exactly like building a polished SaaS marketing site.",
+    "In your one-line preamble, briefly note the limitation and that real provider keys (Stripe, Plaid, Alchemy, etc.) can be wired later. Then PROCEED TO BUILD the landing page — do not stop to ask permission, do not force a clarify, do not emit a multiple-choice question.",
+    "Only build the in-product UI (dashboard/wallet/trading screens) if the user explicitly asks for it in a follow-up turn.",
   ].join(" ");
 }
+
 
 /** @deprecated Kept as an alias so older imports don't break. Use highStakesBuildInstruction. */
 export const highStakesClarifyInstruction = highStakesBuildInstruction;
