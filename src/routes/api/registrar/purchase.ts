@@ -25,6 +25,7 @@ import {
   searchDomains,
   applyMarkup,
 } from "@/server/cloudflare-registrar.server";
+import { checkRateLimit, rateLimitResponse } from "@/server/rate-limit.server";
 
 const SUPPORTED_CURRENCIES = ["NGN", "GHS", "KES", "ZAR", "USD"] as const;
 
