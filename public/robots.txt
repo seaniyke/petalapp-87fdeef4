@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Internal Petal infrastructure — not for indexing.
+# These paths are auth-gated server routes (transactional email, internal
+# health checks, admin tooling), but we don't want them showing up in
+# search results either.
+Disallow: /lovable/
+Disallow: /api/internal/
+Disallow: /api/admin/
+Disallow: /admin
+Disallow: /admin/
+
+Sitemap: https://buildwithpetal.com/sitemap.xml
