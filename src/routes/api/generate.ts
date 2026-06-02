@@ -1995,6 +1995,8 @@ Forbidden defaults
       promptChars: lastUserContent.length,
       hadAttachments: hasVisionTurn,
       chosenBy,
+      projectId: body.projectId ?? null,
+      userId,
     },
   });
 
