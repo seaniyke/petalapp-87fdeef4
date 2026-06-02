@@ -14,7 +14,7 @@ import {
   forgetProjectMemoryEntry,
   forgetAllProjectMemory,
   type ProjectMemoryRow,
-} from "@/server/project-memory.functions";
+} from "@/lib/project-memory.functions";
 
 export function ProjectMemorySection({ projectId }: { projectId: string }) {
   const [entries, setEntries] = useState<ProjectMemoryRow[] | null>(null);

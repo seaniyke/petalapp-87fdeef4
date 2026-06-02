@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   getMobileAppStatus,
   startMobileBuild,
-} from "@/server/mobile-builds.functions";
+} from "@/lib/mobile-builds.functions";
 
 type MobileBuild = {
   id: string;

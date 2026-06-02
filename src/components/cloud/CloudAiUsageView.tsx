@@ -20,7 +20,7 @@ import {
   YAxis,
 } from "recharts";
 import { useServerFn } from "@tanstack/react-start";
-import { getAiUsage, type AiUsageResult } from "@/server/cloud-ai-usage.functions";
+import { getAiUsage, type AiUsageResult } from "@/lib/cloud-ai-usage.functions";
 import {
   Select,
   SelectContent,

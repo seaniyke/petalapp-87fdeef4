@@ -16,7 +16,7 @@ import {
   enablePetalEmailForProject,
   rotatePetalEmailToken,
   listPetalEmailOutbound,
-} from "@/server/petal-email.functions";
+} from "@/lib/petal-email.functions";
 import { toast } from "sonner";
 import { emitServiceEnabled } from "@/lib/service-events";
 

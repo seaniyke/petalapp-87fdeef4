@@ -3,7 +3,7 @@
  * Client imports this; the .server.ts module stays out of the client bundle.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { estimatePromptCost, type PreflightEstimate } from "./preflight-estimate.server";
+import { estimatePromptCost, type PreflightEstimate } from "@/server/preflight-estimate.server";
 
 export const estimatePromptCostFn = createServerFn({ method: "POST" })
   .inputValidator((data: { prompt: string }) => {
