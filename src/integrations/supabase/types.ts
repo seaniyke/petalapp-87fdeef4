@@ -30,6 +30,7 @@ export type Database = {
           latency_ms: number | null
           model: string | null
           phase: string | null
+          project_id: string | null
           prompt_chars: number | null
           prompt_tokens: number | null
           provider: string
@@ -37,6 +38,7 @@ export type Database = {
           static_prefix_hash: string | null
           status: number
           total_tokens: number | null
+          user_id: string | null
         }
         Insert: {
           cached_prompt_tokens?: number | null
@@ -53,6 +55,7 @@ export type Database = {
           latency_ms?: number | null
           model?: string | null
           phase?: string | null
+          project_id?: string | null
           prompt_chars?: number | null
           prompt_tokens?: number | null
           provider: string
@@ -60,6 +63,7 @@ export type Database = {
           static_prefix_hash?: string | null
           status: number
           total_tokens?: number | null
+          user_id?: string | null
         }
         Update: {
           cached_prompt_tokens?: number | null
@@ -76,6 +80,7 @@ export type Database = {
           latency_ms?: number | null
           model?: string | null
           phase?: string | null
+          project_id?: string | null
           prompt_chars?: number | null
           prompt_tokens?: number | null
           provider?: string
@@ -83,6 +88,7 @@ export type Database = {
           static_prefix_hash?: string | null
           status?: number
           total_tokens?: number | null
+          user_id?: string | null
         }
         Relationships: []
       }
