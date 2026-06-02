@@ -48,6 +48,7 @@ ALLOWED FIXES:
 - Unbalanced JSX tags
 - Missing closing braces / semicolons that prevent parsing
 - Direct "react-router-dom" imports → swap to "@/components/ui/router"
+- ANY "next/*" import (next/link, next/image, next/navigation, next/router, next/head, next/script) → this is a Vite app, not Next.js. Rewrite next/link to \`import { Link } from "@/components/ui/router"\`; rewrite next/navigation|next/router to "@/components/ui/router"; replace next/image usages with plain <img>; drop next/head and next/script (use no-op components or remove).
 - Direct "@supabase/supabase-js" imports → swap to "@/integrations/backend/client" ONLY if src/integrations/backend/client.ts exists in the provided files; otherwise remove the backend wiring and keep a UI-only stub.
 - Tailwind v3 directives (@tailwind base/components/utilities) inside src/styles.css → swap for @import "tailwindcss";
 - Tailwind v4 \`@theme { ... }\` block containing nested selectors (\`.dark { ... }\`, \`:root { ... }\`, \`@media (...)\`, or \`&:is(...)\`) → move those nested blocks OUTSIDE @theme. Inside @theme keep ONLY token declarations like \`--color-primary: oklch(...);\` or \`--radius: 0.5rem;\`. Class-based dark mode is already enabled at the top of styles.css via \`@custom-variant dark (&:where(.dark, .dark *));\` — do not redeclare it inside @theme.

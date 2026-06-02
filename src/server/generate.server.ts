@@ -18,7 +18,7 @@ KIT COMPONENT CATEGORIES (specific signatures for the components you'll need thi
 - Navigation: Tabs, Accordion, ScrollArea.
 - Data: Table, Progress, LineChart/AreaChart/BarChart.
 - Layout: Container, Stack, Inline, Grid.
-- Routing: Router (re-exports react-router-dom).
+- Routing: Router (re-exports react-router-dom). This is a Vite + React app — NEVER import from "next/*" (no next/link, next/image, next/navigation, next/router, next/head, next/script). Use the kit's <Link> from "@/components/ui/router" and a plain <img> for images.
 - Theming: ThemeProvider, ThemeToggle.
 - Toasts: Toaster + toast.success/.error/.* (from sonner, re-exported).
 The kit is a CLOSED SET. Only the components listed in the [Kit manifest — ...] section further down actually exist as files. NEVER import "@/components/ui/<name>" for any name not in that manifest (e.g. carousel, command, menubar, navigation-menu, hover-card, context-menu, breadcrumb, toggle, toggle-group, resizable, sidebar, aspect-ratio, collapsible). If you need a pattern the kit doesn't ship (e.g. a carousel), build it INLINE in a new "src/components/<Name>.tsx" using Tailwind + the kit's atoms — do NOT import a non-existent ui/* file. Importing a missing ui/* path is a HARD build failure.
