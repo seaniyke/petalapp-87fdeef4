@@ -104,6 +104,16 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
                   {error.actionLabel}
                 </button>
               )}
+              {isBuyCredits && onBuyCredits && (
+                <button
+                  type="button"
+                  onClick={onBuyCredits}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground transition active:scale-[0.97]"
+                >
+                  <Sparkles className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  {error.actionLabel}
+                </button>
+              )}
               {isDismiss && onDismiss && (
                 <button
                   type="button"
