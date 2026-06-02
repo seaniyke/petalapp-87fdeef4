@@ -83,6 +83,7 @@ import { Route as ApiPublicEmailSendRouteImport } from './routes/api/public/emai
 import { Route as ApiPublicEmailResendWebhookRouteImport } from './routes/api/public/email/resend-webhook'
 import { Route as ApiPublicCronSelfLearningDigestRouteImport } from './routes/api/public/cron/self-learning-digest'
 import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/api/public/cron/runtime-backend-hour'
+import { Route as ApiPublicCronMobileCertExpiryRouteImport } from './routes/api/public/cron/mobile-cert-expiry'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
 import { Route as ApiBillingSubscriptionStatusRouteImport } from './routes/api/billing/subscription/status'
 import { Route as ApiBillingSubscriptionManageLinkRouteImport } from './routes/api/billing/subscription/manage-link'
@@ -466,6 +467,12 @@ const ApiPublicCronRuntimeBackendHourRoute =
     path: '/api/public/cron/runtime-backend-hour',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronMobileCertExpiryRoute =
+  ApiPublicCronMobileCertExpiryRouteImport.update({
+    id: '/api/public/cron/mobile-cert-expiry',
+    path: '/api/public/cron/mobile-cert-expiry',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicBuildsCallbackRoute = ApiPublicBuildsCallbackRouteImport.update({
   id: '/api/public/builds/callback',
   path: '/api/public/builds/callback',
@@ -557,6 +564,7 @@ export interface FileRoutesByFullPath {
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
@@ -637,6 +645,7 @@ export interface FileRoutesByTo {
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
@@ -718,6 +727,7 @@ export interface FileRoutesById {
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
@@ -800,6 +810,7 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
+    | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
     | '/api/public/email/resend-webhook'
@@ -880,6 +891,7 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
+    | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
     | '/api/public/email/resend-webhook'
@@ -960,6 +972,7 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
+    | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
     | '/api/public/email/resend-webhook'
@@ -1039,6 +1052,7 @@ export interface RootRouteChildren {
   ApiBillingSubscriptionManageLinkRoute: typeof ApiBillingSubscriptionManageLinkRoute
   ApiBillingSubscriptionStatusRoute: typeof ApiBillingSubscriptionStatusRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
+  ApiPublicCronMobileCertExpiryRoute: typeof ApiPublicCronMobileCertExpiryRoute
   ApiPublicCronRuntimeBackendHourRoute: typeof ApiPublicCronRuntimeBackendHourRoute
   ApiPublicCronSelfLearningDigestRoute: typeof ApiPublicCronSelfLearningDigestRoute
   ApiPublicEmailResendWebhookRoute: typeof ApiPublicEmailResendWebhookRoute
@@ -1573,6 +1587,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronRuntimeBackendHourRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/mobile-cert-expiry': {
+      id: '/api/public/cron/mobile-cert-expiry'
+      path: '/api/public/cron/mobile-cert-expiry'
+      fullPath: '/api/public/cron/mobile-cert-expiry'
+      preLoaderRoute: typeof ApiPublicCronMobileCertExpiryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/builds/callback': {
       id: '/api/public/builds/callback'
       path: '/api/public/builds/callback'
@@ -1691,6 +1712,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBillingSubscriptionManageLinkRoute: ApiBillingSubscriptionManageLinkRoute,
   ApiBillingSubscriptionStatusRoute: ApiBillingSubscriptionStatusRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
+  ApiPublicCronMobileCertExpiryRoute: ApiPublicCronMobileCertExpiryRoute,
   ApiPublicCronRuntimeBackendHourRoute: ApiPublicCronRuntimeBackendHourRoute,
   ApiPublicCronSelfLearningDigestRoute: ApiPublicCronSelfLearningDigestRoute,
   ApiPublicEmailResendWebhookRoute: ApiPublicEmailResendWebhookRoute,
