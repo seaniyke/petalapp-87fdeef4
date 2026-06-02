@@ -281,6 +281,7 @@ function repairBusinessAppPlan(
   files: PlannedFile[],
   gap: ReturnType<typeof detectBusinessAppGap>,
   domain: BusinessDomain | undefined,
+  category: ShapeCategory | undefined,
   brief: string,
 ): PlannedFile[] {
   if (!gap) return files;
@@ -289,7 +290,7 @@ function repairBusinessAppPlan(
     additions.push(...MARKETING_SYNTH);
   }
   if (gap === "missing_app_surface" || gap === "missing_both_surfaces") {
-    additions.push(...synthAppSurfaceFor(domain));
+    additions.push(...synthAppSurfaceFor(domain, category));
   }
   // De-dupe by path so we never re-add something the model already had.
   const seen = new Set(files.map((f) => f.path));
