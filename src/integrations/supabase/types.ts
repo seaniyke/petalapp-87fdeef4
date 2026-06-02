@@ -931,8 +931,10 @@ export type Database = {
           apple_app_store_connect_key_id: string | null
           apple_bundle_id: string | null
           apple_p12_ciphertext: string | null
+          apple_p12_not_after: string | null
           apple_p12_password_ciphertext: string | null
           apple_provisioning_profile_ciphertext: string | null
+          apple_provisioning_profile_not_after: string | null
           apple_team_id: string | null
           created_at: string
           id: string
@@ -950,8 +952,10 @@ export type Database = {
           apple_app_store_connect_key_id?: string | null
           apple_bundle_id?: string | null
           apple_p12_ciphertext?: string | null
+          apple_p12_not_after?: string | null
           apple_p12_password_ciphertext?: string | null
           apple_provisioning_profile_ciphertext?: string | null
+          apple_provisioning_profile_not_after?: string | null
           apple_team_id?: string | null
           created_at?: string
           id?: string
@@ -969,8 +973,10 @@ export type Database = {
           apple_app_store_connect_key_id?: string | null
           apple_bundle_id?: string | null
           apple_p12_ciphertext?: string | null
+          apple_p12_not_after?: string | null
           apple_p12_password_ciphertext?: string | null
           apple_provisioning_profile_ciphertext?: string | null
+          apple_provisioning_profile_not_after?: string | null
           apple_team_id?: string | null
           created_at?: string
           id?: string
