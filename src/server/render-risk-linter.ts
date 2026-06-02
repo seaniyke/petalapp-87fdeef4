@@ -53,13 +53,14 @@
 import type { LocalIssue } from "@/server/local-verifier";
 
 /** Limit which rules fire. Edit to disable individual rules in production. */
-const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5" | "R6">([
+const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7">([
   "R1",
   "R2",
   "R3",
   "R4",
   "R5",
   "R6",
+  "R7",
 ]);
 
 /**
@@ -736,6 +737,27 @@ function findBareGridCols(src: string): { snippet: string }[] {
   return issues;
 }
 
+/**
+ * R7 — app-surface tables with no empty-state handling.
+ *
+ * App-surface components (src/app/**) that render shadcn `<Table>` over a
+ * mapped collection must also handle the `.length === 0` case. When the
+ * collection is empty, an empty `<tbody>` ships to production — visually
+ * an indistinguishable bug. Heuristic: file imports `Table` from
+ * `@/components/ui/table`, renders `<Table` and `.map(`, AND has no
+ * `length === 0` / `length > 0` / `length ? ` guard anywhere. Cheap, no
+ * false positives on marketing pages (skipped by path) or static tables
+ * (no `.map(` call).
+ */
+function fileMissingTableEmptyState(src: string, clean: string): boolean {
+  if (!/from\s+["']@\/components\/ui\/table["']/.test(src)) return false;
+  if (!/<Table[\s>]/.test(clean)) return false;
+  if (!/\.map\s*\(/.test(clean)) return false;
+  if (/\.length\s*(===?\s*0|>\s*0|\?\s*)/.test(clean)) return false;
+  if (/TableEmpty|EmptyState|Empty\s+\w+/i.test(clean)) return false;
+  return true;
+}
+
 // =============================================================================
 // Entry point
 // =============================================================================
@@ -823,6 +845,18 @@ export function lintRenderRisks(
           path: f.path,
           kind: "render-risk",
           detail: `bare responsive grid \`${issue.snippet}\` — collapses on mobile; use \`grid-cols-1 sm:grid-cols-N\` so 430px viewports don't leave empty columns`,
+        });
+      }
+    }
+
+    // R7 — app-surface tables that map rows but never handle the empty case.
+    // Scoped to src/app/** so marketing tables (rare) don't trigger.
+    if (ENABLED_RULES.has("R7") && f.path.startsWith("src/app/")) {
+      if (fileMissingTableEmptyState(f.content, clean)) {
+        issues.push({
+          path: f.path,
+          kind: "render-risk",
+          detail: `<Table> renders mapped rows but the file has no \`length === 0\` empty-state branch — empty data will ship an empty <tbody>. Add a TableEmpty fallback (icon + headline + muted line + CTA).`,
         });
       }
     }

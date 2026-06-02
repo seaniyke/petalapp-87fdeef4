@@ -36,8 +36,80 @@ import {
   renderTemplatePlanBlock,
   type TemplateKey,
 } from "@/server/templates.server";
+import {
+  classifyAppShape,
+  type BusinessDomain,
+  type ShapeCategory,
+} from "@/lib/app-shape-classifier";
 
 const DIRECTOR_MODEL = "google/gemini-3-flash-preview";
+
+/**
+ * Part B — domain-aware font defaults.
+ *
+ * Surfaced as a SUGGESTED pairing in the director prompt and used as a
+ * substitution fallback when the model returns a generic Inter+Inter (or
+ * display == body). Never overrides an opinionated, distinctive choice —
+ * only nudges defaults so every build ships with a defensible type system.
+ */
+const DOMAIN_FONT_DEFAULTS: Partial<Record<BusinessDomain, { display: string; body: string }>> = {
+  crm: { display: "Plus Jakarta Sans", body: "Inter" },
+  helpdesk: { display: "Plus Jakarta Sans", body: "Inter" },
+  hris: { display: "Plus Jakarta Sans", body: "Inter" },
+  pm: { display: "Geist", body: "Inter" },
+  ats: { display: "Plus Jakarta Sans", body: "Inter" },
+  billing: { display: "Inter Tight", body: "Inter" },
+  analytics: { display: "Space Grotesk", body: "Inter" },
+  lms: { display: "Fraunces", body: "Inter" },
+  cms: { display: "Instrument Serif", body: "Inter" },
+  inventory: { display: "Space Grotesk", body: "Inter" },
+  "email-marketing": { display: "Bricolage Grotesque", body: "Inter" },
+  scheduling: { display: "Plus Jakarta Sans", body: "Inter" },
+};
+
+const CATEGORY_FONT_DEFAULTS: Partial<Record<ShapeCategory, { display: string; body: string }>> = {
+  fintech: { display: "Inter Tight", body: "Inter" },
+  crypto: { display: "Space Grotesk", body: "JetBrains Mono" },
+  saas: { display: "Plus Jakarta Sans", body: "Inter" },
+  "ai-tool": { display: "Geist", body: "Inter" },
+  ecommerce: { display: "Bricolage Grotesque", body: "Inter" },
+  marketplace: { display: "Space Grotesk", body: "Inter" },
+  social: { display: "Bricolage Grotesque", body: "Inter" },
+  messaging: { display: "Plus Jakarta Sans", body: "Inter" },
+  booking: { display: "Fraunces", body: "Inter" },
+  content: { display: "Fraunces", body: "Inter" },
+  creator: { display: "Instrument Serif", body: "Inter" },
+  "internal-tool": { display: "Geist", body: "Inter" },
+  directory: { display: "Plus Jakarta Sans", body: "Inter" },
+  "local-business": { display: "Fraunces", body: "Inter" },
+  newsletter: { display: "Instrument Serif", body: "Inter" },
+  consultancy: { display: "Fraunces", body: "Inter" },
+  "real-estate": { display: "Cormorant Garamond", body: "Inter" },
+  fitness: { display: "Unbounded", body: "Inter" },
+  restaurant: { display: "Fraunces", body: "Inter" },
+  game: { display: "Unbounded", body: "Inter" },
+};
+
+function pickFontDefault(
+  brief: string,
+): { display: string; body: string; reason: string } | null {
+  try {
+    const shape = classifyAppShape(brief);
+    if (shape.businessDomain && DOMAIN_FONT_DEFAULTS[shape.businessDomain]) {
+      const p = DOMAIN_FONT_DEFAULTS[shape.businessDomain]!;
+      return { ...p, reason: `domain=${shape.businessDomain}` };
+    }
+    if (CATEGORY_FONT_DEFAULTS[shape.category]) {
+      const p = CATEGORY_FONT_DEFAULTS[shape.category]!;
+      return { ...p, reason: `category=${shape.category}` };
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+const GENERIC_FONTS = new Set(["inter", "roboto", "system-ui", "sans-serif", "arial", "poppins"]);
 
 export type DesignDirection = {
   /** Short human-readable label, e.g. "warm-editorial", "brutalist-mono", "soft-glass". */
@@ -220,10 +292,18 @@ export async function pickDesignDirection(args: {
     .map((e) => `- ${e.key}: ${e.value}`)
     .join("\n");
 
+  // Part B — pre-compute a domain/category font default. Surfaced as a
+  // SUGGESTION the model can accept or override with something better.
+  const fontDefault = pickFontDefault(trimmedBrief);
+  const fontHint = fontDefault
+    ? `\nSUGGESTED TYPOGRAPHY (defensible default for this ${fontDefault.reason}; override only if you have a more distinctive pairing):\n- display: ${fontDefault.display}\n- body: ${fontDefault.body}\n`
+    : "";
+
   const userPrompt =
     `BRIEF (user's words):\n"""${trimmedBrief}"""\n\n` +
-    `WHAT WE KNOW ABOUT THE PROJECT:\n${memContext || "(nothing yet)"}\n\n` +
-    `Pick one bold direction and call set_design_direction now.`;
+    `WHAT WE KNOW ABOUT THE PROJECT:\n${memContext || "(nothing yet)"}\n` +
+    fontHint +
+    `\nPick one bold direction and call set_design_direction now.`;
 
   let direction: DesignDirection | null = null;
   try {
@@ -268,6 +348,19 @@ export async function pickDesignDirection(args: {
       parsed.design_moves.length < 2
     ) {
       return null;
+    }
+    // Part B — substitute generic font choices with the domain default.
+    // Triggers when the model returned display == body, both generic, or
+    // (display, body) ∈ generic set with no distinctive choice.
+    if (fontDefault) {
+      const dlow = parsed.display_font.trim().toLowerCase();
+      const blow = parsed.body_font.trim().toLowerCase();
+      const sameOrGeneric =
+        dlow === blow || (GENERIC_FONTS.has(dlow) && GENERIC_FONTS.has(blow));
+      if (sameOrGeneric) {
+        parsed.display_font = fontDefault.display;
+        parsed.body_font = fontDefault.body;
+      }
     }
     // Workstream C1: assign a hidden theme key from the brief if the
     // model didn't pick one. Drives concrete oklch tokens via
