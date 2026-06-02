@@ -67,15 +67,21 @@ export function MobilePublishSheet({ open, onOpenChange, projectId }: Props) {
     },
     refetchIntervalInBackground: true,
   });
+  // Track the first build id+status we observe so we don't re-toast a
+  // terminal build that completed before this session started.
+  const seenInitialRef = useRef<string | null>(null);
   const lastNotifiedRef = useRef<string | null>(null);
   useEffect(() => {
     if (!latest || !latest.id) return;
+    const currentKey = `${latest.id}:${latest.status}`;
+    if (seenInitialRef.current === null) {
+      seenInitialRef.current = currentKey;
+      return;
+    }
     if (latest.status !== "succeeded" && latest.status !== "failed") return;
-    // De-dupe per build id — the same terminal row would otherwise re-toast
-    // on every refetch.
-    const key = `${latest.id}:${latest.status}`;
-    if (lastNotifiedRef.current === key) return;
-    lastNotifiedRef.current = key;
+    if (lastNotifiedRef.current === currentKey) return;
+    if (seenInitialRef.current === currentKey) return; // initial snapshot was already terminal
+    lastNotifiedRef.current = currentKey;
 
     const platformLabel = latest.platform === "ios" ? "iOS" : "Android";
     if (latest.status === "succeeded") {
@@ -96,6 +102,7 @@ export function MobilePublishSheet({ open, onOpenChange, projectId }: Props) {
       });
     }
   }, [latest]);
+
 
 
   const startBuild = async (platform: "android" | "ios") => {
