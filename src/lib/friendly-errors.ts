@@ -36,7 +36,7 @@ export type FriendlyError = {
   /** What the user should do next, e.g. "Try again". */
   actionLabel: string;
   /** Which kind of action button to render. */
-  actionKind: "retry" | "ask-fix" | "dismiss";
+  actionKind: "retry" | "ask-fix" | "dismiss" | "buy-credits";
   /** Original technical detail — hidden behind a "Show details" disclosure. */
   technicalDetail?: string;
 };
