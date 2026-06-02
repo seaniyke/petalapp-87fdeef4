@@ -11,11 +11,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  applyPendingMigrations,
-  listMigrationHistory,
-  type MigrationOutcome,
-} from "./managed-migrations.server";
+import type { MigrationOutcome } from "./managed-migrations.server";
 
 const ProjectIdSchema = z.object({ projectId: z.string().uuid() });
 
