@@ -138,19 +138,8 @@ export async function streamGenerate(
 
   if (!resp.ok || !resp.body) {
     const text = await resp.text().catch(() => "");
-    // Surface the 402 "out of credits" path as a structured PipelineError
-    // so the client can render the dedicated "Buy credits" card instead
-    // of the generic "Petal hit a build issue" fallback.
-    if (resp.status === 402) {
-      let friendly = "You're out of credits. Add credits to keep generating.";
-      try {
-        const parsed = JSON.parse(text) as { error?: string };
-        if (parsed?.error) friendly = parsed.error;
-      } catch {
-        /* keep default */
-      }
-      throw new PipelineError(friendly, "credits_exhausted", text);
-    }
+    // Dedicated "Buy credits" card instead of the generic fallback.
+    throwIfCreditsExhausted(resp, text);
     throw new Error(text || `Request failed (${resp.status})`);
   }
 
