@@ -1197,6 +1197,11 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   if (authResult instanceof Response) return authResult;
   const userId = authResult;
 
+  // P0-4: app-level abuse protection. Runs BEFORE the credit floor check
+  // so rate-limited requests never charge the wallet.
+  const rl = checkGenerateRateLimit(userId);
+  if (!rl.ok) return rateLimitResponse(rl);
+
   // Provider key check is handled inside aiChatCompletions; we only verify
   // here so we can surface the existing friendly 500 if no provider is set.
   if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) {
