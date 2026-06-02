@@ -2075,6 +2075,8 @@ Forbidden defaults
               promptChars: lastUserContent.length,
               hadAttachments: hasVisionTurn,
               chosenBy: "structured_retry",
+              projectId: body.projectId ?? null,
+              userId,
             },
           });
           if (!retry.ok || !retry.body) throw e;
@@ -2332,6 +2334,8 @@ Forbidden defaults
                     promptChars: lastUserContent.length,
                     hadAttachments: hasVisionTurn,
                     chosenBy: `${gateLabel}_retry_${attempt}`,
+                    projectId: body.projectId ?? null,
+                    userId,
                   },
                 });
                 if (!retry.ok || !retry.body) break;
