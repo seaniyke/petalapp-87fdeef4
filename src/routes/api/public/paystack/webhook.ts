@@ -270,10 +270,12 @@ async function handleExpiringCards(payload: AnyEvent, origin: string): Promise<v
     if (!userId) continue;
     const link = await getSubscriptionManageLink(subCode).catch(() => null);
     if (!link) continue;
-    void sendBillingEmail({
+    const idempotencyKey = `expiring-card-${subCode}-${new Date().toISOString().slice(0, 7)}`;
+    console.info("[paystack webhook] enqueueing email", { template: "payment-failed", userId, idempotencyKey });
+    await sendBillingEmail({
       origin,
       templateName: "payment-failed",
-      idempotencyKey: `expiring-card-${subCode}-${new Date().toISOString().slice(0, 7)}`,
+      idempotencyKey,
       userId,
       templateData: {
         itemLabel: "subscription",
@@ -340,10 +342,12 @@ async function handleInvoiceFailed(payload: AnyEvent, origin: string): Promise<v
     .eq("paystack_subscription_code", subCode);
 
   const link = await getSubscriptionManageLink(subCode).catch(() => null);
-  void sendBillingEmail({
+  const idempotencyKey = `invoice-failed-${payload.data?.invoice_code ?? subCode}`;
+  console.info("[paystack webhook] enqueueing email", { template: "payment-failed", userId: subRow.user_id, idempotencyKey });
+  await sendBillingEmail({
     origin,
     templateName: "payment-failed",
-    idempotencyKey: `invoice-failed-${payload.data?.invoice_code ?? subCode}`,
+    idempotencyKey,
     userId: subRow.user_id,
     templateData: {
       itemLabel: subRow.plan_code ?? "subscription",
@@ -386,10 +390,12 @@ async function handleChargeSuccess(payload: AnyEvent, origin: string): Promise<v
       _plan_code: planCode,
       _reference: ref,
     });
-    void sendBillingEmail({
+    const successKey = `billing-success-${ref}`;
+    console.info("[paystack webhook] enqueueing email", { template: "payment-success", userId, idempotencyKey: successKey });
+    await sendBillingEmail({
       origin,
       templateName: "payment-success",
-      idempotencyKey: `billing-success-${ref}`,
+      idempotencyKey: successKey,
       userId,
       templateData: {
         purpose: "plan",
@@ -524,10 +530,12 @@ async function handleChargeSuccess(payload: AnyEvent, origin: string): Promise<v
     .eq("reference", ref)
     .eq("status", "pending");
 
-  void sendBillingEmail({
+  const successKey2 = `billing-success-${ref}`;
+  console.info("[paystack webhook] enqueueing email", { template: "payment-success", userId: tx.user_id, idempotencyKey: successKey2 });
+  await sendBillingEmail({
     origin,
     templateName: "payment-success",
-    idempotencyKey: `billing-success-${ref}`,
+    idempotencyKey: successKey2,
     userId: tx.user_id,
     templateData: {
       purpose: tx.purpose,
@@ -563,10 +571,12 @@ async function markChargeFailed(
     .eq("reference", ref)
     .maybeSingle();
   if (failedTx?.user_id) {
-    void sendBillingEmail({
+    const failKey = `billing-failed-${ref}`;
+    console.info("[paystack webhook] enqueueing email", { template: "payment-failed", userId: failedTx.user_id, idempotencyKey: failKey });
+    await sendBillingEmail({
       origin,
       templateName: "payment-failed",
-      idempotencyKey: `billing-failed-${ref}`,
+      idempotencyKey: failKey,
       userId: failedTx.user_id,
       templateData: {
         itemLabel: billingItemLabel({

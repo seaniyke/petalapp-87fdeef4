@@ -16,9 +16,15 @@ export interface TemplateEntry {
 import { template as backendRenewalReminder } from './backend-renewal-reminder'
 import { template as paymentSuccess } from './payment-success'
 import { template as paymentFailed } from './payment-failed'
+import { template as subscriptionRenewalReminder } from './subscription-renewal-reminder'
+import { template as subscriptionPaymentFailedFollowup } from './subscription-payment-failed-followup'
+import { template as subscriptionExpired } from './subscription-expired'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'backend-renewal-reminder': backendRenewalReminder,
   'payment-success': paymentSuccess,
   'payment-failed': paymentFailed,
+  'subscription-renewal-reminder': subscriptionRenewalReminder,
+  'subscription-payment-failed-followup': subscriptionPaymentFailedFollowup,
+  'subscription-expired': subscriptionExpired,
 }

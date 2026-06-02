@@ -1,65 +1,92 @@
-## Two fixes
 
-### 1. Don't show "Add backend" (or any other CTA chip) while a question is on screen
+## What's actually happening
 
-In `src/routes/builder.tsx`, the inline suggestion chips (`EnableBackendSuggestionChip`, domain, email, payment, SEO, add-page, mobile, AI-feature, analytics, storage, realtime, cron — lines ~3486–3940) render whenever their heuristic fires on the latest assistant message. They don't check whether that same message is a **clarifying question** (the `SuggestionChecklist` poll at line 3379, which already gates the composer).
+I traced the affected user (`ikemadu32@gmail.com`, sub `SUB_07cz5x57yw5aqbs`, plan Starter Pro NGN ₦1,600) end‑to‑end against `paystack_events`, `paystack_invoices`, `subscriptions` and `email_send_log`. The story is:
 
-Result: the screenshot the user attached — Petal asks "Build a demo / I have provider keys / …" and right under it a red "Add backend" chip appears, fighting for the user's attention.
+- **2026‑04‑30** `subscription.create` received → `next_payment_date = 2026‑05‑28`.
+- **2026‑05‑28** Paystack fired `invoice.update` + `invoice.payment_failed`. The charge attempt against authorization `AUTH_ipkyt2xeaw` (Verve, last4 9598, PAYCOM) came back `status: failed`. Paystack rescheduled `next_payment_date` to `2026‑06‑28`.
+- Our webhook ran `handleInvoiceFailed` → flipped the subscription to `status='attention'` and called `sendBillingEmail("payment-failed", …)`.
+- **No row in `email_send_log`** for this user. The email was never even enqueued.
+- **No "your plan is about to renew/expire" email** was ever sent either — because no such job exists in the project.
 
-**Fix:** compute a single boolean once per render:
+So this is really **two separate bugs**, both real, both my fault as the senior on this codebase:
 
-```ts
-const lastMsg = messages[messages.length - 1];
-const isAskingClarifyingQuestion =
-  !!lastMsg &&
-  lastMsg.role === "assistant" &&
-  (lastMsg.suggestions?.length ?? 0) > 0 &&
-  /\?\s*$/.test(sanitizeNarrative(lastMsg.content ?? "").trim().split(/(?<=[.!?])\s+/).pop() ?? "") &&
-  answeredQuestionAt !== messages.length &&
-  !petalIsWorking;
-```
+### Bug 1 — Renewal/expiry reminder never existed for plan subscriptions
+`src/lib/email-templates/backend-renewal-reminder.tsx` exists but is wired only to the *managed‑backend slot* cron (`runtime-backend-hour.ts`). Nothing scans `public.subscriptions` looking at `current_period_end` / `next_payment_date`, so users get zero warning before Paystack tries the renewal charge.
 
-Then add `!isAskingClarifyingQuestion &&` to the render condition of every inline suggestion-chip block (backend, domain, email, payment, SEO, add-page, mobile, AI-feature, analytics, storage, realtime, cron). One line per block; mechanical change.
+### Bug 2 — Renewal charge "fails silently" from the user's perspective
+Two sub‑causes:
 
-This preserves the rule "one thing at a time" — when there's a question, only the question (and the composer) are visible. Once the user picks an answer or hits Skip, chips can come back on the next turn.
+a. **The payment‑failed email is dropped by the Worker runtime.** In `src/routes/api/public/paystack/webhook.ts`, `handleInvoiceFailed` calls `sendBillingEmail(...)` with bare `void` (fire‑and‑forget). We're on Cloudflare workerd; when the webhook returns `200`, any in‑flight `fetch` from a non‑awaited promise is cancelled. That's why `email_send_log` has zero rows for this user even though Paystack delivered the event correctly (verified in `paystack_events`).
 
-### 2. Let Petal build crypto / banking / trading apps as polished demos (don't force a clarify stop)
+b. **We never actually re‑attempt or escalate the failed renewal.** Paystack only retries on its own monthly cadence (`cron_expression: "37 19 28 * *"` for this sub → next attempt 2026‑06‑28, a full month later). We don't tell the user "your card was declined, update it now" beyond a single best‑effort email, and we don't expose the Paystack manage link in the UI in this state.
 
-In `src/lib/high-stakes-intent.ts` + `src/routes/api/triage.ts`, when a prompt matches `crypto-wallet | neobank | trading | lending | kyc-identity`, triage currently **forces** `mode = "clarify"` and ships the 4-option poll the user just complained about. But `src/routes/api/generate.ts` already has a `highStakesBlock` that, when it runs, builds a polished demo with a visible "DEMO — simulated data" notice and fake balances. We just never get there because triage stops first.
+Paystack docs confirm: for subscriptions, `charge.success` / `invoice.payment_failed` / `subscription.not_renew` / `subscription.disable` are the source of truth, and the standard recovery flow is "email the user the subscription **manage link** so they re‑authorize a card" — Paystack does *not* auto‑retry within the same billing period.
 
-**Fix:** stop forcing clarify. Let Petal build the demo by default and only state the one-line honest caveat in the reply.
+---
 
-Concretely:
+## Fix plan
 
-- **`src/lib/high-stakes-intent.ts`** — rename / repurpose `highStakesClarifyInstruction` → `highStakesBuildInstruction(domain)`. New body, per domain:
+### 1. Make webhook‑triggered emails actually leave the box
+In `src/routes/api/public/paystack/webhook.ts`:
+- Replace every `void sendBillingEmail(...)` in `handleChargeSuccess`, `handleInvoiceFailed`, `handleExpiringCards`, `markChargeFailed` with `await sendBillingEmail(...)` inside the existing `try`. The handler already returns 200 on success — awaiting only adds the time for one `fetch` to our own `/lovable/email/transactional/send`, which enqueues into pgmq and returns immediately. This is the actual root cause of "no email sent".
+- Keep `sendBillingEmail` non‑throwing (it already swallows internally) so a flaky email still doesn't 500 the webhook back to Paystack.
+- Add a single defensive `console.info("[paystack webhook] email enqueued", { template, userId, idempotencyKey })` so future "did we send it?" questions are answerable from worker logs.
 
-  > "HIGH-STAKES DOMAIN DETECTED ({domain}). Petal CANNOT custody real {crypto / money / trades / loans / identity} or connect to real {RPC / banking / brokerage / lender / KYC} providers. You CAN — and SHOULD — build a polished, realistic DEMO (fake balances, simulated transactions in the database, full UI). Do NOT stop to ask permission. In your one-line preamble, state the limitation honestly and mention that bringing provider keys later (e.g. Stripe, Plaid, Alchemy) can make it real. Then proceed to build."
+### 2. Add a real "subscription renewing / failed / expiring" cron
+New file `src/routes/api/public/cron/subscription-renewal-reminder.ts` (public route, `apikey` header pattern like the other crons). It does three passes against `public.subscriptions WHERE provider='paystack'`:
 
-  Drop the `Set suggestions to […]` and `Set mode = "clarify"` lines.
+a. **Pre‑renewal reminders** (T‑7 / T‑3 / T‑1 days before `next_payment_date`, status `active`, `cancel_at_period_end=false`) → send a *new* template `subscription-renewal-reminder` ("Your *Starter Pro* plan renews on 28 May for ₦1,600").
 
-- **`src/routes/api/triage.ts`** (around line 348–369) — keep the detection, keep splicing the new build instruction into the system prompt so the warm preamble is honest, but **do not** force the mode. Let the existing triage classifier decide build vs clarify on its own; for clear builds like "Build me a crypto wallet exchange service", it will pick `build`.
+b. **Payment‑failed nudges** (status `attention`, last reminder >72h ago, no successful invoice since) → send `subscription-payment-failed-followup` with the Paystack **manage link** (`getSubscriptionManageLink(subCode)`), so the user can swap card. Cap at 3 nudges over 14 days.
 
-- **`src/routes/api/generate.ts`** (line ~1706, the existing `highStakesBlock`) — no change needed. It already forces the DEMO banner, the fake balances, and the "no on-chain / banking SDK" rule. This is the safety net that keeps the demo honest without blocking the build.
+c. **Expired/canceled** (`current_period_end < now()` AND no successful charge since, OR `cancel_at_period_end=true` AND `current_period_end < now()`) → send `subscription-expired` once, flip wallet `plan_code` back to `free` via existing `cancel_paystack_plan` RPC.
 
-Net effect:
-- "Build me a crypto wallet exchange service" → Petal says one honest line ("I can't custody real crypto, so I'll ship a realistic demo — bring Alchemy/Stripe keys later to wire it up for real"), then builds it.
-- The DEMO notice on the landing page + fake balances + no real on-chain SDK imports keep us honest.
-- The clarify poll only fires when triage genuinely can't tell what the user wants — not as a blanket stop on whole domains.
+Idempotency: use `idempotencyKey` shaped `sub-renewal-{subCode}-{YYYY-MM-DD}-{phase}` so re‑runs in the same day don't double‑send (the existing email queue already dedupes by `message_id`).
 
-## Technical details
+Schedule via `pg_cron` once a day at 09:00 UTC, calling
+`https://project--fe869ce3-50d8-49d0-b2fe-829b0f7b4b1c.lovable.app/api/public/cron/subscription-renewal-reminder` with the project's anon key in the `apikey` header (canonical pattern from `schedule-jobs-options`).
 
-Files touched:
-- `src/routes/builder.tsx` — add `isAskingClarifyingQuestion` memo; gate ~12 inline suggestion-chip blocks with it.
-- `src/lib/high-stakes-intent.ts` — rewrite `highStakesClarifyInstruction` → `highStakesBuildInstruction` (build-mode wording, no `mode=clarify`, no preset suggestions).
-- `src/routes/api/triage.ts` — import renamed helper; keep prompt injection, drop the forced-clarify language. No other behavior changes.
-- `src/routes/api/generate.ts` — update the import name; existing `highStakesBlock` semantics stay (demo banner, fake balances, banned SDK imports).
+### 3. Three new React Email templates
+Under `src/lib/email-templates/`, registered in `registry.ts`:
+- `subscription-renewal-reminder.tsx` — "Your {planName} renews on {date} for {amount}. Update card."
+- `subscription-payment-failed-followup.tsx` — "We couldn't charge your card. Update payment method to keep {planName} active." CTA → Paystack manage link.
+- `subscription-expired.tsx` — "Your {planName} plan ended. You're back on Free. Renew anytime."
 
-Out of scope (intentionally):
-- No change to the other clarify triggers (genuine ambiguity, missing scope).
-- No change to capability gating elsewhere (paid-plan, balance, etc.).
-- No new tests — these are surgical edits to existing wiring.
+All three reuse `PetalEmailLayout` like `backend-renewal-reminder.tsx` does.
 
-## Out of scope / risks
+### 4. UI surfacing of `status='attention'` (small, contained)
+In `src/components/BillingSheet.tsx`, when the user's row has `status='attention'`, show a red inline banner above the plan grid: *"Your last renewal charge failed on {date}. Update your card to keep {plan}."* with a button that POSTs to the existing `/api/billing/subscription/manage-link` and opens the returned Paystack URL. This is the same data path that already powers cancel/manage — just shown when relevant.
 
-- Users who genuinely want to wire real provider keys on turn 1 will now have to say so ("…with Alchemy keys", "I have Stripe Issuing"). Acceptable trade — the demo path is honest, dismissible, and one prompt away from being upgraded.
-- The clarify poll for high-stakes domains disappears as a *default*. If you'd rather keep it as an opt-in (e.g. only when the user's prompt is short / vague), say so and I'll add a length-or-confidence gate before forcing the build path.
+### 5. One‑time backfill for the affected user
+After deploy, manually fire the cron once. The 28‑May failure on `SUB_07cz5x57yw5aqbs` will hit pass (b) and the user gets the "update your card" email with the manage link today. No DB write needed beyond what the cron does itself.
+
+---
+
+## Files touched
+
+| File | Change |
+|---|---|
+| `src/routes/api/public/paystack/webhook.ts` | `await` the 4 `sendBillingEmail` calls; add log line |
+| `src/routes/api/public/cron/subscription-renewal-reminder.ts` | **new** — 3‑pass cron over `subscriptions` |
+| `src/lib/email-templates/subscription-renewal-reminder.tsx` | **new** |
+| `src/lib/email-templates/subscription-payment-failed-followup.tsx` | **new** |
+| `src/lib/email-templates/subscription-expired.tsx` | **new** |
+| `src/lib/email-templates/registry.ts` | register the 3 templates |
+| `src/components/BillingSheet.tsx` | `attention`‑state banner + manage‑link CTA |
+| migration | `pg_cron` schedule for the new endpoint, daily 09:00 UTC |
+
+## What I'm explicitly NOT changing
+
+- The Paystack webhook contract, signature verification, or idempotency on `paystack_events` — all of that is correct.
+- The `subscriptions` schema — `status='attention'`, `next_payment_date`, `current_period_end` are all already populated correctly by the existing handlers.
+- Paystack's own retry cadence (we can't override it). We compensate by emailing the user a manage link so they can self‑heal between Paystack's monthly attempts.
+- The first‑charge success path (`handleChargeSuccess` for one‑shots) — that one already works; we're only `await`ing what was previously `void`.
+
+## Verification after build
+
+1. Re‑POST the stored `invoice.payment_failed` event from `paystack_events` against `/api/public/paystack/webhook` with a valid signature and confirm a `payment-failed` row appears in `email_send_log` with `status='sent'`.
+2. Hit the new cron endpoint manually and confirm the affected user gets exactly one `subscription-payment-failed-followup` row.
+3. Open the BillingSheet as that user and confirm the red "card declined — update" banner is visible.
+
+Want me to proceed with this in build mode?
