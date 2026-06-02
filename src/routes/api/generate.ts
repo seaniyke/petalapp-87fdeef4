@@ -727,6 +727,8 @@ async function structuredRetryCompletion(args: {
     promptChars: number;
     hadAttachments: boolean;
     chosenBy: string;
+    projectId?: string | null;
+    userId?: string | null;
   };
 }): Promise<Response> {
   const bodyBase = {
