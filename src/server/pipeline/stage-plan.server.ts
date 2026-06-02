@@ -409,7 +409,7 @@ export async function runStagePlan(args: {
         console.warn(
           `[stage-plan] business-app ${gap} — repairing with domain=${ctx.businessDomain ?? "generic"}; plan before: ${files.map((f) => f.path).join(", ")}`,
         );
-        files = repairBusinessAppPlan(files, gap, ctx.businessDomain, args.brief);
+        files = repairBusinessAppPlan(files, gap, ctx.businessDomain, ctx.category, args.brief);
       }
     }
 
