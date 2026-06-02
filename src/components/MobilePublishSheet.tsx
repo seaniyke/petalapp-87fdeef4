@@ -29,6 +29,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMobileBuildReady } from "@/lib/expo.functions";
+import { startMobileBuild } from "@/lib/mobile-builds.functions";
 
 type Props = {
   open: boolean;
@@ -38,6 +39,7 @@ type Props = {
 
 export function MobilePublishSheet({ open, onOpenChange, projectId }: Props) {
   const fetchStatus = useServerFn(getMobileBuildReady);
+  const triggerBuild = useServerFn(startMobileBuild);
   const { data: status } = useQuery({
     queryKey: ["mobile-build-ready"],
     queryFn: () => fetchStatus(),
@@ -53,17 +55,23 @@ export function MobilePublishSheet({ open, onOpenChange, projectId }: Props) {
     setBuilding(platform);
     setError(null);
     try {
-      const res = await fetch("/api/mobile/eas-build", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, platform, profile: "preview" }),
+      // Unsigned preview build — user can sideload the .apk directly.
+      // Signed/store builds go through the Advanced sheet which collects
+      // a signing profile first.
+      const result = await triggerBuild({
+        data: { projectId, platform, kind: "unsigned" },
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data?.message ?? "Build couldn't start. Try again shortly.");
+      if (!result.ok) {
+        const msg =
+          result.reason === "plan_required"
+            ? "Mobile builds require a paid plan. Upgrade in Settings → Plan."
+            : result.reason === "signing_required"
+              ? "Add a signing certificate in the Advanced sheet first."
+              : (result.message ?? "Build couldn't start. Try again shortly.");
+        setError(msg);
       }
-    } catch {
-      setError("Network error — try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error — try again.");
     } finally {
       setBuilding(null);
     }
