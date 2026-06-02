@@ -156,7 +156,6 @@ function AdminMobileSigningPage() {
                         <td className="px-4 py-2 text-right">
                           <Link
                             to="/admin/projects"
-                            search={{ q: r.project_id }}
                             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                           >
                             open <ExternalLink className="h-3 w-3" />
