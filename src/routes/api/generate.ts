@@ -727,6 +727,8 @@ async function structuredRetryCompletion(args: {
     promptChars: number;
     hadAttachments: boolean;
     chosenBy: string;
+    projectId?: string | null;
+    userId?: string | null;
   };
 }): Promise<Response> {
   const bodyBase = {
@@ -784,6 +786,8 @@ async function recoverMissingToolOutput(args: {
   signal: AbortSignal;
   controller: ReadableStreamDefaultController<Uint8Array>;
   encoder: TextEncoder;
+  projectId?: string | null;
+  userId?: string | null;
 }): Promise<ToolRecoveryPayload | null> {
   const assistantText = assistantTextFromCollected(args.collected);
   if (!assistantText) return null;
@@ -818,6 +822,8 @@ async function recoverMissingToolOutput(args: {
       promptChars: args.lastUserContent.length,
       hadAttachments: args.hasVisionTurn,
       chosenBy: "tool_recovery",
+      projectId: args.projectId ?? null,
+      userId: args.userId ?? null,
     },
   });
   if (!recovery.ok || !recovery.body) return null;
@@ -1989,6 +1995,8 @@ Forbidden defaults
       promptChars: lastUserContent.length,
       hadAttachments: hasVisionTurn,
       chosenBy,
+      projectId: body.projectId ?? null,
+      userId,
     },
   });
 
@@ -2069,6 +2077,8 @@ Forbidden defaults
               promptChars: lastUserContent.length,
               hadAttachments: hasVisionTurn,
               chosenBy: "structured_retry",
+              projectId: body.projectId ?? null,
+              userId,
             },
           });
           if (!retry.ok || !retry.body) throw e;
@@ -2104,6 +2114,8 @@ Forbidden defaults
                   signal: request.signal,
                   controller,
                   encoder,
+                  projectId: body.projectId ?? null,
+                  userId,
                 }).catch((recoveryErr) => {
                   console.warn(
                     "[generate] tool recovery failed:",
@@ -2326,6 +2338,8 @@ Forbidden defaults
                     promptChars: lastUserContent.length,
                     hadAttachments: hasVisionTurn,
                     chosenBy: `${gateLabel}_retry_${attempt}`,
+                    projectId: body.projectId ?? null,
+                    userId,
                   },
                 });
                 if (!retry.ok || !retry.body) break;
