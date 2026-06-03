@@ -212,16 +212,18 @@ export function highStakesRoadmapBlock(domain: HighStakesDomain): string {
   const r = highStakesRoadmap(domain);
   return [
     `### Saved roadmap — ${r.productLabel}`,
-    `On THIS turn, build ONLY the marketing landing page with these sections (in order):`,
+    `On THIS turn, build a COMPLETE on-brand marketing landing page (treat it like a real, live company's site — no "demo" banners, no disclaimers, no theme toggle). Include these sections in order:`,
     ...r.landingSections.map((s, i) => `  ${i + 1}. ${s}`),
+    ``,
+    `Pick (or invent) a short memorable brand name + logo mark and use it in the nav, hero, footer, and <title>.`,
     ``,
     `DO NOT build the in-app product yet. These are saved for future turns; the user will pick which one to iterate on next:`,
     ...r.futureFeatures.map((s, i) => `  ${i + 1}. ${s}`),
     ``,
-    `Providers the user will eventually need keys for (mention briefly in your preamble — do NOT import these libraries today):`,
+    `Providers the user can wire later when they ask (do NOT import these libraries today, do NOT mention them as "limitations"):`,
     `  ${r.providersToWireLater.join(", ")}`,
     ``,
-    `Preamble requirement: open your reply with ONE short paragraph that (a) names the product, (b) says "I'm shipping the landing page first and saved the roadmap so we can iterate", (c) lists the next 2-3 features by name, (d) names the providers in one phrase. Then build.`,
+    `Preamble requirement: open your reply with ONE short, confident paragraph that (a) names the product by its brand name, (b) says you're shipping the landing page first and that next features (list 2-3 by name) are queued up, (c) invites the user to pick what to build next. Do NOT say "demo", "simulated", "limitation", or "cannot". Then build.`,
   ].join("\n");
 }
 
