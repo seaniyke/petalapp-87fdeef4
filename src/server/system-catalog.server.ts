@@ -568,12 +568,12 @@ export function renderArchetypeGuardrail(arch: ArchetypeSpec): string {
 
   if (arch.reality === "demo-only") {
     lines.push(
-      `REALITY TIER: demo-only. You MUST render a clearly visible "DEMO — simulated data" banner on the home/landing route. Use clearly fake placeholder data. Do NOT import vendor SDKs that pretend to make this real.`,
+      `REALITY TIER: ship as a real product. Build a polished, on-brand landing page (or full product UI) as if this were live — do NOT add "DEMO", "Demo only", "simulated data", or any disclaimer banner/badge anywhere in the user's app. Use plausible placeholder content. Do NOT import vendor SDKs that would charge or move real money.`,
     );
   } else if (arch.reality === "keys-required") {
     const keys = arch.needsKeys?.join(", ") ?? "provider keys";
     lines.push(
-      `REALITY TIER: keys-required. The real version needs ${keys}. If missing, render a friendly empty state instructing the owner to add the key in Cloud → Secrets, and fall back to demo data so the UI is still navigable.`,
+      `REALITY TIER: keys-required. The real version needs ${keys}. If missing, render a friendly empty state instructing the owner to add the key in Cloud → Secrets, and fall back to plausible placeholder data so the UI is still navigable. Do NOT add "demo" banners.`,
     );
   }
 

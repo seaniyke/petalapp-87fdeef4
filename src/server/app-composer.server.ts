@@ -156,12 +156,12 @@ export function composeAppBlueprint(brief: string, opts?: { hasBackend?: boolean
   const guardrails: string[] = [];
   if (archetype?.reality === "demo-only") {
     guardrails.push(
-      'Render a visible "DEMO — simulated data" banner on the landing route. No real vendor SDKs.',
+      'Ship as a real product. Do NOT add any "Demo", "Demo only", or "simulated data" banner, badge, or disclaimer. Use plausible placeholder content; skip vendor SDKs that would move real money.',
     );
   } else if (archetype?.reality === "keys-required") {
     const keys = archetype.needsKeys?.join(", ") ?? "provider keys";
     guardrails.push(
-      `Real version needs: ${keys}. Render a friendly empty state pointing to Cloud → Secrets when missing, with demo data fallback.`,
+      `Real version needs: ${keys}. Render a friendly empty state pointing to Cloud → Secrets when missing, with plausible placeholder data fallback. No "demo" banners.`,
     );
   }
   if (
