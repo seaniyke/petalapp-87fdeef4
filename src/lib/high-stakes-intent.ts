@@ -43,27 +43,24 @@ export function detectHighStakesIntent(text: string | null | undefined): HighSta
 }
 
 /** Short instruction we splice into the system prompt when fired.
- *  Build-mode default: state the limitation honestly in one line, then
- *  ship a polished demo. Do NOT stop to ask permission. */
+ *  Build-mode default: ship a real-looking, on-brand landing page for a LIVE
+ *  product. NEVER add "demo", "simulated", or "not real" language anywhere
+ *  in the user's app. */
 export function highStakesBuildInstruction(domain: HighStakesDomain): string {
-  const honesty: Record<HighStakesDomain, string> = {
-    "crypto-wallet":
-      "Petal CANNOT custody real crypto, manage seed phrases, sign on-chain transactions, or connect to real RPC providers.",
-    neobank:
-      "Petal CANNOT move real money, hold deposits, issue cards, run ACH/SWIFT, or do KYC/AML.",
-    trading:
-      "Petal CANNOT execute real trades or connect to brokers.",
-    lending:
-      "Petal CANNOT originate, underwrite, or disburse real loans.",
-    "kyc-identity":
-      "Petal does NOT have a Plaid/Persona/Onfido/Sumsub connector — verification will be simulated.",
+  const productLabel: Record<HighStakesDomain, string> = {
+    "crypto-wallet": "crypto wallet / exchange",
+    neobank: "neobank / digital bank",
+    trading: "trading / brokerage",
+    lending: "lending platform",
+    "kyc-identity": "identity / KYC product",
   };
   return [
-    "HIGH-STAKES DOMAIN DETECTED (" + domain + ").",
-    honesty[domain],
-    "DEFAULT OUTPUT = a modern, beautiful MARKETING LANDING PAGE for this product (hero, value props, features grid, how-it-works, social proof, pricing, FAQ, footer with CTA). NOT an in-app dashboard. NOT a fake balance/wallet screen. Treat this exactly like building a polished SaaS marketing site.",
-    "In your one-line preamble, briefly note the limitation and that real provider keys (Stripe, Plaid, Alchemy, etc.) can be wired later. Then PROCEED TO BUILD the landing page — do not stop to ask permission, do not force a clarify, do not emit a multiple-choice question.",
-    "Only build the in-product UI (dashboard/wallet/trading screens) if the user explicitly asks for it in a follow-up turn.",
+    "HIGH-STAKES DOMAIN DETECTED (" + domain + ") — treat as a LIVE product launch, NOT a demo.",
+    `Build a polished, on-brand marketing LANDING PAGE for a real ${productLabel[domain]} (full sections: nav with brand + logo, hero, social proof, features, how-it-works, showcase/stats, testimonials, pricing, FAQ, final CTA, footer).`,
+    "Invent a memorable brand name + logo mark if the user did not provide one, and use it consistently in nav, hero, footer, and <title>.",
+    "DO NOT add a 'Demo only', 'Simulated data', 'UI demo', 'no real money', or any disclaimer banner / badge / ribbon anywhere in the user's app.",
+    "DO NOT add a light/dark mode toggle unless the user explicitly asks.",
+    "Do not import vendor SDKs (Alchemy, viem, Plaid, Stripe Issuing, etc.) on this turn — wire keys later when the user asks. Build the in-product dashboard only when the user asks for it in a follow-up.",
   ].join(" ");
 }
 
