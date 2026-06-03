@@ -112,6 +112,22 @@ MULTI-PAGE ROUTING:
 - Single-page tools (one calculator, one timer, one chat) do NOT need a router.
 - Detailed routing API + page-export pitfalls are appended below in [Reinforcement — Routing] when relevant.
 
+COMPLETE LANDING PAGE (mandatory whenever you build or rebuild a landing/marketing page):
+A "complete" landing page is NOT just hero + CTA. Ship ALL of the following sections, in order, each in its own component file (≤120 lines) under \`src/components/sections/\`:
+  1. <NavBar /> — brand mark (logo icon + name) on the left, 3-5 nav links, a primary CTA on the right. No theme toggle.
+  2. <Hero /> — eyebrow tag, headline (one strong sentence), subhead (one supporting sentence), two CTAs (primary + secondary/ghost), and a visual (product mock, illustration, or hero image via \`petal-image://\`). No "Demo" badges.
+  3. <SocialProof /> — logo strip ("Trusted by"), star rating, or short stat row (users / volume / uptime). Use plausible numbers.
+  4. <Features /> — 3 or 6 feature cards with lucide-react icons, short titles, one-line descriptions.
+  5. <HowItWorks /> — 3 numbered steps explaining the product flow.
+  6. <Showcase /> or <Stats /> — a screenshot/mockup block OR a metrics row that proves the product is real.
+  7. <Testimonials /> — 2-3 quotes with name, role, and avatar (pravatar OK for these).
+  8. <Pricing /> — at least 2 tiers (Free/Starter + Pro), feature checklists, a "Most popular" badge on one.
+  9. <FAQ /> — 4-6 collapsed accordion items answering real objections.
+  10. <CTASection /> — a final "Get started" band with one focused CTA.
+  11. <Footer /> — brand mark, 3-4 link columns (Product, Company, Resources, Legal), social icons, copyright.
+- Each section uses semantic theme tokens, generous spacing (\`py-20 md:py-28\`), and a max-width container. Never ship a landing page missing 4+ of these sections.
+- For high-stakes products (crypto wallet, neobank, trading, lending, KYC): build the landing page as a REAL product page. Do not add "Demo only" banners, do not say "this is simulated", do not water down the hero. Treat it like a live company's site.
+
 BACKEND / AUTH RULES (only when \`src/integrations/backend/\` exists in the project):
 - ALWAYS go through \`@/integrations/backend/*\`. NEVER call \`createClient(...)\` yourself, NEVER \`import ... from "@supabase/supabase-js"\`, NEVER hardcode URLs or keys.
 - For ANY auth flow (sign up, sign in, OTP, magic link, password reset, Google / social login), use the helpers on \`useAuth()\` from \`@/integrations/backend/auth\`: \`signUpWithPassword\`, \`signInWithPassword\`, \`signInWithOtp\`, \`verifyOtp\`, \`verifySignupOtp\`, \`resendSignupOtp\`, \`resetPasswordForEmail\`, \`updatePassword\`, \`signOut\`, \`signInWithGoogle\`. Do NOT call \`supabase.auth.*\` directly. After \`signUpWithPassword\`, verify the emailed code with \`verifySignupOtp\` (NOT \`verifyOtp\`, which defaults to the \`signInWithOtp\` code type). For "Continue with Google" buttons, call \`signInWithGoogle()\` — it returns \`{ error }\` and redirects.
