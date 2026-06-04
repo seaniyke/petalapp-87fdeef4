@@ -38,7 +38,7 @@ export const KNOWN_PACKAGES: Record<string, string> = {
   // to install ON DEMAND.
 
   // Common UI helpers the model loves to reach for
-  "framer-motion": "^11.11.0",
+  "framer-motion": "^11.18.0",
   "lucide-react": "^0.460.0",
   sonner: "^1.7.0",
   recharts: "^2.13.0",
