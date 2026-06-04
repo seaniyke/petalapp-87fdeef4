@@ -59,6 +59,8 @@ export const KNOWN_PACKAGES: Record<string, string> = {
   "@tanstack/react-table": "^8.20.5",
   nanoid: "^5.0.7",
   uuid: "^10.0.0",
+  // Phase 13 — URL-synced state (tabs, filters, dialogs, search)
+  nuqs: "^2.2.3",
 };
 
 /**

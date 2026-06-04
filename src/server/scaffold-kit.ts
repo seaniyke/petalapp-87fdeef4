@@ -27,6 +27,7 @@ import { KIT_BLOCK_FILES_MOBILE } from "./scaffold-kit-mobile";
 import { KIT_MOTION_FILES } from "./scaffold-kit-motion";
 import { KIT_FX_FILES } from "./scaffold-kit-fx";
 import { KIT_SHADCN_FILES } from "./scaffold-kit-shadcn";
+import { KIT_DATA_FILES } from "./scaffold-kit-data";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
@@ -3763,6 +3764,11 @@ export const KIT_FILES: KitFile[] = [
   // DataTable (TanStack Table), Sidebar (full system w/ useSidebar +
   // collapsible="icon" + mobile sheet swap).
   ...KIT_SHADCN_FILES,
+  // Phase 13 — Data + state defaults. TanStack Query client + provider,
+  // Zustand example store, nuqs URL-state hook re-export, and an AppProviders
+  // wrapper that composes them with the sonner Toaster. Plus a DATA_PATTERNS
+  // doc the AI copies from instead of inventing useEffect+fetch.
+  ...KIT_DATA_FILES,
 ];
 
 /**
@@ -3829,6 +3835,12 @@ const REQUIRED_DEPS: Record<string, string> = {
   "@radix-ui/react-select": "^2.1.2",
   sonner: "^1.7.0",
   "react-router-dom": "^6.28.0",
+  // Phase 13 — data + state defaults, always installed so the AppProviders
+  // wrapper and the @/hooks/use-query-state shim compile on first build.
+  "@tanstack/react-query": "^5.59.0",
+  "@tanstack/react-table": "^8.20.5",
+  zustand: "^5.0.0",
+  nuqs: "^2.2.3",
 };
 
 const REQUIRED_DEV_DEPS: Record<string, string> = {
