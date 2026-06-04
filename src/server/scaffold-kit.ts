@@ -3906,6 +3906,12 @@ const REQUIRED_DEPS: Record<string, string> = {
   "@tanstack/react-table": "^8.20.5",
   zustand: "^5.0.0",
   nuqs: "^2.2.3",
+  // Phase 14 — self-hosted variable fonts (no Google Fonts CDN hop, no CLS).
+  // Imported by src/styles.css. Additional Fontsource Variable packages
+  // (instrument-serif, cormorant, space-grotesk, bricolage-grotesque, etc.)
+  // are listed in known-packages.ts and can be `@import`-ed per theme.
+  "@fontsource-variable/inter": "^5.1.0",
+  "@fontsource-variable/jetbrains-mono": "^5.1.0",
 };
 
 const REQUIRED_DEV_DEPS: Record<string, string> = {
