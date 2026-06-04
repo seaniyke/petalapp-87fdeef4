@@ -20,6 +20,7 @@ import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import { ensureRenderableShell } from "@/server/renderable-shell.server";
 import { fixMissingShadcnImports } from "@/server/shadcn-imports.server";
 import { fixArraySafety } from "@/server/array-safety-fixer.server";
+import { repairUnresolvedImports } from "@/server/import-resolver.server";
 import type { ProjectFile } from "@/server/generate.server";
 
 export interface StageWireupResult {
