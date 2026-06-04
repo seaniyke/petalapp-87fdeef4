@@ -32,6 +32,7 @@
  */
 
 import { aiChatCompletions } from "@/server/ai-provider.server";
+import { renderKitManifestBlock } from "@/server/kit-manifest.server";
 import {
   DOMAIN_COMPONENTS,
   DOMAIN_FEATURE_PACKS,
@@ -39,6 +40,7 @@ import {
   type BusinessDomain,
   type ShapeCategory,
 } from "@/lib/app-shape-classifier";
+
 
 export interface PlannedFile {
   /** App-relative path, e.g. "src/App.tsx". */
@@ -223,18 +225,22 @@ function detectBusinessAppGap(files: PlannedFile[]): "missing_both_surfaces" | "
   return null;
 }
 
-// Seven-component marketing surface. Each `purpose` is composition-specific
-// so Stage 2 produces a Stripe/Linear-grade landing — NOT a centered headline
-// with two buttons and three plain bordered cards (the old failure mode).
+// Marketing surface is COMPOSED, not authored. Every section's JSX comes from
+// a block import in @/components/blocks/* (auto-derived via kit-manifest). The
+// model only supplies real domain copy as props — features, pricing tiers,
+// testimonials, FAQ items. Token surface for the whole landing page collapses
+// from ~7 files × 3-5k tokens to ONE small file of ~600 tokens, which removes
+// the truncation-class failure mode by construction.
 const MARKETING_SYNTH: PlannedFile[] = [
-  { path: "src/components/marketing/Navbar.tsx", purpose: "Sticky top navbar with backdrop-blur background (bg-background/70 backdrop-blur-md border-b). Left: small logo dot + wordmark. Center (hidden on mobile, md:flex): Product, Pricing, Customers, Docs links scrolling to section ids. Right: 'Sign in' ghost button + primary CTA button to /auth. Mobile: replace center links with a Sheet-based menu trigger. Height h-16, container mx-auto px-6.", deps: [], est_lines: 130 },
-  { path: "src/components/marketing/Hero.tsx", purpose: "Marketing hero with serious composition — NOT a centered headline with two buttons. Layout: container mx-auto px-6 pt-24 pb-20 sm:pt-32 sm:pb-28. Top: small pill/badge ('New' dot + short tagline, rounded-full border bg-muted/50 text-xs px-3 py-1). Headline: two lines, text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight, ONE phrase wrapped in a span with bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent. Subhead: text-lg text-muted-foreground max-w-2xl. Dual CTA row: primary Button size='lg' → /auth, ghost Button size='lg' with ArrowRight icon. Trust row below CTAs: small text-xs text-muted-foreground 'Trusted by 2,000+ teams' + flex row of 5 muted logo-style wordmarks. Then a hero visual: a large rounded-2xl border bg-card/50 backdrop-blur p-2 shadow-2xl panel containing a mocked product dashboard chrome (top bar with 3 dots + window title, sidebar stub, content area with 2-3 stat tiles and a fake chart bars). Real domain copy specific to the brief — never 'Welcome to Our X'.", deps: [], est_lines: 220 },
-  { path: "src/components/marketing/Features.tsx", purpose: "Features section. Section wrapper: py-20 sm:py-28 container mx-auto px-6 with id='product'. Section header: small uppercase eyebrow text-xs text-primary tracking-wider, h2 text-3xl sm:text-4xl font-bold tracking-tight, one-line muted subtitle. Then a bento-style 6-card grid: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6. Each card: rounded-2xl border bg-card/50 p-6 hover:border-primary/40 transition, with a lucide icon in a rounded-lg bg-primary/10 text-primary p-2 size-10 wrapper at top, then h3 font-semibold, then text-sm text-muted-foreground description. Real domain features — pick 6 specific to the brief.", deps: [], est_lines: 160 },
-  { path: "src/components/marketing/SocialProof.tsx", purpose: "Testimonials section. py-20 sm:py-28 container mx-auto px-6 with id='customers'. Section header same pattern as Features. Then a 3-card grid: grid grid-cols-1 md:grid-cols-3 gap-6. Each testimonial card: rounded-2xl border bg-card/50 p-6, with a Quote icon (lucide) top-left in text-primary/40, a 3-4 line quote (text-foreground/90), and a footer row with an Avatar (initials in bg-primary/10 text-primary rounded-full size-10) + name + role · company. Real-sounding names and roles relevant to the domain.", deps: [], est_lines: 140 },
-  { path: "src/components/marketing/Pricing.tsx", purpose: "Pricing section. py-20 sm:py-28 container mx-auto px-6 with id='pricing'. Section header pattern. Three tier cards in grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto. Each card: rounded-2xl border p-8 flex flex-col, with tier name (font-semibold), price (text-4xl font-bold + /mo muted), one-line description, then a divider, then a feature checklist (Check icon from lucide in text-primary + text-sm) — 5-7 items per tier, then a Button at the bottom (mt-auto). Middle tier is 'Pro' / Most popular: add ring-2 ring-primary, a small Badge at top 'Most popular', and a solid primary Button; other tiers use variant='outline'. Real per-domain feature lines.", deps: [], est_lines: 200 },
-  { path: "src/components/marketing/Faq.tsx", purpose: "FAQ section using the shadcn Accordion (import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'). py-20 sm:py-28 container mx-auto px-6 max-w-3xl with id='faq'. Section header pattern. Then an Accordion type='single' collapsible with 6 real domain-relevant Q&A items. AccordionTrigger: text-left font-medium. AccordionContent: text-muted-foreground.", deps: [], est_lines: 130 },
-  { path: "src/components/marketing/Footer.tsx", purpose: "Footer. border-t bg-card/30. Inner container mx-auto px-6 py-16. Top: grid grid-cols-2 md:grid-cols-5 gap-8. First column (md:col-span-2): logo dot + wordmark, one-line tagline (text-sm text-muted-foreground max-w-xs), then a small row of social icon buttons (Twitter, Github, Linkedin from lucide). Then 3 link columns: Product (Features, Pricing, Changelog, Roadmap), Company (About, Customers, Careers, Contact), Legal (Privacy, Terms, Security, DPA). Bottom row: border-t mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground — copyright on the left, 'All systems operational' with a small green dot on the right.", deps: [], est_lines: 150 },
+  {
+    path: "src/sections/Landing.tsx",
+    purpose:
+      "Compose the public landing page by mounting blocks from @/components/blocks/* in this exact order: NavWithCta, HeroSplitImage (or HeroCentered if the brief is an AI/creative tool), LogosGrid, StatsBand, TestimonialsCards, PricingTable, FaqAccordion, CtaCentered, FooterColumns. Supply REAL domain copy as props: 5-7 features specific to the brief, 3 pricing tiers with checklist items, 6 FAQ Q&A pairs, 3 named testimonials with role+company, a 5-item logo cloud, 3 stat figures. DO NOT hand-roll any section's JSX layout — every section's structure comes from the block import. The only authored content is the copy you pass via props. Export default function Landing(). Keep the file under 200 lines.",
+    deps: [],
+    est_lines: 160,
+  },
 ];
+
 
 function synthAppSurfaceFor(
   domain: BusinessDomain | undefined,
@@ -247,10 +253,25 @@ function synthAppSurfaceFor(
     ? (DOMAIN_FEATURE_PACKS[domain] ?? [])
     : (category ? (CATEGORY_FEATURE_PACKS[category] ?? []) : []);
   const out: PlannedFile[] = [
-    { path: "src/components/app/AuthCard.tsx", purpose: "Linear/Stripe-grade auth surface — NOT a centered form on white. Layout: min-h-screen grid lg:grid-cols-2. Left pane (hidden on mobile, lg:flex): bg-gradient-to-br from-primary/10 via-background to-background with a logo dot + wordmark top-left, a large headline ('Welcome back' / 'Get started in seconds') text-3xl font-bold tracking-tight, a one-line muted subtitle, and a small testimonial quote card (rounded-2xl border bg-card/50 backdrop-blur p-6) at the bottom with avatar + name + role. Right pane (full-bleed on mobile): centered max-w-sm w-full mx-auto px-6 py-12 with Tabs (signin/signup) — each tab has Email Input, Password Input (with eye toggle icon), primary Button w-full, divider 'or continue with', Google + GitHub outline buttons with lucide icons, and a small 'Continue as demo' ghost link that flips an in-memory auth flag. Use shadcn Tabs, Input, Button, Label. Real domain copy.", deps: [], est_lines: 220 },
-    { path: "src/components/app/AppShell.tsx", purpose: "Production-grade authenticated shell — NOT three placeholder cards. Layout: flex h-screen w-full. Sidebar (w-64 shrink-0 border-r bg-card/30, hidden on mobile, md:flex flex-col): top has logo dot + wordmark + small workspace switcher (rounded-md border bg-background px-3 py-2 with ChevronsUpDown icon); middle is a nav list — section label 'Workspace' uppercase text-xs text-muted-foreground tracking-wider px-3 mb-2, then nav items as <button> rounded-md px-3 py-2 text-sm flex items-center gap-3 with a lucide icon (size-4) + label, active state bg-accent text-accent-foreground, inactive hover:bg-accent/50; one nav item per primary domain component AND each feature-pack component, plus 'Overview' first and 'Settings' last. Bottom of sidebar: a user card (rounded-lg p-2 flex items-center gap-3) with Avatar + name + email (truncate) + small ellipsis icon. Top bar (h-14 border-b flex items-center justify-between px-6): left has mobile Sheet trigger (Menu icon, md:hidden) + breadcrumb (current section name text-sm font-medium); right has a search Input (max-w-xs with Search icon prefix, hidden on small), a Bell icon ghost Button, and an Avatar. Main: flex-1 overflow-y-auto bg-background — render <Outlet/> or the active route's component via the routing state. Mobile: sidebar collapses into a shadcn Sheet drawer triggered by the Menu button. Use semantic tokens only. NO 'coming soon' panels.", deps: [], est_lines: 260 },
+    {
+      path: "src/sections/Auth.tsx",
+      purpose:
+        "Compose the auth surface from @/components/blocks/* — do NOT hand-roll a two-pane layout from scratch. Mount SignInCard and SignUpCard inside a min-h-screen flex layout with a branded left pane (bg-gradient-to-br from-primary/10 via-background to-background, logo dot + product wordmark + one-line tagline + small testimonial quote) and a right pane that renders shadcn Tabs with 'Sign in' / 'Sign up' triggers wrapping SignInCard and SignUpCard respectively. Pass realistic onSubmit handlers that flip an in-memory auth flag and a 'Continue as demo' ghost link below the tabs. Real domain copy. Export default function Auth(). Keep under 120 lines.",
+      deps: [],
+      est_lines: 100,
+    },
+    {
+      path: "src/components/app/AppShell.tsx",
+      purpose:
+        "Compose the authenticated shell using SidebarShell from @/components/blocks/sidebar-shell. Build a nav items array (one entry per primary domain component plus 'Overview' first and 'Settings' last, each with a lucide icon + label + key) and pass it to SidebarShell along with a brandName prop and a user object (name + email + initials). Render the active route's component inside the shell's main slot via a small useState route switch keyed on the nav item. DO NOT hand-roll the sidebar, top bar, or mobile sheet — SidebarShell already provides them. Keep under 140 lines.",
+      deps: ["src/components/app/SettingsPanel.tsx"],
+      est_lines: 120,
+    },
     { path: "src/components/app/SettingsPanel.tsx", purpose: "Real settings surface — NOT one card with a save button. Layout: container mx-auto max-w-4xl px-6 py-10 space-y-10. Header: h1 text-2xl font-bold + muted subtitle. Then a vertical Tabs (or section list): Profile, Workspace, Notifications, Billing, Danger Zone. Each section is a card (rounded-xl border bg-card p-6 space-y-4) with a section title (font-semibold) + muted description + real form controls. Profile: Avatar with 'Change' button, Name Input, Email Input (disabled), Role Select. Workspace: Workspace name Input, slug Input, Timezone Select, Logo upload placeholder. Notifications: 4-5 Switch rows (label + muted description on the left, Switch on the right). Billing: current plan card with plan name, price, 'Manage' Button + small usage bar. Danger Zone: red-tinted card (border-destructive/40 bg-destructive/5) with 'Delete workspace' destructive Button. Each section ends with a 'Save changes' Button row. Use shadcn Input, Select, Switch, Button, Tabs, Avatar.", deps: [], est_lines: 240 },
   ];
+
+
+
   for (const c of comps) {
     out.push({
       path: `src/components/app/${c}.tsx`,
@@ -338,6 +359,18 @@ export async function runStagePlan(args: {
       .filter(Boolean)
       .join("\n\n");
 
+    // Auto-derived manifest of @/components/blocks/* — Hero, Pricing, FAQ,
+    // Footer, Nav, SidebarShell, SignInCard, etc. The planner MUST compose
+    // these instead of planning fresh marketing/* or app/AuthCard files,
+    // which is the failure mode that previously sent ~7 long files through
+    // the model per build (and produced the truncation cliff).
+    const kitManifestBlock = renderKitManifestBlock();
+    const blocksGuidance =
+      `\n\nKIT BLOCKS — composition is mandatory for known sections:\n` +
+      `- For ANY hero, pricing, FAQ, footer, nav, testimonials, logos, stats, CTA, auth, sidebar shell, KPI grid, stat card, activity feed, product card, checkout summary: plan ONE thin composition file (e.g. src/sections/Landing.tsx, src/sections/Auth.tsx) that imports the matching block from @/components/blocks/* and supplies copy as props.\n` +
+      `- FORBIDDEN paths (these duplicate blocks the kit already ships — never plan them): src/components/marketing/* (Hero, Pricing, Features, Faq, Footer, Navbar, SocialProof, Testimonials, Cta), src/components/app/AuthCard.tsx.\n` +
+      `- Domain-specific app components (ContactsTable, Pipeline, Wallet, Inbox, etc.) are still authored as separate files — the prohibition is only on re-authoring solved chrome.`;
+
     // business-app needs more files (marketing + product + feature pack);
     // other archetypes stay at 10 to keep latency predictable.
     const maxFiles = ctx.archetypeHint === "business-app" ? 28 : 10;
@@ -348,7 +381,8 @@ export async function runStagePlan(args: {
       body: {
         model: "google/gemini-3.5-flash",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT + archetypeLine + domainLine },
+          { role: "system", content: SYSTEM_PROMPT + archetypeLine + domainLine + blocksGuidance + kitManifestBlock },
+
           {
             role: "user",
             content:
@@ -383,6 +417,24 @@ export async function runStagePlan(args: {
     if (!parsed.files?.length) return { ok: false, reason: "empty_plan" };
 
     let files = injectRootViewIfMissing(parsed.files, args.brief, ctx.archetypeHint);
+
+    // Block-duplication guard: drop any planned path that duplicates a kit
+    // block. The block already ships in src/components/blocks/* — re-authoring
+    // it through Stage 2 is what produced the truncation cliff. If the model
+    // emits these despite the blocksGuidance prompt, drop them and let the
+    // business-app repair path inject the composition file instead.
+    const BANNED_PATH_RE = /^src\/components\/(marketing\/(Hero|Pricing|Features|Faq|FAQ|Footer|Navbar|Nav|SocialProof|Testimonials|Cta|CTA|LogoCloud|Stats)\w*\.tsx|app\/AuthCard\.tsx)$/;
+    const duplicates = files.filter((f) => BANNED_PATH_RE.test(f.path)).map((f) => f.path);
+    if (duplicates.length > 0) {
+      console.warn(
+        `[stage-plan] dropped block-duplicating files: ${duplicates.join(", ")} — use src/sections/Landing.tsx or src/sections/Auth.tsx compositions instead`,
+      );
+      files = files.filter((f) => !BANNED_PATH_RE.test(f.path));
+      if (!files.some((f) => f.path === "src/App.tsx")) {
+        files = injectRootViewIfMissing(files, args.brief, ctx.archetypeHint);
+      }
+    }
+
 
     // Hard-reject archetype mismatches: drop offending files so wire-up
     // doesn't ship a "Sidebar" component for a feed app. The scaffold
