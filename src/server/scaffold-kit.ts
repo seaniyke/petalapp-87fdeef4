@@ -3748,6 +3748,13 @@ export const KIT_FILES: KitFile[] = [
   // FadeIn / SlideUp / Stagger / Reveal / Magnetic / Tilt / Parallax /
   // SplitText / CountUp / WordRotate / BlurFade. Import from "@/components/motion".
   ...KIT_MOTION_FILES,
+  // Phase 11 — Marketing FX layer. MagicUI/Aceternity-style effects:
+  // GridPattern/DotPattern/RetroGrid/FlickeringGrid/AnimatedGridPattern/Ripple/
+  // NoiseTexture/LightRays/MeshGradient/Meteors/Particles/Sparkles, AuroraText/
+  // GradientText/ShinyText, MagicCard/BorderBeam/GlowCard/BentoGrid+BentoCard/
+  // Marquee/InfiniteMovingCards/OrbitingCircles/HeroParallax/AnimatedBeam,
+  // ShimmerButton/RainbowButton/ShinyButton. Import from "@/components/fx".
+  ...KIT_FX_FILES,
 ];
 
 /**
