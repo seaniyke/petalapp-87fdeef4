@@ -104,10 +104,11 @@ Each phase: scaffold-kit additions + `known-packages.ts` pins + `design-director
 - `KNOWN_PACKAGES` extended with 30+ Fontsource Variable packages (instrument-serif, cormorant, space-grotesk, dm-serif-display, lora, libre-baskerville, syne, urbanist, bricolage-grotesque, archivo-black, abril-fatface, bebas-neue, etc.) — on-demand install per theme.
 - `FONTS.md` reference shipped at `@/components/examples/FONTS.md` mapping domain → font-pair recipe.
 
-### **Phase 15 — Content & code surfaces (Tier B #13, #14)**
-- Shiki integration in `CodeBlock` (lazy-load grammars).
-- TipTap starter block: `RichTextEditor` with toolbar.
-- react-markdown wrapper with shiki for `MarkdownView`.
+### **Phase 15 — Content & code surfaces (Tier B #13, #14)** ✅ shipped
+- `@/components/content/shiki-code-block` — real Shiki highlighting, lazy per-language grammars, github-light/dark via CSS vars, copy button, optional filename + line numbers.
+- `@/components/content/markdown-view` — react-markdown + remark-gfm (tables, task lists, strikethrough, autolinks), fenced code routed through ShikiCodeBlock, tailwind-prose-style inline styling that respects fluid type tokens.
+- `@/components/content/rich-text-editor` — TipTap (ProseMirror) WYSIWYG with StarterKit + Link + Placeholder, floating BubbleMenu toolbar (bold/italic/strike/code/H1-3/lists/quote/link), undo-redo footer.
+- `shiki`, `react-markdown`, `remark-gfm`, `rehype-raw`, `@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-link/placeholder/image/task-list/task-item` registered in `known-packages.ts` (on-demand only — not auto-installed; pulled in when the file is imported).
 
 ### **Phase 16 — Awwwards layer, opt-in (Tier C)**
 - R3F + drei + postprocessing under `src/components/three/` — `Scene`, `FloatingMesh`, `HeroSphere`, `ProductShowcase`.
