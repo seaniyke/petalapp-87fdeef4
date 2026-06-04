@@ -73,7 +73,7 @@ This plan is a research artifact + prioritized roadmap. No code yet — once app
 
 Each phase: scaffold-kit additions + `known-packages.ts` pins + `design-director.server.ts` triggers + a few hand-composed reference blocks. No model retries — these are deterministic capabilities the model can compose.
 
-### **Phase 10 — Motion baseline (Tier A #1, #5)**
+### **Phase 10 — Motion baseline (Tier A #1, #5)** ✅ shipped
 - Hard-add `motion@^12` (Motion for React) to required deps.
 - Ship `src/components/motion/` primitives: `FadeIn`, `SlideUp`, `Stagger`, `Reveal` (viewport-scroll), `Magnetic`, `Tilt`, `Parallax`, `SplitText` (chars/words/lines), `CountUp`, `WordRotate`, `MorphingText`, `BlurFade`.
 - Wire into existing hero/feature/CTA blocks behind a `motion={'on'|'off'}` prop (default on).
