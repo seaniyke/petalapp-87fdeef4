@@ -3756,6 +3756,13 @@ export const KIT_FILES: KitFile[] = [
   // Marquee/InfiniteMovingCards/OrbitingCircles/HeroParallax/AnimatedBeam,
   // ShimmerButton/RainbowButton/ShinyButton. Import from "@/components/fx".
   ...KIT_FX_FILES,
+  // Phase 12 — Missing shadcn primitives. 18 components mirroring shadcn's
+  // API: Breadcrumb, Collapsible, HoverCard, Toggle + ToggleGroup, AspectRatio,
+  // Spinner, ContextMenu, Menubar, NavigationMenu, Empty, Field, InputGroup,
+  // Carousel (Embla), Command (cmdk), Resizable (react-resizable-panels),
+  // DataTable (TanStack Table), Sidebar (full system w/ useSidebar +
+  // collapsible="icon" + mobile sheet swap).
+  ...KIT_SHADCN_FILES,
 ];
 
 /**
