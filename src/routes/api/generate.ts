@@ -57,7 +57,7 @@ import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/sel
 import { recordModelOutcome } from "@/server/model-kill-switch.server";
 import { pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
 import { renderLearningBlock } from "@/server/learning-injector.server";
-import { detectHighStakesIntent, highStakesClarifyInstruction } from "@/lib/high-stakes-intent";
+import { detectHighStakesIntent } from "@/lib/high-stakes-intent";
 import { renderPetalCapabilitiesBlock } from "@/server/petal-capabilities.server";
 import { autofixFiles } from "@/server/stream-autofixer";
 import { runPostStreamAutofix } from "@/server/post-stream-autofix.server";
