@@ -149,23 +149,25 @@ async function scaffoldOne(
 ): Promise<{ ok: true; file: ProjectFile } | { ok: false; reason: string; lastContent?: string }> {
   const { file, brief, manifestSummary, designSummary, previousAttempt, truncationRetry } = args;
   const isRoot = file.path === "src/App.tsx";
-  const isMarketing = file.path.startsWith("src/components/marketing/");
+  // Composition surfaces — thin files under src/sections/* that mount blocks
+  // from @/components/blocks/* and supply copy as props. Phase 1+2 collapsed
+  // the old src/components/marketing/* and AuthCard.tsx surfaces into these.
+  const isSection = file.path.startsWith("src/sections/");
   const isApp = file.path.startsWith("src/components/app/");
-  const isAuthCard = file.path.endsWith("/AuthCard.tsx");
   const isAppShell = file.path.endsWith("/AppShell.tsx");
-  // Marketing + app-surface components need more room — a real hero, pricing
-  // section, or AppShell with sidebar+topbar is 200-280 lines once chrome is real.
-  const lineCap = isMarketing
-    ? Math.min(300, file.est_lines + 80)
+  // Section files are compositions — small by construction (~100-160 lines).
+  // App-surface components remain hand-authored and need real headroom.
+  const lineCap = isSection
+    ? Math.min(220, file.est_lines + 60)
     : isApp
       ? Math.min(320, file.est_lines + 80)
       : Math.min(240, file.est_lines + 60);
-  // Base caps lifted (marketing 3600→4800, app 3800→5000) — the contracts
-  // above (hero + dual CTA + product mock + 4-col footer + pricing tiers +
-  // FAQ accordion) regularly cleared 3600 and got chopped.
-  const baseTokenCap = isRoot ? 3600 : isMarketing ? 4800 : isApp ? 5000 : 3200;
+  // Sections are thin compositions, no need for an inflated cap. App surfaces
+  // (tables + seed data + empty/loading states) still clear 4k regularly.
+  const baseTokenCap = isRoot ? 3600 : isSection ? 3200 : isApp ? 5000 : 3200;
   // Truncation retry: 1.5× headroom so the tighter rewrite has room to land.
   const tokenCap = truncationRetry ? Math.round(baseTokenCap * 1.5) : baseTokenCap;
+
 
 
   const rootRules = isRoot
