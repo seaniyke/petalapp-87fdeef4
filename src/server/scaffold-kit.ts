@@ -24,6 +24,7 @@ import { KIT_BLOCK_FILES_2 } from "./scaffold-kit-blocks-2";
 import { BACKEND_KIT_BLOCK_FILES_3, KIT_BLOCK_FILES_3 } from "./scaffold-kit-blocks-3";
 import { KIT_BLOCK_FILES_4 } from "./scaffold-kit-blocks-4";
 import { KIT_BLOCK_FILES_MOBILE } from "./scaffold-kit-mobile";
+import { KIT_MOTION_FILES } from "./scaffold-kit-motion";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
@@ -3742,6 +3743,10 @@ export const KIT_FILES: KitFile[] = [
   // + MobileScreen wrapper + ExampleMobileApp shell. Use when the user asks
   // for a native iOS/Android app (Petal ships as Capacitor under the hood).
   ...KIT_BLOCK_FILES_MOBILE,
+  // Phase 10 — Motion baseline. framer-motion primitives every app can compose:
+  // FadeIn / SlideUp / Stagger / Reveal / Magnetic / Tilt / Parallax /
+  // SplitText / CountUp / WordRotate / BlurFade. Import from "@/components/motion".
+  ...KIT_MOTION_FILES,
 ];
 
 /**

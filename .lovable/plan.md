@@ -1,75 +1,147 @@
-# Phase 7 — Tailwind token sweep
+# Petal Frontend UI — Gap Analysis & Capability Roadmap
 
-## Goal
+Senior-engineer audit of what a 2026 AI app builder should compose vs. what Petal's scaffold currently ships. Verdict at a glance: **Petal has a strong shadcn baseline and 60+ composed blocks, but is missing almost every "wow" capability that separates Awwwards-class output from generic AI sites — real motion, scroll, 3D, gradient meshes, typography animation, command palette, data table, and the marketing-effects layer (MagicUI / Aceternity).**
 
-Kill the silent "invisible component" failure mode where generated `.tsx` uses a Tailwind utility like `bg-brand`, `text-accent-2`, `border-ring-strong`, or `bg-[hsl(var(--surface-elevated))]` but the underlying CSS token was never added to `src/styles.css`. Tailwind v4 emits nothing for unknown tokens, so the element renders transparent/borderless and the page looks half-broken.
+This plan is a research artifact + prioritized roadmap. No code yet — once approved we pick which lanes to ship first.
 
-This is a deterministic, pure repair pass — same shape as Phases 4–6 (`ProjectFile[] → ProjectFile[]`, no I/O, sub-5ms per file, wired into `runAllRepairs`).
+---
 
-## New file: `src/server/tailwind-token-sweep.server.ts`
+## 1. What Petal ships today
 
-### Step 1 — Parse `src/styles.css`
+| Category | Status | Detail |
+|---|---|---|
+| shadcn primitives | 🟢 Strong (38/59) | All core primitives present + hand-rolled Drawer, Calendar, Combobox, DatePicker, InputOTP, Pagination (zero-dep) |
+| Icons | 🟢 Lucide ^0.460 + curated 200-icon registry, Levenshtein fuzzy match, react-icons → lucide aliasing |
+| Themes | 🟢 21 named themes (editorial, brutalist, glass-morphism, cyberpunk-neon, y2k-bubble…) w/ font pairs + oklch palette |
+| Typography | 🟡 Domain-driven font picks via Design Director; Google Fonts via `<link>`; no variable-font / fluid-type system |
+| Section blocks | 🟢 60+ blocks (hero variants, bento, marquee logos/testimonials, pricing/comparison, FAQ, stats, dashboard shell, commerce, kanban, social feed, link-in-bio, podcast, LMS, calendar, portfolio, AI chat, donate, restaurant menu, heatmap, price ticker) |
+| Animations | 🔴 Pure CSS only — `animate-pulse`, marquee keyframes, hover-scale. **No framer-motion in kit.** Design Director merely *suggests* it via prompt. |
+| Forms | 🟡 All inputs + Combobox + DatePicker + MultiStepWizard + FileUploadDropzone. RHF on-demand only. No `Form` integration tested. |
+| Charts | 🟡 Hand-rolled Line/Area/Bar SVG. Recharts on-demand. |
+| Mobile | 🟢 SafeArea, MobileHeader, BottomTabBar, PullToRefresh, MobileScreen, MobileNav |
+| Routing | 🟢 react-router-dom re-export wrapper |
 
-Extract two sets:
-- **Raw vars**: every `--name: value` declared in any `:root`, `.dark`, or top-level rule. These back arbitrary-value classes like `bg-[hsl(var(--name))]`.
-- **Theme vars**: every `--color-X`, `--font-X`, `--radius-X`, `--shadow-X` inside `@theme` / `@theme inline` blocks. These back the named utilities (`bg-X`, `text-X`, `font-X`, `rounded-X`, `shadow-X`).
+## 2. What Petal is MISSING (the gap)
 
-Derive the **known utility token set** = strip `--color-` / `--font-` / etc. prefixes from theme vars.
+### Tier A — Build-killers for "beautiful" output (ship first)
 
-### Step 2 — Scan `.tsx` / `.jsx` for token references
+1. **Real motion layer.** Zero framer-motion / Motion v12 in kit. Every Awwwards site uses it. Petal generates beautiful screenshots but dead pages.
+2. **Smooth scroll (Lenis) + scroll-driven reveals.** Single biggest "feels expensive" signal on modern sites. Missing entirely.
+3. **Marketing effects library (MagicUI/Aceternity surface).** Aurora text, animated beam, border beam, meteors, sparkles, particles, light rays, retro grid, flickering grid, dot pattern, ripple, magic card, shimmer button, number ticker, word rotate, morphing text, text reveal, blur fade, marquee w/ mask, orbiting circles, globe, dock, bento grid w/ depth, hero parallax, infinite moving cards. **None shipped.**
+4. **Gradient meshes / noise / glass 2.0.** Only flat `GradientBlob` exists. No conic-gradient meshes, no SVG turbulence noise, no proper claymorphism, no neo-brutalist preset (theme exists but no block primitives).
+5. **Typography animation primitives.** SplitText-style char/word/line wrappers, count-up KPI, kinetic typography — all absent. Heroes look static.
+6. **Missing shadcn primitives (21 of 59):** Breadcrumb, Carousel (Embla), Chart (Recharts wrapper), Collapsible, Command (cmdk palette), Context Menu, Data Table (TanStack), Field, Hover Card, Input Group, Item, Menubar, Native Select, Navigation Menu (flyout), Resizable, Sidebar (full collapsible system w/ context), Spinner, Toggle, Toggle Group, Aspect Ratio, Empty.
+7. **No command palette (⌘K).** Table-stakes for any SaaS/AI app in 2026.
 
-Two patterns:
-1. **Named utility**: regex over `className="…"` / `className={…}` / `cn(…)` / `clsx(…)` string literals. Match `(?:bg|text|border|ring|from|via|to|fill|stroke|outline|decoration|divide|placeholder|accent|caret|shadow)-([a-z][a-z0-9-]*)` and `font-([a-z][a-z0-9-]*)`. Filter out Tailwind built-ins (red-500, white, black, transparent, current, inherit, primary-only-when-defined, etc.) — keep a denylist of always-valid Tailwind core tokens so we only flag custom/semantic ones.
-2. **Arbitrary value**: match `\[[^\]]*var\(--([a-z][a-z0-9-]*)\)[^\]]*\]`.
+### Tier B — "Solid" gaps (substance, not surface)
 
-### Step 3 — Diff and repair
+8. **TanStack Query + Zustand wiring.** On-demand only. No standard data-fetching pattern shipped → models invent ad-hoc `useEffect` + fetch.
+9. **TanStack Table** + Data Table block. Petal's `Table` is HTML-only; no sort/filter/pagination/virtual rows.
+10. **react-day-picker integration.** Petal's hand-rolled Calendar is functional but missing range selection, multiple months, locale, ISO weeks.
+11. **Vaul Drawer.** Petal hand-rolls a non-spring drawer; mobile feel is off.
+12. **nuqs** for URL-synced filters/tabs. Universal in 2026 SaaS.
+13. **TipTap / Lexical** for any content-editing surface (notes, CMS, AI prompt history, comments).
+14. **Shiki** for code blocks (Petal's `CodeBlock` is read-only `<pre>`, no syntax highlight).
+15. **react-hook-form + zod resolver** as default in form blocks (BookingForm, DonateForm, ContactForm, auth).
+16. **Sidebar (shadcn full system).** Petal's `SidebarShell` is a static layout — no collapse-to-icon, no mobile sheet swap, no nested groups with active route highlight.
 
-For each referenced token NOT in the known set:
+### Tier C — Awwwards-class (opt-in per project)
 
-- **Named utility** unknown token → inject `--color-<name>: <derived>;` into `@theme inline` block (creating one if missing), AND inject `--<name>: <derived value>;` into both `:root` and `.dark` blocks.
-- **Arbitrary var** unknown raw var → inject `--<name>: <derived>;` into `:root` and `.dark`.
+17. **3D / WebGL primitives.** R3F + drei + postprocessing, Spline embed, OGL shaders. Currently zero. Needed for hero scenes, product showcases.
+18. **GSAP + ScrollTrigger + SplitText** (now fully free post-Webflow). The choice for cinematic landing pages.
+19. **Lottie / Rive** for designer-built micro-animations.
+20. **Mapbox/MapLibre + react-map-gl + deck.gl** — Petal has `MapPlaceholder` SVG only.
+21. **Spline / iframe 3D embeds** as a one-liner block.
+22. **canvas-confetti** delight on success states.
+23. **View Transitions API** wrapper for route changes (Safari 26 ships Jun 2026 — full cross-browser).
 
-**Derived value strategy** (no model call):
-- If the token name contains `foreground` / `text` / `fg` → derive from `--foreground` (or a contrasting fallback).
-- If it contains `muted` / `subtle` / `soft` → derive from `--muted` / `--muted-foreground`.
-- If it contains `accent` / `brand` / `primary` / `cta` → derive from `--primary`.
-- If it contains `border` / `ring` / `outline` / `divide` → derive from `--border`.
-- If it contains `surface` / `card` / `panel` / `elevated` → derive from `--card` / `--background`.
-- If it contains `destructive` / `danger` / `error` → derive from `--destructive`.
-- Else → fall back to `--foreground` (visible) for text-family, `--muted` for everything else.
+### Tier D — Plumbing & defaults
 
-Derivation is a `var(--existing-token)` reference, so theme switches still work.
+24. **Variable fonts via Fontsource** (self-hosted, no Google Fonts CDN hop, no CLS). Petal currently injects via `<link>` — slower + privacy concern.
+25. **Fluid typography (Utopia-style clamp tokens)** in styles.css. Currently fixed rem values.
+26. **Container queries** baked into block primitives.
+27. **ThumbHash / BlurHash** placeholders for image loading.
+28. **next-themes-equivalent** for TanStack (Petal's ThemeProvider is custom; misses no-flash SSR pattern).
+29. **react-intersection-observer hook** as a scaffold export — currently models hand-roll IntersectionObserver each time.
+30. **react-aria** for any custom widget the model invents (date range, slider thumb, combobox keyboard).
+31. **axe-core/react** dev-time a11y audit hook.
+32. **OG image generation via satori / @vercel/og** for shareable links.
 
-### Step 4 — Result + notes
+---
 
-Return `{ files, notes, addedTokens, addedThemeMappings }` and add to `runAllRepairs` as **step 7**, AFTER bare-import-resolver (Tailwind classes don't appear in import graph, so order vs other passes is independent — placing last keeps the cycle predictable).
+## 3. Proposed Roadmap (phases, in execution order)
 
-## Safety rules
+Each phase: scaffold-kit additions + `known-packages.ts` pins + `design-director.server.ts` triggers + a few hand-composed reference blocks. No model retries — these are deterministic capabilities the model can compose.
 
-- Only edit `src/styles.css`. Never edit a `.tsx` (don't rewrite the model's class names — they were a deliberate signal).
-- Do not touch existing tokens. Only **add** missing ones.
-- If `src/styles.css` is missing entirely, skip silently (other passes handle that).
-- Skip tokens that look like Tailwind core (numbered scale `gray-500`, opacity `white/50`, etc.).
-- Skip dynamic class fragments where the value side is a JS expression — we only see string literals.
+### **Phase 10 — Motion baseline (Tier A #1, #5)** ✅ shipped
+- Hard-add `motion@^12` (Motion for React) to required deps.
+- Ship `src/components/motion/` primitives: `FadeIn`, `SlideUp`, `Stagger`, `Reveal` (viewport-scroll), `Magnetic`, `Tilt`, `Parallax`, `SplitText` (chars/words/lines), `CountUp`, `WordRotate`, `MorphingText`, `BlurFade`.
+- Wire into existing hero/feature/CTA blocks behind a `motion={'on'|'off'}` prop (default on).
+- Design Director auto-enables expressive motion for editorial/creative/agency domains.
 
-## Edge cases handled
+### **Phase 11 — Marketing FX layer (Tier A #3, #4)**
+- Ship `src/components/fx/`: `AnimatedBeam`, `BorderBeam`, `Meteors`, `Sparkles`, `Particles`, `LightRays`, `RetroGrid`, `FlickeringGrid`, `DotPattern`, `GridPattern`, `Ripple`, `MagicCard`, `ShimmerButton`, `RainbowButton`, `AuroraText`, `GradientText`(v2 animated), `NoiseTexture`, `OrbitingCircles`, `Marquee`(v2 with mask + 3D variant), `BentoGrid`(v2 with hover lift + glow), `HeroParallax`, `InfiniteMovingCards`.
+- All zero-dependency (CSS keyframes + SVG) where possible; `motion` for the few that need it.
 
-- `bg-brand/40` → token is `brand`, opacity modifier is fine.
-- `text-accent-foreground` → multi-segment token, treat the whole thing as one name.
-- `bg-[hsl(var(--surface))]` → raw var path, inject only the raw var.
-- Class lists assembled with `cn("bg-card", isOpen && "bg-card-hover")` → both literals are captured.
-- Tokens already in `@theme` (not `@theme inline`) — recognize both block styles.
+### **Phase 12 — Missing shadcn primitives (Tier A #6, #7)**
+- Add: Breadcrumb, Carousel (Embla — hard-add), Chart (Recharts wrapper — hard-add), Collapsible, Command (cmdk — hard-add), Context Menu, Data Table block (TanStack Table — hard-add), Hover Card, Input Group, Menubar, Navigation Menu, Resizable, Sidebar (full system), Spinner, Toggle, Toggle Group, Aspect Ratio, Empty, Field.
+- Replace hand-rolled Calendar with react-day-picker v10 integration (keeps API).
+- Replace hand-rolled Drawer with Vaul.
 
-## Integration
+### **Phase 13 — Data + state defaults (Tier B #8, #9, #12)**
+- TanStack Query QueryClient + Provider in `App.tsx` scaffold.
+- Zustand example store.
+- nuqs `useQueryState` hook export.
+- Data Table block with sort/filter/pagination/row-selection presets.
 
-- New file: `src/server/tailwind-token-sweep.server.ts` exporting `sweepTailwindTokens(files: ProjectFile[]): { files, notes, addedTokens, addedThemeMappings }`.
-- Edit `src/server/repair-all.server.ts`: import + run as step 7, append notes.
-- Edit `.lovable/plan.md`: mark Phase 7 ✅ shipped, document the derivation strategy.
+### **Phase 14 — Typography system (Tier D #24, #25)**
+- Migrate Google Fonts `<link>` → Fontsource variable packages per theme.
+- Add Utopia-style fluid type tokens to styles.css (`--step-0` through `--step-6` via clamp).
+- Update theme registry to declare font weight/style axes.
 
-## Out of scope (deferred)
+### **Phase 15 — Content & code surfaces (Tier B #13, #14)**
+- Shiki integration in `CodeBlock` (lazy-load grammars).
+- TipTap starter block: `RichTextEditor` with toolbar.
+- react-markdown wrapper with shiki for `MarkdownView`.
 
-- Tailwind config v3 fallback (project is v4 — see `tailwind4-authoring`).
-- Font tokens beyond detection (`font-display` etc. get a stub var; we don't auto-inject `<link>` tags — that's the responsibility of the model when it picks a custom font).
-- `@source inline()` safelist generation for runtime-assembled classes — Phase 7 only repairs literal references.
+### **Phase 16 — Awwwards layer, opt-in (Tier C)**
+- R3F + drei + postprocessing under `src/components/three/` — `Scene`, `FloatingMesh`, `HeroSphere`, `ProductShowcase`.
+- GSAP + ScrollTrigger + SplitText wrapper hooks (`useScrollScene`, `useHorizontalScroll`).
+- Lenis smooth-scroll provider in `__root.tsx` (toggleable per theme).
+- canvas-confetti success helper.
+- Spline embed block.
+- View Transitions wrapper for route changes.
+- Mapbox/MapLibre `MapBlock` (env-keyed; falls back to MapPlaceholder).
 
-Exit criterion: zero "invisible block" white-screens caused by missing semantic tokens in generated apps.
+### **Phase 17 — A11y + image quality (Tier D #27, #30, #31)**
+- ThumbHash placeholder helper for `<img>` + lazy reveal.
+- react-aria primitives for any custom widget model invents (auto-wrapped via repair-all).
+- Dev-only axe-core hook.
+
+### **Phase 18 — Design Director upgrades**
+- Teach the Director when to compose FX layer (e.g. crypto + cyberpunk theme → meteors + retro grid + aurora text + shimmer buttons; SaaS + nordic-minimal → blur fade + magnetic CTAs only).
+- Per-domain motion intensity (calm / standard / expressive / cinematic).
+- Auto-pick MagicUI-equivalent components from prompt vibe.
+
+---
+
+## 4. Sequencing logic
+
+- **10 → 11 → 12** unlocks the visible "this looks 2026" jump. Three phases = the entire perceived quality gap.
+- **13 → 14 → 15** is the substance layer — apps stop feeling like demos.
+- **16** is the Awwwards reach; gated per-project because heavy.
+- **17 → 18** are polish + intelligence.
+
+Each phase = its own focused PR (mirrors Phases 4–9 cadence). Each adds: scaffold files (overwrite:true), `known-packages.ts` entries with pinned versions, optionally `repair-all` integration, and Design Director triggers.
+
+---
+
+## 5. What I need from you
+
+Pick one of:
+- **(A)** "Ship Phase 10 next" — start with motion baseline (highest ROI).
+- **(B)** "Ship Phase 11 next" — start with MagicUI FX layer (biggest visual impact).
+- **(C)** "Bundle 10+11+12 as one big visual jump" — bigger PR but the model gets the full new vocabulary at once.
+- **(D)** Reorder / drop phases — tell me which.
+
+Once you pick, I'll write the phase plan and implement.
