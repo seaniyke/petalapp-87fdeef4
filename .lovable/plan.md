@@ -110,14 +110,18 @@ Each phase: scaffold-kit additions + `known-packages.ts` pins + `design-director
 - `@/components/content/rich-text-editor` — TipTap (ProseMirror) WYSIWYG with StarterKit + Link + Placeholder, floating BubbleMenu toolbar (bold/italic/strike/code/H1-3/lists/quote/link), undo-redo footer.
 - `shiki`, `react-markdown`, `remark-gfm`, `rehype-raw`, `@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-link/placeholder/image/task-list/task-item` registered in `known-packages.ts` (on-demand only — not auto-installed; pulled in when the file is imported).
 
-### **Phase 16 — Awwwards layer, opt-in (Tier C)**
-- R3F + drei + postprocessing under `src/components/three/` — `Scene`, `FloatingMesh`, `HeroSphere`, `ProductShowcase`.
-- GSAP + ScrollTrigger + SplitText wrapper hooks (`useScrollScene`, `useHorizontalScroll`).
-- Lenis smooth-scroll provider in `__root.tsx` (toggleable per theme).
-- canvas-confetti success helper.
-- Spline embed block.
-- View Transitions wrapper for route changes.
-- Mapbox/MapLibre `MapBlock` (env-keyed; falls back to MapPlaceholder).
+### **Phase 16 — Awwwards layer, opt-in (Tier C)** ✅ shipped (Mapbox deferred)
+- `@/components/three/scene` — opinionated R3F `<Canvas>` with lights, camera, HDRI environment, optional orbit controls.
+- `@/components/three/floating-mesh` — drei `<Float>` mesh with `MeshDistortMaterial` (icosahedron / torus / torusKnot / box / sphere).
+- `@/components/three/hero-sphere` — one-liner hero centerpiece (absolute-positioned Scene + FloatingMesh).
+- `@/components/three/spline-embed` — lazy-mounted Spline scene runtime for designer-shipped `.splinecode` URLs.
+- `@/components/scroll/lenis-provider` — smooth-scroll provider, reduced-motion aware, exposes instance on `window.__lenis` for GSAP sync.
+- `@/hooks/use-scroll-scene` — GSAP context scoped to a ref with auto-cleanup, re-exports `gsap` + `ScrollTrigger`.
+- `@/hooks/use-horizontal-scroll` — pinned horizontal scroll track (Awwwards staple).
+- `@/lib/confetti` — `celebrate()`, `celebrateCannons()`, `celebrateFrom(el)`.
+- `@/lib/view-transitions` — `withViewTransition()` + `navigateWithTransition()` (Safari 26 ships June 2026 → full cross-browser).
+- `three`, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`, `@splinetool/react-spline` + runtime, `gsap`, `lenis`, `canvas-confetti` registered in `known-packages.ts` (on-demand, not auto-installed).
+- Mapbox/MapLibre `MapBlock` deferred — pulled out into a future "geo" phase since it needs env-keyed config.
 
 ### **Phase 17 — A11y + image quality (Tier D #27, #30, #31)**
 - ThumbHash placeholder helper for `<img>` + lazy reveal.

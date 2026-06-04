@@ -30,6 +30,7 @@ import { KIT_SHADCN_FILES } from "./scaffold-kit-shadcn";
 import { KIT_DATA_FILES } from "./scaffold-kit-data";
 import { KIT_TYPOGRAPHY_FILES } from "./scaffold-kit-typography";
 import { KIT_CONTENT_FILES } from "./scaffold-kit-content";
+import { KIT_AWWWARDS_FILES } from "./scaffold-kit-awwwards";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
@@ -3845,6 +3846,11 @@ export const KIT_FILES: KitFile[] = [
   // Heavy deps (shiki, @tiptap/*, react-markdown) are on-demand only via
   // known-packages.ts — not added to REQUIRED_DEPS.
   ...KIT_CONTENT_FILES,
+  // Phase 16 — Awwwards layer (opt-in). R3F + drei scenes (Scene/FloatingMesh/
+  // HeroSphere/SplineEmbed), Lenis smooth-scroll provider, GSAP ScrollTrigger
+  // hooks (useScrollScene/useHorizontalScroll), canvas-confetti helpers,
+  // and a View Transitions API wrapper. All deps on-demand only.
+  ...KIT_AWWWARDS_FILES,
 ];
 
 /**
