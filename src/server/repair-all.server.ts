@@ -93,5 +93,10 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
     notes.push(`bare-imports: ${parts.join("; ")}`);
   }
 
+  // 6. Route-graph validator — wildcard 404, layout Outlet, dedupe "/", react-router→-dom.
+  const route = validateRouteGraph(files);
+  files = route.files;
+  for (const n of route.notes) notes.push(n);
+
   return { files, notes };
 }
