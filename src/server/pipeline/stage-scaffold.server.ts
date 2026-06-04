@@ -104,6 +104,27 @@ function validateFileSyntax(path: string, content: string): string | null {
   }
 }
 
+/**
+ * Heuristic: does this parse error smell like the file got chopped mid-output
+ * (token cap hit) rather than a real syntax mistake? Babel reports truncation
+ * as "Unterminated string constant", "Unterminated template", or "Unexpected
+ * token" at the very end of the buffer. We treat these as "truncated" so the
+ * retry path raises the budget instead of echoing the broken text back at the
+ * model (which triggers a known Gemini degenerate loop where it repeats the
+ * last token — "Fixed. Fixed. Fixed." — until the cap).
+ */
+function looksLikeTruncation(content: string, parseError: string): boolean {
+  if (/Unterminated (string|template|comment|regular expression)/i.test(parseError)) return true;
+  // Brace deficit: more opens than closes means the file ended mid-block.
+  const opens = (content.match(/\{/g) ?? []).length;
+  const closes = (content.match(/\}/g) ?? []).length;
+  if (opens - closes >= 1) return true;
+  // Doesn't end on a line that looks complete.
+  const tail = content.trimEnd().slice(-1);
+  if (!["}", ";", ")", "]", ">", "`"].includes(tail)) return true;
+  return false;
+}
+
 interface ScaffoldOneArgs {
   file: PlannedFile;
   brief: string;
@@ -115,12 +136,18 @@ interface ScaffoldOneArgs {
    * include the parser error in the user prompt.
    */
   previousAttempt?: { content: string; parserError: string };
+  /**
+   * True when the prior attempt ran out of tokens. Raises the budget and
+   * tells the model to ship a tighter version — does NOT echo the broken
+   * text back (that's what causes the "Fixed. Fixed. Fixed." loop).
+   */
+  truncationRetry?: boolean;
 }
 
 async function scaffoldOne(
   args: ScaffoldOneArgs,
 ): Promise<{ ok: true; file: ProjectFile } | { ok: false; reason: string; lastContent?: string }> {
-  const { file, brief, manifestSummary, designSummary, previousAttempt } = args;
+  const { file, brief, manifestSummary, designSummary, previousAttempt, truncationRetry } = args;
   const isRoot = file.path === "src/App.tsx";
   const isMarketing = file.path.startsWith("src/components/marketing/");
   const isApp = file.path.startsWith("src/components/app/");
@@ -133,7 +160,13 @@ async function scaffoldOne(
     : isApp
       ? Math.min(320, file.est_lines + 80)
       : Math.min(240, file.est_lines + 60);
-  const tokenCap = isRoot ? 3200 : isMarketing ? 3600 : isApp ? 3800 : 2800;
+  // Base caps lifted (marketing 3600→4800, app 3800→5000) — the contracts
+  // above (hero + dual CTA + product mock + 4-col footer + pricing tiers +
+  // FAQ accordion) regularly cleared 3600 and got chopped.
+  const baseTokenCap = isRoot ? 3600 : isMarketing ? 4800 : isApp ? 5000 : 3200;
+  // Truncation retry: 1.5× headroom so the tighter rewrite has room to land.
+  const tokenCap = truncationRetry ? Math.round(baseTokenCap * 1.5) : baseTokenCap;
+
 
   const rootRules = isRoot
     ? `\nTHIS IS THE ROOT VIEW (src/App.tsx). Extra rules:\n` +
@@ -198,9 +231,16 @@ async function scaffoldOne(
     marketingRules +
     appRules;
 
-  const retryBlock = previousAttempt
-    ? `\n\nPREVIOUS ATTEMPT FAILED to parse with: ${previousAttempt.parserError}\nDo not repeat the same mistake. Re-emit the COMPLETE file (not a diff) with the syntax fixed. Your previous attempt began:\n\n${previousAttempt.content.slice(0, 600)}…`
-    : "";
+  // Retry guidance. CRITICAL: do NOT echo the previous broken text back to
+  // the model — Gemini Flash falls into a degenerate loop where it repeats
+  // the last token of what it was shown ("Fixed. Fixed. Fixed." until cap).
+  // Just describe the failure mode and re-ask.
+  const retryBlock = truncationRetry
+    ? `\n\nYour previous attempt ran out of tokens before finishing the file. Re-emit the COMPLETE file, but tighter: drop ONE optional sub-section if needed, keep copy concise, no decorative repetition. Budget is generous this time — use it on real content, not filler.`
+    : previousAttempt
+      ? `\n\nYour previous attempt did not parse (${previousAttempt.parserError}). Re-emit the COMPLETE file from scratch with valid TS/TSX: balanced braces, every string and template literal closed, every JSX tag closed. Do NOT continue or patch the previous version — write it fresh.`
+      : "";
+
 
   try {
     const upstream = await aiChatCompletions({
@@ -256,8 +296,15 @@ async function scaffoldOne(
     // the autofix-narrating-its-fix chat leak we just removed.
     const parseError = validateFileSyntax(file.path, parsed.content);
     if (parseError) {
+      // Distinguish truncation (file was chopped mid-output) from a real
+      // syntax mistake. Truncation needs a bigger budget, NOT the broken
+      // text echoed back — see looksLikeTruncation for the heuristic.
+      if (looksLikeTruncation(parsed.content, parseError)) {
+        return { ok: false, reason: `truncated_syntax:${parseError}` };
+      }
       return { ok: false, reason: `syntax_error:${parseError}`, lastContent: parsed.content };
     }
+
 
     // Honor the planned path even if the model echoed a different one.
     return { ok: true, file: { path: file.path, content: parsed.content } };
@@ -291,6 +338,7 @@ export async function runStageScaffold(args: {
   interface RetryItem {
     file: PlannedFile;
     previousAttempt?: { content: string; parserError: string };
+    truncationRetry?: boolean;
   }
   const retryQueue: RetryItem[] = [];
 
@@ -309,12 +357,16 @@ export async function runStageScaffold(args: {
       res.status === "fulfilled"
         ? (res.value as { ok: false; reason: string; lastContent?: string }).lastContent
         : undefined;
-    // Build retry context: only feed previous attempt back when it was a
-    // syntax error — for upstream/truncation failures the previous content
-    // is useless or absent.
+    // Classify the failure so the retry uses the right strategy:
+    //  - truncation (finish_reason=length OR truncation-shaped parse error)
+    //    → bigger budget, "tighter" prompt, do NOT echo broken text
+    //  - real syntax error → "write it fresh" prompt, also do NOT echo
+    //  - upstream / no_tool_call / empty → plain retry
+    const isTruncation = reason === "truncated" || reason.startsWith("truncated_syntax:");
     const isSyntax = reason.startsWith("syntax_error:");
     retryQueue.push({
       file: planned,
+      truncationRetry: isTruncation,
       previousAttempt:
         isSyntax && lastContent
           ? { content: lastContent, parserError: reason.slice("syntax_error:".length) }
@@ -334,9 +386,11 @@ export async function runStageScaffold(args: {
           manifestSummary: args.manifestSummary,
           designSummary,
           previousAttempt: item.previousAttempt,
+          truncationRetry: item.truncationRetry,
         }),
       ),
     );
+
     retried.forEach((res, i) => {
       const planned = retryQueue[i].file;
       const outcomeIdx = outcomes.findIndex((o) => o.path === planned.path);
