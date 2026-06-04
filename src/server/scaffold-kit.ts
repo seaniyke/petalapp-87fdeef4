@@ -84,6 +84,18 @@ const TSCONFIG = `{
 
 export const STYLES_CSS = `@import "tailwindcss";
 
+/* -------------------------------------------------------------------------
+ * Self-hosted variable fonts via Fontsource. No Google Fonts CDN hop, no
+ * privacy concern, no FOIT/CLS. Add more variable packages per theme:
+ *   @import "@fontsource-variable/instrument-serif"; (editorial display)
+ *   @import "@fontsource-variable/cormorant";         (luxury serif)
+ *   @import "@fontsource-variable/space-grotesk";     (modern tech)
+ *   @import "@fontsource-variable/bricolage-grotesque";
+ * Then override --font-sans / --font-display below.
+ * --------------------------------------------------------------------- */
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+
 /* Enable class-based dark mode (\`<html class="dark">\`).
    Tailwind v4 also auto-respects the system preference via the dark variant. */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -109,7 +121,41 @@ export const STYLES_CSS = `@import "tailwindcss";
   --color-input: var(--input);
   --color-ring: var(--ring);
   --radius: 0.625rem;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+
+  /* Font stacks. Override --font-display per theme (editorial → Instrument
+     Serif, brutalist → Archivo Black, etc.) by re-declaring in :root. */
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  --font-display: var(--font-sans);
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* ---------------------------------------------------------------------
+   * Fluid type scale (Utopia-style clamp).
+   * Min @ 320px viewport, max @ 1280px viewport. Each step generates
+   * \`text-step-*\` utilities. Use for headings/body so type breathes
+   * across mobile → desktop without media queries.
+   *   --text-step--1   small print / captions   12 → 14
+   *   --text-step-0    body                     16 → 18
+   *   --text-step-1    lead                     18 → 22
+   *   --text-step-2    h4                       22 → 28
+   *   --text-step-3    h3                       26 → 36
+   *   --text-step-4    h2                       32 → 48
+   *   --text-step-5    h1                       40 → 64
+   *   --text-step-6    display                  48 → 88
+   * ------------------------------------------------------------------- */
+  --text-step--1: clamp(0.75rem, 0.71rem + 0.21vw, 0.875rem);
+  --text-step-0:  clamp(1rem, 0.93rem + 0.42vw, 1.125rem);
+  --text-step-1:  clamp(1.125rem, 0.99rem + 0.83vw, 1.375rem);
+  --text-step-2:  clamp(1.375rem, 1.13rem + 1.46vw, 1.75rem);
+  --text-step-3:  clamp(1.625rem, 1.31rem + 1.88vw, 2.25rem);
+  --text-step-4:  clamp(2rem, 1.5rem + 2.92vw, 3rem);
+  --text-step-5:  clamp(2.5rem, 1.75rem + 4.58vw, 4rem);
+  --text-step-6:  clamp(3rem, 1.83rem + 7.08vw, 5.5rem);
+
+  /* Tracking (letter-spacing) presets — display type wants tighter. */
+  --tracking-tightest: -0.04em;
+  --tracking-tighter:  -0.03em;
+  --tracking-tight:    -0.015em;
 }
 
 :root {
@@ -185,10 +231,29 @@ export const STYLES_CSS = `@import "tailwindcss";
 html, body, #root { height: 100%; }
 body {
   font-family: var(--font-sans);
+  font-size: var(--text-step-0);
   background: var(--color-background);
   color: var(--color-foreground);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+/* Display utility for hero/h1 type — uses the display font + tightest
+   tracking. Apply with \`<h1 className="font-display">\`. */
+.font-display { font-family: var(--font-display); letter-spacing: var(--tracking-tightest); }
+.font-serif { font-family: var(--font-serif); }
+.font-mono { font-family: var(--font-mono); }
+
+/* Fluid type utilities, exposed as plain class names so the AI can write
+   \`<h1 className="text-step-5 font-display">\` without inventing styles. */
+.text-step--1 { font-size: var(--text-step--1); line-height: 1.4; }
+.text-step-0  { font-size: var(--text-step-0);  line-height: 1.6; }
+.text-step-1  { font-size: var(--text-step-1);  line-height: 1.5; }
+.text-step-2  { font-size: var(--text-step-2);  line-height: 1.3; letter-spacing: var(--tracking-tight); }
+.text-step-3  { font-size: var(--text-step-3);  line-height: 1.2; letter-spacing: var(--tracking-tight); }
+.text-step-4  { font-size: var(--text-step-4);  line-height: 1.1; letter-spacing: var(--tracking-tighter); }
+.text-step-5  { font-size: var(--text-step-5);  line-height: 1.05; letter-spacing: var(--tracking-tighter); }
+.text-step-6  { font-size: var(--text-step-6);  line-height: 1; letter-spacing: var(--tracking-tightest); }
 `;
 
 
