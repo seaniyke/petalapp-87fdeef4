@@ -182,7 +182,27 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
     for (const { full, spec } of matches) {
       if (!spec.startsWith("@/") && !spec.startsWith(".")) continue;
       const resolved = resolveSpec(f.path, spec, byPath);
-      if (resolved) continue;
+      if (resolved) {
+        // Phase 5: if resolution only succeeded case-insensitively, the
+        // spec doesn't match the on-disk path. Rewrite to the canonical
+        // alias form so Linux Rollup resolves it.
+        const aliasForm = toAliasSpec(resolved);
+        const specBase = spec.startsWith("@/")
+          ? `src/${spec.slice(2)}`.toLowerCase()
+          : normalizePath(`${f.path.split("/").slice(0, -1).join("/")}/${spec}`).toLowerCase();
+        const resolvedNoExt = resolved.replace(/\.(tsx?|jsx?)$/, "").toLowerCase();
+        if (specBase !== resolvedNoExt && spec.startsWith("@/")) {
+          // Case mismatch on an alias-form import.
+          const newLine = full.replace(
+            new RegExp(`(["'])${spec.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\1`),
+            `"${aliasForm}"`,
+          );
+          src = src.replace(full, newLine);
+          rewrites.push({ path: f.path, from: spec, to: aliasForm });
+          changed = true;
+        }
+        continue;
+      }
 
       // 1. Remap to an existing file with a matching basename.
       const remap = pickRemapTarget(spec, byPath);
