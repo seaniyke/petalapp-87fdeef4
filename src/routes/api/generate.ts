@@ -1697,30 +1697,42 @@ Forbidden defaults
     ? `\n\n### Multi-edit turn\nThe latest request contains multiple coordinated asks. Treat this as one complete batch: decompose it internally, preserve dependencies across files, emit every required create/update/replace/delete op in one patch, and do not ask the user to split the work unless the asks conflict, are unsafe, or require missing infrastructure. Use small precise ops, especially when touching multiple regions of the same file.\n`
     : "";
 
-  // High-stakes domain honesty: if the latest user turn asks for a crypto
-  // wallet, online bank, brokerage, etc., instruct the model to clearly
-  // label the build as a DEMO and render an in-app notice card so users
-  // never mistake it for a production-grade financial product.
+  // Project archetype: match the latest user turn against the 18-archetype
+  // registry (covers ~92% of what people build on AI app builders). When a
+  // known archetype fires, splice in the build instruction + saved roadmap
+  // (landing sections + deferred features + providers). When NONE matches,
+  // call a one-shot cheap-model fallback to invent the roadmap so EVERY
+  // first turn ends with "here's what's queued next, pick one."
+  // Treat every domain as a real live product — no "demo" banners.
   const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
   const lastUserText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
   const hs = detectHighStakesIntent(lastUserText);
-  // Pre-compute roadmap once so we can both inject into the prompt AND persist
-  // into the blueprint at end-of-turn. Only relevant when high-stakes fires.
   let hsRoadmap: import("@/lib/high-stakes-intent").HighStakesRoadmap | null = null;
-  let hsRoadmapBlockText = "";
-  if (hs.detected && hs.domain) {
-    try {
-      const mod = await import("@/lib/high-stakes-intent");
-      hsRoadmap = mod.highStakesRoadmap(hs.domain);
-      hsRoadmapBlockText = "\n\n" + mod.highStakesRoadmapBlock(hs.domain);
-    } catch {
-      /* never block the build on roadmap failure */
+  let highStakesBlock = "";
+  try {
+    const arc = await import("@/lib/project-archetype");
+    const match = arc.detectArchetype(lastUserText);
+    if (match.detected && match.archetype) {
+      const a = match.archetype;
+      highStakesBlock =
+        "\n\n### Project archetype\n" +
+        arc.archetypeBuildInstruction(a) +
+        "\n\n" +
+        arc.archetypeRoadmapBlock(a);
+      if (a.highStakes) {
+        hsRoadmap = {
+          productLabel: a.productLabel,
+          landingSections: [...a.landingSections],
+          futureFeatures: [...a.futureFeatures],
+          providersToWireLater: [...a.providersToWireLater],
+        };
+      }
     }
+    // No fallback LLM call here — keep turn 1 latency low; the universal
+    // landing-page rules in baseSystem already cover unknown prompts.
+  } catch {
+    /* never block the build on archetype lookup failure */
   }
-  const highStakesBlock =
-    hs.detected && hs.domain
-      ? `\n\n### High-stakes domain — DEMO ONLY\n${highStakesClarifyInstruction(hs.domain)}\nWhen you build, you MUST:\n- Render a visible, dismissible notice on the home/landing route stating this is a DEMO with simulated data, not a real ${hs.domain.replace("-", " ")}.\n- Use clearly fake placeholder balances/amounts (e.g. labelled "Demo balance").\n- NEVER import on-chain libraries (viem, ethers, web3.js), banking SDKs (Plaid, Increase, Unit), or write code that pretends to move real money or sign real transactions.\n- In your summary to the user, restate the limitation in one sentence and suggest which provider keys would be needed to make it real.\n${hsRoadmapBlockText}`
-      : "";
 
 
   // App Composer (Step 5): collapse archetype + template + kit blocks +
