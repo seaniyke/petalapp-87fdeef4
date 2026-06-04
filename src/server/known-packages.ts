@@ -61,6 +61,46 @@ export const KNOWN_PACKAGES: Record<string, string> = {
   uuid: "^10.0.0",
   // Phase 13 — URL-synced state (tabs, filters, dialogs, search)
   nuqs: "^2.2.3",
+
+  // Phase 14 — Fontsource variable font catalog. Self-hosted, no CDN hop,
+  // no FOIT/CLS. Inter + JetBrains Mono ship by default via scaffold-kit
+  // REQUIRED_DEPS; the rest are on-demand for theme overrides
+  // (editorial → instrument-serif, luxury → cormorant, tech → space-grotesk,
+  // brutalist → archivo, etc.). Import with `@import "@fontsource-variable/<name>";`
+  // at the top of src/styles.css, then override --font-display / --font-sans.
+  "@fontsource-variable/inter": "^5.1.0",
+  "@fontsource-variable/jetbrains-mono": "^5.1.0",
+  "@fontsource-variable/instrument-serif": "^5.1.0",
+  "@fontsource-variable/cormorant": "^5.1.0",
+  "@fontsource-variable/cormorant-garamond": "^5.1.0",
+  "@fontsource-variable/playfair-display": "^5.1.0",
+  "@fontsource-variable/dm-serif-display": "^5.1.0",
+  "@fontsource-variable/lora": "^5.1.0",
+  "@fontsource-variable/libre-baskerville": "^5.1.0",
+  "@fontsource-variable/space-grotesk": "^5.1.0",
+  "@fontsource-variable/dm-sans": "^5.1.0",
+  "@fontsource-variable/manrope": "^5.1.0",
+  "@fontsource-variable/sora": "^5.1.0",
+  "@fontsource-variable/outfit": "^5.1.0",
+  "@fontsource-variable/figtree": "^5.1.0",
+  "@fontsource-variable/plus-jakarta-sans": "^5.1.0",
+  "@fontsource-variable/syne": "^5.1.0",
+  "@fontsource-variable/urbanist": "^5.1.0",
+  "@fontsource-variable/epilogue": "^5.1.0",
+  "@fontsource-variable/bricolage-grotesque": "^5.1.0",
+  "@fontsource-variable/work-sans": "^5.1.0",
+  "@fontsource-variable/nunito-sans": "^5.1.0",
+  "@fontsource-variable/karla": "^5.1.0",
+  "@fontsource-variable/ibm-plex-sans": "^5.1.0",
+  "@fontsource-variable/fira-sans": "^5.1.0",
+  "@fontsource-variable/hind": "^5.1.0",
+  "@fontsource-variable/cabin": "^5.1.0",
+  "@fontsource-variable/rubik": "^5.1.0",
+  "@fontsource-variable/barlow": "^5.1.0",
+  "@fontsource/bebas-neue": "^5.1.0",
+  "@fontsource/archivo-black": "^5.1.0",
+  "@fontsource/abril-fatface": "^5.1.0",
+  "@fontsource/space-mono": "^5.1.0",
 };
 
 /**
