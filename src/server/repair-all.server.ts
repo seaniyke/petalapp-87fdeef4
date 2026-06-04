@@ -26,6 +26,7 @@ import { repairUnresolvedImports } from "./import-resolver.server";
 import { repairBareImports } from "./bare-import-resolver.server";
 import { normalizeJsxExtensions } from "./extension-normalizer.server";
 import { validateRouteGraph } from "./route-graph.server";
+import { sweepTailwindTokens } from "./tailwind-token-sweep.server";
 
 export interface RepairAllResult {
   files: ProjectFile[];
