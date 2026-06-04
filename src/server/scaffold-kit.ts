@@ -28,6 +28,7 @@ import { KIT_MOTION_FILES } from "./scaffold-kit-motion";
 import { KIT_FX_FILES } from "./scaffold-kit-fx";
 import { KIT_SHADCN_FILES } from "./scaffold-kit-shadcn";
 import { KIT_DATA_FILES } from "./scaffold-kit-data";
+import { KIT_TYPOGRAPHY_FILES } from "./scaffold-kit-typography";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
