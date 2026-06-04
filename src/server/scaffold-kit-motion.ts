@@ -17,7 +17,7 @@
  *     scroll-back doesn't re-trigger animations, which feels janky.
  */
 
-import type { ProjectFile } from "./scaffold-kit-types";
+import type { ProjectFile } from "./generate.server";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
