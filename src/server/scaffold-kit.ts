@@ -25,6 +25,7 @@ import { BACKEND_KIT_BLOCK_FILES_3, KIT_BLOCK_FILES_3 } from "./scaffold-kit-blo
 import { KIT_BLOCK_FILES_4 } from "./scaffold-kit-blocks-4";
 import { KIT_BLOCK_FILES_MOBILE } from "./scaffold-kit-mobile";
 import { KIT_MOTION_FILES } from "./scaffold-kit-motion";
+import { KIT_FX_FILES } from "./scaffold-kit-fx";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
@@ -3747,6 +3748,13 @@ export const KIT_FILES: KitFile[] = [
   // FadeIn / SlideUp / Stagger / Reveal / Magnetic / Tilt / Parallax /
   // SplitText / CountUp / WordRotate / BlurFade. Import from "@/components/motion".
   ...KIT_MOTION_FILES,
+  // Phase 11 — Marketing FX layer. MagicUI/Aceternity-style effects:
+  // GridPattern/DotPattern/RetroGrid/FlickeringGrid/AnimatedGridPattern/Ripple/
+  // NoiseTexture/LightRays/MeshGradient/Meteors/Particles/Sparkles, AuroraText/
+  // GradientText/ShinyText, MagicCard/BorderBeam/GlowCard/BentoGrid+BentoCard/
+  // Marquee/InfiniteMovingCards/OrbitingCircles/HeroParallax/AnimatedBeam,
+  // ShimmerButton/RainbowButton/ShinyButton. Import from "@/components/fx".
+  ...KIT_FX_FILES,
 ];
 
 /**
