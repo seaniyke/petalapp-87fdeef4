@@ -26,6 +26,7 @@ import { KIT_BLOCK_FILES_4 } from "./scaffold-kit-blocks-4";
 import { KIT_BLOCK_FILES_MOBILE } from "./scaffold-kit-mobile";
 import { KIT_MOTION_FILES } from "./scaffold-kit-motion";
 import { KIT_FX_FILES } from "./scaffold-kit-fx";
+import { KIT_SHADCN_FILES } from "./scaffold-kit-shadcn";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
@@ -3755,6 +3756,13 @@ export const KIT_FILES: KitFile[] = [
   // Marquee/InfiniteMovingCards/OrbitingCircles/HeroParallax/AnimatedBeam,
   // ShimmerButton/RainbowButton/ShinyButton. Import from "@/components/fx".
   ...KIT_FX_FILES,
+  // Phase 12 — Missing shadcn primitives. 18 components mirroring shadcn's
+  // API: Breadcrumb, Collapsible, HoverCard, Toggle + ToggleGroup, AspectRatio,
+  // Spinner, ContextMenu, Menubar, NavigationMenu, Empty, Field, InputGroup,
+  // Carousel (Embla), Command (cmdk), Resizable (react-resizable-panels),
+  // DataTable (TanStack Table), Sidebar (full system w/ useSidebar +
+  // collapsible="icon" + mobile sheet swap).
+  ...KIT_SHADCN_FILES,
 ];
 
 /**
