@@ -231,9 +231,16 @@ async function scaffoldOne(
     marketingRules +
     appRules;
 
-  const retryBlock = previousAttempt
-    ? `\n\nPREVIOUS ATTEMPT FAILED to parse with: ${previousAttempt.parserError}\nDo not repeat the same mistake. Re-emit the COMPLETE file (not a diff) with the syntax fixed. Your previous attempt began:\n\n${previousAttempt.content.slice(0, 600)}…`
-    : "";
+  // Retry guidance. CRITICAL: do NOT echo the previous broken text back to
+  // the model — Gemini Flash falls into a degenerate loop where it repeats
+  // the last token of what it was shown ("Fixed. Fixed. Fixed." until cap).
+  // Just describe the failure mode and re-ask.
+  const retryBlock = truncationRetry
+    ? `\n\nYour previous attempt ran out of tokens before finishing the file. Re-emit the COMPLETE file, but tighter: drop ONE optional sub-section if needed, keep copy concise, no decorative repetition. Budget is generous this time — use it on real content, not filler.`
+    : previousAttempt
+      ? `\n\nYour previous attempt did not parse (${previousAttempt.parserError}). Re-emit the COMPLETE file from scratch with valid TS/TSX: balanced braces, every string and template literal closed, every JSX tag closed. Do NOT continue or patch the previous version — write it fresh.`
+      : "";
+
 
   try {
     const upstream = await aiChatCompletions({
