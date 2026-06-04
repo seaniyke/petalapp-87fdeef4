@@ -418,6 +418,24 @@ export async function runStagePlan(args: {
 
     let files = injectRootViewIfMissing(parsed.files, args.brief, ctx.archetypeHint);
 
+    // Block-duplication guard: drop any planned path that duplicates a kit
+    // block. The block already ships in src/components/blocks/* — re-authoring
+    // it through Stage 2 is what produced the truncation cliff. If the model
+    // emits these despite the blocksGuidance prompt, drop them and let the
+    // business-app repair path inject the composition file instead.
+    const BANNED_PATH_RE = /^src\/components\/(marketing\/(Hero|Pricing|Features|Faq|FAQ|Footer|Navbar|Nav|SocialProof|Testimonials|Cta|CTA|LogoCloud|Stats)\w*\.tsx|app\/AuthCard\.tsx)$/;
+    const duplicates = files.filter((f) => BANNED_PATH_RE.test(f.path)).map((f) => f.path);
+    if (duplicates.length > 0) {
+      console.warn(
+        `[stage-plan] dropped block-duplicating files: ${duplicates.join(", ")} — use src/sections/Landing.tsx or src/sections/Auth.tsx compositions instead`,
+      );
+      files = files.filter((f) => !BANNED_PATH_RE.test(f.path));
+      if (!files.some((f) => f.path === "src/App.tsx")) {
+        files = injectRootViewIfMissing(files, args.brief, ctx.archetypeHint);
+      }
+    }
+
+
     // Hard-reject archetype mismatches: drop offending files so wire-up
     // doesn't ship a "Sidebar" component for a feed app. The scaffold
     // stage will still build the legitimate components.
