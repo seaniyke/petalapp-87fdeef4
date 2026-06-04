@@ -32,6 +32,7 @@
  */
 
 import { aiChatCompletions } from "@/server/ai-provider.server";
+import { renderKitManifestBlock } from "@/server/kit-manifest.server";
 import {
   DOMAIN_COMPONENTS,
   DOMAIN_FEATURE_PACKS,
@@ -39,6 +40,7 @@ import {
   type BusinessDomain,
   type ShapeCategory,
 } from "@/lib/app-shape-classifier";
+
 
 export interface PlannedFile {
   /** App-relative path, e.g. "src/App.tsx". */
