@@ -27,16 +27,19 @@ Extends `import-resolver.server.ts`:
 - When `resolveSpec` returns null, try case-insensitive match before falling through to remap/stub. If found, rewrite the import to the canonical casing.
 - Scan every generated file: if its content has JSX and its extension is `.ts`/`.js`, rename to `.tsx`/`.jsx` and update every importer.
 
-## Phase 6 — Route graph validator
+## Phase 6 — Route graph validator  ✅ shipped
 
-**Kills**: `<Link to="/x">` runtime errors, `routeTree.gen.ts` "/" duplicates, missing `<Outlet />`, `react-router-dom` imports.
+**Kills**: `<Link to="/x">` runtime white-screens, duplicate `/` routes, layout components missing `<Outlet />`, bare `react-router` imports.
 
-New file: `src/server/route-graph.server.ts`
-- Build a set of valid route paths from `src/routes/*` (mirroring the Vite plugin's filename rules).
-- Scan every `<Link to="…">`, `useNavigate()(…)`, `router.navigate({to:…})`, and `Navigate to=` call. Unresolved target → create a stub route file at the canonical path (`src/routes/foo.tsx`) exporting a minimal page that matches the link's anchor text.
-- Detect duplicate `/` routes (`index.tsx` + `_app/index.tsx`, etc.) → drop the non-canonical one with a warning.
-- Detect layout files (parent with children) missing `<Outlet />` → inject it into the component's JSX root.
-- Detect `from "react-router-dom"` → rewrite to `@tanstack/react-router` and map the equivalent symbols (`Link`/`useNavigate`/`useParams`).
+Shipped in `src/server/route-graph.server.ts`. Generated apps use `react-router-dom` (not TanStack file-based routing — that's Petal's own router), so the validator scans for:
+- `<Route path="…">` declarations across all .tsx/.jsx files.
+- `<Link to="…">`, `<Navigate to="…">`, and `navigate("…")` call sites.
+- Targets with no matching `<Route>` and no `path="*"` fallback → inject a styled 404 wildcard route into the first file containing `<Routes>`.
+- Two+ files declaring `<Route path="/">` → drop dupes, keep the App.tsx / router file.
+- Layout components (`element={<X/>}` with nested children) that don't render `<Outlet />` → add Outlet + augment the `react-router-dom` import.
+- `from "react-router"` → rewrite to `from "react-router-dom"`.
+
+Composed in `src/server/repair-all.server.ts` step 6. Pure ProjectFile[]→ProjectFile[], no I/O.
 
 ## Phase 7 — Tailwind token sweep
 
