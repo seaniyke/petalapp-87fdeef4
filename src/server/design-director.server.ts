@@ -203,6 +203,7 @@ export function renderDesignDirectionBlock(d: DesignDirection): string {
     `- palette mood: ${d.palette_mood}. Translate this into oklch tokens in src/styles.css (background, foreground, primary, accent, muted). DO NOT use stock purple gradients on white.\n` +
     `- density: ${d.density}\n` +
     `- motion: ${d.motion}${d.motion === "expressive" ? " (use framer-motion for the hero entrance)" : ""}\n` +
+    `- motion primitives: the scaffold ships ready-made wrappers at \`@/components/motion\` — FadeIn, SlideUp, Stagger + StaggerItem, Reveal, Magnetic, Tilt, Parallax, SplitText, CountUp, WordRotate, BlurFade. Prefer composing these over hand-rolling framer-motion variants. For "subtle" use FadeIn/SlideUp/BlurFade. For "expressive" layer in Stagger + SplitText + WordRotate + Magnetic CTAs + Parallax/Tilt on hero media. Keep "still" if motion === still (don't import them).\n` +
     `- design moves to land:\n${moves}\n` +
     `Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.\n` +
     themeBlock +
