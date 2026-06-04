@@ -267,6 +267,10 @@ function synthAppSurfaceFor(
       deps: ["src/components/app/SettingsPanel.tsx"],
       est_lines: 120,
     },
+    { path: "src/components/app/SettingsPanel.tsx", purpose: "Real settings surface — NOT one card with a save button. Layout: container mx-auto max-w-4xl px-6 py-10 space-y-10. Header: h1 text-2xl font-bold + muted subtitle. Then a vertical Tabs (or section list): Profile, Workspace, Notifications, Billing, Danger Zone. Each section is a card (rounded-xl border bg-card p-6 space-y-4) with a section title (font-semibold) + muted description + real form controls. Profile: Avatar with 'Change' button, Name Input, Email Input (disabled), Role Select. Workspace: Workspace name Input, slug Input, Timezone Select, Logo upload placeholder. Notifications: 4-5 Switch rows (label + muted description on the left, Switch on the right). Billing: current plan card with plan name, price, 'Manage' Button + small usage bar. Danger Zone: red-tinted card (border-destructive/40 bg-destructive/5) with 'Delete workspace' destructive Button. Each section ends with a 'Save changes' Button row. Use shadcn Input, Select, Switch, Button, Tabs, Avatar.", deps: [], est_lines: 240 },
+  ];
+
+
 
   for (const c of comps) {
     out.push({
