@@ -83,7 +83,7 @@ Each phase: scaffold-kit additions + `known-packages.ts` pins + `design-director
 - Ship `src/components/fx/`: `AnimatedBeam`, `BorderBeam`, `Meteors`, `Sparkles`, `Particles`, `LightRays`, `RetroGrid`, `FlickeringGrid`, `DotPattern`, `GridPattern`, `Ripple`, `MagicCard`, `ShimmerButton`, `RainbowButton`, `AuroraText`, `GradientText`(v2 animated), `NoiseTexture`, `OrbitingCircles`, `Marquee`(v2 with mask + 3D variant), `BentoGrid`(v2 with hover lift + glow), `HeroParallax`, `InfiniteMovingCards`.
 - All zero-dependency (CSS keyframes + SVG) where possible; `motion` for the few that need it.
 
-### **Phase 12 — Missing shadcn primitives (Tier A #6, #7)**
+### **Phase 12 — Missing shadcn primitives (Tier A #6, #7)** ✅ shipped
 - Add: Breadcrumb, Carousel (Embla — hard-add), Chart (Recharts wrapper — hard-add), Collapsible, Command (cmdk — hard-add), Context Menu, Data Table block (TanStack Table — hard-add), Hover Card, Input Group, Menubar, Navigation Menu, Resizable, Sidebar (full system), Spinner, Toggle, Toggle Group, Aspect Ratio, Empty, Field.
 - Replace hand-rolled Calendar with react-day-picker v10 integration (keeps API).
 - Replace hand-rolled Drawer with Vaul.
