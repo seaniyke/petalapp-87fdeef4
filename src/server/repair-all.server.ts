@@ -7,6 +7,9 @@
  *   3. array-safety            — wrap possibly-undefined arrays before iteration.
  *   4. import-resolver         — remap or stub unresolved LOCAL imports.
  *   5. bare-import-resolver    — alias/install/strip unresolved BARE imports.
+ *   6. route-graph             — validate <Link>/<Navigate>/navigate() vs <Route>;
+ *                                rewrite react-router→react-router-dom; inject 404;
+ *                                add <Outlet/> to layout components missing it.
  *
  * Each pass is pure ProjectFile[] → ProjectFile[]. Together they are the
  * "succeed-by-construction" layer described in .lovable/plan.md.
@@ -22,6 +25,7 @@ import { fixArraySafety } from "./array-safety-fixer.server";
 import { repairUnresolvedImports } from "./import-resolver.server";
 import { repairBareImports } from "./bare-import-resolver.server";
 import { normalizeJsxExtensions } from "./extension-normalizer.server";
+import { validateRouteGraph } from "./route-graph.server";
 
 export interface RepairAllResult {
   files: ProjectFile[];
