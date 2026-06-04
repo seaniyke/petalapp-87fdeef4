@@ -3840,6 +3840,11 @@ export const KIT_FILES: KitFile[] = [
   // tokens (fluid type scale + Fontsource @imports + font tokens) live in
   // STYLES_CSS above. This is the "how to swap fonts per theme" guide.
   ...KIT_TYPOGRAPHY_FILES,
+  // Phase 15 — Content & code surfaces. Shiki-highlighted code blocks,
+  // react-markdown + remark-gfm renderer, and a TipTap WYSIWYG editor.
+  // Heavy deps (shiki, @tiptap/*, react-markdown) are on-demand only via
+  // known-packages.ts — not added to REQUIRED_DEPS.
+  ...KIT_CONTENT_FILES,
 ];
 
 /**

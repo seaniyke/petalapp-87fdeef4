@@ -62,6 +62,24 @@ export const KNOWN_PACKAGES: Record<string, string> = {
   // Phase 13 — URL-synced state (tabs, filters, dialogs, search)
   nuqs: "^2.2.3",
 
+  // Phase 15 — Content & code surfaces (on-demand only, never auto-installed).
+  //   shiki              real syntax highlighting (lazy grammars, browser-safe)
+  //   react-markdown     markdown → React with custom renderers
+  //   remark-gfm         GitHub-flavoured markdown (tables, task-lists, etc.)
+  //   @tiptap/*          ProseMirror-based rich-text editor
+  shiki: "^1.22.0",
+  "react-markdown": "^9.0.1",
+  "remark-gfm": "^4.0.0",
+  "rehype-raw": "^7.0.0",
+  "@tiptap/react": "^2.10.0",
+  "@tiptap/pm": "^2.10.0",
+  "@tiptap/starter-kit": "^2.10.0",
+  "@tiptap/extension-link": "^2.10.0",
+  "@tiptap/extension-placeholder": "^2.10.0",
+  "@tiptap/extension-image": "^2.10.0",
+  "@tiptap/extension-task-list": "^2.10.0",
+  "@tiptap/extension-task-item": "^2.10.0",
+
   // Phase 14 — Fontsource variable font catalog. Self-hosted, no CDN hop,
   // no FOIT/CLS. Inter + JetBrains Mono ship by default via scaffold-kit
   // REQUIRED_DEPS; the rest are on-demand for theme overrides
