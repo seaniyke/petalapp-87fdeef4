@@ -230,7 +230,7 @@ async function scaffoldOne(
     `Import only files that exist either in the manifest below or in the standard scaffold (src/components/ui/*, src/lib/utils, src/integrations/backend/*).` +
     designLine +
     rootRules +
-    marketingRules +
+    sectionRules +
     appRules;
 
   // Retry guidance. CRITICAL: do NOT echo the previous broken text back to
