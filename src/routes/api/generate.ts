@@ -2418,6 +2418,26 @@ Forbidden defaults
           throw new Error("Project is missing index.html.");
         }
 
+        // Resolve any unresolved local imports BEFORE the shell guard /
+        // build trigger. Rollup hard-fails on `Could not resolve "..."`,
+        // and that class of error survives every model-based retry because
+        // the model isn't told *which specific path* is missing in a way
+        // it can act on. Deterministic remap-or-stub is the only reliable
+        // fix — see src/server/import-resolver.server.ts for rationale.
+        {
+          const importFix = repairUnresolvedImports(nextFiles);
+          if (importFix.rewrites.length > 0 || importFix.stubsCreated.length > 0) {
+            console.info(
+              "[import-resolver] remapped",
+              importFix.rewrites.length,
+              "import(s); stubbed",
+              importFix.stubsCreated.length,
+              "missing file(s)",
+            );
+            nextFiles = importFix.files;
+          }
+        }
+
         const shellGuard = ensureRenderableShell(nextFiles, detectedWebSubtype);
         // ROOT-CAUSE GATE: if the model failed to emit a real src/App.tsx,
         // we used to silently inject a "Your app is being prepared"
