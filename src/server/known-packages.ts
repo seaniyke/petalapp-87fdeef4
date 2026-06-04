@@ -80,6 +80,21 @@ export const KNOWN_PACKAGES: Record<string, string> = {
   "@tiptap/extension-task-list": "^2.10.0",
   "@tiptap/extension-task-item": "^2.10.0",
 
+  // Phase 16 — Awwwards layer (on-demand only). Three.js + R3F + drei for
+  // 3D scenes, Spline embed runtime, GSAP + ScrollTrigger for cinematic
+  // scroll, Lenis for smooth scroll, canvas-confetti for delight states.
+  three: "^0.169.0",
+  "@types/three": "^0.169.0",
+  "@react-three/fiber": "^8.17.10",
+  "@react-three/drei": "^9.114.0",
+  "@react-three/postprocessing": "^2.16.3",
+  "@splinetool/react-spline": "^4.0.0",
+  "@splinetool/runtime": "^1.9.35",
+  gsap: "^3.12.5",
+  lenis: "^1.1.14",
+  "canvas-confetti": "^1.9.3",
+  "@types/canvas-confetti": "^1.6.4",
+
   // Phase 14 — Fontsource variable font catalog. Self-hosted, no CDN hop,
   // no FOIT/CLS. Inter + JetBrains Mono ship by default via scaffold-kit
   // REQUIRED_DEPS; the rest are on-demand for theme overrides

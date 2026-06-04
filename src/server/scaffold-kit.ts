@@ -3846,6 +3846,11 @@ export const KIT_FILES: KitFile[] = [
   // Heavy deps (shiki, @tiptap/*, react-markdown) are on-demand only via
   // known-packages.ts — not added to REQUIRED_DEPS.
   ...KIT_CONTENT_FILES,
+  // Phase 16 — Awwwards layer (opt-in). R3F + drei scenes (Scene/FloatingMesh/
+  // HeroSphere/SplineEmbed), Lenis smooth-scroll provider, GSAP ScrollTrigger
+  // hooks (useScrollScene/useHorizontalScroll), canvas-confetti helpers,
+  // and a View Transitions API wrapper. All deps on-demand only.
+  ...KIT_AWWWARDS_FILES,
 ];
 
 /**
