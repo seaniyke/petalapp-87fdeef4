@@ -79,7 +79,7 @@ Each phase: scaffold-kit additions + `known-packages.ts` pins + `design-director
 - Wire into existing hero/feature/CTA blocks behind a `motion={'on'|'off'}` prop (default on).
 - Design Director auto-enables expressive motion for editorial/creative/agency domains.
 
-### **Phase 11 — Marketing FX layer (Tier A #3, #4)**
+### **Phase 11 — Marketing FX layer (Tier A #3, #4)** ✅ shipped
 - Ship `src/components/fx/`: `AnimatedBeam`, `BorderBeam`, `Meteors`, `Sparkles`, `Particles`, `LightRays`, `RetroGrid`, `FlickeringGrid`, `DotPattern`, `GridPattern`, `Ripple`, `MagicCard`, `ShimmerButton`, `RainbowButton`, `AuroraText`, `GradientText`(v2 animated), `NoiseTexture`, `OrbitingCircles`, `Marquee`(v2 with mask + 3D variant), `BentoGrid`(v2 with hover lift + glow), `HeroParallax`, `InfiniteMovingCards`.
 - All zero-dependency (CSS keyframes + SVG) where possible; `motion` for the few that need it.
 
