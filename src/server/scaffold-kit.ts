@@ -25,6 +25,7 @@ import { BACKEND_KIT_BLOCK_FILES_3, KIT_BLOCK_FILES_3 } from "./scaffold-kit-blo
 import { KIT_BLOCK_FILES_4 } from "./scaffold-kit-blocks-4";
 import { KIT_BLOCK_FILES_MOBILE } from "./scaffold-kit-mobile";
 import { KIT_MOTION_FILES } from "./scaffold-kit-motion";
+import { KIT_FX_FILES } from "./scaffold-kit-fx";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
