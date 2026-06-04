@@ -98,5 +98,10 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   files = route.files;
   for (const n of route.notes) notes.push(n);
 
+  // 7. Tailwind token sweep — inject missing semantic tokens into styles.css.
+  const tw = sweepTailwindTokens(files);
+  files = tw.files;
+  for (const n of tw.notes) notes.push(n);
+
   return { files, notes };
 }
