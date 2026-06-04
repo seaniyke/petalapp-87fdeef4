@@ -47,7 +47,7 @@ function resolveSpec(
   if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
   else if (spec.startsWith("."))
     base = normalizePath(`${fromPath.split("/").slice(0, -1).join("/")}/${spec}`);
-  else return "external"; // bare package — assume it's installed; not our concern here
+  else return "external"; // bare package — handled by bare-import-resolver
   const candidates = [
     base,
     `${base}.tsx`,
@@ -57,7 +57,18 @@ function resolveSpec(
     `${base}/index.tsx`,
     `${base}/index.ts`,
   ];
-  return candidates.find((p) => byPath.has(p)) ?? null;
+  const exact = candidates.find((p) => byPath.has(p));
+  if (exact) return exact;
+
+  // Phase 5: case-insensitive fallback. macOS/Windows file systems are
+  // case-insensitive — `import "./Button"` resolves to `button.tsx`
+  // locally and crashes on Linux Rollup. Match case-insensitively; the
+  // caller rewrites the spec to the canonical path.
+  const lowerCands = new Set(candidates.map((p) => p.toLowerCase()));
+  for (const p of byPath.keys()) {
+    if (lowerCands.has(p.toLowerCase())) return p;
+  }
+  return null;
 }
 
 /** Strip ext + folder, lowercase, drop common suffixes. Used for fuzzy matching. */
@@ -171,7 +182,27 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
     for (const { full, spec } of matches) {
       if (!spec.startsWith("@/") && !spec.startsWith(".")) continue;
       const resolved = resolveSpec(f.path, spec, byPath);
-      if (resolved) continue;
+      if (resolved) {
+        // Phase 5: if resolution only succeeded case-insensitively, the
+        // spec doesn't match the on-disk path. Rewrite to the canonical
+        // alias form so Linux Rollup resolves it.
+        const aliasForm = toAliasSpec(resolved);
+        const specBase = spec.startsWith("@/")
+          ? `src/${spec.slice(2)}`.toLowerCase()
+          : normalizePath(`${f.path.split("/").slice(0, -1).join("/")}/${spec}`).toLowerCase();
+        const resolvedNoExt = resolved.replace(/\.(tsx?|jsx?)$/, "").toLowerCase();
+        if (specBase !== resolvedNoExt && spec.startsWith("@/")) {
+          // Case mismatch on an alias-form import.
+          const newLine = full.replace(
+            new RegExp(`(["'])${spec.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\1`),
+            `"${aliasForm}"`,
+          );
+          src = src.replace(full, newLine);
+          rewrites.push({ path: f.path, from: spec, to: aliasForm });
+          changed = true;
+        }
+        continue;
+      }
 
       // 1. Remap to an existing file with a matching basename.
       const remap = pickRemapTarget(spec, byPath);

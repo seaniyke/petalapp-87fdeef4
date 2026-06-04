@@ -18,9 +18,7 @@
 import { verifyFilesLocal } from "@/server/local-verifier";
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import { ensureRenderableShell } from "@/server/renderable-shell.server";
-import { fixMissingShadcnImports } from "@/server/shadcn-imports.server";
-import { fixArraySafety } from "@/server/array-safety-fixer.server";
-import { repairUnresolvedImports } from "@/server/import-resolver.server";
+import { runAllRepairs } from "@/server/repair-all.server";
 import type { ProjectFile } from "@/server/generate.server";
 
 export interface StageWireupResult {
@@ -43,48 +41,15 @@ export async function runStageWireup(args: {
   let files = args.files;
   const notes: string[] = [];
 
-  // 0. Deterministic shadcn missing-import autofix. Catches the
-  // "Can't find variable: AvatarImage" class of runtime crashes that
-  // pass TS-loose JSX but blow up at render. Runs BEFORE the verifier
-  // so the "undefined" issue disappears before we judge fatal-ness.
-  const shadcnFix = fixMissingShadcnImports(files);
-  files = shadcnFix.files;
-  if (shadcnFix.fixes.length > 0) {
-    const totalAdded = shadcnFix.fixes.reduce((n, f) => n + f.added.length, 0);
-    notes.push(
-      `shadcn-imports: injected ${totalAdded} missing import(s) across ${shadcnFix.fixes.length} file(s)`,
-    );
-  }
+  // 0. Single composition point for all deterministic file-graph repairs:
+  //    extension normalizer → shadcn imports → array safety →
+  //    local import resolver → bare import resolver.
+  // Order matters and is enforced inside runAllRepairs. Every pass is pure
+  // ProjectFile[] → ProjectFile[], <5ms per file, no I/O.
+  const repaired = runAllRepairs(files);
+  files = repaired.files;
+  notes.push(...repaired.notes);
 
-  // 0b. Deterministic array-safety autofix. Wraps `IDENT.filter(...)` /
-  // `IDENT.map(...)` / `IDENT.length` etc with `(IDENT ?? [])` when IDENT
-  // is provably-possibly-undefined (useState w/o array default, useQuery
-  // `data`, supabase `data`). Catches the "undefined is not an object
-  // (evaluating 'e.filter')" white-screen class at the source.
-  const arrFix = fixArraySafety(files);
-  files = arrFix.files;
-  if (arrFix.fixes.length > 0) {
-    const totalRewrites = arrFix.fixes.reduce((n, f) => n + f.rewrites, 0);
-    notes.push(
-      `array-safety: hardened ${totalRewrites} access(es) across ${arrFix.fixes.length} file(s)`,
-    );
-  }
-
-  // 0c. Deterministic unresolved-import repair. The Rollup error
-  // `Could not resolve "./pages/LandingPage"` is non-recoverable at
-  // build time — the model wrote App.tsx importing a path the planner
-  // never created. Remap to the closest existing file by basename,
-  // or stub the missing file so the build resolves. Must run BEFORE
-  // the esbuild verifier (which would otherwise pass — esbuild only
-  // parses, it doesn't resolve the graph) and is the only thing that
-  // catches this class before production Rollup.
-  const importFix = repairUnresolvedImports(files);
-  files = importFix.files;
-  if (importFix.rewrites.length > 0 || importFix.stubsCreated.length > 0) {
-    notes.push(
-      `import-resolver: remapped ${importFix.rewrites.length} import(s); stubbed ${importFix.stubsCreated.length} missing file(s)`,
-    );
-  }
 
   const allPaths = files.map((f) => f.path);
 

@@ -1,70 +1,107 @@
+# Succeed-by-Construction, Phase 4–9
 
-## Diagnosis (grounded, not theoretical)
+Goal: make `vite build` + first paint succeed on every generated app, without ever asking the model to "try to fix" a class of error we can resolve deterministically.
 
-Petal already ships a full block library — Navbar, Hero, Features, Pricing, FAQ, Footer, AuthCard, AppShell, KpiGrid, ProductCard, etc. — in `scaffold-kit-blocks-2/3/4.ts`. The manifest of these blocks is rendered by `kit-manifest.server.ts` and injected into the monolithic build prompt by `dynamic-prompts.server.ts:619`.
+Each phase ships one focused pass under `src/server/` and wires it into both the staged pipeline (`stage-wireup`) and the monolithic path (`api/generate.ts`), in the same place we already mount `repairUnresolvedImports`. Ordering is by ROI × dependency: earlier phases unblock more downstream traffic and have no prerequisites.
 
-**But the staged pipeline — the path that actually runs first — does not use it.** Two concrete defects in `src/server/pipeline/stage-plan.server.ts`:
+---
 
-1. The planner's `SYSTEM_PROMPT` (line 102) never receives `renderKitManifestBlock()`. The planner literally does not know `@/components/blocks/*` exists.
-2. `MARKETING_SYNTH` (line 229) and `synthAppSurfaceFor` (line 239) hard-code plan entries that tell Stage 2 to **author from scratch** the very components the kit already ships — `Hero.tsx` (220 est_lines), `Pricing.tsx` (200), `Features.tsx` (160), `Faq.tsx` (130), `Footer.tsx` (150), `Navbar.tsx` (130), `AuthCard.tsx` (220). When `repairBusinessAppPlan` runs (line 280), it deterministically splices these in.
+## Phase 4 — Bare-import resolver  *(highest ROI, no deps)*
 
-Result for every business-app build: 7–11 long files × ~3,500–5,000 tokens each go through the model. That's the surface area that produced today's `Pricing.tsx → "Fixed. Fixed. Fixed."` truncation. The recovery code we shipped this morning is treating the symptom; this plan removes the cause.
+**Kills**: `Could not resolve "framer-motion" / "recharts" / "date-fns/format" / "lucide-react"` — the #1 remaining Rollup hard-fail now that local imports are handled.
 
-## The fix, in three layers
+New file: `src/server/bare-import-resolver.server.ts`
+- Walk every `import … from "<bare>"` across generated files.
+- Diff against `package.json` deps + a curated registry of known-safe packages with pinned versions (lucide-react, framer-motion, recharts, date-fns, zod, clsx, tailwind-merge, sonner, react-hook-form, @hookform/resolvers, embla-carousel-react, cmdk, vaul, lodash-es, etc.).
+- For each unknown bare specifier:
+  - If in registry → inject into `package.json` `dependencies` at the pinned version, rewrite the file so `bun install` runs.
+  - If a known typo of a registry entry (`lucide` → `lucide-react`, `react-icons/fa` when lucide is available) → rewrite the import.
+  - If unmappable → strip the import + its named identifiers + leave a TODO comment.
+- For lucide-react specifically: validate the imported icon names against the bundled icon list (it has churn). Unknown name → swap for closest match (`Sparkle` → `Sparkles`, `ArrowRightCircled` → `ArrowRight`).
 
-### Layer 1 — Show the planner the blocks (~30 LOC)
+## Phase 5 — Case + extension normalizer
 
-In `stage-plan.server.ts`:
+**Kills**: macOS-passes, Linux-fails imports (`@/components/ui/Button` vs `button.tsx`); `.ts` files containing JSX.
 
-- Import `renderKitManifestBlock` from `../kit-manifest.server`.
-- Append it to the system prompt, after the LAYOUT ARCHETYPE rules, with one sentence: *"You MAY plan a thin composition file that imports these blocks. You MUST NOT plan a file whose purpose duplicates a block listed below."*
-- Add a planner post-check: any planned path that matches a known block name (`/marketing/(Hero|Pricing|Features|Faq|Footer|Navbar|Testimonials)\.tsx`, `/app/AuthCard\.tsx`) is dropped and replaced by composition.
+Extends `import-resolver.server.ts`:
+- When `resolveSpec` returns null, try case-insensitive match before falling through to remap/stub. If found, rewrite the import to the canonical casing.
+- Scan every generated file: if its content has JSX and its extension is `.ts`/`.js`, rename to `.tsx`/`.jsx` and update every importer.
 
-### Layer 2 — Replace MARKETING_SYNTH with COMPOSITION_SYNTH (~80 LOC)
+## Phase 6 — Route graph validator
 
-Today: 7 long files, each authored by Gemini with a 200-line contract.
+**Kills**: `<Link to="/x">` runtime errors, `routeTree.gen.ts` "/" duplicates, missing `<Outlet />`, `react-router-dom` imports.
 
-After: **one** file, `src/sections/Landing.tsx`, planned with `est_lines: 90` and `purpose` that reads:
+New file: `src/server/route-graph.server.ts`
+- Build a set of valid route paths from `src/routes/*` (mirroring the Vite plugin's filename rules).
+- Scan every `<Link to="…">`, `useNavigate()(…)`, `router.navigate({to:…})`, and `Navigate to=` call. Unresolved target → create a stub route file at the canonical path (`src/routes/foo.tsx`) exporting a minimal page that matches the link's anchor text.
+- Detect duplicate `/` routes (`index.tsx` + `_app/index.tsx`, etc.) → drop the non-canonical one with a warning.
+- Detect layout files (parent with children) missing `<Outlet />` → inject it into the component's JSX root.
+- Detect `from "react-router-dom"` → rewrite to `@tanstack/react-router` and map the equivalent symbols (`Link`/`useNavigate`/`useParams`).
 
-> Compose the landing page by mounting (in this order): `NavWithCta`, `HeroSplit` (or a Hero block variant matching the brand vibe), `LogosGrid`, `StatsBand`, `TestimonialsCards`, `PricingTable`, `FaqAccordion`, `CtaCentered`, `FooterColumns` — all imported from `@/components/blocks/*`. Supply real domain copy as props (5–7 features, 3 pricing tiers, 6 FAQ items, named testimonials). DO NOT hand-roll any section's layout — every section's JSX comes from a block import.
+## Phase 7 — Tailwind token sweep
 
-Stage 2 then generates ONE small file whose token surface is ~600 tokens of copy props, not 5,000 tokens of Tailwind. Truncation class of failure is gone by construction.
+**Kills**: invisible "blank" components caused by `bg-brand`, `text-accent-foreground`, `border-ring` referenced without the CSS var defined.
 
-Same shape for the app surface: replace `synthAppSurfaceFor`'s `AuthCard` entry (220 lines) with a 60-line composition file that imports `SignInCard` + `SignUpCard` from blocks. Keep the domain-specific app entries (`ContactsTable`, `Pipeline`, etc.) since those *are* legitimately bespoke per vertical — but route their layout shell through `SidebarShell` from blocks instead of authoring `AppShell.tsx` from scratch.
+New file: `src/server/tailwind-token-sweep.server.ts`
+- Parse `src/styles.css` to extract defined CSS custom properties (`--background`, `--primary`, etc.).
+- Scan all `.tsx` for utility classes that reference tokens (`bg-X`, `text-X`, `border-X`, `ring-X`, `from-X`, `to-X`, `via-X`).
+- Unknown token names → inject sensible defaults into `:root` and `.dark` in `styles.css` using the committed design palette (we already have `designSummary`).
+- Detect arbitrary-value classes pointing at non-existent vars (`bg-[hsl(var(--brand))]`) → same treatment.
 
-### Layer 3 — Fill the one real gap: per-brand Hero mock (~120 LOC, one-time)
+## Phase 8 — Asset stubber
 
-The only marketing section that legitimately varies per brief is the Hero's mocked product-visual panel. Today's blocks have generic heroes. Add 3 hero block variants to `scaffold-kit-blocks-2.ts`:
+**Kills**: broken `<img>` placeholders, missing `public/*` assets, missing `@/assets/*` imports.
 
-- `HeroSplitWithDashboardMock` — split layout, right side renders a generic dashboard chrome (window dots, sidebar stub, 3 stat tiles, fake chart). Accepts `productName`, `headline`, `subhead`, `primaryCta`, `secondaryCta` as props.
-- `HeroCenteredGradient` — centered, gradient text, no mock (good for AI tools and creative apps).
-- `HeroProductScreenshot` — accepts an `imageSrc` prop for cases where an image asset is available.
+New file: `src/server/asset-stubber.server.ts`
+- Scan all `<img src="…">`, `backgroundImage: url(…)`, and `from "@/assets/…"` imports.
+- For local refs (`/foo.jpg`, `@/assets/hero.png`):
+  - Check existence. If missing → emit a procedurally-generated SVG placeholder (gradient block sized to context, brand-tinted from the design palette) at the resolved path.
+- For external refs (unsplash, imgur):
+  - Leave as-is but add `onError` fallback to a tiny inline data-URI gradient so a 403 doesn't render as a broken-image icon.
 
-Planner picks ONE variant by vibe (already known via `designDirectionBlock`). No model call authors a mock; the mock IS the block.
+## Phase 9 — Runtime contract pass
 
-## What this changes
+**Kills**: `useContext` without Provider, controlled-component crashes, `window` at module scope, hook-rules violations, missing `DialogTitle`.
 
-- **Initial-build token surface drops ~80%** for business-app and marketing archetypes. One small composition file replaces 7 large ones.
-- **Truncation / "Fixed. Fixed. Fixed." class of failure goes away** because no single file is large enough to hit the cap. The recovery code from this morning becomes dead and can be deleted in a follow-up.
-- **Visual quality is *more* consistent**, not less — every page meets the contract because the contract IS the block source, hand-authored and parser-validated at Petal's own build time.
-- **Edit turns get better** — "darken the hero" is a className override or a variant swap on one block import, not a regenerate-the-whole-component round trip.
-- **Mobile / domain-specific work is untouched** — `KIT_BLOCK_FILES_MOBILE` and the domain-specific app components (`ContactsTable`, `Wallet`, `Workspace`, etc.) keep going through the LLM, because those are legitimately bespoke. We're only stopping the LLM from re-authoring solved chrome.
+New file: `src/server/runtime-contract.server.ts` (AST-based, uses Babel which we already have):
+- **Context providers**: build a map of every `createContext` declared in the project. For every `useContext(X)` / `useX()` call, walk upward from `App.tsx` and confirm a `<X.Provider>` wraps the tree. Missing → inject the provider into App.tsx with default value.
+- **Module-scope DOM access**: AST-scan top-level statements for `window.`/`document.`/`localStorage.`/`navigator.` reads outside function bodies. Wrap in `typeof window !== "undefined" &&` or move inside a `useEffect`.
+- **shadcn contracts**: detect controlled `<Select value=...>` without `onValueChange`; `<Dialog>` without a `DialogTitle` descendant (radix requires it); `<Form>` without a `useForm` resolver. Inject the missing piece with a sane default.
+- **Hook rules**: AST-flag any `use…(` inside conditionals/loops/`&&` chains. Hoist to the top of the component.
 
-## Out of scope (deliberately)
+---
 
-- The composer/chat UX, triage, billing, mobile preview, archetype detection — all stay.
-- Edit-mode patching for arbitrary user code post-initial-build keeps its current path.
-- The monolithic `write_project` fallback stays as the safety net until phase 2 proves stable.
-- No new orchestration concepts (no "slot-fill" stage as I proposed yesterday — the existing Stage 2 just emits a composition file, same machinery).
+## Cross-cutting work
 
-## Rollout
+1. **Single composition point.** All eight passes (shadcn-imports, array-safety, import-resolver, bare-import-resolver, case-normalizer, route-graph, tailwind-tokens, asset-stubber, runtime-contract) get composed into one `runAllRepairs(files)` helper called from both pipelines. Each pass returns `{ files, notes }`. Order matters and is enforced.
 
-1. **Phase 1 (this PR):** Layer 1 + Layer 2. Wire kit-manifest into the planner. Replace MARKETING_SYNTH with COMPOSITION_SYNTH. Replace `AuthCard` synth with a `SignInCard`/`SignUpCard` composition. Behind no flag — this is the new default.
-2. **Phase 2 (follow-up):** Layer 3 — add the three hero variants. Once they're in, allow the planner to compose the Hero too.
-3. **Phase 3 (cleanup):** Delete the truncation classifier, syntax-retry queue, and `looksLikeTruncation` we shipped this morning. They become unreachable.
+2. **Single test fixture set** under `src/server/__tests__/repair-fixtures/`. Every pass gets a golden test: input file with the failure, expected output after repair. New failure-mode reports add a fixture before the fix lands.
 
-## The one decision I need from you
+3. **Telemetry.** Each pass emits a counter so we can see real-world incidence per phase. After two weeks, dead passes (zero hits) can be pruned; hot passes get tightened.
 
-The planner uses `google/gemini-3.5-flash` for the manifest call. After Layer 1+2, the *only* slot-fill content goes through `google/gemini-3-flash-preview` in Stage 2. That's already configured. **I'm planning to keep both model choices unchanged** — no model swap, no schema changes, smallest possible blast radius. OK with you?
+4. **No model retries for repaired classes.** Once a pass owns a failure class, the corresponding "let the model try again" branch in `stage-scaffold` retry logic is deleted. The model only retries true generation failures (empty content, upstream errors).
 
-If yes, I'll ship Phase 1 (Layers 1 + 2) and stop. Phase 2 and Phase 3 come in separate turns.
+---
+
+## Sequencing & exit criteria
+
+| Phase | Ship after | Exit when |
+|-------|-----------|-----------|
+| 4 | now | zero `Could not resolve "<bare>"` Rollup errors in 24h sample |
+| 5 | 4 | zero case/extension errors in Linux builds |
+| 6 | 5 | zero TanStack route-not-found console errors at first paint |
+| 7 | 6 | zero invisible-blank reports tied to undefined tokens |
+| 8 | 7 | zero broken-image reports on first paint |
+| 9 | 8 | zero "X is not a function" / "Cannot read … of undefined" reports tied to provider/context |
+
+Each phase is one PR. Each PR ships its pass, its tests, its wireup in both pipelines, and removes any now-dead retry branch it replaces.
+
+---
+
+## Technical notes
+
+- All passes are pure `ProjectFile[] → ProjectFile[]`. No I/O. No model calls. Sub-5ms per file.
+- Babel parser is already a dep (used by `stage-scaffold` syntax validation). Phases 6, 7, 9 share one AST per file via a tiny cache keyed on `(path, contentHash)`.
+- Curated package registry (Phase 4) lives in `src/server/known-packages.ts` — one source of truth, owned by Petal, version-pinned and reviewed quarterly.
+- Stubs (route, asset, import) are clearly marked with a `// Auto-generated by Petal` header so users + future maintainers know they're intentional and replaceable.
+- Nothing in this plan touches the planner or scaffold prompts. The architectural bet remains: prompts handle creative intent; deterministic passes handle correctness. Prompts get tightened only when telemetry shows a pass can't recover something cleanly.
