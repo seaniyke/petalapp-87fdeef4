@@ -3743,6 +3743,10 @@ export const KIT_FILES: KitFile[] = [
   // + MobileScreen wrapper + ExampleMobileApp shell. Use when the user asks
   // for a native iOS/Android app (Petal ships as Capacitor under the hood).
   ...KIT_BLOCK_FILES_MOBILE,
+  // Phase 10 — Motion baseline. framer-motion primitives every app can compose:
+  // FadeIn / SlideUp / Stagger / Reveal / Magnetic / Tilt / Parallax /
+  // SplitText / CountUp / WordRotate / BlurFade. Import from "@/components/motion".
+  ...KIT_MOTION_FILES,
 ];
 
 /**
