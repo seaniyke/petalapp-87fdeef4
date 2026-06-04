@@ -296,8 +296,15 @@ async function scaffoldOne(
     // the autofix-narrating-its-fix chat leak we just removed.
     const parseError = validateFileSyntax(file.path, parsed.content);
     if (parseError) {
+      // Distinguish truncation (file was chopped mid-output) from a real
+      // syntax mistake. Truncation needs a bigger budget, NOT the broken
+      // text echoed back — see looksLikeTruncation for the heuristic.
+      if (looksLikeTruncation(parsed.content, parseError)) {
+        return { ok: false, reason: `truncated_syntax:${parseError}` };
+      }
       return { ok: false, reason: `syntax_error:${parseError}`, lastContent: parsed.content };
     }
+
 
     // Honor the planned path even if the model echoed a different one.
     return { ok: true, file: { path: file.path, content: parsed.content } };
