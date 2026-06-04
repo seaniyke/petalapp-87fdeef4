@@ -30,6 +30,7 @@ import { KIT_SHADCN_FILES } from "./scaffold-kit-shadcn";
 import { KIT_DATA_FILES } from "./scaffold-kit-data";
 import { KIT_TYPOGRAPHY_FILES } from "./scaffold-kit-typography";
 import { KIT_CONTENT_FILES } from "./scaffold-kit-content";
+import { KIT_AWWWARDS_FILES } from "./scaffold-kit-awwwards";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
