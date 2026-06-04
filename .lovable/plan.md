@@ -1,55 +1,70 @@
-## What's happening
 
-The screenshot shows the user-generated app crashing with **Minified React error #31** ("Objects are not valid as a React child, found: object with keys {...}"). This is a generation-quality bug in the code Petal emitted for the "crypto wallet exchange" prompt — not a Petal-platform crash. Two things need to change:
+## Diagnosis (grounded, not theoretical)
 
-1. **Catch the crash class earlier** so this prompt (and similar ones) stop shipping broken code.
-2. **Make the landing-first plan-and-save flow stronger for high-stakes prompts** like "crypto wallet exchange", as the user describes.
+Petal already ships a full block library — Navbar, Hero, Features, Pricing, FAQ, Footer, AuthCard, AppShell, KpiGrid, ProductCard, etc. — in `scaffold-kit-blocks-2/3/4.ts`. The manifest of these blocks is rendered by `kit-manifest.server.ts` and injected into the monolithic build prompt by `dynamic-prompts.server.ts:619`.
 
-The HMAC/builder issue from earlier turns appears resolved (no `Invalid signature` in the screenshot — the build went out, deployed to `petal-0f64a3aa37bc.pages.dev`, and the runtime is the failure now).
+**But the staged pipeline — the path that actually runs first — does not use it.** Two concrete defects in `src/server/pipeline/stage-plan.server.ts`:
 
----
+1. The planner's `SYSTEM_PROMPT` (line 102) never receives `renderKitManifestBlock()`. The planner literally does not know `@/components/blocks/*` exists.
+2. `MARKETING_SYNTH` (line 229) and `synthAppSurfaceFor` (line 239) hard-code plan entries that tell Stage 2 to **author from scratch** the very components the kit already ships — `Hero.tsx` (220 est_lines), `Pricing.tsx` (200), `Features.tsx` (160), `Faq.tsx` (130), `Footer.tsx` (150), `Navbar.tsx` (130), `AuthCard.tsx` (220). When `repairBusinessAppPlan` runs (line 280), it deterministically splices these in.
 
-## Part 1 — Eliminate React #31 in generated apps
+Result for every business-app build: 7–11 long files × ~3,500–5,000 tokens each go through the model. That's the surface area that produced today's `Pricing.tsx → "Fixed. Fixed. Fixed."` truncation. The recovery code we shipped this morning is treating the symptom; this plan removes the cause.
 
-Today `src/server/render-risk-linter.ts` rule **R5** only catches forwardRef icons rendered as `{Icon}`. The actual #31 the user hit (`object with keys {...}` — not the icon-shaped `{$$typeof,render,displayName}`) is the more general pattern: a plain object/state/config rendered directly in JSX. Add a new rule:
+## The fix, in three layers
 
-**R8 — object-as-JSX-child.** Scan `.tsx/.jsx` for `{ident}` and `{a.b}` expressions that sit as a JSX child (not in an attribute, not in a callback) where `ident` is locally bound to a plain object literal, `useState` initializer that's an object, or a destructured prop whose type is `Record<...>` / `{...}`. Emit a `render-risk` issue with autofix hint ("render `{ident.field}` or `JSON.stringify(ident)` — passing an object renders React error #31").
+### Layer 1 — Show the planner the blocks (~30 LOC)
 
-Wire R8 into `ENABLED_RULES` and into the same feed-to-autofix gate as R1–R7 (already handled by `local-verifier.ts` consumers).
+In `stage-plan.server.ts`:
 
-Also tighten `src/routes/builder.tsx` line 4718 (the existing #31 sniffer): when the preview reports #31 at runtime, auto-attach the offending file+line to the next "Try to fix" prompt so the autofix model gets the exact crash site instead of a generic message.
+- Import `renderKitManifestBlock` from `../kit-manifest.server`.
+- Append it to the system prompt, after the LAYOUT ARCHETYPE rules, with one sentence: *"You MAY plan a thin composition file that imports these blocks. You MUST NOT plan a file whose purpose duplicates a block listed below."*
+- Add a planner post-check: any planned path that matches a known block name (`/marketing/(Hero|Pricing|Features|Faq|Footer|Navbar|Testimonials)\.tsx`, `/app/AuthCard\.tsx`) is dropped and replaced by composition.
 
-## Part 2 — Landing-first flow for high-stakes prompts
+### Layer 2 — Replace MARKETING_SYNTH with COMPOSITION_SYNTH (~80 LOC)
 
-`src/lib/high-stakes-intent.ts` already detects crypto-wallet / neobank / trading / lending / kyc and tells the model "build a marketing landing page, not a fake dashboard." Two gaps remain:
+Today: 7 long files, each authored by Gemini with a 200-line contract.
 
-**A. Persist the plan to project memory.** Today the landing instruction is splice-only — nothing is saved. Update `src/routes/api/generate.ts` (around line 1709 where `highStakesBlock` is built) so that on the **first turn** of a high-stakes project we:
-   1. Generate a short structured plan: `{ productName, sections[], futureFeatures[], providersToWireLater[] }` (e.g. for a crypto wallet: futureFeatures = [send, receive, swap, stake]; providers = [Alchemy, viem, WalletConnect]).
-   2. Save it via `saveProjectBlueprint(projectId, ...)` from `src/server/build-blueprint.server.ts` (already exists, already round-trips through `project_blueprints`).
-   3. Also write it to project memory via `src/lib/project-memory.functions.ts` so the user can see "What Petal remembers" reflects the plan (internally — the UI surface stays hidden per existing memory rule).
+After: **one** file, `src/sections/Landing.tsx`, planned with `est_lines: 90` and `purpose` that reads:
 
-**B. Render the plan in the assistant preamble** so the user can iterate. The first response should say in one short paragraph: "Here's the roadmap I saved — landing first, then [feature 1], [feature 2]. Tell me which to build next." This matches how competitors do it (plan → landing → iterate).
+> Compose the landing page by mounting (in this order): `NavWithCta`, `HeroSplit` (or a Hero block variant matching the brand vibe), `LogosGrid`, `StatsBand`, `TestimonialsCards`, `PricingTable`, `FaqAccordion`, `CtaCentered`, `FooterColumns` — all imported from `@/components/blocks/*`. Supply real domain copy as props (5–7 features, 3 pricing tiers, 6 FAQ items, named testimonials). DO NOT hand-roll any section's layout — every section's JSX comes from a block import.
 
-Subsequent turns reuse `loadProjectBlueprint(projectId)` (already in the build path) so Petal doesn't re-plan on every message.
+Stage 2 then generates ONE small file whose token surface is ~600 tokens of copy props, not 5,000 tokens of Tailwind. Truncation class of failure is gone by construction.
 
-## Out of scope
+Same shape for the app surface: replace `synthAppSurfaceFor`'s `AuthCard` entry (220 lines) with a 60-line composition file that imports `SignInCard` + `SignUpCard` from blocks. Keep the domain-specific app entries (`ContactsTable`, `Pipeline`, etc.) since those *are* legitimately bespoke per vertical — but route their layout shell through `SidebarShell` from blocks instead of authoring `AppShell.tsx` from scratch.
 
-- Builder HMAC / Railway signing: appears fixed; will only revisit if `Invalid signature` reappears in logs after this turn.
-- Cloud/billing copy and the broader `Build me a crypto wallet exchange` user journey beyond the landing-first behavior described above.
-- Any changes to KeshPay (project memory says ignore KeshPay rules here — already respected).
+### Layer 3 — Fill the one real gap: per-brand Hero mock (~120 LOC, one-time)
 
-## Files I'll touch
+The only marketing section that legitimately varies per brief is the Hero's mocked product-visual panel. Today's blocks have generic heroes. Add 3 hero block variants to `scaffold-kit-blocks-2.ts`:
 
-- `src/server/render-risk-linter.ts` — add R8 (object-as-JSX-child) + wire into ENABLED_RULES.
-- `src/server/local-verifier.ts` — surface R8 results in the same issue bucket already feeding autofix.
-- `src/routes/builder.tsx` — enrich the #31 runtime sniffer with file/line context for the next autofix turn.
-- `src/routes/api/generate.ts` — on first turn for a high-stakes project, build + save the blueprint and force a one-paragraph plan preamble.
-- `src/server/build-blueprint.server.ts` — extend `BuildBlueprint` with optional `futureFeatures[]` and `providersToWireLater[]` (additive, back-compat).
-- `src/lib/high-stakes-intent.ts` — add a small helper `highStakesRoadmap(domain)` returning the canned futureFeatures/providers list per domain.
+- `HeroSplitWithDashboardMock` — split layout, right side renders a generic dashboard chrome (window dots, sidebar stub, 3 stat tiles, fake chart). Accepts `productName`, `headline`, `subhead`, `primaryCta`, `secondaryCta` as props.
+- `HeroCenteredGradient` — centered, gradient text, no mock (good for AI tools and creative apps).
+- `HeroProductScreenshot` — accepts an `imageSrc` prop for cases where an image asset is available.
 
-No DB migration needed (the blueprint blob column already stores arbitrary JSON).
+Planner picks ONE variant by vibe (already known via `designDirectionBlock`). No model call authors a mock; the mock IS the block.
 
-## Verification
+## What this changes
 
-- Add a unit-style test for R8 against three fixtures: `{user}` where `user` is `useState({})`, `{cfg.theme}` where `cfg` is an object literal, and a clean control that should NOT fire.
-- After deploy, retry "Build me a crypto wallet exchange" in a fresh project and confirm: (a) preview boots without #31, (b) "What Petal remembers" contains the saved roadmap, (c) assistant preamble names the next iteration steps.
+- **Initial-build token surface drops ~80%** for business-app and marketing archetypes. One small composition file replaces 7 large ones.
+- **Truncation / "Fixed. Fixed. Fixed." class of failure goes away** because no single file is large enough to hit the cap. The recovery code from this morning becomes dead and can be deleted in a follow-up.
+- **Visual quality is *more* consistent**, not less — every page meets the contract because the contract IS the block source, hand-authored and parser-validated at Petal's own build time.
+- **Edit turns get better** — "darken the hero" is a className override or a variant swap on one block import, not a regenerate-the-whole-component round trip.
+- **Mobile / domain-specific work is untouched** — `KIT_BLOCK_FILES_MOBILE` and the domain-specific app components (`ContactsTable`, `Wallet`, `Workspace`, etc.) keep going through the LLM, because those are legitimately bespoke. We're only stopping the LLM from re-authoring solved chrome.
+
+## Out of scope (deliberately)
+
+- The composer/chat UX, triage, billing, mobile preview, archetype detection — all stay.
+- Edit-mode patching for arbitrary user code post-initial-build keeps its current path.
+- The monolithic `write_project` fallback stays as the safety net until phase 2 proves stable.
+- No new orchestration concepts (no "slot-fill" stage as I proposed yesterday — the existing Stage 2 just emits a composition file, same machinery).
+
+## Rollout
+
+1. **Phase 1 (this PR):** Layer 1 + Layer 2. Wire kit-manifest into the planner. Replace MARKETING_SYNTH with COMPOSITION_SYNTH. Replace `AuthCard` synth with a `SignInCard`/`SignUpCard` composition. Behind no flag — this is the new default.
+2. **Phase 2 (follow-up):** Layer 3 — add the three hero variants. Once they're in, allow the planner to compose the Hero too.
+3. **Phase 3 (cleanup):** Delete the truncation classifier, syntax-retry queue, and `looksLikeTruncation` we shipped this morning. They become unreachable.
+
+## The one decision I need from you
+
+The planner uses `google/gemini-3.5-flash` for the manifest call. After Layer 1+2, the *only* slot-fill content goes through `google/gemini-3-flash-preview` in Stage 2. That's already configured. **I'm planning to keep both model choices unchanged** — no model swap, no schema changes, smallest possible blast radius. OK with you?
+
+If yes, I'll ship Phase 1 (Layers 1 + 2) and stop. Phase 2 and Phase 3 come in separate turns.
