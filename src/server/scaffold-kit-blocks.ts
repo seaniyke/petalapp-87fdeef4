@@ -753,6 +753,316 @@ export function HeroEditorial({
 }
 `;
 
+// ---------------------------------------------------------------------------
+// Phase 2: self-contained hero variants. None require imageSrc — the visual
+// is constructed from CSS/JSX so the model never has to source an image and
+// never returns an empty <img>. Each ships with realistic mock UI chrome so
+// the hero looks like a product, not a wireframe.
+// ---------------------------------------------------------------------------
+
+const HERO_CENTERED_GRADIENT = `import * as React from "react";
+import { ArrowRight, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { GradientBlob } from "@/components/ui/gradient-blob";
+import { GradientText } from "@/components/ui/gradient-text";
+import { cn } from "@/lib/utils";
+
+/**
+ * Vivid centered hero with layered gradient blobs + subtle grid backdrop.
+ * Use for AI tools, creative apps, launch pages — anything that needs to
+ * feel premium and energetic. No image asset required.
+ */
+export function HeroCenteredGradient({
+  eyebrow,
+  title,
+  highlight,
+  description,
+  primaryCta,
+  secondaryCta,
+  className,
+}: {
+  eyebrow?: React.ReactNode;
+  title: React.ReactNode;
+  highlight?: React.ReactNode;
+  description?: React.ReactNode;
+  primaryCta?: { label: string; href?: string; onClick?: () => void };
+  secondaryCta?: { label: string; href?: string; onClick?: () => void };
+  className?: string;
+}) {
+  return (
+    <section className={cn("relative overflow-hidden py-24 md:py-36", className)}>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.18),transparent_55%),radial-gradient(circle_at_70%_80%,hsl(var(--primary)/0.12),transparent_60%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.4)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.4)_1px,transparent_1px)] bg-[size:48px_48px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
+      <GradientBlob className="-top-32 left-1/2 -translate-x-1/2" size="xl" />
+      <Container size="lg" className="relative">
+        <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
+          {eyebrow && (
+            <span className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+              <Sparkles className="h-3 w-3" /> {eyebrow}
+            </span>
+          )}
+          <h1 className="text-balance text-5xl font-semibold tracking-tight text-foreground md:text-7xl">
+            {title}
+            {highlight && (<> <GradientText>{highlight}</GradientText></>)}
+          </h1>
+          {description && (
+            <p className="mt-6 max-w-2xl text-base text-muted-foreground md:text-lg">{description}</p>
+          )}
+          {(primaryCta || secondaryCta) && (
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+              {primaryCta && (
+                <Button size="lg" onClick={primaryCta.onClick} asChild={!!primaryCta.href}>
+                  {primaryCta.href ? (
+                    <a href={primaryCta.href}>{primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" /></a>
+                  ) : (
+                    <>{primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" /></>
+                  )}
+                </Button>
+              )}
+              {secondaryCta && (
+                <Button size="lg" variant="outline" onClick={secondaryCta.onClick} asChild={!!secondaryCta.href}>
+                  {secondaryCta.href ? <a href={secondaryCta.href}>{secondaryCta.label}</a> : secondaryCta.label}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </Container>
+    </section>
+  );
+}
+`;
+
+const HERO_SPLIT_WITH_DASHBOARD_MOCK = `import * as React from "react";
+import { ArrowRight, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+
+/**
+ * Two-column hero with a SELF-CONTAINED dashboard mock on the right —
+ * sidebar, top bar, KPI tiles, faux chart, list rows. No imageSrc required.
+ * Use for SaaS, analytics, fintech, ops products where the product surface
+ * IS the pitch.
+ */
+export function HeroSplitWithDashboardMock({
+  eyebrow,
+  title,
+  description,
+  primaryCta,
+  secondaryCta,
+  bullets,
+  kpis,
+  className,
+}: {
+  eyebrow?: React.ReactNode;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  primaryCta?: { label: string; href?: string; onClick?: () => void };
+  secondaryCta?: { label: string; href?: string; onClick?: () => void };
+  /** 2-3 short proof points rendered as a checklist under the description. */
+  bullets?: string[];
+  /** 3 KPI tiles inside the mock. Defaults to plausible SaaS metrics. */
+  kpis?: { label: string; value: string; delta?: string }[];
+  className?: string;
+}) {
+  const tiles = kpis ?? [
+    { label: "MRR", value: "$48.2k", delta: "+12.4%" },
+    { label: "Active", value: "2,481", delta: "+318" },
+    { label: "Churn", value: "1.2%", delta: "-0.3%" },
+  ];
+  return (
+    <section className={cn("relative overflow-hidden py-20 md:py-28", className)}>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.12),transparent_50%)]" />
+      <Container size="xl" className="relative">
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+          <div>
+            {eyebrow && (<Badge variant="secondary" className="mb-4 rounded-full">{eyebrow}</Badge>)}
+            <h1 className="text-balance text-4xl font-semibold tracking-tight text-foreground md:text-6xl">{title}</h1>
+            {description && (<p className="mt-5 max-w-lg text-base text-muted-foreground md:text-lg">{description}</p>)}
+            {bullets && bullets.length > 0 && (
+              <ul className="mt-6 space-y-2">
+                {bullets.map((b, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-foreground/85">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {b}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {(primaryCta || secondaryCta) && (
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                {primaryCta && (
+                  <Button size="lg" onClick={primaryCta.onClick} asChild={!!primaryCta.href}>
+                    {primaryCta.href ? (
+                      <a href={primaryCta.href}>{primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" /></a>
+                    ) : (<>{primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" /></>)}
+                  </Button>
+                )}
+                {secondaryCta && (
+                  <Button size="lg" variant="ghost" onClick={secondaryCta.onClick} asChild={!!secondaryCta.href}>
+                    {secondaryCta.href ? <a href={secondaryCta.href}>{secondaryCta.label}</a> : secondaryCta.label}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="relative">
+            <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-foreground/10 overflow-hidden">
+              <div className="flex items-center gap-1.5 border-b border-border bg-muted/40 px-4 py-2.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
+                <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/60" />
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/60" />
+                <span className="ml-3 text-xs text-muted-foreground">app.dashboard</span>
+              </div>
+              <div className="grid grid-cols-[120px_1fr] min-h-[280px]">
+                <aside className="border-r border-border bg-muted/20 p-3 space-y-1.5">
+                  {["Overview","Customers","Revenue","Reports","Settings"].map((l,i)=>(
+                    <div key={l} className={cn("rounded-md px-2 py-1.5 text-xs", i===0?"bg-background font-medium text-foreground":"text-muted-foreground")}>{l}</div>
+                  ))}
+                </aside>
+                <div className="p-4 space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    {tiles.map((t)=>(
+                      <div key={t.label} className="rounded-lg border border-border bg-background p-3">
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{t.label}</div>
+                        <div className="mt-1 text-lg font-semibold text-foreground">{t.value}</div>
+                        {t.delta && <div className="text-[10px] text-emerald-600 dark:text-emerald-400">{t.delta}</div>}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="h-24 rounded-lg border border-border bg-background p-3">
+                    <div className="flex h-full items-end gap-1.5">
+                      {[40,65,52,78,60,82,90,72,95,68,84,100].map((h,i)=>(
+                        <div key={i} className="flex-1 rounded-sm bg-gradient-to-t from-primary/30 to-primary" style={{height: \`\${h}%\`}} />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    {["Acme Inc — $4,200","Globex — $3,800","Initech — $2,150"].map((r)=>(
+                      <div key={r} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-xs">
+                        <span className="text-foreground/85">{r}</span>
+                        <span className="text-muted-foreground">paid</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Container>
+    </section>
+  );
+}
+`;
+
+const HERO_PRODUCT_SCREENSHOT = `import * as React from "react";
+import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+
+/**
+ * Centered hero with a faux product screenshot floating below — browser
+ * chrome, header row, content grid. No imageSrc required. Use for product
+ * launches where you want the eye to land on the artifact under the headline.
+ */
+export function HeroProductScreenshot({
+  eyebrow,
+  title,
+  description,
+  primaryCta,
+  secondaryCta,
+  className,
+}: {
+  eyebrow?: React.ReactNode;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  primaryCta?: { label: string; href?: string; onClick?: () => void };
+  secondaryCta?: { label: string; href?: string; onClick?: () => void };
+  className?: string;
+}) {
+  return (
+    <section className={cn("relative overflow-hidden pt-20 md:pt-28", className)}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.15),transparent_60%)]" />
+      <Container size="xl" className="relative">
+        <div className="mx-auto max-w-3xl text-center">
+          {eyebrow && (<Badge variant="secondary" className="mb-5 rounded-full">{eyebrow}</Badge>)}
+          <h1 className="text-balance text-4xl font-semibold tracking-tight text-foreground md:text-6xl">{title}</h1>
+          {description && (<p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground md:text-lg">{description}</p>)}
+          {(primaryCta || secondaryCta) && (
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              {primaryCta && (
+                <Button size="lg" onClick={primaryCta.onClick} asChild={!!primaryCta.href}>
+                  {primaryCta.href ? (
+                    <a href={primaryCta.href}>{primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" /></a>
+                  ) : (<>{primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" /></>)}
+                </Button>
+              )}
+              {secondaryCta && (
+                <Button size="lg" variant="outline" onClick={secondaryCta.onClick} asChild={!!secondaryCta.href}>
+                  {secondaryCta.href ? <a href={secondaryCta.href}>{secondaryCta.label}</a> : secondaryCta.label}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="relative mx-auto mt-14 max-w-5xl">
+          <div className="absolute -inset-6 rounded-3xl bg-gradient-to-b from-primary/20 to-transparent blur-2xl" />
+          <div className="relative rounded-2xl border border-border bg-card shadow-2xl shadow-foreground/10 overflow-hidden">
+            <div className="flex items-center gap-1.5 border-b border-border bg-muted/40 px-4 py-2.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
+              <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/60" />
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/60" />
+              <div className="mx-auto rounded-md bg-background px-3 py-0.5 text-[11px] text-muted-foreground">app.product.com</div>
+            </div>
+            <div className="flex items-center justify-between border-b border-border px-5 py-3">
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-6 rounded-md bg-primary" />
+                <div className="h-3 w-20 rounded bg-muted" />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-full bg-muted" />
+              </div>
+            </div>
+            <div className="grid grid-cols-12 gap-4 p-5">
+              <div className="col-span-3 space-y-2">
+                {[0,1,2,3,4].map((i)=>(
+                  <div key={i} className={cn("h-7 rounded-md", i===1?"bg-primary/15":"bg-muted/60")} />
+                ))}
+              </div>
+              <div className="col-span-9 space-y-3">
+                <div className="grid grid-cols-3 gap-3">
+                  {[0,1,2].map((i)=>(
+                    <div key={i} className="rounded-lg border border-border bg-background p-3">
+                      <div className="h-2.5 w-12 rounded bg-muted/80" />
+                      <div className="mt-2 h-5 w-20 rounded bg-foreground/80" />
+                      <div className="mt-1 h-2 w-10 rounded bg-emerald-500/60" />
+                    </div>
+                  ))}
+                </div>
+                <div className="h-40 rounded-lg border border-border bg-background p-3">
+                  <div className="flex h-full items-end gap-1.5">
+                    {[30,55,42,68,50,72,80,62,85,58,74,90,66,78].map((h,i)=>(
+                      <div key={i} className="flex-1 rounded-sm bg-gradient-to-t from-primary/40 to-primary" style={{height: \`\${h}%\`}} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Container>
+    </section>
+  );
+}
+`;
+
+
+
 const FEATURES_GRID_3 = `import * as React from "react";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
