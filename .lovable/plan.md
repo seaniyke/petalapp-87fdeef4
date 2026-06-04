@@ -96,10 +96,13 @@ Each phase: scaffold-kit additions + `known-packages.ts` pins + `design-director
 - Data Table block shipped in Phase 12 (TanStack Table) — sort/filter/pagination already wired.
 - `@tanstack/react-query`, `@tanstack/react-table`, `zustand`, `nuqs` promoted to REQUIRED_DEPS so every project installs them.
 
-### **Phase 14 — Typography system (Tier D #24, #25)**
-- Migrate Google Fonts `<link>` → Fontsource variable packages per theme.
-- Add Utopia-style fluid type tokens to styles.css (`--step-0` through `--step-6` via clamp).
-- Update theme registry to declare font weight/style axes.
+### **Phase 14 — Typography system (Tier D #24, #25)** ✅ shipped
+- Self-hosted variable fonts: `@fontsource-variable/inter` + `@fontsource-variable/jetbrains-mono` in REQUIRED_DEPS, `@import`-ed at the top of `STYLES_CSS`. Zero CDN hop, zero CLS.
+- Font tokens: `--font-sans`, `--font-display`, `--font-serif`, `--font-mono` declared in `@theme` so the AI overrides one variable per theme instead of editing component code.
+- Utopia-style fluid type scale: `--text-step--1` through `--text-step-6` (`clamp()` between 320px and 1280px viewport) + matching `.text-step-*` utility classes with paired line-height and tracking.
+- Tracking presets `--tracking-tightest/-er/-light` for display type.
+- `KNOWN_PACKAGES` extended with 30+ Fontsource Variable packages (instrument-serif, cormorant, space-grotesk, dm-serif-display, lora, libre-baskerville, syne, urbanist, bricolage-grotesque, archivo-black, abril-fatface, bebas-neue, etc.) — on-demand install per theme.
+- `FONTS.md` reference shipped at `@/components/examples/FONTS.md` mapping domain → font-pair recipe.
 
 ### **Phase 15 — Content & code surfaces (Tier B #13, #14)**
 - Shiki integration in `CodeBlock` (lazy-load grammars).
