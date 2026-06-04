@@ -95,6 +95,7 @@ import { expandBriefIfVague } from "@/server/brief-expander.server";
 import { loadLabsFlagsForRequest } from "@/server/labs-flags.server";
 import { runStagedPipelineStream } from "@/server/pipeline/staged-orchestrator.server";
 import { ensureRenderableShell } from "@/server/renderable-shell.server";
+import { repairUnresolvedImports } from "@/server/import-resolver.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
 import {
@@ -2416,6 +2417,26 @@ Forbidden defaults
         }
         if (!nextFiles.some((f) => f.path === "index.html")) {
           throw new Error("Project is missing index.html.");
+        }
+
+        // Resolve any unresolved local imports BEFORE the shell guard /
+        // build trigger. Rollup hard-fails on `Could not resolve "..."`,
+        // and that class of error survives every model-based retry because
+        // the model isn't told *which specific path* is missing in a way
+        // it can act on. Deterministic remap-or-stub is the only reliable
+        // fix — see src/server/import-resolver.server.ts for rationale.
+        {
+          const importFix = repairUnresolvedImports(nextFiles);
+          if (importFix.rewrites.length > 0 || importFix.stubsCreated.length > 0) {
+            console.info(
+              "[import-resolver] remapped",
+              importFix.rewrites.length,
+              "import(s); stubbed",
+              importFix.stubsCreated.length,
+              "missing file(s)",
+            );
+            nextFiles = importFix.files;
+          }
         }
 
         const shellGuard = ensureRenderableShell(nextFiles, detectedWebSubtype);
