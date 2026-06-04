@@ -95,6 +95,7 @@ import { expandBriefIfVague } from "@/server/brief-expander.server";
 import { loadLabsFlagsForRequest } from "@/server/labs-flags.server";
 import { runStagedPipelineStream } from "@/server/pipeline/staged-orchestrator.server";
 import { ensureRenderableShell } from "@/server/renderable-shell.server";
+import { repairUnresolvedImports } from "@/server/import-resolver.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
 import {
