@@ -3835,6 +3835,10 @@ export const KIT_FILES: KitFile[] = [
   // wrapper that composes them with the sonner Toaster. Plus a DATA_PATTERNS
   // doc the AI copies from instead of inventing useEffect+fetch.
   ...KIT_DATA_FILES,
+  // Phase 14 — Typography reference doc (FONTS.md). The actual styling
+  // tokens (fluid type scale + Fontsource @imports + font tokens) live in
+  // STYLES_CSS above. This is the "how to swap fonts per theme" guide.
+  ...KIT_TYPOGRAPHY_FILES,
 ];
 
 /**
