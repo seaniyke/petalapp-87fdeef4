@@ -359,6 +359,18 @@ export async function runStagePlan(args: {
       .filter(Boolean)
       .join("\n\n");
 
+    // Auto-derived manifest of @/components/blocks/* — Hero, Pricing, FAQ,
+    // Footer, Nav, SidebarShell, SignInCard, etc. The planner MUST compose
+    // these instead of planning fresh marketing/* or app/AuthCard files,
+    // which is the failure mode that previously sent ~7 long files through
+    // the model per build (and produced the truncation cliff).
+    const kitManifestBlock = renderKitManifestBlock();
+    const blocksGuidance =
+      `\n\nKIT BLOCKS — composition is mandatory for known sections:\n` +
+      `- For ANY hero, pricing, FAQ, footer, nav, testimonials, logos, stats, CTA, auth, sidebar shell, KPI grid, stat card, activity feed, product card, checkout summary: plan ONE thin composition file (e.g. src/sections/Landing.tsx, src/sections/Auth.tsx) that imports the matching block from @/components/blocks/* and supplies copy as props.\n` +
+      `- FORBIDDEN paths (these duplicate blocks the kit already ships — never plan them): src/components/marketing/* (Hero, Pricing, Features, Faq, Footer, Navbar, SocialProof, Testimonials, Cta), src/components/app/AuthCard.tsx.\n` +
+      `- Domain-specific app components (ContactsTable, Pipeline, Wallet, Inbox, etc.) are still authored as separate files — the prohibition is only on re-authoring solved chrome.`;
+
     // business-app needs more files (marketing + product + feature pack);
     // other archetypes stay at 10 to keep latency predictable.
     const maxFiles = ctx.archetypeHint === "business-app" ? 28 : 10;
@@ -369,7 +381,8 @@ export async function runStagePlan(args: {
       body: {
         model: "google/gemini-3.5-flash",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT + archetypeLine + domainLine },
+          { role: "system", content: SYSTEM_PROMPT + archetypeLine + domainLine + blocksGuidance + kitManifestBlock },
+
           {
             role: "user",
             content:
