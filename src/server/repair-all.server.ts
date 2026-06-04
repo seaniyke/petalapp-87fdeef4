@@ -27,6 +27,8 @@ import { repairBareImports } from "./bare-import-resolver.server";
 import { normalizeJsxExtensions } from "./extension-normalizer.server";
 import { validateRouteGraph } from "./route-graph.server";
 import { sweepTailwindTokens } from "./tailwind-token-sweep.server";
+import { stubMissingAssets } from "./asset-stubber.server";
+import { enforceRuntimeContracts } from "./runtime-contract.server";
 
 export interface RepairAllResult {
   files: ProjectFile[];
@@ -103,6 +105,16 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   const tw = sweepTailwindTokens(files);
   files = tw.files;
   for (const n of tw.notes) notes.push(n);
+
+  // 8. Asset stubber — placeholder SVGs for missing local refs; onError for external.
+  const assets = stubMissingAssets(files);
+  files = assets.files;
+  for (const n of assets.notes) notes.push(n);
+
+  // 9. Runtime contract pass — DOM guard, Dialog Title, Select onValueChange, Providers.
+  const rt = enforceRuntimeContracts(files);
+  files = rt.files;
+  for (const n of rt.notes) notes.push(n);
 
   return { files, notes };
 }
