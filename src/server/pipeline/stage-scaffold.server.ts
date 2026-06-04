@@ -178,18 +178,20 @@ async function scaffoldOne(
       `- Default export must be \`function App\` returning visible JSX.`
     : "";
 
-  const marketingRules = isMarketing
-    ? `\nTHIS IS A MARKETING COMPONENT (${file.path}). You are building a Stripe/Linear/Notion-grade landing page section. Extra rules:\n` +
-      `- FORBIDDEN: a centered single-column hero with only headline + Login/Sign-Up buttons + plain bordered cards. That is a placeholder, not a landing page.\n` +
-      `- FORBIDDEN copy: "Welcome to Our X", "Streamline your X with our powerful and intuitive X solution", any lorem-ish filler. Write specific, opinionated copy tied to the brief's actual domain.\n` +
-      `- Section wrapper rhythm: \`py-20 sm:py-28\` with \`container mx-auto px-6\` (Navbar/Footer use their own padding).\n` +
-      `- Headings: \`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight\`. Subheads: \`text-lg text-muted-foreground\` max-w-2xl.\n` +
-      `- Cards: \`rounded-2xl border bg-card/50 backdrop-blur p-6\` with hover state \`hover:border-primary/40 transition\`. Always include an icon (lucide-react) in a \`rounded-lg bg-primary/10 text-primary size-10 p-2\` wrapper.\n` +
-      `- Grids: ALWAYS declare the mobile base before responsive prefixes — e.g. \`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3\`. Never bare \`grid-cols-2\`.\n` +
-      `- Hero specifically: must include an eyebrow pill/badge, ONE phrase in the headline wrapped with a gradient span (\`bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent\`), a dual CTA row, a trust row with muted logo wordmarks, AND a mocked product visual panel (rounded-2xl border bg-card/50 shadow-2xl with fake dashboard chrome). No external images.\n` +
-      `- Navbar: sticky top-0 z-50 with \`bg-background/70 backdrop-blur-md border-b\`, height h-16.\n` +
-      `- Footer: 4-column link grid + bottom row with copyright. Not a single centered line.\n` +
-      `- Use lucide-react for ALL icons. Use shadcn primitives (Button, Badge, Accordion, Avatar) — never raw <button>.`
+  // Composition rules. Sections under src/sections/* are thin files that
+  // MOUNT blocks from @/components/blocks/* — they don't hand-roll JSX for
+  // hero / pricing / FAQ / footer / nav / auth-pane chrome. This is what
+  // killed the truncation class of failure: there's nothing long enough to
+  // chop. The model's only job is to import the right block and pass real
+  // domain copy as props.
+  const sectionRules = isSection
+    ? `\nTHIS IS A COMPOSITION SECTION (${file.path}). Extra rules:\n` +
+      `- MUST import blocks from @/components/blocks/* (see the kit manifest). DO NOT hand-roll a <section><h2>...</h2><div class="grid">...</div></section> layout for hero / pricing / FAQ / footer / nav / testimonials / logos / stats / CTA / auth chrome — every one of those has a block. Pick the variant that fits the brief.\n` +
+      `- Hero variant selection: HeroSplitWithDashboardMock for SaaS/analytics/fintech/ops; HeroProductScreenshot for product launches and creator tools; HeroCenteredGradient for AI/creative/launch pages; HeroEditorial for agencies/portfolios/magazines; HeroCentered as the safe default. Never HeroSplitImage unless you actually have an imageSrc URL.\n` +
+      `- Auth section: compose SignInCard + SignUpCard from @/components/blocks/* inside a 2-pane min-h-screen layout (branded gradient pane on the left, Tabs with sign-in/sign-up on the right). Do NOT hand-roll the form fields.\n` +
+      `- The ONLY authored content in this file is the COPY you pass as props: real feature names, real pricing tiers, real FAQ Q&A, real testimonials with names+roles+companies, real logo wordmarks, real stat figures — all specific to the brief's domain. Generic ("Welcome to our X", "Streamline your X") is forbidden.\n` +
+      `- Keep the file thin — under ${lineCap} lines. If you exceed that, you're hand-rolling layout instead of using a block.\n` +
+      `- Export default function. No extra wrappers.`
     : "";
 
   const appRules = isApp
@@ -209,12 +211,10 @@ async function scaffoldOne(
       `  6. Loading state — async surfaces render shadcn \`Skeleton\` rows/cards matching the eventual layout, never a bare "Loading…" string.\n` +
       `  7. Error state — surfaces that can fail render an inline error block (AlertTriangle icon, message, Retry Button), never an unhandled throw.\n` +
       (isAppShell
-        ? `\n- AppShell-specific: MUST render a left sidebar (\`w-64 shrink-0 border-r bg-card/30 hidden md:flex flex-col\`) with logo + workspace switcher + nav list + user card, AND a top bar (\`h-14 border-b flex items-center justify-between px-6\`) with mobile Sheet trigger + breadcrumb + search + Bell + Avatar, AND a \`<main class="flex-1 overflow-y-auto">\` content area. Maintain an \`activeRoute\` state and render the matching child component inside main. Active nav item gets \`bg-accent text-accent-foreground\`.`
-        : "") +
-      (isAuthCard
-        ? `\n- AuthCard-specific: MUST be a 2-pane layout (\`min-h-screen grid lg:grid-cols-2\`) with a branded left pane (\`hidden lg:flex bg-gradient-to-br from-primary/10 via-background to-background\` with headline + testimonial card) and a right pane with Tabs (signin/signup) containing Email + Password Inputs, primary Button w-full, a divider, Google + GitHub outline buttons, and a 'Continue as demo' link. NOT a single centered card on white.`
+        ? `\n- AppShell-specific: compose @/components/blocks/sidebar-shell (SidebarShell) — do NOT hand-roll the sidebar, top bar, or mobile sheet. Build a nav items array (label + icon + key, Overview first, Settings last) and pass it to SidebarShell along with brandName and user props. Maintain an activeRoute state and render the matching child component inside the main slot.`
         : "")
     : "";
+
 
   const designLine = designSummary
     ? `\nDesign direction (committed for this build): ${designSummary}. Use these tokens and typography choices, not generic shadcn defaults.`
