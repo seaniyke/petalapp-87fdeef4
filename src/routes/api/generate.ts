@@ -2419,23 +2419,16 @@ Forbidden defaults
           throw new Error("Project is missing index.html.");
         }
 
-        // Resolve any unresolved local imports BEFORE the shell guard /
-        // build trigger. Rollup hard-fails on `Could not resolve "..."`,
-        // and that class of error survives every model-based retry because
-        // the model isn't told *which specific path* is missing in a way
-        // it can act on. Deterministic remap-or-stub is the only reliable
-        // fix — see src/server/import-resolver.server.ts for rationale.
+        // Single composition point for all deterministic file-graph
+        // repairs (extension normalizer → shadcn imports → array safety →
+        // local import resolver → bare import resolver). Runs BEFORE the
+        // shell guard / build trigger so Rollup never sees an unresolved
+        // import. See src/server/repair-all.server.ts.
         {
-          const importFix = repairUnresolvedImports(nextFiles);
-          if (importFix.rewrites.length > 0 || importFix.stubsCreated.length > 0) {
-            console.info(
-              "[import-resolver] remapped",
-              importFix.rewrites.length,
-              "import(s); stubbed",
-              importFix.stubsCreated.length,
-              "missing file(s)",
-            );
-            nextFiles = importFix.files;
+          const repaired = runAllRepairs(nextFiles);
+          if (repaired.notes.length > 0) {
+            for (const n of repaired.notes) console.info("[repair-all]", n);
+            nextFiles = repaired.files;
           }
         }
 
