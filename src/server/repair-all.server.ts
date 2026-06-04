@@ -106,5 +106,15 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   files = tw.files;
   for (const n of tw.notes) notes.push(n);
 
+  // 8. Asset stubber — placeholder SVGs for missing local refs; onError for external.
+  const assets = stubMissingAssets(files);
+  files = assets.files;
+  for (const n of assets.notes) notes.push(n);
+
+  // 9. Runtime contract pass — DOM guard, Dialog Title, Select onValueChange, Providers.
+  const rt = enforceRuntimeContracts(files);
+  files = rt.files;
+  for (const n of rt.notes) notes.push(n);
+
   return { files, notes };
 }
