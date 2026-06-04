@@ -29,6 +29,7 @@ import { KIT_FX_FILES } from "./scaffold-kit-fx";
 import { KIT_SHADCN_FILES } from "./scaffold-kit-shadcn";
 import { KIT_DATA_FILES } from "./scaffold-kit-data";
 import { KIT_TYPOGRAPHY_FILES } from "./scaffold-kit-typography";
+import { KIT_CONTENT_FILES } from "./scaffold-kit-content";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
@@ -3839,6 +3840,11 @@ export const KIT_FILES: KitFile[] = [
   // tokens (fluid type scale + Fontsource @imports + font tokens) live in
   // STYLES_CSS above. This is the "how to swap fonts per theme" guide.
   ...KIT_TYPOGRAPHY_FILES,
+  // Phase 15 — Content & code surfaces. Shiki-highlighted code blocks,
+  // react-markdown + remark-gfm renderer, and a TipTap WYSIWYG editor.
+  // Heavy deps (shiki, @tiptap/*, react-markdown) are on-demand only via
+  // known-packages.ts — not added to REQUIRED_DEPS.
+  ...KIT_CONTENT_FILES,
 ];
 
 /**
