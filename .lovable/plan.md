@@ -88,11 +88,13 @@ Each phase: scaffold-kit additions + `known-packages.ts` pins + `design-director
 - Replace hand-rolled Calendar with react-day-picker v10 integration (keeps API).
 - Replace hand-rolled Drawer with Vaul.
 
-### **Phase 13 — Data + state defaults (Tier B #8, #9, #12)**
-- TanStack Query QueryClient + Provider in `App.tsx` scaffold.
-- Zustand example store.
-- nuqs `useQueryState` hook export.
-- Data Table block with sort/filter/pagination/row-selection presets.
+### **Phase 13 — Data + state defaults (Tier B #8, #9, #12)** ✅ shipped
+- TanStack Query `QueryClient` + `<AppProviders>` wrapper (composes QueryClientProvider, NuqsAdapter, sonner Toaster) at `@/components/providers/app-providers`.
+- Zustand example store (typed + persisted) at `@/lib/stores/example-store`.
+- nuqs `useQueryState` / `useQueryStates` re-export at `@/hooks/use-query-state` (URL-synced tabs, filters, dialogs).
+- `DATA_PATTERNS.md` reference doc the model copies from instead of inventing `useEffect + fetch`.
+- Data Table block shipped in Phase 12 (TanStack Table) — sort/filter/pagination already wired.
+- `@tanstack/react-query`, `@tanstack/react-table`, `zustand`, `nuqs` promoted to REQUIRED_DEPS so every project installs them.
 
 ### **Phase 14 — Typography system (Tier D #24, #25)**
 - Migrate Google Fonts `<link>` → Fontsource variable packages per theme.
