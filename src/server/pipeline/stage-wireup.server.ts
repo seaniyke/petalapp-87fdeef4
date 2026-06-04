@@ -70,6 +70,22 @@ export async function runStageWireup(args: {
     );
   }
 
+  // 0c. Deterministic unresolved-import repair. The Rollup error
+  // `Could not resolve "./pages/LandingPage"` is non-recoverable at
+  // build time — the model wrote App.tsx importing a path the planner
+  // never created. Remap to the closest existing file by basename,
+  // or stub the missing file so the build resolves. Must run BEFORE
+  // the esbuild verifier (which would otherwise pass — esbuild only
+  // parses, it doesn't resolve the graph) and is the only thing that
+  // catches this class before production Rollup.
+  const importFix = repairUnresolvedImports(files);
+  files = importFix.files;
+  if (importFix.rewrites.length > 0 || importFix.stubsCreated.length > 0) {
+    notes.push(
+      `import-resolver: remapped ${importFix.rewrites.length} import(s); stubbed ${importFix.stubsCreated.length} missing file(s)`,
+    );
+  }
+
   const allPaths = files.map((f) => f.path);
 
   // 1. Local verifier — parse + imports + exports.
