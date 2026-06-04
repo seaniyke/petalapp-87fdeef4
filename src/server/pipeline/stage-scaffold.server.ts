@@ -338,6 +338,7 @@ export async function runStageScaffold(args: {
   interface RetryItem {
     file: PlannedFile;
     previousAttempt?: { content: string; parserError: string };
+    truncationRetry?: boolean;
   }
   const retryQueue: RetryItem[] = [];
 
@@ -356,12 +357,16 @@ export async function runStageScaffold(args: {
       res.status === "fulfilled"
         ? (res.value as { ok: false; reason: string; lastContent?: string }).lastContent
         : undefined;
-    // Build retry context: only feed previous attempt back when it was a
-    // syntax error — for upstream/truncation failures the previous content
-    // is useless or absent.
+    // Classify the failure so the retry uses the right strategy:
+    //  - truncation (finish_reason=length OR truncation-shaped parse error)
+    //    → bigger budget, "tighter" prompt, do NOT echo broken text
+    //  - real syntax error → "write it fresh" prompt, also do NOT echo
+    //  - upstream / no_tool_call / empty → plain retry
+    const isTruncation = reason === "truncated" || reason.startsWith("truncated_syntax:");
     const isSyntax = reason.startsWith("syntax_error:");
     retryQueue.push({
       file: planned,
+      truncationRetry: isTruncation,
       previousAttempt:
         isSyntax && lastContent
           ? { content: lastContent, parserError: reason.slice("syntax_error:".length) }
@@ -381,9 +386,11 @@ export async function runStageScaffold(args: {
           manifestSummary: args.manifestSummary,
           designSummary,
           previousAttempt: item.previousAttempt,
+          truncationRetry: item.truncationRetry,
         }),
       ),
     );
+
     retried.forEach((res, i) => {
       const planned = retryQueue[i].file;
       const outcomeIdx = outcomes.findIndex((o) => o.path === planned.path);
