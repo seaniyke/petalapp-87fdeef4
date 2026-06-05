@@ -123,10 +123,12 @@ Each phase: scaffold-kit additions + `known-packages.ts` pins + `design-director
 - `three`, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`, `@splinetool/react-spline` + runtime, `gsap`, `lenis`, `canvas-confetti` registered in `known-packages.ts` (on-demand, not auto-installed).
 - Mapbox/MapLibre `MapBlock` deferred — pulled out into a future "geo" phase since it needs env-keyed config.
 
-### **Phase 17 — A11y + image quality (Tier D #27, #30, #31)**
-- ThumbHash placeholder helper for `<img>` + lazy reveal.
-- react-aria primitives for any custom widget model invents (auto-wrapped via repair-all).
-- Dev-only axe-core hook.
+### **Phase 17 — A11y + image quality (Tier D #27, #30, #31)** ✅ shipped
+- `@/components/image/thumbhash-image` — drop-in `<img>` replacement that fades from a ThumbHash blur to the real image once decoded. Falls back to a plain `<img>` when no thumbhash string is provided.
+- `@/lib/a11y` — curated re-exports from `react-aria` (`useButton`, `useFocusRing`, `useHover`, `usePress`, `useKeyboard`, `FocusScope`, `VisuallyHidden`, `mergeProps`, etc.) for the rare custom widgets shadcn doesn't cover.
+- `@/hooks/use-axe` — dev-only auditor that lazy-loads `@axe-core/react` and logs violations to the browser console; no-op in production builds.
+- `A11Y.md` reference shipped at `@/components/examples/A11Y.md`.
+- `thumbhash`, `react-aria`, `@axe-core/react` registered in `known-packages.ts` (on-demand only — not auto-installed).
 
 ### **Phase 18 — Design Director upgrades**
 - Teach the Director when to compose FX layer (e.g. crypto + cyberpunk theme → meteors + retro grid + aurora text + shimmer buttons; SaaS + nordic-minimal → blur fade + magnetic CTAs only).
