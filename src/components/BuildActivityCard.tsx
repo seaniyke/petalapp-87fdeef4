@@ -149,11 +149,16 @@ export function BuildActivityCard({
 }: Props) {
   // Auto-collapse 3s after success.
   const [collapsed, setCollapsed] = useState(false);
-  
-  // While building, the steps list is hidden by default — competitors (Lovable,
-  // Bolt, v0) all show a single calm evolving status line. Power users can
-  // still expand for the full timeline.
-  const [stepsOpen, setStepsOpen] = useState(false);
+
+  // Lovable-style live trace: the steps panel is auto-expanded WHILE Petal is
+  // working so the user sees every phase, file write, and verifier check as
+  // it happens. It only collapses once the turn finishes (or on user click).
+  const [stepsOpen, setStepsOpen] = useState(true);
+  const [userToggledSteps, setUserToggledSteps] = useState(false);
+  useEffect(() => {
+    if (userToggledSteps) return;
+    setStepsOpen(isActive && !error);
+  }, [isActive, error, userToggledSteps]);
   useEffect(() => {
     if (!isComplete || error) return;
     const t = setTimeout(() => setCollapsed(true), 3000);
@@ -170,6 +175,26 @@ export function BuildActivityCard({
     const t = setInterval(() => setTick((n) => n + 1), 1000);
     return () => clearInterval(t);
   }, [isActive]);
+
+  // Rolling "thinking log" — a ring buffer of the most recent narration /
+  // status / cycle-progress lines so the user sees Petal's voice update
+  // continuously instead of one stale subcaption. We keep the last 6.
+  const [thinkingLog, setThinkingLog] = useState<Array<{ id: number; text: string }>>([]);
+  useEffect(() => {
+    const text = (latestNarration ?? latestCycleProgress ?? "").trim();
+    if (!text) return;
+    setThinkingLog((prev) => {
+      if (prev[prev.length - 1]?.text === text) return prev;
+      const next = [...prev, { id: (prev[prev.length - 1]?.id ?? 0) + 1, text }];
+      return next.slice(-6);
+    });
+  }, [latestNarration, latestCycleProgress]);
+  // Reset the log when a new turn starts (no phase has finished yet and
+  // nothing is active beyond the very first phase).
+  useEffect(() => {
+    if (!isActive && !isComplete) setThinkingLog([]);
+  }, [isActive, isComplete]);
+
 
   // The currently-active phase drives the single status line. Falls back to
   // the last completed phase (e.g. right between phases) or the first phase.
