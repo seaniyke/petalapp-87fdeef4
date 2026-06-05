@@ -494,6 +494,19 @@ export async function pickDesignDirection(args: {
     if (parsed.template === undefined) {
       parsed.template = pickTemplateForBrief(trimmedBrief);
     }
+    // Phase 18 — fx_recipe fallback + cinematic ↔ awwwards-3d coherence.
+    // If the model omitted fx_recipe (or picked one that contradicts a
+    // cinematic motion setting), pick one deterministically from app shape.
+    const VALID_RECIPES: ReadonlySet<FxRecipe> = new Set<FxRecipe>([
+      "calm-editorial", "modern-saas", "agency-portfolio", "cyberpunk-crypto",
+      "ai-product", "playful-consumer", "luxury-brand", "data-dashboard", "awwwards-3d",
+    ]);
+    if (!parsed.fx_recipe || !VALID_RECIPES.has(parsed.fx_recipe)) {
+      parsed.fx_recipe = pickFxRecipe(trimmedBrief, parsed.motion);
+    }
+    if (parsed.motion === "cinematic" && parsed.fx_recipe !== "awwwards-3d") {
+      parsed.fx_recipe = "awwwards-3d";
+    }
     direction = parsed;
   } catch (e) {
     console.warn("[design-director] threw:", e);
