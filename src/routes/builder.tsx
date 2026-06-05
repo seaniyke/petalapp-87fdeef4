@@ -3504,6 +3504,7 @@ function Builder() {
                           !petalIsWorking && !pendingQuestion &&
                           !proposedPlan &&
                           hasBackend === false &&
+                          !walletLoading &&
                           !dismissedBackendChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
