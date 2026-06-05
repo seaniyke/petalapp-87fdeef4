@@ -261,13 +261,28 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
       }
 
       // 4. Auto-install from registry, or 5. strip-and-comment.
-      if (existingDeps.has(pkg)) continue;
       const pinned = KNOWN_PACKAGES[pkg];
+      if (existingDeps.has(pkg)) {
+        // If the existing pin is loose ("*", "latest") or doesn't match our
+        // curated pin, REWRITE it. This is the safety net for cases like
+        // @react-three/fiber@"*" resolving to v9 (React 19 only) and
+        // breaking npm install on React-18 Expo scaffolds.
+        if (pinned && pkgJson) {
+          const deps = getDeps(pkgJson);
+          const current = deps[pkg];
+          if (current && current !== pinned && (current === "*" || current === "latest" || /^\^?0\.0\.0/.test(current))) {
+            deps[pkg] = pinned;
+            result.addedDeps[pkg] = pinned;
+          }
+        }
+        continue;
+      }
       if (pinned) {
         result.addedDeps[pkg] = pinned;
         existingDeps.add(pkg);
         continue;
       }
+
       // Unknown package — strip the import line so Rollup doesn't bail.
       // Usages of the identifiers in the file body will throw at runtime
       // (caught by the runtime-contract pass later), but the BUILD will
