@@ -92,15 +92,22 @@ export async function buildAndDeploy(
   //    Petal-generated package.json files put vite, @vitejs/plugin-react, typescript,
   //    and @types/* under devDependencies (see src/server/generate.server.ts), so
   //    without this flag `npx vite build` fails with "Cannot find package 'vite'".
+  // --legacy-peer-deps: Petal scaffolds occasionally combine packages with
+  // conflicting peerDependencies (e.g. Expo + React 18 + a transitively
+  // resolved @react-three/fiber@9 that wants React 19). npm 7+ treats this
+  // as a hard error by default; we fall back to npm 6 behavior so the
+  // install succeeds. We separately pin known packages to compatible
+  // versions in known-packages.ts, but this is the belt to the suspenders.
   const install = await run(
     "npm",
-    ["install", "--include=dev", "--no-audit", "--no-fund", "--prefer-offline"],
+    ["install", "--include=dev", "--legacy-peer-deps", "--no-audit", "--no-fund", "--prefer-offline"],
     {
       cwd: projectDir,
       env,
       timeoutMs: 4 * 60 * 1000, // 4 min
     }
   );
+
   if (install.code !== 0) {
     throw new BuildError(
       `npm install failed (exit ${install.code})`,
