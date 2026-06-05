@@ -1637,6 +1637,19 @@ Forbidden defaults
     } catch {
       /* classifier failure must never block the build */
     }
+    // Hero Contract — also injected on the staged path so SaaS/B2B initial
+    // builds get the same composition discipline as the monolithic path.
+    let stagedHeroContract = "";
+    try {
+      const { renderHeroContractBlock } = await import("@/server/hero-contract.server");
+      stagedHeroContract = renderHeroContractBlock({
+        isInitial: true,
+        webSubtype: detectedWebSubtype,
+        brief: lastUserContent,
+      });
+    } catch {
+      /* never block */
+    }
     const stagedResp = await runStagedPipelineStream({
       brief: lastUserContent,
       hasBackend: Boolean(backend),
@@ -1644,7 +1657,7 @@ Forbidden defaults
         appShape: stagedAppShape,
         appShapeBlock: stagedAppShapeBlock,
         designDirection,
-        designDirectionBlock: designBlock,
+        designDirectionBlock: designBlock + stagedHeroContract,
       },
     });
     if (stagedResp) return stagedResp;
