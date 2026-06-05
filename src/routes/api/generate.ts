@@ -1846,7 +1846,8 @@ Forbidden defaults
     appShapeBlock +
     mobileBlock +
     gameBlock +
-    archetypeBlock;
+    archetypeBlock +
+    heroContractBlock;
 
   const dynamicSuffixText =
     dateBlock +
