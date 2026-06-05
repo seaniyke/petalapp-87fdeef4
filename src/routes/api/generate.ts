@@ -1637,6 +1637,19 @@ Forbidden defaults
     } catch {
       /* classifier failure must never block the build */
     }
+    // Hero Contract — also injected on the staged path so SaaS/B2B initial
+    // builds get the same composition discipline as the monolithic path.
+    let stagedHeroContract = "";
+    try {
+      const { renderHeroContractBlock } = await import("@/server/hero-contract.server");
+      stagedHeroContract = renderHeroContractBlock({
+        isInitial: true,
+        webSubtype: detectedWebSubtype,
+        brief: lastUserContent,
+      });
+    } catch {
+      /* never block */
+    }
     const stagedResp = await runStagedPipelineStream({
       brief: lastUserContent,
       hasBackend: Boolean(backend),
@@ -1644,7 +1657,7 @@ Forbidden defaults
         appShape: stagedAppShape,
         appShapeBlock: stagedAppShapeBlock,
         designDirection,
-        designDirectionBlock: designBlock,
+        designDirectionBlock: designBlock + stagedHeroContract,
       },
     });
     if (stagedResp) return stagedResp;
@@ -1652,6 +1665,21 @@ Forbidden defaults
   }
   const persistedBlueprint = !isInitial ? await loadProjectBlueprint(body.projectId) : null;
   const blueprintBlock = renderBuildBlueprintBlock(persistedBlueprint);
+
+  // Hero Contract — committed hero composition rules for initial landing-page
+  // builds. Addresses the "PipelinePilot" failure where SaaS briefs shipped
+  // with bare text+arrow CTAs and DotPattern occupying the entire fold.
+  let heroContractBlock = "";
+  try {
+    const { renderHeroContractBlock } = await import("@/server/hero-contract.server");
+    heroContractBlock = renderHeroContractBlock({
+      isInitial,
+      webSubtype: detectedWebSubtype,
+      brief: lastUserContent,
+    });
+  } catch {
+    /* never block a build on contract render failure */
+  }
 
   // Filter out files Petal manages itself before showing the project to the
   // model. The AI never edits these (we drop ops that touch them), but feeding
@@ -1831,7 +1859,8 @@ Forbidden defaults
     appShapeBlock +
     mobileBlock +
     gameBlock +
-    archetypeBlock;
+    archetypeBlock +
+    heroContractBlock;
 
   const dynamicSuffixText =
     dateBlock +

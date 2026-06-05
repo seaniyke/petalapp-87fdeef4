@@ -171,7 +171,7 @@ const FX_RECIPE_DETAILS: Record<FxRecipe, string> = {
   "calm-editorial":
     "NoiseTexture overlay on hero, ShinyText on the headline, BlurFade for section reveals. No grids, no beams. Restraint is the move.",
   "modern-saas":
-    "DotPattern background on hero, MeshGradient behind the product mockup, BorderBeam on the primary feature card, ShimmerButton for the CTA, FadeIn + SlideUp throughout.",
+    "MeshGradient or soft brand-tinted wash BEHIND the hero copy (DotPattern is BANNED as the sole hero background — use it only as a secondary section divider after the fold). Product UI mockup as the hero visual, framed in BrowserMockup with 1-2 floating decorative cards (KPI tile, notification pill, avatar stack) overlapping at the corners. Primary CTA = filled <Button size=\"lg\"> or <ShimmerButton> — NEVER a bare anchor + arrow. Secondary CTA = <Button variant=\"outline\">. BorderBeam on the primary feature card. FadeIn + SlideUp throughout.",
   "agency-portfolio":
     "HeroParallax for the showcase reel, MagicCard for project tiles, Marquee of client logos, Magnetic CTAs, Tilt on case-study covers, Stagger reveals.",
   "cyberpunk-crypto":
@@ -221,10 +221,14 @@ function pickFxRecipe(brief: string, motion: MotionIntensity): FxRecipe {
       case "social":
         return "playful-consumer";
       default:
-        return motion === "expressive" ? "agency-portfolio" : "modern-saas";
+        // Unknown shape → bias toward expressive recipes over the most
+        // restrained one. "modern-saas" used to be the catch-all and that's
+        // exactly why generic B2B briefs shipped flat (the PipelinePilot
+        // failure). agency-portfolio carries more visual conviction.
+        return motion === "still" ? "calm-editorial" : "agency-portfolio";
     }
   } catch {
-    return "modern-saas";
+    return "agency-portfolio";
   }
 }
 
@@ -245,6 +249,11 @@ Output a SINGLE call to the "set_design_direction" tool with:
 - motion: still / subtle / expressive / cinematic. Default subtle. Use expressive when the brand calls for energy. Use cinematic ONLY for agency / portfolio / showcase / luxury sites where Awwwards-grade scroll choreography is the point — it pulls in Lenis smooth-scroll, GSAP ScrollTrigger, and optionally a R3F 3D hero, which is overkill for SaaS dashboards or internal tools.
 - fx_recipe: name the FX bundle this app should compose. Pick ONE of: calm-editorial, modern-saas, agency-portfolio, cyberpunk-crypto, ai-product, playful-consumer, luxury-brand, data-dashboard, awwwards-3d. The recipe drives which @/components/fx primitives the builder reaches for. If motion=cinematic you MUST pick fx_recipe=awwwards-3d.
 - design_moves: 2–4 SHORT, concrete moves that make this app unforgettable. Examples: "oversized numerals as section markers", "asymmetric hero with off-center photo", "thin underline accents instead of borders", "pill-shaped CTAs with hard shadow", "monospace metadata under serif headings". NEVER "use cards" or "use a grid" — those aren't moves.
+
+Calibration — two recent Petal outputs, same builder, very different results:
+✅ GOOD ("Flowy", period tracker): magenta brand-dot logo + wordmark, pink eyebrow pill, bold sans display H1 with marker-highlight on one word, 3-line subhead in muted ink, filled pink pill primary CTA + outlined pill secondary, real hero photo of a person with a floating "5 Days to Flow" status card overlapping the photo. Feels like a real product.
+❌ BAD ("PipelinePilot", SaaS CRM): generic sparkle icon, "Streamline Your Sales" rendered as a body-sized eyebrow with no real H1, body paragraph centered in dead space, two bare text+arrow "Start Your Free Trial →" / "Learn More" links with no button chrome, DotPattern occupying ~70% of the fold, dashboard mockup buried below. Looks like a placeholder.
+The difference is composition discipline, not the kit. SaaS briefs deserve Flowy-tier execution too — pick vibes and moves that demand it.
 
 Be DECISIVE. One direction, executed with conviction. No hedging.`;
 
