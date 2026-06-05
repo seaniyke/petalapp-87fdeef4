@@ -311,9 +311,18 @@ export function renderDesignDirectionBlock(d: DesignDirection): string {
     `- typography: ${d.display_font} (display) + ${d.body_font} (body). Load both via Google Fonts in index.html and set them on --font-sans / a display utility in src/styles.css. NEVER fall back to the default system stack.\n` +
     `- palette mood: ${d.palette_mood}. Translate this into oklch tokens in src/styles.css (background, foreground, primary, accent, muted). DO NOT use stock purple gradients on white.\n` +
     `- density: ${d.density}\n` +
-    `- motion: ${d.motion}${d.motion === "expressive" ? " (use framer-motion for the hero entrance)" : ""}\n` +
-    `- motion primitives: the scaffold ships ready-made wrappers at \`@/components/motion\` — FadeIn, SlideUp, Stagger + StaggerItem, Reveal, Magnetic, Tilt, Parallax, SplitText, CountUp, WordRotate, BlurFade. Prefer composing these over hand-rolling framer-motion variants. For "subtle" use FadeIn/SlideUp/BlurFade. For "expressive" layer in Stagger + SplitText + WordRotate + Magnetic CTAs + Parallax/Tilt on hero media. Keep "still" if motion === still (don't import them).\n` +
-    `- FX layer: marketing effects live at \`@/components/fx\`. Backgrounds: GridPattern, DotPattern, RetroGrid, FlickeringGrid, AnimatedGridPattern, Ripple, NoiseTexture, LightRays, MeshGradient, Meteors, Particles, Sparkles. Text: AuroraText, GradientText, ShinyText. Containers: MagicCard, BorderBeam, GlowCard, BentoGrid + BentoCard, Marquee, InfiniteMovingCards, OrbitingCircles, HeroParallax, AnimatedBeam. Buttons: ShimmerButton, RainbowButton, ShinyButton. Use them when the vibe calls for it: cyberpunk/crypto/AI → Meteors + RetroGrid + AuroraText + ShimmerButton; editorial/minimal → NoiseTexture + ShinyText; SaaS modern → DotPattern + MeshGradient + BorderBeam on cards; agency/portfolio → HeroParallax + MagicCard. Layer at most 2 FX per section — restraint matters.\n` +
+    `- motion: ${d.motion}\n` +
+    `- motion primitives (\`@/components/motion\`): FadeIn, SlideUp, Stagger + StaggerItem, Reveal, Magnetic, Tilt, Parallax, SplitText, CountUp, WordRotate, BlurFade. ` +
+      (d.motion === "still"
+        ? `motion=still → do NOT import these. Type and color do the work.`
+        : d.motion === "subtle"
+          ? `motion=subtle → FadeIn / SlideUp / BlurFade on the hero and major sections only. No SplitText, no Magnetic.`
+          : d.motion === "expressive"
+            ? `motion=expressive → Stagger + SplitText on the hero, WordRotate in the subhead, Magnetic CTAs, Parallax/Tilt on hero media. Layer 3-5 across the page, not on every element.`
+            : `motion=cinematic → wrap the app in LenisProvider (\`@/components/scroll/lenis-provider\`). Use useScrollScene (\`@/hooks/use-scroll-scene\`) for pinned reveal sequences and useHorizontalScroll for the showcase strip. Hero: R3F HeroSphere (\`@/components/three/hero-sphere\`) OR SplineEmbed. SplitText on the headline. View transitions via \`@/lib/view-transitions\` on route changes. canvas-confetti via \`@/lib/confetti\` on success moments.`) +
+      `\n` +
+    `- fx recipe: ${d.fx_recipe ?? "(unset)"} — ${d.fx_recipe ? FX_RECIPE_DETAILS[d.fx_recipe] : "no specific recipe"}\n` +
+    `- FX catalog (\`@/components/fx\`) for reference: Backgrounds: GridPattern, DotPattern, RetroGrid, FlickeringGrid, AnimatedGridPattern, Ripple, NoiseTexture, LightRays, MeshGradient, Meteors, Particles, Sparkles. Text: AuroraText, GradientText, ShinyText. Containers: MagicCard, BorderBeam, GlowCard, BentoGrid + BentoCard, Marquee, InfiniteMovingCards, OrbitingCircles, HeroParallax, AnimatedBeam. Buttons: ShimmerButton, RainbowButton, ShinyButton. Stick to the recipe above — layer at most 2 FX per section. Restraint matters.\n` +
     `- design moves to land:\n${moves}\n` +
     `Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.\n` +
     themeBlock +
