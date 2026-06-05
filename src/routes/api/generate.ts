@@ -1662,7 +1662,7 @@ Forbidden defaults
     heroContractBlock = renderHeroContractBlock({
       isInitial,
       webSubtype: detectedWebSubtype,
-      brief: lastUserText,
+      brief: lastUserContent,
     });
   } catch {
     /* never block a build on contract render failure */
