@@ -1,161 +1,76 @@
-# Petal Frontend UI — Gap Analysis & Capability Roadmap
+# Make every Petal landing page hit Flowy quality
 
-Senior-engineer audit of what a 2026 AI app builder should compose vs. what Petal's scaffold currently ships. Verdict at a glance: **Petal has a strong shadcn baseline and 60+ composed blocks, but is missing almost every "wow" capability that separates Awwwards-class output from generic AI sites — real motion, scroll, 3D, gradient meshes, typography animation, command palette, data table, and the marketing-effects layer (MagicUI / Aceternity).**
+## Why the SaaS one failed
 
-This plan is a research artifact + prioritized roadmap. No code yet — once approved we pick which lanes to ship first.
+Comparing your two screenshots, both came out of the same generator but only one followed the moves that make a landing page feel alive:
 
----
-
-## 1. What Petal ships today
-
-| Category | Status | Detail |
+| Move | Flowy (good) | PipelinePilot (bad) |
 |---|---|---|
-| shadcn primitives | 🟢 Strong (38/59) | All core primitives present + hand-rolled Drawer, Calendar, Combobox, DatePicker, InputOTP, Pagination (zero-dep) |
-| Icons | 🟢 Lucide ^0.460 + curated 200-icon registry, Levenshtein fuzzy match, react-icons → lucide aliasing |
-| Themes | 🟢 21 named themes (editorial, brutalist, glass-morphism, cyberpunk-neon, y2k-bubble…) w/ font pairs + oklch palette |
-| Typography | 🟡 Domain-driven font picks via Design Director; Google Fonts via `<link>`; no variable-font / fluid-type system |
-| Section blocks | 🟢 60+ blocks (hero variants, bento, marquee logos/testimonials, pricing/comparison, FAQ, stats, dashboard shell, commerce, kanban, social feed, link-in-bio, podcast, LMS, calendar, portfolio, AI chat, donate, restaurant menu, heatmap, price ticker) |
-| Animations | 🔴 Pure CSS only — `animate-pulse`, marquee keyframes, hover-scale. **No framer-motion in kit.** Design Director merely *suggests* it via prompt. |
-| Forms | 🟡 All inputs + Combobox + DatePicker + MultiStepWizard + FileUploadDropzone. RHF on-demand only. No `Form` integration tested. |
-| Charts | 🟡 Hand-rolled Line/Area/Bar SVG. Recharts on-demand. |
-| Mobile | 🟢 SafeArea, MobileHeader, BottomTabBar, PullToRefresh, MobileScreen, MobileNav |
-| Routing | 🟢 react-router-dom re-export wrapper |
+| Hero visual above the fold | Real generated photo with floating "5 Days to Flow" card | None — dashboard mockup buried below a screen of empty dots |
+| Headline | Big bold display sans, two lines, marker-highlight on "flow" | Tiny "Streamline Your Sales" eyebrow lost in whitespace |
+| Subhead | 3 lines, real body weight | Generic paragraph with no hierarchy difference from eyebrow |
+| Primary CTA | Filled pink pill | Bare text link with `→` arrow |
+| Secondary CTA | Outlined pill | Another bare text link |
+| Background | Soft tonal wash | DotPattern occupying ~70% of the fold |
+| Brand mark | Filled magenta dot logo | Generic outline sparkle |
 
-## 2. What Petal is MISSING (the gap)
+Root cause: the `modern-saas` FX recipe is suggestion-grade, not contract-grade. When the model is given a B2B brief it falls back to "clean SaaS" — exactly the banned default the director prompt says not to pick — because nothing downstream forces a hero composition, a hero image, or filled CTAs.
 
-### Tier A — Build-killers for "beautiful" output (ship first)
+## The fix — five targeted changes
 
-1. **Real motion layer.** Zero framer-motion / Motion v12 in kit. Every Awwwards site uses it. Petal generates beautiful screenshots but dead pages.
-2. **Smooth scroll (Lenis) + scroll-driven reveals.** Single biggest "feels expensive" signal on modern sites. Missing entirely.
-3. **Marketing effects library (MagicUI/Aceternity surface).** Aurora text, animated beam, border beam, meteors, sparkles, particles, light rays, retro grid, flickering grid, dot pattern, ripple, magic card, shimmer button, number ticker, word rotate, morphing text, text reveal, blur fade, marquee w/ mask, orbiting circles, globe, dock, bento grid w/ depth, hero parallax, infinite moving cards. **None shipped.**
-4. **Gradient meshes / noise / glass 2.0.** Only flat `GradientBlob` exists. No conic-gradient meshes, no SVG turbulence noise, no proper claymorphism, no neo-brutalist preset (theme exists but no block primitives).
-5. **Typography animation primitives.** SplitText-style char/word/line wrappers, count-up KPI, kinetic typography — all absent. Heroes look static.
-6. **Missing shadcn primitives (21 of 59):** Breadcrumb, Carousel (Embla), Chart (Recharts wrapper), Collapsible, Command (cmdk palette), Context Menu, Data Table (TanStack), Field, Hover Card, Input Group, Item, Menubar, Native Select, Navigation Menu (flyout), Resizable, Sidebar (full collapsible system w/ context), Spinner, Toggle, Toggle Group, Aspect Ratio, Empty.
-7. **No command palette (⌘K).** Table-stakes for any SaaS/AI app in 2026.
+### 1. Hero Contract (hard rule, all landing pages)
+New file `src/server/hero-contract.server.ts`. One string block injected into the system prompt for any route that is a landing/marketing page. It defines a non-negotiable hero shape:
 
-### Tier B — "Solid" gaps (substance, not surface)
+- Order: eyebrow badge → H1 (display font, fluid clamp ≥ 40px mobile / ≥ 72px desktop, max 2 lines, one word visually emphasized via highlight/gradient/underline) → 2–3 line subhead in muted body color → **filled primary Button + outline/ghost secondary Button side-by-side (never bare `<a>…→` links)** → hero visual occupying ≥ 40% of the fold height.
+- Hero visual must be one of: generated photographic image, product mockup framed in `BrowserMockup`/`PhoneMockup`, abstract MeshGradient + floating decorative card, or 3D scene. Never just a pattern background alone.
+- Density rule: hero section's vertical padding ≤ 96px top/bottom on mobile; no empty `min-h-screen` heros.
 
-8. **TanStack Query + Zustand wiring.** On-demand only. No standard data-fetching pattern shipped → models invent ad-hoc `useEffect` + fetch.
-9. **TanStack Table** + Data Table block. Petal's `Table` is HTML-only; no sort/filter/pagination/virtual rows.
-10. **react-day-picker integration.** Petal's hand-rolled Calendar is functional but missing range selection, multiple months, locale, ISO weeks.
-11. **Vaul Drawer.** Petal hand-rolls a non-spring drawer; mobile feel is off.
-12. **nuqs** for URL-synced filters/tabs. Universal in 2026 SaaS.
-13. **TipTap / Lexical** for any content-editing surface (notes, CMS, AI prompt history, comments).
-14. **Shiki** for code blocks (Petal's `CodeBlock` is read-only `<pre>`, no syntax highlight).
-15. **react-hook-form + zod resolver** as default in form blocks (BookingForm, DonateForm, ContactForm, auth).
-16. **Sidebar (shadcn full system).** Petal's `SidebarShell` is a static layout — no collapse-to-icon, no mobile sheet swap, no nested groups with active route highlight.
+Wire it into `generate.server.ts` next to the existing blueprint block.
 
-### Tier C — Awwwards-class (opt-in per project)
+### 2. Force a generated hero image for SaaS/B2B briefs
+Today image generation triggers for consumer/lifestyle templates but not for `saas-landing`, `dashboard-app`, etc. Update `image-generation.server.ts` (or the equivalent caller in `generate.server.ts`) so any landing page in the `saas` / `internal-tool` / `ai-tool` verticals gets one mandatory hero asset — either an abstract product render or an environment photo — referenced in the scaffold stub. Flowy got a photo; PipelinePilot got nothing. Parity.
 
-17. **3D / WebGL primitives.** R3F + drei + postprocessing, Spline embed, OGL shaders. Currently zero. Needed for hero scenes, product showcases.
-18. **GSAP + ScrollTrigger + SplitText** (now fully free post-Webflow). The choice for cinematic landing pages.
-19. **Lottie / Rive** for designer-built micro-animations.
-20. **Mapbox/MapLibre + react-map-gl + deck.gl** — Petal has `MapPlaceholder` SVG only.
-21. **Spline / iframe 3D embeds** as a one-liner block.
-22. **canvas-confetti** delight on success states.
-23. **View Transitions API** wrapper for route changes (Safari 26 ships Jun 2026 — full cross-browser).
+### 3. Upgrade the `modern-saas` FX recipe
+In `design-director.server.ts` `FX_RECIPE_DETAILS["modern-saas"]`: replace "DotPattern background" with "MeshGradient or AuroraBackground behind hero copy, DotPattern allowed only as a secondary section divider." Add explicit requirement: "Primary CTA = ShimmerButton or filled Button (variant=default); secondary = outline Button. Never plain anchor + arrow."
 
-### Tier D — Plumbing & defaults
+Also remove `modern-saas` as the default fallback in `pickFxRecipe`'s `default:` branch — fall back to `agency-portfolio` so unknown briefs get the more expressive recipe rather than the most restrained one.
 
-24. **Variable fonts via Fontsource** (self-hosted, no Google Fonts CDN hop, no CLS). Petal currently injects via `<link>` — slower + privacy concern.
-25. **Fluid typography (Utopia-style clamp tokens)** in styles.css. Currently fixed rem values.
-26. **Container queries** baked into block primitives.
-27. **ThumbHash / BlurHash** placeholders for image loading.
-28. **next-themes-equivalent** for TanStack (Petal's ThemeProvider is custom; misses no-flash SSR pattern).
-29. **react-intersection-observer hook** as a scaffold export — currently models hand-roll IntersectionObserver each time.
-30. **react-aria** for any custom widget the model invents (date range, slider thumb, combobox keyboard).
-31. **axe-core/react** dev-time a11y audit hook.
-32. **OG image generation via satori / @vercel/og** for shareable links.
+### 4. Post-stream Hero Linter
+New tier in `src/server/pipeline/` (e.g. `tier-hero-discipline.ts`) that runs after files are emitted on initial builds. For the home route file it checks:
 
----
+- Contains at least one `<Button>` import from `@/components/ui/button` rendered inside the hero section.
+- Hero section does NOT consist solely of an anchor + `ArrowRight` icon for its CTA.
+- If `saas`/`landing` archetype: an `<img>` or hero-image component is rendered in the first section.
+- First section's outermost class list does not include both `min-h-screen` and only-pattern background.
 
-## 3. Proposed Roadmap (phases, in execution order)
+On violation: trigger the existing self-recovery loop with a targeted patch prompt ("Rebuild the hero per Hero Contract: …"). One retry max, then ship anyway.
 
-Each phase: scaffold-kit additions + `known-packages.ts` pins + `design-director.server.ts` triggers + a few hand-composed reference blocks. No model retries — these are deterministic capabilities the model can compose.
+### 5. Calibration examples in the Director system prompt
+Append a tiny "good/bad" exemplar pair to `DIRECTOR_SYSTEM` in `design-director.server.ts`:
 
-### **Phase 10 — Motion baseline (Tier A #1, #5)** ✅ shipped
-- Hard-add `motion@^12` (Motion for React) to required deps.
-- Ship `src/components/motion/` primitives: `FadeIn`, `SlideUp`, `Stagger`, `Reveal` (viewport-scroll), `Magnetic`, `Tilt`, `Parallax`, `SplitText` (chars/words/lines), `CountUp`, `WordRotate`, `MorphingText`, `BlurFade`.
-- Wire into existing hero/feature/CTA blocks behind a `motion={'on'|'off'}` prop (default on).
-- Design Director auto-enables expressive motion for editorial/creative/agency domains.
+- ✅ Good: Flowy-style — filled pill CTA, display headline with highlight, hero photo with floating stat card.
+- ❌ Bad: PipelinePilot-style — eyebrow-as-headline, bare text+arrow CTAs, dot pattern as the entire hero.
 
-### **Phase 11 — Marketing FX layer (Tier A #3, #4)** ✅ shipped
-- Ship `src/components/fx/`: `AnimatedBeam`, `BorderBeam`, `Meteors`, `Sparkles`, `Particles`, `LightRays`, `RetroGrid`, `FlickeringGrid`, `DotPattern`, `GridPattern`, `Ripple`, `MagicCard`, `ShimmerButton`, `RainbowButton`, `AuroraText`, `GradientText`(v2 animated), `NoiseTexture`, `OrbitingCircles`, `Marquee`(v2 with mask + 3D variant), `BentoGrid`(v2 with hover lift + glow), `HeroParallax`, `InfiniteMovingCards`.
-- All zero-dependency (CSS keyframes + SVG) where possible; `motion` for the few that need it.
+Two paragraphs, ~120 tokens. Calibrates the director without bloating context.
 
-### **Phase 12 — Missing shadcn primitives (Tier A #6, #7)** ✅ shipped
-- Add: Breadcrumb, Carousel (Embla — hard-add), Chart (Recharts wrapper — hard-add), Collapsible, Command (cmdk — hard-add), Context Menu, Data Table block (TanStack Table — hard-add), Hover Card, Input Group, Menubar, Navigation Menu, Resizable, Sidebar (full system), Spinner, Toggle, Toggle Group, Aspect Ratio, Empty, Field.
-- Replace hand-rolled Calendar with react-day-picker v10 integration (keeps API).
-- Replace hand-rolled Drawer with Vaul.
+## Files touched
 
-### **Phase 13 — Data + state defaults (Tier B #8, #9, #12)** ✅ shipped
-- TanStack Query `QueryClient` + `<AppProviders>` wrapper (composes QueryClientProvider, NuqsAdapter, sonner Toaster) at `@/components/providers/app-providers`.
-- Zustand example store (typed + persisted) at `@/lib/stores/example-store`.
-- nuqs `useQueryState` / `useQueryStates` re-export at `@/hooks/use-query-state` (URL-synced tabs, filters, dialogs).
-- `DATA_PATTERNS.md` reference doc the model copies from instead of inventing `useEffect + fetch`.
-- Data Table block shipped in Phase 12 (TanStack Table) — sort/filter/pagination already wired.
-- `@tanstack/react-query`, `@tanstack/react-table`, `zustand`, `nuqs` promoted to REQUIRED_DEPS so every project installs them.
+```text
+src/server/hero-contract.server.ts          (new)
+src/server/design-director.server.ts        (recipe + fallback + exemplars)
+src/server/image-generation.server.ts       (force hero image for SaaS verticals)
+src/server/generate.server.ts               (inject hero contract block)
+src/server/pipeline/tier-hero-discipline.ts (new linter tier)
+src/server/pipeline/staged-orchestrator.ts  (register the new tier)
+.lovable/plan.md                            (Phase 19 entry)
+```
 
-### **Phase 14 — Typography system (Tier D #24, #25)** ✅ shipped
-- Self-hosted variable fonts: `@fontsource-variable/inter` + `@fontsource-variable/jetbrains-mono` in REQUIRED_DEPS, `@import`-ed at the top of `STYLES_CSS`. Zero CDN hop, zero CLS.
-- Font tokens: `--font-sans`, `--font-display`, `--font-serif`, `--font-mono` declared in `@theme` so the AI overrides one variable per theme instead of editing component code.
-- Utopia-style fluid type scale: `--text-step--1` through `--text-step-6` (`clamp()` between 320px and 1280px viewport) + matching `.text-step-*` utility classes with paired line-height and tracking.
-- Tracking presets `--tracking-tightest/-er/-light` for display type.
-- `KNOWN_PACKAGES` extended with 30+ Fontsource Variable packages (instrument-serif, cormorant, space-grotesk, dm-serif-display, lora, libre-baskerville, syne, urbanist, bricolage-grotesque, archivo-black, abril-fatface, bebas-neue, etc.) — on-demand install per theme.
-- `FONTS.md` reference shipped at `@/components/examples/FONTS.md` mapping domain → font-pair recipe.
+## Out of scope (deliberately)
 
-### **Phase 15 — Content & code surfaces (Tier B #13, #14)** ✅ shipped
-- `@/components/content/shiki-code-block` — real Shiki highlighting, lazy per-language grammars, github-light/dark via CSS vars, copy button, optional filename + line numbers.
-- `@/components/content/markdown-view` — react-markdown + remark-gfm (tables, task lists, strikethrough, autolinks), fenced code routed through ShikiCodeBlock, tailwind-prose-style inline styling that respects fluid type tokens.
-- `@/components/content/rich-text-editor` — TipTap (ProseMirror) WYSIWYG with StarterKit + Link + Placeholder, floating BubbleMenu toolbar (bold/italic/strike/code/H1-3/lists/quote/link), undo-redo footer.
-- `shiki`, `react-markdown`, `remark-gfm`, `rehype-raw`, `@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-link/placeholder/image/task-list/task-item` registered in `known-packages.ts` (on-demand only — not auto-installed; pulled in when the file is imported).
+- No new motion/3D primitives — the kit already has them; the problem is the model not reaching for them on SaaS briefs.
+- No changes to consumer/editorial recipes — Flowy proves those work.
+- No template/route changes — `saas-landing` template is fine; the failure is composition, not routing.
 
-### **Phase 16 — Awwwards layer, opt-in (Tier C)** ✅ shipped (Mapbox deferred)
-- `@/components/three/scene` — opinionated R3F `<Canvas>` with lights, camera, HDRI environment, optional orbit controls.
-- `@/components/three/floating-mesh` — drei `<Float>` mesh with `MeshDistortMaterial` (icosahedron / torus / torusKnot / box / sphere).
-- `@/components/three/hero-sphere` — one-liner hero centerpiece (absolute-positioned Scene + FloatingMesh).
-- `@/components/three/spline-embed` — lazy-mounted Spline scene runtime for designer-shipped `.splinecode` URLs.
-- `@/components/scroll/lenis-provider` — smooth-scroll provider, reduced-motion aware, exposes instance on `window.__lenis` for GSAP sync.
-- `@/hooks/use-scroll-scene` — GSAP context scoped to a ref with auto-cleanup, re-exports `gsap` + `ScrollTrigger`.
-- `@/hooks/use-horizontal-scroll` — pinned horizontal scroll track (Awwwards staple).
-- `@/lib/confetti` — `celebrate()`, `celebrateCannons()`, `celebrateFrom(el)`.
-- `@/lib/view-transitions` — `withViewTransition()` + `navigateWithTransition()` (Safari 26 ships June 2026 → full cross-browser).
-- `three`, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`, `@splinetool/react-spline` + runtime, `gsap`, `lenis`, `canvas-confetti` registered in `known-packages.ts` (on-demand, not auto-installed).
-- Mapbox/MapLibre `MapBlock` deferred — pulled out into a future "geo" phase since it needs env-keyed config.
+## Verification
 
-### **Phase 17 — A11y + image quality (Tier D #27, #30, #31)** ✅ shipped
-- `@/components/image/thumbhash-image` — drop-in `<img>` replacement that fades from a ThumbHash blur to the real image once decoded. Falls back to a plain `<img>` when no thumbhash string is provided.
-- `@/lib/a11y` — curated re-exports from `react-aria` (`useButton`, `useFocusRing`, `useHover`, `usePress`, `useKeyboard`, `FocusScope`, `VisuallyHidden`, `mergeProps`, etc.) for the rare custom widgets shadcn doesn't cover.
-- `@/hooks/use-axe` — dev-only auditor that lazy-loads `@axe-core/react` and logs violations to the browser console; no-op in production builds.
-- `A11Y.md` reference shipped at `@/components/examples/A11Y.md`.
-- `thumbhash`, `react-aria`, `@axe-core/react` registered in `known-packages.ts` (on-demand only — not auto-installed).
-
-### **Phase 18 — Design Director upgrades** ✅ shipped
-- New motion intensity ladder: `still` / `subtle` / `expressive` / **`cinematic`**. Cinematic auto-wires LenisProvider, useScrollScene/useHorizontalScroll, R3F HeroSphere or SplineEmbed, view transitions, and confetti.
-- New `fx_recipe` field on `DesignDirection` with 9 named bundles: `calm-editorial`, `modern-saas`, `agency-portfolio`, `cyberpunk-crypto`, `ai-product`, `playful-consumer`, `luxury-brand`, `data-dashboard`, `awwwards-3d`. Each recipe expands to a concrete shopping list of `@/components/fx` + motion primitives so the builder model stops inventing effects ad-hoc.
-- Deterministic `pickFxRecipe(brief, motion)` fallback reads `classifyAppShape()` so every build gets a defensible default (crypto → cyberpunk, AI tool → ai-product, content/creator → calm-editorial, real-estate/restaurant → luxury-brand, ecommerce/social/game → playful-consumer, etc.).
-- Coherence rule enforced server-side: `motion=cinematic` always maps to `fx_recipe=awwwards-3d`, regardless of what the model returned.
-- Director system prompt + JSON-schema tool definition updated to include the new enums; render block now emits per-motion-level instructions instead of a single generic FX paragraph.
-
----
-
-## 4. Sequencing logic
-
-- **10 → 11 → 12** unlocks the visible "this looks 2026" jump. Three phases = the entire perceived quality gap.
-- **13 → 14 → 15** is the substance layer — apps stop feeling like demos.
-- **16** is the Awwwards reach; gated per-project because heavy.
-- **17 → 18** are polish + intelligence.
-
-Each phase = its own focused PR (mirrors Phases 4–9 cadence). Each adds: scaffold files (overwrite:true), `known-packages.ts` entries with pinned versions, optionally `repair-all` integration, and Design Director triggers.
-
----
-
-## 5. What I need from you
-
-Pick one of:
-- **(A)** "Ship Phase 10 next" — start with motion baseline (highest ROI).
-- **(B)** "Ship Phase 11 next" — start with MagicUI FX layer (biggest visual impact).
-- **(C)** "Bundle 10+11+12 as one big visual jump" — bigger PR but the model gets the full new vocabulary at once.
-- **(D)** Reorder / drop phases — tell me which.
-
-Once you pick, I'll write the phase plan and implement.
+Re-run the PipelinePilot prompt after shipping. Expect: hero photo or mockup at top, filled primary + outline secondary CTAs, display H1 with one highlighted word, no full-fold dot pattern. If any of those still missing, the hero linter should auto-retry once.
