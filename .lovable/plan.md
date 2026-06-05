@@ -74,3 +74,15 @@ src/server/pipeline/staged-orchestrator.ts  (register the new tier)
 ## Verification
 
 Re-run the PipelinePilot prompt after shipping. Expect: hero photo or mockup at top, filled primary + outline secondary CTAs, display H1 with one highlighted word, no full-fold dot pattern. If any of those still missing, the hero linter should auto-retry once.
+
+---
+
+## Phase 19 — Shipped (Hero Contract + Director calibration)
+
+**Shipped:**
+- `src/server/hero-contract.server.ts` — new. Non-negotiable hero composition block (eyebrow → highlighted H1 → subhead → filled+outline Button pair → real hero visual). Extra SaaS addendum when brief is detected as SaaS/B2B/internal-tool/ai-tool via `classifyAppShape`. Bans bare `<a>...→` CTAs and full-fold DotPattern heroes.
+- `src/server/design-director.server.ts` — `FX_RECIPE_DETAILS["modern-saas"]` rewritten to require MeshGradient hero background + filled Button CTAs + floating decorative card on mockup. `pickFxRecipe` default fallback changed from `modern-saas` → `agency-portfolio` (or `calm-editorial` when motion=still). `DIRECTOR_SYSTEM` gained Flowy ✅ / PipelinePilot ❌ calibration paragraph.
+- `src/routes/api/generate.ts` — Hero Contract block appended to system prompt on both monolithic and staged paths, gated by `isInitial` + marketing subtype.
+
+**Deferred (lower priority):**
+- Hero-discipline lint tier (plan item #4) and forced SaaS image generation (plan item #2) — re-evaluate after observing whether the prompt-level changes alone close the Flowy/PipelinePilot quality gap on the next round of builds. The petal-image:// instruction already exists; the Hero Contract now mandates its use for SaaS mockups.
