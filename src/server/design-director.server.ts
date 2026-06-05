@@ -111,6 +111,26 @@ function pickFontDefault(
 
 const GENERIC_FONTS = new Set(["inter", "roboto", "system-ui", "sans-serif", "arial", "poppins"]);
 
+export type MotionIntensity = "still" | "subtle" | "expressive" | "cinematic";
+
+/**
+ * Named FX recipes. Each recipe expands to a concrete shopping list of
+ * `@/components/fx` + `@/components/motion` + (for cinematic) Awwwards-layer
+ * primitives. The model can pick a recipe by key; if it doesn't, we infer
+ * one from app shape via `pickFxRecipe()` so every build gets a defensible
+ * starting palette instead of inventing effects ad-hoc.
+ */
+export type FxRecipe =
+  | "calm-editorial"
+  | "modern-saas"
+  | "agency-portfolio"
+  | "cyberpunk-crypto"
+  | "ai-product"
+  | "playful-consumer"
+  | "luxury-brand"
+  | "data-dashboard"
+  | "awwwards-3d";
+
 export type DesignDirection = {
   /** Short human-readable label, e.g. "warm-editorial", "brutalist-mono", "soft-glass". */
   vibe: string;
@@ -124,8 +144,17 @@ export type DesignDirection = {
   palette_mood: string;
   /** "minimal" | "balanced" | "dense" — how packed the layouts should feel. */
   density: "minimal" | "balanced" | "dense";
-  /** "still" | "subtle" | "expressive" — appetite for motion / framer-motion. */
-  motion: "still" | "subtle" | "expressive";
+  /**
+   * Motion intensity ladder.
+   *   still       — zero motion primitives, type only.
+   *   subtle      — FadeIn / SlideUp / BlurFade on key sections.
+   *   expressive  — Stagger + SplitText + Magnetic CTAs + Parallax/Tilt.
+   *   cinematic   — Awwwards layer: Lenis smooth-scroll + GSAP ScrollTrigger
+   *                 reveals + optional R3F hero scene + view transitions.
+   */
+  motion: MotionIntensity;
+  /** Named FX bundle to compose. Inferred from app shape if model omits. */
+  fx_recipe?: FxRecipe;
   /** 2–4 concrete design moves to commit to (e.g. "asymmetric hero", "oversized numerals"). */
   design_moves: string[];
   /** Hidden theme key — drives concrete oklch tokens. Never surfaced to the user. */
@@ -133,6 +162,71 @@ export type DesignDirection = {
   /** Hidden template key — drives the route + section plan. Never surfaced to the user. */
   template?: TemplateKey | null;
 };
+
+/**
+ * Recipe → expanded prompt block. Each entry names exact component imports
+ * so the model doesn't have to remember the FX catalog by heart.
+ */
+const FX_RECIPE_DETAILS: Record<FxRecipe, string> = {
+  "calm-editorial":
+    "NoiseTexture overlay on hero, ShinyText on the headline, BlurFade for section reveals. No grids, no beams. Restraint is the move.",
+  "modern-saas":
+    "DotPattern background on hero, MeshGradient behind the product mockup, BorderBeam on the primary feature card, ShimmerButton for the CTA, FadeIn + SlideUp throughout.",
+  "agency-portfolio":
+    "HeroParallax for the showcase reel, MagicCard for project tiles, Marquee of client logos, Magnetic CTAs, Tilt on case-study covers, Stagger reveals.",
+  "cyberpunk-crypto":
+    "RetroGrid floor on hero, Meteors layered behind, AuroraText on the headline, GlowCard for stat tiles, ShimmerButton or RainbowButton for the CTA, OrbitingCircles around the brand mark.",
+  "ai-product":
+    "AnimatedBeam connecting input → AI → output diagram, Sparkles around the chat surface, GradientText on the headline, MagicCard for capability tiles, BorderBeam on the CTA.",
+  "playful-consumer":
+    "FlickeringGrid background, GradientText headline, Ripple on interactive tiles, Marquee of testimonials, WordRotate in the hero subhead, confetti via `@/lib/confetti` on success states.",
+  "luxury-brand":
+    "NoiseTexture, oversized serif headlines via SplitText, slow Parallax on product imagery, ShinyText accents. No beams, no grids — silence is luxury.",
+  "data-dashboard":
+    "GridPattern background, KPI tiles with CountUp + Sparkles on positive deltas, FadeIn on cards, no heavy motion. Density over flash.",
+  "awwwards-3d":
+    "R3F HeroSphere or SplineEmbed as hero centerpiece, LenisProvider wrapping the app, useScrollScene for pinned reveal sequences, GSAP ScrollTrigger horizontal scroll for showcase, SplitText hero, view transitions on route changes.",
+};
+
+/**
+ * Deterministic fallback recipe picker — runs when the director model omits
+ * `fx_recipe`. Reads the app shape so each domain gets a defensible default.
+ */
+function pickFxRecipe(brief: string, motion: MotionIntensity): FxRecipe {
+  if (motion === "cinematic") return "awwwards-3d";
+  try {
+    const shape = classifyAppShape(brief);
+    switch (shape.category) {
+      case "crypto":
+        return "cyberpunk-crypto";
+      case "ai-tool":
+        return "ai-product";
+      case "saas":
+      case "internal-tool":
+        return "modern-saas";
+      case "creator":
+      case "content":
+      case "newsletter":
+      case "consultancy":
+        return "calm-editorial";
+      case "real-estate":
+      case "restaurant":
+      case "local-business":
+        return "luxury-brand";
+      case "ecommerce":
+      case "marketplace":
+        return "playful-consumer";
+      case "fitness":
+      case "game":
+      case "social":
+        return "playful-consumer";
+      default:
+        return motion === "expressive" ? "agency-portfolio" : "modern-saas";
+    }
+  } catch {
+    return "modern-saas";
+  }
+}
 
 const DIRECTOR_SYSTEM = `You are Petal's Design Director. Before the builder writes any code, you commit to ONE bold, specific visual direction for the app.
 
@@ -148,7 +242,8 @@ Output a SINGLE call to the "set_design_direction" tool with:
 - display_font + body_font: a real, distinctive pairing. Avoid Inter/Poppins as the display font. Body can be a clean workhorse (Inter is OK as body if display is distinctive). Examples of good display choices: Fraunces, Space Grotesk, Playfair Display, IBM Plex Mono, Instrument Serif, Bricolage Grotesque, DM Serif Display, Unbounded, Cormorant Garamond, JetBrains Mono.
 - palette_mood: a sentence describing the actual hues, not "modern colors". E.g. "warm cream background, burnt sienna primary, ink-black text, sage accents".
 - density: minimal / balanced / dense. Match the audience: consumer landing → minimal/balanced; data dashboards → dense; editorial → balanced with generous white space.
-- motion: still / subtle / expressive. Default subtle. Use expressive only when the brand obviously calls for it.
+- motion: still / subtle / expressive / cinematic. Default subtle. Use expressive when the brand calls for energy. Use cinematic ONLY for agency / portfolio / showcase / luxury sites where Awwwards-grade scroll choreography is the point — it pulls in Lenis smooth-scroll, GSAP ScrollTrigger, and optionally a R3F 3D hero, which is overkill for SaaS dashboards or internal tools.
+- fx_recipe: name the FX bundle this app should compose. Pick ONE of: calm-editorial, modern-saas, agency-portfolio, cyberpunk-crypto, ai-product, playful-consumer, luxury-brand, data-dashboard, awwwards-3d. The recipe drives which @/components/fx primitives the builder reaches for. If motion=cinematic you MUST pick fx_recipe=awwwards-3d.
 - design_moves: 2–4 SHORT, concrete moves that make this app unforgettable. Examples: "oversized numerals as section markers", "asymmetric hero with off-center photo", "thin underline accents instead of borders", "pill-shaped CTAs with hard shadow", "monospace metadata under serif headings". NEVER "use cards" or "use a grid" — those aren't moves.
 
 Be DECISIVE. One direction, executed with conviction. No hedging.`;
@@ -168,7 +263,21 @@ const DIRECTOR_TOOL = {
         body_font: { type: "string" },
         palette_mood: { type: "string" },
         density: { type: "string", enum: ["minimal", "balanced", "dense"] },
-        motion: { type: "string", enum: ["still", "subtle", "expressive"] },
+        motion: { type: "string", enum: ["still", "subtle", "expressive", "cinematic"] },
+        fx_recipe: {
+          type: "string",
+          enum: [
+            "calm-editorial",
+            "modern-saas",
+            "agency-portfolio",
+            "cyberpunk-crypto",
+            "ai-product",
+            "playful-consumer",
+            "luxury-brand",
+            "data-dashboard",
+            "awwwards-3d",
+          ],
+        },
         design_moves: {
           type: "array",
           minItems: 2,
@@ -202,9 +311,18 @@ export function renderDesignDirectionBlock(d: DesignDirection): string {
     `- typography: ${d.display_font} (display) + ${d.body_font} (body). Load both via Google Fonts in index.html and set them on --font-sans / a display utility in src/styles.css. NEVER fall back to the default system stack.\n` +
     `- palette mood: ${d.palette_mood}. Translate this into oklch tokens in src/styles.css (background, foreground, primary, accent, muted). DO NOT use stock purple gradients on white.\n` +
     `- density: ${d.density}\n` +
-    `- motion: ${d.motion}${d.motion === "expressive" ? " (use framer-motion for the hero entrance)" : ""}\n` +
-    `- motion primitives: the scaffold ships ready-made wrappers at \`@/components/motion\` — FadeIn, SlideUp, Stagger + StaggerItem, Reveal, Magnetic, Tilt, Parallax, SplitText, CountUp, WordRotate, BlurFade. Prefer composing these over hand-rolling framer-motion variants. For "subtle" use FadeIn/SlideUp/BlurFade. For "expressive" layer in Stagger + SplitText + WordRotate + Magnetic CTAs + Parallax/Tilt on hero media. Keep "still" if motion === still (don't import them).\n` +
-    `- FX layer: marketing effects live at \`@/components/fx\`. Backgrounds: GridPattern, DotPattern, RetroGrid, FlickeringGrid, AnimatedGridPattern, Ripple, NoiseTexture, LightRays, MeshGradient, Meteors, Particles, Sparkles. Text: AuroraText, GradientText, ShinyText. Containers: MagicCard, BorderBeam, GlowCard, BentoGrid + BentoCard, Marquee, InfiniteMovingCards, OrbitingCircles, HeroParallax, AnimatedBeam. Buttons: ShimmerButton, RainbowButton, ShinyButton. Use them when the vibe calls for it: cyberpunk/crypto/AI → Meteors + RetroGrid + AuroraText + ShimmerButton; editorial/minimal → NoiseTexture + ShinyText; SaaS modern → DotPattern + MeshGradient + BorderBeam on cards; agency/portfolio → HeroParallax + MagicCard. Layer at most 2 FX per section — restraint matters.\n` +
+    `- motion: ${d.motion}\n` +
+    `- motion primitives (\`@/components/motion\`): FadeIn, SlideUp, Stagger + StaggerItem, Reveal, Magnetic, Tilt, Parallax, SplitText, CountUp, WordRotate, BlurFade. ` +
+      (d.motion === "still"
+        ? `motion=still → do NOT import these. Type and color do the work.`
+        : d.motion === "subtle"
+          ? `motion=subtle → FadeIn / SlideUp / BlurFade on the hero and major sections only. No SplitText, no Magnetic.`
+          : d.motion === "expressive"
+            ? `motion=expressive → Stagger + SplitText on the hero, WordRotate in the subhead, Magnetic CTAs, Parallax/Tilt on hero media. Layer 3-5 across the page, not on every element.`
+            : `motion=cinematic → wrap the app in LenisProvider (\`@/components/scroll/lenis-provider\`). Use useScrollScene (\`@/hooks/use-scroll-scene\`) for pinned reveal sequences and useHorizontalScroll for the showcase strip. Hero: R3F HeroSphere (\`@/components/three/hero-sphere\`) OR SplineEmbed. SplitText on the headline. View transitions via \`@/lib/view-transitions\` on route changes. canvas-confetti via \`@/lib/confetti\` on success moments.`) +
+      `\n` +
+    `- fx recipe: ${d.fx_recipe ?? "(unset)"} — ${d.fx_recipe ? FX_RECIPE_DETAILS[d.fx_recipe] : "no specific recipe"}\n` +
+    `- FX catalog (\`@/components/fx\`) for reference: Backgrounds: GridPattern, DotPattern, RetroGrid, FlickeringGrid, AnimatedGridPattern, Ripple, NoiseTexture, LightRays, MeshGradient, Meteors, Particles, Sparkles. Text: AuroraText, GradientText, ShinyText. Containers: MagicCard, BorderBeam, GlowCard, BentoGrid + BentoCard, Marquee, InfiniteMovingCards, OrbitingCircles, HeroParallax, AnimatedBeam. Buttons: ShimmerButton, RainbowButton, ShinyButton. Stick to the recipe above — layer at most 2 FX per section. Restraint matters.\n` +
     `- design moves to land:\n${moves}\n` +
     `Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.\n` +
     themeBlock +
@@ -375,6 +493,19 @@ export async function pickDesignDirection(args: {
     // defaulting to a generic landing page.
     if (parsed.template === undefined) {
       parsed.template = pickTemplateForBrief(trimmedBrief);
+    }
+    // Phase 18 — fx_recipe fallback + cinematic ↔ awwwards-3d coherence.
+    // If the model omitted fx_recipe (or picked one that contradicts a
+    // cinematic motion setting), pick one deterministically from app shape.
+    const VALID_RECIPES: ReadonlySet<FxRecipe> = new Set<FxRecipe>([
+      "calm-editorial", "modern-saas", "agency-portfolio", "cyberpunk-crypto",
+      "ai-product", "playful-consumer", "luxury-brand", "data-dashboard", "awwwards-3d",
+    ]);
+    if (!parsed.fx_recipe || !VALID_RECIPES.has(parsed.fx_recipe)) {
+      parsed.fx_recipe = pickFxRecipe(trimmedBrief, parsed.motion);
+    }
+    if (parsed.motion === "cinematic" && parsed.fx_recipe !== "awwwards-3d") {
+      parsed.fx_recipe = "awwwards-3d";
     }
     direction = parsed;
   } catch (e) {

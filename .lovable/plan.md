@@ -130,10 +130,12 @@ Each phase: scaffold-kit additions + `known-packages.ts` pins + `design-director
 - `A11Y.md` reference shipped at `@/components/examples/A11Y.md`.
 - `thumbhash`, `react-aria`, `@axe-core/react` registered in `known-packages.ts` (on-demand only — not auto-installed).
 
-### **Phase 18 — Design Director upgrades**
-- Teach the Director when to compose FX layer (e.g. crypto + cyberpunk theme → meteors + retro grid + aurora text + shimmer buttons; SaaS + nordic-minimal → blur fade + magnetic CTAs only).
-- Per-domain motion intensity (calm / standard / expressive / cinematic).
-- Auto-pick MagicUI-equivalent components from prompt vibe.
+### **Phase 18 — Design Director upgrades** ✅ shipped
+- New motion intensity ladder: `still` / `subtle` / `expressive` / **`cinematic`**. Cinematic auto-wires LenisProvider, useScrollScene/useHorizontalScroll, R3F HeroSphere or SplineEmbed, view transitions, and confetti.
+- New `fx_recipe` field on `DesignDirection` with 9 named bundles: `calm-editorial`, `modern-saas`, `agency-portfolio`, `cyberpunk-crypto`, `ai-product`, `playful-consumer`, `luxury-brand`, `data-dashboard`, `awwwards-3d`. Each recipe expands to a concrete shopping list of `@/components/fx` + motion primitives so the builder model stops inventing effects ad-hoc.
+- Deterministic `pickFxRecipe(brief, motion)` fallback reads `classifyAppShape()` so every build gets a defensible default (crypto → cyberpunk, AI tool → ai-product, content/creator → calm-editorial, real-estate/restaurant → luxury-brand, ecommerce/social/game → playful-consumer, etc.).
+- Coherence rule enforced server-side: `motion=cinematic` always maps to `fx_recipe=awwwards-3d`, regardless of what the model returned.
+- Director system prompt + JSON-schema tool definition updated to include the new enums; render block now emits per-motion-level instructions instead of a single generic FX paragraph.
 
 ---
 
