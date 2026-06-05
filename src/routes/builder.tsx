@@ -597,8 +597,13 @@ function Builder() {
   const [dismissedCronChips, setDismissedCronChips] = useState<Set<number>>(
     () => new Set(),
   );
-  const { plan: currentPlan } = useWallet();
-  const isPaidPlan = !!currentPlan && currentPlan.code !== "free";
+  const { plan: currentPlan, wallet: currentWallet, loading: walletLoading } = useWallet();
+  // Derive paid-plan from the wallet's plan_code directly. The plans catalog
+  // can lag (or omit grandfathered plan codes), which previously caused paid
+  // users to see "Upgrade" on suggestion chips during the load gap.
+  const isPaidPlan =
+    (currentWallet?.plan_code && currentWallet.plan_code !== "free") ||
+    (!!currentPlan && currentPlan.code !== "free");
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
   // Visual element edit (Phase 5): selected element from the preview iframe.
   type PickedElement = {
@@ -3499,6 +3504,7 @@ function Builder() {
                           !petalIsWorking && !pendingQuestion &&
                           !proposedPlan &&
                           hasBackend === false &&
+                          !walletLoading &&
                           !dismissedBackendChips.has(i) &&
                           (() => {
                             const prevUser = messages[i - 1]?.role === "user"
