@@ -1,88 +1,79 @@
-# Make every Petal landing page hit Flowy quality
+## Goal
 
-## Why the SaaS one failed
+Today the build experience collapses everything into 4 bullets ("Plan ready / Design locked in / Wrote 8 files / Verified"). The SSE pipeline in `/api/generate` already emits much richer events — phase, design_vibe, narration, cycle_start/progress/end, file_progress, file_complete, file_validated, timeline, status. Lovable shows these as a continuous, friendly trace. We'll do the same.
 
-Comparing your two screenshots, both came out of the same generator but only one followed the moves that make a landing page feel alive:
+Out of scope for this turn:
+- Changes to the server-side generation logic itself (we'll only add a couple of `status` emit points where the pipeline currently goes silent).
+- Plan-mode card, error card, publish/deploy cards — only the in-flight build trace.
+- Payments fix is already shipped this turn.
 
-| Move | Flowy (good) | PipelinePilot (bad) |
-|---|---|---|
-| Hero visual above the fold | Real generated photo with floating "5 Days to Flow" card | None — dashboard mockup buried below a screen of empty dots |
-| Headline | Big bold display sans, two lines, marker-highlight on "flow" | Tiny "Streamline Your Sales" eyebrow lost in whitespace |
-| Subhead | 3 lines, real body weight | Generic paragraph with no hierarchy difference from eyebrow |
-| Primary CTA | Filled pink pill | Bare text link with `→` arrow |
-| Secondary CTA | Outlined pill | Another bare text link |
-| Background | Soft tonal wash | DotPattern occupying ~70% of the fold |
-| Brand mark | Filled magenta dot logo | Generic outline sparkle |
+## What the user will see
 
-Root cause: the `modern-saas` FX recipe is suggestion-grade, not contract-grade. When the model is given a B2B brief it falls back to "clean SaaS" — exactly the banned default the director prompt says not to pick — because nothing downstream forces a hero composition, a hero image, or filled CTAs.
-
-## The fix — five targeted changes
-
-### 1. Hero Contract (hard rule, all landing pages)
-New file `src/server/hero-contract.server.ts`. One string block injected into the system prompt for any route that is a landing/marketing page. It defines a non-negotiable hero shape:
-
-- Order: eyebrow badge → H1 (display font, fluid clamp ≥ 40px mobile / ≥ 72px desktop, max 2 lines, one word visually emphasized via highlight/gradient/underline) → 2–3 line subhead in muted body color → **filled primary Button + outline/ghost secondary Button side-by-side (never bare `<a>…→` links)** → hero visual occupying ≥ 40% of the fold height.
-- Hero visual must be one of: generated photographic image, product mockup framed in `BrowserMockup`/`PhoneMockup`, abstract MeshGradient + floating decorative card, or 3D scene. Never just a pattern background alone.
-- Density rule: hero section's vertical padding ≤ 96px top/bottom on mobile; no empty `min-h-screen` heros.
-
-Wire it into `generate.server.ts` next to the existing blueprint block.
-
-### 2. Force a generated hero image for SaaS/B2B briefs
-Today image generation triggers for consumer/lifestyle templates but not for `saas-landing`, `dashboard-app`, etc. Update `image-generation.server.ts` (or the equivalent caller in `generate.server.ts`) so any landing page in the `saas` / `internal-tool` / `ai-tool` verticals gets one mandatory hero asset — either an abstract product render or an environment photo — referenced in the scaffold stub. Flowy got a photo; PipelinePilot got nothing. Parity.
-
-### 3. Upgrade the `modern-saas` FX recipe
-In `design-director.server.ts` `FX_RECIPE_DETAILS["modern-saas"]`: replace "DotPattern background" with "MeshGradient or AuroraBackground behind hero copy, DotPattern allowed only as a secondary section divider." Add explicit requirement: "Primary CTA = ShimmerButton or filled Button (variant=default); secondary = outline Button. Never plain anchor + arrow."
-
-Also remove `modern-saas` as the default fallback in `pickFxRecipe`'s `default:` branch — fall back to `agency-portfolio` so unknown briefs get the more expressive recipe rather than the most restrained one.
-
-### 4. Post-stream Hero Linter
-New tier in `src/server/pipeline/` (e.g. `tier-hero-discipline.ts`) that runs after files are emitted on initial builds. For the home route file it checks:
-
-- Contains at least one `<Button>` import from `@/components/ui/button` rendered inside the hero section.
-- Hero section does NOT consist solely of an anchor + `ArrowRight` icon for its CTA.
-- If `saas`/`landing` archetype: an `<img>` or hero-image component is rendered in the first section.
-- First section's outermost class list does not include both `min-h-screen` and only-pattern background.
-
-On violation: trigger the existing self-recovery loop with a targeted patch prompt ("Rebuild the hero per Hero Contract: …"). One retry max, then ship anyway.
-
-### 5. Calibration examples in the Director system prompt
-Append a tiny "good/bad" exemplar pair to `DIRECTOR_SYSTEM` in `design-director.server.ts`:
-
-- ✅ Good: Flowy-style — filled pill CTA, display headline with highlight, hero photo with floating stat card.
-- ❌ Bad: PipelinePilot-style — eyebrow-as-headline, bare text+arrow CTAs, dot pattern as the entire hero.
-
-Two paragraphs, ~120 tokens. Calibrates the director without bloating context.
-
-## Files touched
+While Petal works, the assistant message renders a live trace card pinned in place of today's "Deploying to your preview" card:
 
 ```text
-src/server/hero-contract.server.ts          (new)
-src/server/design-director.server.ts        (recipe + fallback + exemplars)
-src/server/image-generation.server.ts       (force hero image for SaaS verticals)
-src/server/generate.server.ts               (inject hero contract block)
-src/server/pipeline/tier-hero-discipline.ts (new linter tier)
-src/server/pipeline/staged-orchestrator.ts  (register the new tier)
-.lovable/plan.md                            (Phase 19 entry)
+┌─ Petal is building ──────────────────────────── 1m 12s ─┐
+│ 🌸  Reading the request                                  │
+│     Detected: SaaS landing page, Stripe payments        │
+│ ✨  Picking the design direction                         │
+│     Modern SaaS · Aurora hero · Space Grotesk           │
+│ 📝  Writing the code                              7 / 12 │
+│     ✓ src/routes/index.tsx           +180 lines         │
+│     ✓ src/components/Hero.tsx         +96 lines         │
+│     ✓ src/components/Pricing.tsx      +74 lines         │
+│     ⠋ src/components/Footer.tsx       writing…          │
+│        "Adding social links and legal nav"              │
+│ 🎨  Verifying the changes                                │
+│     · Type-check passed                                  │
+│     · No render risks                                    │
+│ 🚀  Deploying to your preview                            │
+└──────────────────────────────────────────────────────────┘
 ```
 
-## Out of scope (deliberately)
+Behavior:
+- **Auto-expanded by default** while a turn is in flight; collapses to today's compact form after the turn ends.
+- **Live thinking line** under the active phase — the most recent `status` / `cycle_progress` / `narration` text, replaced as new ones arrive (no infinite scroll).
+- **File rows** stream in as `file_complete` events arrive, with a spinner row for the file currently being written (`file_progress.latestPath` + last `narration` for that path). Show +N lines from `file_complete.bytes` heuristic when available.
+- **Cycle awareness**: when `cycle_start({intent:"fixing"})` arrives, append a sub-row "🔧 Fixing an issue (round 2)" with its own progress line, so users understand why a build sometimes loops.
+- **Timeline checks** (esbuild_parse, render_risk, rls_sanity, post_stream_autofix) render as bullet items under the Verifying phase with their outcome icon.
+- Auto-scrolls to the latest row; user scroll-up pins the view (standard chat-log behavior).
 
-- No new motion/3D primitives — the kit already has them; the problem is the model not reaching for them on SaaS briefs.
-- No changes to consumer/editorial recipes — Flowy proves those work.
-- No template/route changes — `saas-landing` template is fine; the failure is composition, not routing.
+## Technical changes
 
-## Verification
+### Client (the bulk of the work)
 
-Re-run the PipelinePilot prompt after shipping. Expect: hero photo or mockup at top, filled primary + outline secondary CTAs, display H1 with one highlighted word, no full-fold dot pattern. If any of those still missing, the hero linter should auto-retry once.
+1. **`src/components/BuildActivityCard.tsx`** — rewrite the body. Today it groups events into the 4 phase bullets and hides the rest. New version keeps the phase headings but renders, under each:
+   - latest live thinking line (status / cycle_progress / narration)
+   - a list of file rows for the writing phase
+   - a list of verifier rows for the polishing phase
+   - timeline rows for verifier checks
+   Keep the existing collapsed/expanded chevron, but default to expanded while `status !== "done" && status !== "failed"`.
 
----
+2. **`src/routes/builder.tsx`** — extend the per-turn state that already feeds BuildActivityCard:
+   - track `latestThinking: { phase, text }` updated from `onStatus`, `onCycleProgress`, `onNarration`
+   - track `fileRows: Array<{ path, status: "writing" | "done" | "failed", bytes?, validationError? }>` driven by `onFileProgress` / `onFileComplete` / `onFileValidated`
+   - track `verifierRows: Array<{ step, outcome, message }>` from `onTimeline`
+   - track `currentCycle: { n, intent }` from `onCycleStart`/`onCycleEnd`
+   Pass them all into `<BuildActivityCard …/>`.
 
-## Phase 19 — Shipped (Hero Contract + Director calibration)
+3. **`src/lib/build-phases.ts`** — add a small `LiveTrace` type and helpers (`appendFileRow`, `setFileStatus`, `appendTimeline`) so reducers stay pure and testable.
 
-**Shipped:**
-- `src/server/hero-contract.server.ts` — new. Non-negotiable hero composition block (eyebrow → highlighted H1 → subhead → filled+outline Button pair → real hero visual). Extra SaaS addendum when brief is detected as SaaS/B2B/internal-tool/ai-tool via `classifyAppShape`. Bans bare `<a>...→` CTAs and full-fold DotPattern heroes.
-- `src/server/design-director.server.ts` — `FX_RECIPE_DETAILS["modern-saas"]` rewritten to require MeshGradient hero background + filled Button CTAs + floating decorative card on mockup. `pickFxRecipe` default fallback changed from `modern-saas` → `agency-portfolio` (or `calm-editorial` when motion=still). `DIRECTOR_SYSTEM` gained Flowy ✅ / PipelinePilot ❌ calibration paragraph.
-- `src/routes/api/generate.ts` — Hero Contract block appended to system prompt on both monolithic and staged paths, gated by `isInitial` + marketing subtype.
+### Server (small, surgical)
 
-**Deferred (lower priority):**
-- Hero-discipline lint tier (plan item #4) and forced SaaS image generation (plan item #2) — re-evaluate after observing whether the prompt-level changes alone close the Flowy/PipelinePilot quality gap on the next round of builds. The petal-image:// instruction already exists; the Hero Contract now mandates its use for SaaS mockups.
+4. **`src/routes/api/generate.ts`** — add `status` emits at the few points the pipeline currently goes silent for >5s:
+   - "Reading existing files…" before scaffold context build
+   - "Choosing components…" between design vibe and first file write
+   - "Bundling for preview…" right before the result event
+   No new event types — reuse `status` so the client doesn't need new parsing.
+
+5. **No changes** to credit logic, plan-mode flow, error envelope, abort handling, or `/api/turns/$id/events` replay (the new card will rehydrate from replayed events because it consumes the same handlers).
+
+## Validation
+
+- Manual: start a fresh build, watch the trace populate; trigger a fix loop by editing into a syntax error; abort mid-stream; refresh mid-stream and confirm replay rebuilds the trace.
+- Check that the collapsed (post-done) card still matches today's compact summary so chat history doesn't suddenly look different for old turns.
+- No console errors; no layout shift inside the chat thread.
+
+## Risk
+
+Medium. All the events already exist server-side, so the blast radius is one component file + reducers in builder.tsx. The main pitfall is auto-scroll fighting user scroll — we'll use the same scroll-pinning pattern the chat list already uses.
