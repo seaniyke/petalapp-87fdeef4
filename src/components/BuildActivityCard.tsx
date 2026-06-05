@@ -149,11 +149,16 @@ export function BuildActivityCard({
 }: Props) {
   // Auto-collapse 3s after success.
   const [collapsed, setCollapsed] = useState(false);
-  
-  // While building, the steps list is hidden by default — competitors (Lovable,
-  // Bolt, v0) all show a single calm evolving status line. Power users can
-  // still expand for the full timeline.
-  const [stepsOpen, setStepsOpen] = useState(false);
+
+  // Lovable-style live trace: the steps panel is auto-expanded WHILE Petal is
+  // working so the user sees every phase, file write, and verifier check as
+  // it happens. It only collapses once the turn finishes (or on user click).
+  const [stepsOpen, setStepsOpen] = useState(true);
+  const [userToggledSteps, setUserToggledSteps] = useState(false);
+  useEffect(() => {
+    if (userToggledSteps) return;
+    setStepsOpen(isActive && !error);
+  }, [isActive, error, userToggledSteps]);
   useEffect(() => {
     if (!isComplete || error) return;
     const t = setTimeout(() => setCollapsed(true), 3000);
@@ -170,6 +175,26 @@ export function BuildActivityCard({
     const t = setInterval(() => setTick((n) => n + 1), 1000);
     return () => clearInterval(t);
   }, [isActive]);
+
+  // Rolling "thinking log" — a ring buffer of the most recent narration /
+  // status / cycle-progress lines so the user sees Petal's voice update
+  // continuously instead of one stale subcaption. We keep the last 6.
+  const [thinkingLog, setThinkingLog] = useState<Array<{ id: number; text: string }>>([]);
+  useEffect(() => {
+    const text = (latestNarration ?? latestCycleProgress ?? "").trim();
+    if (!text) return;
+    setThinkingLog((prev) => {
+      if (prev[prev.length - 1]?.text === text) return prev;
+      const next = [...prev, { id: (prev[prev.length - 1]?.id ?? 0) + 1, text }];
+      return next.slice(-6);
+    });
+  }, [latestNarration, latestCycleProgress]);
+  // Reset the log when a new turn starts (no phase has finished yet and
+  // nothing is active beyond the very first phase).
+  useEffect(() => {
+    if (!isActive && !isComplete) setThinkingLog([]);
+  }, [isActive, isComplete]);
+
 
   // The currently-active phase drives the single status line. Falls back to
   // the last completed phase (e.g. right between phases) or the first phase.
@@ -327,7 +352,10 @@ export function BuildActivityCard({
 
           <button
             type="button"
-            onClick={() => setStepsOpen((s) => !s)}
+            onClick={() => {
+              setUserToggledSteps(true);
+              setStepsOpen((s) => !s);
+            }}
             className="grid h-5 w-5 place-items-center rounded text-muted-foreground/70 transition hover:text-foreground"
             aria-label={stepsOpen ? "Hide steps" : "Show steps"}
           >
@@ -338,21 +366,17 @@ export function BuildActivityCard({
       {stepsOpen && (
         <div className="border-t border-border/50">
           {(() => {
-            // Only surface phases that have actually started (active / done /
-            // failed). Showing every pending phase up-front looked like a
-            // canned 5-step script ("Reading… Designing… Writing… Adding
-            // finishing touches… Putting your app online…") that duplicated
-            // the header and ran ahead of reality. The real-time signal is
-            // `timelineEvents` plus the active phase row — pending rows
-            // only appear once they actually begin.
-            // Skip "live" (it's the success state, not a step) AND skip the
-            // currently-active phase — it already appears as the header row,
-            // so listing it again duplicates the same "Reading your request…"
-            // line inside the expanded steps panel.
-            const startedPhases = phases.filter(
-              (p) => p.id !== "live" && p.status !== "pending" && p.status !== "active",
+            // Lovable-style live trace: include the ACTIVE phase too so the
+            // user sees its file rows and reassurance stream in live, not
+            // just after it completes. We still skip "live" (success state)
+            // and any phase that hasn't started yet.
+            const visiblePhases = phases.filter(
+              (p) => p.id !== "live" && p.status !== "pending",
             );
-            const hasContent = startedPhases.length > 0;
+            const hasContent =
+              visiblePhases.length > 0 ||
+              thinkingLog.length > 0 ||
+              (timelineEvents && timelineEvents.length > 0);
             if (!hasContent) {
               return (
                 <div className="px-3 py-2 text-[11.5px] text-muted-foreground/70">
@@ -362,10 +386,9 @@ export function BuildActivityCard({
             }
             return (
               <>
-                {startedPhases.length > 0 && (
+                {visiblePhases.length > 0 && (
                   <ol className="space-y-1.5 px-3 py-2.5">
-
-                    {startedPhases.map((p) => (
+                    {visiblePhases.map((p) => (
                       <PhaseRow
                         key={p.id}
                         phase={p}
@@ -380,6 +403,77 @@ export function BuildActivityCard({
                     ))}
                   </ol>
                 )}
+                {/* Rolling "thinking" log — last few narration / cycle lines.
+                    Renders only while there's something fresh to show so the
+                    panel stays calm once the turn finishes. */}
+                {isActive && thinkingLog.length > 0 && (
+                  <div className="border-t border-border/40 px-3 py-2">
+                    <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                      Petal is thinking
+                    </div>
+                    <ul className="space-y-0.5">
+                      {thinkingLog.map((line, i) => {
+                        const isLatest = i === thinkingLog.length - 1;
+                        return (
+                          <li
+                            key={line.id}
+                            className={`flex items-start gap-1.5 text-[11.5px] leading-snug ${
+                              isLatest
+                                ? "text-foreground/90"
+                                : "text-muted-foreground/60"
+                            }`}
+                          >
+                            <span aria-hidden className="mt-1 inline-block h-1 w-1 shrink-0 rounded-full bg-current opacity-60" />
+                            <span className="min-w-0 flex-1">{line.text}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+                {/* Verifier / autofix / image-resolve checks — each timeline
+                    entry the server emits surfaces here with its outcome. */}
+                {timelineEvents && timelineEvents.length > 0 && (
+                  <div className="border-t border-border/40 px-3 py-2">
+                    <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                      Checks
+                    </div>
+                    <ul className="space-y-0.5">
+                      {timelineEvents.map((ev, i) => (
+                        <li
+                          key={`${ev.step}-${ev.ts}-${i}`}
+                          className="flex items-start gap-1.5 text-[11.5px] leading-snug"
+                        >
+                          <span
+                            aria-hidden
+                            className={`mt-0.5 inline-flex h-3 w-3 shrink-0 items-center justify-center ${
+                              ev.outcome === "ok"
+                                ? "text-emerald-500"
+                                : ev.outcome === "fixed"
+                                  ? "text-amber-500"
+                                  : ev.outcome === "failed"
+                                    ? "text-destructive"
+                                    : "text-muted-foreground/60"
+                            }`}
+                          >
+                            {ev.outcome === "ok" ? (
+                              <Check className="h-3 w-3" />
+                            ) : ev.outcome === "fixed" ? (
+                              <Wrench className="h-3 w-3" />
+                            ) : ev.outcome === "failed" ? (
+                              <X className="h-3 w-3" />
+                            ) : (
+                              <Circle className="h-1.5 w-1.5 fill-current" />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1 text-muted-foreground">
+                            {ev.message}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </>
             );
           })()}
@@ -388,6 +482,7 @@ export function BuildActivityCard({
     </div>
   );
 }
+
 
 function PhaseRow({
   phase,
