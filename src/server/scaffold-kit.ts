@@ -31,6 +31,7 @@ import { KIT_DATA_FILES } from "./scaffold-kit-data";
 import { KIT_TYPOGRAPHY_FILES } from "./scaffold-kit-typography";
 import { KIT_CONTENT_FILES } from "./scaffold-kit-content";
 import { KIT_AWWWARDS_FILES } from "./scaffold-kit-awwwards";
+import { KIT_A11Y_FILES } from "./scaffold-kit-a11y";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
@@ -3851,6 +3852,10 @@ export const KIT_FILES: KitFile[] = [
   // hooks (useScrollScene/useHorizontalScroll), canvas-confetti helpers,
   // and a View Transitions API wrapper. All deps on-demand only.
   ...KIT_AWWWARDS_FILES,
+  // Phase 17 — A11y + image quality. ThumbhashImage placeholder, react-aria
+  // helper re-exports for hand-rolled widgets, and a dev-only useAxe hook.
+  // All deps (thumbhash, react-aria, @axe-core/react) are on-demand only.
+  ...KIT_A11Y_FILES,
 ];
 
 /**

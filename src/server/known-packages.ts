@@ -134,6 +134,14 @@ export const KNOWN_PACKAGES: Record<string, string> = {
   "@fontsource/archivo-black": "^5.1.0",
   "@fontsource/abril-fatface": "^5.1.0",
   "@fontsource/space-mono": "^5.1.0",
+
+  // Phase 17 — A11y + image quality (on-demand only).
+  //   thumbhash         tiny (~25B) image placeholders, blur-up reveal
+  //   react-aria        keyboard/focus/ARIA primitives for hand-rolled widgets
+  //   @axe-core/react   dev-only a11y auditor (no-op in production)
+  thumbhash: "^0.1.1",
+  "react-aria": "^3.35.0",
+  "@axe-core/react": "^4.10.0",
 };
 
 /**
