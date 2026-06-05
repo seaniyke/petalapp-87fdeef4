@@ -242,7 +242,8 @@ Output a SINGLE call to the "set_design_direction" tool with:
 - display_font + body_font: a real, distinctive pairing. Avoid Inter/Poppins as the display font. Body can be a clean workhorse (Inter is OK as body if display is distinctive). Examples of good display choices: Fraunces, Space Grotesk, Playfair Display, IBM Plex Mono, Instrument Serif, Bricolage Grotesque, DM Serif Display, Unbounded, Cormorant Garamond, JetBrains Mono.
 - palette_mood: a sentence describing the actual hues, not "modern colors". E.g. "warm cream background, burnt sienna primary, ink-black text, sage accents".
 - density: minimal / balanced / dense. Match the audience: consumer landing → minimal/balanced; data dashboards → dense; editorial → balanced with generous white space.
-- motion: still / subtle / expressive. Default subtle. Use expressive only when the brand obviously calls for it.
+- motion: still / subtle / expressive / cinematic. Default subtle. Use expressive when the brand calls for energy. Use cinematic ONLY for agency / portfolio / showcase / luxury sites where Awwwards-grade scroll choreography is the point — it pulls in Lenis smooth-scroll, GSAP ScrollTrigger, and optionally a R3F 3D hero, which is overkill for SaaS dashboards or internal tools.
+- fx_recipe: name the FX bundle this app should compose. Pick ONE of: calm-editorial, modern-saas, agency-portfolio, cyberpunk-crypto, ai-product, playful-consumer, luxury-brand, data-dashboard, awwwards-3d. The recipe drives which @/components/fx primitives the builder reaches for. If motion=cinematic you MUST pick fx_recipe=awwwards-3d.
 - design_moves: 2–4 SHORT, concrete moves that make this app unforgettable. Examples: "oversized numerals as section markers", "asymmetric hero with off-center photo", "thin underline accents instead of borders", "pill-shaped CTAs with hard shadow", "monospace metadata under serif headings". NEVER "use cards" or "use a grid" — those aren't moves.
 
 Be DECISIVE. One direction, executed with conviction. No hedging.`;
@@ -262,7 +263,21 @@ const DIRECTOR_TOOL = {
         body_font: { type: "string" },
         palette_mood: { type: "string" },
         density: { type: "string", enum: ["minimal", "balanced", "dense"] },
-        motion: { type: "string", enum: ["still", "subtle", "expressive"] },
+        motion: { type: "string", enum: ["still", "subtle", "expressive", "cinematic"] },
+        fx_recipe: {
+          type: "string",
+          enum: [
+            "calm-editorial",
+            "modern-saas",
+            "agency-portfolio",
+            "cyberpunk-crypto",
+            "ai-product",
+            "playful-consumer",
+            "luxury-brand",
+            "data-dashboard",
+            "awwwards-3d",
+          ],
+        },
         design_moves: {
           type: "array",
           minItems: 2,
