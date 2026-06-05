@@ -171,7 +171,7 @@ const FX_RECIPE_DETAILS: Record<FxRecipe, string> = {
   "calm-editorial":
     "NoiseTexture overlay on hero, ShinyText on the headline, BlurFade for section reveals. No grids, no beams. Restraint is the move.",
   "modern-saas":
-    "DotPattern background on hero, MeshGradient behind the product mockup, BorderBeam on the primary feature card, ShimmerButton for the CTA, FadeIn + SlideUp throughout.",
+    "MeshGradient or soft brand-tinted wash BEHIND the hero copy (DotPattern is BANNED as the sole hero background — use it only as a secondary section divider after the fold). Product UI mockup as the hero visual, framed in BrowserMockup with 1-2 floating decorative cards (KPI tile, notification pill, avatar stack) overlapping at the corners. Primary CTA = filled <Button size=\"lg\"> or <ShimmerButton> — NEVER a bare anchor + arrow. Secondary CTA = <Button variant=\"outline\">. BorderBeam on the primary feature card. FadeIn + SlideUp throughout.",
   "agency-portfolio":
     "HeroParallax for the showcase reel, MagicCard for project tiles, Marquee of client logos, Magnetic CTAs, Tilt on case-study covers, Stagger reveals.",
   "cyberpunk-crypto":
