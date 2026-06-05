@@ -221,10 +221,14 @@ function pickFxRecipe(brief: string, motion: MotionIntensity): FxRecipe {
       case "social":
         return "playful-consumer";
       default:
-        return motion === "expressive" ? "agency-portfolio" : "modern-saas";
+        // Unknown shape → bias toward expressive recipes over the most
+        // restrained one. "modern-saas" used to be the catch-all and that's
+        // exactly why generic B2B briefs shipped flat (the PipelinePilot
+        // failure). agency-portfolio carries more visual conviction.
+        return motion === "still" ? "calm-editorial" : "agency-portfolio";
     }
   } catch {
-    return "modern-saas";
+    return "agency-portfolio";
   }
 }
 
