@@ -1800,7 +1800,7 @@ Forbidden defaults
     pinnedPaths,
   );
   const crossCuttingAddendum = isCrossCutting
-    ? `\n\nThis is a cross-cutting request — the user wants the change applied across ${pinnedPaths.length} app file(s). The current contents of every page, route, and app-level component are included in full above. For each file you change, emit ONE \`update\` op with the COMPLETE new file contents (do NOT use \`replace\` ops across many files — they drift). Skip files that already satisfy the request rather than emitting no-op edits.`
+    ? `\n\nThis is a cross-cutting request — the user wants the change applied across ${pinnedPaths.length} app file(s). The current contents of every page, route, and app-level component are included in full above. This is enough scope: DO NOT ask the user to name a smaller element. For each existing file you materially redesign, emit ONE \`update\` op with the COMPLETE new file contents. For large existing files, a full-page/whole-component redesign is allowed even if it replaces most of the file; otherwise split the redesigned surface into new smaller components and update the parent imports. Skip files that already satisfy the request rather than emitting no-op edits.`
     : "";
   const filesContext = isInitial
     ? ""
