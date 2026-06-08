@@ -2610,6 +2610,7 @@ Forbidden defaults
                   hasBackend: Boolean(backend),
                   tool: PATCH_FILES_TOOL,
                   maxTokens: Math.max(maxCompletionTokens, 12_000),
+                  crossCuttingIntent: isCrossCutting,
                   signal: request.signal,
                   meta: {
                     phase: phaseTag.phase,
