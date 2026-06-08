@@ -2195,8 +2195,9 @@ Forbidden defaults
       // Phase 6 — per-tier telemetry. One row per tier per turn,
       // flushed at end-of-turn (success OR failure path) in a single
       // insert. Fire-and-forget; never blocks or throws.
+      const turnId = crypto.randomUUID();
       const recorder = new TurnRecorder({
-        turnId: crypto.randomUUID(),
+        turnId,
         projectId: body.projectId ?? null,
         messageId: null,
         model,
