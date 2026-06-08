@@ -2252,6 +2252,7 @@ Forbidden defaults
             hasBackend: Boolean(backend),
             tool,
             maxTokens: Math.max(maxCompletionTokens, isInitial ? 12_000 : 8_000),
+            crossCuttingIntent: isCrossCutting,
             signal: request.signal,
             meta: {
               phase: phaseTag.phase,
@@ -2291,6 +2292,7 @@ Forbidden defaults
                   phaseTag,
                   lastUserContent,
                   hasVisionTurn,
+                  crossCuttingIntent: isCrossCutting,
                   backend,
                   signal: request.signal,
                   controller,
