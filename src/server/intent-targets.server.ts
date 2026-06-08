@@ -20,8 +20,9 @@ import type { ProjectFile } from "./generate.server";
 const CROSS_CUTTING_REGEXES: RegExp[] = [
   /\b(mobile\s*-?\s*(responsive|friendly|first)|responsive\s+(design|layout|site|app)|make\s+(it|the\s+site|the\s+app|everything)\s+(mobile|responsive))\b/i,
   /\b(across|every|all)\s+(pages?|routes?|screens?|forms?|sections?|components?)\b/i,
+  /\b(entire|whole|full)\s+(landing\s*page|home\s*page|homepage|front\s*page|main\s*page)\b/i,
   /\b(site\s*-?\s*wide|app\s*-?\s*wide|app-wide|sitewide|whole\s+(site|app))\b/i,
-  /\b(redesign|restyle|re-?theme|overhaul|refactor)\s+(the\s+)?(site|app|whole|entire|everything|design|layout|ui)\b/i,
+  /\b(redesign|rework|revamp|refresh|redo|remake|rebuild|restyle|re-?theme|overhaul|refactor)\s+(the\s+)?(site|app|whole|entire|everything|design|layout|ui|landing\s*page|home\s*page|homepage|front\s*page|main\s*page)\b/i,
   /\b(every|all)\s+(page|route|screen|form|component)\b/i,
   /\b(global|globally)\s+(change|update|fix|apply|restyle)\b/i,
   /\b(tighten|fix|improve|polish)\s+(the\s+)?(spacing|typography|layout|design)\s+(everywhere|across|on\s+all)\b/i,

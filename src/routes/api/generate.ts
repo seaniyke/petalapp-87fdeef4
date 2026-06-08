@@ -215,10 +215,11 @@ function completionBudget(args: {
   phase: Phase;
   hasVisionTurn: boolean;
   multiEditIntent: boolean;
+  crossCuttingIntent?: boolean;
 }): number {
-  if (args.hasVisionTurn) return 8_000;
   if (args.isInitial) return 12_000;
-  if (args.multiEditIntent) return 12_000;
+  if (args.multiEditIntent || args.crossCuttingIntent) return 12_000;
+  if (args.hasVisionTurn) return 8_000;
   if (args.phase === "implement" || args.phase === "docs") return 7_000;
   return 6_500;
 }
@@ -818,6 +819,7 @@ async function structuredRetryCompletion(args: {
   hasBackend: boolean;
   tool: typeof WRITE_PROJECT_TOOL | typeof PATCH_FILES_TOOL;
   maxTokens: number;
+  crossCuttingIntent?: boolean;
   signal: AbortSignal;
   meta: {
     phase: Phase;
@@ -833,6 +835,7 @@ async function structuredRetryCompletion(args: {
       isInitial: args.isInitial,
       problem: args.problem,
       hasBackend: args.hasBackend,
+      crossCuttingIntent: args.crossCuttingIntent,
     }),
     tools: [args.tool],
     tool_choice: { type: "function", function: { name: args.tool.function.name } },
@@ -879,6 +882,7 @@ async function recoverMissingToolOutput(args: {
   phaseTag: { phase: Phase };
   lastUserContent: string;
   hasVisionTurn: boolean;
+  crossCuttingIntent?: boolean;
   backend: unknown;
   signal: AbortSignal;
   controller: ReadableStreamDefaultController<Uint8Array>;
@@ -913,6 +917,7 @@ async function recoverMissingToolOutput(args: {
     hasBackend: Boolean(args.backend),
     tool: args.tool,
     maxTokens: args.isInitial ? 12_000 : 10_000,
+    crossCuttingIntent: args.crossCuttingIntent,
     signal: args.signal,
     meta: {
       phase: args.phaseTag.phase,
@@ -1104,7 +1109,7 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
 
 function addStructuredRetryInstruction<T extends Array<{ role: string; content: unknown }>>(
   messages: T,
-  args: { isInitial: boolean; problem: string; hasBackend?: boolean },
+  args: { isInitial: boolean; problem: string; hasBackend?: boolean; crossCuttingIntent?: boolean },
 ): T {
   const requiredTool = args.isInitial ? "write_project" : "patch_files";
   const backendHint =
@@ -1116,7 +1121,10 @@ function addStructuredRetryInstruction<T extends Array<{ role: string; content: 
     : args.problem.startsWith("destructive_shrink")
       ? " You returned a much shorter file than the original — that destroys the user's app. DO NOT resend the file as a stub. Use \`replace\` ops that change only the specific lines that need to change, and preserve everything else."
       : "";
-  const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field. For edit turns, prefer exact \`replace\` ops for small changes instead of resending whole files.${chunkHint} Keep files short and split large UI into components. If this is an initial app, build a focused MVP that works instead of a giant showcase: 4-8 app files max, no file over 140 lines, no long content blocks.${backendHint}`;
+  const scopeHint = args.crossCuttingIntent
+    ? " This is a broad redesign/cross-page edit with enough scope already; DO NOT ask for a smaller target. Emit real file edits that satisfy the whole requested surface."
+    : "";
+  const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field.${scopeHint} For edit turns, prefer exact \`replace\` ops for small changes instead of resending whole files.${chunkHint} Keep files short and split large UI into components. If this is an initial app, build a focused MVP that works instead of a giant showcase: 4-8 app files max, no file over 140 lines, no long content blocks.${backendHint}`;
   return messages.map((m, i) =>
     i === 0 && typeof m.content === "string" ? { ...m, content: `${m.content}${retryBlock}` } : m,
   ) as T;
@@ -1799,7 +1807,7 @@ Forbidden defaults
     pinnedPaths,
   );
   const crossCuttingAddendum = isCrossCutting
-    ? `\n\nThis is a cross-cutting request — the user wants the change applied across ${pinnedPaths.length} app file(s). The current contents of every page, route, and app-level component are included in full above. For each file you change, emit ONE \`update\` op with the COMPLETE new file contents (do NOT use \`replace\` ops across many files — they drift). Skip files that already satisfy the request rather than emitting no-op edits.`
+    ? `\n\nThis is a cross-cutting request — the user wants the change applied across ${pinnedPaths.length} app file(s). The current contents of every page, route, and app-level component are included in full above. This is enough scope: DO NOT ask the user to name a smaller element. For each existing file you materially redesign, emit ONE \`update\` op with the COMPLETE new file contents. For large existing files, a full-page/whole-component redesign is allowed even if it replaces most of the file; otherwise split the redesigned surface into new smaller components and update the parent imports. Skip files that already satisfy the request rather than emitting no-op edits.`
     : "";
   const filesContext = isInitial
     ? ""
@@ -2062,13 +2070,14 @@ Forbidden defaults
     phase: phaseTag.phase,
     hasVisionTurn,
     multiEditIntent,
+    crossCuttingIntent: isCrossCutting,
   });
   if (hasVisionTurn) {
     model = MODEL_VISION;
     chosenBy = "vision_pin";
-  } else if (multiEditIntent) {
+  } else if (multiEditIntent || isCrossCutting) {
     model = MODEL_BEST;
-    chosenBy = "multi_edit_pin";
+    chosenBy = isCrossCutting ? "cross_cutting_pin" : "multi_edit_pin";
   } else if (preset === "smart") {
     // Phase tag overrides the keyword heuristic in smart mode.
     const phaseDefault = tier === "smart" ? MODEL_BEST : MODEL_FAST;
@@ -2243,6 +2252,7 @@ Forbidden defaults
             hasBackend: Boolean(backend),
             tool,
             maxTokens: Math.max(maxCompletionTokens, isInitial ? 12_000 : 8_000),
+            crossCuttingIntent: isCrossCutting,
             signal: request.signal,
             meta: {
               phase: phaseTag.phase,
@@ -2282,6 +2292,7 @@ Forbidden defaults
                   phaseTag,
                   lastUserContent,
                   hasVisionTurn,
+                  crossCuttingIntent: isCrossCutting,
                   backend,
                   signal: request.signal,
                   controller,
@@ -2599,6 +2610,7 @@ Forbidden defaults
                   hasBackend: Boolean(backend),
                   tool: PATCH_FILES_TOOL,
                   maxTokens: Math.max(maxCompletionTokens, 12_000),
+                  crossCuttingIntent: isCrossCutting,
                   signal: request.signal,
                   meta: {
                     phase: phaseTag.phase,
