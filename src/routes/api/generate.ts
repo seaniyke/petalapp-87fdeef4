@@ -336,6 +336,81 @@ function sse(event: StreamEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;
 }
 
+type EditFailureDiagnostic = {
+  turnId: string;
+  projectId: string | null;
+  userId: string | null;
+  model: string | null;
+  reason: string;
+  isInitial: boolean;
+  toolName: "write_project" | "patch_files" | null;
+  totalOps?: number;
+  safeOps?: number;
+  protectedOps?: Array<{ op: string; path: string }>;
+  astDroppedOps?: number;
+  appliedOps?: Array<{ op: string; path: string }>;
+  failedOps?: Array<{ op: string; path: string; error: string }>;
+  rewrittenPaths?: string[];
+  changedPaths?: string[];
+  affectedPaths?: string[];
+  summary?: string;
+};
+
+function opDigest(op: FileOp): { op: string; path: string } {
+  return { op: op.op, path: op.path };
+}
+
+function diagnosticSignature(reason: string, paths: string[] = []): string {
+  const normalizedPaths = paths.slice(0, 4).join(",");
+  return `edit_pipeline:${reason}:${normalizedPaths}`.slice(0, 120);
+}
+
+function recordEditFailureDiagnostic(args: EditFailureDiagnostic): void {
+  const paths = args.affectedPaths ?? [
+    ...(args.failedOps ?? []).map((o) => o.path),
+    ...(args.appliedOps ?? []).map((o) => o.path),
+    ...(args.protectedOps ?? []).map((o) => o.path),
+    ...(args.changedPaths ?? []),
+  ];
+  const uniquePaths = Array.from(new Set(paths)).slice(0, 12);
+  const raw = [
+    `edit_pipeline:${args.reason}`,
+    args.toolName ? `tool=${args.toolName}` : null,
+    `ops=${args.safeOps ?? args.totalOps ?? 0}/${args.totalOps ?? 0}`,
+    uniquePaths.length ? `paths=${uniquePaths.join(", ")}` : null,
+  ].filter(Boolean).join(" ");
+
+  void supabaseAdmin.from("pipeline_failures").insert({
+    project_id: args.projectId,
+    user_id: args.userId,
+    surface: "generate-edit",
+    raw_message: raw.slice(0, 4000),
+    signature: diagnosticSignature(args.reason, uniquePaths),
+    tool_name: args.toolName,
+    model: args.model,
+    stream_tail: null,
+    extra: {
+      turn_id: args.turnId,
+      reason: args.reason,
+      is_initial: args.isInitial,
+      total_ops: args.totalOps ?? null,
+      safe_ops: args.safeOps ?? null,
+      protected_ops: args.protectedOps ?? [],
+      ast_dropped_ops: args.astDroppedOps ?? 0,
+      applied_ops: args.appliedOps ?? [],
+      failed_ops: args.failedOps ?? [],
+      rewritten_paths: args.rewrittenPaths ?? [],
+      changed_paths: args.changedPaths ?? [],
+      affected_paths: uniquePaths,
+      summary: args.summary?.slice(0, 500) ?? null,
+    },
+  }).then(({ error }) => {
+    if (error) console.warn("[edit-diagnostics] insert failed", error.message);
+  }).catch((err) => {
+    console.warn("[edit-diagnostics] insert threw", err);
+  });
+}
+
 /**
  * Parse a chunk of bytes from the inner SSE stream and forward each event
  * to a sink (typically: a turn recorder). Maintains a small buffer across
