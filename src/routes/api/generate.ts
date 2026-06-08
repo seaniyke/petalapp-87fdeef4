@@ -2438,6 +2438,7 @@ Forbidden defaults
             }
           }
           let safeOps = parsed.ops.filter((op) => !isProtectedPath(op.path));
+          let astDroppedOps = 0;
           // Plan #4 — strip ast-patch ops if the labs flag isn't on. The
           // model isn't supposed to emit them in that case (we don't add
           // the grammar to the prompt), but be defensive: better to ignore
@@ -2445,6 +2446,7 @@ Forbidden defaults
           if (!labsFlags.ast_patches) {
             const astCount = safeOps.filter((op) => op.op === "ast-patch").length;
             if (astCount > 0) {
+              astDroppedOps = astCount;
               console.warn(`[ast-patches] dropped ${astCount} unauthorized ast-patch op(s)`);
               safeOps = safeOps.filter((op) => op.op !== "ast-patch");
             }
@@ -2454,6 +2456,33 @@ Forbidden defaults
             const planScopeHit =
               allowedPathSet !== null &&
               violations.some((v) => !allowedPathSet!.has(v.path));
+            recorder.record({
+              tier: "apply_ops",
+              outcome: "failed",
+              duration_ms: 0,
+              issue_count: violations.length || astDroppedOps || 1,
+              details: {
+                reason: planScopeHit ? "plan_scope_blocked" : userGlobsHit ? "user_protected_path" : "protected_path_only",
+                total_ops: parsed.ops.length,
+                safe_ops: safeOps.length,
+                protected_ops: violations.map(opDigest),
+                ast_dropped_ops: astDroppedOps,
+                turn_id: turnId,
+              },
+            });
+            recordEditFailureDiagnostic({
+              turnId,
+              projectId: body.projectId ?? null,
+              userId,
+              model,
+              reason: planScopeHit ? "plan_scope_blocked" : userGlobsHit ? "user_protected_path" : "protected_path_only",
+              isInitial,
+              toolName: collected.name,
+              totalOps: parsed.ops.length,
+              safeOps: safeOps.length,
+              protectedOps: violations.map(opDigest),
+              astDroppedOps,
+            });
             emitConversationalFallback(controller, encoder, {
               files: currentFiles,
               summary: planScopeHit
