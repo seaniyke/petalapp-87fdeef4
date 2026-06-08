@@ -45,7 +45,8 @@ export type DynamicSnippetKey =
   | "webhook"
   | "cronJob"
   | "payments"
-  | "businessApp";
+  | "businessApp"
+  | "designFloor";
 
 interface SnippetDef {
   /** Substrings that trigger this snippet (lowercased match against prompt). */
