@@ -2403,62 +2403,123 @@ Forbidden defaults
           } catch {
             /* preview is best-effort; never block apply */
           }
+          // Per-op partial apply. A single bad `replace` op (stale snippet,
+          // ambiguous match, oversized region) used to throw and kill the
+          // ENTIRE turn even if the other 4 ops were fine. Now we apply each
+          // op independently, then run a per-file full-rewrite recovery on
+          // each failure. This is the core fix for the "I wasn't able to
+          // apply that change on this pass" failure mode on broad asks.
           let patched: ProjectFile[] | null = null;
-          try {
-            patched = applyOps(currentFiles, safeOps);
-          } catch (applyErr) {
-            const msg = applyErr instanceof Error ? applyErr.message : String(applyErr);
-            // Surgical edit recovery. Run a bounded retry loop for every
-            // apply-time patch problem the model can realistically correct:
-            // oversized replace, whole-file echo, stale search snippets,
-            // ambiguous snippets, missing target files, or placeholder patches.
-            if (isRetryablePatchApplyError(msg)) {
-              let retryProblem = msg;
-              let applied = false;
-              for (let attempt = 1; attempt <= 3; attempt++) {
-                const gateLabel = retryProblem.startsWith("replace_too_large") ? "replace_too_large" : "must_use_replace";
-                console.warn(`[generate] patch apply failed (${gateLabel}) — targeted retry ${attempt}/3`);
-                controller.enqueue(
-                  encoder.encode(sse({ type: "status", message: attempt === 1 ? "Retargeting the edit against the current files…" : `Trying a narrower edit pass (${attempt}/3)…` })),
-                );
-                const retry = await structuredRetryCompletion({
-                  messages: finalMessages,
-                  isInitial,
-                  problem: retryProblem,
+          {
+            const partial = applyOpsPartial(currentFiles, safeOps);
+            patched = partial.files;
+            if (partial.failed.length > 0) {
+              console.warn(
+                `[generate] partial apply: ${partial.applied.length}/${safeOps.length} ops landed; ` +
+                  `${partial.failed.length} need per-file rewrite (` +
+                  partial.failed.map((f) => `${f.op.path}: ${f.error.slice(0, 60)}`).join(" | ") +
+                  ")",
+              );
+              controller.enqueue(
+                encoder.encode(
+                  sse({
+                    type: "status",
+                    message:
+                      partial.applied.length > 0
+                        ? `Landed ${partial.applied.length} edit(s); rewriting ${partial.failed.length} file(s) with full content…`
+                        : `Rewriting ${partial.failed.length} file(s) with full content…`,
+                  }),
+                ),
+              );
+
+              // Per-file rewrite recovery. Bounded so a runaway turn can't
+              // make N calls per failed op.
+              const MAX_REWRITES_PER_TURN = 8;
+              const failuresToRetry = partial.failed.slice(0, MAX_REWRITES_PER_TURN);
+              const rewrittenPaths: string[] = [];
+              for (const failure of failuresToRetry) {
+                const path = failure.op.path;
+                const currentContent =
+                  patched.find((f) => f.path === path)?.content ??
+                  currentFiles.find((f) => f.path === path)?.content ??
+                  "";
+                // Build a tight per-file rewrite prompt. We append an
+                // assistant turn (the snippet of the original collected
+                // response that touched this file) + a user turn naming
+                // the file and demanding a single `update` op with the
+                // COMPLETE new contents. Full-file rewrite of ONE file is
+                // the easiest thing for the model to get right.
+                const rewriteMessages = [
+                  ...finalMessages,
+                  {
+                    role: "user" as const,
+                    content:
+                      `Your previous edit to ${path} could not be applied: ${failure.error}\n\n` +
+                      `Current contents of ${path} (authoritative — your replace snippet did not match these bytes):\n` +
+                      `--- ${path} ---\n${currentContent.slice(0, 24_000)}${currentContent.length > 24_000 ? "\n/* ...trimmed... */" : ""}\n--- end ---\n\n` +
+                      `Re-emit the change as a SINGLE patch_files tool call containing EXACTLY ONE op: ` +
+                      `{ "op": "update", "path": "${path}", "content": "<the COMPLETE new file contents>" }. ` +
+                      `Do not use \`replace\`. Do not touch any other file. Do not use keep-existing markers. ` +
+                      `If the current contents already satisfy the user's request, return an empty ops array — do not invent edits.`,
+                  },
+                ];
+                const rewrite = await structuredRetryCompletion({
+                  messages: rewriteMessages,
+                  isInitial: false,
+                  problem: `single_file_rewrite:${failure.error.slice(0, 80)}`,
                   hasBackend: Boolean(backend),
-                  tool,
-                  maxTokens: Math.max(maxCompletionTokens, 8_000),
+                  tool: PATCH_FILES_TOOL,
+                  maxTokens: Math.max(maxCompletionTokens, 12_000),
                   signal: request.signal,
                   meta: {
                     phase: phaseTag.phase,
                     promptChars: lastUserContent.length,
                     hadAttachments: hasVisionTurn,
-                    chosenBy: `${gateLabel}_retry_${attempt}`,
+                    chosenBy: "per_file_rewrite",
                     projectId: body.projectId ?? null,
                     userId,
                   },
                 });
-                if (!retry.ok || !retry.body) break;
-                const retryCollected = await relayAndCollect(retry, controller, encoder);
+                if (!rewrite.ok || !rewrite.body) {
+                  console.warn(`[generate] per-file rewrite request failed for ${path}`);
+                  continue;
+                }
+                const rewriteCollected = await relayAndCollect(rewrite, controller, encoder);
                 try {
-                  const retryPayload = parseCollectedProject(retryCollected, isInitial);
-                  if (!retryPayload.parsed.ops?.length) throw new Error("retry returned no ops");
-                  const retrySafeOps = retryPayload.parsed.ops.filter((op) => !isProtectedPath(op.path));
-                  patched = applyOps(currentFiles, retrySafeOps);
-                  collected = retryCollected;
-                  parsed = retryPayload.parsed;
-                  summary = retryPayload.summary;
-                  plan = retryPayload.plan;
-                  recap = retryPayload.recap;
-                  applied = true;
-                  break;
-                } catch (retryErr) {
-                  retryProblem = retryErr instanceof Error ? retryErr.message : String(retryErr);
-                  console.warn(`[generate] chunked retry ${attempt}/3 failed:`, retryProblem);
-                  if (!isRetryablePatchApplyError(retryProblem)) break;
+                  const rewritePayload = parseCollectedProject(rewriteCollected, false);
+                  const ops = (rewritePayload.parsed.ops ?? []).filter(
+                    (op) => op.path === path && !isProtectedPath(op.path),
+                  );
+                  if (ops.length === 0) {
+                    console.info(`[generate] per-file rewrite for ${path} returned no ops — accepting`);
+                    continue;
+                  }
+                  // Apply each op against the in-progress `patched` map.
+                  const stepResult = applyOpsPartial(patched, ops);
+                  patched = stepResult.files;
+                  if (stepResult.applied.length > 0) {
+                    rewrittenPaths.push(path);
+                    controller.enqueue(
+                      encoder.encode(
+                        sse({ type: "status", message: `Rewrote ${path} with full content.` }),
+                      ),
+                    );
+                  } else {
+                    console.warn(
+                      `[generate] per-file rewrite ops for ${path} still failed: ` +
+                        stepResult.failed.map((f) => f.error.slice(0, 80)).join("; "),
+                    );
+                  }
+                } catch (rewriteErr) {
+                  console.warn(
+                    `[generate] per-file rewrite parse failed for ${path}:`,
+                    rewriteErr instanceof Error ? rewriteErr.message : String(rewriteErr),
+                  );
                 }
               }
-              if (!applied) {
+
+              // Final verdict for this batch: did anything land at all?
+              if (partial.applied.length === 0 && rewrittenPaths.length === 0) {
                 emitConversationalFallback(controller, encoder, {
                   files: currentFiles,
                   summary: body.isAutoFix
@@ -2467,8 +2528,6 @@ Forbidden defaults
                 });
                 return;
               }
-            } else {
-              throw applyErr;
             }
           }
           if (!patched) throw new Error("Patch did not produce files.");
