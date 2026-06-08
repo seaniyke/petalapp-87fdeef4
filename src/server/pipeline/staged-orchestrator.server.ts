@@ -35,8 +35,10 @@ import { runStagePlan } from "./stage-plan.server";
 import { runStageScaffold } from "./stage-scaffold.server";
 import { runStageWireup } from "./stage-wireup.server";
 import type { DesignDirection } from "@/server/design-director.server";
+import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { THEMES } from "@/server/themes.server";
 import type { AppShape } from "@/lib/app-shape-classifier";
+import type { WebSubtype } from "@/lib/web-subtype";
 import type { ProjectFile, StreamEvent } from "@/server/generate.server";
 
 function sse(event: StreamEvent): string {
@@ -52,6 +54,8 @@ export interface StagedPipelineContext {
   designDirectionBlock?: string;
   /** The full design direction. Theme key drives the styles.css pre-write. */
   designDirection?: DesignDirection | null;
+  /** Web subtype from the main router; marketing must stay marketing-only. */
+  webSubtype?: WebSubtype;
 }
 
 /** Map an AppShape category to one of the planner's archetype slots. */
