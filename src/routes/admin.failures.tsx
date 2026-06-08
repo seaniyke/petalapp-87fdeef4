@@ -39,6 +39,7 @@ type Sample = {
   model: string | null;
   stream_tail: string | null;
   url: string | null;
+  extra: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -214,6 +215,14 @@ function AdminFailuresPage() {
                                       <div className="font-medium text-foreground">Stream tail</div>
                                       <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-background/60 p-2 font-mono">
                                         {g.sample.stream_tail}
+                                      </pre>
+                                    </div>
+                                  ) : null}
+                                  {g.sample.extra && Object.keys(g.sample.extra).length > 0 ? (
+                                    <div>
+                                      <div className="font-medium text-foreground">Diagnostics</div>
+                                      <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-background/60 p-2 font-mono">
+                                        {JSON.stringify(g.sample.extra, null, 2)}
                                       </pre>
                                     </div>
                                   ) : null}
