@@ -545,7 +545,38 @@ EXCEPTIONS — do NOT generate a marketing site when the brief explicitly asks f
 
 In your reply: tell the user which marketing pages AND which app routes you scaffolded, and that they can run the product end-to-end after signing up. Do NOT ship only a landing page or only a dashboard — that's the most common failure mode for business briefs.`,
   },
+  // Fires on any visual / UI / page / redesign turn. Encodes the
+  // non-negotiable design-quality floor that separates polished output
+  // from "obviously AI-generated". Pairs with `sections` (which says
+  // WHAT to compose) by saying HOW it must look and behave.
+  designFloor: {
+    triggers:
+      /\b(landing|landing page|home ?page|marketing|hero|features?|pricing|faq|cta|footer|nav|navbar|header|portfolio|about|page|site|website|design|redesign|restyle|theme|ui|layout|responsive|mobile|tablet|desktop|polish|beautiful|pretty|modern|style|look|visual|aesthetic|brand)\b/i,
+    body: `\n\n[Reinforcement — Design quality floor (non-negotiable)]
+These rules apply to EVERY visual file you write this turn. Violating any of them ships obviously-AI output.
+
+1. Responsive is mandatory, mobile-first. Every layout MUST work at 375px wide without horizontal scroll. Start with the single-column mobile layout, then add \`sm:\` / \`md:\` / \`lg:\` modifiers to upgrade. Never write \`grid-cols-3\` without a \`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3\` progression. Hero headings: \`text-4xl sm:text-5xl md:text-6xl lg:text-7xl\`. Section padding: \`py-16 md:py-24 lg:py-32\`. Container: always \`<Container>\` or \`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8\` — never edge-to-edge content on desktop.
+
+2. Icons: \`lucide-react\` ONLY. Never emoji in UI chrome, never raw inline \`<svg>\`, never \`react-icons\` / \`heroicons\` / \`@radix-ui/react-icons\`. Render as \`<Icon className="h-5 w-5" />\`, never as a bare value.
+
+3. Semantic tokens ONLY in components. Never write \`text-white\`, \`text-black\`, \`bg-white\`, \`bg-black\`, \`bg-slate-900\`, \`text-gray-500\`, \`#3b82f6\`, \`rgb(...)\`, or any raw color/hex in JSX. Use \`bg-background\`, \`text-foreground\`, \`bg-card\`, \`text-card-foreground\`, \`bg-primary\`, \`text-primary-foreground\`, \`bg-muted\`, \`text-muted-foreground\`, \`bg-accent\`, \`border-border\`, \`ring-ring\`. If a token you need doesn't exist, ADD IT to \`src/styles.css\` first — never inline a hex as a workaround. This is what makes dark mode and theme swaps work; raw colors break both.
+
+4. Typography floor. Pair a distinctive display font with a clean body font — never both Inter, never both Poppins. Display headings get \`font-display tracking-tight leading-[1.05]\` (or \`leading-tight\`). Body copy gets \`leading-relaxed\` and a max measure (\`max-w-prose\` or \`max-w-2xl\`). Minimum hero h1: \`text-4xl md:text-6xl font-semibold tracking-tight\`. Never ship default browser typography.
+
+5. Color discipline. Commit to ONE accent (primary) + neutral surfaces + at most one secondary accent. No rainbow gradients. No purple-on-white "AI default". Gradients allowed: \`bg-gradient-to-br from-primary to-primary/60\` (semantic tokens only, never \`from-purple-500 to-pink-500\`).
+
+6. Spacing rhythm. Use the \`<Section>\` block when available. Otherwise: \`py-16 md:py-24\` between sections, \`gap-6 md:gap-8\` inside grids, \`space-y-4\` inside cards. Never random \`mt-7\` / \`pb-11\` — stick to the 4/6/8/12/16/24 scale.
+
+7. Landing page canonical order (when building one): NavBar → Hero → Logos/Social proof → Features → How it works / Stats → Testimonials → Pricing (if applicable) → FAQ → CTA → Footer. Skip sections that don't apply; never reorder. Each section sits in its own component file.
+
+8. Motion: one well-timed entrance > scattered micro-interactions. If using \`framer-motion\`, animate the hero once on mount (\`initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}\`). Do NOT animate every card, every icon, every nav item.
+
+9. Accessibility floor. Every \`<img>\` and \`<Image>\` gets a meaningful \`alt=\`. Every interactive element gets visible focus (shadcn primitives already include \`focus-visible:ring-2\`). Buttons that show only an icon get an \`aria-label\`. Color contrast: minimum 4.5:1 for body text — semantic tokens already satisfy this when used as designed.
+
+10. Forbidden AI defaults. Do NOT ship: centered hero with three identical feature cards as the only layout, generic stock-photo placeholders ("photo of person smiling at laptop"), \`text-white bg-black\` "dark sections" in the middle of a light page, purple-pink gradients, "Lorem ipsum", placeholder logos rendered as gray rectangles in a row, "© 2024" footers. Replace any of these with the kit's actual blocks and the project's design tokens.`,
+  },
 };
+
 
 
 /** Extract plain-text content from a chat message (strips attachments shape). */
