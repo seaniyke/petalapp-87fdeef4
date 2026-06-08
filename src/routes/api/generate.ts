@@ -1757,11 +1757,13 @@ Forbidden defaults
     const stagedResp = await runStagedPipelineStream({
       brief: lastUserContent,
       hasBackend: Boolean(backend),
+      backend: backend ?? undefined,
       context: {
         appShape: stagedAppShape,
         appShapeBlock: stagedAppShapeBlock,
         designDirection,
         designDirectionBlock: designBlock + stagedHeroContract,
+        webSubtype: detectedWebSubtype,
       },
     });
     if (stagedResp) return stagedResp;

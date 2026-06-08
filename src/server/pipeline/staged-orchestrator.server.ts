@@ -35,8 +35,10 @@ import { runStagePlan } from "./stage-plan.server";
 import { runStageScaffold } from "./stage-scaffold.server";
 import { runStageWireup } from "./stage-wireup.server";
 import type { DesignDirection } from "@/server/design-director.server";
+import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { THEMES } from "@/server/themes.server";
 import type { AppShape } from "@/lib/app-shape-classifier";
+import type { WebSubtype } from "@/lib/web-subtype";
 import type { ProjectFile, StreamEvent } from "@/server/generate.server";
 
 function sse(event: StreamEvent): string {
@@ -52,14 +54,23 @@ export interface StagedPipelineContext {
   designDirectionBlock?: string;
   /** The full design direction. Theme key drives the styles.css pre-write. */
   designDirection?: DesignDirection | null;
+  /** Web subtype from the main router; marketing must stay marketing-only. */
+  webSubtype?: WebSubtype;
 }
 
 /** Map an AppShape category to one of the planner's archetype slots. */
 function archetypeFromShape(
   shape: AppShape | undefined,
   brief: string,
+  webSubtype?: WebSubtype,
 ): "feed" | "marketing" | "dashboard" | "tool" | "game" | "content" | "business-app" | undefined {
   const b = brief.toLowerCase();
+
+  // The web-subtype router is the higher-confidence signal for initial web
+  // requests. If the user says "landing page", do not let a marketplace/social
+  // shape upgrade it into a business app and leak dashboards into the page.
+  if (webSubtype === "marketing") return "marketing";
+  if (webSubtype === "fullstack") return "business-app";
 
   // Explicit user opt-outs — these short-circuit any business-app upgrade.
   // The user asked for a single surface; honour it.
@@ -128,34 +139,58 @@ function buildStylesCssFromTheme(direction: DesignDirection): string | null {
   const themeKey = direction.theme;
   if (!themeKey || !(themeKey in THEMES)) return null;
   const theme = THEMES[themeKey];
-  const tokens = Object.entries(theme.tokens)
+  const tokenEntries = Object.entries(theme.tokens);
+  const tokens = tokenEntries
     .map(([k, v]) => `  ${k}: ${v};`)
     .join("\n");
-  // Tailwind v4 lives entirely in the CSS — @import "tailwindcss" then
-  // :root tokens, then the body font wiring. Keep it small; the model's
-  // components reference the tokens via semantic Tailwind classes.
+  const themeMappings = tokenEntries
+    .map(([k]) => `  --color-${k.replace(/^--/, "")}: var(${k});`)
+    .join("\n");
+  const baseTheme = STYLES_CSS.match(/@theme\s*\{[\s\S]*?\n\}/)?.[0] ?? [
+    "@theme {",
+    themeMappings,
+    "  --font-sans: var(--font-body);",
+    "  --font-display: var(--font-heading);",
+    "  --font-serif: ui-serif, Georgia, Cambria, serif;",
+    "}",
+  ].join("\n");
+  // Tailwind v4 needs both CSS variables AND @theme mappings. Without the
+  // @theme block, utilities like bg-background/text-foreground/grid never
+  // compile and the preview falls back to browser-default Times/blue links.
   return [
     '@import "tailwindcss";',
+    '@import "@fontsource-variable/inter";',
+    '@import "@fontsource-variable/jetbrains-mono";',
+    "",
+    '@custom-variant dark (&:where(.dark, .dark *));',
     "",
     "/* Design tokens — committed by Petal from the chosen theme.",
     `   vibe: ${direction.vibe} */`,
+    baseTheme,
+    "",
     ":root {",
+    `  --font-body: "${theme.body_font}", ui-sans-serif, system-ui, -apple-system, sans-serif;`,
+    `  --font-heading: "${theme.display_font}", "${theme.body_font}", ui-serif, serif;`,
     tokens,
     "}",
     "",
     ".dark {",
+    `  --font-body: "${theme.body_font}", ui-sans-serif, system-ui, -apple-system, sans-serif;`,
+    `  --font-heading: "${theme.display_font}", "${theme.body_font}", ui-serif, serif;`,
     tokens,
     "}",
     "",
+    "html, body, #root { height: 100%; }",
     "body {",
-    `  font-family: "${theme.body_font}", system-ui, -apple-system, sans-serif;`,
-    "  background: var(--background);",
-    "  color: var(--foreground);",
+    "  font-family: var(--font-body);",
+    "  background: var(--color-background);",
+    "  color: var(--color-foreground);",
     "  -webkit-font-smoothing: antialiased;",
+    "  text-rendering: optimizeLegibility;",
     "}",
     "",
     ".font-display {",
-    `  font-family: "${theme.display_font}", "${theme.body_font}", serif;`,
+    "  font-family: var(--font-heading);",
     "}",
     "",
   ].join("\n");
@@ -164,10 +199,11 @@ function buildStylesCssFromTheme(direction: DesignDirection): string | null {
 export async function runStagedPipelineStream(args: {
   brief: string;
   hasBackend: boolean;
+  backend?: { url: string; anonKey: string };
   context?: StagedPipelineContext;
 }): Promise<Response | null> {
   const ctx = args.context ?? {};
-  const archetypeHint = archetypeFromShape(ctx.appShape, args.brief);
+  const archetypeHint = archetypeFromShape(ctx.appShape, args.brief, ctx.webSubtype);
   const designSummary = summarizeDesign(ctx.designDirection ?? undefined);
 
   // STAGE 1 — plan.
@@ -209,10 +245,12 @@ export async function runStagedPipelineStream(args: {
     return null;
   }
 
-  // Phase 2 — deterministically inject src/styles.css from the chosen theme
-  // tokens. This runs BEFORE wire-up so any verifier that scans styles.css
-  // sees the real palette, not Tailwind defaults.
-  let scaffoldFiles = scaffold.files;
+  // Phase 2 — merge the full Petal scaffold before wire-up. The monolithic
+  // path has always done this; the staged path must do it too or generated
+  // projects can miss Tailwind config, block components, and package deps.
+  let scaffoldFiles = applyScaffoldKit(scaffold.files, {
+    backend: args.backend,
+  });
   if (ctx.designDirection) {
     const stylesCss = buildStylesCssFromTheme(ctx.designDirection);
     if (stylesCss) {
