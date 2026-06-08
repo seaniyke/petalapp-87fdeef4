@@ -245,10 +245,12 @@ export async function runStagedPipelineStream(args: {
     return null;
   }
 
-  // Phase 2 — deterministically inject src/styles.css from the chosen theme
-  // tokens. This runs BEFORE wire-up so any verifier that scans styles.css
-  // sees the real palette, not Tailwind defaults.
-  let scaffoldFiles = scaffold.files;
+  // Phase 2 — merge the full Petal scaffold before wire-up. The monolithic
+  // path has always done this; the staged path must do it too or generated
+  // projects can miss Tailwind config, block components, and package deps.
+  let scaffoldFiles = applyScaffoldKit(scaffold.files, {
+    backend: args.backend,
+  });
   if (ctx.designDirection) {
     const stylesCss = buildStylesCssFromTheme(ctx.designDirection);
     if (stylesCss) {
