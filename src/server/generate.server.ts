@@ -767,88 +767,120 @@ function shouldRequireReplaceOp(prev: string, next: string, path: string): boole
  *  "// ... keep existing code ..." markers are expanded only when they can be
  *  anchored safely; otherwise we reject the patch before broken half-files can
  *  be saved or deployed. */
+/** Apply ONE op against an in-progress file map. Throws on failure with a
+ *  retry-shaped error message; the calling layer decides whether to retry
+ *  this single op (per-file rewrite) or bubble up. Split out from
+ *  `applyOps` so we can do partial application — see `applyOpsPartial`. */
+function applyOneOp(map: Map<string, string>, op: FileOp): void {
+  if (op.op === "delete") {
+    map.delete(op.path);
+    return;
+  }
+  if (op.op === "update") {
+    const prev = map.get(op.path) ?? "";
+    const { content, expanded, failed } = expandKeepMarkers(prev, op.content);
+    if (expanded > 0 || failed > 0) {
+      console.log(`[keep-existing] ${op.path}: expanded=${expanded} failed=${failed}`);
+    }
+    if (failed > 0 || /keep existing code/i.test(content)) {
+      throw new Error(
+        `AI returned an incomplete placeholder patch for ${op.path}. It must resend the full file contents.`,
+      );
+    }
+    if (isDestructiveShrink(prev, content, op.path)) {
+      const prevLines = prev.split("\n").length;
+      const nextLines = content.split("\n").length;
+      throw new Error(
+        `destructive_shrink: ${op.path} would shrink from ${prevLines} to ${nextLines} lines. This usually means you returned a stub instead of the full edit. Re-emit this change as one or more \`replace\` ops targeting only the snippet you want to change.`,
+      );
+    }
+    if (shouldRequireReplaceOp(prev, content, op.path)) {
+      throw new Error(
+        `must_use_replace: ${op.path} is a large existing file and your edit kept most of it unchanged. Re-emit this change as one or more \`replace\` ops with the exact snippet to swap, instead of resending the whole file.`,
+      );
+    }
+    map.set(op.path, content);
+    return;
+  }
+  if (op.op === "replace") {
+    const prev = map.get(op.path);
+    if (typeof prev !== "string") {
+      throw new Error(`AI tried to replace text in missing file ${op.path}.`);
+    }
+    if (!op.search) {
+      throw new Error(`AI returned an empty search snippet for ${op.path}.`);
+    }
+    const searchLines = op.search.split("\n").length;
+    if (searchLines > REPLACE_MAX_SEARCH_LINES || op.search.length > REPLACE_MAX_SEARCH_BYTES) {
+      throw new Error(
+        `replace_too_large: ${op.path} replace op covers ${searchLines} lines / ${op.search.length} bytes. Split this into multiple smaller \`replace\` ops, each targeting one logical region (~< 160 lines / 8 KB per op).`,
+      );
+    }
+    const first = prev.indexOf(op.search);
+    if (first === -1) {
+      const fuzzy = fuzzyReplace(prev, op.search, op.replace);
+      if (fuzzy) {
+        console.log(`[fuzzy-replace] ${op.path}: matched via ${fuzzy.strategy}`);
+        map.set(op.path, fuzzy.content);
+        return;
+      }
+      throw new Error(`AI replace snippet did not match ${op.path}.`);
+    }
+    if (prev.indexOf(op.search, first + op.search.length) !== -1) {
+      throw new Error(`AI replace snippet matched more than once in ${op.path}.`);
+    }
+    map.set(op.path, prev.slice(0, first) + op.replace + prev.slice(first + op.search.length));
+    return;
+  }
+  if (op.op === "ast-patch") {
+    const prev = map.get(op.path);
+    if (typeof prev !== "string") {
+      throw new Error(`AI tried to ast-patch missing file ${op.path}.`);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { applyAstPatches } = require("./ast-patch.server") as typeof import("./ast-patch.server");
+    map.set(op.path, applyAstPatches(prev, op.patches));
+    return;
+  }
+  // create
+  map.set(op.path, op.content);
+}
+
+/** Apply a list of file operations to a current set of files.
+ *  Throws on the FIRST failure. Kept for callers that want strict
+ *  all-or-nothing semantics (tests, callers that pre-validate). */
 export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
   const map = new Map(current.map((f) => [f.path, f.content]));
+  for (const op of ops) applyOneOp(map, op);
+  return Array.from(map, ([path, content]) => ({ path, content }));
+}
+
+export type AppliedOpResult = {
+  files: ProjectFile[];
+  applied: FileOp[];
+  failed: Array<{ op: FileOp; error: string }>;
+};
+
+/** Partial-apply variant: each op is attempted independently. Successful
+ *  ops land in `files`; failed ops are collected with their error message
+ *  so the caller can decide how to recover (typically per-file rewrite).
+ *  Critical: a `replace` failure no longer kills the whole turn. */
+export function applyOpsPartial(current: ProjectFile[], ops: FileOp[]): AppliedOpResult {
+  const map = new Map(current.map((f) => [f.path, f.content]));
+  const applied: FileOp[] = [];
+  const failed: Array<{ op: FileOp; error: string }> = [];
   for (const op of ops) {
-    if (op.op === "delete") {
-      map.delete(op.path);
-    } else if (op.op === "update") {
-      const prev = map.get(op.path) ?? "";
-      const { content, expanded, failed } = expandKeepMarkers(prev, op.content);
-      if (expanded > 0 || failed > 0) {
-        console.log(`[keep-existing] ${op.path}: expanded=${expanded} failed=${failed}`);
-      }
-      if (failed > 0 || /keep existing code/i.test(content)) {
-        throw new Error(
-          `AI returned an incomplete placeholder patch for ${op.path}. It must resend the full file contents.`,
-        );
-      }
-      if (isDestructiveShrink(prev, content, op.path)) {
-        const prevLines = prev.split("\n").length;
-        const nextLines = content.split("\n").length;
-        throw new Error(
-          `destructive_shrink: ${op.path} would shrink from ${prevLines} to ${nextLines} lines. This usually means you returned a stub instead of the full edit. Re-emit this change as one or more \`replace\` ops targeting only the snippet you want to change.`,
-        );
-      }
-      if (shouldRequireReplaceOp(prev, content, op.path)) {
-        throw new Error(
-          `must_use_replace: ${op.path} is a large existing file and your edit kept most of it unchanged. Re-emit this change as one or more \`replace\` ops with the exact snippet to swap, instead of resending the whole file.`,
-        );
-      }
-      map.set(op.path, content);
-    } else if (op.op === "replace") {
-      const prev = map.get(op.path);
-      if (typeof prev !== "string") {
-        throw new Error(`AI tried to replace text in missing file ${op.path}.`);
-      }
-      if (!op.search) {
-        throw new Error(`AI returned an empty search snippet for ${op.path}.`);
-      }
-      // Workstream A.2 — chunked-replace gate. A single replace op whose
-      // `search` snippet is huge (~> 60 lines OR > 2 KB) is the same
-      // failure mode as `must_use_replace`: the model is trying to swap
-      // a giant region in one shot and will truncate mid-stream. Force
-      // it to split into multiple smaller replace ops.
-      const searchLines = op.search.split("\n").length;
-      if (searchLines > REPLACE_MAX_SEARCH_LINES || op.search.length > REPLACE_MAX_SEARCH_BYTES) {
-        throw new Error(
-          `replace_too_large: ${op.path} replace op covers ${searchLines} lines / ${op.search.length} bytes. Split this into multiple smaller \`replace\` ops, each targeting one logical region (~< 160 lines / 8 KB per op).`,
-        );
-      }
-      const first = prev.indexOf(op.search);
-      if (first === -1) {
-        // Aider-style fuzzy fallback: try whitespace-tolerant, indent-aware,
-        // and first/last-line anchor strategies before giving up. This
-        // eliminates the most common "stale snippet" retry round-trip.
-        const fuzzy = fuzzyReplace(prev, op.search, op.replace);
-        if (fuzzy) {
-          console.log(`[fuzzy-replace] ${op.path}: matched via ${fuzzy.strategy}`);
-          map.set(op.path, fuzzy.content);
-          continue;
-        }
-        throw new Error(`AI replace snippet did not match ${op.path}.`);
-      }
-      if (prev.indexOf(op.search, first + op.search.length) !== -1) {
-        throw new Error(`AI replace snippet matched more than once in ${op.path}.`);
-      }
-      map.set(op.path, prev.slice(0, first) + op.replace + prev.slice(first + op.search.length));
-    } else if (op.op === "ast-patch") {
-      // Plan #4 — AST patches. The route handler is responsible for
-      // rejecting this op when the `ast_patches` labs flag is off, so
-      // by the time we get here it's authorized.
-      const prev = map.get(op.path);
-      if (typeof prev !== "string") {
-        throw new Error(`AI tried to ast-patch missing file ${op.path}.`);
-      }
-      // Lazy require so the @babel/parser import doesn't bloat the cold
-      // start of every generate request that never uses ast-patches.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { applyAstPatches } = require("./ast-patch.server") as typeof import("./ast-patch.server");
-      map.set(op.path, applyAstPatches(prev, op.patches));
-    } else {
-      // create — never run the expander (no original to splice from).
-      map.set(op.path, op.content);
+    try {
+      applyOneOp(map, op);
+      applied.push(op);
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      failed.push({ op, error });
     }
   }
-  return Array.from(map, ([path, content]) => ({ path, content }));
+  return {
+    files: Array.from(map, ([path, content]) => ({ path, content })),
+    applied,
+    failed,
+  };
 }

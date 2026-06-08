@@ -6,12 +6,13 @@ import {
   SYSTEM_PROMPT_PATCH,
   WRITE_PROJECT_TOOL,
   PATCH_FILES_TOOL,
-  applyOps,
+  applyOpsPartial,
   type ChatMessage,
   type ProjectFile,
   type FileOp,
   type StreamEvent,
 } from "@/server/generate.server";
+import { detectCrossCuttingIntent, pickPinnedPaths } from "@/server/intent-targets.server";
 import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { getBuildTarget } from "@/lib/build-targets";
 import { inferWebSubtype, getWebSubtypeAddendum } from "@/lib/web-subtype";
@@ -259,10 +260,23 @@ function detectMultiEditIntent(prompt: string): boolean {
 function trimFilesForPrompt(
   files: ProjectFile[],
   latestPrompt = "",
+  pinnedPaths: string[] = [],
 ): { files: ProjectFile[]; omitted: number } {
   const multiEditIntent = detectMultiEditIntent(latestPrompt);
-  const fileLimit = multiEditIntent ? MULTI_EDIT_CONTEXT_FILE_LIMIT : PATCH_CONTEXT_FILE_LIMIT;
-  const charLimit = multiEditIntent ? MULTI_EDIT_CONTEXT_CHAR_LIMIT : PATCH_CONTEXT_CHAR_LIMIT;
+  const pinned = new Set(pinnedPaths);
+  // Cross-cutting intents need a larger budget — the whole point of pinning
+  // is so the model sees every page/component at once.
+  const expandForPinned = pinned.size > 0;
+  const fileLimit = expandForPinned
+    ? Math.max(MULTI_EDIT_CONTEXT_FILE_LIMIT, pinned.size + 8)
+    : multiEditIntent
+      ? MULTI_EDIT_CONTEXT_FILE_LIMIT
+      : PATCH_CONTEXT_FILE_LIMIT;
+  const charLimit = expandForPinned
+    ? Math.max(MULTI_EDIT_CONTEXT_CHAR_LIMIT * 2, MULTI_EDIT_CONTEXT_CHAR_LIMIT)
+    : multiEditIntent
+      ? MULTI_EDIT_CONTEXT_CHAR_LIMIT
+      : PATCH_CONTEXT_CHAR_LIMIT;
   const terms = latestPrompt
     .toLowerCase()
     .split(/[^a-z0-9]+/)
@@ -274,6 +288,7 @@ function trimFilesForPrompt(
     return terms.some((term) => haystack.includes(term));
   };
   const rank = (path: string): number => {
+    if (pinned.has(path)) return -1; // pinned wins over everything
     if (path === "src/App.tsx") return 0;
     if (path === "src/main.tsx") return 1;
     if (path === "src/styles.css") return 2;
@@ -290,8 +305,9 @@ function trimFilesForPrompt(
       rank(a.path) - rank(b.path) ||
       a.path.localeCompare(b.path),
   )) {
-    if (picked.length >= fileLimit) break;
-    const limit = isPromptRelevant(file)
+    if (picked.length >= fileLimit && !pinned.has(file.path)) break;
+    const isPinned = pinned.has(file.path);
+    const limit = isPinned || isPromptRelevant(file)
       ? RELEVANT_FILE_CONTEXT_CHAR_LIMIT
       : LARGE_FILE_CONTEXT_CHAR_LIMIT;
     const content =
@@ -299,7 +315,9 @@ function trimFilesForPrompt(
         ? `${file.content.slice(0, limit)}\n\n/* ...trimmed for context budget... */`
         : file.content;
     const cost = file.path.length + content.length + 32;
-    if (picked.length > 0 && used + cost > charLimit) continue;
+    // Pinned files bypass the soft char budget — they were chosen
+    // explicitly because the model NEEDS to see their bytes.
+    if (!isPinned && picked.length > 0 && used + cost > charLimit) continue;
     picked.push({ path: file.path, content });
     used += cost;
   }
@@ -1685,12 +1703,31 @@ Forbidden defaults
   // model. The AI never edits these (we drop ops that touch them), but feeding
   // them back as context bloats patch turns and makes targeted edits harder.
   const editablePromptFiles = currentFiles.filter((f) => !isManagedScaffoldPath(f.path));
-  const promptBudget = trimFilesForPrompt(editablePromptFiles, multiEditPromptContext || lastUserContent);
+  // Cross-cutting intent detection — "mobile responsive", "across all pages",
+  // "redesign the site", etc. When true we force-include every page/route
+  // and every app-level component so the model's `replace` snippets match
+  // real bytes instead of hallucinations. Single biggest fix for the
+  // "I wasn't able to apply that change" failure mode on broad asks.
+  const isCrossCutting = !isInitial && detectCrossCuttingIntent(lastUserContent);
+  const pinnedPaths = isCrossCutting ? pickPinnedPaths(editablePromptFiles) : [];
+  if (isCrossCutting) {
+    console.info(
+      `[intent-targets] cross-cutting ask detected — pinning ${pinnedPaths.length} file(s) into prompt context`,
+    );
+  }
+  const promptBudget = trimFilesForPrompt(
+    editablePromptFiles,
+    multiEditPromptContext || lastUserContent,
+    pinnedPaths,
+  );
+  const crossCuttingAddendum = isCrossCutting
+    ? `\n\nThis is a cross-cutting request — the user wants the change applied across ${pinnedPaths.length} app file(s). The current contents of every page, route, and app-level component are included in full above. For each file you change, emit ONE \`update\` op with the COMPLETE new file contents (do NOT use \`replace\` ops across many files — they drift). Skip files that already satisfy the request rather than emitting no-op edits.`
+    : "";
   const filesContext = isInitial
     ? ""
     : `\n\nEditable app file manifest (all app-owned files Petal may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Petal-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
         .map((f) => `--- ${f.path} ---\n${f.content}`)
-        .join("\n\n")}`;
+        .join("\n\n")}${crossCuttingAddendum}`;
   const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
 
   // Build the chat-completion messages. The LAST user turn may carry
@@ -2365,62 +2402,123 @@ Forbidden defaults
           } catch {
             /* preview is best-effort; never block apply */
           }
+          // Per-op partial apply. A single bad `replace` op (stale snippet,
+          // ambiguous match, oversized region) used to throw and kill the
+          // ENTIRE turn even if the other 4 ops were fine. Now we apply each
+          // op independently, then run a per-file full-rewrite recovery on
+          // each failure. This is the core fix for the "I wasn't able to
+          // apply that change on this pass" failure mode on broad asks.
           let patched: ProjectFile[] | null = null;
-          try {
-            patched = applyOps(currentFiles, safeOps);
-          } catch (applyErr) {
-            const msg = applyErr instanceof Error ? applyErr.message : String(applyErr);
-            // Surgical edit recovery. Run a bounded retry loop for every
-            // apply-time patch problem the model can realistically correct:
-            // oversized replace, whole-file echo, stale search snippets,
-            // ambiguous snippets, missing target files, or placeholder patches.
-            if (isRetryablePatchApplyError(msg)) {
-              let retryProblem = msg;
-              let applied = false;
-              for (let attempt = 1; attempt <= 3; attempt++) {
-                const gateLabel = retryProblem.startsWith("replace_too_large") ? "replace_too_large" : "must_use_replace";
-                console.warn(`[generate] patch apply failed (${gateLabel}) — targeted retry ${attempt}/3`);
-                controller.enqueue(
-                  encoder.encode(sse({ type: "status", message: attempt === 1 ? "Retargeting the edit against the current files…" : `Trying a narrower edit pass (${attempt}/3)…` })),
-                );
-                const retry = await structuredRetryCompletion({
-                  messages: finalMessages,
-                  isInitial,
-                  problem: retryProblem,
+          {
+            const partial = applyOpsPartial(currentFiles, safeOps);
+            patched = partial.files;
+            if (partial.failed.length > 0) {
+              console.warn(
+                `[generate] partial apply: ${partial.applied.length}/${safeOps.length} ops landed; ` +
+                  `${partial.failed.length} need per-file rewrite (` +
+                  partial.failed.map((f) => `${f.op.path}: ${f.error.slice(0, 60)}`).join(" | ") +
+                  ")",
+              );
+              controller.enqueue(
+                encoder.encode(
+                  sse({
+                    type: "status",
+                    message:
+                      partial.applied.length > 0
+                        ? `Landed ${partial.applied.length} edit(s); rewriting ${partial.failed.length} file(s) with full content…`
+                        : `Rewriting ${partial.failed.length} file(s) with full content…`,
+                  }),
+                ),
+              );
+
+              // Per-file rewrite recovery. Bounded so a runaway turn can't
+              // make N calls per failed op.
+              const MAX_REWRITES_PER_TURN = 8;
+              const failuresToRetry = partial.failed.slice(0, MAX_REWRITES_PER_TURN);
+              const rewrittenPaths: string[] = [];
+              for (const failure of failuresToRetry) {
+                const path = failure.op.path;
+                const currentContent =
+                  patched.find((f) => f.path === path)?.content ??
+                  currentFiles.find((f) => f.path === path)?.content ??
+                  "";
+                // Build a tight per-file rewrite prompt. We append an
+                // assistant turn (the snippet of the original collected
+                // response that touched this file) + a user turn naming
+                // the file and demanding a single `update` op with the
+                // COMPLETE new contents. Full-file rewrite of ONE file is
+                // the easiest thing for the model to get right.
+                const rewriteMessages = [
+                  ...finalMessages,
+                  {
+                    role: "user" as const,
+                    content:
+                      `Your previous edit to ${path} could not be applied: ${failure.error}\n\n` +
+                      `Current contents of ${path} (authoritative — your replace snippet did not match these bytes):\n` +
+                      `--- ${path} ---\n${currentContent.slice(0, 24_000)}${currentContent.length > 24_000 ? "\n/* ...trimmed... */" : ""}\n--- end ---\n\n` +
+                      `Re-emit the change as a SINGLE patch_files tool call containing EXACTLY ONE op: ` +
+                      `{ "op": "update", "path": "${path}", "content": "<the COMPLETE new file contents>" }. ` +
+                      `Do not use \`replace\`. Do not touch any other file. Do not use keep-existing markers. ` +
+                      `If the current contents already satisfy the user's request, return an empty ops array — do not invent edits.`,
+                  },
+                ];
+                const rewrite = await structuredRetryCompletion({
+                  messages: rewriteMessages,
+                  isInitial: false,
+                  problem: `single_file_rewrite:${failure.error.slice(0, 80)}`,
                   hasBackend: Boolean(backend),
-                  tool,
-                  maxTokens: Math.max(maxCompletionTokens, 8_000),
+                  tool: PATCH_FILES_TOOL,
+                  maxTokens: Math.max(maxCompletionTokens, 12_000),
                   signal: request.signal,
                   meta: {
                     phase: phaseTag.phase,
                     promptChars: lastUserContent.length,
                     hadAttachments: hasVisionTurn,
-                    chosenBy: `${gateLabel}_retry_${attempt}`,
+                    chosenBy: "per_file_rewrite",
                     projectId: body.projectId ?? null,
                     userId,
                   },
                 });
-                if (!retry.ok || !retry.body) break;
-                const retryCollected = await relayAndCollect(retry, controller, encoder);
+                if (!rewrite.ok || !rewrite.body) {
+                  console.warn(`[generate] per-file rewrite request failed for ${path}`);
+                  continue;
+                }
+                const rewriteCollected = await relayAndCollect(rewrite, controller, encoder);
                 try {
-                  const retryPayload = parseCollectedProject(retryCollected, isInitial);
-                  if (!retryPayload.parsed.ops?.length) throw new Error("retry returned no ops");
-                  const retrySafeOps = retryPayload.parsed.ops.filter((op) => !isProtectedPath(op.path));
-                  patched = applyOps(currentFiles, retrySafeOps);
-                  collected = retryCollected;
-                  parsed = retryPayload.parsed;
-                  summary = retryPayload.summary;
-                  plan = retryPayload.plan;
-                  recap = retryPayload.recap;
-                  applied = true;
-                  break;
-                } catch (retryErr) {
-                  retryProblem = retryErr instanceof Error ? retryErr.message : String(retryErr);
-                  console.warn(`[generate] chunked retry ${attempt}/3 failed:`, retryProblem);
-                  if (!isRetryablePatchApplyError(retryProblem)) break;
+                  const rewritePayload = parseCollectedProject(rewriteCollected, false);
+                  const ops = (rewritePayload.parsed.ops ?? []).filter(
+                    (op) => op.path === path && !isProtectedPath(op.path),
+                  );
+                  if (ops.length === 0) {
+                    console.info(`[generate] per-file rewrite for ${path} returned no ops — accepting`);
+                    continue;
+                  }
+                  // Apply each op against the in-progress `patched` map.
+                  const stepResult = applyOpsPartial(patched, ops);
+                  patched = stepResult.files;
+                  if (stepResult.applied.length > 0) {
+                    rewrittenPaths.push(path);
+                    controller.enqueue(
+                      encoder.encode(
+                        sse({ type: "status", message: `Rewrote ${path} with full content.` }),
+                      ),
+                    );
+                  } else {
+                    console.warn(
+                      `[generate] per-file rewrite ops for ${path} still failed: ` +
+                        stepResult.failed.map((f) => f.error.slice(0, 80)).join("; "),
+                    );
+                  }
+                } catch (rewriteErr) {
+                  console.warn(
+                    `[generate] per-file rewrite parse failed for ${path}:`,
+                    rewriteErr instanceof Error ? rewriteErr.message : String(rewriteErr),
+                  );
                 }
               }
-              if (!applied) {
+
+              // Final verdict for this batch: did anything land at all?
+              if (partial.applied.length === 0 && rewrittenPaths.length === 0) {
                 emitConversationalFallback(controller, encoder, {
                   files: currentFiles,
                   summary: body.isAutoFix
@@ -2429,8 +2527,6 @@ Forbidden defaults
                 });
                 return;
               }
-            } else {
-              throw applyErr;
             }
           }
           if (!patched) throw new Error("Patch did not produce files.");
