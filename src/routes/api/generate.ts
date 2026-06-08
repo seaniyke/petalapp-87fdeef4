@@ -819,6 +819,7 @@ async function structuredRetryCompletion(args: {
   hasBackend: boolean;
   tool: typeof WRITE_PROJECT_TOOL | typeof PATCH_FILES_TOOL;
   maxTokens: number;
+  crossCuttingIntent?: boolean;
   signal: AbortSignal;
   meta: {
     phase: Phase;
@@ -834,6 +835,7 @@ async function structuredRetryCompletion(args: {
       isInitial: args.isInitial,
       problem: args.problem,
       hasBackend: args.hasBackend,
+      crossCuttingIntent: args.crossCuttingIntent,
     }),
     tools: [args.tool],
     tool_choice: { type: "function", function: { name: args.tool.function.name } },
