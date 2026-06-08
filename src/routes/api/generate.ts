@@ -13,7 +13,7 @@ import {
   type StreamEvent,
 } from "@/server/generate.server";
 import { detectCrossCuttingIntent, pickPinnedPaths } from "@/server/intent-targets.server";
-import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
+import { applyScaffoldKit, applyScaffoldKitForPatch, STYLES_CSS } from "@/server/scaffold-kit";
 import { getBuildTarget } from "@/lib/build-targets";
 import { inferWebSubtype, getWebSubtypeAddendum } from "@/lib/web-subtype";
 
@@ -2774,7 +2774,7 @@ Forbidden defaults
           // "SelectTrigger is not exported by select.tsx" forever
           // because `applyScaffoldKit` was only running on initial
           // create + at build-trigger time.
-          nextFiles = applyScaffoldKit(patched, {
+          nextFiles = applyScaffoldKitForPatch(patched, {
             backend: backend ?? undefined,
           });
         }
