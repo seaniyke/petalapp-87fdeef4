@@ -640,8 +640,8 @@ export function pickDynamicSnippets(args: {
     }
   }
 
-  // Cap at 9 total (kitCore + verifyBeforeDone + noBackendGate + 6 topical).
-  const picked = matched.slice(0, 9);
+  // Cap at 10 total (kitCore + verifyBeforeDone + noBackendGate + designFloor + 6 topical).
+  const picked = matched.slice(0, 10);
   const text = picked
     .map((k) => {
       const body = SNIPPETS[k].body;
