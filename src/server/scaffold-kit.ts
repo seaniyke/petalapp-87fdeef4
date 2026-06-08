@@ -4023,3 +4023,48 @@ export function applyScaffoldKit(
 
   return Array.from(map, ([path, content]) => ({ path, content }));
 }
+
+function shouldOverwriteDuringPatch(path: string): boolean {
+  return (
+    path === "vite.config.ts" ||
+    path === "petal-source-plugin.mjs" ||
+    path === "tsconfig.json" ||
+    path === "src/lib/utils.ts" ||
+    path.startsWith("src/components/ui/") ||
+    path.startsWith("src/components/examples/") ||
+    path.startsWith("src/integrations/backend/")
+  );
+}
+
+/**
+ * Patch-turn scaffold healing must never erase user-visible app edits.
+ * Initial builds can overwrite the full kit, but edit turns often need to
+ * change section blocks / motion / content components that live under the
+ * scaffold. Preserve existing copies of those files and only overwrite the
+ * immutable runtime shell, adding missing kit files as a compatibility heal.
+ */
+export function applyScaffoldKitForPatch(
+  files: ProjectFile[],
+  opts?: { backend?: { url: string; anonKey: string } },
+): ProjectFile[] {
+  const map = new Map<string, string>();
+  for (const f of files) map.set(f.path, f.content);
+
+  for (const kit of KIT_FILES) {
+    if (shouldOverwriteDuringPatch(kit.path) || !map.has(kit.path)) {
+      map.set(kit.path, kit.content);
+    }
+  }
+
+  let extraDeps: Record<string, string> = {};
+  if (opts?.backend) {
+    for (const f of backendKit(opts.backend)) map.set(f.path, f.content);
+    for (const f of BACKEND_KIT_BLOCK_FILES_3) {
+      if (!map.has(f.path)) map.set(f.path, f.content);
+    }
+    extraDeps = BACKEND_DEPS;
+  }
+
+  map.set("package.json", mergePackageJson(map.get("package.json"), extraDeps));
+  return Array.from(map, ([path, content]) => ({ path, content }));
+}
