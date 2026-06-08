@@ -882,6 +882,7 @@ async function recoverMissingToolOutput(args: {
   phaseTag: { phase: Phase };
   lastUserContent: string;
   hasVisionTurn: boolean;
+  crossCuttingIntent?: boolean;
   backend: unknown;
   signal: AbortSignal;
   controller: ReadableStreamDefaultController<Uint8Array>;
@@ -916,6 +917,7 @@ async function recoverMissingToolOutput(args: {
     hasBackend: Boolean(args.backend),
     tool: args.tool,
     maxTokens: args.isInitial ? 12_000 : 10_000,
+    crossCuttingIntent: args.crossCuttingIntent,
     signal: args.signal,
     meta: {
       phase: args.phaseTag.phase,
