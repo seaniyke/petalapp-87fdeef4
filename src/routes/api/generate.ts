@@ -380,35 +380,38 @@ function recordEditFailureDiagnostic(args: EditFailureDiagnostic): void {
     uniquePaths.length ? `paths=${uniquePaths.join(", ")}` : null,
   ].filter(Boolean).join(" ");
 
-  void supabaseAdmin.from("pipeline_failures").insert({
-    project_id: args.projectId,
-    user_id: args.userId,
-    surface: "generate-edit",
-    raw_message: raw.slice(0, 4000),
-    signature: diagnosticSignature(args.reason, uniquePaths),
-    tool_name: args.toolName,
-    model: args.model,
-    stream_tail: null,
-    extra: {
-      turn_id: args.turnId,
-      reason: args.reason,
-      is_initial: args.isInitial,
-      total_ops: args.totalOps ?? null,
-      safe_ops: args.safeOps ?? null,
-      protected_ops: args.protectedOps ?? [],
-      ast_dropped_ops: args.astDroppedOps ?? 0,
-      applied_ops: args.appliedOps ?? [],
-      failed_ops: args.failedOps ?? [],
-      rewritten_paths: args.rewrittenPaths ?? [],
-      changed_paths: args.changedPaths ?? [],
-      affected_paths: uniquePaths,
-      summary: args.summary?.slice(0, 500) ?? null,
-    },
-  }).then(({ error }) => {
-    if (error) console.warn("[edit-diagnostics] insert failed", error.message);
-  }).catch((err) => {
-    console.warn("[edit-diagnostics] insert threw", err);
-  });
+  void (async () => {
+    try {
+      const { error } = await supabaseAdmin.from("pipeline_failures").insert({
+        project_id: args.projectId,
+        user_id: args.userId,
+        surface: "generate-edit",
+        raw_message: raw.slice(0, 4000),
+        signature: diagnosticSignature(args.reason, uniquePaths),
+        tool_name: args.toolName,
+        model: args.model,
+        stream_tail: null,
+        extra: {
+          turn_id: args.turnId,
+          reason: args.reason,
+          is_initial: args.isInitial,
+          total_ops: args.totalOps ?? null,
+          safe_ops: args.safeOps ?? null,
+          protected_ops: args.protectedOps ?? [],
+          ast_dropped_ops: args.astDroppedOps ?? 0,
+          applied_ops: args.appliedOps ?? [],
+          failed_ops: args.failedOps ?? [],
+          rewritten_paths: args.rewrittenPaths ?? [],
+          changed_paths: args.changedPaths ?? [],
+          affected_paths: uniquePaths,
+          summary: args.summary?.slice(0, 500) ?? null,
+        },
+      });
+      if (error) console.warn("[edit-diagnostics] insert failed", error.message);
+    } catch (err) {
+      console.warn("[edit-diagnostics] insert threw", err);
+    }
+  })();
 }
 
 /**
