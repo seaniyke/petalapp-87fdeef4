@@ -336,6 +336,84 @@ function sse(event: StreamEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;
 }
 
+type EditFailureDiagnostic = {
+  turnId: string;
+  projectId: string | null;
+  userId: string | null;
+  model: string | null;
+  reason: string;
+  isInitial: boolean;
+  toolName: "write_project" | "patch_files" | null;
+  totalOps?: number;
+  safeOps?: number;
+  protectedOps?: Array<{ op: string; path: string }>;
+  astDroppedOps?: number;
+  appliedOps?: Array<{ op: string; path: string }>;
+  failedOps?: Array<{ op: string; path: string; error: string }>;
+  rewrittenPaths?: string[];
+  changedPaths?: string[];
+  affectedPaths?: string[];
+  summary?: string;
+};
+
+function opDigest(op: FileOp): { op: string; path: string } {
+  return { op: op.op, path: op.path };
+}
+
+function diagnosticSignature(reason: string, paths: string[] = []): string {
+  const normalizedPaths = paths.slice(0, 4).join(",");
+  return `edit_pipeline:${reason}:${normalizedPaths}`.slice(0, 120);
+}
+
+function recordEditFailureDiagnostic(args: EditFailureDiagnostic): void {
+  const paths = args.affectedPaths ?? [
+    ...(args.failedOps ?? []).map((o) => o.path),
+    ...(args.appliedOps ?? []).map((o) => o.path),
+    ...(args.protectedOps ?? []).map((o) => o.path),
+    ...(args.changedPaths ?? []),
+  ];
+  const uniquePaths = Array.from(new Set(paths)).slice(0, 12);
+  const raw = [
+    `edit_pipeline:${args.reason}`,
+    args.toolName ? `tool=${args.toolName}` : null,
+    `ops=${args.safeOps ?? args.totalOps ?? 0}/${args.totalOps ?? 0}`,
+    uniquePaths.length ? `paths=${uniquePaths.join(", ")}` : null,
+  ].filter(Boolean).join(" ");
+
+  void (async () => {
+    try {
+      const { error } = await supabaseAdmin.from("pipeline_failures").insert({
+        project_id: args.projectId,
+        user_id: args.userId,
+        surface: "generate-edit",
+        raw_message: raw.slice(0, 4000),
+        signature: diagnosticSignature(args.reason, uniquePaths),
+        tool_name: args.toolName,
+        model: args.model,
+        stream_tail: null,
+        extra: {
+          turn_id: args.turnId,
+          reason: args.reason,
+          is_initial: args.isInitial,
+          total_ops: args.totalOps ?? null,
+          safe_ops: args.safeOps ?? null,
+          protected_ops: args.protectedOps ?? [],
+          ast_dropped_ops: args.astDroppedOps ?? 0,
+          applied_ops: args.appliedOps ?? [],
+          failed_ops: args.failedOps ?? [],
+          rewritten_paths: args.rewrittenPaths ?? [],
+          changed_paths: args.changedPaths ?? [],
+          affected_paths: uniquePaths,
+          summary: args.summary?.slice(0, 500) ?? null,
+        },
+      });
+      if (error) console.warn("[edit-diagnostics] insert failed", error.message);
+    } catch (err) {
+      console.warn("[edit-diagnostics] insert threw", err);
+    }
+  })();
+}
+
 /**
  * Parse a chunk of bytes from the inner SSE stream and forward each event
  * to a sink (typically: a turn recorder). Maintains a small buffer across
@@ -2117,8 +2195,9 @@ Forbidden defaults
       // Phase 6 — per-tier telemetry. One row per tier per turn,
       // flushed at end-of-turn (success OR failure path) in a single
       // insert. Fire-and-forget; never blocks or throws.
+      const turnId = crypto.randomUUID();
       const recorder = new TurnRecorder({
-        turnId: crypto.randomUUID(),
+        turnId,
         projectId: body.projectId ?? null,
         messageId: null,
         model,
@@ -2296,6 +2375,23 @@ Forbidden defaults
             console.warn(
               `[generate] patch_files returned ${Array.isArray(parsed.ops) ? "empty" : "missing"} ops — replying conversationally`,
             );
+            recorder.record({
+              tier: "apply_ops",
+              outcome: "failed",
+              duration_ms: 0,
+              issue_count: 1,
+              details: { reason: "empty_ops", tool: collected.name, turn_id: turnId },
+            });
+            recordEditFailureDiagnostic({
+              turnId,
+              projectId: body.projectId ?? null,
+              userId,
+              model,
+              reason: "empty_ops",
+              isInitial,
+              toolName: collected.name,
+              totalOps: Array.isArray(parsed.ops) ? parsed.ops.length : 0,
+            });
             // Truth gate: the model didn't emit any file ops. Do NOT surface
             // its `summary` here — it often says "I updated X" while having
             // changed nothing. Always speak in the first person about what
@@ -2342,6 +2438,7 @@ Forbidden defaults
             }
           }
           let safeOps = parsed.ops.filter((op) => !isProtectedPath(op.path));
+          let astDroppedOps = 0;
           // Plan #4 — strip ast-patch ops if the labs flag isn't on. The
           // model isn't supposed to emit them in that case (we don't add
           // the grammar to the prompt), but be defensive: better to ignore
@@ -2349,6 +2446,7 @@ Forbidden defaults
           if (!labsFlags.ast_patches) {
             const astCount = safeOps.filter((op) => op.op === "ast-patch").length;
             if (astCount > 0) {
+              astDroppedOps = astCount;
               console.warn(`[ast-patches] dropped ${astCount} unauthorized ast-patch op(s)`);
               safeOps = safeOps.filter((op) => op.op !== "ast-patch");
             }
@@ -2358,6 +2456,33 @@ Forbidden defaults
             const planScopeHit =
               allowedPathSet !== null &&
               violations.some((v) => !allowedPathSet!.has(v.path));
+            recorder.record({
+              tier: "apply_ops",
+              outcome: "failed",
+              duration_ms: 0,
+              issue_count: violations.length || astDroppedOps || 1,
+              details: {
+                reason: planScopeHit ? "plan_scope_blocked" : userGlobsHit ? "user_protected_path" : "protected_path_only",
+                total_ops: parsed.ops.length,
+                safe_ops: safeOps.length,
+                protected_ops: violations.map(opDigest),
+                ast_dropped_ops: astDroppedOps,
+                turn_id: turnId,
+              },
+            });
+            recordEditFailureDiagnostic({
+              turnId,
+              projectId: body.projectId ?? null,
+              userId,
+              model,
+              reason: planScopeHit ? "plan_scope_blocked" : userGlobsHit ? "user_protected_path" : "protected_path_only",
+              isInitial,
+              toolName: collected.name,
+              totalOps: parsed.ops.length,
+              safeOps: safeOps.length,
+              protectedOps: violations.map(opDigest),
+              astDroppedOps,
+            });
             emitConversationalFallback(controller, encoder, {
               files: currentFiles,
               summary: planScopeHit
@@ -2409,9 +2534,15 @@ Forbidden defaults
           // each failure. This is the core fix for the "I wasn't able to
           // apply that change on this pass" failure mode on broad asks.
           let patched: ProjectFile[] | null = null;
+          let initiallyAppliedOps: Array<{ op: string; path: string }> = [];
+          let initiallyFailedOps: Array<{ op: string; path: string; error: string }> = [];
+          const rewrittenPaths: string[] = [];
+          const applyStartedAt = Date.now();
           {
             const partial = applyOpsPartial(currentFiles, safeOps);
             patched = partial.files;
+            initiallyAppliedOps = partial.applied.map(opDigest);
+            initiallyFailedOps = partial.failed.map((f) => ({ ...opDigest(f.op), error: f.error.slice(0, 300) }));
             if (partial.failed.length > 0) {
               console.warn(
                 `[generate] partial apply: ${partial.applied.length}/${safeOps.length} ops landed; ` +
@@ -2435,7 +2566,6 @@ Forbidden defaults
               // make N calls per failed op.
               const MAX_REWRITES_PER_TURN = 8;
               const failuresToRetry = partial.failed.slice(0, MAX_REWRITES_PER_TURN);
-              const rewrittenPaths: string[] = [];
               for (const failure of failuresToRetry) {
                 const path = failure.op.path;
                 const currentContent =
@@ -2519,6 +2649,35 @@ Forbidden defaults
 
               // Final verdict for this batch: did anything land at all?
               if (partial.applied.length === 0 && rewrittenPaths.length === 0) {
+                recorder.record({
+                  tier: "apply_ops",
+                  outcome: "failed",
+                  duration_ms: Date.now() - applyStartedAt,
+                  issue_count: partial.failed.length,
+                  details: {
+                    reason: "all_ops_failed",
+                    total_ops: safeOps.length,
+                    safe_ops: safeOps.length,
+                    protected_ops: violations.map(opDigest),
+                    ast_dropped_ops: astDroppedOps,
+                    failed_ops: initiallyFailedOps,
+                    turn_id: turnId,
+                  },
+                });
+                recordEditFailureDiagnostic({
+                  turnId,
+                  projectId: body.projectId ?? null,
+                  userId,
+                  model,
+                  reason: "all_ops_failed",
+                  isInitial,
+                  toolName: collected.name,
+                  totalOps: parsed.ops.length,
+                  safeOps: safeOps.length,
+                  protectedOps: violations.map(opDigest),
+                  astDroppedOps,
+                  failedOps: initiallyFailedOps,
+                });
                 emitConversationalFallback(controller, encoder, {
                   files: currentFiles,
                   summary: body.isAutoFix
@@ -2541,18 +2700,46 @@ Forbidden defaults
           {
             const prevByPath = new Map(currentFiles.map((f) => [f.path, f.content]));
             const nextByPath = new Map(patched.map((f) => [f.path, f.content]));
-            let realChange = false;
+            const changedPaths: string[] = [];
             for (const [p, c] of nextByPath) {
-              if (prevByPath.get(p) !== c) { realChange = true; break; }
+              if (prevByPath.get(p) !== c) changedPaths.push(p);
             }
-            if (!realChange) {
-              for (const p of prevByPath.keys()) {
-                if (!nextByPath.has(p)) { realChange = true; break; }
-              }
+            for (const p of prevByPath.keys()) {
+              if (!nextByPath.has(p)) changedPaths.push(p);
             }
-            if (!realChange) {
+            if (changedPaths.length === 0) {
               const claimed = Array.from(new Set(safeOps.map((o) => o.path))).slice(0, 4).join(", ");
               console.warn(`[generate] no-op patch — ops applied but file contents unchanged (${claimed})`);
+              recorder.record({
+                tier: "apply_ops",
+                outcome: "failed",
+                duration_ms: Date.now() - applyStartedAt,
+                issue_count: 1,
+                details: {
+                  reason: "byte_identical_patch",
+                  total_ops: safeOps.length,
+                  safe_ops: safeOps.length,
+                  applied_ops: initiallyAppliedOps,
+                  failed_ops: initiallyFailedOps,
+                  rewritten_paths: rewrittenPaths,
+                  turn_id: turnId,
+                },
+              });
+              recordEditFailureDiagnostic({
+                turnId,
+                projectId: body.projectId ?? null,
+                userId,
+                model,
+                reason: "byte_identical_patch",
+                isInitial,
+                toolName: collected.name,
+                totalOps: parsed.ops.length,
+                safeOps: safeOps.length,
+                appliedOps: initiallyAppliedOps,
+                failedOps: initiallyFailedOps,
+                rewrittenPaths,
+                affectedPaths: safeOps.map((o) => o.path),
+              });
               emitConversationalFallback(controller, encoder, {
                 files: currentFiles,
                 summary:
@@ -2560,6 +2747,24 @@ Forbidden defaults
               });
               return;
             }
+            recorder.record({
+              tier: "apply_ops",
+              outcome: initiallyFailedOps.length > 0 || rewrittenPaths.length > 0 ? "fixed" : "ok",
+              duration_ms: Date.now() - applyStartedAt,
+              issue_count: initiallyFailedOps.length,
+              details: {
+                reason: initiallyFailedOps.length > 0 ? "partial_apply_recovered" : "applied",
+                total_ops: safeOps.length,
+                safe_ops: safeOps.length,
+                protected_ops: violations.map(opDigest),
+                ast_dropped_ops: astDroppedOps,
+                applied_ops: initiallyAppliedOps,
+                failed_ops: initiallyFailedOps,
+                rewritten_paths: rewrittenPaths,
+                changed_paths: changedPaths.slice(0, 20),
+                turn_id: turnId,
+              },
+            });
           }
 
           // Heal-on-patch: re-apply the canonical scaffold to old saved

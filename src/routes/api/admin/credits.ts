@@ -695,7 +695,7 @@ export const Route = createFileRoute("/api/admin/credits")({
 
             const { data: rowsRaw, error: pfErr } = await supabaseAdmin
               .from("pipeline_failures")
-              .select("id, project_id, surface, raw_message, signature, tool_name, model, stream_tail, url, created_at")
+              .select("id, project_id, surface, raw_message, signature, tool_name, model, stream_tail, url, extra, created_at")
               .gte("created_at", since)
               .order("created_at", { ascending: false })
               .limit(1000);
@@ -711,6 +711,7 @@ export const Route = createFileRoute("/api/admin/credits")({
               model: string | null;
               stream_tail: string | null;
               url: string | null;
+              extra: Record<string, unknown> | null;
               created_at: string;
             }>;
 

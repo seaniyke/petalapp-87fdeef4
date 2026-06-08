@@ -20,6 +20,7 @@
 
 export type TierName =
   | "file_budget"
+  | "apply_ops"
   | "stream_autofix"
   | "local_verify"
   | "hallu_strip"
@@ -34,6 +35,7 @@ export type TierOutcome = "ok" | "failed" | "fixed" | "warned" | "skipped";
 /** Canonical pipeline order — keeps dashboards from having to re-sort. */
 const TIER_ORDER: Record<TierName, number> = {
   file_budget: 2.4,
+  apply_ops: 2.42,
   stream_autofix: 2.45,
   local_verify: 2.5,
   hallu_strip: 2.46,
