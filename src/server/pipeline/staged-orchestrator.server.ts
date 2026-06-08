@@ -132,34 +132,58 @@ function buildStylesCssFromTheme(direction: DesignDirection): string | null {
   const themeKey = direction.theme;
   if (!themeKey || !(themeKey in THEMES)) return null;
   const theme = THEMES[themeKey];
-  const tokens = Object.entries(theme.tokens)
+  const tokenEntries = Object.entries(theme.tokens);
+  const tokens = tokenEntries
     .map(([k, v]) => `  ${k}: ${v};`)
     .join("\n");
-  // Tailwind v4 lives entirely in the CSS — @import "tailwindcss" then
-  // :root tokens, then the body font wiring. Keep it small; the model's
-  // components reference the tokens via semantic Tailwind classes.
+  const themeMappings = tokenEntries
+    .map(([k]) => `  --color-${k.replace(/^--/, "")}: var(${k});`)
+    .join("\n");
+  const baseTheme = STYLES_CSS.match(/@theme\s*\{[\s\S]*?\n\}/)?.[0] ?? [
+    "@theme {",
+    themeMappings,
+    "  --font-sans: var(--font-body);",
+    "  --font-display: var(--font-heading);",
+    "  --font-serif: ui-serif, Georgia, Cambria, serif;",
+    "}",
+  ].join("\n");
+  // Tailwind v4 needs both CSS variables AND @theme mappings. Without the
+  // @theme block, utilities like bg-background/text-foreground/grid never
+  // compile and the preview falls back to browser-default Times/blue links.
   return [
     '@import "tailwindcss";',
+    '@import "@fontsource-variable/inter";',
+    '@import "@fontsource-variable/jetbrains-mono";',
+    "",
+    '@custom-variant dark (&:where(.dark, .dark *));',
     "",
     "/* Design tokens — committed by Petal from the chosen theme.",
     `   vibe: ${direction.vibe} */`,
+    baseTheme,
+    "",
     ":root {",
+    `  --font-body: "${theme.body_font}", ui-sans-serif, system-ui, -apple-system, sans-serif;`,
+    `  --font-heading: "${theme.display_font}", "${theme.body_font}", ui-serif, serif;`,
     tokens,
     "}",
     "",
     ".dark {",
+    `  --font-body: "${theme.body_font}", ui-sans-serif, system-ui, -apple-system, sans-serif;`,
+    `  --font-heading: "${theme.display_font}", "${theme.body_font}", ui-serif, serif;`,
     tokens,
     "}",
     "",
+    "html, body, #root { height: 100%; }",
     "body {",
-    `  font-family: "${theme.body_font}", system-ui, -apple-system, sans-serif;`,
-    "  background: var(--background);",
-    "  color: var(--foreground);",
+    "  font-family: var(--font-body);",
+    "  background: var(--color-background);",
+    "  color: var(--color-foreground);",
     "  -webkit-font-smoothing: antialiased;",
+    "  text-rendering: optimizeLegibility;",
     "}",
     "",
     ".font-display {",
-    `  font-family: "${theme.display_font}", "${theme.body_font}", serif;`,
+    "  font-family: var(--font-heading);",
     "}",
     "",
   ].join("\n");
