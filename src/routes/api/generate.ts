@@ -2435,6 +2435,37 @@ Forbidden defaults
           }
           if (!patched) throw new Error("Patch did not produce files.");
 
+          // Truth gate: every op "applied" cleanly, but did anything actually
+          // change? A `replace` whose search==replace, or an `update` whose
+          // new content equals the old content, leaves files byte-identical.
+          // Without this check we'd ship the model's "I edited the landing
+          // page" summary while no file actually moved. Compare patched vs.
+          // currentFiles BEFORE scaffold re-apply so kit healing can't mask
+          // a no-op edit.
+          {
+            const prevByPath = new Map(currentFiles.map((f) => [f.path, f.content]));
+            const nextByPath = new Map(patched.map((f) => [f.path, f.content]));
+            let realChange = false;
+            for (const [p, c] of nextByPath) {
+              if (prevByPath.get(p) !== c) { realChange = true; break; }
+            }
+            if (!realChange) {
+              for (const p of prevByPath.keys()) {
+                if (!nextByPath.has(p)) { realChange = true; break; }
+              }
+            }
+            if (!realChange) {
+              const claimed = Array.from(new Set(safeOps.map((o) => o.path))).slice(0, 4).join(", ");
+              console.warn(`[generate] no-op patch — ops applied but file contents unchanged (${claimed})`);
+              emitConversationalFallback(controller, encoder, {
+                files: currentFiles,
+                summary:
+                  `I tried to edit ${claimed || "your files"} but the change came out byte-identical to what was already there, so nothing actually moved. Tell me the exact text or element you want changed (and what to change it to) and I'll do it for real.`,
+              });
+              return;
+            }
+          }
+
           // Heal-on-patch: re-apply the canonical scaffold to old saved
           // projects whose `src/components/ui/*`, `package.json`, or
           // backend kit files predate later kit upgrades. Without this,
