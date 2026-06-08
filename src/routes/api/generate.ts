@@ -2375,6 +2375,23 @@ Forbidden defaults
             console.warn(
               `[generate] patch_files returned ${Array.isArray(parsed.ops) ? "empty" : "missing"} ops — replying conversationally`,
             );
+            recorder.record({
+              tier: "apply_ops",
+              outcome: "failed",
+              duration_ms: 0,
+              issue_count: 1,
+              details: { reason: "empty_ops", tool: collected.name, turn_id: turnId },
+            });
+            recordEditFailureDiagnostic({
+              turnId,
+              projectId: body.projectId ?? null,
+              userId,
+              model,
+              reason: "empty_ops",
+              isInitial,
+              toolName: collected.name,
+              totalOps: Array.isArray(parsed.ops) ? parsed.ops.length : 0,
+            });
             // Truth gate: the model didn't emit any file ops. Do NOT surface
             // its `summary` here — it often says "I updated X" while having
             // changed nothing. Always speak in the first person about what
