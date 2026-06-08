@@ -1704,12 +1704,31 @@ Forbidden defaults
   // model. The AI never edits these (we drop ops that touch them), but feeding
   // them back as context bloats patch turns and makes targeted edits harder.
   const editablePromptFiles = currentFiles.filter((f) => !isManagedScaffoldPath(f.path));
-  const promptBudget = trimFilesForPrompt(editablePromptFiles, multiEditPromptContext || lastUserContent);
+  // Cross-cutting intent detection — "mobile responsive", "across all pages",
+  // "redesign the site", etc. When true we force-include every page/route
+  // and every app-level component so the model's `replace` snippets match
+  // real bytes instead of hallucinations. Single biggest fix for the
+  // "I wasn't able to apply that change" failure mode on broad asks.
+  const isCrossCutting = !isInitial && detectCrossCuttingIntent(lastUserContent);
+  const pinnedPaths = isCrossCutting ? pickPinnedPaths(editablePromptFiles) : [];
+  if (isCrossCutting) {
+    console.info(
+      `[intent-targets] cross-cutting ask detected — pinning ${pinnedPaths.length} file(s) into prompt context`,
+    );
+  }
+  const promptBudget = trimFilesForPrompt(
+    editablePromptFiles,
+    multiEditPromptContext || lastUserContent,
+    pinnedPaths,
+  );
+  const crossCuttingAddendum = isCrossCutting
+    ? `\n\nThis is a cross-cutting request — the user wants the change applied across ${pinnedPaths.length} app file(s). The current contents of every page, route, and app-level component are included in full above. For each file you change, emit ONE \`update\` op with the COMPLETE new file contents (do NOT use \`replace\` ops across many files — they drift). Skip files that already satisfy the request rather than emitting no-op edits.`
+    : "";
   const filesContext = isInitial
     ? ""
     : `\n\nEditable app file manifest (all app-owned files Petal may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Petal-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
         .map((f) => `--- ${f.path} ---\n${f.content}`)
-        .join("\n\n")}`;
+        .join("\n\n")}${crossCuttingAddendum}`;
   const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
 
   // Build the chat-completion messages. The LAST user turn may carry
