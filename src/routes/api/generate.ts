@@ -6,7 +6,6 @@ import {
   SYSTEM_PROMPT_PATCH,
   WRITE_PROJECT_TOOL,
   PATCH_FILES_TOOL,
-  applyOps,
   applyOpsPartial,
   type ChatMessage,
   type ProjectFile,
