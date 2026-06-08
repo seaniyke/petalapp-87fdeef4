@@ -2534,9 +2534,15 @@ Forbidden defaults
           // each failure. This is the core fix for the "I wasn't able to
           // apply that change on this pass" failure mode on broad asks.
           let patched: ProjectFile[] | null = null;
+          let initiallyAppliedOps: Array<{ op: string; path: string }> = [];
+          let initiallyFailedOps: Array<{ op: string; path: string; error: string }> = [];
+          const rewrittenPaths: string[] = [];
+          const applyStartedAt = Date.now();
           {
             const partial = applyOpsPartial(currentFiles, safeOps);
             patched = partial.files;
+            initiallyAppliedOps = partial.applied.map(opDigest);
+            initiallyFailedOps = partial.failed.map((f) => ({ ...opDigest(f.op), error: f.error.slice(0, 300) }));
             if (partial.failed.length > 0) {
               console.warn(
                 `[generate] partial apply: ${partial.applied.length}/${safeOps.length} ops landed; ` +
@@ -2560,7 +2566,6 @@ Forbidden defaults
               // make N calls per failed op.
               const MAX_REWRITES_PER_TURN = 8;
               const failuresToRetry = partial.failed.slice(0, MAX_REWRITES_PER_TURN);
-              const rewrittenPaths: string[] = [];
               for (const failure of failuresToRetry) {
                 const path = failure.op.path;
                 const currentContent =
@@ -2644,6 +2649,35 @@ Forbidden defaults
 
               // Final verdict for this batch: did anything land at all?
               if (partial.applied.length === 0 && rewrittenPaths.length === 0) {
+                recorder.record({
+                  tier: "apply_ops",
+                  outcome: "failed",
+                  duration_ms: Date.now() - applyStartedAt,
+                  issue_count: partial.failed.length,
+                  details: {
+                    reason: "all_ops_failed",
+                    total_ops: safeOps.length,
+                    safe_ops: safeOps.length,
+                    protected_ops: violations.map(opDigest),
+                    ast_dropped_ops: astDroppedOps,
+                    failed_ops: initiallyFailedOps,
+                    turn_id: turnId,
+                  },
+                });
+                recordEditFailureDiagnostic({
+                  turnId,
+                  projectId: body.projectId ?? null,
+                  userId,
+                  model,
+                  reason: "all_ops_failed",
+                  isInitial,
+                  toolName: collected.name,
+                  totalOps: parsed.ops.length,
+                  safeOps: safeOps.length,
+                  protectedOps: violations.map(opDigest),
+                  astDroppedOps,
+                  failedOps: initiallyFailedOps,
+                });
                 emitConversationalFallback(controller, encoder, {
                   files: currentFiles,
                   summary: body.isAutoFix
