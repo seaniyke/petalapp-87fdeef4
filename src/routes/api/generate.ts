@@ -2259,12 +2259,14 @@ Forbidden defaults
             console.warn(
               `[generate] patch_files returned ${Array.isArray(parsed.ops) ? "empty" : "missing"} ops — replying conversationally`,
             );
+            // Truth gate: the model didn't emit any file ops. Do NOT surface
+            // its `summary` here — it often says "I updated X" while having
+            // changed nothing. Always speak in the first person about what
+            // really happened.
             emitConversationalFallback(controller, encoder, {
               files: currentFiles,
               summary:
-                summary && summary !== "Updated the project."
-                  ? summary
-                  : "I looked at this and didn't see a clear change to make. Could you point me at the specific element or behavior you want adjusted? Even a one-liner like 'make the hero headline bigger' helps me lock onto the right spot.",
+                "I didn't actually change any files on that pass — the model didn't produce an edit I could apply. Tell me the exact element or text to change (e.g. 'in the hero on the landing page, change the headline to …') and I'll do it.",
             });
             return;
           }
