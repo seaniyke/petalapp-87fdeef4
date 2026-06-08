@@ -7,11 +7,13 @@ import {
   WRITE_PROJECT_TOOL,
   PATCH_FILES_TOOL,
   applyOps,
+  applyOpsPartial,
   type ChatMessage,
   type ProjectFile,
   type FileOp,
   type StreamEvent,
 } from "@/server/generate.server";
+import { detectCrossCuttingIntent, pickPinnedPaths } from "@/server/intent-targets.server";
 import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { getBuildTarget } from "@/lib/build-targets";
 import { inferWebSubtype, getWebSubtypeAddendum } from "@/lib/web-subtype";
