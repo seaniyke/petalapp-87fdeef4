@@ -2063,13 +2063,14 @@ Forbidden defaults
     phase: phaseTag.phase,
     hasVisionTurn,
     multiEditIntent,
+    crossCuttingIntent: isCrossCutting,
   });
   if (hasVisionTurn) {
     model = MODEL_VISION;
     chosenBy = "vision_pin";
-  } else if (multiEditIntent) {
+  } else if (multiEditIntent || isCrossCutting) {
     model = MODEL_BEST;
-    chosenBy = "multi_edit_pin";
+    chosenBy = isCrossCutting ? "cross_cutting_pin" : "multi_edit_pin";
   } else if (preset === "smart") {
     // Phase tag overrides the keyword heuristic in smart mode.
     const phaseDefault = tier === "smart" ? MODEL_BEST : MODEL_FAST;
