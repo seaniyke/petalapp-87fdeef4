@@ -62,8 +62,15 @@ export interface StagedPipelineContext {
 function archetypeFromShape(
   shape: AppShape | undefined,
   brief: string,
+  webSubtype?: WebSubtype,
 ): "feed" | "marketing" | "dashboard" | "tool" | "game" | "content" | "business-app" | undefined {
   const b = brief.toLowerCase();
+
+  // The web-subtype router is the higher-confidence signal for initial web
+  // requests. If the user says "landing page", do not let a marketplace/social
+  // shape upgrade it into a business app and leak dashboards into the page.
+  if (webSubtype === "marketing") return "marketing";
+  if (webSubtype === "fullstack") return "business-app";
 
   // Explicit user opt-outs — these short-circuit any business-app upgrade.
   // The user asked for a single surface; honour it.
@@ -192,10 +199,11 @@ function buildStylesCssFromTheme(direction: DesignDirection): string | null {
 export async function runStagedPipelineStream(args: {
   brief: string;
   hasBackend: boolean;
+  backend?: { url: string; anonKey: string };
   context?: StagedPipelineContext;
 }): Promise<Response | null> {
   const ctx = args.context ?? {};
-  const archetypeHint = archetypeFromShape(ctx.appShape, args.brief);
+  const archetypeHint = archetypeFromShape(ctx.appShape, args.brief, ctx.webSubtype);
   const designSummary = summarizeDesign(ctx.designDirection ?? undefined);
 
   // STAGE 1 — plan.
