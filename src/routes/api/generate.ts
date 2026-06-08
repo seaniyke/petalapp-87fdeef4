@@ -261,10 +261,23 @@ function detectMultiEditIntent(prompt: string): boolean {
 function trimFilesForPrompt(
   files: ProjectFile[],
   latestPrompt = "",
+  pinnedPaths: string[] = [],
 ): { files: ProjectFile[]; omitted: number } {
   const multiEditIntent = detectMultiEditIntent(latestPrompt);
-  const fileLimit = multiEditIntent ? MULTI_EDIT_CONTEXT_FILE_LIMIT : PATCH_CONTEXT_FILE_LIMIT;
-  const charLimit = multiEditIntent ? MULTI_EDIT_CONTEXT_CHAR_LIMIT : PATCH_CONTEXT_CHAR_LIMIT;
+  const pinned = new Set(pinnedPaths);
+  // Cross-cutting intents need a larger budget — the whole point of pinning
+  // is so the model sees every page/component at once.
+  const expandForPinned = pinned.size > 0;
+  const fileLimit = expandForPinned
+    ? Math.max(MULTI_EDIT_CONTEXT_FILE_LIMIT, pinned.size + 8)
+    : multiEditIntent
+      ? MULTI_EDIT_CONTEXT_FILE_LIMIT
+      : PATCH_CONTEXT_FILE_LIMIT;
+  const charLimit = expandForPinned
+    ? Math.max(MULTI_EDIT_CONTEXT_CHAR_LIMIT * 2, MULTI_EDIT_CONTEXT_CHAR_LIMIT)
+    : multiEditIntent
+      ? MULTI_EDIT_CONTEXT_CHAR_LIMIT
+      : PATCH_CONTEXT_CHAR_LIMIT;
   const terms = latestPrompt
     .toLowerCase()
     .split(/[^a-z0-9]+/)
@@ -276,6 +289,7 @@ function trimFilesForPrompt(
     return terms.some((term) => haystack.includes(term));
   };
   const rank = (path: string): number => {
+    if (pinned.has(path)) return -1; // pinned wins over everything
     if (path === "src/App.tsx") return 0;
     if (path === "src/main.tsx") return 1;
     if (path === "src/styles.css") return 2;
@@ -292,8 +306,9 @@ function trimFilesForPrompt(
       rank(a.path) - rank(b.path) ||
       a.path.localeCompare(b.path),
   )) {
-    if (picked.length >= fileLimit) break;
-    const limit = isPromptRelevant(file)
+    if (picked.length >= fileLimit && !pinned.has(file.path)) break;
+    const isPinned = pinned.has(file.path);
+    const limit = isPinned || isPromptRelevant(file)
       ? RELEVANT_FILE_CONTEXT_CHAR_LIMIT
       : LARGE_FILE_CONTEXT_CHAR_LIMIT;
     const content =
@@ -301,7 +316,9 @@ function trimFilesForPrompt(
         ? `${file.content.slice(0, limit)}\n\n/* ...trimmed for context budget... */`
         : file.content;
     const cost = file.path.length + content.length + 32;
-    if (picked.length > 0 && used + cost > charLimit) continue;
+    // Pinned files bypass the soft char budget — they were chosen
+    // explicitly because the model NEEDS to see their bytes.
+    if (!isPinned && picked.length > 0 && used + cost > charLimit) continue;
     picked.push({ path: file.path, content });
     used += cost;
   }
