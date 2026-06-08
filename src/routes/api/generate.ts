@@ -2700,18 +2700,46 @@ Forbidden defaults
           {
             const prevByPath = new Map(currentFiles.map((f) => [f.path, f.content]));
             const nextByPath = new Map(patched.map((f) => [f.path, f.content]));
-            let realChange = false;
+            const changedPaths: string[] = [];
             for (const [p, c] of nextByPath) {
-              if (prevByPath.get(p) !== c) { realChange = true; break; }
+              if (prevByPath.get(p) !== c) changedPaths.push(p);
             }
-            if (!realChange) {
-              for (const p of prevByPath.keys()) {
-                if (!nextByPath.has(p)) { realChange = true; break; }
-              }
+            for (const p of prevByPath.keys()) {
+              if (!nextByPath.has(p)) changedPaths.push(p);
             }
-            if (!realChange) {
+            if (changedPaths.length === 0) {
               const claimed = Array.from(new Set(safeOps.map((o) => o.path))).slice(0, 4).join(", ");
               console.warn(`[generate] no-op patch — ops applied but file contents unchanged (${claimed})`);
+              recorder.record({
+                tier: "apply_ops",
+                outcome: "failed",
+                duration_ms: Date.now() - applyStartedAt,
+                issue_count: 1,
+                details: {
+                  reason: "byte_identical_patch",
+                  total_ops: safeOps.length,
+                  safe_ops: safeOps.length,
+                  applied_ops: initiallyAppliedOps,
+                  failed_ops: initiallyFailedOps,
+                  rewritten_paths: rewrittenPaths,
+                  turn_id: turnId,
+                },
+              });
+              recordEditFailureDiagnostic({
+                turnId,
+                projectId: body.projectId ?? null,
+                userId,
+                model,
+                reason: "byte_identical_patch",
+                isInitial,
+                toolName: collected.name,
+                totalOps: parsed.ops.length,
+                safeOps: safeOps.length,
+                appliedOps: initiallyAppliedOps,
+                failedOps: initiallyFailedOps,
+                rewrittenPaths,
+                affectedPaths: safeOps.map((o) => o.path),
+              });
               emitConversationalFallback(controller, encoder, {
                 files: currentFiles,
                 summary:
@@ -2719,6 +2747,24 @@ Forbidden defaults
               });
               return;
             }
+            recorder.record({
+              tier: "apply_ops",
+              outcome: initiallyFailedOps.length > 0 || rewrittenPaths.length > 0 ? "fixed" : "ok",
+              duration_ms: Date.now() - applyStartedAt,
+              issue_count: initiallyFailedOps.length,
+              details: {
+                reason: initiallyFailedOps.length > 0 ? "partial_apply_recovered" : "applied",
+                total_ops: safeOps.length,
+                safe_ops: safeOps.length,
+                protected_ops: violations.map(opDigest),
+                ast_dropped_ops: astDroppedOps,
+                applied_ops: initiallyAppliedOps,
+                failed_ops: initiallyFailedOps,
+                rewritten_paths: rewrittenPaths,
+                changed_paths: changedPaths.slice(0, 20),
+                turn_id: turnId,
+              },
+            });
           }
 
           // Heal-on-patch: re-apply the canonical scaffold to old saved
