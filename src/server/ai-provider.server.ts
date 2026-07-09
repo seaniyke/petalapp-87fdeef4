@@ -548,23 +548,17 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
  * If the caller passes its own `signal`, we honor BOTH — whichever fires
  * first wins (AbortSignal.any is supported in Workers + Node ≥ 20).
  */
-const DEFAULT_TIMEOUT_MS = 25_000;
+const DEFAULT_TIMEOUT_MS = 45_000;
 /**
- * Hard wall-clock ceiling for streamed turns. This is a safety net for the
- * pathological case where the upstream never responds at all — in normal
- * operation the per-turn idle-timeout watchdog in `relayAndCollect` is what
- * actually catches a wedged provider, and lets in-progress streams that
- * keep emitting bytes run to completion.
- *
- * 120s was killing legitimate edit turns mid-stream (deep-reasoning models
- * with non-trivial file context routinely take 90–150s to finish). Raising
- * this to 240s — same as first build — closes the gap without inflating
- * the recovery window for genuinely hung providers (the idle watchdog
- * cancels those in 75s regardless of this value).
+ * Hard wall-clock ceiling for streamed turns. Deliberately very long — users
+ * would rather wait for a large build to finish than see it cut off mid-file.
+ * The per-turn idle watchdog in `relayAndCollect` is what actually catches
+ * a wedged provider (no bytes for N seconds); this ceiling only fires in the
+ * pathological case where the upstream keeps trickling tokens forever.
  */
-const DEFAULT_STREAM_TIMEOUT_MS = 240_000;
-/** Initial scaffolds get the same ceiling. Kept named for clarity. */
-const FIRST_BUILD_STREAM_TIMEOUT_MS = 240_000;
+const DEFAULT_STREAM_TIMEOUT_MS = 900_000;
+/** Initial scaffolds match the streaming ceiling. */
+const FIRST_BUILD_STREAM_TIMEOUT_MS = 900_000;
 
 function effectiveSignal(
   caller: AbortSignal | undefined,

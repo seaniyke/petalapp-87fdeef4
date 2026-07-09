@@ -36,7 +36,11 @@ export type ThemeKey =
   | "y2k-bubble"
   | "earthy-organic"
   | "noir-mono"
-  | "retro-arcade";
+  | "retro-arcade"
+  | "aperture"
+  | "botanica"
+  | "monolith"
+  | "bloom";
 
 export interface ThemeSpec {
   /** Internal name. NEVER surfaced to the user. */
@@ -594,6 +598,106 @@ export const THEMES: Record<ThemeKey, ThemeSpec> = {
       "--radius": "0.25rem",
     },
   },
+  aperture: {
+    key: "aperture",
+    description: "Editorial gallery — off-white canvas, sharp charcoal type, a single amber highlight.",
+    fitsWhen: "photography, cinema, gallery, portfolio, art direction, studio, exhibition",
+    display_font: "Instrument Serif",
+    body_font: "Inter",
+    tokens: {
+      "--background": "oklch(0.97 0.005 90)",
+      "--foreground": "oklch(0.16 0.008 60)",
+      "--card": "oklch(0.99 0.004 90)",
+      "--card-foreground": "oklch(0.16 0.008 60)",
+      "--primary": "oklch(0.2 0.01 60)",
+      "--primary-foreground": "oklch(0.97 0.005 90)",
+      "--secondary": "oklch(0.93 0.008 80)",
+      "--secondary-foreground": "oklch(0.2 0.01 60)",
+      "--muted": "oklch(0.93 0.006 80)",
+      "--muted-foreground": "oklch(0.45 0.008 60)",
+      "--accent": "oklch(0.72 0.15 65)",
+      "--accent-foreground": "oklch(0.16 0.008 60)",
+      "--border": "oklch(0.88 0.006 80)",
+      "--input": "oklch(0.92 0.006 80)",
+      "--ring": "oklch(0.72 0.15 65)",
+      "--radius": "0.25rem",
+    },
+  },
+  botanica: {
+    key: "botanica",
+    description: "Botanical, soft-organic — sage foliage, warm cream, terracotta accent.",
+    fitsWhen: "florist, wellness, skincare, natural beauty, boutique, retreat, tea, apothecary",
+    display_font: "Cormorant Garamond",
+    body_font: "Nunito Sans",
+    tokens: {
+      "--background": "oklch(0.97 0.012 95)",
+      "--foreground": "oklch(0.24 0.03 140)",
+      "--card": "oklch(0.99 0.008 95)",
+      "--card-foreground": "oklch(0.24 0.03 140)",
+      "--primary": "oklch(0.45 0.08 145)",
+      "--primary-foreground": "oklch(0.98 0.012 95)",
+      "--secondary": "oklch(0.93 0.02 95)",
+      "--secondary-foreground": "oklch(0.28 0.04 140)",
+      "--muted": "oklch(0.93 0.015 95)",
+      "--muted-foreground": "oklch(0.48 0.03 140)",
+      "--accent": "oklch(0.62 0.14 45)",
+      "--accent-foreground": "oklch(0.98 0.012 95)",
+      "--border": "oklch(0.88 0.018 100)",
+      "--input": "oklch(0.92 0.018 100)",
+      "--ring": "oklch(0.45 0.08 145)",
+      "--radius": "0.75rem",
+    },
+  },
+  monolith: {
+    key: "monolith",
+    description: "Architectural brutalism — near-black canvas, oversized display type, one hot accent.",
+    fitsWhen: "architecture, agency, studio, industrial, construction, engineering, manifesto, portfolio",
+    display_font: "Space Grotesk",
+    body_font: "Inter",
+    tokens: {
+      "--background": "oklch(0.12 0.005 260)",
+      "--foreground": "oklch(0.96 0.005 260)",
+      "--card": "oklch(0.16 0.006 260)",
+      "--card-foreground": "oklch(0.96 0.005 260)",
+      "--primary": "oklch(0.96 0.005 260)",
+      "--primary-foreground": "oklch(0.12 0.005 260)",
+      "--secondary": "oklch(0.2 0.006 260)",
+      "--secondary-foreground": "oklch(0.9 0.005 260)",
+      "--muted": "oklch(0.2 0.006 260)",
+      "--muted-foreground": "oklch(0.65 0.008 260)",
+      "--accent": "oklch(0.68 0.22 25)",
+      "--accent-foreground": "oklch(0.12 0.005 260)",
+      "--border": "oklch(0.25 0.008 260)",
+      "--input": "oklch(0.22 0.008 260)",
+      "--ring": "oklch(0.68 0.22 25)",
+      "--radius": "0rem",
+    },
+  },
+  bloom: {
+    key: "bloom",
+    description: "Playful, joyful — coral primary, peach neutrals, rounded everything.",
+    fitsWhen: "family, kids, community, dating, celebration, event, greeting, gifting, creator",
+    display_font: "Fraunces",
+    body_font: "DM Sans",
+    tokens: {
+      "--background": "oklch(0.98 0.012 30)",
+      "--foreground": "oklch(0.22 0.03 20)",
+      "--card": "oklch(1 0.006 30)",
+      "--card-foreground": "oklch(0.22 0.03 20)",
+      "--primary": "oklch(0.68 0.18 25)",
+      "--primary-foreground": "oklch(0.99 0.008 30)",
+      "--secondary": "oklch(0.94 0.03 40)",
+      "--secondary-foreground": "oklch(0.26 0.04 20)",
+      "--muted": "oklch(0.94 0.02 35)",
+      "--muted-foreground": "oklch(0.48 0.04 20)",
+      "--accent": "oklch(0.75 0.16 320)",
+      "--accent-foreground": "oklch(0.22 0.03 20)",
+      "--border": "oklch(0.9 0.02 35)",
+      "--input": "oklch(0.93 0.02 35)",
+      "--ring": "oklch(0.68 0.18 25)",
+      "--radius": "1rem",
+    },
+  },
 };
 
 /** Render the theme catalog so the Design Director can pick one. */
@@ -630,6 +734,7 @@ export function pickThemeForBrief(brief: string): ThemeKey {
     "paper-craft": 0, "luxury-gold": 0, "kids-playful": 0, "medical-clean": 0,
     "vibrant-gradient": 0, "y2k-bubble": 0, "earthy-organic": 0,
     "noir-mono": 0, "retro-arcade": 0,
+    aperture: 0, botanica: 0, monolith: 0, bloom: 0,
   };
   const bumps: Array<[ThemeKey, RegExp[]]> = [
     ["editorial", [/blog|essay|magazine|journal|portfolio|writer|book|publication|newsletter|reader/]],
@@ -651,8 +756,12 @@ export function pickThemeForBrief(brief: string): ThemeKey {
     ["vibrant-gradient", [/ai (app|tool|generator)|image generator|prompt|generative|creator tool|music app|midjourney|runway|suno/]],
     ["y2k-bubble", [/y2k|bubblegum|early 2000s|2000s|fan site|stan|k.?pop|cute social|aesthetic app/]],
     ["earthy-organic", [/wellness|skincare|sustainab|eco|organic|herbal|yoga|plant|botanical|slow living|farm to table/]],
-    ["noir-mono", [/photography|photographer|fashion|streetwear|agency|film studio|art gallery|noir|monochrome/]],
+    ["noir-mono", [/photography|photographer|fashion|streetwear|film studio|noir|monochrome/]],
     ["retro-arcade", [/arcade|retro game|pixel|8.?bit|16.?bit|game jam|hackathon|game studio|indie game/]],
+    ["aperture", [/gallery|exhibition|cinema|film maker|filmmaker|studio\s+(portfolio|site)|art direction|photo\s+studio/]],
+    ["botanica", [/florist|flowers?\s+shop|botanic|apothecary|tea shop|natural|herbal|retreat|spa/]],
+    ["monolith", [/architecture|architect|engineering firm|construction|industrial|manifesto|agency\s+(site|studio)/]],
+    ["bloom", [/family|community|celebration|birthday|event site|greeting|gifting|dating app|creator hub/]],
   ];
   for (const [k, regs] of bumps) for (const r of regs) if (r.test(b)) score[k] += 2;
   let best: ThemeKey = "saas-cool";
