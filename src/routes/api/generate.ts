@@ -29,6 +29,7 @@ import {
   renderResolvedIntegrationsBlock,
 } from "@/server/integrations/doc-resolver.server";
 import { resolveFromUserPaste } from "@/server/integrations/user-paste-resolver.server";
+import { fetchGroundingPages, renderGroundingBlock } from "@/server/web-grounding.server";
 import { detectIntegrationRequests } from "@/lib/integration-request-intent";
 import { validateStylesCss } from "@/server/validate-styles.server";
 import { verifyFileLocal } from "@/server/local-verifier";
@@ -1603,6 +1604,15 @@ Forbidden defaults
     ),
   ];
   const resolvedBlock = renderResolvedIntegrationsBlock(resolvedBriefs);
+
+  // Layer K — Web grounding. If the user pointed at a URL and asked to
+  // clone / recreate / build from / grab copy from it, fetch the page(s)
+  // and inject their text as grounding so the model writes real copy
+  // instead of hallucinating. Failure-tolerant and bounded (2 URLs max,
+  // 6s timeout each) — never blocks a turn.
+  const groundingPages = await fetchGroundingPages(resolverText).catch(() => []);
+  const groundingBlock = renderGroundingBlock(groundingPages);
+
 
   // Project Knowledge: small piece of context the owner attached to the
   // project ("always use a pastel palette", etc.). Prepended on every turn.
