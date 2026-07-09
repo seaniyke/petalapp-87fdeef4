@@ -2002,6 +2002,7 @@ Forbidden defaults
     dateBlock +
     suggestionsBlock +
     resolvedBlock +
+    groundingBlock +
     (approvedPlan ? renderApprovedPlanBlock(approvedPlan) : "") +
     dynamic.text +
     learningBlock +
