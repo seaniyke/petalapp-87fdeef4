@@ -36,7 +36,11 @@ export type ThemeKey =
   | "y2k-bubble"
   | "earthy-organic"
   | "noir-mono"
-  | "retro-arcade";
+  | "retro-arcade"
+  | "aperture"
+  | "botanica"
+  | "monolith"
+  | "bloom";
 
 export interface ThemeSpec {
   /** Internal name. NEVER surfaced to the user. */
