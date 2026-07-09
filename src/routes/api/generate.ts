@@ -496,11 +496,12 @@ function isTruncatedFinishReason(reason: string | null | undefined): boolean {
  *  along with any `usage` payload the gateway emitted. */
 /**
  * Idle-timeout watchdog (ms). If the upstream stream stops producing bytes
- * for this long, we cancel the read and surface an upstream_timeout. This
- * is the real liveness check for streamed turns — wall-clock timeouts in
- * `aiChatCompletions` are just the last-resort safety net.
+ * for this long, we cancel the read and surface an upstream_timeout. Bumped
+ * high so long deep-reasoning turns aren't killed while the model is
+ * thinking between file emits — the real signal of a wedged provider is
+ * "nothing for several minutes", not "nothing for 75s".
  */
-const STREAM_IDLE_TIMEOUT_MS = 75_000;
+const STREAM_IDLE_TIMEOUT_MS = 300_000;
 
 async function relayAndCollect(
   upstream: Response,

@@ -94,6 +94,70 @@ export const THEME_PRESETS: ThemePreset[] = [
     fonts: { display: "Cormorant Garamond", body: "Inter" },
     prompt:
       "Re-theme with an earthy-organic palette: oat background (#EFE8D8), moss primary (#5A6B3B), clay accent (#A65A36). Cormorant Garamond for display, Inter for body. Natural, considered, sustainable-brand feel — no neon, no harsh shadows. Same functionality.",
+  {
+    slug: "aperture",
+    name: "Aperture",
+    vibe: "Editorial gallery — off-white canvas, sharp charcoal type, a single amber highlight.",
+    palette: [
+      { name: "Canvas", sample: "#F6F4EF" },
+      { name: "Charcoal", sample: "#1A1815" },
+      { name: "Amber", sample: "#D89A3B" },
+    ],
+    fonts: { display: "Instrument Serif", body: "Inter" },
+    prompt:
+      "Re-theme this project as 'Aperture' — an editorial-gallery aesthetic. Off-white canvas (#F6F4EF), sharp charcoal (#1A1815) type, a single amber highlight (#D89A3B). Instrument Serif for display headings, Inter for body. Generous whitespace, thin rules, image-forward asymmetric grids. Sharp corners. Functionality unchanged.",
+  },
+  {
+    slug: "botanica",
+    name: "Botanica",
+    vibe: "Soft-organic — sage foliage, warm cream, terracotta accent.",
+    palette: [
+      { name: "Cream", sample: "#F5F0E4" },
+      { name: "Sage", sample: "#6B7B4B" },
+      { name: "Terracotta", sample: "#C57845" },
+    ],
+    fonts: { display: "Cormorant Garamond", body: "Nunito Sans" },
+    prompt:
+      "Re-theme this project as 'Botanica' — a botanical, soft-organic aesthetic. Warm cream background (#F5F0E4), sage primary (#6B7B4B), terracotta accent (#C57845). Cormorant Garamond for display, Nunito Sans for body. Rounded corners, generous negative space, organic curves. Functionality unchanged.",
+  },
+  {
+    slug: "monolith",
+    name: "Monolith",
+    vibe: "Architectural brutalism — near-black canvas, oversized display type, one hot accent.",
+    palette: [
+      { name: "Ink", sample: "#0E0F14" },
+      { name: "Bone", sample: "#F2F1EE" },
+      { name: "Signal", sample: "#F2542D" },
+    ],
+    fonts: { display: "Space Grotesk", body: "Inter" },
+    prompt:
+      "Re-theme this project as 'Monolith' — architectural brutalism. Near-black background (#0E0F14), bone foreground (#F2F1EE), one signal-orange accent (#F2542D). Oversized Space Grotesk display headings (tracking-tight), Inter body. Zero border-radius, thick 1–2px borders, no shadows. Functionality unchanged.",
+  },
+  {
+    slug: "noir",
+    name: "Noir",
+    vibe: "Cinematic monochrome — pure black canvas, chalk-white type, minimal chrome.",
+    palette: [
+      { name: "Void", sample: "#050505" },
+      { name: "Chalk", sample: "#EFEFEF" },
+      { name: "Blood", sample: "#B9243B" },
+    ],
+    fonts: { display: "Playfair Display", body: "Inter" },
+    prompt:
+      "Re-theme this project as 'Noir' — cinematic monochrome. Near-black background (#050505), chalk-white (#EFEFEF) type, deep blood-red (#B9243B) accent used sparingly. Playfair Display for headings, Inter for body. High contrast, film-still feel, minimal chrome, generous letterspacing on labels. Functionality unchanged.",
+  },
+  {
+    slug: "bloom",
+    name: "Bloom",
+    vibe: "Playful and joyful — coral primary, peach neutrals, rounded everything.",
+    palette: [
+      { name: "Peach", sample: "#FFF3EB" },
+      { name: "Coral", sample: "#F27059" },
+      { name: "Petal", sample: "#EA8BD3" },
+    ],
+    fonts: { display: "Fraunces", body: "DM Sans" },
+    prompt:
+      "Re-theme this project as 'Bloom' — a playful, joyful aesthetic. Peach background (#FFF3EB), coral primary (#F27059), pink petal accent (#EA8BD3). Fraunces for display headings, DM Sans for body. Rounded-2xl everywhere, soft shadows, cheerful micro-decorations. Functionality unchanged.",
   },
 ];
 

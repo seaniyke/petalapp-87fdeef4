@@ -47,11 +47,11 @@ export const TARGET_INITIAL_FILES = 6;
 // ────────────────────────────────────────────────────────────────────────
 
 /** Structured-retry attempts after a tool-call parse failure. */
-export const MAX_STRUCTURED_RETRIES = 1;
+export const MAX_STRUCTURED_RETRIES = 2;
 
-/** Post-stream autofix rounds. Currently capped at 1; bumping requires the
- *  agent-loop tools to be in place so the verifier-fix cycle has read access. */
-export const MAX_AUTOFIX_ROUNDS = 1;
+/** Post-stream autofix rounds. Bumped so the verifier–fix cycle can converge
+ *  on complex builds without giving up early. */
+export const MAX_AUTOFIX_ROUNDS = 2;
 
 /** Agent-loop (labs) — max tool calls per turn. Each cycle is billed. */
 export const AGENT_LOOP_MAX_STEPS = 12;
@@ -64,13 +64,16 @@ export const AGENT_LOOP_MAX_TOKENS = 200_000;
 // ────────────────────────────────────────────────────────────────────────
 
 /** Non-streaming JSON calls (triage, classify, plan, memory). */
-export const TIMEOUT_DEFAULT_MS = 25_000;
+export const TIMEOUT_DEFAULT_MS = 45_000;
 
-/** Streaming generate/discuss turns. */
-export const TIMEOUT_STREAM_MS = 120_000;
+/** Streaming generate/discuss turns. Users can wait; never cut a live stream
+ *  short on the wall clock — the idle watchdog in generate.ts is the real
+ *  liveness check. */
+export const TIMEOUT_STREAM_MS = 900_000;
 
-/** Initial-build streams — multi-file scaffolds need more headroom. */
-export const TIMEOUT_STREAM_FIRST_BUILD_MS = 240_000;
+/** Initial-build streams — multi-file scaffolds may take many minutes on
+ *  large asks. Matches TIMEOUT_STREAM_MS. */
+export const TIMEOUT_STREAM_FIRST_BUILD_MS = 900_000;
 
 // ────────────────────────────────────────────────────────────────────────
 // Credit gates

@@ -573,7 +573,9 @@ These rules apply to EVERY visual file you write this turn. Violating any of the
 
 9. Accessibility floor. Every \`<img>\` and \`<Image>\` gets a meaningful \`alt=\`. Every interactive element gets visible focus (shadcn primitives already include \`focus-visible:ring-2\`). Buttons that show only an icon get an \`aria-label\`. Color contrast: minimum 4.5:1 for body text — semantic tokens already satisfy this when used as designed.
 
-10. Forbidden AI defaults. Do NOT ship: centered hero with three identical feature cards as the only layout, generic stock-photo placeholders ("photo of person smiling at laptop"), \`text-white bg-black\` "dark sections" in the middle of a light page, purple-pink gradients, "Lorem ipsum", placeholder logos rendered as gray rectangles in a row, "© 2024" footers. Replace any of these with the kit's actual blocks and the project's design tokens.`,
+10. Forbidden AI defaults. Do NOT ship: centered hero with three identical feature cards as the only layout, generic stock-photo placeholders ("photo of person smiling at laptop"), \`text-white bg-black\` "dark sections" in the middle of a light page, purple-pink gradients, "Lorem ipsum", placeholder logos rendered as gray rectangles in a row, "© 2024" footers. Replace any of these with the kit's actual blocks and the project's design tokens.
+
+11. Readable small text. Landing-page copy MUST NOT use \`text-xs\` (12px). The floor is \`text-sm\` (14px) for captions, badges, meta labels, footer links, and legal copy; body paragraphs stay at \`text-base\` (16px) or larger; lead paragraphs use \`text-lg md:text-xl\`. Use \`leading-relaxed\` on any paragraph over one line. On mobile, section eyebrow labels (\`text-sm font-medium tracking-wide uppercase\`) are the smallest text allowed above the fold. If you catch yourself reaching for \`text-xs\`, upgrade it — small type is the single biggest tell of an AI-drafted landing page.`,
   },
 };
 
