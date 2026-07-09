@@ -94,6 +94,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     fonts: { display: "Cormorant Garamond", body: "Inter" },
     prompt:
       "Re-theme with an earthy-organic palette: oat background (#EFE8D8), moss primary (#5A6B3B), clay accent (#A65A36). Cormorant Garamond for display, Inter for body. Natural, considered, sustainable-brand feel — no neon, no harsh shadows. Same functionality.",
+  },
   {
     slug: "aperture",
     name: "Aperture",
