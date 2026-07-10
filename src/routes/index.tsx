@@ -1107,6 +1107,83 @@ function Landing() {
         </div>
       </section>
 
+      {/* Social proof — early builders */}
+      <section id="testimonials" className="px-4 py-16 sm:px-6 sm:py-24">
+        <div className="mx-auto max-w-6xl">
+          <div className="max-w-2xl">
+            <p className="text-sm font-medium uppercase tracking-wider text-primary">Early access</p>
+            <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">
+              Real people. Real apps. Shipped this week.
+            </h2>
+            <p className="mt-4 text-base text-muted-foreground sm:text-lg">
+              Petal is in early access. Here's what the first wave of
+              builders — founders, designers, and non-coders — are saying.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-5 md:grid-cols-3">
+            {[
+              {
+                initials: "AO",
+                name: "Ada O.",
+                role: "Founder, early access",
+                quote:
+                  "I described a booking app in one sentence. Ten minutes later I had a live URL I could send my first customer.",
+                tint: "bg-coral/30",
+              },
+              {
+                initials: "SM",
+                name: "Samuel M.",
+                role: "Product designer",
+                quote:
+                  "Told Petal to build a mobile app. It shipped an Expo project I could QR-scan on my phone. No Xcode, no fighting with Android Studio.",
+                tint: "bg-mint",
+              },
+              {
+                initials: "KA",
+                name: "Kemi A.",
+                role: "Non-technical solo builder",
+                quote:
+                  "I'd tried three other AI builders. Petal is the first one that actually finished the project — landing page, auth, database, the whole thing.",
+                tint: "bg-butter",
+              },
+            ].map((t) => (
+              <figure
+                key={t.name}
+                className="flex h-full flex-col justify-between rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]"
+              >
+                <blockquote className="text-base leading-relaxed text-foreground">
+                  &ldquo;{t.quote}&rdquo;
+                </blockquote>
+                <figcaption className="mt-6 flex items-center gap-3">
+                  <span
+                    className={`grid h-10 w-10 place-items-center rounded-full ${t.tint} text-sm font-semibold`}
+                  >
+                    {t.initials}
+                  </span>
+                  <div className="text-sm">
+                    <div className="font-medium">{t.name}</div>
+                    <div className="text-xs text-muted-foreground">{t.role}</div>
+                  </div>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Web, mobile, backend & extensions
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Live web research built in
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Publish free on <span className="font-medium text-foreground">buildwithpetal.com</span>
+            </span>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="px-4 pb-16 sm:px-6 sm:pb-24">
         <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-border bg-card p-6 text-center shadow-[var(--shadow-soft)] sm:p-12">
