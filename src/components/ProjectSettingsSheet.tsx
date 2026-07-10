@@ -483,7 +483,7 @@ function PetalBadgeSection({
   return (
     <div className="mt-8 border-t border-border pt-6">
       <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
-        <Sparkles className="h-4 w-4" /> Powered by Petal badge
+        <Sparkles className="h-4 w-4" /> Built with Petal badge
       </h3>
       <p className="mb-3 text-xs text-muted-foreground">
         A small floating badge appears in the bottom-right of your built app.
@@ -512,7 +512,7 @@ function PetalBadgeSection({
           checked={!hidden}
           disabled={!isPaidPlan || saving || walletLoading}
           onCheckedChange={(checked) => toggle(!checked)}
-          aria-label="Show Powered by Petal badge"
+          aria-label="Show Built with Petal badge"
         />
       </div>
     </div>
