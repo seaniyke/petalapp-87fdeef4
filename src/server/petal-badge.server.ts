@@ -32,7 +32,7 @@ const PETAL_BADGE_HTML = `
     a.href = 'https://buildwithpetal.com?utm_source=petal_badge';
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
-    a.setAttribute('aria-label', 'Powered by Petal');
+    a.setAttribute('aria-label', 'Built with Petal');
     a.style.cssText = [
       'position:fixed','right:14px','bottom:14px','z-index:2147483646',
       'display:inline-flex','align-items:center','gap:6px',
@@ -49,7 +49,7 @@ const PETAL_BADGE_HTML = `
     dot.setAttribute('aria-hidden','true');
     dot.style.cssText = 'display:inline-block;width:14px;height:14px;border-radius:999px;background:linear-gradient(135deg,#ff6ea8,#ffb86c);box-shadow:0 0 0 2px rgba(255,255,255,0.12) inset;';
     var label = document.createElement('span');
-    label.innerHTML = 'Powered by <strong style="font-weight:600">Petal</strong>';
+    label.innerHTML = 'Built with <strong style="font-weight:600">Petal</strong>';
     a.appendChild(dot); a.appendChild(label);
     a.addEventListener('mouseenter', function(){ a.style.opacity='1'; a.style.transform='translateY(-1px)'; });
     a.addEventListener('mouseleave', function(){ a.style.opacity='0.92'; a.style.transform='none'; });
