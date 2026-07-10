@@ -911,10 +911,11 @@ function Landing() {
                 Mobile apps without the Mac.
               </h2>
               <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-                Pick "Build a mobile app" and Petal scaffolds an Expo project
-                that ships to iOS and Android from a single codebase. Preview
-                in an iPhone or Android frame, scan a QR to test on your phone,
-                then download a signed build — no Xcode, no Android Studio.
+                Tell Petal you want a mobile app and it scaffolds an Expo
+                project that ships to iOS and Android from a single codebase.
+                Preview in an iPhone or Android frame, scan a QR to test on
+                your phone, then download a signed build — no Xcode, no
+                Android Studio.
               </p>
               <ul className="mt-6 space-y-3 text-sm">
                 <li className="flex items-start gap-3">
@@ -995,9 +996,9 @@ function Landing() {
             <p className="text-sm font-medium uppercase tracking-wider text-primary">Why Petal</p>
             <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">One chat. Four targets. Real software.</h2>
             <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-              Petal is a creative tool, not a code editor. Pick what you're
-              building — web app, mobile app, backend, or Chrome extension —
-              and describe it. Petal writes the right stack, runs a live
+              Petal is a creative tool, not a code editor. Tell Petal what to
+              build — a web app, mobile app, backend, or Chrome extension —
+              in one sentence. Petal picks the right stack, runs a live
               preview, and ships it.
             </p>
           </div>
@@ -1065,9 +1066,9 @@ function Landing() {
               <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">From idea to shipped, in three steps.</h2>
               <ol className="mt-8 space-y-6">
                 {[
-                  { n: "01", t: "Pick what you're building", d: "Web app, mobile app, backend, or Chrome extension — one click under the composer." },
-                  { n: "02", t: "Describe it in a sentence", d: "Petal scaffolds the right stack and runs a live preview in the matching frame." },
-                  { n: "03", t: "Refine, then ship", d: "Chat to iterate, edit by hand if you want, then publish a URL or download a build." },
+                  { n: "01", t: "Tell Petal what to build", d: "One sentence in plain English — a web app, mobile app, backend, or Chrome extension. No setup, no boilerplate." },
+                  { n: "02", t: "Watch it come to life", d: "Petal researches, plans, writes the code, and streams a live preview in the matching frame while it works." },
+                  { n: "03", t: "Refine, then ship", d: "Chat to iterate, edit by hand if you want, then publish a URL, wire a custom domain, or download a signed mobile build." },
                 ].map((s) => (
                   <li key={s.n} className="flex gap-5">
                     <span className="font-display text-3xl text-primary">{s.n}</span>
