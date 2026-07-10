@@ -16,8 +16,10 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PacksRouteImport } from './routes/packs'
+import { Route as InvestRouteImport } from './routes/invest'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as DocsRouteImport } from './routes/docs'
+import { Route as CoffeeRouteImport } from './routes/coffee'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -26,6 +28,7 @@ import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as PacksSlugRouteImport } from './routes/packs.$slug'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as CoffeeThanksRouteImport } from './routes/coffee.thanks'
 import { Route as BillingReturnRouteImport } from './routes/billing.return'
 import { Route as ApiVisitorsRouteImport } from './routes/api/visitors'
 import { Route as ApiTriageRouteImport } from './routes/api/triage'
@@ -59,6 +62,7 @@ import { Route as ApiRegistrarPollRouteImport } from './routes/api/registrar/pol
 import { Route as ApiPublicTrackRuntimeErrorRouteImport } from './routes/api/public/track-runtime-error'
 import { Route as ApiPublicTrackFailureRouteImport } from './routes/api/public/track-failure'
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
+import { Route as ApiPublicInvestRouteImport } from './routes/api/public/invest'
 import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
 import { Route as ApiInternalHealthRouteImport } from './routes/api/internal/health'
@@ -86,6 +90,8 @@ import { Route as ApiPublicCronSubscriptionRenewalReminderRouteImport } from './
 import { Route as ApiPublicCronSelfLearningDigestRouteImport } from './routes/api/public/cron/self-learning-digest'
 import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/api/public/cron/runtime-backend-hour'
 import { Route as ApiPublicCronMobileCertExpiryRouteImport } from './routes/api/public/cron/mobile-cert-expiry'
+import { Route as ApiPublicCoffeeVerifyRouteImport } from './routes/api/public/coffee/verify'
+import { Route as ApiPublicCoffeeInitializeRouteImport } from './routes/api/public/coffee/initialize'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
 import { Route as ApiBillingSubscriptionStatusRouteImport } from './routes/api/billing/subscription/status'
 import { Route as ApiBillingSubscriptionManageLinkRouteImport } from './routes/api/billing/subscription/manage-link'
@@ -126,6 +132,11 @@ const PacksRoute = PacksRouteImport.update({
   path: '/packs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InvestRoute = InvestRouteImport.update({
+  id: '/invest',
+  path: '/invest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GalleryRoute = GalleryRouteImport.update({
   id: '/gallery',
   path: '/gallery',
@@ -134,6 +145,11 @@ const GalleryRoute = GalleryRouteImport.update({
 const DocsRoute = DocsRouteImport.update({
   id: '/docs',
   path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CoffeeRoute = CoffeeRouteImport.update({
+  id: '/coffee',
+  path: '/coffee',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuilderRoute = BuilderRouteImport.update({
@@ -175,6 +191,11 @@ const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
   path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
+} as any)
+const CoffeeThanksRoute = CoffeeThanksRouteImport.update({
+  id: '/thanks',
+  path: '/thanks',
+  getParentRoute: () => CoffeeRoute,
 } as any)
 const BillingReturnRoute = BillingReturnRouteImport.update({
   id: '/billing/return',
@@ -342,6 +363,11 @@ const ApiPublicTrackRoute = ApiPublicTrackRouteImport.update({
   path: '/api/public/track',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicInvestRoute = ApiPublicInvestRouteImport.update({
+  id: '/api/public/invest',
+  path: '/api/public/invest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHostLookupRoute = ApiPublicHostLookupRouteImport.update({
   id: '/api/public/host-lookup',
   path: '/api/public/host-lookup',
@@ -486,6 +512,17 @@ const ApiPublicCronMobileCertExpiryRoute =
     path: '/api/public/cron/mobile-cert-expiry',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCoffeeVerifyRoute = ApiPublicCoffeeVerifyRouteImport.update({
+  id: '/api/public/coffee/verify',
+  path: '/api/public/coffee/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCoffeeInitializeRoute =
+  ApiPublicCoffeeInitializeRouteImport.update({
+    id: '/api/public/coffee/initialize',
+    path: '/api/public/coffee/initialize',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicBuildsCallbackRoute = ApiPublicBuildsCallbackRouteImport.update({
   id: '/api/public/builds/callback',
   path: '/api/public/builds/callback',
@@ -514,8 +551,10 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/coffee': typeof CoffeeRouteWithChildren
   '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
+  '/invest': typeof InvestRoute
   '/packs': typeof PacksRouteWithChildren
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
@@ -549,6 +588,7 @@ export interface FileRoutesByFullPath {
   '/api/triage': typeof ApiTriageRoute
   '/api/visitors': typeof ApiVisitorsRoute
   '/billing/return': typeof BillingReturnRoute
+  '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
@@ -567,6 +607,7 @@ export interface FileRoutesByFullPath {
   '/api/internal/health': typeof ApiInternalHealthRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
+  '/api/public/invest': typeof ApiPublicInvestRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
@@ -578,6 +619,8 @@ export interface FileRoutesByFullPath {
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
+  '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
@@ -597,8 +640,10 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/coffee': typeof CoffeeRouteWithChildren
   '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
+  '/invest': typeof InvestRoute
   '/packs': typeof PacksRouteWithChildren
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
@@ -632,6 +677,7 @@ export interface FileRoutesByTo {
   '/api/triage': typeof ApiTriageRoute
   '/api/visitors': typeof ApiVisitorsRoute
   '/billing/return': typeof BillingReturnRoute
+  '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
@@ -650,6 +696,7 @@ export interface FileRoutesByTo {
   '/api/internal/health': typeof ApiInternalHealthRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
+  '/api/public/invest': typeof ApiPublicInvestRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
@@ -661,6 +708,8 @@ export interface FileRoutesByTo {
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
+  '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
@@ -681,8 +730,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/coffee': typeof CoffeeRouteWithChildren
   '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
+  '/invest': typeof InvestRoute
   '/packs': typeof PacksRouteWithChildren
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
@@ -716,6 +767,7 @@ export interface FileRoutesById {
   '/api/triage': typeof ApiTriageRoute
   '/api/visitors': typeof ApiVisitorsRoute
   '/billing/return': typeof BillingReturnRoute
+  '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
@@ -734,6 +786,7 @@ export interface FileRoutesById {
   '/api/internal/health': typeof ApiInternalHealthRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
+  '/api/public/invest': typeof ApiPublicInvestRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
@@ -745,6 +798,8 @@ export interface FileRoutesById {
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
+  '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
@@ -766,8 +821,10 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/builder'
+    | '/coffee'
     | '/docs'
     | '/gallery'
+    | '/invest'
     | '/packs'
     | '/profile'
     | '/projects'
@@ -801,6 +858,7 @@ export interface FileRouteTypes {
     | '/api/triage'
     | '/api/visitors'
     | '/billing/return'
+    | '/coffee/thanks'
     | '/email/unsubscribe'
     | '/p/$slug'
     | '/packs/$slug'
@@ -819,6 +877,7 @@ export interface FileRouteTypes {
     | '/api/internal/health'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
+    | '/api/public/invest'
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
@@ -830,6 +889,8 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
+    | '/api/public/coffee/initialize'
+    | '/api/public/coffee/verify'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
@@ -849,8 +910,10 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/builder'
+    | '/coffee'
     | '/docs'
     | '/gallery'
+    | '/invest'
     | '/packs'
     | '/profile'
     | '/projects'
@@ -884,6 +947,7 @@ export interface FileRouteTypes {
     | '/api/triage'
     | '/api/visitors'
     | '/billing/return'
+    | '/coffee/thanks'
     | '/email/unsubscribe'
     | '/p/$slug'
     | '/packs/$slug'
@@ -902,6 +966,7 @@ export interface FileRouteTypes {
     | '/api/internal/health'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
+    | '/api/public/invest'
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
@@ -913,6 +978,8 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
+    | '/api/public/coffee/initialize'
+    | '/api/public/coffee/verify'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
@@ -932,8 +999,10 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/builder'
+    | '/coffee'
     | '/docs'
     | '/gallery'
+    | '/invest'
     | '/packs'
     | '/profile'
     | '/projects'
@@ -967,6 +1036,7 @@ export interface FileRouteTypes {
     | '/api/triage'
     | '/api/visitors'
     | '/billing/return'
+    | '/coffee/thanks'
     | '/email/unsubscribe'
     | '/p/$slug'
     | '/packs/$slug'
@@ -985,6 +1055,7 @@ export interface FileRouteTypes {
     | '/api/internal/health'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
+    | '/api/public/invest'
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
@@ -996,6 +1067,8 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
+    | '/api/public/coffee/initialize'
+    | '/api/public/coffee/verify'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
@@ -1016,8 +1089,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   BuilderRoute: typeof BuilderRoute
+  CoffeeRoute: typeof CoffeeRouteWithChildren
   DocsRoute: typeof DocsRoute
   GalleryRoute: typeof GalleryRoute
+  InvestRoute: typeof InvestRoute
   PacksRoute: typeof PacksRouteWithChildren
   ProfileRoute: typeof ProfileRoute
   ProjectsRoute: typeof ProjectsRoute
@@ -1067,6 +1142,7 @@ export interface RootRouteChildren {
   ApiInternalHealthRoute: typeof ApiInternalHealthRoute
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
   ApiPublicHostLookupRoute: typeof ApiPublicHostLookupRoute
+  ApiPublicInvestRoute: typeof ApiPublicInvestRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
   ApiPublicTrackFailureRoute: typeof ApiPublicTrackFailureRoute
   ApiPublicTrackRuntimeErrorRoute: typeof ApiPublicTrackRuntimeErrorRoute
@@ -1078,6 +1154,8 @@ export interface RootRouteChildren {
   ApiBillingSubscriptionManageLinkRoute: typeof ApiBillingSubscriptionManageLinkRoute
   ApiBillingSubscriptionStatusRoute: typeof ApiBillingSubscriptionStatusRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
+  ApiPublicCoffeeInitializeRoute: typeof ApiPublicCoffeeInitializeRoute
+  ApiPublicCoffeeVerifyRoute: typeof ApiPublicCoffeeVerifyRoute
   ApiPublicCronMobileCertExpiryRoute: typeof ApiPublicCronMobileCertExpiryRoute
   ApiPublicCronRuntimeBackendHourRoute: typeof ApiPublicCronRuntimeBackendHourRoute
   ApiPublicCronSelfLearningDigestRoute: typeof ApiPublicCronSelfLearningDigestRoute
@@ -1145,6 +1223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PacksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invest': {
+      id: '/invest'
+      path: '/invest'
+      fullPath: '/invest'
+      preLoaderRoute: typeof InvestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/gallery': {
       id: '/gallery'
       path: '/gallery'
@@ -1157,6 +1242,13 @@ declare module '@tanstack/react-router' {
       path: '/docs'
       fullPath: '/docs'
       preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coffee': {
+      id: '/coffee'
+      path: '/coffee'
+      fullPath: '/coffee'
+      preLoaderRoute: typeof CoffeeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/builder': {
@@ -1214,6 +1306,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/email/unsubscribe'
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/coffee/thanks': {
+      id: '/coffee/thanks'
+      path: '/thanks'
+      fullPath: '/coffee/thanks'
+      preLoaderRoute: typeof CoffeeThanksRouteImport
+      parentRoute: typeof CoffeeRoute
     }
     '/billing/return': {
       id: '/billing/return'
@@ -1446,6 +1545,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTrackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/invest': {
+      id: '/api/public/invest'
+      path: '/api/public/invest'
+      fullPath: '/api/public/invest'
+      preLoaderRoute: typeof ApiPublicInvestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/host-lookup': {
       id: '/api/public/host-lookup'
       path: '/api/public/host-lookup'
@@ -1635,6 +1741,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronMobileCertExpiryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/coffee/verify': {
+      id: '/api/public/coffee/verify'
+      path: '/api/public/coffee/verify'
+      fullPath: '/api/public/coffee/verify'
+      preLoaderRoute: typeof ApiPublicCoffeeVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/coffee/initialize': {
+      id: '/api/public/coffee/initialize'
+      path: '/api/public/coffee/initialize'
+      fullPath: '/api/public/coffee/initialize'
+      preLoaderRoute: typeof ApiPublicCoffeeInitializeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/builds/callback': {
       id: '/api/public/builds/callback'
       path: '/api/public/builds/callback'
@@ -1666,6 +1786,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CoffeeRouteChildren {
+  CoffeeThanksRoute: typeof CoffeeThanksRoute
+}
+
+const CoffeeRouteChildren: CoffeeRouteChildren = {
+  CoffeeThanksRoute: CoffeeThanksRoute,
+}
+
+const CoffeeRouteWithChildren =
+  CoffeeRoute._addFileChildren(CoffeeRouteChildren)
+
 interface PacksRouteChildren {
   PacksSlugRoute: typeof PacksSlugRoute
 }
@@ -1692,8 +1823,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   BuilderRoute: BuilderRoute,
+  CoffeeRoute: CoffeeRouteWithChildren,
   DocsRoute: DocsRoute,
   GalleryRoute: GalleryRoute,
+  InvestRoute: InvestRoute,
   PacksRoute: PacksRouteWithChildren,
   ProfileRoute: ProfileRoute,
   ProjectsRoute: ProjectsRoute,
@@ -1743,6 +1876,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiInternalHealthRoute: ApiInternalHealthRoute,
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
   ApiPublicHostLookupRoute: ApiPublicHostLookupRoute,
+  ApiPublicInvestRoute: ApiPublicInvestRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
   ApiPublicTrackFailureRoute: ApiPublicTrackFailureRoute,
   ApiPublicTrackRuntimeErrorRoute: ApiPublicTrackRuntimeErrorRoute,
@@ -1754,6 +1888,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBillingSubscriptionManageLinkRoute: ApiBillingSubscriptionManageLinkRoute,
   ApiBillingSubscriptionStatusRoute: ApiBillingSubscriptionStatusRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
+  ApiPublicCoffeeInitializeRoute: ApiPublicCoffeeInitializeRoute,
+  ApiPublicCoffeeVerifyRoute: ApiPublicCoffeeVerifyRoute,
   ApiPublicCronMobileCertExpiryRoute: ApiPublicCronMobileCertExpiryRoute,
   ApiPublicCronRuntimeBackendHourRoute: ApiPublicCronRuntimeBackendHourRoute,
   ApiPublicCronSelfLearningDigestRoute: ApiPublicCronSelfLearningDigestRoute,

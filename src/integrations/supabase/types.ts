@@ -435,6 +435,48 @@ export type Database = {
           },
         ]
       }
+      coffee_tips: {
+        Row: {
+          amount_minor: number
+          created_at: string
+          currency_code: string
+          environment: string | null
+          id: string
+          message: string | null
+          paid_at: string | null
+          reference: string
+          status: string
+          supporter_email: string
+          supporter_name: string | null
+        }
+        Insert: {
+          amount_minor: number
+          created_at?: string
+          currency_code: string
+          environment?: string | null
+          id?: string
+          message?: string | null
+          paid_at?: string | null
+          reference: string
+          status?: string
+          supporter_email: string
+          supporter_name?: string | null
+        }
+        Update: {
+          amount_minor?: number
+          created_at?: string
+          currency_code?: string
+          environment?: string | null
+          id?: string
+          message?: string | null
+          paid_at?: string | null
+          reference?: string
+          status?: string
+          supporter_email?: string
+          supporter_name?: string | null
+        }
+        Relationships: []
+      }
       credit_ledger: {
         Row: {
           balance_after: number
@@ -710,6 +752,42 @@ export type Database = {
           required_secrets?: Json
           service_slug?: string
           source?: string
+        }
+        Relationships: []
+      }
+      invest_pledges: {
+        Row: {
+          amount_usd_intended: number | null
+          contact_pref: string | null
+          created_at: string
+          email: string
+          id: string
+          ip: unknown
+          name: string
+          note: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          amount_usd_intended?: number | null
+          contact_pref?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          ip?: unknown
+          name: string
+          note?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          amount_usd_intended?: number | null
+          contact_pref?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          ip?: unknown
+          name?: string
+          note?: string | null
+          user_agent?: string | null
         }
         Relationships: []
       }

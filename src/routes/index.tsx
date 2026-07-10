@@ -1216,7 +1216,9 @@ function Landing() {
       <footer className="border-t border-border bg-card/40">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted-foreground sm:px-6 md:flex-row">
           <div>© {new Date().getFullYear()} Petal. All rights reserved.</div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link to="/coffee" className="hover:text-foreground">Buy us a coffee</Link>
+            <Link to="/invest" className="hover:text-foreground">Invest in Petal</Link>
             <a href="#" className="inline-flex items-center gap-1.5 hover:text-foreground">
               <Github className="h-4 w-4" /> GitHub
             </a>
