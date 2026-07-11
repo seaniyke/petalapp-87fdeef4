@@ -39,9 +39,32 @@ function ProjectsPage() {
   const [pendingDelete, setPendingDelete] = useState<ProjectRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Prewarm the in-browser preview container as soon as the user reaches the
+  // projects list. Opening ANY project from here will then skip the "installing
+  // dependencies…" wait because node_modules is already populated in the
+  // shared WebContainer instance. Best-effort — swallow all errors.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (typeof window === "undefined") return;
+        if ((window as Window).crossOriginIsolated !== true) return;
+        const mod = await import("@/lib/webcontainer");
+        if (cancelled) return;
+        void mod.prewarmContainer();
+      } catch {
+        /* best-effort */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     if (!isReady) return;
+
     if (!user) {
       setProjects([]);
       setLoading(false);
