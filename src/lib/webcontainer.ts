@@ -465,6 +465,7 @@ async function pipeProcess(label: string, process: { output: ReadableStream<stri
 
 let installPromise: Promise<number> | null = null;
 let devProcess: { kill: () => void } | null = null;
+let prewarmPromise: Promise<void> | null = null;
 
 /** Run npm install. De-duplicated — concurrent calls share one promise. */
 export async function installDeps(): Promise<number> {
@@ -477,6 +478,92 @@ export async function installDeps(): Promise<number> {
   });
   return installPromise;
 }
+
+/**
+ * Pre-warm the WebContainer BEFORE the user opens a specific project so the
+ * eventual `npm install` on real files finishes in seconds (or is a no-op).
+ *
+ * How it works:
+ *  1. Boot WebContainer (idempotent — reuses existing instance).
+ *  2. Mount a tiny `package.json` listing the deps that EVERY petal-generated
+ *     project needs (mirrors REQUIRED_DEPS in src/server/scaffold-kit.ts).
+ *  3. Run `npm install` in the background. Populates node_modules with the
+ *     common baseline.
+ *  4. When the real project files land, `mountProject()` overwrites files
+ *     but leaves node_modules intact, and `installDeps()` is a fast delta.
+ *
+ * Errors are swallowed — this is best-effort. A failure here just means the
+ * user waits the normal time; nothing breaks.
+ */
+export function prewarmContainer(): Promise<void> {
+  if (prewarmPromise) return prewarmPromise;
+  prewarmPromise = (async () => {
+    try {
+      const wc = await getContainer();
+      // Only prewarm if node_modules is not already present (e.g. from a
+      // previous project in the same session).
+      let alreadyInstalled = false;
+      try {
+        await wc.fs.readdir("node_modules");
+        alreadyInstalled = true;
+      } catch {
+        /* not installed yet — proceed */
+      }
+      if (alreadyInstalled) {
+        emitLog({ stream: "system", text: "Prewarm: node_modules already present, skipping." });
+        return;
+      }
+      emitLog({ stream: "system", text: "Prewarming dependencies in the background…" });
+      // Minimal package.json — just the baseline deps. Mirrors REQUIRED_DEPS
+      // in src/server/scaffold-kit.ts. Keeping this in sync is best-effort;
+      // if a dep is missing here, the real install will still fetch it.
+      const prewarmPkg = {
+        name: "petal-prewarm",
+        private: true,
+        type: "module",
+        scripts: { dev: "vite --host 0.0.0.0 --port 5173", build: "vite build" },
+        dependencies: {
+          react: "^18.3.1",
+          "react-dom": "^18.3.1",
+          clsx: "^2.1.1",
+          "tailwind-merge": "^2.5.4",
+          "class-variance-authority": "^0.7.1",
+          "lucide-react": "^0.460.0",
+          "@radix-ui/react-slot": "^1.1.0",
+          "@radix-ui/react-select": "^2.1.2",
+          sonner: "^1.7.0",
+          "react-router-dom": "^6.28.0",
+          "@tanstack/react-query": "^5.59.0",
+          "@tanstack/react-table": "^8.20.5",
+          zustand: "^5.0.0",
+          nuqs: "^2.2.3",
+          "@fontsource-variable/inter": "^5.1.0",
+          "@fontsource-variable/jetbrains-mono": "^5.1.0",
+        },
+        devDependencies: {
+          vite: "^5.4.10",
+          "@vitejs/plugin-react": "^4.3.3",
+          typescript: "^5.6.3",
+          "@types/react": "^18.3.12",
+          "@types/react-dom": "^18.3.1",
+          tailwindcss: "^4.0.0",
+          "@tailwindcss/vite": "^4.0.0",
+        },
+      };
+      await wc.fs.writeFile("package.json", JSON.stringify(prewarmPkg, null, 2));
+      await installDeps();
+      emitLog({ stream: "system", text: "Prewarm complete — dependencies ready." });
+    } catch (e) {
+      // Best-effort — never break the real flow.
+      emitLog({
+        stream: "system",
+        text: `Prewarm skipped: ${e instanceof Error ? e.message : String(e)}`,
+      });
+    }
+  })();
+  return prewarmPromise;
+}
+
 
 /** Start `npm run dev`. Kills any previous dev process first.
  *  P0-H: explicitly wait for any in-flight `installDeps()` to finish before

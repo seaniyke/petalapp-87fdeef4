@@ -332,6 +332,36 @@ function Builder() {
     });
   }, [topup, navigate, searchId, initialMode, attachKey]);
 
+  // Prewarm the WebContainer (boot + install baseline deps) as soon as the
+  // builder route mounts. This runs in parallel with fetching project files,
+  // signing the user in, and any AI generation — so by the time we mount the
+  // real files, node_modules is already populated and the eventual
+  // `npm install` finishes in seconds instead of minutes. Best-effort: any
+  // failure is swallowed inside prewarmContainer().
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // Skip on browsers that can't run WebContainer at all (iOS Safari, etc.)
+        // to avoid the boot error noise; they fall back to the deployed iframe.
+        const browserOk = detectUnsupportedWebContainerBrowser() === null;
+        const coiOk =
+          typeof window !== "undefined" &&
+          (window as Window).crossOriginIsolated === true;
+        if (!browserOk || !coiOk || cancelled) return;
+        const mod = await import("@/lib/webcontainer");
+        if (cancelled) return;
+        void mod.prewarmContainer();
+      } catch {
+        /* best-effort */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
