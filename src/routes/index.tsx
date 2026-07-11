@@ -490,9 +490,17 @@ function Landing() {
             </h1>
           ) : (
             <>
-              <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                Now in early access
+              <div className="mx-auto inline-flex flex-wrap items-center justify-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  Now in early access
+                </span>
+                <Link
+                  to="/coffee"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-foreground backdrop-blur transition hover:border-primary/50 hover:text-primary"
+                >
+                  ☕ Buy us a coffee
+                </Link>
               </div>
 
               <h1 className="mt-6 font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
@@ -507,9 +515,10 @@ function Landing() {
                 .
               </h1>
 
-              <p className="mx-auto mt-5 max-w-xl text-balance text-sm text-muted-foreground sm:text-lg md:text-xl">
+              <p className="mx-auto mt-5 max-w-xl text-balance text-base text-muted-foreground sm:text-xl md:text-2xl">
                 One sentence. A real app, mobile build, API, or Chrome extension — live in minutes.
               </p>
+
             </>
           )}
 
