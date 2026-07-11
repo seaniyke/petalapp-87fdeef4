@@ -23,14 +23,15 @@ function pickLandingIdeas(): StartIdea[] {
   const seenCats = new Set(featured.map((i) => i.category));
   const extras: StartIdea[] = [];
   for (const idea of START_IDEAS) {
-    if (extras.length + featured.length >= 12) break;
+    if (extras.length + featured.length >= 4) break;
     if (idea.featured) continue;
     if (seenCats.has(idea.category)) continue;
     extras.push(idea);
     seenCats.add(idea.category);
   }
-  return [...featured, ...extras].slice(0, 12);
+  return [...featured, ...extras].slice(0, 4);
 }
+
 
 const LANDING_IDEAS = pickLandingIdeas();
 
