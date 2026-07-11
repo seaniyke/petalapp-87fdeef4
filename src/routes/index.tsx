@@ -1179,17 +1179,8 @@ function Landing() {
             ))}
           </div>
 
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Web, mobile, backend & extensions
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Live web research built in
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Publish free on <span className="font-medium text-foreground">buildwithpetal.com</span>
-            </span>
-          </div>
+
+
         </div>
       </section>
 
