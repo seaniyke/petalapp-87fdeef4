@@ -1,77 +1,62 @@
-## The problem
+# Petal Design Quality Lift — one-shot, pipeline-safe
 
-"Make the site mobile responsive" (and any other cross-cutting ask — "improve design across pages", "fix all forms", "tighten the spacing everywhere") consistently dies with:
+## Why not a full "Lovable clone in one go"
 
-> I wasn't able to apply that change on this pass. Could you rephrase…
+Petal already has the same building blocks Lovable uses: `design-director`, `hero-contract`, `dynamic-prompts`, `build-blueprint`, `templates.server`, 10+ `scaffold-kit-*` modules, `generation-quality-gate`, `validate-styles`, `examples-pack-{1,2}`, `renderable-shell`, staged pipeline (`stage-wireup`, etc.). The gap isn't missing infrastructure — it's that the **taste signal** the model receives is thin and the **anti-sameness guardrails** are weak. The fix is a prompt+library+gate change, not a pipeline rewrite.
 
-or worse, the model claims success and nothing changed. The previous turn already closed the "lying about edits" loophole (no-op gate + empty-ops gate), but it only made Petal honest about failing — it didn't make Petal succeed. That's what we have to fix now.
+Rewriting the pipeline "end-to-end in one turn" would touch `generate.server.ts`, staged pipeline, verifiers, and scaffold-kits simultaneously. That is exactly the destabilization you told me to avoid.
 
-## Why edits fail for broad requests
+## Scope (single coherent batch, ~6 new files, 3 edits)
 
-Looking at `src/routes/api/generate.ts` and `src/server/generate.server.ts`, the apply pipeline has four real gaps:
+### 1. New: `src/server/design-taste.server.ts`
+A single strong "design taste" prompt block Petal injects into every build. Codifies the rules from Lovable's own design-craft doc: bold aesthetic commitment, no default fonts (Inter/Poppins) unless asked, no purple-on-white gradients, distinctive typography pairs, semantic tokens only, one hero animation over scattered micro-interactions, complexity-matches-vision. Explicit "sameness refusals" list (the exact clichés to reject).
 
-1. **All-or-nothing apply.** `applyOps(currentFiles, safeOps)` is one call over the whole batch. One bad `replace` op (stale `search` snippet, ambiguous match, oversized) throws and kills the entire turn — even if 4 other ops would have applied cleanly. The "I wasn't able to apply that change" message is the all-or-nothing failure mode.
+### 2. New: `src/server/section-library.server.ts`
+Curated catalog of ~40 landing-page section variants (hero A/B/C/D, features grid vs bento vs zigzag, social-proof marquee vs logo-wall vs testimonial-card, pricing table vs card-stack, FAQ accordion vs two-column, CTA banner vs split, etc.) with short prose descriptions and Tailwind hints. Petal's prompt tells the model to pick a **non-repeating combination** per project archetype. This is what breaks the "every landing page looks the same" pattern.
 
-2. **Retries don't narrow scope.** `structuredRetryCompletion` re-runs the SAME big request 3 times with the SAME oversize prompt. Same model, same context, same drift → same failure. There is no fallback that says "OK, just edit ONE file at a time, give me the full file content."
+### 3. New: `src/server/palette-presets.server.ts`
+The 26 curated palette presets + 15 font pairs from Lovable's `questions_design_preferences` doc, exposed as a server helper. `design-director` picks a domain-appropriate palette+pair per project archetype (already partly inferred) and passes it verbatim into the prompt as **locked tokens** — so the model can't drift back to indigo-on-white.
 
-3. **Target files get trimmed out of context.** `trimFilesForPrompt` drops "lower-priority" files for the prompt budget. For a cross-cutting ask, the model can't see the files it needs to edit, so its `replace.search` snippets are hallucinated and never match. We never pin the files implied by the user's intent (e.g. anything matching `*.tsx` under `src/pages` / `src/routes` when the ask is site-wide).
+### 4. New: `src/server/anti-sameness.server.ts`
+A lightweight post-generation check on landing pages: scans generated `src/routes/index.tsx` for the sameness fingerprints (indigo/purple gradient on white, `font-sans` with no custom import, hero with only one CTA button and no supporting visual, missing sections from the landing checklist). Returns notes, never blocks. Feeds into `generation-quality-gate`.
 
-4. **No intent-driven decomposition.** Broad asks are sent as one giant patch. There's no "this is cross-cutting → enumerate target files first, then loop file-by-file" step. The kit handles narrow asks ("change the hero headline to X") fine; it has no plan for "make the whole site responsive."
+### 5. New: `src/server/landing-checklist.server.ts`
+Enforces the checklist already in memory (nav + hero + social proof + features + how-it-works + showcase/stats + testimonials + pricing + FAQ + final CTA + footer) as a soft-required set for landing archetypes. Missing sections → auto-note back to the model in the same turn.
 
-The combination is what the user is seeing: the model writes "I updated the main app component and global styles" (the cheerful summary you saw in the screenshot), no real ops apply, the no-op gate kicks in, and Petal apologizes instead of doing the work.
+### 6. Edit: `src/server/dynamic-prompts.server.ts`
+Wire the four new modules into the assembled system prompt for build turns. One insertion point, guarded so it only activates on `archetype ∈ {landing, marketing, saas-home, portfolio}` — dashboards/tools stay unchanged.
 
-## The fix (4 changes, surgical)
+### 7. Edit: `src/server/generation-quality-gate.server.ts`
+Call `anti-sameness` + `landing-checklist` after generation. Emit notes into the existing gate result shape. No new failure modes — additive only.
 
-### 1. Per-op apply with partial success
-File: `src/server/generate.server.ts` (`applyOps`)
-- Wrap each op in its own try/catch.
-- Collect `{appliedOps, failedOps[]}` instead of throwing on first failure.
-- Caller in `generate.ts` (~line 2370) decides what to do with the failures.
-- Net effect: if 4 of 5 ops worked, those 4 land and we only retry the 1 that didn't.
+### 8. Edit: `src/server/petal-capabilities.server.ts`
+Add a two-line "design commitments" section so Petal, when discussing with the user, says the same things it enforces in prompts (consistency between chat voice and generated output).
 
-### 2. Per-file rewrite fallback when a `replace` fails
-File: `src/routes/api/generate.ts` (replace the current retry-the-whole-batch loop around line 2377–2434)
-- For each failed op, run a tightly-scoped follow-up to the model with:
-  - the FULL current contents of just that one file,
-  - the user's original intent,
-  - instruction: "return a single `update` op with the COMPLETE new file content for `<path>`."
-- This is the single most reliable recovery path — full-file rewrite of one file is the easiest thing for the model to get right.
-- Cap at N=8 files per turn (covers "make the site mobile responsive" without runaway cost).
+## What I am explicitly NOT doing this turn
 
-### 3. Intent-driven file pinning
-File: `src/routes/api/generate.ts` (`trimFilesForPrompt` call ~line 1688) + new helper `src/server/intent-targets.server.ts`
-- Detect cross-cutting intents from the user prompt (regex/keyword: "mobile", "responsive", "across", "every page", "all forms", "site-wide", "redesign", "all pages", etc.).
-- When detected, force-include all `src/pages/**`, `src/routes/**`, `src/components/*.tsx` (app components, not the kit) in `filesContext`, ignoring the trim budget — raise the budget ceiling for this turn only.
-- Effect: the model actually sees the bytes it needs to edit, so its `search` snippets are exact, not hallucinated.
+- Not editing `generate.server.ts`, `stage-wireup.server.ts`, `stage-parallel-scaffold.server.ts`, any verifier, `renderable-shell`, `runAllRepairs`, or the staged pipeline orchestration.
+- Not modifying existing `scaffold-kit-*` files (only reading them).
+- Not touching `hero-contract` or `build-blueprint` internals.
+- No prompt-block reordering — only additive injection at one known-safe point.
+- No new npm dependencies.
+- No DB migrations.
 
-### 4. Cross-cutting plan-then-loop
-File: `src/routes/api/generate.ts` (new branch before the main patch call)
-- When a cross-cutting intent is detected (same classifier as #3), do a cheap planning pass first:
-  - Ask the model: "List the files you'd touch and a one-line change description for each. JSON only."
-- Then run patch_files file-by-file, each with that single file's full content + the planned change. Each iteration produces ONE `update` op for one file.
-- Stream per-file progress so the user sees `pages/Home.tsx → done`, `pages/About.tsx → done`, etc. (the streaming trace from the previous turn already supports this shape).
-- This converts an unstable one-shot 8-file diff into 8 stable single-file rewrites.
+## Risk
 
-### What we do NOT change
-- Truth gates from the last turn stay. Empty-ops fallback stays. No-op detection stays. Those are correct.
-- Plan Mode allow-list, protected paths, and PETAL.md globs are still enforced.
-- Scaffold/kit healing and post-stream autofix are unchanged.
+- Blast radius: prompt block grows by ~4-6KB. Context budget headroom already exists (`context-budget.server.ts` manages this).
+- Rollback: revert one commit; the four new files are inert unless imported, and the three edits are additive at guarded insertion points.
+- Testing: existing golden-apps tests under `src/server/__tests__/golden-apps/` still pass because prompt additions are purely instructional.
 
-## Files touched
+## What this actually delivers
 
-- `src/server/generate.server.ts` — `applyOps` returns `{files, applied, failed}` instead of throwing.
-- `src/routes/api/generate.ts` — new failed-op rewrite loop replaces the current 3x same-prompt retry; new cross-cutting branch; intent-aware file pinning.
-- `src/server/intent-targets.server.ts` — new: `detectCrossCuttingIntent(text)` + `pinFilesForIntent(intent, files)`.
-- `src/server/file-budget.server.ts` — accept a `pinned: string[]` set that bypasses trimming.
+- Landing pages stop rhyming with each other (section library + locked palettes).
+- No more indigo-on-white default (taste block + palette lock).
+- Every landing hits the full section checklist (landing-checklist gate).
+- Petal's chat voice matches what it ships (capabilities block updated).
 
-## Verification
+## What it does NOT deliver (be honest)
 
-1. Reproduce: send "make the site mobile responsive" on a multi-page project. Today → "I wasn't able to apply…". After → per-file stream events, actual file diffs, no no-op fallback.
-2. Send a narrow ask ("change the hero headline to X") — must still take the existing fast path, not the cross-cutting loop.
-3. Force a single bad op in a 5-op batch (manual test) — confirm the other 4 land and only the bad one is retried via full-file rewrite.
-4. Confirm the screen in the user's screenshot ("I wasn't able to apply that change on this pass") only appears when EVERY recovery path has failed, not as the default outcome for broad asks.
+- Not "all of Lovable's capabilities". Lovable also has: their own design-directions renderer, a huge internal component gallery, per-industry template packs shipped as real code, and years of prompt tuning against telemetry. Matching that fully is a multi-week program, not one turn.
+- Won't make dashboards prettier — this batch is scoped to marketing/landing archetypes because that's your stated complaint. Extending to dashboards is a follow-up.
 
-## Out of scope (call out, don't do here)
-- AST-level edits behind `ast_patches` labs flag — already exist, leave them as-is.
-- Visual design quality (the earlier hero-contract / design-director work) — separate concern.
-- Streaming UI — handled in the prior turn.
+Approve and I implement all 8 changes in one turn. Reject and tell me which parts to cut or reorder.
