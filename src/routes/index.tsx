@@ -491,10 +491,6 @@ function Landing() {
           ) : (
             <>
               <div className="mx-auto inline-flex flex-wrap items-center justify-center gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  Now in early access
-                </span>
                 <Link
                   to="/coffee"
                   className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-foreground backdrop-blur transition hover:border-primary/50 hover:text-primary"
