@@ -430,19 +430,25 @@ async function handleManagedCredentials(userId: string, body: unknown): Promise<
   const { data } = await supabaseAdmin
     .from("project_backends")
     .select(
-      "provider, status, supabase_url, anon_key, service_role_key, supabase_project_ref",
+      "provider, status, supabase_url, anon_key, supabase_project_ref",
     )
     .eq("project_id", parsed.data.projectId)
     .maybeSingle();
   if (!data || data.provider !== "managed_petal" || data.status !== "ready") {
     return new Response("Managed backend not ready", { status: 404 });
   }
+  const { data: secret } = await supabaseAdmin
+    .from("project_backend_secrets")
+    .select("service_role_key")
+    .eq("project_id", parsed.data.projectId)
+    .maybeSingle();
   return Response.json({
     supabaseUrl: data.supabase_url,
     anonKey: data.anon_key,
-    serviceRoleKey: data.service_role_key,
+    serviceRoleKey: secret?.service_role_key ?? null,
     supabaseProjectRef: data.supabase_project_ref,
   });
+
 }
 
 export const Route = createFileRoute("/api/backend")({
