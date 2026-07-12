@@ -298,13 +298,28 @@ async function handleConnect(userId: string, body: unknown): Promise<Response> {
       status: "ready",
       supabase_url: url,
       anon_key: parsed.data.anonKey,
-      service_role_key: parsed.data.serviceRoleKey?.trim() || null,
       health_checked_at: new Date().toISOString(),
       error_message: null,
     },
     { onConflict: "project_id" },
   );
   if (upsertErr) return new Response(upsertErr.message, { status: 500 });
+
+  // service_role_key is stored in a service-role-only table so it is never
+  // returned to a client through project_backends SELECT policies.
+  const trimmedServiceKey = parsed.data.serviceRoleKey?.trim() || null;
+  const { error: secretErr } = await supabaseAdmin
+    .from("project_backend_secrets")
+    .upsert(
+      {
+        project_id: parsed.data.projectId,
+        service_role_key: trimmedServiceKey,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "project_id" },
+    );
+  if (secretErr) return new Response(secretErr.message, { status: 500 });
+
 
   return Response.json({
     status: "ready",
