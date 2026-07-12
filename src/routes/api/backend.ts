@@ -298,13 +298,28 @@ async function handleConnect(userId: string, body: unknown): Promise<Response> {
       status: "ready",
       supabase_url: url,
       anon_key: parsed.data.anonKey,
-      service_role_key: parsed.data.serviceRoleKey?.trim() || null,
       health_checked_at: new Date().toISOString(),
       error_message: null,
     },
     { onConflict: "project_id" },
   );
   if (upsertErr) return new Response(upsertErr.message, { status: 500 });
+
+  // service_role_key is stored in a service-role-only table so it is never
+  // returned to a client through project_backends SELECT policies.
+  const trimmedServiceKey = parsed.data.serviceRoleKey?.trim() || null;
+  const { error: secretErr } = await supabaseAdmin
+    .from("project_backend_secrets")
+    .upsert(
+      {
+        project_id: parsed.data.projectId,
+        service_role_key: trimmedServiceKey,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "project_id" },
+    );
+  if (secretErr) return new Response(secretErr.message, { status: 500 });
+
 
   return Response.json({
     status: "ready",
@@ -415,19 +430,25 @@ async function handleManagedCredentials(userId: string, body: unknown): Promise<
   const { data } = await supabaseAdmin
     .from("project_backends")
     .select(
-      "provider, status, supabase_url, anon_key, service_role_key, supabase_project_ref",
+      "provider, status, supabase_url, anon_key, supabase_project_ref",
     )
     .eq("project_id", parsed.data.projectId)
     .maybeSingle();
   if (!data || data.provider !== "managed_petal" || data.status !== "ready") {
     return new Response("Managed backend not ready", { status: 404 });
   }
+  const { data: secret } = await supabaseAdmin
+    .from("project_backend_secrets")
+    .select("service_role_key")
+    .eq("project_id", parsed.data.projectId)
+    .maybeSingle();
   return Response.json({
     supabaseUrl: data.supabase_url,
     anonKey: data.anon_key,
-    serviceRoleKey: data.service_role_key,
+    serviceRoleKey: secret?.service_role_key ?? null,
     supabaseProjectRef: data.supabase_project_ref,
   });
+
 }
 
 export const Route = createFileRoute("/api/backend")({

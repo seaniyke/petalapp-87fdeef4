@@ -28,7 +28,7 @@ export async function getManagedBackendForProject(
   const { data: row, error } = await supabaseAdmin
     .from("project_backends")
     .select(
-      "provider, status, supabase_url, anon_key, service_role_key, supabase_project_ref",
+      "provider, status, supabase_url, anon_key, supabase_project_ref",
     )
     .eq("project_id", projectId)
     .maybeSingle();
@@ -37,18 +37,27 @@ export async function getManagedBackendForProject(
   if (!row) throw new Error("NO_BACKEND");
   if (row.provider !== "managed_petal") throw new Error("NOT_MANAGED");
   if (row.status !== "ready") throw new Error("NOT_READY");
-  if (!row.supabase_url || !row.service_role_key || !row.anon_key) {
+
+  const { data: secret, error: secretErr } = await supabaseAdmin
+    .from("project_backend_secrets")
+    .select("service_role_key")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (secretErr) throw new Error(secretErr.message);
+
+  if (!row.supabase_url || !secret?.service_role_key || !row.anon_key) {
     throw new Error("MISSING_CREDENTIALS");
   }
 
   return {
     supabaseUrl: row.supabase_url,
-    serviceRoleKey: row.service_role_key,
+    serviceRoleKey: secret.service_role_key,
     anonKey: row.anon_key,
     ref: row.supabase_project_ref,
     status: row.status,
   };
 }
+
 
 /** Build a service-role client for the project's managed Supabase. */
 export function makeManagedClient(info: ManagedBackendInfo): SupabaseClient {
