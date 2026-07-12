@@ -1897,6 +1897,32 @@ export type Database = {
           },
         ]
       }
+      project_backend_secrets: {
+        Row: {
+          project_id: string
+          service_role_key: string | null
+          updated_at: string
+        }
+        Insert: {
+          project_id: string
+          service_role_key?: string | null
+          updated_at?: string
+        }
+        Update: {
+          project_id?: string
+          service_role_key?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_backend_secrets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_backends: {
         Row: {
           anon_key: string
@@ -1908,7 +1934,6 @@ export type Database = {
           project_id: string
           provider: string
           provisioning_started_at: string | null
-          service_role_key: string | null
           status: string
           supabase_project_ref: string | null
           supabase_url: string
@@ -1923,7 +1948,6 @@ export type Database = {
           project_id: string
           provider?: string
           provisioning_started_at?: string | null
-          service_role_key?: string | null
           status?: string
           supabase_project_ref?: string | null
           supabase_url: string
@@ -1938,7 +1962,6 @@ export type Database = {
           project_id?: string
           provider?: string
           provisioning_started_at?: string | null
-          service_role_key?: string | null
           status?: string
           supabase_project_ref?: string | null
           supabase_url?: string
