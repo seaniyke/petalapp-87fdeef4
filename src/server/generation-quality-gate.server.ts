@@ -1,6 +1,7 @@
 import type { ProjectFile } from "@/server/generate.server";
 import type { LocalIssue } from "@/server/local-verifier";
 import type { WebSubtype } from "@/lib/web-subtype";
+import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
 
 function appEntrypoint(files: ProjectFile[]): ProjectFile | undefined {
   return files.find((f) => f.path === "src/App.tsx") ?? files.find((f) => f.path === "src/pages/Home.tsx");
@@ -40,6 +41,18 @@ export function findGenerationQualityIssues(
           detail: "web app build is only a marketing hero with no navigation or app shell. Replace with a usable app shell, persistent nav, dashboard content, and at least one working domain view.",
         });
       }
+    }
+  }
+
+  // Anti-sameness scan: flags AI-default fingerprints (indigo/purple gradients,
+  // Inter typography, missing landing sections). Informational notes only —
+  // never blocks. Fires on marketing + fullstack (landings can appear inside
+  // fullstack apps too).
+  if (subtype === "marketing" || subtype === "fullstack") {
+    try {
+      issues.push(...findAntiSamenessIssues(files));
+    } catch {
+      /* never block on scan failure */
     }
   }
 
