@@ -58,12 +58,27 @@ async function setBackend(
     provisioning_started_at: string | null;
   }>,
 ): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from("project_backends")
-    .update(patch)
-    .eq("project_id", projectId);
-  if (error) throw new Error(`update project_backends: ${error.message}`);
+  // service_role_key lives in a separate service-role-only table so it
+  // can never be exposed through project_backends SELECT policies.
+  const { service_role_key, ...rest } = patch;
+  if (Object.keys(rest).length > 0) {
+    const { error } = await supabaseAdmin
+      .from("project_backends")
+      .update(rest)
+      .eq("project_id", projectId);
+    if (error) throw new Error(`update project_backends: ${error.message}`);
+  }
+  if (service_role_key !== undefined) {
+    const { error } = await supabaseAdmin
+      .from("project_backend_secrets")
+      .upsert(
+        { project_id: projectId, service_role_key, updated_at: new Date().toISOString() },
+        { onConflict: "project_id" },
+      );
+    if (error) throw new Error(`update project_backend_secrets: ${error.message}`);
+  }
 }
+
 
 /**
  * Ensure the upstream Supabase project exists. AWAITED inline so the
