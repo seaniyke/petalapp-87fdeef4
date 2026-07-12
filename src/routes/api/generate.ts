@@ -58,6 +58,8 @@ import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design
 import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/self-recovery.server";
 import { recordModelOutcome } from "@/server/model-kill-switch.server";
 import { pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
+import { renderDesignTasteBlock, renderLandingChecklistBlock } from "@/server/design-taste.server";
+import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
 import { renderLearningBlock } from "@/server/learning-injector.server";
 import { detectHighStakesIntent } from "@/lib/high-stakes-intent";
 import { renderPetalCapabilitiesBlock } from "@/server/petal-capabilities.server";
@@ -1998,6 +2000,19 @@ Forbidden defaults
     archetypeBlock +
     heroContractBlock;
 
+  // Design taste + section library + locked palette/type.
+  // Only fires for marketing/landing archetypes so dashboards/tools stay
+  // unaffected. Additive, cache-safe (lives in the dynamic suffix).
+  let designTasteBlock = "";
+  try {
+    if (detectedWebSubtype === "marketing" || detectedWebSubtype === "fullstack") {
+      const taste = renderDesignTasteBlock(lastUserText || "");
+      designTasteBlock = taste.text + renderLandingChecklistBlock();
+    }
+  } catch {
+    /* never block a build on taste-block failure */
+  }
+
   const dynamicSuffixText =
     dateBlock +
     suggestionsBlock +
@@ -2005,6 +2020,7 @@ Forbidden defaults
     groundingBlock +
     (approvedPlan ? renderApprovedPlanBlock(approvedPlan) : "") +
     dynamic.text +
+    designTasteBlock +
     learningBlock +
     highStakesBlock +
     visionAddendum +
