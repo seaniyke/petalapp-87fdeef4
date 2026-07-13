@@ -75,13 +75,8 @@ export function SiteHeader() {
             <Menu className="h-5 w-5" />
           </button>
 
-          <Link to="/" className="group flex items-center gap-2.5">
-            <img
-              src={petalLogo}
-              alt="Petal"
-              className="h-7 w-7 object-contain transition-transform duration-300 group-hover:rotate-[8deg] sm:h-8 sm:w-8"
-            />
-            <span className="font-display text-lg font-semibold tracking-tight sm:text-xl">
+          <Link to="/" className="group flex items-center">
+            <span className="font-display text-xl font-black tracking-[-0.03em] text-foreground transition-opacity group-hover:opacity-80 sm:text-2xl">
               Petal
             </span>
           </Link>
