@@ -10,7 +10,7 @@ import {
   Image as ImageIcon,
   Sparkles,
 } from "lucide-react";
-import petalLogo from "@/assets/petal-logo.png";
+
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
