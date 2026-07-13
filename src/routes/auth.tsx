@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Mail, Lock, Eye, EyeOff, ArrowLeft, CheckCircle2 } from "lucide-react";
-import petalLogo from "@/assets/petal-logo.png";
+
 import { supabase } from "@/integrations/supabase/client";
 
 import { useAuth } from "@/lib/auth";
@@ -205,8 +205,7 @@ function AuthPage() {
 
       <div className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
         <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          <img src={petalLogo} alt="Petal" className="h-8 w-8 object-contain" />
-          <span className="font-display text-xl font-semibold tracking-tight text-foreground">Petal</span>
+          <span className="font-display text-2xl font-black tracking-[-0.03em] text-foreground">Petal</span>
         </Link>
 
         <div className="rounded-3xl border border-border bg-card/95 p-8 shadow-[var(--shadow-soft)] backdrop-blur">
@@ -219,7 +218,7 @@ function AuthPage() {
             </button>
           )}
 
-          <h1 className="font-display text-3xl">{title}</h1>
+          <h1 className="font-display text-3xl font-black tracking-[-0.02em]">{title}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
 
           {/* Duplicate email banner */}

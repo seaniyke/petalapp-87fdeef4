@@ -912,7 +912,7 @@ function Landing() {
               <p className="text-sm font-medium uppercase tracking-wider text-primary">
                 One codebase, both stores
               </p>
-              <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">
+              <h2 className="mt-2 font-display text-4xl font-black tracking-[-0.03em] sm:text-5xl md:text-6xl">
                 Mobile apps without the Mac.
               </h2>
               <p className="mt-4 text-base text-muted-foreground sm:text-lg">
@@ -999,7 +999,7 @@ function Landing() {
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
             <p className="text-sm font-medium uppercase tracking-wider text-primary">Why Petal</p>
-            <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">One chat. Four targets. Real software.</h2>
+            <h2 className="mt-2 font-display text-4xl font-black tracking-[-0.03em] sm:text-5xl md:text-6xl">One chat. Four targets. Real software.</h2>
             <p className="mt-4 text-base text-muted-foreground sm:text-lg">
               Petal is a creative tool, not a code editor. Tell Petal what to
               build — a web app, mobile app, backend, or Chrome extension —
@@ -1068,7 +1068,7 @@ function Landing() {
           <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-12">
             <div>
               <p className="text-sm font-medium uppercase tracking-wider text-primary">How it works</p>
-              <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">From idea to shipped, in three steps.</h2>
+              <h2 className="mt-2 font-display text-4xl font-black tracking-[-0.03em] sm:text-5xl md:text-6xl">From idea to shipped, in three steps.</h2>
               <ol className="mt-8 space-y-6">
                 {[
                   { n: "01", t: "Tell Petal what to build", d: "One sentence in plain English — a web app, mobile app, backend, or Chrome extension. No setup, no boilerplate." },
@@ -1116,11 +1116,11 @@ function Landing() {
       <section id="testimonials" className="px-4 py-16 sm:px-6 sm:py-24">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
-            <p className="text-sm font-medium uppercase tracking-wider text-primary">Early access</p>
-            <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">
-              Real people. Real apps. Shipped this week.
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Early access</p>
+            <h2 className="mt-3 font-display text-4xl font-black tracking-[-0.03em] sm:text-5xl md:text-6xl">
+              Real people. Real apps.<br />Shipped this week.
             </h2>
-            <p className="mt-4 text-base text-muted-foreground sm:text-lg">
+            <p className="mt-5 text-base text-muted-foreground sm:text-lg">
               Petal is in early access. Here's what the first wave of
               builders — founders, designers, and non-coders — are saying.
             </p>
@@ -1129,45 +1129,43 @@ function Landing() {
           <div className="mt-12 grid gap-5 md:grid-cols-3">
             {[
               {
-                initials: "AO",
                 name: "Ada O.",
                 role: "Founder, early access",
                 quote:
                   "I described a booking app in one sentence. Ten minutes later I had a live URL I could send my first customer.",
-                tint: "bg-coral/30",
+                avatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200&h=200&fit=crop&crop=faces&auto=format&q=80",
               },
               {
-                initials: "SM",
                 name: "Samuel M.",
                 role: "Product designer",
                 quote:
                   "Told Petal to build a mobile app. It shipped an Expo project I could QR-scan on my phone. No Xcode, no fighting with Android Studio.",
-                tint: "bg-mint",
+                avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces&auto=format&q=80",
               },
               {
-                initials: "KA",
                 name: "Kemi A.",
                 role: "Non-technical solo builder",
                 quote:
                   "I'd tried three other AI builders. Petal is the first one that actually finished the project — landing page, auth, database, the whole thing.",
-                tint: "bg-butter",
+                avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&h=200&fit=crop&crop=faces&auto=format&q=80",
               },
             ].map((t) => (
               <figure
                 key={t.name}
-                className="flex h-full flex-col justify-between rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]"
+                className="flex h-full flex-col justify-between rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] transition hover:-translate-y-1 hover:shadow-lg"
               >
-                <blockquote className="text-base leading-relaxed text-foreground">
+                <blockquote className="font-display text-lg font-medium leading-snug tracking-[-0.01em] text-foreground">
                   &ldquo;{t.quote}&rdquo;
                 </blockquote>
                 <figcaption className="mt-6 flex items-center gap-3">
-                  <span
-                    className={`grid h-10 w-10 place-items-center rounded-full ${t.tint} text-sm font-semibold`}
-                  >
-                    {t.initials}
-                  </span>
+                  <img
+                    src={t.avatar}
+                    alt={t.name}
+                    loading="lazy"
+                    className="h-11 w-11 rounded-full object-cover ring-2 ring-border"
+                  />
                   <div className="text-sm">
-                    <div className="font-medium">{t.name}</div>
+                    <div className="font-semibold">{t.name}</div>
                     <div className="text-xs text-muted-foreground">{t.role}</div>
                   </div>
                 </figcaption>
@@ -1180,11 +1178,12 @@ function Landing() {
         </div>
       </section>
 
+
       {/* CTA */}
       <section className="px-4 pb-16 sm:px-6 sm:pb-24">
         <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-border bg-card p-6 text-center shadow-[var(--shadow-soft)] sm:p-12">
           <div className="absolute" />
-          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl">Your next product is one sentence away.</h2>
+          <h2 className="font-display text-4xl font-black tracking-[-0.03em] sm:text-5xl md:text-6xl">Your next product is one sentence away.</h2>
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
             Web, mobile, backend or extension — open Petal and describe it.
           </p>
