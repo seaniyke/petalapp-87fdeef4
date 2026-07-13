@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Mail, Lock, Eye, EyeOff, ArrowLeft, CheckCircle2 } from "lucide-react";
-import petalLogo from "@/assets/petal-logo.png";
+
 import { supabase } from "@/integrations/supabase/client";
 
 import { useAuth } from "@/lib/auth";
