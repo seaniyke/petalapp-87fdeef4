@@ -912,7 +912,7 @@ function Landing() {
               <p className="text-sm font-medium uppercase tracking-wider text-primary">
                 One codebase, both stores
               </p>
-              <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">
+              <h2 className="mt-2 font-display text-4xl font-black tracking-[-0.03em] sm:text-5xl md:text-6xl">
                 Mobile apps without the Mac.
               </h2>
               <p className="mt-4 text-base text-muted-foreground sm:text-lg">
@@ -999,7 +999,7 @@ function Landing() {
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
             <p className="text-sm font-medium uppercase tracking-wider text-primary">Why Petal</p>
-            <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">One chat. Four targets. Real software.</h2>
+            <h2 className="mt-2 font-display text-4xl font-black tracking-[-0.03em] sm:text-5xl md:text-6xl">One chat. Four targets. Real software.</h2>
             <p className="mt-4 text-base text-muted-foreground sm:text-lg">
               Petal is a creative tool, not a code editor. Tell Petal what to
               build — a web app, mobile app, backend, or Chrome extension —
@@ -1068,7 +1068,7 @@ function Landing() {
           <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-12">
             <div>
               <p className="text-sm font-medium uppercase tracking-wider text-primary">How it works</p>
-              <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl">From idea to shipped, in three steps.</h2>
+              <h2 className="mt-2 font-display text-4xl font-black tracking-[-0.03em] sm:text-5xl md:text-6xl">From idea to shipped, in three steps.</h2>
               <ol className="mt-8 space-y-6">
                 {[
                   { n: "01", t: "Tell Petal what to build", d: "One sentence in plain English — a web app, mobile app, backend, or Chrome extension. No setup, no boilerplate." },
@@ -1183,7 +1183,7 @@ function Landing() {
       <section className="px-4 pb-16 sm:px-6 sm:pb-24">
         <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-border bg-card p-6 text-center shadow-[var(--shadow-soft)] sm:p-12">
           <div className="absolute" />
-          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl">Your next product is one sentence away.</h2>
+          <h2 className="font-display text-4xl font-black tracking-[-0.03em] sm:text-5xl md:text-6xl">Your next product is one sentence away.</h2>
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
             Web, mobile, backend or extension — open Petal and describe it.
           </p>

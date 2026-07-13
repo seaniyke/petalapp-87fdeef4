@@ -218,7 +218,7 @@ function AuthPage() {
             </button>
           )}
 
-          <h1 className="font-display text-3xl">{title}</h1>
+          <h1 className="font-display text-3xl font-black tracking-[-0.02em]">{title}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
 
           {/* Duplicate email banner */}
