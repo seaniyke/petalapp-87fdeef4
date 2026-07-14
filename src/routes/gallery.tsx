@@ -163,30 +163,35 @@ function GalleryCard({
     <Link
       to="/p/$slug"
       params={{ slug: project.slug }}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]"
+      className="group relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card transition duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-editorial)]"
     >
-      <ProjectThumbnail
-        projectId={project.id}
-        title={project.title}
-        subdomain={project.subdomain}
-        className="h-40"
-      />
+      <div className="relative overflow-hidden">
+        <ProjectThumbnail
+          projectId={project.id}
+          title={project.title}
+          subdomain={project.subdomain}
+          className="h-48 transition-transform duration-500 group-hover:scale-[1.03]"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+      </div>
 
-      <div className="flex flex-1 flex-col p-4">
+      <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="truncate font-semibold">{project.title}</h3>
+          <h3 className="truncate font-display text-lg font-semibold tracking-tight">
+            {project.title}
+          </h3>
           {project.is_featured && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
               <Star className="h-3 w-3" /> Featured
             </span>
           )}
         </div>
-        <div className="mt-auto flex items-center justify-between pt-3 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
+        <div className="mt-auto flex items-center justify-between pt-4 text-[11px] font-medium text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
             <GitFork className="h-3 w-3" />
             {project.remix_count} {project.remix_count === 1 ? "remix" : "remixes"}
           </span>
-          <span className="inline-flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
+          <span className="inline-flex items-center gap-1 text-foreground opacity-0 transition-opacity group-hover:opacity-100">
             Open <ArrowUpRight className="h-3 w-3" />
           </span>
         </div>
@@ -197,7 +202,7 @@ function GalleryCard({
           onClick={toggleFeatured}
           disabled={busy}
           aria-label={project.is_featured ? "Unfeature" : "Feature"}
-          className="absolute right-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full bg-card/90 text-muted-foreground opacity-0 backdrop-blur transition hover:text-primary group-hover:opacity-100 disabled:opacity-50"
+          className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full bg-card/90 text-muted-foreground opacity-0 backdrop-blur transition hover:text-primary group-hover:opacity-100 disabled:opacity-50"
         >
           {busy ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -211,3 +216,4 @@ function GalleryCard({
     </Link>
   );
 }
+
