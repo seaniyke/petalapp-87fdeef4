@@ -92,37 +92,63 @@ function ProfilePage() {
     toast.success("Profile updated");
   }
 
+  const initial = (displayName || user?.email || "?").trim()[0]?.toUpperCase() ?? "?";
+
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <div className="mx-auto max-w-2xl px-5 pb-20 pt-10 sm:px-6 sm:pt-14">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back
-        </Link>
 
-        <div className="mt-8">
-          <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-            Your profile
+      {/* Editorial cover band */}
+      <div className="relative overflow-hidden border-b border-border">
+        <div className="absolute inset-0 bg-aurora opacity-70" aria-hidden />
+        <div className="absolute inset-0 bg-grain opacity-30" aria-hidden />
+        <div className="relative mx-auto max-w-2xl px-5 pb-24 pt-12 sm:px-6 sm:pt-16">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </Link>
+          <p className="mt-8 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+            Account
+          </p>
+          <h1 className="heading-editorial mt-3 text-5xl sm:text-6xl">
+            Your <em>profile.</em>
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground">
             Set how Petal greets you and what shows on your projects.
           </p>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-2xl px-5 pb-20 sm:px-6">
+        {/* Avatar preview card, overlapping the hero */}
+        <div className="-mt-14 flex items-end gap-4 rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-editorial)] sm:p-6">
+          <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-foreground text-2xl font-semibold text-background ring-4 ring-background">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt=""
+                referrerPolicy="no-referrer"
+                className="h-full w-full object-cover"
+                onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+              />
+            ) : (
+              initial
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-display text-xl font-semibold tracking-tight">
+              {displayName || user?.email?.split("@")[0] || "Set your name"}
+            </p>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">{user?.email}</p>
+          </div>
         </div>
 
         <form
           onSubmit={handleSave}
-          className="mt-10 space-y-6 rounded-2xl border border-border bg-card/60 p-6 shadow-sm backdrop-blur-sm sm:p-8"
+          className="mt-6 space-y-6 rounded-3xl border border-border bg-card/70 p-6 shadow-[var(--shadow-soft)] backdrop-blur-sm sm:p-8"
         >
-          <div className="space-y-2">
-            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Email
-            </Label>
-            <p className="text-sm text-foreground">{user?.email}</p>
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="display_name">Display name</Label>
             <Input
@@ -157,6 +183,7 @@ function ProfilePage() {
             </Button>
           </div>
         </form>
+
 
         <AccountHubGrid
           onOpenBilling={() => setBillingOpen(true)}

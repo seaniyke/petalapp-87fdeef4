@@ -1,62 +1,57 @@
-# Petal Design Quality Lift — one-shot, pipeline-safe
+# Petal — Premium Redesign
 
-## Why not a full "Lovable clone in one go"
+Goal: give Petal a distinctive, state-of-the-art visual identity across every user-facing page, without touching the code-generation pipeline or backend.
 
-Petal already has the same building blocks Lovable uses: `design-director`, `hero-contract`, `dynamic-prompts`, `build-blueprint`, `templates.server`, 10+ `scaffold-kit-*` modules, `generation-quality-gate`, `validate-styles`, `examples-pack-{1,2}`, `renderable-shell`, staged pipeline (`stage-wireup`, etc.). The gap isn't missing infrastructure — it's that the **taste signal** the model receives is thin and the **anti-sameness guardrails** are weak. The fix is a prompt+library+gate change, not a pipeline rewrite.
+## Design Direction
 
-Rewriting the pipeline "end-to-end in one turn" would touch `generate.server.ts`, staged pipeline, verifiers, and scaffold-kits simultaneously. That is exactly the destabilization you told me to avoid.
+- **Aesthetic**: editorial-modern. Big black display type, generous whitespace, warm off-white paper background with a single saturated accent, layered subtle gradients, soft shadows.
+- **Typography**: `Instrument Serif` (display, italic accents) + `Geist` (body). Loaded via `<link>` in `__root.tsx`. Existing `font-display` token repointed.
+- **Palette**: keep current warm cream base (`--background`), add a deeper ink (`--foreground`), tighten primary to a single confident accent (coral). Retire pastel `mint/butter/coral` tints as decoration; keep as semantic tokens only.
+- **Photography**: real human portraits (Unsplash) in testimonials, real product screenshots in showcase, no gradient blobs.
+- **Motion**: one signature hero animation (headline reveal + italic word rotate), scroll-in fades on sections. No per-icon micro-animations.
 
-## Scope (single coherent batch, ~6 new files, 3 edits)
+## Scope — pages touched
 
-### 1. New: `src/server/design-taste.server.ts`
-A single strong "design taste" prompt block Petal injects into every build. Codifies the rules from Lovable's own design-craft doc: bold aesthetic commitment, no default fonts (Inter/Poppins) unless asked, no purple-on-white gradients, distinctive typography pairs, semantic tokens only, one hero animation over scattered micro-interactions, complexity-matches-vision. Explicit "sameness refusals" list (the exact clichés to reject).
+1. **`src/routes/index.tsx`** (landing) — full section refresh:
+   - Hero: oversized editorial headline with rotating italic word, refined composer card, trust row of real logo marks (SVG text logos).
+   - Social proof stat strip (numbers, not fake logos).
+   - Features: bento grid (1 tall + 2 short + 1 wide) with real product screenshots.
+   - How-it-works: numbered horizontal steps.
+   - Showcase: device mockup trio pulling from existing `SampleAppShowcase`.
+   - Testimonials: human portraits (already partly done), masonry-lean layout.
+   - Pricing teaser → linking to existing billing sheet.
+   - FAQ accordion.
+   - Final CTA banner + refined mega footer.
+2. **`src/components/SiteHeader.tsx`** — already text-only; tighten spacing, add subtle scroll-linked border, refine mobile nav trigger.
+3. **`src/routes/auth.tsx`** — split-screen: left = editorial marketing panel with rotating quote, right = auth card. Mobile collapses to single column.
+4. **`src/routes/projects.tsx`** — grid refinement: larger thumbs, cleaner filter chips, empty state with real illustration slot.
+5. **`src/routes/profile.tsx`** — cover band + avatar + settings cards, matches new tokens.
+6. **`src/routes/gallery.tsx`** — masonry grid with hover reveal.
+7. **`src/routes/coffee.tsx`** — heavier hero, cleaner tip tiers.
+8. **`src/styles.css`** — repoint `--font-display`, tighten heading defaults, add `--shadow-editorial`, `--gradient-editorial` tokens. No token deletions (keeps generated apps unaffected).
 
-### 2. New: `src/server/section-library.server.ts`
-Curated catalog of ~40 landing-page section variants (hero A/B/C/D, features grid vs bento vs zigzag, social-proof marquee vs logo-wall vs testimonial-card, pricing table vs card-stack, FAQ accordion vs two-column, CTA banner vs split, etc.) with short prose descriptions and Tailwind hints. Petal's prompt tells the model to pick a **non-repeating combination** per project archetype. This is what breaks the "every landing page looks the same" pattern.
+## Explicitly NOT touched
 
-### 3. New: `src/server/palette-presets.server.ts`
-The 26 curated palette presets + 15 font pairs from Lovable's `questions_design_preferences` doc, exposed as a server helper. `design-director` picks a domain-appropriate palette+pair per project archetype (already partly inferred) and passes it verbatim into the prompt as **locked tokens** — so the model can't drift back to indigo-on-white.
+- `src/server/**` (code-gen pipeline, prompts, verifiers).
+- `src/routes/builder*`, `src/components/CodeEditor`, `DevicePreviewFrame`, composer/generation UI internals.
+- `src/routes/admin.*`, `src/routes/api/**`.
+- Any Supabase migration, edge function, or backend logic.
+- `src/routes/packs.*`, `templates.tsx`, `themes.tsx` (memory rule: internal-only, hidden from nav).
+- Generated-app design system in `src/server/design-taste.server.ts` etc.
 
-### 4. New: `src/server/anti-sameness.server.ts`
-A lightweight post-generation check on landing pages: scans generated `src/routes/index.tsx` for the sameness fingerprints (indigo/purple gradient on white, `font-sans` with no custom import, hero with only one CTA button and no supporting visual, missing sections from the landing checklist). Returns notes, never blocks. Feeds into `generation-quality-gate`.
+## Technical notes
 
-### 5. New: `src/server/landing-checklist.server.ts`
-Enforces the checklist already in memory (nav + hero + social proof + features + how-it-works + showcase/stats + testimonials + pricing + FAQ + final CTA + footer) as a soft-required set for landing archetypes. Missing sections → auto-note back to the model in the same turn.
+- Add fonts in `__root.tsx` head via `<link>` (Tailwind v4 rule: no `@import` of remote URLs).
+- New landing sections extracted into `src/components/landing/*.tsx` (≤120 lines each) so `index.tsx` stops growing past 1200 lines.
+- Semantic tokens only in components; no raw color utilities.
+- Unsplash images use `?w=…&q=80&auto=format` and `loading="lazy"`.
+- No new npm deps. Uses existing `framer-motion` if present, otherwise CSS-only motion.
+- Ship as one coherent batch, verified against build.
 
-### 6. Edit: `src/server/dynamic-prompts.server.ts`
-Wire the four new modules into the assembled system prompt for build turns. One insertion point, guarded so it only activates on `archetype ∈ {landing, marketing, saas-home, portfolio}` — dashboards/tools stay unchanged.
+## Risks & mitigations
 
-### 7. Edit: `src/server/generation-quality-gate.server.ts`
-Call `anti-sameness` + `landing-checklist` after generation. Emit notes into the existing gate result shape. No new failure modes — additive only.
+- Landing file size → split into components before editing.
+- Font swap could affect generated apps if they import from `src/styles.css` — they don't (generated apps are separate projects), so safe.
+- Auth split-screen could regress mobile — mobile-first layout, collapse below `md`.
 
-### 8. Edit: `src/server/petal-capabilities.server.ts`
-Add a two-line "design commitments" section so Petal, when discussing with the user, says the same things it enforces in prompts (consistency between chat voice and generated output).
-
-## What I am explicitly NOT doing this turn
-
-- Not editing `generate.server.ts`, `stage-wireup.server.ts`, `stage-parallel-scaffold.server.ts`, any verifier, `renderable-shell`, `runAllRepairs`, or the staged pipeline orchestration.
-- Not modifying existing `scaffold-kit-*` files (only reading them).
-- Not touching `hero-contract` or `build-blueprint` internals.
-- No prompt-block reordering — only additive injection at one known-safe point.
-- No new npm dependencies.
-- No DB migrations.
-
-## Risk
-
-- Blast radius: prompt block grows by ~4-6KB. Context budget headroom already exists (`context-budget.server.ts` manages this).
-- Rollback: revert one commit; the four new files are inert unless imported, and the three edits are additive at guarded insertion points.
-- Testing: existing golden-apps tests under `src/server/__tests__/golden-apps/` still pass because prompt additions are purely instructional.
-
-## What this actually delivers
-
-- Landing pages stop rhyming with each other (section library + locked palettes).
-- No more indigo-on-white default (taste block + palette lock).
-- Every landing hits the full section checklist (landing-checklist gate).
-- Petal's chat voice matches what it ships (capabilities block updated).
-
-## What it does NOT deliver (be honest)
-
-- Not "all of Lovable's capabilities". Lovable also has: their own design-directions renderer, a huge internal component gallery, per-industry template packs shipped as real code, and years of prompt tuning against telemetry. Matching that fully is a multi-week program, not one turn.
-- Won't make dashboards prettier — this batch is scoped to marketing/landing archetypes because that's your stated complaint. Extending to dashboards is a follow-up.
-
-Approve and I implement all 8 changes in one turn. Reject and tell me which parts to cut or reorder.
+Approve to proceed, or tell me which pages to drop/add.

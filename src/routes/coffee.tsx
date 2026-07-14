@@ -110,28 +110,29 @@ function CoffeePage() {
     <div className="min-h-screen bg-background text-foreground">
       <SiteHeader />
       <main className="relative overflow-hidden">
-        <div className="absolute inset-x-0 top-0 h-96 bg-aurora opacity-70" aria-hidden />
-        <div className="relative mx-auto max-w-2xl px-5 pt-32 pb-24 sm:px-6">
+        <div className="absolute inset-x-0 top-0 h-[32rem] bg-aurora opacity-70" aria-hidden />
+        <div className="absolute inset-x-0 top-0 h-[32rem] bg-grain opacity-30" aria-hidden />
+        <div className="relative mx-auto max-w-2xl px-5 pt-24 pb-24 sm:px-6 sm:pt-32">
           <div className="text-center">
-            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-              <Coffee className="h-3.5 w-3.5" /> Early access support
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1 text-xs font-medium text-muted-foreground shadow-[var(--shadow-soft)] backdrop-blur">
+              <Coffee className="h-3.5 w-3.5 text-primary" /> Support the makers
             </div>
-            <h1 className="mt-6 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
-              Buy Petal a coffee.
+            <h1 className="heading-editorial mt-7 text-5xl sm:text-6xl md:text-7xl">
+              Buy Petal <em>a coffee.</em>
             </h1>
-            <p className="mx-auto mt-4 max-w-lg text-base text-muted-foreground sm:text-lg">
-              Petal is built by a small team. If it saved you time or made
-              you smile, drop a tip — it keeps the servers warm and the
-              features shipping.
+            <p className="mx-auto mt-5 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
+              Petal is built by a small team. If it saved you time or made you
+              smile, drop a tip — it keeps the servers warm and the features shipping.
             </p>
-            <p className="mt-3 text-sm text-muted-foreground">
+            <p className="mt-4 text-sm text-muted-foreground">
               Want to go bigger?{" "}
-              <Link to="/invest" className="text-primary hover:underline">
+              <Link to="/invest" className="font-medium text-primary hover:underline">
                 Invest in Petal
               </Link>
               .
             </p>
           </div>
+
 
           <form
             onSubmit={submit}
