@@ -235,6 +235,32 @@
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
   /* Tailwind v4 doesn't ship `overflow-wrap-anywhere` by default. */
   .wrap-anywhere { overflow-wrap: anywhere; word-break: break-word; }
+  /* Editorial display heading — massive, tight, italic-capable. Use for hero. */
+  .heading-editorial {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.035em;
+    line-height: 0.95;
+  }
+  .heading-editorial em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--primary);
+  }
+  /* Subtle noise overlay for editorial panels */
+  .noise-overlay {
+    position: relative;
+  }
+  .noise-overlay::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    mix-blend-mode: overlay;
+    background-image: radial-gradient(oklch(0.2 0.03 30 / 0.12) 1px, transparent 1px);
+    background-size: 3px 3px;
+  }
 }
 
 /* ---------------------------------------------------------------------------
