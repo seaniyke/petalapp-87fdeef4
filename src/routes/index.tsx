@@ -914,157 +914,116 @@ function Landing() {
         <SampleAppShowcase />
       </section>
 
-      {/* Mobile — Ship to iOS & Android */}
-      <section id="mobile" className="px-4 py-16 sm:px-6 sm:py-24">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-12">
-            <div>
-              <p className="text-sm font-medium uppercase tracking-wider text-primary">
-                One codebase, both stores
-              </p>
-              <h2 className="mt-2 font-display text-4xl font-black tracking-[-0.03em] sm:text-5xl md:text-6xl">
-                Mobile apps without the Mac.
-              </h2>
-              <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-                Tell Petal you want a mobile app and it scaffolds an Expo
-                project that ships to iOS and Android from a single codebase.
-                Preview in an iPhone or Android frame, scan a QR to test on
-                your phone, then download a signed build — no Xcode, no
-                Android Studio.
-              </p>
-              <ul className="mt-6 space-y-3 text-sm">
-                <li className="flex items-start gap-3">
-                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-coral/30">
-                    <Apple className="h-4 w-4" />
-                  </span>
-                  <span>
-                    <strong>iOS .ipa</strong> — TestFlight-ready. Built on
-                    Petal's cloud, no Apple hardware needed.
-                  </span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-mint">
-                    <Bot className="h-4 w-4" />
-                  </span>
-                  <span>
-                    <strong>Android .apk / .aab</strong> — sideload to test,
-                    upload to Play when you're ready.
-                  </span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-butter">
-                    <Smartphone className="h-4 w-4" />
-                  </span>
-                  <span>
-                    <strong>Test on phone in seconds</strong> — scan the QR,
-                    open Expo Go, see your app live with hot reload.
-                  </span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Phone mockup */}
-            <div className="relative mx-auto w-full max-w-[280px]">
-              <div className="relative rounded-[2.5rem] border-[10px] border-foreground/90 bg-background shadow-[var(--shadow-soft)]">
-                <div className="absolute left-1/2 top-2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-foreground/90" />
-                <div className="aspect-[9/19] overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-coral/20 via-butter to-mint/40 p-4 pt-10">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-semibold">Your app</div>
-                    <div className="h-2 w-2 rounded-full bg-coral" />
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    <div className="h-20 rounded-2xl bg-background/80 p-3">
-                      <div className="h-2 w-1/2 rounded bg-foreground/20" />
-                      <div className="mt-2 h-2 w-3/4 rounded bg-foreground/10" />
-                      <div className="mt-2 h-2 w-2/3 rounded bg-foreground/10" />
-                    </div>
-                    <div className="h-16 rounded-2xl bg-background/80 p-3">
-                      <div className="h-2 w-2/5 rounded bg-foreground/20" />
-                      <div className="mt-2 h-2 w-3/4 rounded bg-foreground/10" />
-                    </div>
-                    <div className="h-16 rounded-2xl bg-background/80 p-3">
-                      <div className="h-2 w-1/3 rounded bg-foreground/20" />
-                      <div className="mt-2 h-2 w-1/2 rounded bg-foreground/10" />
-                    </div>
-                  </div>
-                  {/* Bottom tab bar */}
-                  <div className="absolute inset-x-4 bottom-4 flex items-center justify-around rounded-2xl bg-background/90 px-4 py-2 backdrop-blur">
-                    <div className="h-5 w-5 rounded-md bg-coral/60" />
-                    <div className="h-5 w-5 rounded-md bg-foreground/15" />
-                    <div className="h-5 w-5 rounded-md bg-foreground/15" />
-                    <div className="h-5 w-5 rounded-md bg-foreground/15" />
-                  </div>
+      {/* Trust strip — animated marquee of "built with Petal" categories */}
+      <section aria-label="Trusted by" className="border-y border-border/60 bg-card/30 py-6 overflow-hidden">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <p className="mb-4 text-center text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+            Built with Petal · founders, designers, indie hackers
+          </p>
+          <div className="relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
+            <div className="flex w-max animate-marquee gap-12 whitespace-nowrap font-display text-2xl italic text-foreground/60 sm:text-3xl">
+              {Array.from({ length: 2 }).map((_, r) => (
+                <div key={r} className="flex gap-12">
+                  {["booking apps", "AI copilots", "portfolios", "mobile MVPs", "internal tools", "chrome extensions", "landing pages", "APIs", "creator sites", "dashboards"].map((t) => (
+                    <span key={`${r}-${t}`} className="flex items-center gap-6">
+                      <Star className="h-4 w-4 text-coral" />
+                      {t}
+                    </span>
+                  ))}
                 </div>
-              </div>
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-foreground px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-background">
-                Built with Petal
-              </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="px-4 py-16 sm:px-6 sm:py-24">
+      {/* Bento features — real product screenshots + editorial typography */}
+      <section id="features" className="relative px-4 py-24 sm:px-6 sm:py-32">
+        <div className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-72 -translate-x-1/2 rounded-full bg-coral/20 blur-3xl animate-blob" aria-hidden />
         <div className="mx-auto max-w-6xl">
-          <div className="max-w-2xl">
-            <p className="text-sm font-medium uppercase tracking-wider text-primary">Why Petal</p>
-            <h2 className="mt-2 font-display text-4xl font-black tracking-[-0.03em] sm:text-5xl md:text-6xl">One chat. Four targets. Real software.</h2>
-            <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-              Petal is a creative tool, not a code editor. Tell Petal what to
-              build — a web app, mobile app, backend, or Chrome extension —
-              in one sentence. Petal picks the right stack, runs a live
-              preview, and ships it.
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">Why Petal</p>
+            <h2 className="mt-3 font-display text-4xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
+              One chat.<br />
+              <span className="italic text-primary">Real</span> software.
+            </h2>
+            <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
+              Web, mobile, backends, and Chrome extensions — Petal picks the stack, writes the code, runs a live preview, and ships it.
             </p>
           </div>
 
-          <div className="mt-12 grid gap-4 md:grid-cols-3">
+          <div className="mt-16 grid gap-5 md:grid-cols-6 md:grid-rows-2">
+            {/* Big feature — web app */}
+            <div className="group relative col-span-6 overflow-hidden rounded-[2rem] border border-border bg-card shadow-[var(--shadow-editorial)] md:col-span-4 md:row-span-2">
+              <div className="relative h-full min-h-[26rem] p-8 sm:p-10">
+                <div className="relative z-10 max-w-md">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
+                    <Globe className="h-3 w-3" /> Web apps
+                  </span>
+                  <h3 className="mt-4 font-display text-3xl font-black leading-tight tracking-tight sm:text-4xl">
+                    Ship a full web app on <span className="italic text-primary">your</span> domain.
+                  </h3>
+                  <p className="mt-3 text-sm text-muted-foreground sm:text-base">
+                    React + Tailwind + a typed backend. Auth, database, storage, payments — all wired, live behind a URL.
+                  </p>
+                </div>
+                <img
+                  src={webDashImg}
+                  alt="Petal-built SaaS dashboard on a laptop"
+                  loading="lazy"
+                  className="pointer-events-none absolute -bottom-8 -right-6 w-[62%] max-w-[520px] rounded-2xl shadow-[var(--shadow-glow)] transition-transform duration-700 group-hover:-translate-y-2 group-hover:rotate-[-1deg] sm:-right-4 sm:-bottom-10"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-coral/5 via-transparent to-butter/20" />
+              </div>
+            </div>
+
+            {/* Mobile */}
+            <div className="group relative col-span-6 overflow-hidden rounded-[2rem] border border-border bg-foreground text-background md:col-span-2 md:row-span-1">
+              <img
+                src={phoneHandImg}
+                alt="Mobile app built with Petal, held in hand"
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-foreground via-foreground/70 to-transparent" />
+              <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
+                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur">
+                  <Smartphone className="h-3 w-3" /> Mobile
+                </span>
+                <h3 className="mt-3 font-display text-2xl font-black leading-tight">iOS + Android from one prompt.</h3>
+              </div>
+            </div>
+
+            {/* Backend */}
+            <div className="group relative col-span-6 overflow-hidden rounded-[2rem] border border-border bg-card sm:col-span-3 md:col-span-2 md:row-span-1">
+              <img
+                src={backendImg}
+                alt="Backend architecture visualisation"
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
+              <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
+                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-foreground backdrop-blur">
+                  <Layers className="h-3 w-3" /> Backends
+                </span>
+                <h3 className="mt-3 font-display text-2xl font-black leading-tight tracking-tight text-foreground">Typed APIs. Real database.</h3>
+              </div>
+            </div>
+          </div>
+
+          {/* Small feature row */}
+          <div className="mt-5 grid gap-5 md:grid-cols-3">
             {[
-              {
-                icon: Globe,
-                tint: "bg-sky",
-                title: "Web apps",
-                body: "React + Tailwind, deployed to your own subdomain or custom domain.",
-              },
-              {
-                icon: Smartphone,
-                tint: "bg-coral/40",
-                title: "Mobile apps",
-                body: "One Expo codebase, ships to iOS and Android. QR-test on your phone.",
-              },
-              {
-                icon: Layers,
-                tint: "bg-mint",
-                title: "Backends & APIs",
-                body: "Typed server routes, database, auth and storage out of the box.",
-              },
-              {
-                icon: Wand2,
-                tint: "bg-lilac",
-                title: "Chrome extensions",
-                body: "Manifest V3 popup, background worker, content script — packaged.",
-              },
-              {
-                icon: Eye,
-                tint: "bg-butter",
-                title: "Live preview",
-                body: "Web frame, phone frame, or API console — whichever fits what you're building.",
-              },
-              {
-                icon: Rocket,
-                tint: "bg-coral/40",
-                title: "Ship in one click",
-                body: "Publish a public URL, download a build, or wire a custom domain.",
-              },
+              { icon: Wand2, tint: "bg-lilac", title: "Chrome extensions", body: "Manifest V3 popup, worker, content script — packaged." },
+              { icon: Eye, tint: "bg-butter", title: "Live preview", body: "Web frame, phone frame, or API console — whichever fits." },
+              { icon: Rocket, tint: "bg-coral/40", title: "One-click ship", body: "Public URL, custom domain, or a signed mobile build." },
             ].map((f) => (
-              <div
-                key={f.title}
-                className="group rounded-2xl border border-border bg-card p-6 transition hover:-translate-y-1 hover:shadow-[var(--shadow-soft)]"
-              >
-                <span className={`grid h-10 w-10 place-items-center rounded-xl ${f.tint}`}>
+              <div key={f.title} className="group rounded-3xl border border-border bg-card p-6 transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-[var(--shadow-editorial)]">
+                <span className={`grid h-11 w-11 place-items-center rounded-2xl ${f.tint}`}>
                   <f.icon className="h-5 w-5 text-foreground/80" />
                 </span>
-                <h3 className="mt-4 text-lg font-semibold">{f.title}</h3>
+                <h3 className="mt-4 font-display text-xl font-bold">{f.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{f.body}</p>
               </div>
             ))}
@@ -1072,107 +1031,160 @@ function Landing() {
         </div>
       </section>
 
-      {/* How it works */}
-      <section id="how" className="px-4 py-16 sm:px-6 sm:py-24">
+      {/* Mobile hero — real phone photo */}
+      <section id="mobile" className="relative overflow-hidden px-4 py-24 sm:px-6 sm:py-32">
+        <div className="pointer-events-none absolute right-[-6rem] top-1/3 -z-10 h-96 w-96 rounded-full bg-mint/40 blur-3xl animate-blob" aria-hidden />
         <div className="mx-auto max-w-6xl">
-          <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-12">
-            <div>
-              <p className="text-sm font-medium uppercase tracking-wider text-primary">How it works</p>
-              <h2 className="mt-2 font-display text-4xl font-black tracking-[-0.03em] sm:text-5xl md:text-6xl">From idea to shipped, in three steps.</h2>
-              <ol className="mt-8 space-y-6">
-                {[
-                  { n: "01", t: "Tell Petal what to build", d: "One sentence in plain English — a web app, mobile app, backend, or Chrome extension. No setup, no boilerplate." },
-                  { n: "02", t: "Watch it come to life", d: "Petal researches, plans, writes the code, and streams a live preview in the matching frame while it works." },
-                  { n: "03", t: "Refine, then ship", d: "Chat to iterate, edit by hand if you want, then publish a URL, wire a custom domain, or download a signed mobile build." },
-                ].map((s) => (
-                  <li key={s.n} className="flex gap-5">
-                    <span className="font-display text-3xl text-primary">{s.n}</span>
-                    <div>
-                      <div className="text-lg font-semibold">{s.t}</div>
-                      <p className="text-sm text-muted-foreground">{s.d}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </div>
+          <div className="grid gap-14 md:grid-cols-2 md:items-center">
             <div className="relative">
-              <div className="absolute -inset-8 -z-10 bg-aurora opacity-60 blur-2xl" aria-hidden />
-              <div className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-                <div className="space-y-4 text-sm">
-                  <div className="rounded-2xl bg-muted px-4 py-3">
-                    <span className="text-muted-foreground">you · </span>
-                    Make a calm meditation timer with breathing animation.
-                  </div>
-                  <div className="rounded-2xl bg-butter/60 px-4 py-3">
-                    <span className="text-muted-foreground">petal · </span>
-                    Created <code className="font-mono">index.html</code>, <code className="font-mono">styles.css</code>, <code className="font-mono">app.js</code>. Preview is live →
-                  </div>
-                  <div className="rounded-2xl bg-muted px-4 py-3">
-                    <span className="text-muted-foreground">you · </span>
-                    Make the circle bigger and add a soft chime at the end.
-                  </div>
-                  <div className="rounded-2xl bg-mint/60 px-4 py-3">
-                    <span className="text-muted-foreground">petal · </span>
-                    Updated <code className="font-mono">styles.css</code> and <code className="font-mono">app.js</code>. Reloading preview…
-                  </div>
-                </div>
-              </div>
+              <div className="absolute -inset-6 -z-10 rounded-[3rem] bg-gradient-to-br from-coral/25 via-butter/40 to-mint/30 blur-2xl" aria-hidden />
+              <img
+                src={heroMobileImg}
+                alt="Meditation app built with Petal on an iPhone"
+                loading="lazy"
+                className="w-full rounded-[2.5rem] shadow-[var(--shadow-editorial)] animate-float-slow"
+              />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">
+                One codebase · both stores
+              </p>
+              <h2 className="mt-3 font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
+                Mobile apps <span className="italic">without</span> the Mac.
+              </h2>
+              <p className="mt-5 text-lg text-muted-foreground">
+                Say the words — Petal scaffolds an Expo project, streams a live phone preview, QR-tests on your device, and hands you a signed build for iOS <em>and</em> Android.
+              </p>
+              <ul className="mt-8 space-y-4 text-sm sm:text-base">
+                <li className="flex items-start gap-4">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-foreground text-background">
+                    <Apple className="h-4 w-4" />
+                  </span>
+                  <span><strong className="font-semibold">iOS .ipa</strong> — TestFlight-ready, built on Petal's cloud.</span>
+                </li>
+                <li className="flex items-start gap-4">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-mint text-foreground">
+                    <Bot className="h-4 w-4" />
+                  </span>
+                  <span><strong className="font-semibold">Android .apk / .aab</strong> — sideload, TestFlight-style, or Play.</span>
+                </li>
+                <li className="flex items-start gap-4">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-butter text-foreground">
+                    <Zap className="h-4 w-4" />
+                  </span>
+                  <span><strong className="font-semibold">Scan a QR</strong> and see hot reload on your phone in seconds.</span>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Social proof — early builders */}
-      <section id="testimonials" className="px-4 py-16 sm:px-6 sm:py-24">
+      {/* How it works — with founder portrait */}
+      <section id="how" className="relative px-4 py-24 sm:px-6 sm:py-32">
         <div className="mx-auto max-w-6xl">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Early access</p>
-            <h2 className="mt-3 font-display text-4xl font-black tracking-[-0.03em] sm:text-5xl md:text-6xl">
-              Real people. Real apps.<br />Shipped this week.
+          <div className="grid gap-14 md:grid-cols-2 md:items-center">
+            <div className="relative order-2 md:order-1">
+              <div className="absolute -inset-4 -z-10 rounded-[3rem] bg-gradient-to-br from-primary/20 via-lilac/30 to-sky/30 blur-2xl" aria-hidden />
+              <img
+                src={founderImg}
+                alt="A founder building with Petal"
+                loading="lazy"
+                className="w-full rounded-[2rem] object-cover shadow-[var(--shadow-editorial)]"
+              />
+              <div className="absolute -bottom-6 -right-4 max-w-[220px] rounded-2xl border border-border bg-background/90 p-4 shadow-[var(--shadow-soft)] backdrop-blur animate-float">
+                <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Shipped in 12 min
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  "First real product I've ever launched."
+                </p>
+              </div>
+            </div>
+            <div className="order-1 md:order-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">How it works</p>
+              <h2 className="mt-3 font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
+                Idea → live,<br /><span className="italic">in three steps.</span>
+              </h2>
+              <ol className="mt-10 space-y-8">
+                {[
+                  { n: "01", t: "Describe it", d: "One sentence in plain English — web, mobile, API or extension. No setup." },
+                  { n: "02", t: "Watch it build", d: "Petal researches, plans, writes the code, and streams a live preview while it works." },
+                  { n: "03", t: "Ship it", d: "Publish a URL, wire a custom domain, or download a signed mobile build." },
+                ].map((s) => (
+                  <li key={s.n} className="group grid grid-cols-[auto_1fr] gap-6 border-t border-border pt-6">
+                    <span className="font-display text-4xl font-black text-primary transition group-hover:translate-x-1">{s.n}</span>
+                    <div>
+                      <div className="font-display text-xl font-bold">{s.t}</div>
+                      <p className="mt-1.5 text-sm text-muted-foreground">{s.d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section id="testimonials" className="relative px-4 py-24 sm:px-6 sm:py-32">
+        <div className="pointer-events-none absolute left-[-6rem] top-1/3 -z-10 h-96 w-96 rounded-full bg-coral/25 blur-3xl animate-blob" aria-hidden />
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">Loved by builders</p>
+            <h2 className="mt-3 font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
+              Real people. <span className="italic">Real</span> apps.
             </h2>
-            <p className="mt-5 text-base text-muted-foreground sm:text-lg">
-              Petal is in early access. Here's what the first wave of
-              builders — founders, designers, and non-coders — are saying.
+            <p className="mt-5 text-lg text-muted-foreground">
+              Founders, designers, and non-coders shipping in an afternoon.
             </p>
           </div>
 
-          <div className="mt-12 grid gap-5 md:grid-cols-3">
+          <div className="mt-16 grid gap-6 md:grid-cols-3">
             {[
               {
-                name: "Ada O.",
-                role: "Founder, early access",
-                quote:
-                  "I described a booking app in one sentence. Ten minutes later I had a live URL I could send my first customer.",
-                avatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200&h=200&fit=crop&crop=faces&auto=format&q=80",
+                name: "Ada Okafor",
+                role: "Founder · Bookly",
+                quote: "I described a booking app in one sentence. Ten minutes later I had a live URL I could send my first customer.",
+                avatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&h=400&fit=crop&crop=faces&auto=format&q=80",
+                tint: "bg-coral/25",
               },
               {
-                name: "Samuel M.",
+                name: "Samuel Martins",
                 role: "Product designer",
-                quote:
-                  "Told Petal to build a mobile app. It shipped an Expo project I could QR-scan on my phone. No Xcode, no fighting with Android Studio.",
-                avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces&auto=format&q=80",
+                quote: "Told Petal to build a mobile app. It shipped an Expo project I could QR-scan on my phone. No Xcode, no Android Studio wars.",
+                avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=faces&auto=format&q=80",
+                tint: "bg-mint/50",
               },
               {
-                name: "Kemi A.",
-                role: "Non-technical solo builder",
-                quote:
-                  "I'd tried three other AI builders. Petal is the first one that actually finished the project — landing page, auth, database, the whole thing.",
-                avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&h=200&fit=crop&crop=faces&auto=format&q=80",
+                name: "Kemi Adeyemi",
+                role: "Solo builder",
+                quote: "I'd tried three other AI builders. Petal is the first that actually finished — landing page, auth, database, the whole thing.",
+                avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop&crop=faces&auto=format&q=80",
+                tint: "bg-butter",
               },
-            ].map((t) => (
+            ].map((t, i) => (
               <figure
                 key={t.name}
-                className="flex h-full flex-col justify-between rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] transition hover:-translate-y-1 hover:shadow-lg"
+                className={`group relative flex h-full flex-col justify-between overflow-hidden rounded-[2rem] border border-border bg-card p-7 shadow-[var(--shadow-soft)] transition duration-500 hover:-translate-y-2 hover:shadow-[var(--shadow-editorial)] ${i === 1 ? "md:translate-y-6" : ""}`}
               >
-                <blockquote className="font-display text-lg font-medium leading-snug tracking-[-0.01em] text-foreground">
-                  &ldquo;{t.quote}&rdquo;
-                </blockquote>
-                <figcaption className="mt-6 flex items-center gap-3">
+                <div className={`absolute -right-16 -top-16 h-40 w-40 rounded-full ${t.tint} blur-2xl transition group-hover:scale-110`} aria-hidden />
+                <div className="relative">
+                  <div className="flex gap-0.5 text-primary">
+                    {Array.from({ length: 5 }).map((_, s) => (
+                      <Star key={s} className="h-3.5 w-3.5 fill-current" />
+                    ))}
+                  </div>
+                  <blockquote className="mt-5 font-display text-xl font-medium leading-snug tracking-[-0.01em] text-foreground">
+                    &ldquo;{t.quote}&rdquo;
+                  </blockquote>
+                </div>
+                <figcaption className="relative mt-8 flex items-center gap-3">
                   <img
                     src={t.avatar}
                     alt={t.name}
                     loading="lazy"
-                    className="h-11 w-11 rounded-full object-cover ring-2 ring-border"
+                    className="h-12 w-12 rounded-full object-cover ring-2 ring-background"
                   />
                   <div className="text-sm">
                     <div className="font-semibold">{t.name}</div>
@@ -1182,53 +1194,59 @@ function Landing() {
               </figure>
             ))}
           </div>
-
-
-
         </div>
       </section>
 
-
-      {/* CTA */}
-      <section className="px-4 pb-16 sm:px-6 sm:pb-24">
-        <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-border bg-card p-6 text-center shadow-[var(--shadow-soft)] sm:p-12">
-          <div className="absolute" />
-          <h2 className="font-display text-4xl font-black tracking-[-0.03em] sm:text-5xl md:text-6xl">Your next product is one sentence away.</h2>
-          <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-            Web, mobile, backend or extension — open Petal and describe it.
-          </p>
-          {!isReady ? null : user ? (
-            <Link
-              to="/projects"
-              className="mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-7 text-base font-medium text-primary-foreground transition hover:brightness-105"
-            >
-              Open my projects
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          ) : (
-            <Link
-              to="/auth"
-              search={{ mode: "signup", redirect: undefined }}
-              className="mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-7 text-base font-medium text-primary-foreground transition hover:brightness-105"
-            >
-              Start building free
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          )}
+      {/* Final CTA */}
+      <section className="px-4 pb-20 sm:px-6 sm:pb-28">
+        <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] border border-border bg-foreground p-10 text-background shadow-[var(--shadow-editorial)] sm:p-16 md:p-20">
+          <div className="pointer-events-none absolute -top-40 left-1/3 h-96 w-96 rounded-full bg-coral/60 blur-3xl animate-blob" aria-hidden />
+          <div className="pointer-events-none absolute -bottom-40 right-0 h-96 w-96 rounded-full bg-mint/40 blur-3xl animate-blob" aria-hidden />
+          <div className="relative text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-background/60">Your turn</p>
+            <h2 className="mx-auto mt-4 max-w-3xl font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
+              Your next product is <span className="italic text-coral">one sentence</span> away.
+            </h2>
+            <p className="mx-auto mt-5 max-w-xl text-base text-background/70 sm:text-lg">
+              Web, mobile, backend or extension — describe it, Petal ships it.
+            </p>
+            {!isReady ? null : user ? (
+              <Link
+                to="/projects"
+                className="mt-10 inline-flex h-14 items-center gap-2 rounded-full bg-background px-8 text-base font-semibold text-foreground transition hover:scale-[1.02] hover:brightness-105"
+              >
+                Open my projects
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : (
+              <Link
+                to="/auth"
+                search={{ mode: "signup", redirect: undefined }}
+                className="mt-10 inline-flex h-14 items-center gap-2 rounded-full bg-background px-8 text-base font-semibold text-foreground transition hover:scale-[1.02] hover:brightness-105"
+              >
+                Start building free
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
+            <p className="mt-4 text-xs text-background/50">No credit card · Live preview in seconds</p>
+          </div>
         </div>
       </section>
 
       <footer className="border-t border-border bg-card/40">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted-foreground sm:px-6 md:flex-row">
-          <div>© {new Date().getFullYear()} Petal. All rights reserved.</div>
-          <div className="flex flex-wrap items-center justify-center gap-4">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-10 text-sm text-muted-foreground sm:px-6 md:flex-row">
+          <div className="flex items-center gap-2 font-display text-lg font-bold tracking-tight text-foreground">
+            Petal <span className="text-muted-foreground font-normal italic">— build by chatting.</span>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-5">
             <Link to="/coffee" className="hover:text-foreground">Buy us a coffee</Link>
-            <Link to="/invest" className="hover:text-foreground">Invest in Petal</Link>
+            <Link to="/invest" className="hover:text-foreground">Invest</Link>
             <a href="#" className="inline-flex items-center gap-1.5 hover:text-foreground">
               <Github className="h-4 w-4" /> GitHub
             </a>
             <a href="#" className="hover:text-foreground">Privacy</a>
             <a href="#" className="hover:text-foreground">Terms</a>
+            <span>© {new Date().getFullYear()} Petal</span>
           </div>
         </div>
       </footer>
