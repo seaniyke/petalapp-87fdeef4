@@ -358,3 +358,28 @@
     -webkit-text-fill-color: currentColor;
   }
 }
+
+/* Landing page floating / marquee / reveal animations */
+@keyframes petal-float {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(-14px); }
+}
+.animate-float { animation: petal-float 7s ease-in-out infinite; }
+.animate-float-slow { animation: petal-float 11s ease-in-out infinite; }
+
+@keyframes petal-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-marquee { animation: petal-marquee 38s linear infinite; }
+
+@keyframes petal-blob {
+  0%, 100% { transform: translate(0,0) scale(1); }
+  33%      { transform: translate(30px,-20px) scale(1.05); }
+  66%      { transform: translate(-20px,20px) scale(0.97); }
+}
+.animate-blob { animation: petal-blob 18s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float, .animate-float-slow, .animate-marquee, .animate-blob { animation: none; }
+}
