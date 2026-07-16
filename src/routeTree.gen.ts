@@ -27,6 +27,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as PacksSlugRouteImport } from './routes/packs.$slug'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
+import { Route as FeaturesSlugRouteImport } from './routes/features.$slug'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as CoffeeThanksRouteImport } from './routes/coffee.thanks'
 import { Route as BillingReturnRouteImport } from './routes/billing.return'
@@ -185,6 +186,11 @@ const PacksSlugRoute = PacksSlugRouteImport.update({
 const PSlugRoute = PSlugRouteImport.update({
   id: '/p/$slug',
   path: '/p/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeaturesSlugRoute = FeaturesSlugRouteImport.update({
+  id: '/features/$slug',
+  path: '/features/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
@@ -590,6 +596,7 @@ export interface FileRoutesByFullPath {
   '/billing/return': typeof BillingReturnRoute
   '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/features/$slug': typeof FeaturesSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
   '/share/$token': typeof ShareTokenRoute
@@ -679,6 +686,7 @@ export interface FileRoutesByTo {
   '/billing/return': typeof BillingReturnRoute
   '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/features/$slug': typeof FeaturesSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
   '/share/$token': typeof ShareTokenRoute
@@ -769,6 +777,7 @@ export interface FileRoutesById {
   '/billing/return': typeof BillingReturnRoute
   '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/features/$slug': typeof FeaturesSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
   '/share/$token': typeof ShareTokenRoute
@@ -860,6 +869,7 @@ export interface FileRouteTypes {
     | '/billing/return'
     | '/coffee/thanks'
     | '/email/unsubscribe'
+    | '/features/$slug'
     | '/p/$slug'
     | '/packs/$slug'
     | '/share/$token'
@@ -949,6 +959,7 @@ export interface FileRouteTypes {
     | '/billing/return'
     | '/coffee/thanks'
     | '/email/unsubscribe'
+    | '/features/$slug'
     | '/p/$slug'
     | '/packs/$slug'
     | '/share/$token'
@@ -1038,6 +1049,7 @@ export interface FileRouteTypes {
     | '/billing/return'
     | '/coffee/thanks'
     | '/email/unsubscribe'
+    | '/features/$slug'
     | '/p/$slug'
     | '/packs/$slug'
     | '/share/$token'
@@ -1127,6 +1139,7 @@ export interface RootRouteChildren {
   ApiVisitorsRoute: typeof ApiVisitorsRoute
   BillingReturnRoute: typeof BillingReturnRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
+  FeaturesSlugRoute: typeof FeaturesSlugRoute
   PSlugRoute: typeof PSlugRoute
   ShareTokenRoute: typeof ShareTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -1298,6 +1311,13 @@ declare module '@tanstack/react-router' {
       path: '/p/$slug'
       fullPath: '/p/$slug'
       preLoaderRoute: typeof PSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/features/$slug': {
+      id: '/features/$slug'
+      path: '/features/$slug'
+      fullPath: '/features/$slug'
+      preLoaderRoute: typeof FeaturesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/email/unsubscribe': {
@@ -1861,6 +1881,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiVisitorsRoute: ApiVisitorsRoute,
   BillingReturnRoute: BillingReturnRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
+  FeaturesSlugRoute: FeaturesSlugRoute,
   PSlugRoute: PSlugRoute,
   ShareTokenRoute: ShareTokenRoute,
   AdminIndexRoute: AdminIndexRoute,

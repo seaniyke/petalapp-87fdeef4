@@ -957,32 +957,38 @@ function Landing() {
           </div>
 
           <div className="mt-16 grid gap-5 md:grid-cols-6 md:grid-rows-2">
-            {/* Big feature — web app */}
-            <div className="group relative col-span-6 overflow-hidden rounded-[2rem] border border-border bg-card shadow-[var(--shadow-editorial)] md:col-span-4 md:row-span-2">
-              <div className="relative h-full min-h-[26rem] p-8 sm:p-10">
-                <div className="relative z-10 max-w-md">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
-                    <Globe className="h-3 w-3" /> Web apps
-                  </span>
-                  <h3 className="mt-4 font-display text-3xl font-black leading-tight tracking-tight sm:text-4xl">
-                    Ship a full web app on <span className="italic text-primary">your</span> domain.
-                  </h3>
-                  <p className="mt-3 text-sm text-muted-foreground sm:text-base">
-                    React + Tailwind + a typed backend. Auth, database, storage, payments — all wired, live behind a URL.
-                  </p>
-                </div>
-                <img
-                  src={webDashImg}
-                  alt="Petal-built SaaS dashboard on a laptop"
-                  loading="lazy"
-                  className="pointer-events-none absolute -bottom-8 -right-6 w-[62%] max-w-[520px] rounded-2xl shadow-[var(--shadow-glow)] transition-transform duration-700 group-hover:-translate-y-2 group-hover:rotate-[-1deg] sm:-right-4 sm:-bottom-10"
-                />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-coral/5 via-transparent to-butter/20" />
+            {/* Big feature — web app (full-bleed image, matches Mobile/Backend styling) */}
+            <Link
+              to="/features/$slug"
+              params={{ slug: "web" }}
+              className="group relative col-span-6 overflow-hidden rounded-[2rem] border border-border bg-foreground text-background shadow-[var(--shadow-editorial)] md:col-span-4 md:row-span-2"
+            >
+              <img
+                src={webDashImg}
+                alt="Petal-built SaaS dashboard on a laptop"
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-foreground via-foreground/70 to-transparent" />
+              <div className="relative flex h-full min-h-[26rem] flex-col justify-end p-8 sm:p-10">
+                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur">
+                  <Globe className="h-3 w-3" /> Web apps
+                </span>
+                <h3 className="mt-4 max-w-md font-display text-3xl font-black leading-tight tracking-tight sm:text-4xl">
+                  Ship a full web app on <span className="italic text-coral">your</span> domain.
+                </h3>
+                <p className="mt-3 max-w-md text-sm text-background/75 sm:text-base">
+                  React + Tailwind + a typed backend. Auth, database, storage, payments — all wired, live behind a URL.
+                </p>
               </div>
-            </div>
+            </Link>
 
             {/* Mobile */}
-            <div className="group relative col-span-6 overflow-hidden rounded-[2rem] border border-border bg-foreground text-background md:col-span-2 md:row-span-1">
+            <Link
+              to="/features/$slug"
+              params={{ slug: "mobile" }}
+              className="group relative col-span-6 overflow-hidden rounded-[2rem] border border-border bg-foreground text-background md:col-span-2 md:row-span-1"
+            >
               <img
                 src={phoneHandImg}
                 alt="Mobile app built with Petal, held in hand"
@@ -996,10 +1002,14 @@ function Landing() {
                 </span>
                 <h3 className="mt-3 font-display text-2xl font-black leading-tight">iOS + Android from one prompt.</h3>
               </div>
-            </div>
+            </Link>
 
             {/* Backend */}
-            <div className="group relative col-span-6 overflow-hidden rounded-[2rem] border border-border bg-card sm:col-span-3 md:col-span-2 md:row-span-1">
+            <Link
+              to="/features/$slug"
+              params={{ slug: "backend" }}
+              className="group relative col-span-6 overflow-hidden rounded-[2rem] border border-border bg-card sm:col-span-3 md:col-span-2 md:row-span-1"
+            >
               <img
                 src={backendImg}
                 alt="Backend architecture visualisation"
@@ -1013,17 +1023,22 @@ function Landing() {
                 </span>
                 <h3 className="mt-3 font-display text-2xl font-black leading-tight tracking-tight text-foreground">Typed APIs. Real database.</h3>
               </div>
-            </div>
+            </Link>
           </div>
 
           {/* Small feature row */}
           <div className="mt-5 grid gap-5 md:grid-cols-3">
             {[
-              { img: extensionImg, icon: Wand2, tint: "bg-lilac", title: "Chrome extensions", body: "Manifest V3 popup, worker, content script — packaged." },
-              { img: previewImg, icon: Eye, tint: "bg-butter", title: "Live preview", body: "Web frame, phone frame, or API console — whichever fits." },
-              { img: shipImg, icon: Rocket, tint: "bg-coral/40", title: "One-click ship", body: "Public URL, custom domain, or a signed mobile build." },
+              { slug: "extensions", img: extensionImg, icon: Wand2, tint: "bg-lilac", title: "Chrome extensions", body: "Manifest V3 popup, worker, content script — packaged." },
+              { slug: "preview", img: previewImg, icon: Eye, tint: "bg-butter", title: "Live preview", body: "Web frame, phone frame, or API console — whichever fits." },
+              { slug: "ship", img: shipImg, icon: Rocket, tint: "bg-coral/40", title: "One-click ship", body: "Public URL, custom domain, or a signed mobile build." },
             ].map((f) => (
-              <div key={f.title} className="group overflow-hidden rounded-3xl border border-border bg-card transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-[var(--shadow-editorial)]">
+              <Link
+                key={f.title}
+                to="/features/$slug"
+                params={{ slug: f.slug }}
+                className="group overflow-hidden rounded-3xl border border-border bg-card transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-[var(--shadow-editorial)]"
+              >
                 <div className="relative aspect-[16/10] overflow-hidden">
                   <img
                     src={f.img}
@@ -1040,9 +1055,10 @@ function Landing() {
                   <h3 className="font-display text-xl font-bold">{f.title}</h3>
                   <p className="mt-2 text-sm text-muted-foreground">{f.body}</p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
+
         </div>
       </section>
 
