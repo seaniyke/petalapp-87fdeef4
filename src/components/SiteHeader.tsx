@@ -207,6 +207,16 @@ export function SiteHeader() {
                 </Link>
               </>
             )}
+
+            {/* Mobile hamburger — sits at the far right on small screens */}
+            <button
+              type="button"
+              aria-label="Open menu"
+              onClick={() => setMobileNavOpen(true)}
+              className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted/60 hover:text-foreground md:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </header>
