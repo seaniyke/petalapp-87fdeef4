@@ -41,6 +41,10 @@ import webDashImg from "@/assets/landing-web-dashboard.jpg";
 import backendImg from "@/assets/landing-backend.jpg";
 import founderImg from "@/assets/landing-founder.jpg";
 import phoneHandImg from "@/assets/landing-phone-hand.jpg";
+import extensionImg from "@/assets/landing-extension.jpg";
+import previewImg from "@/assets/landing-preview.jpg";
+import shipImg from "@/assets/landing-ship.jpg";
+import emmaAvatar from "@/assets/testimonial-emma.jpg";
 
 type ProjectFilter = "all" | "recent" | "public";
 
@@ -1015,16 +1019,27 @@ function Landing() {
           {/* Small feature row */}
           <div className="mt-5 grid gap-5 md:grid-cols-3">
             {[
-              { icon: Wand2, tint: "bg-lilac", title: "Chrome extensions", body: "Manifest V3 popup, worker, content script — packaged." },
-              { icon: Eye, tint: "bg-butter", title: "Live preview", body: "Web frame, phone frame, or API console — whichever fits." },
-              { icon: Rocket, tint: "bg-coral/40", title: "One-click ship", body: "Public URL, custom domain, or a signed mobile build." },
+              { img: extensionImg, icon: Wand2, tint: "bg-lilac", title: "Chrome extensions", body: "Manifest V3 popup, worker, content script — packaged." },
+              { img: previewImg, icon: Eye, tint: "bg-butter", title: "Live preview", body: "Web frame, phone frame, or API console — whichever fits." },
+              { img: shipImg, icon: Rocket, tint: "bg-coral/40", title: "One-click ship", body: "Public URL, custom domain, or a signed mobile build." },
             ].map((f) => (
-              <div key={f.title} className="group rounded-3xl border border-border bg-card p-6 transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-[var(--shadow-editorial)]">
-                <span className={`grid h-11 w-11 place-items-center rounded-2xl ${f.tint}`}>
-                  <f.icon className="h-5 w-5 text-foreground/80" />
-                </span>
-                <h3 className="mt-4 font-display text-xl font-bold">{f.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{f.body}</p>
+              <div key={f.title} className="group overflow-hidden rounded-3xl border border-border bg-card transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-[var(--shadow-editorial)]">
+                <div className="relative aspect-[16/10] overflow-hidden">
+                  <img
+                    src={f.img}
+                    alt=""
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-card/10 to-transparent" />
+                  <span className={`absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-2xl ${f.tint} shadow-sm ring-1 ring-black/5`}>
+                    <f.icon className="h-4.5 w-4.5 text-foreground/80" />
+                  </span>
+                </div>
+                <div className="p-6">
+                  <h3 className="font-display text-xl font-bold">{f.title}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">{f.body}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -1157,10 +1172,10 @@ function Landing() {
                 tint: "bg-mint/50",
               },
               {
-                name: "Kemi Adeyemi",
+                name: "Emma Whitfield",
                 role: "Solo builder",
                 quote: "I'd tried three other AI builders. Petal is the first that actually finished — landing page, auth, database, the whole thing.",
-                avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop&crop=faces&auto=format&q=80",
+                avatar: emmaAvatar,
                 tint: "bg-butter",
               },
             ].map((t, i) => (
