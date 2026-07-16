@@ -238,7 +238,7 @@ function FeaturePage() {
       {/* Bullets */}
       <section className="border-t border-border/60 px-4 py-24 sm:px-6">
         <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-3">
-          {feature.bullets.map((b) => (
+          {feature.bullets.map((b: { title: string; body: string }) => (
             <div
               key={b.title}
               className="rounded-3xl border border-border bg-card p-8 shadow-[var(--shadow-soft)] transition hover:-translate-y-1 hover:shadow-[var(--shadow-editorial)]"
