@@ -65,16 +65,6 @@ export function SiteHeader() {
         }`}
       >
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:h-16 sm:gap-4 sm:px-6 lg:px-8">
-          {/* Mobile hamburger — sits to the left of the logo on small screens */}
-          <button
-            type="button"
-            aria-label="Open menu"
-            onClick={() => setMobileNavOpen(true)}
-            className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted/60 hover:text-foreground md:hidden"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-
           <Link to="/" className="group flex items-center">
             <span className="font-display text-xl font-black tracking-[-0.03em] text-foreground transition-opacity group-hover:opacity-80 sm:text-2xl">
               Petal
