@@ -65,8 +65,14 @@ export function SiteHeader() {
         }`}
       >
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:h-16 sm:gap-4 sm:px-6 lg:px-8">
-          <Link to="/" className="group flex items-center">
-            <span className="font-display text-xl font-black tracking-[-0.03em] text-foreground transition-opacity group-hover:opacity-80 sm:text-2xl">
+          <Link to="/" className="group flex items-center gap-2">
+            <img
+              src="/petal-logo.png"
+              alt=""
+              aria-hidden="true"
+              className="h-8 w-8 object-contain transition-transform group-hover:-rotate-6 sm:h-9 sm:w-9"
+            />
+            <span className="font-display text-2xl font-black tracking-[-0.03em] text-foreground transition-opacity group-hover:opacity-80 sm:text-[1.7rem]">
               Petal
             </span>
           </Link>
