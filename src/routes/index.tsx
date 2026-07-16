@@ -1172,10 +1172,10 @@ function Landing() {
                 tint: "bg-mint/50",
               },
               {
-                name: "Kemi Adeyemi",
+                name: "Emma Whitfield",
                 role: "Solo builder",
                 quote: "I'd tried three other AI builders. Petal is the first that actually finished — landing page, auth, database, the whole thing.",
-                avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop&crop=faces&auto=format&q=80",
+                avatar: emmaAvatar,
                 tint: "bg-butter",
               },
             ].map((t, i) => (
