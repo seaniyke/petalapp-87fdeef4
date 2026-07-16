@@ -41,6 +41,10 @@ import webDashImg from "@/assets/landing-web-dashboard.jpg";
 import backendImg from "@/assets/landing-backend.jpg";
 import founderImg from "@/assets/landing-founder.jpg";
 import phoneHandImg from "@/assets/landing-phone-hand.jpg";
+import extensionImg from "@/assets/landing-extension.jpg";
+import previewImg from "@/assets/landing-preview.jpg";
+import shipImg from "@/assets/landing-ship.jpg";
+import emmaAvatar from "@/assets/testimonial-emma.jpg";
 
 type ProjectFilter = "all" | "recent" | "public";
 
