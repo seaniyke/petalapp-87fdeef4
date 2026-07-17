@@ -623,15 +623,34 @@ function Landing() {
                 <div className="flex flex-wrap items-center gap-1.5">
 
                   {mode !== "coach" && (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                      aria-label="Attach a photo or screenshot"
-                      title="Attach a photo or screenshot"
-                    >
-                      <Camera className="h-4 w-4" />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        aria-label="Attach a photo or screenshot"
+                        title="Attach a photo or screenshot"
+                      >
+                        <Camera className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const target = `/auth?mode=signup&redirect=${encodeURIComponent("/?focus=composer")}`;
+                          if (isReady && user) {
+                            // Route mic-first users straight into the builder with dictation.
+                            window.location.href = "/builder?dictate=1";
+                          } else {
+                            window.location.href = target;
+                          }
+                        }}
+                        className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        aria-label="Dictate with voice"
+                        title="Dictate with voice"
+                      >
+                        <Mic className="h-4 w-4" />
+                      </button>
+                    </>
                   )}
 
                   <ComposerModePicker value={mode} onChange={setMode} />
