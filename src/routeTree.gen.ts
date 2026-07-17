@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as ThemesRouteImport } from './routes/themes'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProjectsRouteImport } from './routes/projects'
@@ -108,6 +109,11 @@ const UnsubscribeRoute = UnsubscribeRouteImport.update({
 const ThemesRoute = ThemesRouteImport.update({
   id: '/themes',
   path: '/themes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TemplatesRoute = TemplatesRouteImport.update({
@@ -580,6 +586,7 @@ export interface FileRoutesByFullPath {
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/templates': typeof TemplatesRoute
+  '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
@@ -672,6 +679,7 @@ export interface FileRoutesByTo {
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/templates': typeof TemplatesRoute
+  '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
@@ -765,6 +773,7 @@ export interface FileRoutesById {
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/templates': typeof TemplatesRoute
+  '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
@@ -859,6 +868,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/reset-password'
     | '/templates'
+    | '/terms'
     | '/themes'
     | '/unsubscribe'
     | '/admin/ai-providers'
@@ -951,6 +961,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/reset-password'
     | '/templates'
+    | '/terms'
     | '/themes'
     | '/unsubscribe'
     | '/admin/ai-providers'
@@ -1043,6 +1054,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/reset-password'
     | '/templates'
+    | '/terms'
     | '/themes'
     | '/unsubscribe'
     | '/admin/ai-providers'
@@ -1136,6 +1148,7 @@ export interface RootRouteChildren {
   ProjectsRoute: typeof ProjectsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   TemplatesRoute: typeof TemplatesRoute
+  TermsRoute: typeof TermsRoute
   ThemesRoute: typeof ThemesRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
@@ -1225,6 +1238,13 @@ declare module '@tanstack/react-router' {
       path: '/themes'
       fullPath: '/themes'
       preLoaderRoute: typeof ThemesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/templates': {
@@ -1894,6 +1914,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsRoute: ProjectsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   TemplatesRoute: TemplatesRoute,
+  TermsRoute: TermsRoute,
   ThemesRoute: ThemesRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,

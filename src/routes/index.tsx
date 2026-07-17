@@ -956,30 +956,25 @@ function Landing() {
             </p>
           </div>
 
-          <div className="mt-16 grid gap-5 md:grid-cols-6 md:grid-rows-2">
-            {/* Big feature — web app (full-bleed image, matches Mobile/Backend styling) */}
+          <div className="mt-16 grid gap-5 md:grid-cols-3">
+            {/* Web app — now consistent with Mobile / Backend cards */}
             <Link
               to="/features/$slug"
               params={{ slug: "web" }}
-              className="group relative col-span-6 overflow-hidden rounded-[2rem] border border-border bg-foreground text-background shadow-[var(--shadow-editorial)] md:col-span-4 md:row-span-2"
+              className="group relative overflow-hidden rounded-[2rem] border border-border bg-foreground text-background shadow-[var(--shadow-editorial)]"
             >
               <img
                 src={webDashImg}
                 alt="Petal-built SaaS dashboard on a laptop"
-                loading="lazy"
+                loading="eager"
+                decoding="async"
                 className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-foreground via-foreground/70 to-transparent" />
-              <div className="relative flex h-full min-h-[26rem] flex-col justify-end p-8 sm:p-10">
+              <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/30 to-transparent" />
+              <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
                 <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur">
                   <Globe className="h-3 w-3" /> Web apps
                 </span>
-                <h3 className="mt-4 max-w-md font-display text-3xl font-black leading-tight tracking-tight sm:text-4xl">
-                  Ship a full web app on <span className="italic text-coral">your</span> domain.
-                </h3>
-                <p className="mt-3 max-w-md text-sm text-background/75 sm:text-base">
-                  React + Tailwind + a typed backend. Auth, database, storage, payments — all wired, live behind a URL.
-                </p>
               </div>
             </Link>
 
@@ -987,20 +982,20 @@ function Landing() {
             <Link
               to="/features/$slug"
               params={{ slug: "mobile" }}
-              className="group relative col-span-6 overflow-hidden rounded-[2rem] border border-border bg-foreground text-background md:col-span-2 md:row-span-1"
+              className="group relative overflow-hidden rounded-[2rem] border border-border bg-foreground text-background"
             >
               <img
                 src={phoneHandImg}
                 alt="Mobile app built with Petal, held in hand"
-                loading="lazy"
+                loading="eager"
+                decoding="async"
                 className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-foreground via-foreground/70 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/30 to-transparent" />
               <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
                 <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur">
                   <Smartphone className="h-3 w-3" /> Mobile
                 </span>
-                <h3 className="mt-3 font-display text-2xl font-black leading-tight">iOS + Android from one prompt.</h3>
               </div>
             </Link>
 
@@ -1008,23 +1003,24 @@ function Landing() {
             <Link
               to="/features/$slug"
               params={{ slug: "backend" }}
-              className="group relative col-span-6 overflow-hidden rounded-[2rem] border border-border bg-card sm:col-span-3 md:col-span-2 md:row-span-1"
+              className="group relative overflow-hidden rounded-[2rem] border border-border bg-card"
             >
               <img
                 src={backendImg}
                 alt="Backend architecture visualisation"
-                loading="lazy"
+                loading="eager"
+                decoding="async"
                 className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-card/20 to-transparent" />
               <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
                 <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-foreground backdrop-blur">
                   <Layers className="h-3 w-3" /> Backends
                 </span>
-                <h3 className="mt-3 font-display text-2xl font-black leading-tight tracking-tight text-foreground">Typed APIs. Real database.</h3>
               </div>
             </Link>
           </div>
+
 
           {/* Small feature row */}
           <div className="mt-5 grid gap-5 md:grid-cols-3">
