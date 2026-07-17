@@ -11,15 +11,18 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as ThemesRouteImport } from './routes/themes'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PacksRouteImport } from './routes/packs'
 import { Route as InvestRouteImport } from './routes/invest'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as CoffeeRouteImport } from './routes/coffee'
+import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -108,6 +111,11 @@ const ThemesRoute = ThemesRouteImport.update({
   path: '/themes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TemplatesRoute = TemplatesRouteImport.update({
   id: '/templates',
   path: '/templates',
@@ -126,6 +134,11 @@ const ProjectsRoute = ProjectsRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PacksRoute = PacksRouteImport.update({
@@ -151,6 +164,11 @@ const DocsRoute = DocsRouteImport.update({
 const CoffeeRoute = CoffeeRouteImport.update({
   id: '/coffee',
   path: '/coffee',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuilderRoute = BuilderRouteImport.update({
@@ -557,15 +575,18 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/changelog': typeof ChangelogRoute
   '/coffee': typeof CoffeeRouteWithChildren
   '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
   '/invest': typeof InvestRoute
   '/packs': typeof PacksRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/templates': typeof TemplatesRoute
+  '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
@@ -647,15 +668,18 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/changelog': typeof ChangelogRoute
   '/coffee': typeof CoffeeRouteWithChildren
   '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
   '/invest': typeof InvestRoute
   '/packs': typeof PacksRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/templates': typeof TemplatesRoute
+  '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
@@ -738,15 +762,18 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/changelog': typeof ChangelogRoute
   '/coffee': typeof CoffeeRouteWithChildren
   '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
   '/invest': typeof InvestRoute
   '/packs': typeof PacksRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/templates': typeof TemplatesRoute
+  '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
@@ -830,15 +857,18 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/builder'
+    | '/changelog'
     | '/coffee'
     | '/docs'
     | '/gallery'
     | '/invest'
     | '/packs'
+    | '/privacy'
     | '/profile'
     | '/projects'
     | '/reset-password'
     | '/templates'
+    | '/terms'
     | '/themes'
     | '/unsubscribe'
     | '/admin/ai-providers'
@@ -920,15 +950,18 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/builder'
+    | '/changelog'
     | '/coffee'
     | '/docs'
     | '/gallery'
     | '/invest'
     | '/packs'
+    | '/privacy'
     | '/profile'
     | '/projects'
     | '/reset-password'
     | '/templates'
+    | '/terms'
     | '/themes'
     | '/unsubscribe'
     | '/admin/ai-providers'
@@ -1010,15 +1043,18 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/builder'
+    | '/changelog'
     | '/coffee'
     | '/docs'
     | '/gallery'
     | '/invest'
     | '/packs'
+    | '/privacy'
     | '/profile'
     | '/projects'
     | '/reset-password'
     | '/templates'
+    | '/terms'
     | '/themes'
     | '/unsubscribe'
     | '/admin/ai-providers'
@@ -1101,15 +1137,18 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   BuilderRoute: typeof BuilderRoute
+  ChangelogRoute: typeof ChangelogRoute
   CoffeeRoute: typeof CoffeeRouteWithChildren
   DocsRoute: typeof DocsRoute
   GalleryRoute: typeof GalleryRoute
   InvestRoute: typeof InvestRoute
   PacksRoute: typeof PacksRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
   ProjectsRoute: typeof ProjectsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   TemplatesRoute: typeof TemplatesRoute
+  TermsRoute: typeof TermsRoute
   ThemesRoute: typeof ThemesRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
@@ -1201,6 +1240,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ThemesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/templates': {
       id: '/templates'
       path: '/templates'
@@ -1227,6 +1273,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/packs': {
@@ -1262,6 +1315,13 @@ declare module '@tanstack/react-router' {
       path: '/coffee'
       fullPath: '/coffee'
       preLoaderRoute: typeof CoffeeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/builder': {
@@ -1843,15 +1903,18 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   BuilderRoute: BuilderRoute,
+  ChangelogRoute: ChangelogRoute,
   CoffeeRoute: CoffeeRouteWithChildren,
   DocsRoute: DocsRoute,
   GalleryRoute: GalleryRoute,
   InvestRoute: InvestRoute,
   PacksRoute: PacksRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
   ProjectsRoute: ProjectsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   TemplatesRoute: TemplatesRoute,
+  TermsRoute: TermsRoute,
   ThemesRoute: ThemesRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,

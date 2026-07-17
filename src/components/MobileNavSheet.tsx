@@ -135,9 +135,9 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
               label="Documentation"
             />
             <RowLink
-              to="/gallery"
+              to="/changelog"
               onClick={close}
-              icon={<ImageIcon className="h-4 w-4" />}
+              icon={<Sparkles className="h-4 w-4" />}
               label="What's new"
             />
           </Section>
@@ -201,7 +201,7 @@ function RowLink({
   icon,
   label,
 }: {
-  to: "/" | "/projects" | "/gallery" | "/profile" | "/admin" | "/docs" | "/templates" | "/packs" | "/themes";
+  to: "/" | "/projects" | "/gallery" | "/profile" | "/admin" | "/docs" | "/templates" | "/packs" | "/themes" | "/changelog" | "/privacy" | "/terms";
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
