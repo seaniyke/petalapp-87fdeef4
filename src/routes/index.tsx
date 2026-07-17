@@ -35,7 +35,6 @@ import {
 } from "lucide-react";
 
 import webDashImg from "@/assets/landing-web-dashboard.jpg";
-import webDashImg from "@/assets/landing-web-dashboard.jpg";
 import backendImg from "@/assets/landing-backend.jpg";
 import founderImg from "@/assets/landing-founder.jpg";
 import phoneHandImg from "@/assets/landing-phone-hand.jpg";
