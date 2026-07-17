@@ -580,8 +580,8 @@ function Landing() {
                         : "Describe a web app, mobile app, API or extension…"
                       : animatedPlaceholder
                   }
-                  className="block w-full resize-none bg-transparent px-2 pb-16 pt-1 text-base leading-relaxed outline-none placeholder:text-muted-foreground/80"
-                  style={{ minHeight: "6rem" }}
+                  className="block w-full resize-none bg-transparent px-2 pb-16 pt-1 text-lg leading-relaxed outline-none placeholder:text-muted-foreground/80 sm:text-xl"
+                  style={{ minHeight: "6.5rem" }}
                 />
               )}
 
