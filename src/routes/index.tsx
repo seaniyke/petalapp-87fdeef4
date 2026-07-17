@@ -20,7 +20,7 @@ import {
   Layers,
   Wand2,
   Paperclip,
-  Github,
+  
   Camera,
   X,
   Globe,
