@@ -28,12 +28,10 @@ import {
   Plus,
   Sparkles,
   Smartphone,
-  Apple,
-  Bot,
-  Zap,
   Star,
   ShieldCheck,
   Code2,
+  Mic,
 } from "lucide-react";
 
 import heroMobileImg from "@/assets/landing-hero-mobile.jpg";
