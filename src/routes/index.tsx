@@ -1298,11 +1298,9 @@ function Landing() {
           <div className="flex flex-wrap items-center justify-center gap-5">
             <Link to="/coffee" className="hover:text-foreground">Buy us a coffee</Link>
             <Link to="/invest" className="hover:text-foreground">Invest</Link>
-            <a href="#" className="inline-flex items-center gap-1.5 hover:text-foreground">
-              <Github className="h-4 w-4" /> GitHub
-            </a>
-            <a href="#" className="hover:text-foreground">Privacy</a>
-            <a href="#" className="hover:text-foreground">Terms</a>
+            <Link to="/changelog" className="hover:text-foreground">What's new</Link>
+            <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+            <Link to="/terms" className="hover:text-foreground">Terms</Link>
             <span>© {new Date().getFullYear()} Petal</span>
           </div>
         </div>
