@@ -34,7 +34,7 @@ import {
   Mic,
 } from "lucide-react";
 
-import heroMobileImg from "@/assets/landing-hero-mobile.jpg";
+import webDashImg from "@/assets/landing-web-dashboard.jpg";
 import webDashImg from "@/assets/landing-web-dashboard.jpg";
 import backendImg from "@/assets/landing-backend.jpg";
 import founderImg from "@/assets/landing-founder.jpg";
