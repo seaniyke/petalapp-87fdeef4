@@ -213,7 +213,13 @@ function AuthPage() {
             loading="lazy"
           />
           <div className="relative flex h-full flex-col justify-between p-12 xl:p-16">
-            <Link to="/" className="inline-flex items-center gap-2">
+            <Link to="/" className="inline-flex items-center gap-2.5 group">
+              <img
+                src="/petal-logo.png"
+                alt=""
+                aria-hidden
+                className="h-10 w-10 object-contain transition-transform group-hover:-rotate-6"
+              />
               <span className="font-display text-3xl font-black tracking-[-0.035em] text-foreground">
                 Petal
               </span>
