@@ -44,7 +44,9 @@ export function ProjectThumbnail({
         <img
           src={screenshotUrl(url)}
           alt=""
-          loading="lazy"
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
           className="absolute inset-0 h-full w-full object-cover object-top"
           onError={() => setFailed(true)}
         />
