@@ -265,6 +265,7 @@ function AuthPage() {
               to="/"
               className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground lg:hidden"
             >
+              <img src="/petal-logo.png" alt="" aria-hidden className="h-8 w-8 object-contain" />
               <span className="font-display text-2xl font-black tracking-[-0.03em] text-foreground">
                 Petal
               </span>
