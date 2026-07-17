@@ -15,6 +15,7 @@ import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PacksRouteImport } from './routes/packs'
 import { Route as InvestRouteImport } from './routes/invest'
 import { Route as GalleryRouteImport } from './routes/gallery'
@@ -127,6 +128,11 @@ const ProjectsRoute = ProjectsRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PacksRoute = PacksRouteImport.update({
@@ -569,6 +575,7 @@ export interface FileRoutesByFullPath {
   '/gallery': typeof GalleryRoute
   '/invest': typeof InvestRoute
   '/packs': typeof PacksRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -660,6 +667,7 @@ export interface FileRoutesByTo {
   '/gallery': typeof GalleryRoute
   '/invest': typeof InvestRoute
   '/packs': typeof PacksRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -752,6 +760,7 @@ export interface FileRoutesById {
   '/gallery': typeof GalleryRoute
   '/invest': typeof InvestRoute
   '/packs': typeof PacksRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -845,6 +854,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/invest'
     | '/packs'
+    | '/privacy'
     | '/profile'
     | '/projects'
     | '/reset-password'
@@ -936,6 +946,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/invest'
     | '/packs'
+    | '/privacy'
     | '/profile'
     | '/projects'
     | '/reset-password'
@@ -1027,6 +1038,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/invest'
     | '/packs'
+    | '/privacy'
     | '/profile'
     | '/projects'
     | '/reset-password'
@@ -1119,6 +1131,7 @@ export interface RootRouteChildren {
   GalleryRoute: typeof GalleryRoute
   InvestRoute: typeof InvestRoute
   PacksRoute: typeof PacksRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
   ProjectsRoute: typeof ProjectsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -1240,6 +1253,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/packs': {
@@ -1869,6 +1889,7 @@ const rootRouteChildren: RootRouteChildren = {
   GalleryRoute: GalleryRoute,
   InvestRoute: InvestRoute,
   PacksRoute: PacksRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
   ProjectsRoute: ProjectsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
