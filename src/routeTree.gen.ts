@@ -20,6 +20,7 @@ import { Route as InvestRouteImport } from './routes/invest'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as CoffeeRouteImport } from './routes/coffee'
+import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -151,6 +152,11 @@ const DocsRoute = DocsRouteImport.update({
 const CoffeeRoute = CoffeeRouteImport.update({
   id: '/coffee',
   path: '/coffee',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuilderRoute = BuilderRouteImport.update({
@@ -557,6 +563,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/changelog': typeof ChangelogRoute
   '/coffee': typeof CoffeeRouteWithChildren
   '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
@@ -647,6 +654,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/changelog': typeof ChangelogRoute
   '/coffee': typeof CoffeeRouteWithChildren
   '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
@@ -738,6 +746,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/builder': typeof BuilderRoute
+  '/changelog': typeof ChangelogRoute
   '/coffee': typeof CoffeeRouteWithChildren
   '/docs': typeof DocsRoute
   '/gallery': typeof GalleryRoute
@@ -830,6 +839,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/builder'
+    | '/changelog'
     | '/coffee'
     | '/docs'
     | '/gallery'
@@ -920,6 +930,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/builder'
+    | '/changelog'
     | '/coffee'
     | '/docs'
     | '/gallery'
@@ -1010,6 +1021,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/builder'
+    | '/changelog'
     | '/coffee'
     | '/docs'
     | '/gallery'
@@ -1101,6 +1113,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   BuilderRoute: typeof BuilderRoute
+  ChangelogRoute: typeof ChangelogRoute
   CoffeeRoute: typeof CoffeeRouteWithChildren
   DocsRoute: typeof DocsRoute
   GalleryRoute: typeof GalleryRoute
@@ -1262,6 +1275,13 @@ declare module '@tanstack/react-router' {
       path: '/coffee'
       fullPath: '/coffee'
       preLoaderRoute: typeof CoffeeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/builder': {
@@ -1843,6 +1863,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   BuilderRoute: BuilderRoute,
+  ChangelogRoute: ChangelogRoute,
   CoffeeRoute: CoffeeRouteWithChildren,
   DocsRoute: DocsRoute,
   GalleryRoute: GalleryRoute,
