@@ -5,6 +5,7 @@ import { SampleAppShowcase } from "@/components/SampleAppShowcase";
 import { StartIdeasPanel } from "@/components/StartIdeasPanel";
 import { ComposerModePicker, type ComposerMode } from "@/components/ComposerModePicker";
 import { IdeaCoach } from "@/components/IdeaCoach";
+import { useVoiceDictation } from "@/hooks/use-voice-dictation";
 
 import type { BuildTargetId } from "@/lib/build-targets";
 
