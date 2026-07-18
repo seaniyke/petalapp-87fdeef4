@@ -15,6 +15,7 @@
  */
 import { useState } from "react";
 import { PETAL_ROOT_DOMAIN } from "@/lib/petal-subdomain";
+import { PetalLoader } from "@/components/PetalLoader";
 
 export function ProjectThumbnail({
   projectId,
@@ -36,20 +37,29 @@ export function ProjectThumbnail({
 }) {
   const url = resolveLiveUrl({ subdomain, customDomain, publishedUrl });
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const showImage = url && !failed;
 
   return (
     <div className={`relative overflow-hidden ${className}`} aria-hidden>
       {showImage ? (
-        <img
-          src={screenshotUrl(url)}
-          alt=""
-          loading="eager"
-          decoding="async"
-          fetchPriority="high"
-          className="absolute inset-0 h-full w-full object-cover object-top"
-          onError={() => setFailed(true)}
-        />
+        <>
+          {!loaded && (
+            <div className="absolute inset-0 grid place-items-center bg-muted/40">
+              <PetalLoader size={28} />
+            </div>
+          )}
+          <img
+            src={screenshotUrl(url)}
+            alt=""
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
+            className={`absolute inset-0 h-full w-full object-cover object-top transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
+            onLoad={() => setLoaded(true)}
+            onError={() => setFailed(true)}
+          />
+        </>
       ) : (
         <Fallback projectId={projectId} title={title} />
       )}
