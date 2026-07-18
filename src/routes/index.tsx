@@ -1038,34 +1038,31 @@ function Landing() {
           </div>
 
 
-          {/* Small feature row */}
+          {/* Second row — consistent full-bleed editorial cards */}
           <div className="mt-5 grid gap-5 md:grid-cols-3">
             {[
-              { slug: "extensions", img: extensionImg, icon: Wand2, tint: "bg-lilac", title: "Chrome extensions", body: "Manifest V3 popup, worker, content script — packaged." },
-              { slug: "preview", img: previewImg, icon: Eye, tint: "bg-butter", title: "Live preview", body: "Web frame, phone frame, or API console — whichever fits." },
-              { slug: "ship", img: shipImg, icon: Rocket, tint: "bg-coral/40", title: "One-click ship", body: "Public URL, custom domain, or a signed mobile build." },
+              { slug: "extensions", img: extensionImg, icon: Wand2, label: "Chrome extensions", dark: true },
+              { slug: "preview", img: previewImg, icon: Eye, label: "Live preview", dark: false },
+              { slug: "ship", img: shipImg, icon: Rocket, label: "One-click ship", dark: true },
             ].map((f) => (
               <Link
-                key={f.title}
+                key={f.slug}
                 to="/features/$slug"
                 params={{ slug: f.slug }}
-                className="group overflow-hidden rounded-3xl border border-border bg-card transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-[var(--shadow-editorial)]"
+                className={`group relative overflow-hidden rounded-[2rem] border border-border ${f.dark ? "bg-foreground text-background" : "bg-card"}`}
               >
-                <div className="relative aspect-[16/10] overflow-hidden">
-                  <img
-                    src={f.img}
-                    alt=""
-                    loading="lazy"
-                    className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-card/10 to-transparent" />
-                  <span className={`absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-2xl ${f.tint} shadow-sm ring-1 ring-black/5`}>
-                    <f.icon className="h-4.5 w-4.5 text-foreground/80" />
+                <img
+                  src={f.img}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
+                />
+                <div className={`absolute inset-0 bg-gradient-to-t ${f.dark ? "from-foreground/90 via-foreground/30" : "from-card/90 via-card/20"} to-transparent`} />
+                <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
+                  <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur ${f.dark ? "bg-background/15" : "bg-background/70 text-foreground"}`}>
+                    <f.icon className="h-3 w-3" /> {f.label}
                   </span>
-                </div>
-                <div className="p-6">
-                  <h3 className="font-display text-xl font-bold">{f.title}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">{f.body}</p>
                 </div>
               </Link>
             ))}
