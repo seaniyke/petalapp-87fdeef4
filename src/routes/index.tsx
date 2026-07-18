@@ -652,17 +652,25 @@ function Landing() {
                       <button
                         type="button"
                         onClick={() => {
-                          const target = `/auth?mode=signup&redirect=${encodeURIComponent("/?focus=composer")}`;
-                          if (isReady && user) {
-                            // Route mic-first users straight into the builder with dictation.
+                          if (!voice.supported) {
                             window.location.href = "/builder?dictate=1";
+                            return;
+                          }
+                          if (voice.listening) {
+                            voice.stop();
                           } else {
-                            window.location.href = target;
+                            dictationBaseRef.current = prompt.trim();
+                            voice.start();
                           }
                         }}
-                        className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        aria-label="Dictate with voice"
-                        title="Dictate with voice"
+                        className={`grid h-9 w-9 place-items-center rounded-full transition ${
+                          voice.listening
+                            ? "bg-primary text-primary-foreground shadow-sm animate-pulse"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                        aria-label={voice.listening ? "Stop dictation" : "Dictate with voice"}
+                        aria-pressed={voice.listening}
+                        title={voice.listening ? "Listening… click to stop" : "Dictate with voice"}
                       >
                         <Mic className="h-4 w-4" />
                       </button>
