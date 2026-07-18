@@ -5,6 +5,7 @@ import { SampleAppShowcase } from "@/components/SampleAppShowcase";
 import { StartIdeasPanel } from "@/components/StartIdeasPanel";
 import { ComposerModePicker, type ComposerMode } from "@/components/ComposerModePicker";
 import { IdeaCoach } from "@/components/IdeaCoach";
+import { useVoiceDictation } from "@/hooks/use-voice-dictation";
 
 import type { BuildTargetId } from "@/lib/build-targets";
 
@@ -116,6 +117,21 @@ function Landing() {
   const [mode, setMode] = useState<ComposerMode>("build");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [buildTarget, setBuildTarget] = useState<BuildTargetId>("web");
+  // Baseline captured on dictation start so partial transcripts append to
+  // (not replace) what the user already typed.
+  const dictationBaseRef = useRef("");
+  const voice = useVoiceDictation({
+    onText: (text, isFinal) => {
+      const base = dictationBaseRef.current;
+      const merged = base ? `${base} ${text}`.replace(/\s+/g, " ").trimStart() : text;
+      setPrompt(merged);
+      if (isFinal) dictationBaseRef.current = merged;
+    },
+    getAuthToken: async () => {
+      const { data } = await supabase.auth.getSession();
+      return data.session?.access_token ?? null;
+    },
+  });
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -636,17 +652,25 @@ function Landing() {
                       <button
                         type="button"
                         onClick={() => {
-                          const target = `/auth?mode=signup&redirect=${encodeURIComponent("/?focus=composer")}`;
-                          if (isReady && user) {
-                            // Route mic-first users straight into the builder with dictation.
+                          if (!voice.supported) {
                             window.location.href = "/builder?dictate=1";
+                            return;
+                          }
+                          if (voice.listening) {
+                            voice.stop();
                           } else {
-                            window.location.href = target;
+                            dictationBaseRef.current = prompt.trim();
+                            voice.start();
                           }
                         }}
-                        className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        aria-label="Dictate with voice"
-                        title="Dictate with voice"
+                        className={`grid h-9 w-9 place-items-center rounded-full transition ${
+                          voice.listening
+                            ? "bg-primary text-primary-foreground shadow-sm animate-pulse"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                        aria-label={voice.listening ? "Stop dictation" : "Dictate with voice"}
+                        aria-pressed={voice.listening}
+                        title={voice.listening ? "Listening… click to stop" : "Dictate with voice"}
                       >
                         <Mic className="h-4 w-4" />
                       </button>

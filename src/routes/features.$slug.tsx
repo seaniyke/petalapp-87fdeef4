@@ -13,12 +13,12 @@ import {
 
 import { SiteHeader } from "@/components/SiteHeader";
 
-import webDashImg from "@/assets/landing-web-dashboard.jpg";
-import phoneHandImg from "@/assets/landing-phone-hand.jpg";
-import backendImg from "@/assets/landing-backend.jpg";
-import extensionImg from "@/assets/landing-extension.jpg";
-import previewImg from "@/assets/landing-preview.jpg";
-import shipImg from "@/assets/landing-ship.jpg";
+import webDashImg from "@/assets/feature-web-hero.jpg";
+import phoneHandImg from "@/assets/feature-mobile-hero.jpg";
+import backendImg from "@/assets/feature-backend-hero.jpg";
+import extensionImg from "@/assets/feature-extensions-hero.jpg";
+import previewImg from "@/assets/feature-preview-hero.jpg";
+import shipImg from "@/assets/feature-ship-hero.jpg";
 
 type Feature = {
   slug: string;
