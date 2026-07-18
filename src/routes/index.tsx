@@ -117,6 +117,21 @@ function Landing() {
   const [mode, setMode] = useState<ComposerMode>("build");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [buildTarget, setBuildTarget] = useState<BuildTargetId>("web");
+  // Baseline captured on dictation start so partial transcripts append to
+  // (not replace) what the user already typed.
+  const dictationBaseRef = useRef("");
+  const voice = useVoiceDictation({
+    onText: (text, isFinal) => {
+      const base = dictationBaseRef.current;
+      const merged = base ? `${base} ${text}`.replace(/\s+/g, " ").trimStart() : text;
+      setPrompt(merged);
+      if (isFinal) dictationBaseRef.current = merged;
+    },
+    getAuthToken: async () => {
+      const { data } = await supabase.auth.getSession();
+      return data.session?.access_token ?? null;
+    },
+  });
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
