@@ -327,7 +327,7 @@ function FeaturePage() {
       {/* Proof strip */}
       <section className="border-t border-border/60 bg-foreground text-background">
         <div className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-background/10 px-4 py-14 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:px-6">
-          {feature.proof.map((p) => (
+          {feature.proof.map((p: { stat: string; label: string }) => (
             <div key={p.label} className="px-2 py-6 text-center sm:py-2">
               <p className="font-display text-4xl font-black tracking-tight sm:text-5xl">{p.stat}</p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-background/60">{p.label}</p>
