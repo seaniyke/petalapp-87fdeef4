@@ -416,3 +416,52 @@ function FeaturePage() {
     </div>
   );
 }
+
+function TryItSection({ samplePrompt, eyebrow }: { samplePrompt: string; eyebrow: string }) {
+  const [value, setValue] = useState(samplePrompt);
+  const navigate = useNavigate();
+
+  function launch(e: React.FormEvent) {
+    e.preventDefault();
+    const prompt = value.trim();
+    if (!prompt) return;
+    // Route through auth (signup) with the prompt preserved as redirect payload.
+    // The landing composer already handles ?prompt= — we send users to /auth so
+    // they land in the builder authenticated with their idea intact.
+    const redirect = `/?prompt=${encodeURIComponent(prompt)}`;
+    navigate({ to: "/auth", search: { mode: "signup", redirect } });
+  }
+
+  return (
+    <section className="border-t border-border/60 px-4 pb-24 sm:px-6">
+      <div className="mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-border bg-card p-8 shadow-[var(--shadow-editorial)] sm:p-12">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
+          <Sparkles className="mr-1 inline h-3 w-3" /> Try {eyebrow.toLowerCase()} now
+        </p>
+        <h2 className="mt-4 font-display text-3xl font-black leading-tight tracking-[-0.02em] sm:text-4xl">
+          Type an idea. Petal builds it live.
+        </h2>
+        <form onSubmit={launch} className="mt-6 space-y-4">
+          <textarea
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            rows={4}
+            className="w-full resize-none rounded-2xl border border-border bg-background px-5 py-4 text-base leading-relaxed text-foreground shadow-inner outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+            placeholder="Describe what you want to build…"
+          />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              Free to start. No credit card required.
+            </p>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background shadow-[var(--shadow-editorial)] transition hover:-translate-y-0.5"
+            >
+              Build it <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  );
+}
