@@ -213,10 +213,13 @@ export const Route = createFileRoute("/features/$slug")({
     if (!f) throw notFound();
     return { feature: f };
   },
-  head: ({ loaderData }) => {
+  head: ({ loaderData, params }) => {
     const f = loaderData?.feature;
     const title = f ? `${f.eyebrow} — Petal` : "Petal";
     const description = f?.lede ?? "Build real software from one chat.";
+    const origin = "https://buildwithpetal.com";
+    const ogImage = f ? `${origin}${f.image}` : undefined;
+    const url = `${origin}/features/${params.slug}`;
     return {
       meta: [
         { title },
@@ -224,8 +227,12 @@ export const Route = createFileRoute("/features/$slug")({
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         { property: "og:type", content: "website" },
+        { property: "og:url", content: url },
+        ...(ogImage ? [{ property: "og:image", content: ogImage }] : []),
         { name: "twitter:card", content: "summary_large_image" },
+        ...(ogImage ? [{ name: "twitter:image", content: ogImage }] : []),
       ],
+      links: [{ rel: "canonical", href: url }],
     };
   },
   component: FeaturePage,
