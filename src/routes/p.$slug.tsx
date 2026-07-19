@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sparkles, GitFork, ArrowUpRight, Loader2, ExternalLink } from "lucide-react";
+import { GitFork, ArrowUpRight, Loader2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import {
   getProjectBySlug,
@@ -9,6 +9,8 @@ import {
 } from "@/lib/projects";
 import { resolvePublishedUrl, type PublishedUrlResult } from "@/lib/published-url";
 import { supabase } from "@/integrations/supabase/client";
+import { ProjectThumbnail } from "@/components/ProjectThumbnail";
+import logo from "/petal-logo.png";
 import {
   Dialog,
   DialogContent,
