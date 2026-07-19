@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sparkles, GitFork, ArrowUpRight, Loader2, ExternalLink } from "lucide-react";
+import { GitFork, ArrowUpRight, Loader2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import {
   getProjectBySlug,
@@ -9,6 +9,8 @@ import {
 } from "@/lib/projects";
 import { resolvePublishedUrl, type PublishedUrlResult } from "@/lib/published-url";
 import { supabase } from "@/integrations/supabase/client";
+import { ProjectThumbnail } from "@/components/ProjectThumbnail";
+import logo from "/petal-logo.png";
 import {
   Dialog,
   DialogContent,
@@ -102,22 +104,14 @@ function PublicPreview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const initials = project.title
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("") || "P";
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link to="/" className="inline-flex items-center gap-2 text-sm font-medium">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-primary text-primary-foreground">
-              <Sparkles className="h-3.5 w-3.5" />
-            </span>
-            Petal
+          <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold">
+            <img src={logo} alt="" className="h-6 w-6" />
+            <span className="font-display text-base tracking-tight">Petal</span>
           </Link>
           <Link
             to="/gallery"
@@ -178,20 +172,21 @@ function PublicPreview() {
             </div>
           </div>
 
-          {/* Right: hero artwork */}
+          {/* Right: live thumbnail */}
           <a
             href={published.url ?? undefined}
             target={published.url ? "_blank" : undefined}
             rel="noopener noreferrer"
-            className="group relative block overflow-hidden rounded-3xl border border-border bg-aurora aspect-[4/3] shadow-[var(--shadow-soft)]"
+            className="group relative block overflow-hidden rounded-3xl border border-border bg-card aspect-[4/3] shadow-[var(--shadow-editorial)]"
             aria-label={published.url ? `Open ${project.title} in a new tab` : project.title}
           >
-            <div className="absolute inset-0 bg-grain opacity-30" aria-hidden />
-            <div className="absolute inset-0 grid place-items-center">
-              <div className="grid h-28 w-28 place-items-center rounded-3xl bg-card/80 backdrop-blur text-4xl font-display text-foreground shadow-lg">
-                {initials}
-              </div>
-            </div>
+            <ProjectThumbnail
+              projectId={project.id}
+              title={project.title}
+              subdomain={project.subdomain}
+              publishedUrl={published.url}
+              className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-[1.03]"
+            />
             {published.url && (
               <div className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full bg-foreground/90 px-3 py-1.5 text-xs font-medium text-background opacity-0 transition group-hover:opacity-100">
                 Open <ArrowUpRight className="h-3 w-3" />
