@@ -32,6 +32,10 @@ type Feature = {
   image: string;
   icon: LucideIcon;
   bullets: { title: string; body: string }[];
+  proof: { stat: string; label: string }[];
+  samplePrompt: string;
+  codeLang: string;
+  codeSample: string;
 };
 
 const FEATURES: Record<string, Feature> = {
