@@ -104,12 +104,6 @@ function PublicPreview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const initials = project.title
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("") || "P";
 
   return (
     <div className="min-h-screen bg-background">
