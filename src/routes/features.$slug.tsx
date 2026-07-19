@@ -324,6 +324,18 @@ function FeaturePage() {
         </div>
       </section>
 
+      {/* Proof strip */}
+      <section className="border-t border-border/60 bg-foreground text-background">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-background/10 px-4 py-14 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:px-6">
+          {feature.proof.map((p) => (
+            <div key={p.label} className="px-2 py-6 text-center sm:py-2">
+              <p className="font-display text-4xl font-black tracking-tight sm:text-5xl">{p.stat}</p>
+              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-background/60">{p.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Bullets */}
       <section className="border-t border-border/60 px-4 py-24 sm:px-6">
         <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-3">
@@ -341,6 +353,40 @@ function FeaturePage() {
           ))}
         </div>
       </section>
+
+      {/* Code sample */}
+      <section className="border-t border-border/60 px-4 pb-24 sm:px-6">
+        <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-2 md:items-center">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">Real code, not a mock</p>
+            <h2 className="mt-4 font-display text-4xl font-black leading-[1.05] tracking-[-0.02em] sm:text-5xl">
+              You own every line Petal writes.
+            </h2>
+            <p className="mt-5 text-base text-muted-foreground">
+              No lock-in, no proprietary DSL. Petal writes production code you can read, edit,
+              extend, and export at any time. Here's a taste of what lands in your project.
+            </p>
+          </div>
+          <div className="overflow-hidden rounded-3xl border border-border bg-foreground shadow-[var(--shadow-editorial)]">
+            <div className="flex items-center gap-2 border-b border-background/10 px-4 py-3">
+              <span className="h-2.5 w-2.5 rounded-full bg-background/40" />
+              <span className="h-2.5 w-2.5 rounded-full bg-background/25" />
+              <span className="h-2.5 w-2.5 rounded-full bg-background/15" />
+              <span className="ml-3 text-[11px] font-mono uppercase tracking-widest text-background/50">
+                {feature.codeLang}
+              </span>
+            </div>
+            <pre className="overflow-x-auto px-5 py-5 text-[13px] leading-relaxed text-background/90">
+              <code className="font-mono">{feature.codeSample}</code>
+            </pre>
+          </div>
+        </div>
+      </section>
+
+      {/* In-page CTA — try this feature right now */}
+      <TryItSection samplePrompt={feature.samplePrompt} eyebrow={feature.eyebrow} />
+
+
 
       {/* Next feature */}
       <section className="border-t border-border/60 px-4 pb-24 pt-12 sm:px-6">
