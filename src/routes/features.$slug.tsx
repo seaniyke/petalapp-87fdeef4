@@ -1,4 +1,5 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import {
   Globe,
   Smartphone,
@@ -8,6 +9,7 @@ import {
   Rocket,
   ArrowRight,
   Check,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
