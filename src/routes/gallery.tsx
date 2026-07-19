@@ -70,10 +70,8 @@ function GalleryPage() {
 
         <div className="mx-auto max-w-6xl px-6 py-14">
           {loading ? (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-72 animate-pulse rounded-3xl border border-border bg-card" />
-              ))}
+            <div className="grid place-items-center py-24">
+              <PetalLoader size={56} label="Loading gallery…" />
             </div>
           ) : projects.length === 0 ? (
             <EmptyState />
