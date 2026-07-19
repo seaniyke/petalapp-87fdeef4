@@ -4,6 +4,7 @@ import { Sparkles, GitFork, Star, ArrowUpRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
+import { PetalLoader } from "@/components/PetalLoader";
 import {
   listPublicProjects,
   setProjectFeatured,
