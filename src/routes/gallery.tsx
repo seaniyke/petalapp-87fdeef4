@@ -120,10 +120,8 @@ function GalleryPage() {
 function EmptyState() {
   return (
     <div className="mt-10 rounded-3xl border border-dashed border-border bg-card/60 p-12 text-center">
-      <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-butter">
-        <Sparkles className="h-6 w-6 text-foreground/70" />
-      </div>
-      <h3 className="mt-4 font-display text-2xl">Nothing public yet</h3>
+      <PetalLoader size={56} />
+      <h3 className="mt-6 font-display text-2xl">Nothing public yet</h3>
       <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
         Be the first to share a project. Open any of your projects, flip the
         share toggle to public, and it will show up here.
