@@ -1,57 +1,40 @@
-# Petal — Premium Redesign
+# Petal Power Pass — Roadmap
 
-Goal: give Petal a distinctive, state-of-the-art visual identity across every user-facing page, without touching the code-generation pipeline or backend.
+Goal: make Petal produce the most polished, deep, interactive apps of any AI
+builder — without destabilising the current pipeline.
 
-## Design Direction
+## Principle
+All additions land as **additive dynamic snippets** in
+`src/server/dynamic-prompts.server.ts`. No changes to the generation
+orchestrator, stage pipeline, verifiers, or file-budget gates. If a snippet
+misfires we can remove it in one line.
 
-- **Aesthetic**: editorial-modern. Big black display type, generous whitespace, warm off-white paper background with a single saturated accent, layered subtle gradients, soft shadows.
-- **Typography**: `Instrument Serif` (display, italic accents) + `Geist` (body). Loaded via `<link>` in `__root.tsx`. Existing `font-display` token repointed.
-- **Palette**: keep current warm cream base (`--background`), add a deeper ink (`--foreground`), tighten primary to a single confident accent (coral). Retire pastel `mint/butter/coral` tints as decoration; keep as semantic tokens only.
-- **Photography**: real human portraits (Unsplash) in testimonials, real product screenshots in showcase, no gradient blobs.
-- **Motion**: one signature hero animation (headline reveal + italic word rotate), scroll-in fades on sections. No per-icon micro-animations.
+## This pass (implemented in one go)
+1. **`interactivity`** — teach the model to build real client-side
+   search / filter / sort / pagination with URL-synced state (not fake
+   buttons). Triggers on any "list / dashboard / catalog / directory /
+   table" ask.
+2. **`contentDepth`** — every generated list ships with ≥ 12 realistic,
+   varied items (real names, prices, dates, images from Unsplash Source
+   queries — never "Item 1 / Item 2"). Kills the tell-tale AI "3 fake
+   cards" default.
+3. **`polishStates`** — every list / page must render loading + empty +
+   error states. Every route file wraps its main content in an
+   `<ErrorBoundary>` fallback. No blank screens on failure.
+4. **`dashboardCraft`** — dedicated dashboard pattern: sidebar + topbar +
+   real domain widgets (KPI band, activity feed, chart, table) with
+   collapsible mobile drawer. Fires on any "dashboard / admin panel /
+   console / workspace" ask.
+5. **`perRouteSEO`** — every route.head() gets route-specific
+   title / description / og:title / og:description / canonical.
+   Reinforces existing head-metadata rules right when a new route
+   is being scaffolded.
 
-## Scope — pages touched
-
-1. **`src/routes/index.tsx`** (landing) — full section refresh:
-   - Hero: oversized editorial headline with rotating italic word, refined composer card, trust row of real logo marks (SVG text logos).
-   - Social proof stat strip (numbers, not fake logos).
-   - Features: bento grid (1 tall + 2 short + 1 wide) with real product screenshots.
-   - How-it-works: numbered horizontal steps.
-   - Showcase: device mockup trio pulling from existing `SampleAppShowcase`.
-   - Testimonials: human portraits (already partly done), masonry-lean layout.
-   - Pricing teaser → linking to existing billing sheet.
-   - FAQ accordion.
-   - Final CTA banner + refined mega footer.
-2. **`src/components/SiteHeader.tsx`** — already text-only; tighten spacing, add subtle scroll-linked border, refine mobile nav trigger.
-3. **`src/routes/auth.tsx`** — split-screen: left = editorial marketing panel with rotating quote, right = auth card. Mobile collapses to single column.
-4. **`src/routes/projects.tsx`** — grid refinement: larger thumbs, cleaner filter chips, empty state with real illustration slot.
-5. **`src/routes/profile.tsx`** — cover band + avatar + settings cards, matches new tokens.
-6. **`src/routes/gallery.tsx`** — masonry grid with hover reveal.
-7. **`src/routes/coffee.tsx`** — heavier hero, cleaner tip tiers.
-8. **`src/styles.css`** — repoint `--font-display`, tighten heading defaults, add `--shadow-editorial`, `--gradient-editorial` tokens. No token deletions (keeps generated apps unaffected).
-
-## Explicitly NOT touched
-
-- `src/server/**` (code-gen pipeline, prompts, verifiers).
-- `src/routes/builder*`, `src/components/CodeEditor`, `DevicePreviewFrame`, composer/generation UI internals.
-- `src/routes/admin.*`, `src/routes/api/**`.
-- Any Supabase migration, edge function, or backend logic.
-- `src/routes/packs.*`, `templates.tsx`, `themes.tsx` (memory rule: internal-only, hidden from nav).
-- Generated-app design system in `src/server/design-taste.server.ts` etc.
-
-## Technical notes
-
-- Add fonts in `__root.tsx` head via `<link>` (Tailwind v4 rule: no `@import` of remote URLs).
-- New landing sections extracted into `src/components/landing/*.tsx` (≤120 lines each) so `index.tsx` stops growing past 1200 lines.
-- Semantic tokens only in components; no raw color utilities.
-- Unsplash images use `?w=…&q=80&auto=format` and `loading="lazy"`.
-- No new npm deps. Uses existing `framer-motion` if present, otherwise CSS-only motion.
-- Ship as one coherent batch, verified against build.
-
-## Risks & mitigations
-
-- Landing file size → split into components before editing.
-- Font swap could affect generated apps if they import from `src/styles.css` — they don't (generated apps are separate projects), so safe.
-- Auth split-screen could regress mobile — mobile-first layout, collapse below `md`.
-
-Approve to proceed, or tell me which pages to drop/add.
+## Next passes (not in this turn)
+- Visual QA pass: post-generation screenshot diff via Playwright, feed
+  regressions back into an autofix loop.
+- Archetype library: e-commerce, marketplace, social feed, LMS, community.
+- Mobile parity: the same "content depth + polish states" gates for the
+  Snack/RN preview flow.
+- Live data seeding: on backend-connected projects, auto-insert seed rows
+  after a MIGRATION so the UI has something to render immediately.
