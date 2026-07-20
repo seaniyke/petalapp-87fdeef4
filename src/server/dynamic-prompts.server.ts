@@ -46,7 +46,12 @@ export type DynamicSnippetKey =
   | "cronJob"
   | "payments"
   | "businessApp"
-  | "designFloor";
+  | "designFloor"
+  | "interactivity"
+  | "contentDepth"
+  | "polishStates"
+  | "dashboardCraft"
+  | "perRouteSEO";
 
 interface SnippetDef {
   /** Substrings that trigger this snippet (lowercased match against prompt). */
