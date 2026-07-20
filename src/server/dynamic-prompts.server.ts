@@ -590,6 +590,137 @@ These rules apply to EVERY visual file you write this turn. Violating any of the
 
 15. Section variety on a landing page. If the page has 4+ sections, at least THREE distinct layout patterns must appear: e.g. split-screen hero + asymmetric feature row + full-bleed testimonial + bento grid + centered CTA. Do NOT stack five identical three-column card grids in a row — that is the fastest tell of a generated page. Alternate light/dark surfaces, alternate image-left/image-right rows, alternate density.`,
   },
+  // Fires on any list-shaped surface. The default AI failure is "render an
+  // array — no search, no filters, no sort, no pagination, no URL sync."
+  // This snippet says: if a list has 8+ items, it MUST be interactive.
+  interactivity: {
+    triggers:
+      /\b(list|listing|catalog|directory|feed|inbox|browse|search|filter|sort|paginat|table|data ?grid|explore|gallery|library|store|marketplace|dashboard)\b/i,
+    body: `\n\n[Reinforcement — Interactivity floor for list surfaces]
+A list-shaped surface is not "done" when it renders an array. If the list will hold 8+ items in production, ship these in the SAME turn:
+
+1. SEARCH — a debounced text input (\`useDeferredValue\` or 250ms debounce) filters by name/title/description. Client-side is fine for < 500 rows; graduate to a server \`ilike\` query above that.
+2. FILTERS — at least ONE domain-relevant facet (status, category, tag, price band, date range). Render as \`<Select>\`, \`<Combobox>\`, or shadcn \`<ToggleGroup>\`; NEVER free-text with no picker.
+3. SORT — user-controllable sort (name / newest / price / relevance). Table headers become clickable; card grids get a \`<Select>\` sort control.
+4. PAGINATION or infinite scroll — never render 500 DOM nodes at once. 20-30 per page is the floor; use \`<Pagination>\` from the kit or intersection-observer for infinite.
+5. URL SYNC — every search/filter/sort/page value MUST live in the URL (\`?q=&status=open&sort=newest&page=2\`). Use TanStack Router \`useNavigate({ search })\` + \`Route.useSearch()\` so users can share, refresh, and back-button. NEVER stash filter state in \`useState\` only.
+6. EMPTY-FILTER STATE — when filters return zero, show \`<EmptyState title="No matches" description="Try clearing filters" action={<Button onClick={clear}>Clear filters</Button>} />\`. NEVER a blank list.
+7. RESULT COUNT — always visible ("48 results" / "Showing 1–20 of 48"). Users need to know filters are working.
+
+Interactions are what separates a mockup from an app. A catalog page without search + filters IS a bug.`,
+  },
+  // Fires on any list / seed-data surface. The tell-tale AI default is
+  // "Item 1, Item 2, Item 3" — 3 fake cards, gray boxes for images.
+  // This snippet enforces real content density and real imagery.
+  contentDepth: {
+    triggers:
+      /\b(list|catalog|directory|gallery|feed|marketplace|store|shop|products?|posts?|articles?|projects?|listings?|team|members|testimonials?|pricing|features?|blog|showcase|portfolio|inventory|menu)\b/i,
+    body: `\n\n[Reinforcement — Content depth (no "Item 1, Item 2, Item 3")]
+Every list you render this turn must feel like a REAL product, not a wireframe. Rules:
+
+1. QUANTITY. Landing-page proof sections (testimonials, features, logos, pricing): minimum 3, target 6. Product catalogs / feeds / directories / galleries: minimum 12 varied items. Never ship 3 identical placeholder cards as the entire content.
+2. VARIETY. Item names, prices, dates, categories, and status values must VARY realistically. A products list has different prices ($12, $48, $199, $2,400 — not "$X"); a team page has different roles and photos; a feed has different post lengths and timestamps ("2h ago", "yesterday", "Mar 14").
+3. REAL COPY. Never "Lorem ipsum". Never "Feature One / Feature Two". Write copy that names the specific domain: for a running app "Log a 5K without a watch", for a legal SaaS "Redline contracts in the browser", for a bakery "Sourdough loaves proofed 36 hours". If you don't know the domain, RE-READ the user's brief before writing copy.
+4. REAL NAMES. People in testimonials / team / avatars get real full names from a mix of cultures ("Priya Nair, Marcus Chen, Ana Rossi, Amara Okafor, Leo Martín, Yuki Tanaka") — never "John Doe / Jane Smith". Roles are specific ("Head of Growth at Linear") not generic ("Product Manager").
+5. REAL IMAGES. Never gray-box placeholders. Options in order of preference:
+   - Domain-relevant AI-generated images (already-imported assets or new generations).
+   - Unsplash Source with a specific query: \`https://source.unsplash.com/800x600/?<domain-keyword>,<style>\` — e.g. \`?ceramics,studio\` for a pottery store. Vary the query per item so the grid doesn't repeat one photo.
+   - Deterministic per-row seed: \`https://source.unsplash.com/800x600/?<keyword>&sig=\${item.id}\`.
+6. AVATARS. Use \`https://api.dicebear.com/9.x/avataaars/svg?seed=\${name}\` OR \`https://i.pravatar.cc/128?u=\${name}\` — vary per person. Never a single avatar reused. Never a bare initial circle across a whole team page.
+7. DATA SHAPE. Give each seed item a stable \`id\` (\`crypto.randomUUID()\` at module scope is fine for mocks). This makes React keys stable and lets the interactivity floor (search/filter/sort) work correctly.
+
+If the seed data lives inline in the component, extract it to a sibling \`*.data.ts\` file the moment the array crosses ~30 lines — keeps the component under the 180-line budget.`,
+  },
+  // Fires on any list / page / data-fetch surface. The failure mode is
+  // "render data or blank" — no loading, no empty, no error. Ships the
+  // three-state contract every real app has.
+  polishStates: {
+    triggers:
+      /\b(fetch|load|list|page|route|dashboard|profile|detail|feed|inbox|table|data|form|submit|api|query|realtime|comments?|posts?|orders?|users?|customers?)\b/i,
+    body: `\n\n[Reinforcement — Loading / empty / error is a contract, not a polish]
+Every surface that renders data (list, detail, dashboard, profile, feed, form response) MUST handle three states EXPLICITLY. A missing state is a bug, not a nice-to-have.
+
+1. LOADING — first paint of ANY async data uses a skeleton, not a spinner-in-the-middle and never a blank page. Kit: \`<Skeleton className="h-4 w-32" />\` stacked to mimic the final shape. For grids: render 6-8 skeleton cards matching the real card dimensions. NEVER a text "Loading…" as the only feedback.
+2. EMPTY — zero rows / zero results always renders \`<EmptyState icon={<domain-icon>} title description action={<Button>...</Button>} />\`. The action is a real next step (Create, Invite, Import, Clear filters), never a dead-end message. Empty state copy references the domain ("No customers yet. Add your first one to start tracking.") — never generic ("Nothing here").
+3. ERROR — every \`try/catch\` around a mutation shows \`toast.error(friendlyMessage)\`. Every route with a loader sets \`errorComponent\` on \`createFileRoute\` returning a card with the error message + a "Try again" button that calls \`router.invalidate()\`. Never let a thrown promise silently kill the page.
+
+For routes specifically:
+- Set BOTH \`errorComponent\` and \`notFoundComponent\` on every route with a loader (see the errors-notfound rules).
+- Wrap the component body in a defensive \`try/catch\` when it does heavy computation that could throw at render.
+
+The three-state contract is what makes an app feel real. Users forgive slow. They do NOT forgive blank.`,
+  },
+  // Fires on dashboard / admin / console asks. The generic dashboard
+  // failure is "here's a chart in the middle of a page" — no sidebar, no
+  // topbar, no real widgets, no domain data. This snippet enforces the
+  // full dashboard shell.
+  dashboardCraft: {
+    triggers:
+      /\b(dashboard|admin panel|admin dashboard|console|workspace|control panel|back ?office|internal tool|analytics dashboard|ops dashboard|command ?center|cms admin)\b/i,
+    body: `\n\n[Reinforcement — Dashboard shell (not "a chart on a page")]
+A dashboard is NOT a landing page with a chart. It is a persistent authenticated shell. Ship this structure:
+
+STRUCTURE (\`src/components/examples/app-shell-with-sidebar.tsx\` is the canonical reference):
+- Sidebar (left, 240-280px, collapsible to icon-only on md, hidden behind \`<Sheet>\` drawer on mobile):
+  - Logo/brand at top
+  - Primary nav: 4-8 sections MAX, each with a lucide icon and label
+  - Section separator, then Settings + Sign out at bottom
+  - Active state via \`useLocation().pathname\` or \`<Link activeProps>\`
+- Topbar (sticky, h-14, border-b):
+  - Left: page title OR \`<Breadcrumbs>\`
+  - Center: \`<Command>\`-style search (⌘K) OR a global filter
+  - Right: notifications bell (\`<Popover>\`), user avatar (\`<DropdownMenu>\` with Profile / Settings / Sign out)
+- Content area: \`max-w-7xl mx-auto px-6 py-6\` grid of widgets
+
+WIDGETS (mix, don't repeat one type):
+- KPI band: 4 \`<Stat>\` cards across the top (label, value, delta arrow, sparkline optional)
+- Primary chart (\`<AreaChart>\` or \`<BarChart>\` from the kit, 60-day series)
+- Recent activity feed (last 10 events, avatar + verb + object + timestamp)
+- Data table with search + filter + sort (see interactivity floor)
+- Secondary chart or breakdown (\`<PieChart>\` or grouped bars)
+
+DOMAIN-SPECIFIC WIDGETS — match the widgets to the brief:
+- CRM: Pipeline board (kanban), Deals-by-stage chart, Top accounts table, Activity feed
+- Fintech: Balance card, Cash-flow chart, Transactions table, Upcoming payments
+- SaaS analytics: MRR / Churn / ARPU / Active users stat band, Cohort chart, Signups feed
+- Ops / logistics: Orders queue, Fulfillment SLA, Warehouse capacity, Alerts
+
+RESPONSIVE — sidebar becomes a hamburger \`<Sheet>\` on mobile. Widgets stack 1-col on mobile, 2-col on md, 3-col on lg. KPI band stays horizontal-scroll on mobile if it doesn't fit.
+
+Forbidden: dashboard that is a marketing hero + one chart. Dashboard that hides real domain data behind "Feature coming soon". Dashboard without persistent nav.`,
+  },
+  // Fires whenever a new route is being created. Reinforces that route.head()
+  // is not optional — every route must ship route-specific SEO.
+  perRouteSEO: {
+    triggers:
+      /\b(route|page|multi-?page|landing|about|pricing|contact|blog|faq|features?|services|portfolio|gallery|docs|changelog|privacy|terms|marketing|site|website)\b/i,
+    body: `\n\n[Reinforcement — Per-route SEO (every route.head() is required)]
+Every new TanStack route file MUST set its own \`head()\` in \`createFileRoute\`. Copy-pasting the home-page metadata into a child route is a bug — search engines and social crawlers will treat them as duplicates.
+
+Required per-route (in the \`head()\` return):
+- \`meta: [{ title }]\` — 40-60 chars, includes the site/brand name (e.g. "Pricing — Acme").
+- \`meta: [{ name: "description", content }]\` — 120-160 chars, describes THIS page, not the whole site.
+- \`meta: [{ property: "og:title", content }]\` and \`{ property: "og:description", content }\` — usually the same as title/description.
+- \`meta: [{ property: "og:url", content }]\` — full https URL of THIS route.
+- \`meta: [{ property: "og:type", content: "website" }]\` (or "article" on blog posts).
+- \`links: [{ rel: "canonical", href }]\` — full https URL of THIS route, LEAF ROUTES ONLY (never in \`__root.tsx\`).
+- \`og:image\` (absolute https URL) — set ONLY when the page has a real hero image. Never a relative path. Never a placeholder. Never on \`__root.tsx\` — root \`head()\` concatenates into every match and overrides leaf images.
+
+Dynamic routes derive metadata from loader data:
+\`\`\`ts
+head: ({ params, loaderData }) => ({
+  meta: [
+    { title: loaderData ? \`\${loaderData.item.name} — Acme\` : "Not found" },
+    { name: "description", content: loaderData?.item.summary ?? "…" },
+    { property: "og:url", content: \`https://<domain>/items/\${params.slug}\` },
+    ...(loaderData?.item.image ? [{ property: "og:image", content: loaderData.item.image }] : []),
+  ],
+  links: [{ rel: "canonical", href: \`https://<domain>/items/\${params.slug}\` }],
+}),
+\`\`\`
+
+Never leave a route with the default "Lovable App" / "Petal App" title. That is a scanner-visible defect.`,
+  },
 };
 
 
