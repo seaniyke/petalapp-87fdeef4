@@ -724,6 +724,70 @@ head: ({ params, loaderData }) => ({
 
 Never leave a route with the default "Lovable App" / "Petal App" title. That is a scanner-visible defect.`,
   },
+  // Fires on any mobile / native / phone / Expo / React Native ask. Raises
+  // the same quality bar the web snippets enforce — real screens, native
+  // chrome, deep interactivity — for the mobile target.
+  mobileCraft: {
+    triggers:
+      /\b(mobile app|native app|ios app|android app|phone app|expo|react ?native|snack|capacitor|app store|play store|push notif|onboarding screens?|tab bar|bottom sheet|swipe|gesture)\b/i,
+    body: `\n\n[Reinforcement — Mobile app craft (deep, not a shrunk website)]
+A mobile app is a stack of screens with native chrome, real gestures, and a persistent tab bar — not a responsive landing page. Ship this depth in ONE turn:
+
+1. SCREEN COUNT. Never a single-screen app. Minimum viable mobile app = 4 screens: Home/Feed, Detail, Create/Compose, Profile/Settings. Wire them behind a <BottomTabBar> (3-5 tabs). If auth is involved add Sign-in + Onboarding (2-3 slides with skip/next).
+2. NAVIGATION. <BottomTabBar> for primary sections. <MobileHeader back title action /> at the top of every screen — never a desktop NavBar. Push transitions between screens (respect back gesture). Modals/forms slide up as bottom sheets, never centered dialogs.
+3. INTERACTIONS THAT FEEL NATIVE. Pull-to-refresh on any feed. Swipe-to-delete or swipe-actions on list rows. Long-press context menu on cards. Haptic-style feedback via toast. Skeleton shimmer while loading (never a spinner in the middle). Empty states with a domain icon + real CTA.
+4. CONTENT DEPTH. Same rule as web — 12+ varied items in any list, real names/prices/dates/images. Avatars via dicebear. Hero images via Unsplash Source with domain keywords. Never "Item 1 / Item 2".
+5. LAYOUT PRIMITIVES. Full-bleed cards, rounded-3xl, dramatic shadows. Stacked cards with p-4 to p-5 and 16-20px gaps. Horizontal card carousels (overflow-x-auto snap-x) for "featured" rows — never multi-column grids on portrait phones. Large touch targets: buttons min-h-12, list rows min-h-14.
+6. STATE. Persist filters, drafts, and auth in AsyncStorage-equivalent (localStorage for Snack web preview). URL-sync where router supports it. Never lose the user's input on a re-render.
+7. VISUAL DIRECTION. Pick ONE app archetype and commit: fintech (dense numeric cards + charts), social (feed + stories rail + comments sheet), productivity (checklist + gestures + streaks), health (rings + tracking + coach copy), commerce (product grid + cart sheet + checkout). Match iconography, radius, and copy to the archetype.
+8. ONBOARDING. If it's a new app, ship a 2-3 slide onboarding (illustration + one-line value prop + Next/Skip), then a first-run empty state that guides the user to create their first item.
+
+The user should be able to complete the app's primary action — post, log, book, buy — inside the preview, not just look at a home screen.`,
+  },
+  // Fires on backend / API / server / database / schema / RLS asks. Raises
+  // the bar on data modeling, security, and API design beyond the minimum
+  // "create a table with RLS" the base prompt already enforces.
+  backendCraft: {
+    triggers:
+      /\b(backend|database|schema|table|api|rest|graphql|rls|policy|policies|migration|edge function|server function|trigger|stored procedure|index|foreign key|relation|audit log|soft delete|multi[- ]?tenant|roles?|permissions?)\b/i,
+    body: `\n\n[Reinforcement — Backend craft (modeling, security, DX)]
+A backend is not one table with two policies. Real apps ship a coherent data model with the guardrails a production app needs. When the user asks for backend work, apply these:
+
+1. DATA MODEL. Think in entities BEFORE typing SQL. For any non-trivial feature there are 3+ related tables (e.g. blog = posts + comments + tags + post_tags). Use foreign keys with \`on delete cascade\` where a child cannot exist without a parent, \`on delete set null\` where it can. Add \`created_at timestamptz not null default now()\` AND \`updated_at timestamptz not null default now()\` to every table plus a trigger to keep updated_at fresh.
+2. INDEXES. Every foreign key column gets an index. Every column used in a WHERE / ORDER BY on a hot query gets one. Add them in the same migration — Postgres does NOT auto-index FKs.
+3. RLS THAT ACTUALLY WORKS. Enable RLS in the SAME migration as CREATE TABLE. Emit BOTH the \`GRANT\` statements (public schema needs explicit grants to authenticated / anon / service_role) AND the policies. Owner rows: \`using (auth.uid() = user_id)\`. Team rows: use a \`security definer\` \`has_role(_user_id, _role)\` helper — never check roles from a table joined in the policy (recursion). Never store roles on \`profiles\` — use a separate \`user_roles\` table with an app_role enum.
+4. VALIDATION AT THE EDGE. Zod schema on every server function input. Reject bad input with a 400, never trust the client. On mutations that touch money / permissions / other users, re-check authorization on the server even when RLS would also block — defense in depth.
+5. AUDIT + SOFT DELETE where the domain needs it (orders, invoices, admin actions): \`deleted_at timestamptz\`, filtered out in views. An \`audit_log\` table (actor_id, action, entity_type, entity_id, diff jsonb, created_at) for admin surfaces.
+6. SEED DATA. After creating a table for a demo/landing feature, emit \`INSERT ... ON CONFLICT DO NOTHING\` rows in the SAME migration so the UI has something to render on first load. Never a page-load seed function.
+7. API SHAPE. For public endpoints under \`src/routes/api/public/*\`: verify signature (HMAC) before touching the DB, use \`timingSafeEqual\`, never return PII to unauthenticated callers, always validate with zod. For internal calls: use \`createServerFn\` from \`@tanstack/react-start\` with \`.middleware([requireSupabaseAuth])\` on anything user-scoped.
+8. REALTIME + STORAGE — only when asked. Realtime: enable via \`alter publication supabase_realtime add table <t>\` in the migration; subscribe in the component with cleanup on unmount. Storage: create the bucket in the migration with matching path-scoped policies (\`storage.foldername(name)[1] = auth.uid()::text\`).
+
+A backend without indexes, without RLS on every table, or without seed data is not production-ready.`,
+  },
+  // Fires on chrome extension / browser extension asks. Enforces MV3
+  // structure, real popup UI, background service worker patterns, and a
+  // downloadable zip artifact — not a bare manifest.json.
+  chromeExtensionCraft: {
+    triggers:
+      /\b(chrome extension|browser extension|firefox extension|edge extension|manifest ?v?3|popup extension|content script|background service worker|browser add-?on)\b/i,
+    body: `\n\n[Reinforcement — Chrome extension craft (MV3, complete artifact)]
+A browser extension is a small app with its own runtime. Ship these pieces together in ONE turn:
+
+1. STRUCTURE — put source under \`/dev-server/extension/\` (or \`extension/\` at the repo root), packaged output under \`public/\`:
+   - \`extension/manifest.json\` — \`"manifest_version": 3\` (V2 is dead). Set \`name\`, \`version\`, \`description\`, \`permissions\` (minimum viable), \`host_permissions\` if needed, \`action.default_popup\`, \`action.default_icon\`, \`background.service_worker\`, \`icons\`.
+   - \`extension/popup.html\` + \`extension/popup.js\` (or a compiled bundle) — real UI, not "Hello world". Match the extension's job: quick action panel, save-to-list, page annotator, etc.
+   - \`extension/background.js\` — service worker. Use \`chrome.storage.local\` for persistence (NOT \`localStorage\` — unavailable in MV3 SW). Wire \`chrome.action.onClicked\`, \`chrome.runtime.onInstalled\`, alarms as needed.
+   - \`extension/content.js\` (only if the extension mutates page DOM) — declared in \`content_scripts\` with narrow \`matches\`.
+   - \`extension/icons/icon-{16,48,128}.png\` — real icons, not placeholders.
+2. POPUP UX. Fixed width 320-400px, fixed height 400-600px. Use the SAME design tokens as the main app so it looks branded. Real states: loading skeleton, empty state with CTA, error toast. If it needs auth, deep-link to the app's auth page in a new tab (\`chrome.tabs.create({ url })\`) — never build a login form inside the popup.
+3. STORAGE + SYNC. Use \`chrome.storage.local\` for local, \`chrome.storage.sync\` for cross-device (quota 100KB). Wrap in a tiny \`storage.get/set\` helper. Never assume \`chrome.storage\` is synchronous — it's promise-based in MV3.
+4. TABS + MESSAGING. Get the active tab with \`chrome.tabs.query({ active: true, currentWindow: true })\`. Message background ↔ popup ↔ content with \`chrome.runtime.sendMessage\` / \`chrome.tabs.sendMessage\`; ALWAYS return \`true\` from \`onMessage\` when replying asynchronously.
+5. PACKAGING. Emit a build step that zips \`extension/\` to \`public/<name>.zip\`. The Petal preview cannot serve authenticated static assets directly — provide a download button that does \`fetch('/<name>.zip').then(r => r.blob()).then(...) \` and triggers a blob download, NOT a bare \`<a href download>\`.
+6. INSTALL INSTRUCTIONS. Add a short "How to install" panel on the app's page: 1) download zip, 2) unzip, 3) open chrome://extensions, 4) enable Developer mode, 5) Load unpacked → pick the folder. Works in Chrome / Edge / Brave / Arc / Opera. Store publishing needs the Web Store — mention it once, don't scaffold it.
+7. HOST APP. Even for extension-only briefs, ship a minimal landing page in the Petal app that markets the extension, shows a screenshot, and hosts the download link. Never leave the user with a naked zip.
+
+Forbidden: MV2 manifest, \`localStorage\` in the SW, bare \`<a download>\` on the preview, missing icons, popup that's just "Hello world".`,
+  },
 };
 
 
