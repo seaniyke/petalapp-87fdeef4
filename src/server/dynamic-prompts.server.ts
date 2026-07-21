@@ -51,7 +51,10 @@ export type DynamicSnippetKey =
   | "contentDepth"
   | "polishStates"
   | "dashboardCraft"
-  | "perRouteSEO";
+  | "perRouteSEO"
+  | "mobileCraft"
+  | "backendCraft"
+  | "chromeExtensionCraft";
 
 interface SnippetDef {
   /** Substrings that trigger this snippet (lowercased match against prompt). */
