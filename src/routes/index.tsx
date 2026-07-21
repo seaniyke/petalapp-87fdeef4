@@ -21,7 +21,6 @@ import {
   Layers,
   Wand2,
   Paperclip,
-  
   Camera,
   X,
   Globe,
@@ -225,13 +224,7 @@ function Landing() {
   // before the user's first name (e.g. "Dream big, Ikechukwu."). Picks one
   // at random per page load so it feels fresh without flickering mid-session.
   const heroGreeting = useMemo(() => {
-    const greetings = [
-      "Dream big,",
-      "Let's build,",
-      "Make magic,",
-      "Ship it,",
-      "What's next,",
-    ];
+    const greetings = ["Dream big,", "Let's build,", "Make magic,", "Ship it,", "What's next,"];
     return greetings[Math.floor(Math.random() * greetings.length)];
   }, []);
 
@@ -350,9 +343,7 @@ function Landing() {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const prefix = mode === "discuss" ? "Ask Petal about " : "Ask Petal to build ";
     const restingPlaceholder =
-      mode === "discuss"
-        ? "Ask Petal anything about your idea…"
-        : "Describe a web app, mobile app, API or extension…";
+      mode === "discuss" ? "Ask Petal anything about your idea…" : "Describe a web app, mobile app, API or extension…";
     let promptIdx = 0;
     let charIdx = 0;
     let typingMode: "typing" | "pausing" | "deleting" | "done" = "typing";
@@ -428,7 +419,6 @@ function Landing() {
     if (opts?.fromCoach) params.set("source", "coach");
     if (buildTarget !== "web") params.set("target", buildTarget);
 
-
     // The draft is about to ride along on the URL — drop the local copy so
     // a future visit to the landing page doesn't pre-fill an old prompt.
     try {
@@ -481,7 +471,6 @@ function Landing() {
     window.location.href = `/auth?mode=signup&redirect=${encodeURIComponent(target)}`;
   };
 
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SiteHeader />
@@ -494,7 +483,9 @@ function Landing() {
         <div className="absolute inset-x-0 top-0 bottom-[-12rem] bg-aurora opacity-80 sm:bottom-[-8rem]" aria-hidden />
         <div className="absolute inset-x-0 top-0 bottom-[-12rem] bg-grain opacity-40 sm:bottom-[-8rem]" aria-hidden />
 
-        <div className={`relative mx-auto max-w-5xl px-5 text-center sm:px-6 ${!isReady || isAuthed ? "pt-40 pb-16 sm:pt-44 sm:pb-20 md:pt-48 md:pb-24" : "pt-32 pb-20 sm:pt-36 sm:pb-28 md:pt-40 md:pb-36"}`}>
+        <div
+          className={`relative mx-auto max-w-5xl px-5 text-center sm:px-6 ${!isReady || isAuthed ? "pt-40 pb-16 sm:pt-44 sm:pb-20 md:pt-48 md:pb-24" : "pt-32 pb-20 sm:pt-36 sm:pb-28 md:pt-40 md:pb-36"}`}
+        >
           {!isReady ? (
             <div className="mx-auto h-[7.5rem] max-w-2xl animate-pulse rounded-3xl bg-card/50" aria-hidden="true" />
           ) : isAuthed ? (
@@ -504,10 +495,7 @@ function Landing() {
                   {heroGreeting}{" "}
                   <span className="relative whitespace-nowrap">
                     <span className="relative z-10 italic">{firstName}</span>
-                    <span
-                      className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50"
-                      aria-hidden
-                    />
+                    <span className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50" aria-hidden />
                   </span>
                   .
                 </>
@@ -530,10 +518,7 @@ function Landing() {
                 Web, mobile, backend —{" "}
                 <span className="relative whitespace-nowrap">
                   <span className="relative z-10 italic">just chat</span>
-                  <span
-                    className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50"
-                    aria-hidden
-                  />
+                  <span className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50" aria-hidden />
                 </span>
                 .
               </h1>
@@ -541,7 +526,6 @@ function Landing() {
               <p className="mx-auto mt-5 max-w-xl text-balance text-base text-muted-foreground sm:text-xl md:text-2xl">
                 One sentence. A real app, mobile build, API, or Chrome extension — live in minutes.
               </p>
-
             </>
           )}
 
@@ -637,7 +621,6 @@ function Landing() {
               {/* Bottom toolbar */}
               <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-1.5">
-
                   {mode !== "coach" && (
                     <>
                       <button
@@ -693,9 +676,7 @@ function Landing() {
                   </button>
                 )}
               </div>
-
             </div>
-
           </form>
 
           {isReady && !isAuthed && (
@@ -713,14 +694,11 @@ function Landing() {
               onSwitchToCoach={() => {
                 setMode("coach");
                 requestAnimationFrame(() => {
-                  document
-                    .querySelector("form")
-                    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  document.querySelector("form")?.scrollIntoView({ behavior: "smooth", block: "center" });
                 });
               }}
             />
           )}
-
         </div>
       </section>
 
@@ -738,12 +716,14 @@ function Landing() {
                   {projectFilter === "public" ? "Public projects" : "My projects"}
                 </h2>
                 {projectFilter === "public"
-                  ? communityPublic && communityPublic.length > 0 && (
+                  ? communityPublic &&
+                    communityPublic.length > 0 && (
                       <span className="rounded-full border border-border bg-card px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                         {communityPublic.length}
                       </span>
                     )
-                  : projects && projects.length > 0 && (
+                  : projects &&
+                    projects.length > 0 && (
                       <span className="rounded-full border border-border bg-card px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                         {projects.length}
                       </span>
@@ -754,12 +734,10 @@ function Landing() {
               {projects && projects.length > 0 && (
                 <div className="flex items-center gap-2">
                   <div className="inline-flex items-center gap-1 rounded-full border border-border bg-card/60 p-1 text-xs">
-                    {(
-                      [
-                        { id: "all" as const, label: "All" },
-                        { id: "recent" as const, label: "Recent" },
-                      ]
-                    ).map((opt) => {
+                    {[
+                      { id: "all" as const, label: "All" },
+                      { id: "recent" as const, label: "Recent" },
+                    ].map((opt) => {
                       const active = projectFilter === opt.id;
                       return (
                         <button
@@ -767,9 +745,7 @@ function Landing() {
                           type="button"
                           onClick={() => setProjectFilter(opt.id)}
                           className={`rounded-full px-3 py-1.5 font-medium transition ${
-                            active
-                              ? "bg-foreground text-background"
-                              : "text-muted-foreground hover:text-foreground"
+                            active ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
                           }`}
                         >
                           {opt.label}
@@ -796,10 +772,7 @@ function Landing() {
                 communityLoading || communityPublic === null ? (
                   <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-64 animate-pulse rounded-3xl border border-border bg-card/60"
-                      />
+                      <div key={i} className="h-64 animate-pulse rounded-3xl border border-border bg-card/60" />
                     ))}
                   </div>
                 ) : communityPublic.length === 0 ? (
@@ -828,9 +801,7 @@ function Landing() {
                           </span>
                         </div>
                         <div className="flex flex-1 flex-col p-5">
-                          <h3 className="truncate font-display text-base font-semibold tracking-tight">
-                            {p.title}
-                          </h3>
+                          <h3 className="truncate font-display text-base font-semibold tracking-tight">{p.title}</h3>
                           <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                             {p.summary ?? "No description yet."}
                           </p>
@@ -849,10 +820,7 @@ function Landing() {
               ) : projectsLoading || projects === null ? (
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {Array.from({ length: 6 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-64 animate-pulse rounded-3xl border border-border bg-card/60"
-                    />
+                    <div key={i} className="h-64 animate-pulse rounded-3xl border border-border bg-card/60" />
                   ))}
                 </div>
               ) : projects.length === 0 ? (
@@ -862,8 +830,7 @@ function Landing() {
                   </div>
                   <h3 className="mt-5 font-display text-xl">Your workspace is empty</h3>
                   <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-                    Describe a web app, mobile app, API or extension in the box
-                    above — Petal scaffolds it in seconds.
+                    Describe a web app, mobile app, API or extension in the box above — Petal scaffolds it in seconds.
                   </p>
                 </div>
               ) : (
@@ -887,12 +854,8 @@ function Landing() {
                           <Plus className="h-4 w-4" />
                         </span>
                         <div>
-                          <div className="font-display text-lg font-semibold">
-                            New project
-                          </div>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Start from a single sentence.
-                          </p>
+                          <div className="font-display text-lg font-semibold">New project</div>
+                          <p className="mt-1 text-xs text-muted-foreground">Start from a single sentence.</p>
                         </div>
                       </button>
 
@@ -929,9 +892,7 @@ function Landing() {
                             </span>
                           </div>
                           <div className="flex flex-1 flex-col p-5">
-                            <h3 className="truncate font-display text-base font-semibold tracking-tight">
-                              {p.title}
-                            </h3>
+                            <h3 className="truncate font-display text-base font-semibold tracking-tight">{p.title}</h3>
                             <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                               {p.summary ?? "No description yet."}
                             </p>
@@ -954,378 +915,452 @@ function Landing() {
         </section>
       ) : (
         <>
-      <section id="showcase" className="relative -mt-8 px-4 pb-16 sm:-mt-16 sm:px-6 sm:pb-24">
-        <SampleAppShowcase />
-      </section>
+          <section id="showcase" className="relative -mt-8 px-4 pb-16 sm:-mt-16 sm:px-6 sm:pb-24">
+            <SampleAppShowcase />
+          </section>
 
-      {/* Trust strip — animated marquee of "built with Petal" categories */}
-      <section aria-label="Trusted by" className="border-y border-border/60 bg-card/30 py-6 overflow-hidden">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <p className="mb-4 text-center text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-            Built with Petal · founders, designers, indie hackers
-          </p>
-          <div className="relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
-            <div className="flex w-max animate-marquee gap-12 whitespace-nowrap font-display text-2xl italic text-foreground/60 sm:text-3xl">
-              {Array.from({ length: 2 }).map((_, r) => (
-                <div key={r} className="flex gap-12">
-                  {["booking apps", "AI copilots", "portfolios", "mobile MVPs", "internal tools", "chrome extensions", "landing pages", "APIs", "creator sites", "dashboards"].map((t) => (
-                    <span key={`${r}-${t}`} className="flex items-center gap-6">
-                      <Star className="h-4 w-4 text-coral" />
-                      {t}
-                    </span>
+          {/* Trust strip — animated marquee of "built with Petal" categories */}
+          <section aria-label="Trusted by" className="border-y border-border/60 bg-card/30 py-6 overflow-hidden">
+            <div className="mx-auto max-w-6xl px-4 sm:px-6">
+              <p className="mb-4 text-center text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                Built with Petal · founders, designers, indie hackers
+              </p>
+              <div className="relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
+                <div className="flex w-max animate-marquee gap-12 whitespace-nowrap font-display text-2xl italic text-foreground/60 sm:text-3xl">
+                  {Array.from({ length: 2 }).map((_, r) => (
+                    <div key={r} className="flex gap-12">
+                      {[
+                        "booking apps",
+                        "AI copilots",
+                        "portfolios",
+                        "mobile MVPs",
+                        "internal tools",
+                        "chrome extensions",
+                        "landing pages",
+                        "APIs",
+                        "creator sites",
+                        "dashboards",
+                      ].map((t) => (
+                        <span key={`${r}-${t}`} className="flex items-center gap-6">
+                          <Star className="h-4 w-4 text-coral" />
+                          {t}
+                        </span>
+                      ))}
+                    </div>
                   ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Bento features — real product screenshots + editorial typography */}
-      <section id="features" className="relative px-4 py-24 sm:px-6 sm:py-32">
-        <div className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-72 -translate-x-1/2 rounded-full bg-coral/20 blur-3xl animate-blob" aria-hidden />
-        <div className="mx-auto max-w-6xl">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">Why Petal</p>
-            <h2 className="mt-3 font-display text-4xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
-              One chat.<br />
-              <span className="italic text-primary">Real</span> software.
-            </h2>
-            <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
-              Web, mobile, backends, and Chrome extensions — Petal picks the stack, writes the code, runs a live preview, and ships it.
-            </p>
-          </div>
-
-          <div className="mt-16 grid gap-5 md:grid-cols-3">
-            {/* Web app — now consistent with Mobile / Backend cards */}
-            <Link
-              to="/features/$slug"
-              params={{ slug: "web" }}
-              className="group relative overflow-hidden rounded-[2rem] border border-border bg-foreground text-background shadow-[var(--shadow-editorial)]"
-            >
-              <img
-                src={webDashImg}
-                alt="Petal-built SaaS dashboard on a laptop"
-                loading="eager"
-                decoding="async"
-                className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/30 to-transparent" />
-              <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
-                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur">
-                  <Globe className="h-3 w-3" /> Web apps
-                </span>
-              </div>
-            </Link>
-
-            {/* Mobile */}
-            <Link
-              to="/features/$slug"
-              params={{ slug: "mobile" }}
-              className="group relative overflow-hidden rounded-[2rem] border border-border bg-foreground text-background"
-            >
-              <img
-                src={phoneHandImg}
-                alt="Mobile app built with Petal, held in hand"
-                loading="eager"
-                decoding="async"
-                className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/30 to-transparent" />
-              <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
-                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur">
-                  <Smartphone className="h-3 w-3" /> Mobile
-                </span>
-              </div>
-            </Link>
-
-            {/* Backend */}
-            <Link
-              to="/features/$slug"
-              params={{ slug: "backend" }}
-              className="group relative overflow-hidden rounded-[2rem] border border-border bg-card"
-            >
-              <img
-                src={backendImg}
-                alt="Backend architecture visualisation"
-                loading="eager"
-                decoding="async"
-                className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-card/20 to-transparent" />
-              <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
-                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-foreground backdrop-blur">
-                  <Layers className="h-3 w-3" /> Backends
-                </span>
-              </div>
-            </Link>
-          </div>
-
-
-          {/* Second row — consistent full-bleed editorial cards */}
-          <div className="mt-5 grid gap-5 md:grid-cols-3">
-            {[
-              { slug: "extensions", img: extensionImg, icon: Wand2, label: "Chrome extensions", dark: true },
-              { slug: "preview", img: previewImg, icon: Eye, label: "Live preview", dark: false },
-              { slug: "ship", img: shipImg, icon: Rocket, label: "One-click ship", dark: true },
-            ].map((f) => (
-              <Link
-                key={f.slug}
-                to="/features/$slug"
-                params={{ slug: f.slug }}
-                className={`group relative overflow-hidden rounded-[2rem] border border-border ${f.dark ? "bg-foreground text-background" : "bg-card"}`}
-              >
-                <img
-                  src={f.img}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
-                />
-                <div className={`absolute inset-0 bg-gradient-to-t ${f.dark ? "from-foreground/90 via-foreground/30" : "from-card/90 via-card/20"} to-transparent`} />
-                <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
-                  <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur ${f.dark ? "bg-background/15" : "bg-background/70 text-foreground"}`}>
-                    <f.icon className="h-3 w-3" /> {f.label}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-
-        </div>
-      </section>
-
-      {/* Community showcase — replaces the old mobile hero (now lives on /features/mobile) */}
-      <section id="community" className="relative overflow-hidden px-4 py-24 sm:px-6 sm:py-32">
-        <div className="pointer-events-none absolute right-[-6rem] top-1/3 -z-10 h-96 w-96 rounded-full bg-mint/40 blur-3xl animate-blob" aria-hidden />
-        <div className="mx-auto max-w-6xl">
-          <div className="grid gap-14 md:grid-cols-2 md:items-center">
-            <div className="relative">
-              <div className="absolute -inset-6 -z-10 rounded-[3rem] bg-gradient-to-br from-coral/25 via-butter/40 to-mint/30 blur-2xl" aria-hidden />
-              <img
-                src={webDashImg}
-                alt="Petal community projects preview"
-                loading="lazy"
-                className="w-full rounded-[2.5rem] object-cover shadow-[var(--shadow-editorial)]"
-              />
-              <div className="absolute -bottom-5 -right-4 rounded-2xl border border-border bg-background/95 px-4 py-3 shadow-[var(--shadow-soft)] backdrop-blur animate-float">
-                <div className="flex items-center gap-2 text-xs font-semibold text-primary">
-                  <Star className="h-3.5 w-3.5 fill-current" /> 18,000+ apps shipped
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">Real projects, one prompt away.</p>
               </div>
             </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">
-                Built with Petal
-              </p>
-              <h2 className="mt-3 font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
-                A whole gallery of <span className="italic">shipped</span> apps.
-              </h2>
-              <p className="mt-5 text-lg text-muted-foreground">
-                Founders, designers, and solo builders open-source their Petal projects every day. Peek inside any one, then remix it into your own with a click.
-              </p>
-              <ul className="mt-8 space-y-4 text-sm sm:text-base">
-                <li className="flex items-start gap-4">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-coral/25 text-foreground">
-                    <Sparkles className="h-4 w-4" />
-                  </span>
-                  <span><strong className="font-semibold">Live previews</strong> — click any project to see the real, running app.</span>
-                </li>
-                <li className="flex items-start gap-4">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-mint text-foreground">
-                    <Wand2 className="h-4 w-4" />
-                  </span>
-                  <span><strong className="font-semibold">One-click remix</strong> — fork a shipped app into a fresh copy on your account.</span>
-                </li>
-                <li className="flex items-start gap-4">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-butter text-foreground">
-                    <Rocket className="h-4 w-4" />
-                  </span>
-                  <span><strong className="font-semibold">Ship it further</strong> — publish under your own domain in a click.</span>
-                </li>
-              </ul>
-              <Link
-                to="/gallery"
-                className="mt-8 inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition hover:-translate-y-0.5"
-              >
-                Explore the gallery <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+          </section>
 
-
-
-      {/* How it works — with founder portrait */}
-      <section id="how" className="relative px-4 py-24 sm:px-6 sm:py-32">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid gap-14 md:grid-cols-2 md:items-center">
-            <div className="relative order-2 md:order-1">
-              <div className="absolute -inset-4 -z-10 rounded-[3rem] bg-gradient-to-br from-primary/20 via-lilac/30 to-sky/30 blur-2xl" aria-hidden />
-              <img
-                src={founderImg}
-                alt="A founder building with Petal"
-                loading="lazy"
-                className="w-full rounded-[2rem] object-cover shadow-[var(--shadow-editorial)]"
-              />
-              <div className="absolute -bottom-6 -right-4 max-w-[220px] rounded-2xl border border-border bg-background/90 p-4 shadow-[var(--shadow-soft)] backdrop-blur animate-float">
-                <div className="flex items-center gap-2 text-xs font-semibold text-primary">
-                  <ShieldCheck className="h-3.5 w-3.5" /> Shipped in 12 min
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  "First real product I've ever launched."
+          {/* Bento features — real product screenshots + editorial typography */}
+          <section id="features" className="relative px-4 py-24 sm:px-6 sm:py-32">
+            <div
+              className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-72 -translate-x-1/2 rounded-full bg-coral/20 blur-3xl animate-blob"
+              aria-hidden
+            />
+            <div className="mx-auto max-w-6xl">
+              <div className="mx-auto max-w-3xl text-center">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">Why Petal</p>
+                <h2 className="mt-3 font-display text-4xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
+                  One chat.
+                  <br />
+                  <span className="italic text-primary">Real</span> software.
+                </h2>
+                <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
+                  Web, mobile, backends, and Chrome extensions — Petal picks the stack, writes the code, runs a live
+                  preview, and ships it.
                 </p>
               </div>
-            </div>
-            <div className="order-1 md:order-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">How it works</p>
-              <h2 className="mt-3 font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
-                Idea → live,<br /><span className="italic">in three steps.</span>
-              </h2>
-              <ol className="mt-10 space-y-8">
-                {[
-                  { n: "01", t: "Describe it", d: "One sentence in plain English — web, mobile, API or extension. No setup." },
-                  { n: "02", t: "Watch it build", d: "Petal researches, plans, writes the code, and streams a live preview while it works." },
-                  { n: "03", t: "Ship it", d: "Publish a URL, wire a custom domain, or download a signed mobile build." },
-                ].map((s) => (
-                  <li key={s.n} className="group grid grid-cols-[auto_1fr] gap-6 border-t border-border pt-6">
-                    <span className="font-display text-4xl font-black text-primary transition group-hover:translate-x-1">{s.n}</span>
-                    <div>
-                      <div className="font-display text-xl font-bold">{s.t}</div>
-                      <p className="mt-1.5 text-sm text-muted-foreground">{s.d}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Testimonials */}
-      <section id="testimonials" className="relative px-4 py-24 sm:px-6 sm:py-32">
-        <div className="pointer-events-none absolute left-[-6rem] top-1/3 -z-10 h-96 w-96 rounded-full bg-coral/25 blur-3xl animate-blob" aria-hidden />
-        <div className="mx-auto max-w-6xl">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">Loved by builders</p>
-            <h2 className="mt-3 font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
-              Real people. <span className="italic">Real</span> apps.
-            </h2>
-            <p className="mt-5 text-lg text-muted-foreground">
-              Founders, designers, and non-coders shipping in an afternoon.
-            </p>
-          </div>
-
-          <div className="mt-16 grid gap-6 md:grid-cols-3">
-            {[
-              {
-                name: "Ada Okafor",
-                role: "Founder · Bookly",
-                quote: "I described a booking app in one sentence. Ten minutes later I had a live URL I could send my first customer.",
-                avatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&h=400&fit=crop&crop=faces&auto=format&q=80",
-                tint: "bg-coral/25",
-              },
-              {
-                name: "Samuel Martins",
-                role: "Product designer",
-                quote: "Told Petal to build a mobile app. It shipped an Expo project I could QR-scan on my phone. No Xcode, no Android Studio wars.",
-                avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=faces&auto=format&q=80",
-                tint: "bg-mint/50",
-              },
-              {
-                name: "Emma Whitfield",
-                role: "Solo builder",
-                quote: "I'd tried three other AI builders. Petal is the first that actually finished — landing page, auth, database, the whole thing.",
-                avatar: emmaAvatar,
-                tint: "bg-butter",
-              },
-            ].map((t, i) => (
-              <figure
-                key={t.name}
-                className={`group relative flex h-full flex-col justify-between overflow-hidden rounded-[2rem] border border-border bg-card p-7 shadow-[var(--shadow-soft)] transition duration-500 hover:-translate-y-2 hover:shadow-[var(--shadow-editorial)] ${i === 1 ? "md:translate-y-6" : ""}`}
-              >
-                <div className={`absolute -right-16 -top-16 h-40 w-40 rounded-full ${t.tint} blur-2xl transition group-hover:scale-110`} aria-hidden />
-                <div className="relative">
-                  <div className="flex gap-0.5 text-primary">
-                    {Array.from({ length: 5 }).map((_, s) => (
-                      <Star key={s} className="h-3.5 w-3.5 fill-current" />
-                    ))}
-                  </div>
-                  <blockquote className="mt-5 font-display text-xl font-medium leading-snug tracking-[-0.01em] text-foreground">
-                    &ldquo;{t.quote}&rdquo;
-                  </blockquote>
-                </div>
-                <figcaption className="relative mt-8 flex items-center gap-3">
+              <div className="mt-16 grid gap-5 md:grid-cols-3">
+                {/* Web app — now consistent with Mobile / Backend cards */}
+                <Link
+                  to="/features/$slug"
+                  params={{ slug: "web" }}
+                  className="group relative overflow-hidden rounded-[2rem] border border-border bg-foreground text-background shadow-[var(--shadow-editorial)]"
+                >
                   <img
-                    src={t.avatar}
-                    alt={t.name}
-                    loading="lazy"
-                    className="h-12 w-12 rounded-full object-cover ring-2 ring-background"
+                    src={webDashImg}
+                    alt="Petal-built SaaS dashboard on a laptop"
+                    loading="eager"
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
                   />
-                  <div className="text-sm">
-                    <div className="font-semibold">{t.name}</div>
-                    <div className="text-xs text-muted-foreground">{t.role}</div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/30 to-transparent" />
+                  <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
+                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur">
+                      <Globe className="h-3 w-3" /> Web apps
+                    </span>
                   </div>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </div>
-      </section>
+                </Link>
 
-      {/* Final CTA */}
-      <section className="px-4 pb-20 sm:px-6 sm:pb-28">
-        <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] border border-border bg-foreground p-10 text-background shadow-[var(--shadow-editorial)] sm:p-16 md:p-20">
-          <div className="pointer-events-none absolute -top-40 left-1/3 h-96 w-96 rounded-full bg-coral/60 blur-3xl animate-blob" aria-hidden />
-          <div className="pointer-events-none absolute -bottom-40 right-0 h-96 w-96 rounded-full bg-mint/40 blur-3xl animate-blob" aria-hidden />
-          <div className="relative text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-background/60">Your turn</p>
-            <h2 className="mx-auto mt-4 max-w-3xl font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
-              Your next product is <span className="italic text-coral">one sentence</span> away.
-            </h2>
-            <p className="mx-auto mt-5 max-w-xl text-base text-background/70 sm:text-lg">
-              Web, mobile, backend or extension — describe it, Petal ships it.
-            </p>
-            {!isReady ? null : user ? (
-              <Link
-                to="/projects"
-                className="mt-10 inline-flex h-14 items-center gap-2 rounded-full bg-background px-8 text-base font-semibold text-foreground transition hover:scale-[1.02] hover:brightness-105"
-              >
-                Open my projects
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            ) : (
-              <Link
-                to="/auth"
-                search={{ mode: "signup", redirect: undefined }}
-                className="mt-10 inline-flex h-14 items-center gap-2 rounded-full bg-background px-8 text-base font-semibold text-foreground transition hover:scale-[1.02] hover:brightness-105"
-              >
-                Start building free
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            )}
-            <p className="mt-4 text-xs text-background/50">No credit card · Live preview in seconds</p>
-          </div>
-        </div>
-      </section>
+                {/* Mobile */}
+                <Link
+                  to="/features/$slug"
+                  params={{ slug: "mobile" }}
+                  className="group relative overflow-hidden rounded-[2rem] border border-border bg-foreground text-background"
+                >
+                  <img
+                    src={phoneHandImg}
+                    alt="Mobile app built with Petal, held in hand"
+                    loading="eager"
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/30 to-transparent" />
+                  <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
+                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur">
+                      <Smartphone className="h-3 w-3" /> Mobile
+                    </span>
+                  </div>
+                </Link>
 
-      <footer className="border-t border-border bg-card/40">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-10 text-sm text-muted-foreground sm:px-6 md:flex-row">
-          <div className="flex items-center gap-2 font-display text-lg font-bold tracking-tight text-foreground">
-            Petal <span className="text-muted-foreground font-normal italic">— build by chatting.</span>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-5">
-            <Link to="/coffee" className="hover:text-foreground">Buy us a coffee</Link>
-            <Link to="/invest" className="hover:text-foreground">Invest</Link>
-            <Link to="/changelog" className="hover:text-foreground">What's new</Link>
-            <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
-            <Link to="/terms" className="hover:text-foreground">Terms</Link>
-            <span>© {new Date().getFullYear()} Petal</span>
-          </div>
-        </div>
-      </footer>
+                {/* Backend */}
+                <Link
+                  to="/features/$slug"
+                  params={{ slug: "backend" }}
+                  className="group relative overflow-hidden rounded-[2rem] border border-border bg-card"
+                >
+                  <img
+                    src={backendImg}
+                    alt="Backend architecture visualisation"
+                    loading="eager"
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-card/20 to-transparent" />
+                  <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
+                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-foreground backdrop-blur">
+                      <Layers className="h-3 w-3" /> Backends
+                    </span>
+                  </div>
+                </Link>
+              </div>
+
+              {/* Second row — consistent full-bleed editorial cards */}
+              <div className="mt-5 grid gap-5 md:grid-cols-3">
+                {[
+                  { slug: "extensions", img: extensionImg, icon: Wand2, label: "Chrome extensions", dark: true },
+                  { slug: "preview", img: previewImg, icon: Eye, label: "Live preview", dark: false },
+                  { slug: "ship", img: shipImg, icon: Rocket, label: "One-click ship", dark: true },
+                ].map((f) => (
+                  <Link
+                    key={f.slug}
+                    to="/features/$slug"
+                    params={{ slug: f.slug }}
+                    className={`group relative overflow-hidden rounded-[2rem] border border-border ${f.dark ? "bg-foreground text-background" : "bg-card"}`}
+                  >
+                    <img
+                      src={f.img}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
+                    />
+                    <div
+                      className={`absolute inset-0 bg-gradient-to-t ${f.dark ? "from-foreground/90 via-foreground/30" : "from-card/90 via-card/20"} to-transparent`}
+                    />
+                    <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
+                      <span
+                        className={`inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur ${f.dark ? "bg-background/15" : "bg-background/70 text-foreground"}`}
+                      >
+                        <f.icon className="h-3 w-3" /> {f.label}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Community showcase — replaces the old mobile hero (now lives on /features/mobile) */}
+          <section id="community" className="relative overflow-hidden px-4 py-24 sm:px-6 sm:py-32">
+            <div
+              className="pointer-events-none absolute right-[-6rem] top-1/3 -z-10 h-96 w-96 rounded-full bg-mint/40 blur-3xl animate-blob"
+              aria-hidden
+            />
+            <div className="mx-auto max-w-6xl">
+              <div className="grid gap-14 md:grid-cols-2 md:items-center">
+                <div className="relative">
+                  <div
+                    className="absolute -inset-6 -z-10 rounded-[3rem] bg-gradient-to-br from-coral/25 via-butter/40 to-mint/30 blur-2xl"
+                    aria-hidden
+                  />
+                  <img
+                    src={webDashImg}
+                    alt="Petal community projects preview"
+                    loading="lazy"
+                    className="w-full rounded-[2.5rem] object-cover shadow-[var(--shadow-editorial)]"
+                  />
+                  <div className="absolute -bottom-5 -right-4 rounded-2xl border border-border bg-background/95 px-4 py-3 shadow-[var(--shadow-soft)] backdrop-blur animate-float">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                      <Star className="h-3.5 w-3.5 fill-current" /> 18,000+ apps shipped
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">Real projects, one prompt away.</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">Built with Petal</p>
+                  <h2 className="mt-3 font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
+                    A whole gallery of <span className="italic">shipped</span> apps.
+                  </h2>
+                  <p className="mt-5 text-lg text-muted-foreground">
+                    Founders, designers, and solo builders open-source their Petal projects every day. Peek inside any
+                    one, then remix it into your own with a click.
+                  </p>
+                  <ul className="mt-8 space-y-4 text-sm sm:text-base">
+                    <li className="flex items-start gap-4">
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-coral/25 text-foreground">
+                        <Sparkles className="h-4 w-4" />
+                      </span>
+                      <span>
+                        <strong className="font-semibold">Live previews</strong> — click any project to see the real,
+                        running app.
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-4">
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-mint text-foreground">
+                        <Wand2 className="h-4 w-4" />
+                      </span>
+                      <span>
+                        <strong className="font-semibold">One-click remix</strong> — fork a shipped app into a fresh
+                        copy on your account.
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-4">
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-butter text-foreground">
+                        <Rocket className="h-4 w-4" />
+                      </span>
+                      <span>
+                        <strong className="font-semibold">Ship it further</strong> — publish under your own domain in a
+                        click.
+                      </span>
+                    </li>
+                  </ul>
+                  <Link
+                    to="/gallery"
+                    className="mt-8 inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition hover:-translate-y-0.5"
+                  >
+                    Explore the gallery <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* How it works — with founder portrait */}
+          <section id="how" className="relative px-4 py-24 sm:px-6 sm:py-32">
+            <div className="mx-auto max-w-6xl">
+              <div className="grid gap-14 md:grid-cols-2 md:items-center">
+                <div className="relative order-2 md:order-1">
+                  <div
+                    className="absolute -inset-4 -z-10 rounded-[3rem] bg-gradient-to-br from-primary/20 via-lilac/30 to-sky/30 blur-2xl"
+                    aria-hidden
+                  />
+                  <img
+                    src={founderImg}
+                    alt="A founder building with Petal"
+                    loading="lazy"
+                    className="w-full rounded-[2rem] object-cover shadow-[var(--shadow-editorial)]"
+                  />
+                  <div className="absolute -bottom-6 -right-4 max-w-[220px] rounded-2xl border border-border bg-background/90 p-4 shadow-[var(--shadow-soft)] backdrop-blur animate-float">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                      <ShieldCheck className="h-3.5 w-3.5" /> Shipped in 12 min
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">"First real product I've ever launched."</p>
+                  </div>
+                </div>
+                <div className="order-1 md:order-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">How it works</p>
+                  <h2 className="mt-3 font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
+                    Idea → live,
+                    <br />
+                    <span className="italic">in three steps.</span>
+                  </h2>
+                  <ol className="mt-10 space-y-8">
+                    {[
+                      {
+                        n: "01",
+                        t: "Describe it",
+                        d: "One sentence in plain English — web, mobile, API or extension. No setup.",
+                      },
+                      {
+                        n: "02",
+                        t: "Watch it build",
+                        d: "Petal researches, plans, writes the code, and streams a live preview while it works.",
+                      },
+                      {
+                        n: "03",
+                        t: "Ship it",
+                        d: "Publish a URL, wire a custom domain, or download a signed mobile build.",
+                      },
+                    ].map((s) => (
+                      <li key={s.n} className="group grid grid-cols-[auto_1fr] gap-6 border-t border-border pt-6">
+                        <span className="font-display text-4xl font-black text-primary transition group-hover:translate-x-1">
+                          {s.n}
+                        </span>
+                        <div>
+                          <div className="font-display text-xl font-bold">{s.t}</div>
+                          <p className="mt-1.5 text-sm text-muted-foreground">{s.d}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Testimonials */}
+          <section id="testimonials" className="relative px-4 py-24 sm:px-6 sm:py-32">
+            <div
+              className="pointer-events-none absolute left-[-6rem] top-1/3 -z-10 h-96 w-96 rounded-full bg-coral/25 blur-3xl animate-blob"
+              aria-hidden
+            />
+            <div className="mx-auto max-w-6xl">
+              <div className="mx-auto max-w-3xl text-center">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">Loved by builders</p>
+                <h2 className="mt-3 font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
+                  Real people. <span className="italic">Real</span> apps.
+                </h2>
+                <p className="mt-5 text-lg text-muted-foreground">
+                  Founders, designers, and non-coders shipping in an afternoon.
+                </p>
+              </div>
+
+              <div className="mt-16 grid gap-6 md:grid-cols-3">
+                {[
+                  {
+                    name: "Ada Okafor",
+                    role: "Founder · Bookly",
+                    quote:
+                      "I described a booking app in one sentence. Ten minutes later I had a live URL I could send my first customer.",
+                    avatar:
+                      "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&h=400&fit=crop&crop=faces&auto=format&q=80",
+                    tint: "bg-coral/25",
+                  },
+                  {
+                    name: "Samuel Martins",
+                    role: "Product designer",
+                    quote:
+                      "Told Petal to build a mobile app. It shipped an Expo project I could QR-scan on my phone. No Xcode, no Android Studio wars.",
+                    avatar:
+                      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=faces&auto=format&q=80",
+                    tint: "bg-mint/50",
+                  },
+                  {
+                    name: "Emma Whitfield",
+                    role: "Solo builder",
+                    quote:
+                      "I'd tried three other AI builders. Petal is the first that actually finished — landing page, auth, database, the whole thing.",
+                    avatar: emmaAvatar,
+                    tint: "bg-butter",
+                  },
+                ].map((t, i) => (
+                  <figure
+                    key={t.name}
+                    className={`group relative flex h-full flex-col justify-between overflow-hidden rounded-[2rem] border border-border bg-card p-7 shadow-[var(--shadow-soft)] transition duration-500 hover:-translate-y-2 hover:shadow-[var(--shadow-editorial)] ${i === 1 ? "md:translate-y-6" : ""}`}
+                  >
+                    <div
+                      className={`absolute -right-16 -top-16 h-40 w-40 rounded-full ${t.tint} blur-2xl transition group-hover:scale-110`}
+                      aria-hidden
+                    />
+                    <div className="relative">
+                      <div className="flex gap-0.5 text-primary">
+                        {Array.from({ length: 5 }).map((_, s) => (
+                          <Star key={s} className="h-3.5 w-3.5 fill-current" />
+                        ))}
+                      </div>
+                      <blockquote className="mt-5 font-display text-xl font-medium leading-snug tracking-[-0.01em] text-foreground">
+                        &ldquo;{t.quote}&rdquo;
+                      </blockquote>
+                    </div>
+                    <figcaption className="relative mt-8 flex items-center gap-3">
+                      <img
+                        src={t.avatar}
+                        alt={t.name}
+                        loading="lazy"
+                        className="h-12 w-12 rounded-full object-cover ring-2 ring-background"
+                      />
+                      <div className="text-sm">
+                        <div className="font-semibold">{t.name}</div>
+                        <div className="text-xs text-muted-foreground">{t.role}</div>
+                      </div>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Final CTA */}
+          <section className="px-4 pb-20 sm:px-6 sm:pb-28">
+            <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] border border-border bg-foreground p-10 text-background shadow-[var(--shadow-editorial)] sm:p-16 md:p-20">
+              <div
+                className="pointer-events-none absolute -top-40 left-1/3 h-96 w-96 rounded-full bg-coral/60 blur-3xl animate-blob"
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute -bottom-40 right-0 h-96 w-96 rounded-full bg-mint/40 blur-3xl animate-blob"
+                aria-hidden
+              />
+              <div className="relative text-center">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-background/60">Your turn</p>
+                <h2 className="mx-auto mt-4 max-w-3xl font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
+                  Your next product is <span className="italic text-coral">one sentence</span> away.
+                </h2>
+                <p className="mx-auto mt-5 max-w-xl text-base text-background/70 sm:text-lg">
+                  Web, mobile, backend or extension — describe it, Petal ships it.
+                </p>
+                {!isReady ? null : user ? (
+                  <Link
+                    to="/projects"
+                    className="mt-10 inline-flex h-14 items-center gap-2 rounded-full bg-background px-8 text-base font-semibold text-foreground transition hover:scale-[1.02] hover:brightness-105"
+                  >
+                    Open my projects
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                ) : (
+                  <Link
+                    to="/auth"
+                    search={{ mode: "signup", redirect: undefined }}
+                    className="mt-10 inline-flex h-14 items-center gap-2 rounded-full bg-background px-8 text-base font-semibold text-foreground transition hover:scale-[1.02] hover:brightness-105"
+                  >
+                    Start building free
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                )}
+                <p className="mt-4 text-xs text-background/50">No credit card · Live preview</p>
+              </div>
+            </div>
+          </section>
+
+          <footer className="border-t border-border bg-card/40">
+            <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-10 text-sm text-muted-foreground sm:px-6 md:flex-row">
+              <div className="flex items-center gap-2 font-display text-lg font-bold tracking-tight text-foreground">
+                Petal <span className="text-muted-foreground font-normal italic">— build software by chatting.</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-5">
+                <Link to="/coffee" className="hover:text-foreground">
+                  Buy us coffee
+                </Link>
+                <Link to="/invest" className="hover:text-foreground">
+                  Invest
+                </Link>
+                <Link to="/changelog" className="hover:text-foreground">
+                  What's new
+                </Link>
+                <Link to="/privacy" className="hover:text-foreground">
+                  Privacy
+                </Link>
+                <Link to="/terms" className="hover:text-foreground">
+                  Terms
+                </Link>
+                <span>© {new Date().getFullYear()} Petal</span>
+              </div>
+            </div>
+          </footer>
         </>
       )}
     </div>
