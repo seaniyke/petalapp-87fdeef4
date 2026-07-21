@@ -70,13 +70,13 @@ export const Route = createFileRoute("/")({
     search.focus === "composer" ? { focus: "composer" } : {},
   head: () => ({
     meta: [
-      { title: "Petal — Build web, mobile, backends & extensions by chatting" },
+      { title: "Petal — Build web, mobile, backends & extensions with AI" },
       {
         name: "description",
         content:
           "Petal turns a sentence into a real product. Web apps, mobile apps for iOS + Android, backends, and Chrome extensions — one chat, live preview, ship.",
       },
-      { property: "og:title", content: "Petal — Build real software by chatting" },
+      { property: "og:title", content: "Petal — Build real software with AI" },
       {
         property: "og:description",
         content: "One chat. Web, mobile, backend, or extension. Live preview, real files, shipped.",
@@ -1339,7 +1339,7 @@ function Landing() {
           <footer className="border-t border-border bg-card/40">
             <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-10 text-sm text-muted-foreground sm:px-6 md:flex-row">
               <div className="flex items-center gap-2 font-display text-lg font-bold tracking-tight text-foreground">
-                Petal <span className="text-muted-foreground font-normal italic">— build software by chatting.</span>
+                Petal <span className="text-muted-foreground font-normal italic">— build real software with AI.</span>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-5">
                 <Link to="/coffee" className="hover:text-foreground">
@@ -1357,7 +1357,7 @@ function Landing() {
                 <Link to="/terms" className="hover:text-foreground">
                   Terms
                 </Link>
-                <span>© {new Date().getFullYear()} Petal</span>
+                <span>© {new Date().getFullYear()} Petal, A Kesh Technologies Limited Company</span>
               </div>
             </div>
           </footer>
