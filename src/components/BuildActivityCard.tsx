@@ -1,18 +1,14 @@
 /**
- * The warm, story-like activity feed users see while Petal builds their app.
- * Replaces the old "Thinking… / Writing project… / Applying changes…" line.
+ * The compact build card users see in the chat thread while (and after)
+ * Petal builds their app.
  *
- * Renders inside the chat thread. Self-contained — no app state, just props.
- * Auto-collapses to a single success line a few seconds after going live.
+ * Chat-level UI stays tiny on purpose: a status/summary line plus two
+ * actions — "Details" (opens the full Timeline / Changes trace) and
+ * "Preview" (jumps to the live app). Everything verbose lives in
+ * <BuildDetailsSheet />.
  */
 import { useEffect, useMemo, useState } from "react";
 import {
-  ChevronDown,
-  ChevronUp,
-
-  Wrench,
-  X,
-
   Sparkles,
   Palette,
   FileEdit,
@@ -20,15 +16,15 @@ import {
   Rocket,
   CheckCircle2,
   Loader2,
-  Check,
-  Circle,
+  ListTree,
+  Play,
   type LucideIcon,
 } from "lucide-react";
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
 import { pathToNarration } from "@/lib/path-narration";
 import type { FriendlyError } from "@/lib/friendly-errors";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
-
+import { BuildDetailsSheet, type FileChange } from "@/components/BuildDetailsSheet";
 
 /**
  * One entry in the real-time build pipeline timeline.
@@ -52,10 +48,6 @@ export type TimelineEntry = {
   ts: number;
 };
 
-
-
-
-// Lovable-style: clean monoline icons per phase instead of emoji.
 const PHASE_ICONS: Record<PhaseId, LucideIcon> = {
   thinking: Sparkles,
   designing: Palette,
@@ -73,54 +65,39 @@ type Props = {
   isComplete: boolean;
   /** Friendly error if anything failed. */
   error: FriendlyError | null;
-  /** Live caption shown under the "Designing" phase as the AI summary streams. */
+  /** Live caption shown as the AI design summary streams. */
   designCaption?: string;
-  /** Latest file written, shown next to the file counter. */
+  /** Latest file written. */
   latestPath?: string;
-  /** Model-written one-liner for the file currently being written
-   *  ("Building the photo upload screen"). Overrides path-derived narration. */
+  /** Model-written one-liner for the file currently being written. */
   latestNarration?: string;
-  /** Most recent agentic-loop progress string (verifier / fix gap narration).
-   *  Used as a fallback sub-caption so the card never sits silent during
-   *  the 5-10s pauses between file streaming and the next visible event. */
+  /** Most recent agentic-loop progress string. */
   latestCycleProgress?: string;
-  /** Number of files written so far (during the writing phase). */
+  /** Number of files written so far. */
   filesWritten?: number;
   /** Ordered list of every file path written so far (deduped). */
   writtenPaths?: string[];
-  /** Paths whose stream-time `"content"` string finished — drives per-file ✓. */
+  /** Paths whose stream-time `"content"` string finished. */
   completedPaths?: Set<string>;
-  /** After completion, final line counts keyed by path — drives the "X lines" badge. */
+  /** Final line counts keyed by path. */
   finalFileLines?: Record<string, number>;
-  /**
-   * Per-file change kind + line delta vs. the pre-run snapshot. Drives the
-   * "new / modified / deleted" badge and the +A −B counter on each file row.
-   * Empty until the run completes.
-   */
-  fileChanges?: Record<
-    string,
-    { kind: "added" | "modified" | "unchanged" | "deleted"; addedLines: number; removedLines: number }
-  >;
-  /** Seconds we've been waiting on the deploy phase. Drives the escalation
-   *  copy ("Almost there", "Taking longer", "Still working") so the user
-   *  always sees movement rather than a frozen "Putting your app online…". */
+  /** Per-file change kind + line delta vs. the pre-run snapshot. */
+  fileChanges?: Record<string, FileChange>;
+  /** Seconds we've been waiting on the deploy phase. */
   deployElapsedSec?: number;
-  /** Live pipeline timeline — server pushes one entry per recovery / verifier
-   *  / autofix / image step. Rendered inside the expanded steps panel. */
+  /** Live pipeline timeline pushed by the server. */
   timelineEvents?: TimelineEntry[];
-  /** Credits actually charged for this turn (from the SSE result event).
-   *  Shown on the collapsed success line so users can see exactly what
-   *  this build cost. `0` is shown explicitly (free turns / auto-fix). */
+  /** Credits actually charged for this turn. */
   creditsCharged?: number | null;
   onStop?: () => void;
   onRetry?: () => void;
   onAskFix?: () => void;
   onDismissError?: () => void;
-  /** Opens the billing sheet for the "buy-credits" error action. */
   onBuyCredits?: () => void;
-  /** Opens the per-file diff drawer comparing the pre-turn snapshot to the
-   *  files Petal just wrote. Shown on the collapsed success line. */
+  /** Opens the per-file diff drawer. */
   onReviewChanges?: () => void;
+  /** Jumps the workspace to the live preview. */
+  onOpenPreview?: () => void;
 };
 
 export function BuildActivityCard({
@@ -140,35 +117,17 @@ export function BuildActivityCard({
   deployElapsedSec,
   timelineEvents,
   creditsCharged,
-  onStop,
   onRetry,
   onAskFix,
   onDismissError,
   onBuyCredits,
   onReviewChanges,
+  onOpenPreview,
 }: Props) {
-  // Auto-collapse 3s after success.
-  const [collapsed, setCollapsed] = useState(false);
-
-  // Lovable-style live trace: the steps panel is auto-expanded WHILE Petal is
-  // working so the user sees every phase, file write, and verifier check as
-  // it happens. It only collapses once the turn finishes (or on user click).
-  const [stepsOpen, setStepsOpen] = useState(true);
-  const [userToggledSteps, setUserToggledSteps] = useState(false);
-  useEffect(() => {
-    if (userToggledSteps) return;
-    setStepsOpen(isActive && !error);
-  }, [isActive, error, userToggledSteps]);
-  useEffect(() => {
-    if (!isComplete || error) return;
-    const t = setTimeout(() => setCollapsed(true), 3000);
-    return () => clearTimeout(t);
-  }, [isComplete, error]);
-
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const elapsed = useMemo(() => totalElapsedSeconds(phases), [phases]);
 
-  // Tick once a second while active so the elapsed counter and
-  // "this is taking a while" reassurance update in real time.
+  // Tick once a second while active so the elapsed counter updates.
   const [, setTick] = useState(0);
   useEffect(() => {
     if (!isActive) return;
@@ -176,45 +135,30 @@ export function BuildActivityCard({
     return () => clearInterval(t);
   }, [isActive]);
 
-  // Rolling "thinking log" — a ring buffer of the most recent narration /
-  // status / cycle-progress lines so the user sees Petal's voice update
-  // continuously instead of one stale subcaption. We keep the last 6.
+  // Rolling "thinking log" — ring buffer of the last few narration lines.
   const [thinkingLog, setThinkingLog] = useState<Array<{ id: number; text: string }>>([]);
   useEffect(() => {
     const text = (latestNarration ?? latestCycleProgress ?? "").trim();
     if (!text) return;
     setThinkingLog((prev) => {
       if (prev[prev.length - 1]?.text === text) return prev;
-      const next = [...prev, { id: (prev[prev.length - 1]?.id ?? 0) + 1, text }];
-      return next.slice(-6);
+      return [...prev, { id: (prev[prev.length - 1]?.id ?? 0) + 1, text }].slice(-12);
     });
   }, [latestNarration, latestCycleProgress]);
-  // Reset the log when a new turn starts (no phase has finished yet and
-  // nothing is active beyond the very first phase).
   useEffect(() => {
     if (!isActive && !isComplete) setThinkingLog([]);
   }, [isActive, isComplete]);
 
-
-  // The currently-active phase drives the single status line. Falls back to
-  // the last completed phase (e.g. right between phases) or the first phase.
   const currentPhase: Phase =
     phases.find((p) => p.status === "active") ??
     [...phases].reverse().find((p) => p.status === "done") ??
     phases[0];
 
-  // Optional sub-caption shown under the status line. Mirrors the per-phase
-  // micro-context the old expanded view showed inline.
+  // Sub-caption under the headline.
   let subCaption: string | undefined;
   if (currentPhase?.id === "designing" && designCaption) {
     subCaption = designCaption;
   } else if (currentPhase?.id === "writing") {
-    // Talk to the user as we work. Priority:
-    //   1. Model-written narration for the current file (warmest, most
-    //      specific — Petal's actual voice).
-    //   2. Path-derived narration (deterministic fallback).
-    //   3. Agentic-loop cycle progress (verifier / fix gap narration).
-    //   4. File count (last resort so the line never goes silent).
     const modelLine = latestNarration?.trim();
     const derived = pathToNarration(latestPath);
     if (modelLine) subCaption = modelLine;
@@ -223,11 +167,8 @@ export function BuildActivityCard({
     else if (filesWritten && filesWritten > 0)
       subCaption = `${filesWritten} file${filesWritten === 1 ? "" : "s"} so far`;
   } else if (currentPhase?.id === "deploying" && typeof deployElapsedSec === "number") {
-    // Escalate the deploy copy so the user sees the wait acknowledged. The
-    // long tail (>90s) is calmer on purpose — we don't want to alarm anyone
-    // about a deploy that's still healthy, just confirm we're paying attention.
     if (deployElapsedSec >= 90) {
-      subCaption = "Still working on it — your code is safe, you can keep editing.";
+      subCaption = "Still on it — your code is safe, keep editing.";
     } else if (deployElapsedSec >= 60) {
       subCaption = "Almost there — bundling and uploading assets.";
     } else if (deployElapsedSec >= 30) {
@@ -241,54 +182,12 @@ export function BuildActivityCard({
   ) {
     subCaption = currentPhase.reassurance;
   }
-  // Final fallback: if the server has a fresh progress line, surface it.
-  // This intentionally overrides the canned long-wait reassurance during
-  // thinking/polishing so users see what Petal is actually doing now.
-  if (isActive && latestCycleProgress && (!subCaption || currentPhase?.id === "thinking" || currentPhase?.id === "polishing")) {
+  if (
+    isActive &&
+    latestCycleProgress &&
+    (!subCaption || currentPhase?.id === "thinking" || currentPhase?.id === "polishing")
+  ) {
     subCaption = latestCycleProgress;
-  }
-
-  // ─── Collapsed success state ─────────────────────────────────────────────
-  if (collapsed && isComplete && !error) {
-    // Format cost like "0.4 credits" / "1 credit" / "Free" so users see
-    // exactly what this turn cost without having to open billing.
-    const costLabel =
-      typeof creditsCharged === "number"
-        ? creditsCharged === 0
-          ? "Free"
-          : `${creditsCharged === 1 ? "1 credit" : `${creditsCharged.toFixed(creditsCharged < 10 ? 1 : 0)} credits`}`
-        : null;
-    return (
-      <div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-1.5 text-xs">
-        <span className="inline-flex items-center gap-1.5 font-medium text-foreground/80">
-          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" aria-hidden />
-          Your app is live · built in {elapsed}s
-          {costLabel && (
-            <span className="ml-1 rounded-full bg-muted/70 px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
-              {costLabel}
-            </span>
-          )}
-        </span>
-        <div className="flex shrink-0 items-center gap-2">
-          {onReviewChanges && (
-            <button
-              type="button"
-              onClick={onReviewChanges}
-              className="text-[10px] font-medium text-foreground/80 hover:text-foreground hover:underline"
-            >
-              Review changes
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setCollapsed(false)}
-            className="text-[10px] text-muted-foreground hover:text-foreground"
-          >
-            show steps
-          </button>
-        </div>
-      </div>
-    );
   }
 
   // ─── Error state ─────────────────────────────────────────────────────────
@@ -304,351 +203,110 @@ export function BuildActivityCard({
     );
   }
 
-  // ─── Default: single evolving status line (Lovable-style) ───────────────
-  // Calm, one-line update that swaps as the phase advances. Tap to expand
-  // for the full step-by-step timeline.
+  const fileCount = filesWritten ?? writtenPaths?.length ?? 0;
+  const costLabel =
+    typeof creditsCharged === "number"
+      ? creditsCharged === 0
+        ? "Free"
+        : creditsCharged === 1
+          ? "1 credit"
+          : `${creditsCharged.toFixed(creditsCharged < 10 ? 1 : 0)} credits`
+      : null;
+
+  const headline = isComplete
+    ? fileCount > 0
+      ? `Done — ${fileCount} file${fileCount === 1 ? "" : "s"} updated`
+      : "Done — your app is live"
+    : (currentPhase?.label ?? "Working…");
+
   const CurrentIcon = currentPhase ? PHASE_ICONS[currentPhase.id] : Sparkles;
+
   return (
-    <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/20 transition-all">
-      <div className="flex items-center gap-2.5 px-3 py-2">
-        {/* Active phase shows a spinner; idle/done shows the phase icon. */}
-        <span
-          key={`icon-${currentPhase?.id ?? "init"}`}
-          className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground animate-fade-in"
-          aria-hidden
-        >
-          {isActive ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <CurrentIcon className="h-3.5 w-3.5" />
-          )}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2 text-[13px] leading-snug">
-            <span
-              key={`label-${currentPhase?.id ?? "init"}`}
-              className={`truncate font-medium animate-fade-in motion-reduce:animate-none ${
-                isActive ? "petal-shimmer" : "text-foreground"
-              }`}
-            >
-              {currentPhase?.label ?? "Working…"}
-            </span>
-            {elapsed > 0 && (
-              <span className="shrink-0 font-mono text-[10.5px] font-normal text-muted-foreground/70 tabular-nums">
-                {elapsed}s
+    <>
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-sm backdrop-blur-sm transition-all">
+        <div className="flex items-center gap-2.5 px-3.5 py-3">
+          <span
+            className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+              isComplete ? "bg-emerald-500/15 text-emerald-600" : "bg-primary/10 text-primary"
+            }`}
+            aria-hidden
+          >
+            {isActive ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : isComplete ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : (
+              <CurrentIcon className="h-4 w-4" />
+            )}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-2">
+              <span
+                key={`label-${headline}`}
+                className={`truncate text-[14.5px] font-semibold tracking-[-0.01em] animate-fade-in motion-reduce:animate-none ${
+                  isActive ? "petal-shimmer" : "text-foreground"
+                }`}
+              >
+                {headline}
               </span>
+              {elapsed > 0 && (
+                <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground/70 tabular-nums">
+                  {elapsed}s
+                </span>
+              )}
+              {costLabel && isComplete && (
+                <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  {costLabel}
+                </span>
+              )}
+            </div>
+            {subCaption && (
+              <div
+                key={`cap-${subCaption}`}
+                className="mt-0.5 truncate text-[12px] text-muted-foreground animate-fade-in motion-reduce:animate-none"
+              >
+                {subCaption}
+              </div>
             )}
           </div>
-          {subCaption && (
-            <div
-              key={`cap-${subCaption}`}
-              className="mt-0.5 truncate text-[11.5px] text-muted-foreground/80 animate-fade-in motion-reduce:animate-none"
-            >
-              {subCaption}
-            </div>
-          )}
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-
+        <div className="grid grid-cols-2 gap-2 border-t border-border/60 p-2">
           <button
             type="button"
-            onClick={() => {
-              setUserToggledSteps(true);
-              setStepsOpen((s) => !s);
-            }}
-            className="grid h-5 w-5 place-items-center rounded text-muted-foreground/70 transition hover:text-foreground"
-            aria-label={stepsOpen ? "Hide steps" : "Show steps"}
+            onClick={() => setDetailsOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border/70 bg-background px-3 py-2 text-[13px] font-semibold transition hover:bg-muted"
           >
-            {stepsOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            <ListTree className="h-3.5 w-3.5" aria-hidden />
+            Details
+          </button>
+          <button
+            type="button"
+            onClick={onOpenPreview}
+            disabled={!onOpenPreview}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border/70 bg-background px-3 py-2 text-[13px] font-semibold transition hover:bg-muted disabled:opacity-40"
+          >
+            <Play className="h-3.5 w-3.5" aria-hidden />
+            Preview
           </button>
         </div>
       </div>
-      {stepsOpen && (
-        <div className="border-t border-border/50">
-          {(() => {
-            // Lovable-style live trace: include the ACTIVE phase too so the
-            // user sees its file rows and reassurance stream in live, not
-            // just after it completes. We still skip "live" (success state)
-            // and any phase that hasn't started yet.
-            const visiblePhases = phases.filter(
-              (p) => p.id !== "live" && p.status !== "pending",
-            );
-            const hasContent =
-              visiblePhases.length > 0 ||
-              thinkingLog.length > 0 ||
-              (timelineEvents && timelineEvents.length > 0);
-            if (!hasContent) {
-              return (
-                <div className="px-3 py-2 text-[11.5px] text-muted-foreground/70">
-                  {latestCycleProgress || "Petal will list each step here as it happens."}
-                </div>
-              );
-            }
-            return (
-              <>
-                {visiblePhases.length > 0 && (
-                  <ol className="space-y-1.5 px-3 py-2.5">
-                    {visiblePhases.map((p) => (
-                      <PhaseRow
-                        key={p.id}
-                        phase={p}
-                        designCaption={p.id === "designing" ? designCaption : undefined}
-                        filesWritten={p.id === "writing" ? filesWritten : undefined}
-                        latestPath={p.id === "writing" ? latestPath : undefined}
-                        writtenPaths={p.id === "writing" ? writtenPaths : undefined}
-                        completedPaths={p.id === "writing" ? completedPaths : undefined}
-                        finalFileLines={p.id === "writing" ? finalFileLines : undefined}
-                        fileChanges={p.id === "writing" ? fileChanges : undefined}
-                      />
-                    ))}
-                  </ol>
-                )}
-                {/* Rolling "thinking" log — last few narration / cycle lines.
-                    Renders only while there's something fresh to show so the
-                    panel stays calm once the turn finishes. */}
-                {isActive && thinkingLog.length > 0 && (
-                  <div className="border-t border-border/40 px-3 py-2">
-                    <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
-                      Petal is thinking
-                    </div>
-                    <ul className="space-y-0.5">
-                      {thinkingLog.map((line, i) => {
-                        const isLatest = i === thinkingLog.length - 1;
-                        return (
-                          <li
-                            key={line.id}
-                            className={`flex items-start gap-1.5 text-[11.5px] leading-snug ${
-                              isLatest
-                                ? "text-foreground/90"
-                                : "text-muted-foreground/60"
-                            }`}
-                          >
-                            <span aria-hidden className="mt-1 inline-block h-1 w-1 shrink-0 rounded-full bg-current opacity-60" />
-                            <span className="min-w-0 flex-1">{line.text}</span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
-                {/* Verifier / autofix / image-resolve checks — each timeline
-                    entry the server emits surfaces here with its outcome. */}
-                {timelineEvents && timelineEvents.length > 0 && (
-                  <div className="border-t border-border/40 px-3 py-2">
-                    <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
-                      Checks
-                    </div>
-                    <ul className="space-y-0.5">
-                      {timelineEvents.map((ev, i) => (
-                        <li
-                          key={`${ev.step}-${ev.ts}-${i}`}
-                          className="flex items-start gap-1.5 text-[11.5px] leading-snug"
-                        >
-                          <span
-                            aria-hidden
-                            className={`mt-0.5 inline-flex h-3 w-3 shrink-0 items-center justify-center ${
-                              ev.outcome === "ok"
-                                ? "text-emerald-500"
-                                : ev.outcome === "fixed"
-                                  ? "text-amber-500"
-                                  : ev.outcome === "failed"
-                                    ? "text-destructive"
-                                    : "text-muted-foreground/60"
-                            }`}
-                          >
-                            {ev.outcome === "ok" ? (
-                              <Check className="h-3 w-3" />
-                            ) : ev.outcome === "fixed" ? (
-                              <Wrench className="h-3 w-3" />
-                            ) : ev.outcome === "failed" ? (
-                              <X className="h-3 w-3" />
-                            ) : (
-                              <Circle className="h-1.5 w-1.5 fill-current" />
-                            )}
-                          </span>
-                          <span className="min-w-0 flex-1 text-muted-foreground">
-                            {ev.message}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </>
-            );
-          })()}
-        </div>
-      )}
-    </div>
+
+      <BuildDetailsSheet
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        phases={phases}
+        elapsed={elapsed}
+        isActive={isActive}
+        thinkingLog={thinkingLog}
+        timelineEvents={timelineEvents}
+        designCaption={designCaption}
+        latestPath={latestPath}
+        writtenPaths={writtenPaths}
+        completedPaths={completedPaths}
+        finalFileLines={finalFileLines}
+        fileChanges={fileChanges}
+        onReviewChanges={onReviewChanges}
+      />
+    </>
   );
 }
-
-
-function PhaseRow({
-  phase,
-  designCaption,
-  filesWritten,
-  latestPath,
-  writtenPaths,
-  completedPaths,
-  finalFileLines,
-  fileChanges,
-}: {
-  phase: Phase;
-  designCaption?: string;
-  filesWritten?: number;
-  latestPath?: string;
-  writtenPaths?: string[];
-  completedPaths?: Set<string>;
-  finalFileLines?: Record<string, number>;
-  fileChanges?: Record<
-    string,
-    { kind: "added" | "modified" | "unchanged" | "deleted"; addedLines: number; removedLines: number }
-  >;
-}) {
-  const isPending = phase.status === "pending";
-  const isActive = phase.status === "active";
-  const isDone = phase.status === "done";
-  const isFailed = phase.status === "failed";
-
-  // Show reassurance after 10s on the active phase.
-  const showReassurance = isActive && phase.startedAt && Date.now() - phase.startedAt > 10000;
-
-  // Build the per-phase headline. For "writing", inject the file counter.
-  let headline = isDone ? phase.doneLabel : phase.label;
-  if (phase.id === "writing" && (isActive || isDone) && filesWritten && filesWritten > 0) {
-    headline = isDone
-      ? `Wrote ${filesWritten} file${filesWritten === 1 ? "" : "s"}`
-      : `Writing your app… (${filesWritten} file${filesWritten === 1 ? "" : "s"} so far)`;
-  }
-
-  // Decide which file rows to render under the writing phase. We show:
-  //   - while active: every path streamed so far, latest highlighted
-  //   - when done:    every path that ended up in the result, with line counts
-  const showFileList = phase.id === "writing" && (isActive || isDone) && writtenPaths && writtenPaths.length > 0;
-
-  return (
-    <li className="flex items-start gap-2.5 text-[13px] leading-snug">
-      <span
-        className={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center transition-opacity ${
-          isPending ? "text-muted-foreground/40" : isDone ? "text-emerald-500" : isFailed ? "text-destructive" : "text-foreground"
-        }`}
-        aria-hidden
-      >
-        {isDone ? (
-          <Check className="h-3.5 w-3.5" />
-        ) : isFailed ? (
-          <X className="h-3.5 w-3.5" />
-        ) : isActive ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <Circle className="h-2 w-2 fill-current" />
-        )}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div
-          className={`flex items-baseline justify-between gap-2 ${
-            isPending ? "text-muted-foreground/60" : "text-foreground"
-          } ${isDone ? "text-muted-foreground" : ""}`}
-        >
-          <span className="truncate">{headline}</span>
-        </div>
-        {isActive && phase.id === "designing" && designCaption && (
-          <div className="mt-0.5 line-clamp-2 text-xs italic text-muted-foreground">
-            {designCaption}
-          </div>
-        )}
-        {showFileList && (
-          <ul className="mt-1 space-y-0.5">
-            {writtenPaths!.map((p) => {
-              const lines = finalFileLines?.[p];
-              const isLatest = isActive && p === latestPath;
-              const isStreamDone = completedPaths?.has(p) ?? false;
-              const change = fileChanges?.[p];
-              // Icon priority during the writing phase:
-              //   ✕ deleted → ✓ phase finished → ✓ this file finished streaming
-              //   → › currently writing this file → · queued
-              const rowIcon =
-                change?.kind === "deleted"
-                  ? "✕"
-                  : isDone || isStreamDone
-                    ? "✓"
-                    : isLatest
-                      ? "›"
-                      : "·";
-              return (
-                <li
-                  key={p}
-                  className={`flex items-center justify-between gap-2 truncate font-mono text-[10px] ${
-                    isLatest ? "text-foreground" : "text-muted-foreground"
-                  } ${change?.kind === "deleted" ? "line-through opacity-70" : ""}`}
-                >
-                  <span className="inline-flex min-w-0 items-center gap-1 truncate">
-                    <span aria-hidden className="opacity-60">
-                      {rowIcon}
-                    </span>
-                    <span className="truncate">{p}</span>
-                    {change && (
-                      <ChangeBadge kind={change.kind} />
-                    )}
-                  </span>
-                  <span className="flex shrink-0 items-center gap-1.5 tabular-nums">
-                    {change && (change.addedLines > 0 || change.removedLines > 0) && (
-                      <span className="text-[10px]">
-                        {change.addedLines > 0 && (
-                          <span className="font-semibold text-foreground/80">
-                            +{change.addedLines}
-                          </span>
-                        )}
-                        {change.addedLines > 0 && change.removedLines > 0 && (
-                          <span className="opacity-50"> </span>
-                        )}
-                        {change.removedLines > 0 && (
-                          <span className="font-semibold text-destructive/80">
-                            −{change.removedLines}
-                          </span>
-                        )}
-                      </span>
-                    )}
-                    {typeof lines === "number" && lines > 0 && change?.kind !== "deleted" && (
-                      <span className="opacity-70">{lines} lines</span>
-                    )}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {showReassurance && phase.reassurance && (
-          <div className="mt-0.5 text-[11px] text-muted-foreground">{phase.reassurance}</div>
-        )}
-      </div>
-    </li>
-  );
-}
-
-/**
- * Tiny pill that labels each file row as new / modified / deleted /
- * unchanged. Uses semantic tokens so it adapts to dark mode.
- */
-function ChangeBadge({ kind }: { kind: "added" | "modified" | "unchanged" | "deleted" }) {
-  if (kind === "unchanged") return null;
-  const label =
-    kind === "added" ? "new" : kind === "deleted" ? "deleted" : "modified";
-  const tone =
-    kind === "added"
-      ? "bg-mint/40 text-foreground/80"
-      : kind === "deleted"
-        ? "bg-destructive/15 text-destructive"
-        : "bg-butter/60 text-foreground/80";
-  return (
-    <span
-      className={`inline-flex shrink-0 items-center rounded-sm px-1 py-px text-[9px] font-semibold uppercase tracking-wider ${tone}`}
-    >
-      {label}
-    </span>
-  );
-}
-
-
-
