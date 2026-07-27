@@ -4220,6 +4220,10 @@ function Builder() {
                 onAskFix={askPetalToFix}
                 onDismissError={() => setFriendlyError(null)}
                 onBuyCredits={() => setBillingOpen(true)}
+                onOpenPreview={() => {
+                  if (isMobile) setMobileTab("preview");
+                  else setView("preview");
+                }}
                 onReviewChanges={
                   isLive && preTurnFilesRef.current
                     ? () => {
