@@ -47,38 +47,38 @@ export function defaultPhases(): Phase[] {
 const PHASE_TEMPLATES: Record<PhaseId, Omit<Phase, "id" | "status">> = {
   thinking: {
     emoji: "🌸",
-    label: "Reading the request",
-    doneLabel: "Plan ready",
+    label: "Getting the brief",
+    doneLabel: "Plan locked",
     reassurance: "Working out which files to touch and in what order.",
   },
   designing: {
     emoji: "✨",
-    label: "Picking the design direction",
-    doneLabel: "Design locked in",
+    label: "Styling it up",
+    doneLabel: "Look locked in",
     reassurance: "Choosing layout, palette, and components.",
   },
   writing: {
     emoji: "📝",
-    label: "Writing the code",
+    label: "Building it out",
     doneLabel: "Code written",
     reassurance: "Editing files now — you'll see each one stream in.",
   },
   polishing: {
     emoji: "🎨",
-    label: "Verifying the changes",
+    label: "Double-checking everything",
     doneLabel: "Verified",
     reassurance: "Type-checking and running safety checks on the new code.",
   },
   deploying: {
     emoji: "🚀",
-    label: "Deploying to your preview",
+    label: "Going live",
     doneLabel: "Deployed",
     reassurance: "Bundling and pushing to the edge — usually 30–60s.",
   },
   live: {
     emoji: "🌟",
     label: "Live",
-    doneLabel: "Your app is live!",
+    doneLabel: "It's live 🎉",
   },
 };
 
