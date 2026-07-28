@@ -2963,6 +2963,90 @@ export type Database = {
           },
         ]
       }
+      waitlist_announcements: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          cta_label: string | null
+          cta_url: string | null
+          failed_count: number
+          heading: string | null
+          id: string
+          recipients_total: number
+          sent_count: number
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          cta_label?: string | null
+          cta_url?: string | null
+          failed_count?: number
+          heading?: string | null
+          id?: string
+          recipients_total?: number
+          sent_count?: number
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          cta_label?: string | null
+          cta_url?: string | null
+          failed_count?: number
+          heading?: string | null
+          id?: string
+          recipients_total?: number
+          sent_count?: number
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      waitlist_signups: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          ip: unknown
+          name: string
+          notified_at: string | null
+          source: string | null
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          ip?: unknown
+          name: string
+          notified_at?: string | null
+          source?: string | null
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          ip?: unknown
+          name?: string
+          notified_at?: string | null
+          source?: string | null
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       ai_model_quality: {
