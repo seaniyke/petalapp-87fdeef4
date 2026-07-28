@@ -1096,7 +1096,7 @@ function Landing() {
                   />
                   <div className="absolute -bottom-5 -right-4 rounded-2xl border border-border bg-background/95 px-4 py-3 shadow-[var(--shadow-soft)] backdrop-blur animate-float">
                     <div className="flex items-center gap-2 text-xs font-semibold text-primary">
-                      <Star className="h-3.5 w-3.5 fill-current" /> 18,000+ apps shipped
+                      <Star className="h-3.5 w-3.5 fill-current" /> Lots of apps shipped
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">Real projects, one prompt away.</p>
                   </div>
