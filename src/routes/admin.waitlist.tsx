@@ -52,6 +52,7 @@ function AdminWaitlistPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [approving, setApproving] = useState<string | null>(null);
 
   const [subject, setSubject] = useState("Petal is open — your spot is ready");
   const [heading, setHeading] = useState("Your spot is ready");
@@ -93,6 +94,31 @@ function AdminWaitlistPage() {
   useEffect(() => {
     if (ready) void load();
   }, [ready, load]);
+
+  async function setApproval(entry: Entry, approve: boolean) {
+    setApproving(entry.id);
+    try {
+      const res = await adminApi<{ approved_at: string | null; emailed?: boolean }>({
+        action: "waitlist_approve",
+        id: entry.id,
+        approve,
+      });
+      setEntries((prev) =>
+        prev.map((e) => (e.id === entry.id ? { ...e, approved_at: res.approved_at } : e)),
+      );
+      toast.success(
+        approve
+          ? res.emailed
+            ? `${entry.email} approved — invite email sent`
+            : `${entry.email} approved (invite email could not be sent)`
+          : `Access revoked for ${entry.email}`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update access");
+    } finally {
+      setApproving(null);
+    }
+  }
 
   async function toggle(next: boolean) {
     setEnabled(next);
