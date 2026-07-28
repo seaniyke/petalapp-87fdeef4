@@ -23,6 +23,7 @@ export function toVisitorSummary(
   }
 
   text = text
+    .replace(/\bfor your\b/gi, "for a")
     .replace(/\byour\b/gi, "the")
     .replace(/\byours\b/gi, "theirs")
     .replace(/\bI(?:'|’)?ve\b/g, "It has")
