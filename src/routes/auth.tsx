@@ -218,7 +218,9 @@ function AuthPage() {
     mode === "forgot" ? "Send reset link" :
     "Sign in";
 
-  if (waitlist === null && !user) {
+  // Sign-in and password reset are always open — existing accounts must be
+  // able to get back in. Only *new* accounts sit behind the waitlist.
+  if (waitlist === null && !user && mode === "signup") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -226,9 +228,15 @@ function AuthPage() {
     );
   }
 
-  if (waitlist && !bypassWaitlist && !user) {
-    return <WaitlistPanel onHaveAccess={() => setBypassWaitlist(true)} />;
+  if (mode === "signup" && waitlist && !bypassWaitlist && !user) {
+    return (
+      <WaitlistPanel
+        onHaveAccess={() => setBypassWaitlist(true)}
+        onSignIn={() => switchMode("signin")}
+      />
+    );
   }
+
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
