@@ -7,8 +7,15 @@
  * the invite email, which unlocks automatically).
  */
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Loader2, CheckCircle2, Sparkles } from "lucide-react";
+import {
+  AUTO_APPROVE_AT,
+  clearReferral,
+  readReferral,
+  rememberReferral,
+  rememberStatusToken,
+} from "@/lib/referral";
 
 type Props = {
   /** Reveals the normal sign-in form. */

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WaitlistRouteImport } from './routes/waitlist'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as ThemesRouteImport } from './routes/themes'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -104,6 +105,11 @@ import { Route as ApiBillingSubscriptionStatusRouteImport } from './routes/api/b
 import { Route as ApiBillingSubscriptionManageLinkRouteImport } from './routes/api/billing/subscription/manage-link'
 import { Route as ApiBillingSubscriptionCancelRouteImport } from './routes/api/billing/subscription/cancel'
 
+const WaitlistRoute = WaitlistRouteImport.update({
+  id: '/waitlist',
+  path: '/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
   path: '/unsubscribe',
@@ -607,6 +613,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -703,6 +710,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -800,6 +808,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -898,6 +907,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/themes'
     | '/unsubscribe'
+    | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
     | '/admin/billing'
@@ -994,6 +1004,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/themes'
     | '/unsubscribe'
+    | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
     | '/admin/billing'
@@ -1090,6 +1101,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/themes'
     | '/unsubscribe'
+    | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
     | '/admin/billing'
@@ -1187,6 +1199,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ThemesRoute: typeof ThemesRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
+  WaitlistRoute: typeof WaitlistRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminAiSpendRoute: typeof AdminAiSpendRoute
   AdminBillingRoute: typeof AdminBillingRoute
@@ -1265,6 +1278,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/waitlist': {
+      id: '/waitlist'
+      path: '/waitlist'
+      fullPath: '/waitlist'
+      preLoaderRoute: typeof WaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/unsubscribe': {
       id: '/unsubscribe'
       path: '/unsubscribe'
@@ -1977,6 +1997,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ThemesRoute: ThemesRoute,
   UnsubscribeRoute: UnsubscribeRoute,
+  WaitlistRoute: WaitlistRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminAiSpendRoute: AdminAiSpendRoute,
   AdminBillingRoute: AdminBillingRoute,
