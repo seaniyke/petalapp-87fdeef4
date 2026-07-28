@@ -13,7 +13,7 @@ const EMAIL_SUBJECTS: Record<string, string> = {
 }
 
 // Configuration
-const SITE_NAME = "Petal"
+const SITE_NAME = "Petal AI"
 const SENDER_DOMAIN = "notify.buildwithpetal.com"
 const ROOT_DOMAIN = "buildwithpetal.com"
 const FROM_DOMAIN = "buildwithpetal.com"
