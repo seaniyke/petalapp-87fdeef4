@@ -30,7 +30,7 @@ async function checkApproved(email: string): Promise<boolean> {
   return Boolean(json.approved);
 }
 
-export function WaitlistPanel({ onHaveAccess }: Props) {
+export function WaitlistPanel({ onHaveAccess, onSignIn }: Props) {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -222,9 +222,18 @@ export function WaitlistPanel({ onHaveAccess }: Props) {
                 onClick={() => setShowAccess(true)}
                 className="mt-5 w-full text-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
               >
-                I already have access — sign in
+                Got an invite? Unlock sign-up
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => onSignIn?.()}
+              className="mt-3 w-full text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Already have an account? <span className="font-semibold text-foreground">Sign in</span>
+            </button>
+
           </div>
         )}
       </div>
