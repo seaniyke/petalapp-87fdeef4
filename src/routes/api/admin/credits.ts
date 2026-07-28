@@ -854,6 +854,233 @@ export const Route = createFileRoute("/api/admin/credits")({
             });
           }
 
+          /* ------------------------------ Waitlist ------------------------------ */
+
+          if (body.action === "waitlist_settings") {
+            const { data } = await supabaseAdmin
+              .from("system_settings")
+              .select("value")
+              .eq("key", "access.waitlist_mode")
+              .maybeSingle();
+            const { count } = await supabaseAdmin
+              .from("waitlist_signups" as never)
+              .select("id", { count: "exact", head: true });
+            const { count: pending } = await supabaseAdmin
+              .from("waitlist_signups" as never)
+              .select("id", { count: "exact", head: true })
+              .is("notified_at", null);
+            return Response.json({
+              enabled: data?.value === true,
+              total: count ?? 0,
+              pending: pending ?? 0,
+            });
+          }
+
+          if (body.action === "waitlist_toggle") {
+            const enabled = Boolean(body.enabled);
+            const { error } = await supabaseAdmin
+              .from("system_settings")
+              .upsert(
+                {
+                  key: "access.waitlist_mode",
+                  value: enabled as never,
+                  description:
+                    "When true, visitors see the waitlist instead of sign-up/sign-in.",
+                  updated_by: auth.userId,
+                } as never,
+                { onConflict: "key" },
+              );
+            if (error) return Response.json({ error: error.message }, { status: 500 });
+            return Response.json({ ok: true, enabled });
+          }
+
+          if (body.action === "waitlist_list") {
+            const page = Math.max(0, Number(body.page ?? 0) | 0);
+            const pageSize = Math.min(200, Math.max(1, Number(body.page_size ?? 50) | 0));
+            const query = String(body.query ?? "").trim();
+            let q = supabaseAdmin
+              .from("waitlist_signups" as never)
+              .select("id, name, email, source, notified_at, created_at", { count: "exact" })
+              .order("created_at", { ascending: false })
+              .range(page * pageSize, page * pageSize + pageSize - 1);
+            if (query) q = q.or(`email.ilike.%${query}%,name.ilike.%${query}%`);
+            const { data, error, count } = await q;
+            if (error) return Response.json({ error: error.message }, { status: 500 });
+            return Response.json({
+              entries: data ?? [],
+              total: count ?? 0,
+              has_more: (page + 1) * pageSize < (count ?? 0),
+            });
+          }
+
+          if (body.action === "waitlist_announce") {
+            const secret = process.env.BUILDER_SHARED_SECRET;
+            if (!secret) {
+              return Response.json(
+                { error: "Email sending is not configured on this environment." },
+                { status: 500 },
+              );
+            }
+
+            const subject = String(body.subject ?? "").trim().slice(0, 200);
+            const heading = String(body.heading ?? "").trim().slice(0, 200);
+            const text = String(body.body ?? "").trim().slice(0, 8000);
+            const ctaLabel = String(body.cta_label ?? "").trim().slice(0, 60);
+            const ctaUrl = String(body.cta_url ?? "").trim().slice(0, 500);
+            if (!subject || !text) {
+              return Response.json(
+                { error: "Subject and message are required." },
+                { status: 400 },
+              );
+            }
+            if (ctaUrl && !/^https:\/\//i.test(ctaUrl)) {
+              return Response.json({ error: "Link must start with https://" }, { status: 400 });
+            }
+
+            const onlyPending = body.only_pending !== false;
+            const batchSize = Math.min(100, Math.max(1, Number(body.batch_size ?? 50) | 0));
+            let announcementId =
+              typeof body.announcement_id === "string" && UUID_RE.test(body.announcement_id)
+                ? body.announcement_id
+                : null;
+
+            // Count the audience up front on the first call.
+            if (!announcementId) {
+              let cq = supabaseAdmin
+                .from("waitlist_signups" as never)
+                .select("id", { count: "exact", head: true });
+              if (onlyPending) cq = cq.is("notified_at", null);
+              const { count } = await cq;
+              const { data: created, error: cErr } = await supabaseAdmin
+                .from("waitlist_announcements" as never)
+                .insert({
+                  subject,
+                  heading: heading || null,
+                  body: text,
+                  cta_label: ctaLabel || null,
+                  cta_url: ctaUrl || null,
+                  recipients_total: count ?? 0,
+                  created_by: auth.userId,
+                  status: "running",
+                } as never)
+                .select("id")
+                .single();
+              if (cErr) return Response.json({ error: cErr.message }, { status: 500 });
+              announcementId = (created as { id: string }).id;
+            }
+
+            // Pull one batch of recipients that still need this send.
+            let rq = supabaseAdmin
+              .from("waitlist_signups" as never)
+              .select("id, name, email")
+              .order("created_at", { ascending: true })
+              .limit(batchSize);
+            if (onlyPending) rq = rq.is("notified_at", null);
+            else rq = rq.or(`notified_at.is.null,notified_at.lt.${new Date(Date.now() - 60_000).toISOString()}`);
+            const { data: rows, error: rErr } = await rq;
+            if (rErr) return Response.json({ error: rErr.message }, { status: 500 });
+
+            const recipients = (rows ?? []) as Array<{
+              id: string;
+              name: string;
+              email: string;
+            }>;
+
+            const sendUrl = new URL(
+              "/lovable/email/transactional/send",
+              new URL(request.url).origin,
+            ).toString();
+
+            let sent = 0;
+            let failed = 0;
+            const sentIds: string[] = [];
+
+            // Sequential with a tiny gap — the email queue does the real
+            // throttling, this just keeps us well inside rate limits.
+            for (const r of recipients) {
+              try {
+                const resp = await fetch(sendUrl, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "x-petal-internal-secret": secret,
+                  },
+                  body: JSON.stringify({
+                    templateName: "waitlist-announcement",
+                    recipientEmail: r.email,
+                    idempotencyKey: `waitlist-ann-${announcementId}-${r.id}`,
+                    templateData: {
+                      name: r.name,
+                      subject,
+                      heading: heading || subject,
+                      body: text,
+                      ctaLabel: ctaLabel || undefined,
+                      ctaUrl: ctaUrl || undefined,
+                    },
+                  }),
+                });
+                if (resp.ok) {
+                  sent += 1;
+                  sentIds.push(r.id);
+                } else {
+                  failed += 1;
+                  console.warn("[waitlist-announce] send failed", resp.status, await resp.text().catch(() => ""));
+                }
+              } catch (e) {
+                failed += 1;
+                console.warn("[waitlist-announce] send threw", e);
+              }
+            }
+
+            if (sentIds.length) {
+              await supabaseAdmin
+                .from("waitlist_signups" as never)
+                .update({ notified_at: new Date().toISOString() } as never)
+                .in("id", sentIds);
+            }
+
+            // Roll up counters on the announcement row.
+            const { data: annRow } = await supabaseAdmin
+              .from("waitlist_announcements" as never)
+              .select("sent_count, failed_count, recipients_total")
+              .eq("id", announcementId)
+              .maybeSingle();
+            const prev = (annRow ?? { sent_count: 0, failed_count: 0 }) as {
+              sent_count: number;
+              failed_count: number;
+            };
+            const done = recipients.length < batchSize;
+            await supabaseAdmin
+              .from("waitlist_announcements" as never)
+              .update({
+                sent_count: prev.sent_count + sent,
+                failed_count: prev.failed_count + failed,
+                status: done ? "done" : "running",
+              } as never)
+              .eq("id", announcementId);
+
+            return Response.json({
+              announcement_id: announcementId,
+              batch_sent: sent,
+              batch_failed: failed,
+              total_sent: prev.sent_count + sent,
+              total_failed: prev.failed_count + failed,
+              done,
+            });
+          }
+
+          if (body.action === "waitlist_announcements") {
+            const { data, error } = await supabaseAdmin
+              .from("waitlist_announcements" as never)
+              .select(
+                "id, subject, recipients_total, sent_count, failed_count, status, created_at",
+              )
+              .order("created_at", { ascending: false })
+              .limit(20);
+            if (error) return Response.json({ error: error.message }, { status: 500 });
+            return Response.json({ announcements: data ?? [] });
+          }
+
           return Response.json({ error: "Unknown action" }, { status: 400 });
 
         } catch (e) {
