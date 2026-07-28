@@ -1,10 +1,12 @@
 /**
  * Waitlist gate shown on /auth while waitlist mode is on.
  *
- * Collects a name + email, posts to /api/public/waitlist, and keeps a quiet
- * "I already have access" escape hatch so the team can still sign in.
+ * Collects a name + email, posts to /api/public/waitlist, and lets anyone the
+ * admin has individually approved unlock the normal sign-in form by entering
+ * the email address on their invite (or by following the ?approved= link in
+ * the invite email, which unlocks automatically).
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Loader2, CheckCircle2, Sparkles } from "lucide-react";
 
@@ -13,12 +15,36 @@ type Props = {
   onHaveAccess: () => void;
 };
 
+async function checkApproved(email: string): Promise<boolean> {
+  const res = await fetch(`/api/public/waitlist?email=${encodeURIComponent(email)}`);
+  const json = (await res.json().catch(() => ({}))) as { approved?: boolean };
+  return Boolean(json.approved);
+}
+
 export function WaitlistPanel({ onHaveAccess }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<null | { already: boolean }>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [showAccess, setShowAccess] = useState(false);
+  const [accessEmail, setAccessEmail] = useState("");
+  const [accessBusy, setAccessBusy] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
+
+  // Invite links carry ?approved=<email> — unlock without extra typing.
+  useEffect(() => {
+    const invited = new URLSearchParams(window.location.search).get("approved");
+    if (!invited) return;
+    void checkApproved(invited).then((ok) => {
+      if (ok) onHaveAccess();
+      else {
+        setShowAccess(true);
+        setAccessEmail(invited);
+      }
+    });
+  }, [onHaveAccess]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,6 +69,22 @@ export function WaitlistPanel({ onHaveAccess }: Props) {
       setBusy(false);
     }
   }
+
+  async function unlock(e: React.FormEvent) {
+    e.preventDefault();
+    setAccessError(null);
+    setAccessBusy(true);
+    try {
+      const ok = await checkApproved(accessEmail.trim().toLowerCase());
+      if (ok) onHaveAccess();
+      else setAccessError("That email isn't approved yet — we'll email you the moment it is.");
+    } catch {
+      setAccessError("Couldn't check that right now. Try again in a moment.");
+    } finally {
+      setAccessBusy(false);
+    }
+  }
+
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
