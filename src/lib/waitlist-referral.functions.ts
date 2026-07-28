@@ -1,12 +1,15 @@
 /**
- * One-time referral payout, run when a waitlist member first signs in.
+ * Referral plumbing for signed-in users.
  *
- * Runs on every sign-in (cheap, idempotent):
- *  - stamps first_signin_at + activates the referral they came from
- *  - pays the friend their welcome credits
- *  - pays out any of *their own* referrals that have since activated
+ *  - claimWaitlistReferral: runs on every sign-in (cheap, idempotent).
+ *      * makes sure the signed-in user has a waitlist row (so referrals work
+ *        even when waitlist mode is off and people sign up directly)
+ *      * attributes the referral code they arrived with
+ *      * stamps first_signin_at, activates the referral, pays both sides
+ *  - getMyReferral: the invite surface — code, link stats, credits earned.
  */
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   REFERRER_CREDITS,
@@ -16,8 +19,17 @@ import {
 
 export const claimWaitlistReferral = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const email = (context.claims as { email?: string } | null)?.email?.toLowerCase();
+  .inputValidator((data: unknown): { ref?: string } => {
+    const parsed = z
+      .object({ ref: z.string().trim().max(32).optional() })
+      .safeParse(data ?? {});
+    return parsed.success ? parsed.data : {};
+  })
+  .handler(async ({ context, data }) => {
+    const claims = context.claims as
+      | { email?: string; user_metadata?: { full_name?: string; name?: string } }
+      | null;
+    const email = claims?.email?.toLowerCase();
     if (!email) return { claimed: false as const };
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -27,8 +39,63 @@ export const claimWaitlistReferral = createServerFn({ method: "POST" })
       .select("id, first_signin_at")
       .eq("email", email)
       .maybeSingle();
-    const me = row as { id: string; first_signin_at: string | null } | null;
-    if (!me) return { claimed: false as const };
+    let me = row as { id: string; first_signin_at: string | null } | null;
+
+    // No waitlist row (direct sign-up, or waitlist mode off) — create one so
+    // every account is part of the referral graph.
+    if (!me) {
+      const displayName =
+        claims?.user_metadata?.full_name ||
+        claims?.user_metadata?.name ||
+        email.split("@")[0];
+
+      let referrerId: string | null = null;
+      if (data.ref) {
+        const { data: refRow } = await supabaseAdmin
+          .from("waitlist_signups" as never)
+          .select("id, email")
+          .eq("referral_code", data.ref.toLowerCase())
+          .maybeSingle();
+        const candidate = refRow as { id: string; email: string } | null;
+        if (candidate && candidate.email.toLowerCase() !== email) referrerId = candidate.id;
+      }
+
+      const { data: created } = await supabaseAdmin
+        .from("waitlist_signups" as never)
+        .insert({
+          name: displayName,
+          email,
+          source: "signup",
+          approved_at: new Date().toISOString(),
+          referred_by: referrerId,
+        } as never)
+        .select("id, first_signin_at")
+        .single();
+      me = (created as { id: string; first_signin_at: string | null } | null) ?? null;
+      if (!me) return { claimed: false as const };
+
+      if (referrerId) {
+        const { error: edgeErr } = await supabaseAdmin
+          .from("waitlist_referrals" as never)
+          .insert({
+            referrer_id: referrerId,
+            referred_id: me.id,
+            referred_email: email,
+          } as never);
+        if (!edgeErr) {
+          const { data: refCurrent } = await supabaseAdmin
+            .from("waitlist_signups" as never)
+            .select("referral_count")
+            .eq("id", referrerId)
+            .maybeSingle();
+          const next = ((refCurrent as { referral_count: number } | null)?.referral_count ?? 0) + 1;
+          await supabaseAdmin
+            .from("waitlist_signups" as never)
+            .update({ referral_count: next } as never)
+            .eq("id", referrerId);
+        }
+      }
+    }
 
     let welcomeCredits = 0;
 
@@ -96,4 +163,36 @@ export const claimWaitlistReferral = createServerFn({ method: "POST" })
     }
 
     return { claimed: true as const, welcomeCredits, earned };
+  });
+
+export const getMyReferral = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const email = (context.claims as { email?: string } | null)?.email?.toLowerCase();
+    if (!email) return null;
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: row } = await supabaseAdmin
+      .from("waitlist_signups" as never)
+      .select("id, referral_code, referral_count")
+      .eq("email", email)
+      .maybeSingle();
+    const me = row as
+      | { id: string; referral_code: string | null; referral_count: number }
+      | null;
+    if (!me?.referral_code) return null;
+
+    const { count: activated } = await supabaseAdmin
+      .from("waitlist_referrals" as never)
+      .select("id", { count: "exact", head: true })
+      .eq("referrer_id", me.id)
+      .not("activated_at", "is", null);
+
+    return {
+      code: me.referral_code,
+      invited: me.referral_count ?? 0,
+      joined: activated ?? 0,
+      creditsEarned: (activated ?? 0) * REFERRER_CREDITS,
+    };
   });

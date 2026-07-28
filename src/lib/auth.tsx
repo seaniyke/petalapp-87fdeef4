@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { claimWaitlistReferral } from "@/lib/waitlist-referral.functions";
+import { clearReferral, readReferral } from "@/lib/referral";
 
 type AuthContextValue = {
   user: User | null;
@@ -23,9 +24,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const uid = next?.user?.id;
     if (!uid || claimedFor.current === uid) return;
     claimedFor.current = uid;
-    void claimWaitlistReferral().catch(() => {
-      /* never block sign-in on rewards */
-    });
+    const ref = readReferral() ?? undefined;
+    void claimWaitlistReferral({ data: { ref } })
+      .then(() => clearReferral())
+      .catch(() => {
+        /* never block sign-in on rewards */
+      });
   }
 
   useEffect(() => {
