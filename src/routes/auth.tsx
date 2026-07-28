@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { clearLastAuthEmail, readLastAuthEmail, writeLastAuthEmail } from "@/lib/draft-storage";
 import { toast } from "sonner";
+import { WaitlistPanel } from "@/components/WaitlistPanel";
 
 /**
  * Only allow internal, same-origin redirect targets. Rejects:
@@ -216,6 +217,18 @@ function AuthPage() {
     mode === "signup" ? "Create account" :
     mode === "forgot" ? "Send reset link" :
     "Sign in";
+
+  if (waitlist === null && !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (waitlist && !bypassWaitlist && !user) {
+    return <WaitlistPanel onHaveAccess={() => setBypassWaitlist(true)} />;
+  }
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
