@@ -162,13 +162,43 @@ export function WaitlistPanel({ onHaveAccess }: Props) {
               </button>
             </form>
 
-            <button
-              type="button"
-              onClick={onHaveAccess}
-              className="mt-5 w-full text-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              I already have access — sign in
-            </button>
+            {showAccess ? (
+              <form onSubmit={unlock} className="mt-5 border-t border-border/60 pt-5">
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Got an invite? Enter the email it was sent to.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    required
+                    maxLength={255}
+                    value={accessEmail}
+                    onChange={(ev) => setAccessEmail(ev.target.value)}
+                    placeholder="you@example.com"
+                    className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary"
+                  />
+                  <button
+                    type="submit"
+                    disabled={accessBusy}
+                    className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-60"
+                  >
+                    {accessBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Continue
+                  </button>
+                </div>
+                {accessError && (
+                  <p className="mt-2 text-xs text-destructive">{accessError}</p>
+                )}
+              </form>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowAccess(true)}
+                className="mt-5 w-full text-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                I already have access — sign in
+              </button>
+            )}
           </div>
         )}
       </div>
