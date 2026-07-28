@@ -803,7 +803,7 @@ function Landing() {
                         <div className="flex flex-1 flex-col p-5">
                           <h3 className="truncate font-display text-base font-semibold tracking-tight">{p.title}</h3>
                           <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                            {p.summary ?? "No description yet."}
+                            {toVisitorSummary(p.summary, p.title)}
                           </p>
                           <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-3 text-[11px] text-muted-foreground">
                             <span>Updated {formatRelativeTime(p.updated_at)}</span>
