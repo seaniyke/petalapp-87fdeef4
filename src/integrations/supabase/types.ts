@@ -3011,16 +3011,79 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist_referrals: {
+        Row: {
+          activated_at: string | null
+          counted_at: string
+          created_at: string
+          id: string
+          referred_credited_at: string | null
+          referred_email: string
+          referred_id: string
+          referrer_credited_at: string | null
+          referrer_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          counted_at?: string
+          created_at?: string
+          id?: string
+          referred_credited_at?: string | null
+          referred_email: string
+          referred_id: string
+          referrer_credited_at?: string | null
+          referrer_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          counted_at?: string
+          created_at?: string
+          id?: string
+          referred_credited_at?: string | null
+          referred_email?: string
+          referred_id?: string
+          referrer_credited_at?: string | null
+          referrer_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_referrals_referred_id_fkey"
+            columns: ["referred_id"]
+            isOneToOne: true
+            referencedRelation: "waitlist_signups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "waitlist_signups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       waitlist_signups: {
         Row: {
           approved_at: string | null
           created_at: string
           email: string
+          first_signin_at: string | null
           id: string
+          invited_at: string | null
           ip: unknown
           name: string
           notified_at: string | null
+          referral_code: string | null
+          referral_count: number
+          referred_by: string | null
           source: string | null
+          status_token: string | null
           updated_at: string
           user_agent: string | null
         }
@@ -3028,11 +3091,17 @@ export type Database = {
           approved_at?: string | null
           created_at?: string
           email: string
+          first_signin_at?: string | null
           id?: string
+          invited_at?: string | null
           ip?: unknown
           name: string
           notified_at?: string | null
+          referral_code?: string | null
+          referral_count?: number
+          referred_by?: string | null
           source?: string | null
+          status_token?: string | null
           updated_at?: string
           user_agent?: string | null
         }
@@ -3040,15 +3109,29 @@ export type Database = {
           approved_at?: string | null
           created_at?: string
           email?: string
+          first_signin_at?: string | null
           id?: string
+          invited_at?: string | null
           ip?: unknown
           name?: string
           notified_at?: string | null
+          referral_code?: string | null
+          referral_count?: number
+          referred_by?: string | null
           source?: string | null
+          status_token?: string | null
           updated_at?: string
           user_agent?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_signups_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "waitlist_signups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -3413,6 +3496,20 @@ export type Database = {
             }
             Returns: boolean
           }
+      waitlist_gen_code: { Args: never; Returns: string }
+      waitlist_status: {
+        Args: { _token: string }
+        Returns: {
+          approved: boolean
+          created_at: string
+          email: string
+          name: string
+          queue_position: number
+          referral_code: string
+          referral_count: number
+          total: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"

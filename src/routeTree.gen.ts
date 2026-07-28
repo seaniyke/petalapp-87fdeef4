@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WaitlistRouteImport } from './routes/waitlist'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as ThemesRouteImport } from './routes/themes'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -28,6 +29,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
+import { Route as RCodeRouteImport } from './routes/r.$code'
 import { Route as PacksSlugRouteImport } from './routes/packs.$slug'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as FeaturesSlugRouteImport } from './routes/features.$slug'
@@ -103,6 +105,11 @@ import { Route as ApiBillingSubscriptionStatusRouteImport } from './routes/api/b
 import { Route as ApiBillingSubscriptionManageLinkRouteImport } from './routes/api/billing/subscription/manage-link'
 import { Route as ApiBillingSubscriptionCancelRouteImport } from './routes/api/billing/subscription/cancel'
 
+const WaitlistRoute = WaitlistRouteImport.update({
+  id: '/waitlist',
+  path: '/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
   path: '/unsubscribe',
@@ -196,6 +203,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const ShareTokenRoute = ShareTokenRouteImport.update({
   id: '/share/$token',
   path: '/share/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RCodeRoute = RCodeRouteImport.update({
+  id: '/r/$code',
+  path: '/r/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PacksSlugRoute = PacksSlugRouteImport.update({
@@ -601,6 +613,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -633,6 +646,7 @@ export interface FileRoutesByFullPath {
   '/features/$slug': typeof FeaturesSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
+  '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
@@ -696,6 +710,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -728,6 +743,7 @@ export interface FileRoutesByTo {
   '/features/$slug': typeof FeaturesSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
+  '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
@@ -792,6 +808,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -824,6 +841,7 @@ export interface FileRoutesById {
   '/features/$slug': typeof FeaturesSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
+  '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
@@ -889,6 +907,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/themes'
     | '/unsubscribe'
+    | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
     | '/admin/billing'
@@ -921,6 +940,7 @@ export interface FileRouteTypes {
     | '/features/$slug'
     | '/p/$slug'
     | '/packs/$slug'
+    | '/r/$code'
     | '/share/$token'
     | '/admin/'
     | '/api/admin/ai-providers'
@@ -984,6 +1004,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/themes'
     | '/unsubscribe'
+    | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
     | '/admin/billing'
@@ -1016,6 +1037,7 @@ export interface FileRouteTypes {
     | '/features/$slug'
     | '/p/$slug'
     | '/packs/$slug'
+    | '/r/$code'
     | '/share/$token'
     | '/admin'
     | '/api/admin/ai-providers'
@@ -1079,6 +1101,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/themes'
     | '/unsubscribe'
+    | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
     | '/admin/billing'
@@ -1111,6 +1134,7 @@ export interface FileRouteTypes {
     | '/features/$slug'
     | '/p/$slug'
     | '/packs/$slug'
+    | '/r/$code'
     | '/share/$token'
     | '/admin/'
     | '/api/admin/ai-providers'
@@ -1175,6 +1199,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ThemesRoute: typeof ThemesRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
+  WaitlistRoute: typeof WaitlistRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminAiSpendRoute: typeof AdminAiSpendRoute
   AdminBillingRoute: typeof AdminBillingRoute
@@ -1205,6 +1230,7 @@ export interface RootRouteChildren {
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   FeaturesSlugRoute: typeof FeaturesSlugRoute
   PSlugRoute: typeof PSlugRoute
+  RCodeRoute: typeof RCodeRoute
   ShareTokenRoute: typeof ShareTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
   ApiAdminAiProvidersRoute: typeof ApiAdminAiProvidersRoute
@@ -1252,6 +1278,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/waitlist': {
+      id: '/waitlist'
+      path: '/waitlist'
+      fullPath: '/waitlist'
+      preLoaderRoute: typeof WaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/unsubscribe': {
       id: '/unsubscribe'
       path: '/unsubscribe'
@@ -1383,6 +1416,13 @@ declare module '@tanstack/react-router' {
       path: '/share/$token'
       fullPath: '/share/$token'
       preLoaderRoute: typeof ShareTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/r/$code': {
+      id: '/r/$code'
+      path: '/r/$code'
+      fullPath: '/r/$code'
+      preLoaderRoute: typeof RCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/packs/$slug': {
@@ -1957,6 +1997,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ThemesRoute: ThemesRoute,
   UnsubscribeRoute: UnsubscribeRoute,
+  WaitlistRoute: WaitlistRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminAiSpendRoute: AdminAiSpendRoute,
   AdminBillingRoute: AdminBillingRoute,
@@ -1987,6 +2028,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   FeaturesSlugRoute: FeaturesSlugRoute,
   PSlugRoute: PSlugRoute,
+  RCodeRoute: RCodeRoute,
   ShareTokenRoute: ShareTokenRoute,
   AdminIndexRoute: AdminIndexRoute,
   ApiAdminAiProvidersRoute: ApiAdminAiProvidersRoute,
@@ -2035,13 +2077,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
