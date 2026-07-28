@@ -29,6 +29,7 @@ async function checkApproved(email: string): Promise<boolean> {
 }
 
 export function WaitlistPanel({ onHaveAccess }: Props) {
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,9 +41,13 @@ export function WaitlistPanel({ onHaveAccess }: Props) {
   const [accessBusy, setAccessBusy] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
 
-  // Invite links carry ?approved=<email> — unlock without extra typing.
+  // Invite links carry ?approved=<email>; referral links carry ?ref=<code>.
   useEffect(() => {
-    const invited = new URLSearchParams(window.location.search).get("approved");
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref) rememberReferral(ref);
+
+    const invited = params.get("approved");
     if (!invited) return;
     void checkApproved(invited).then((ok) => {
       if (ok) onHaveAccess();
@@ -61,21 +66,33 @@ export function WaitlistPanel({ onHaveAccess }: Props) {
       const res = await fetch("/api/public/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), source: "auth" }),
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          source: "auth",
+          ref: readReferral() ?? undefined,
+        }),
       });
       const json = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
         alreadyJoined?: boolean;
+        statusToken?: string;
         error?: string;
       };
       if (!res.ok || !json.ok) throw new Error(json.error || "Could not save your spot.");
+      clearReferral();
       setDone({ already: Boolean(json.alreadyJoined) });
+      if (json.statusToken) {
+        rememberStatusToken(json.statusToken);
+        void navigate({ to: "/waitlist", search: { t: json.statusToken } });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setBusy(false);
     }
   }
+
 
   async function unlock(e: React.FormEvent) {
     e.preventDefault();
