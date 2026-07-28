@@ -900,9 +900,10 @@ export const Route = createFileRoute("/api/admin/credits")({
             const query = String(body.query ?? "").trim();
             let q = supabaseAdmin
               .from("waitlist_signups" as never)
-              .select("id, name, email, source, notified_at, approved_at, created_at", {
-                count: "exact",
-              })
+              .select(
+                "id, name, email, source, notified_at, approved_at, created_at, referral_count, referral_code, first_signin_at",
+                { count: "exact" },
+              )
               .order("created_at", { ascending: false })
               .range(page * pageSize, page * pageSize + pageSize - 1);
             if (query) q = q.or(`email.ilike.%${query}%,name.ilike.%${query}%`);
