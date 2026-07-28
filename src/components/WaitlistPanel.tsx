@@ -18,8 +18,10 @@ import {
 } from "@/lib/referral";
 
 type Props = {
-  /** Reveals the normal sign-in form. */
+  /** Reveals the normal sign-up form (approved invite). */
   onHaveAccess: () => void;
+  /** Switches to the sign-in form — always open, waitlist or not. */
+  onSignIn?: () => void;
 };
 
 async function checkApproved(email: string): Promise<boolean> {
