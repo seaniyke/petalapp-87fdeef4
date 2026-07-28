@@ -88,10 +88,29 @@ function AuthPage() {
   const [duplicateEmail, setDuplicateEmail] = useState<string | null>(null);
   // Shown after a successful password-reset request so the user knows what to do.
   const [resetSent, setResetSent] = useState<string | null>(null);
+  // Waitlist gate: null = still checking, true = show waitlist instead of auth.
+  const [waitlist, setWaitlist] = useState<boolean | null>(null);
+  const [bypassWaitlist, setBypassWaitlist] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/public/waitlist")
+      .then((r) => r.json())
+      .then((j: { enabled?: boolean }) => {
+        if (!cancelled) setWaitlist(Boolean(j?.enabled));
+      })
+      .catch(() => {
+        if (!cancelled) setWaitlist(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     writeLastAuthEmail(email);
   }, [email]);
+
 
   const postAuthPath = redirect ?? "/";
   const postAuthUrl =
