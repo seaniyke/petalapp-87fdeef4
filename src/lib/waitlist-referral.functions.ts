@@ -19,12 +19,12 @@ import {
 
 export const claimWaitlistReferral = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
-    z
+  .inputValidator((data: unknown): { ref?: string } => {
+    const parsed = z
       .object({ ref: z.string().trim().max(32).optional() })
-      .catch({ })
-      .parse(data ?? {}),
-  )
+      .safeParse(data ?? {});
+    return parsed.success ? parsed.data : {};
+  })
   .handler(async ({ context, data }) => {
     const claims = context.claims as
       | { email?: string; user_metadata?: { full_name?: string; name?: string } }
