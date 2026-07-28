@@ -8,6 +8,7 @@ import {
   type ProjectRow,
 } from "@/lib/projects";
 import { resolvePublishedUrl, type PublishedUrlResult } from "@/lib/published-url";
+import { toVisitorSummary } from "@/lib/visitor-summary";
 import { supabase } from "@/integrations/supabase/client";
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import logo from "/petal-logo.png";
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/p/$slug")({
   },
   head: ({ loaderData }) => {
     const title = loaderData?.project?.title ?? "Petal project";
-    const description = loaderData?.project?.summary ?? "Built with Petal.";
+    const description = toVisitorSummary(loaderData?.project?.summary, title);
     return {
       meta: [
         { title: `${title} · Petal` },
@@ -132,9 +133,9 @@ function PublicPreview() {
             <h1 className="font-display text-4xl leading-tight md:text-5xl">
               {project.title}
             </h1>
-            {project.summary && (
-              <p className="text-base text-muted-foreground">{project.summary}</p>
-            )}
+            <p className="text-base text-muted-foreground">
+              {toVisitorSummary(project.summary, project.title)}
+            </p>
 
             <div className="flex flex-wrap gap-3 pt-2">
               {published.url ? (

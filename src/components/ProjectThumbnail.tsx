@@ -38,7 +38,7 @@ export function ProjectThumbnail({
   /** "cover" crops to fill (grid tiles); "contain" shows the whole page (detail hero). */
   fit?: "cover" | "contain";
 }) {
-  const url = resolveLiveUrl({ subdomain, customDomain, publishedUrl });
+  const url = resolveLiveUrl({ projectId, subdomain, customDomain, publishedUrl });
   const contain = fit === "contain";
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -102,10 +102,12 @@ function Fallback({ projectId, title }: { projectId: string; title?: string }) {
 }
 
 function resolveLiveUrl({
+  projectId,
   subdomain,
   customDomain,
   publishedUrl,
 }: {
+  projectId?: string;
   subdomain?: string | null;
   customDomain?: string | null;
   publishedUrl?: string | null;
@@ -113,6 +115,9 @@ function resolveLiveUrl({
   if (publishedUrl) return publishedUrl;
   if (customDomain) return `https://${customDomain}`;
   if (subdomain) return `https://${subdomain}.${PETAL_ROOT_DOMAIN}`;
+  // Not published yet — screenshot the project's own rendered preview so the
+  // gallery always has a real thumbnail the moment a build finishes.
+  if (projectId) return `https://${PETAL_ROOT_DOMAIN}/api/preview/${projectId}`;
   return null;
 }
 
