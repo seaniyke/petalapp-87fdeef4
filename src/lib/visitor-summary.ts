@@ -7,7 +7,7 @@
  */
 
 const OPENERS =
-  /^\s*(?:okay|alright|sure|done|great)?[,!.\s]*(?:i(?:'|’)?(?:ve| have)?|we(?:'|’)?(?:ve| have)?)\s+(?:just\s+)?(?:now\s+)?(?:built|created|scaffolded|set\s+up|made|designed|generated|added|put\s+together|shipped|whipped\s+up)\s+(?:you\s+|for\s+you\s+)?/i;
+  /^\s*(?:okay|alright|sure|done|great)?[,!.\s]*(?:(?:i|we)(?:'|’)?(?:ve| have)?\s+)?(?:just\s+)?(?:now\s+)?(?:built|created|scaffolded|set\s+up|made|designed|generated|added|put\s+together|shipped|whipped\s+up)\s+(?:you\s+|for\s+you\s+)?/i;
 
 export function toVisitorSummary(
   summary?: string | null,
