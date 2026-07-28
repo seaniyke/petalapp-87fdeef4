@@ -886,7 +886,7 @@ export const Route = createFileRoute("/api/admin/credits")({
                   value: enabled as never,
                   description:
                     "When true, visitors see the waitlist instead of sign-up/sign-in.",
-                  updated_by: auth.userId,
+                  updated_by: adminId,
                 } as never,
                 { onConflict: "key" },
               );
@@ -960,7 +960,7 @@ export const Route = createFileRoute("/api/admin/credits")({
                   cta_label: ctaLabel || null,
                   cta_url: ctaUrl || null,
                   recipients_total: count ?? 0,
-                  created_by: auth.userId,
+                  created_by: adminId,
                   status: "running",
                 } as never)
                 .select("id")
