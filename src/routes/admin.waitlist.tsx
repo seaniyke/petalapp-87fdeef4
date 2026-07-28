@@ -30,6 +30,9 @@ type Entry = {
   notified_at: string | null;
   approved_at: string | null;
   created_at: string;
+  referral_count?: number | null;
+  referral_code?: string | null;
+  first_signin_at?: string | null;
 };
 
 type Announcement = {
