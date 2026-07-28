@@ -351,6 +351,7 @@ function AdminWaitlistPage() {
                       <th className="py-2 pr-3 font-medium">Invites</th>
                       <th className="py-2 pr-3 font-medium">Joined</th>
                       <th className="py-2 pr-3 font-medium">Announced</th>
+                      <th className="py-2 pr-3 font-medium">Account</th>
                       <th className="py-2 font-medium">Access</th>
                     </tr>
                   </thead>
@@ -373,6 +374,17 @@ function AdminWaitlistPage() {
                         </td>
                         <td className="py-2 pr-3 text-xs text-muted-foreground">
                           {e.notified_at ? fmtRelative(e.notified_at) : "—"}
+                        </td>
+                        <td className="py-2 pr-3 text-xs">
+                          {e.first_signin_at ? (
+                            <span className="rounded-full bg-mint px-2 py-0.5 text-[11px] font-medium text-foreground">
+                              Active
+                            </span>
+                          ) : e.approved_at ? (
+                            <span className="text-muted-foreground">Invited</span>
+                          ) : (
+                            <span className="text-muted-foreground">Waiting</span>
+                          )}
                         </td>
                         <td className="py-2">
                           {e.approved_at ? (
