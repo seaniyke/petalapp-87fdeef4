@@ -148,8 +148,8 @@ export function WaitlistPanel({ onHaveAccess }: Props) {
               Petal is invite-only <em className="italic">for now.</em>
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Drop your name and email — we're opening spots in batches, and you'll
-              be first to know.
+              Drop your name and email — we're opening spots in batches. Bring{" "}
+              {AUTO_APPROVE_AT} friends and you skip the line entirely.
             </p>
 
             <form onSubmit={submit} className="mt-6 space-y-3">
