@@ -93,12 +93,14 @@ export const Route = createFileRoute("/api/public/waitlist")({
           // Confirmation email — never blocks or fails the signup.
           try {
             const secret = process.env.BUILDER_SHARED_SECRET;
-            if (secret) {
+            if (!secret) {
+              console.warn("[waitlist] BUILDER_SHARED_SECRET missing — no confirmation email sent");
+            } else {
               const url = new URL(
                 "/lovable/email/transactional/send",
                 new URL(request.url).origin,
               ).toString();
-              await fetch(url, {
+              const resp = await fetch(url, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -108,13 +110,21 @@ export const Route = createFileRoute("/api/public/waitlist")({
                   templateName: "waitlist-confirmation",
                   recipientEmail: email,
                   idempotencyKey: `waitlist-confirm-${email}`,
-                  templateData: { name: parsed.name },
+                  templateData: { name: parsed.name, email },
                 }),
               });
+              if (!resp.ok) {
+                console.warn(
+                  "[waitlist] confirmation send failed",
+                  resp.status,
+                  await resp.text().catch(() => ""),
+                );
+              }
             }
           } catch (e) {
             console.warn("[waitlist] confirmation email failed (non-fatal)", e);
           }
+
 
           return json({ ok: true });
         } catch (err) {
