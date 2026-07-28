@@ -348,6 +348,7 @@ function AdminWaitlistPage() {
                     <tr className="border-b border-border/60 text-left text-xs text-muted-foreground">
                       <th className="py-2 pr-3 font-medium">Name</th>
                       <th className="py-2 pr-3 font-medium">Email</th>
+                      <th className="py-2 pr-3 font-medium">Invites</th>
                       <th className="py-2 pr-3 font-medium">Joined</th>
                       <th className="py-2 pr-3 font-medium">Announced</th>
                       <th className="py-2 font-medium">Access</th>
@@ -358,6 +359,15 @@ function AdminWaitlistPage() {
                       <tr key={e.id} className="border-b border-border/40 last:border-0">
                         <td className="py-2 pr-3">{e.name}</td>
                         <td className="py-2 pr-3 font-mono text-xs">{e.email}</td>
+                        <td className="py-2 pr-3 text-xs">
+                          {e.referral_count ? (
+                            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary">
+                              {e.referral_count}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
                         <td className="py-2 pr-3 text-xs text-muted-foreground">
                           {fmtRelative(e.created_at)}
                         </td>
