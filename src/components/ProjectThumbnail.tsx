@@ -24,6 +24,7 @@ export function ProjectThumbnail({
   subdomain,
   customDomain,
   publishedUrl,
+  fit = "cover",
 }: {
   projectId: string;
   className?: string;
@@ -34,14 +35,20 @@ export function ProjectThumbnail({
   customDomain?: string | null;
   /** Explicit override — used by callers that already resolved the URL. */
   publishedUrl?: string | null;
+  /** "cover" crops to fill (grid tiles); "contain" shows the whole page (detail hero). */
+  fit?: "cover" | "contain";
 }) {
   const url = resolveLiveUrl({ subdomain, customDomain, publishedUrl });
+  const contain = fit === "contain";
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const showImage = url && !failed;
 
   return (
-    <div className={`relative overflow-hidden ${className}`} aria-hidden>
+    <div
+      className={`relative overflow-hidden ${contain ? "bg-muted/30" : ""} ${className}`}
+      aria-hidden
+    >
       {showImage ? (
         <>
           {!loaded && (
@@ -50,12 +57,12 @@ export function ProjectThumbnail({
             </div>
           )}
           <img
-            src={screenshotUrl(url)}
+            src={screenshotUrl(url, fit)}
             alt=""
             loading="eager"
             decoding="async"
             fetchPriority="high"
-            className={`absolute inset-0 h-full w-full object-cover object-top transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
+            className={`absolute inset-0 h-full w-full ${contain ? "object-contain object-center" : "object-cover object-top"} transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
             onLoad={() => setLoaded(true)}
             onError={() => setFailed(true)}
           />
@@ -109,7 +116,7 @@ function resolveLiveUrl({
   return null;
 }
 
-function screenshotUrl(target: string): string {
+function screenshotUrl(target: string, fit: "cover" | "contain" = "cover"): string {
   // Microlink free endpoint — returns the screenshot image directly. We pass
   // viewport sized for a nice card crop and a short waitUntil so SPAs render
   // before the snapshot is taken.
@@ -118,8 +125,9 @@ function screenshotUrl(target: string): string {
     screenshot: "true",
     meta: "false",
     embed: "screenshot.url",
-    "viewport.width": "1280",
-    "viewport.height": "800",
+    "viewport.width": fit === "contain" ? "1200" : "1280",
+    // 4:3 for contained hero cards so the whole page fits the box with no crop.
+    "viewport.height": fit === "contain" ? "900" : "800",
     waitUntil: "networkidle0",
   });
   return `https://api.microlink.io/?${params.toString()}`;
