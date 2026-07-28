@@ -28,6 +28,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
+import { Route as RCodeRouteImport } from './routes/r.$code'
 import { Route as PacksSlugRouteImport } from './routes/packs.$slug'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as FeaturesSlugRouteImport } from './routes/features.$slug'
@@ -196,6 +197,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const ShareTokenRoute = ShareTokenRouteImport.update({
   id: '/share/$token',
   path: '/share/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RCodeRoute = RCodeRouteImport.update({
+  id: '/r/$code',
+  path: '/r/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PacksSlugRoute = PacksSlugRouteImport.update({
@@ -633,6 +639,7 @@ export interface FileRoutesByFullPath {
   '/features/$slug': typeof FeaturesSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
+  '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
@@ -728,6 +735,7 @@ export interface FileRoutesByTo {
   '/features/$slug': typeof FeaturesSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
+  '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
@@ -824,6 +832,7 @@ export interface FileRoutesById {
   '/features/$slug': typeof FeaturesSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
+  '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
@@ -921,6 +930,7 @@ export interface FileRouteTypes {
     | '/features/$slug'
     | '/p/$slug'
     | '/packs/$slug'
+    | '/r/$code'
     | '/share/$token'
     | '/admin/'
     | '/api/admin/ai-providers'
@@ -1016,6 +1026,7 @@ export interface FileRouteTypes {
     | '/features/$slug'
     | '/p/$slug'
     | '/packs/$slug'
+    | '/r/$code'
     | '/share/$token'
     | '/admin'
     | '/api/admin/ai-providers'
@@ -1111,6 +1122,7 @@ export interface FileRouteTypes {
     | '/features/$slug'
     | '/p/$slug'
     | '/packs/$slug'
+    | '/r/$code'
     | '/share/$token'
     | '/admin/'
     | '/api/admin/ai-providers'
@@ -1205,6 +1217,7 @@ export interface RootRouteChildren {
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   FeaturesSlugRoute: typeof FeaturesSlugRoute
   PSlugRoute: typeof PSlugRoute
+  RCodeRoute: typeof RCodeRoute
   ShareTokenRoute: typeof ShareTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
   ApiAdminAiProvidersRoute: typeof ApiAdminAiProvidersRoute
@@ -1383,6 +1396,13 @@ declare module '@tanstack/react-router' {
       path: '/share/$token'
       fullPath: '/share/$token'
       preLoaderRoute: typeof ShareTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/r/$code': {
+      id: '/r/$code'
+      path: '/r/$code'
+      fullPath: '/r/$code'
+      preLoaderRoute: typeof RCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/packs/$slug': {
@@ -1987,6 +2007,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   FeaturesSlugRoute: FeaturesSlugRoute,
   PSlugRoute: PSlugRoute,
+  RCodeRoute: RCodeRoute,
   ShareTokenRoute: ShareTokenRoute,
   AdminIndexRoute: AdminIndexRoute,
   ApiAdminAiProvidersRoute: ApiAdminAiProvidersRoute,
