@@ -185,6 +185,7 @@ function PublicPreview() {
               title={project.title}
               subdomain={project.subdomain}
               publishedUrl={published.url}
+              fit="contain"
               className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-[1.03]"
             />
             {published.url && (
