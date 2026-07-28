@@ -48,6 +48,7 @@ import { Route as ApiDomainsRouteImport } from './routes/api/domains'
 import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
 import { Route as ApiCoachRouteImport } from './routes/api/coach'
 import { Route as ApiBackendRouteImport } from './routes/api/backend'
+import { Route as AdminWaitlistRouteImport } from './routes/admin.waitlist'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminQaRouteImport } from './routes/admin.qa'
 import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
@@ -295,6 +296,11 @@ const ApiCoachRoute = ApiCoachRouteImport.update({
 const ApiBackendRoute = ApiBackendRouteImport.update({
   id: '/api/backend',
   path: '/api/backend',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminWaitlistRoute = AdminWaitlistRouteImport.update({
+  id: '/admin/waitlist',
+  path: '/admin/waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
@@ -606,6 +612,7 @@ export interface FileRoutesByFullPath {
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -700,6 +707,7 @@ export interface FileRoutesByTo {
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -795,6 +803,7 @@ export interface FileRoutesById {
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -891,6 +900,7 @@ export interface FileRouteTypes {
     | '/admin/projects'
     | '/admin/qa'
     | '/admin/users'
+    | '/admin/waitlist'
     | '/api/backend'
     | '/api/coach'
     | '/api/discuss'
@@ -985,6 +995,7 @@ export interface FileRouteTypes {
     | '/admin/projects'
     | '/admin/qa'
     | '/admin/users'
+    | '/admin/waitlist'
     | '/api/backend'
     | '/api/coach'
     | '/api/discuss'
@@ -1079,6 +1090,7 @@ export interface FileRouteTypes {
     | '/admin/projects'
     | '/admin/qa'
     | '/admin/users'
+    | '/admin/waitlist'
     | '/api/backend'
     | '/api/coach'
     | '/api/discuss'
@@ -1174,6 +1186,7 @@ export interface RootRouteChildren {
   AdminProjectsRoute: typeof AdminProjectsRoute
   AdminQaRoute: typeof AdminQaRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  AdminWaitlistRoute: typeof AdminWaitlistRoute
   ApiBackendRoute: typeof ApiBackendRoute
   ApiCoachRoute: typeof ApiCoachRoute
   ApiDiscussRoute: typeof ApiDiscussRoute
@@ -1510,6 +1523,13 @@ declare module '@tanstack/react-router' {
       path: '/api/backend'
       fullPath: '/api/backend'
       preLoaderRoute: typeof ApiBackendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/waitlist': {
+      id: '/admin/waitlist'
+      path: '/admin/waitlist'
+      fullPath: '/admin/waitlist'
+      preLoaderRoute: typeof AdminWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/users': {
@@ -1948,6 +1968,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminProjectsRoute: AdminProjectsRoute,
   AdminQaRoute: AdminQaRoute,
   AdminUsersRoute: AdminUsersRoute,
+  AdminWaitlistRoute: AdminWaitlistRoute,
   ApiBackendRoute: ApiBackendRoute,
   ApiCoachRoute: ApiCoachRoute,
   ApiDiscussRoute: ApiDiscussRoute,
