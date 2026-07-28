@@ -38,7 +38,7 @@ export function ProjectThumbnail({
   /** "cover" crops to fill (grid tiles); "contain" shows the whole page (detail hero). */
   fit?: "cover" | "contain";
 }) {
-  const url = resolveLiveUrl({ subdomain, customDomain, publishedUrl });
+  const url = resolveLiveUrl({ projectId, subdomain, customDomain, publishedUrl });
   const contain = fit === "contain";
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
