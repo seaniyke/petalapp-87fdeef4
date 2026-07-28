@@ -33,7 +33,7 @@ export const Route = createFileRoute("/p/$slug")({
   },
   head: ({ loaderData }) => {
     const title = loaderData?.project?.title ?? "Petal project";
-    const description = loaderData?.project?.summary ?? "Built with Petal.";
+    const description = toVisitorSummary(loaderData?.project?.summary, title);
     return {
       meta: [
         { title: `${title} · Petal` },
