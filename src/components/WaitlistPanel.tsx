@@ -1,10 +1,12 @@
 /**
  * Waitlist gate shown on /auth while waitlist mode is on.
  *
- * Collects a name + email, posts to /api/public/waitlist, and keeps a quiet
- * "I already have access" escape hatch so the team can still sign in.
+ * Collects a name + email, posts to /api/public/waitlist, and lets anyone the
+ * admin has individually approved unlock the normal sign-in form by entering
+ * the email address on their invite (or by following the ?approved= link in
+ * the invite email, which unlocks automatically).
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Loader2, CheckCircle2, Sparkles } from "lucide-react";
 
@@ -13,12 +15,36 @@ type Props = {
   onHaveAccess: () => void;
 };
 
+async function checkApproved(email: string): Promise<boolean> {
+  const res = await fetch(`/api/public/waitlist?email=${encodeURIComponent(email)}`);
+  const json = (await res.json().catch(() => ({}))) as { approved?: boolean };
+  return Boolean(json.approved);
+}
+
 export function WaitlistPanel({ onHaveAccess }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<null | { already: boolean }>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [showAccess, setShowAccess] = useState(false);
+  const [accessEmail, setAccessEmail] = useState("");
+  const [accessBusy, setAccessBusy] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
+
+  // Invite links carry ?approved=<email> — unlock without extra typing.
+  useEffect(() => {
+    const invited = new URLSearchParams(window.location.search).get("approved");
+    if (!invited) return;
+    void checkApproved(invited).then((ok) => {
+      if (ok) onHaveAccess();
+      else {
+        setShowAccess(true);
+        setAccessEmail(invited);
+      }
+    });
+  }, [onHaveAccess]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,6 +69,22 @@ export function WaitlistPanel({ onHaveAccess }: Props) {
       setBusy(false);
     }
   }
+
+  async function unlock(e: React.FormEvent) {
+    e.preventDefault();
+    setAccessError(null);
+    setAccessBusy(true);
+    try {
+      const ok = await checkApproved(accessEmail.trim().toLowerCase());
+      if (ok) onHaveAccess();
+      else setAccessError("That email isn't approved yet — we'll email you the moment it is.");
+    } catch {
+      setAccessError("Couldn't check that right now. Try again in a moment.");
+    } finally {
+      setAccessBusy(false);
+    }
+  }
+
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
@@ -120,13 +162,43 @@ export function WaitlistPanel({ onHaveAccess }: Props) {
               </button>
             </form>
 
-            <button
-              type="button"
-              onClick={onHaveAccess}
-              className="mt-5 w-full text-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              I already have access — sign in
-            </button>
+            {showAccess ? (
+              <form onSubmit={unlock} className="mt-5 border-t border-border/60 pt-5">
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Got an invite? Enter the email it was sent to.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    required
+                    maxLength={255}
+                    value={accessEmail}
+                    onChange={(ev) => setAccessEmail(ev.target.value)}
+                    placeholder="you@example.com"
+                    className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary"
+                  />
+                  <button
+                    type="submit"
+                    disabled={accessBusy}
+                    className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-60"
+                  >
+                    {accessBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Continue
+                  </button>
+                </div>
+                {accessError && (
+                  <p className="mt-2 text-xs text-destructive">{accessError}</p>
+                )}
+              </form>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowAccess(true)}
+                className="mt-5 w-full text-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                I already have access — sign in
+              </button>
+            )}
           </div>
         )}
       </div>

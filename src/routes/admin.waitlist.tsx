@@ -28,6 +28,7 @@ type Entry = {
   email: string;
   source: string | null;
   notified_at: string | null;
+  approved_at: string | null;
   created_at: string;
 };
 
@@ -51,6 +52,7 @@ function AdminWaitlistPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [approving, setApproving] = useState<string | null>(null);
 
   const [subject, setSubject] = useState("Petal is open — your spot is ready");
   const [heading, setHeading] = useState("Your spot is ready");
@@ -92,6 +94,31 @@ function AdminWaitlistPage() {
   useEffect(() => {
     if (ready) void load();
   }, [ready, load]);
+
+  async function setApproval(entry: Entry, approve: boolean) {
+    setApproving(entry.id);
+    try {
+      const res = await adminApi<{ approved_at: string | null; emailed?: boolean }>({
+        action: "waitlist_approve",
+        id: entry.id,
+        approve,
+      });
+      setEntries((prev) =>
+        prev.map((e) => (e.id === entry.id ? { ...e, approved_at: res.approved_at } : e)),
+      );
+      toast.success(
+        approve
+          ? res.emailed
+            ? `${entry.email} approved — invite email sent`
+            : `${entry.email} approved (invite email could not be sent)`
+          : `Access revoked for ${entry.email}`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update access");
+    } finally {
+      setApproving(null);
+    }
+  }
 
   async function toggle(next: boolean) {
     setEnabled(next);
@@ -313,13 +340,14 @@ function AdminWaitlistPage() {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[540px] text-sm">
+                <table className="w-full min-w-[640px] text-sm">
                   <thead>
                     <tr className="border-b border-border/60 text-left text-xs text-muted-foreground">
                       <th className="py-2 pr-3 font-medium">Name</th>
                       <th className="py-2 pr-3 font-medium">Email</th>
                       <th className="py-2 pr-3 font-medium">Joined</th>
-                      <th className="py-2 font-medium">Announced</th>
+                      <th className="py-2 pr-3 font-medium">Announced</th>
+                      <th className="py-2 font-medium">Access</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -330,8 +358,40 @@ function AdminWaitlistPage() {
                         <td className="py-2 pr-3 text-xs text-muted-foreground">
                           {fmtRelative(e.created_at)}
                         </td>
-                        <td className="py-2 text-xs text-muted-foreground">
+                        <td className="py-2 pr-3 text-xs text-muted-foreground">
                           {e.notified_at ? fmtRelative(e.notified_at) : "—"}
+                        </td>
+                        <td className="py-2">
+                          {e.approved_at ? (
+                            <div className="flex items-center gap-2">
+                              <span className="rounded-full bg-mint px-2 py-0.5 text-[11px] font-medium text-foreground">
+                                Approved
+                              </span>
+                              <button
+                                type="button"
+                                disabled={approving === e.id}
+                                onClick={() => void setApproval(e, false)}
+                                className="text-[11px] text-muted-foreground underline-offset-4 hover:text-destructive hover:underline disabled:opacity-50"
+                              >
+                                Revoke
+                              </button>
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 gap-1.5 px-2.5 text-xs"
+                              disabled={approving === e.id}
+                              onClick={() => void setApproval(e, true)}
+                            >
+                              {approving === e.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Mail className="h-3 w-3" />
+                              )}
+                              Approve &amp; invite
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ))}

@@ -900,7 +900,9 @@ export const Route = createFileRoute("/api/admin/credits")({
             const query = String(body.query ?? "").trim();
             let q = supabaseAdmin
               .from("waitlist_signups" as never)
-              .select("id, name, email, source, notified_at, created_at", { count: "exact" })
+              .select("id, name, email, source, notified_at, approved_at, created_at", {
+                count: "exact",
+              })
               .order("created_at", { ascending: false })
               .range(page * pageSize, page * pageSize + pageSize - 1);
             if (query) q = q.or(`email.ilike.%${query}%,name.ilike.%${query}%`);
@@ -912,6 +914,76 @@ export const Route = createFileRoute("/api/admin/credits")({
               has_more: (page + 1) * pageSize < (count ?? 0),
             });
           }
+
+          /* Individually let someone in (or take access back). Approving
+           * emails the member a "you're in, sign in" invite. */
+          if (body.action === "waitlist_approve") {
+            const id = String(body.id ?? "");
+            if (!UUID_RE.test(id)) {
+              return Response.json({ error: "Invalid member." }, { status: 400 });
+            }
+            const approve = body.approve !== false;
+
+            const { data: row, error: rErr } = await supabaseAdmin
+              .from("waitlist_signups" as never)
+              .select("id, name, email, approved_at")
+              .eq("id", id)
+              .maybeSingle();
+            if (rErr) return Response.json({ error: rErr.message }, { status: 500 });
+            if (!row) return Response.json({ error: "Member not found." }, { status: 404 });
+            const member = row as { id: string; name: string; email: string; approved_at: string | null };
+
+            const approvedAt = approve ? member.approved_at ?? new Date().toISOString() : null;
+            const { error: uErr } = await supabaseAdmin
+              .from("waitlist_signups" as never)
+              .update({ approved_at: approvedAt } as never)
+              .eq("id", id);
+            if (uErr) return Response.json({ error: uErr.message }, { status: 500 });
+
+            let emailed = false;
+            if (approve) {
+              const secret = process.env.BUILDER_SHARED_SECRET;
+              if (secret) {
+                try {
+                  const origin = new URL(request.url).origin;
+                  const signInUrl = `https://buildwithpetal.com/auth?mode=signup&approved=${encodeURIComponent(member.email)}`;
+                  const resp = await fetch(
+                    new URL("/lovable/email/transactional/send", origin).toString(),
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        "x-petal-internal-secret": secret,
+                      },
+                      body: JSON.stringify({
+                        templateName: "waitlist-invite",
+                        recipientEmail: member.email,
+                        idempotencyKey: `waitlist-invite-${member.id}`,
+                        templateData: {
+                          name: member.name,
+                          email: member.email,
+                          signInUrl,
+                        },
+                      }),
+                    },
+                  );
+                  emailed = resp.ok;
+                  if (!resp.ok) {
+                    console.warn(
+                      "[waitlist-approve] invite send failed",
+                      resp.status,
+                      await resp.text().catch(() => ""),
+                    );
+                  }
+                } catch (e) {
+                  console.warn("[waitlist-approve] invite send threw", e);
+                }
+              }
+            }
+
+            return Response.json({ ok: true, approved: approve, approved_at: approvedAt, emailed });
+          }
+
 
           if (body.action === "waitlist_announce") {
             const secret = process.env.BUILDER_SHARED_SECRET;

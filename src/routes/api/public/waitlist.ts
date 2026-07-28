@@ -27,18 +27,34 @@ const json = (data: unknown, status = 200) =>
 export const Route = createFileRoute("/api/public/waitlist")({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }) => {
         try {
           const { data } = await supabaseAdmin
             .from("system_settings")
             .select("value")
             .eq("key", "access.waitlist_mode")
             .maybeSingle();
-          return json({ enabled: data?.value === true });
+          const enabled = data?.value === true;
+
+          // Optional per-person access check: ?email=someone@example.com
+          const emailParam = new URL(request.url).searchParams.get("email");
+          if (emailParam) {
+            const email = emailParam.trim().toLowerCase().slice(0, 255);
+            const { data: row } = await supabaseAdmin
+              .from("waitlist_signups" as never)
+              .select("approved_at")
+              .eq("email", email)
+              .maybeSingle();
+            const approved = Boolean((row as { approved_at: string | null } | null)?.approved_at);
+            return json({ enabled, approved });
+          }
+
+          return json({ enabled });
         } catch {
           return json({ enabled: false });
         }
       },
+
 
       POST: async ({ request }) => {
         let parsed: z.infer<typeof Body>;

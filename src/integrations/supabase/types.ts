@@ -3013,6 +3013,7 @@ export type Database = {
       }
       waitlist_signups: {
         Row: {
+          approved_at: string | null
           created_at: string
           email: string
           id: string
@@ -3024,6 +3025,7 @@ export type Database = {
           user_agent: string | null
         }
         Insert: {
+          approved_at?: string | null
           created_at?: string
           email: string
           id?: string
@@ -3035,6 +3037,7 @@ export type Database = {
           user_agent?: string | null
         }
         Update: {
+          approved_at?: string | null
           created_at?: string
           email?: string
           id?: string

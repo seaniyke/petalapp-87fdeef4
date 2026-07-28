@@ -21,6 +21,7 @@ import { template as subscriptionPaymentFailedFollowup } from './subscription-pa
 import { template as subscriptionExpired } from './subscription-expired'
 import { template as waitlistConfirmation } from './waitlist-confirmation'
 import { template as waitlistAnnouncement } from './waitlist-announcement'
+import { template as waitlistInvite } from './waitlist-invite'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'backend-renewal-reminder': backendRenewalReminder,
@@ -31,4 +32,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'subscription-expired': subscriptionExpired,
   'waitlist-confirmation': waitlistConfirmation,
   'waitlist-announcement': waitlistAnnouncement,
+  'waitlist-invite': waitlistInvite,
 }
