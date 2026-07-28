@@ -484,11 +484,22 @@ export function slugifyForProject(text: string, projectId: string): string {
 /** Update the project title from a generated summary if still default. */
 export async function maybeAutoTitleProject(project: ProjectRow, summary: string, firstUserPrompt: string) {
   if (project.title !== "Untitled project") return;
-  const candidate = firstUserPrompt.replace(/\s+/g, " ").trim().slice(0, 60);
-  if (!candidate) return;
+  const { generateProjectTitle, fallbackTitle } = await import("./project-title.functions");
+  let candidate = "";
+  try {
+    candidate = await generateProjectTitle({
+      data: { prompt: firstUserPrompt ?? "", summary: summary ?? "" },
+    });
+  } catch {
+    candidate = "";
+  }
+  if (!candidate) candidate = fallbackTitle(firstUserPrompt ?? "", summary ?? "");
+  candidate = candidate.trim().slice(0, 60);
+  if (!candidate || candidate === "Untitled project") return;
   await updateProject(project.id, {
     title: candidate,
     summary: truncateSummary(summary),
     slug: slugifyForProject(candidate, project.id),
   });
 }
+
