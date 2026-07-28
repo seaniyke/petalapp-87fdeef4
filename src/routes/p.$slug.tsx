@@ -8,6 +8,7 @@ import {
   type ProjectRow,
 } from "@/lib/projects";
 import { resolvePublishedUrl, type PublishedUrlResult } from "@/lib/published-url";
+import { toVisitorSummary } from "@/lib/visitor-summary";
 import { supabase } from "@/integrations/supabase/client";
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import logo from "/petal-logo.png";
