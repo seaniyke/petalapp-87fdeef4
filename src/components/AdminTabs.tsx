@@ -4,12 +4,13 @@
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 
-type Tab = { to: "/admin" | "/admin/users" | "/admin/projects" | "/admin/ledgers" | "/admin/billing" | "/admin/ai-providers" | "/admin/ai-spend" | "/admin/pipeline" | "/admin/failures" | "/admin/digest" | "/admin/qa" | "/admin/mobile-signing"; label: string; exact?: boolean };
+type Tab = { to: "/admin" | "/admin/users" | "/admin/projects" | "/admin/waitlist" | "/admin/ledgers" | "/admin/billing" | "/admin/ai-providers" | "/admin/ai-spend" | "/admin/pipeline" | "/admin/failures" | "/admin/digest" | "/admin/qa" | "/admin/mobile-signing"; label: string; exact?: boolean };
 
 const TABS: Tab[] = [
   { to: "/admin", label: "Overview", exact: true },
   { to: "/admin/users", label: "Users" },
   { to: "/admin/projects", label: "Projects" },
+  { to: "/admin/waitlist", label: "Waitlist" },
   { to: "/admin/ledgers", label: "Ledgers" },
   { to: "/admin/billing", label: "Billing" },
   { to: "/admin/ai-providers", label: "AI Providers" },

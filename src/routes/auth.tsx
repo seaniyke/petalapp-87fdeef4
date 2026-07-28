@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { clearLastAuthEmail, readLastAuthEmail, writeLastAuthEmail } from "@/lib/draft-storage";
 import { toast } from "sonner";
+import { WaitlistPanel } from "@/components/WaitlistPanel";
 
 /**
  * Only allow internal, same-origin redirect targets. Rejects:
@@ -88,10 +89,29 @@ function AuthPage() {
   const [duplicateEmail, setDuplicateEmail] = useState<string | null>(null);
   // Shown after a successful password-reset request so the user knows what to do.
   const [resetSent, setResetSent] = useState<string | null>(null);
+  // Waitlist gate: null = still checking, true = show waitlist instead of auth.
+  const [waitlist, setWaitlist] = useState<boolean | null>(null);
+  const [bypassWaitlist, setBypassWaitlist] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/public/waitlist")
+      .then((r) => r.json())
+      .then((j: { enabled?: boolean }) => {
+        if (!cancelled) setWaitlist(Boolean(j?.enabled));
+      })
+      .catch(() => {
+        if (!cancelled) setWaitlist(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     writeLastAuthEmail(email);
   }, [email]);
+
 
   const postAuthPath = redirect ?? "/";
   const postAuthUrl =
@@ -197,6 +217,18 @@ function AuthPage() {
     mode === "signup" ? "Create account" :
     mode === "forgot" ? "Send reset link" :
     "Sign in";
+
+  if (waitlist === null && !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (waitlist && !bypassWaitlist && !user) {
+    return <WaitlistPanel onHaveAccess={() => setBypassWaitlist(true)} />;
+  }
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">

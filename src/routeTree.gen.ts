@@ -48,6 +48,7 @@ import { Route as ApiDomainsRouteImport } from './routes/api/domains'
 import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
 import { Route as ApiCoachRouteImport } from './routes/api/coach'
 import { Route as ApiBackendRouteImport } from './routes/api/backend'
+import { Route as AdminWaitlistRouteImport } from './routes/admin.waitlist'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminQaRouteImport } from './routes/admin.qa'
 import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
@@ -63,6 +64,7 @@ import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/em
 import { Route as ApiRegistrarSearchRouteImport } from './routes/api/registrar/search'
 import { Route as ApiRegistrarPurchaseRouteImport } from './routes/api/registrar/purchase'
 import { Route as ApiRegistrarPollRouteImport } from './routes/api/registrar/poll'
+import { Route as ApiPublicWaitlistRouteImport } from './routes/api/public/waitlist'
 import { Route as ApiPublicTrackRuntimeErrorRouteImport } from './routes/api/public/track-runtime-error'
 import { Route as ApiPublicTrackFailureRouteImport } from './routes/api/public/track-failure'
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
@@ -296,6 +298,11 @@ const ApiBackendRoute = ApiBackendRouteImport.update({
   path: '/api/backend',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminWaitlistRoute = AdminWaitlistRouteImport.update({
+  id: '/admin/waitlist',
+  path: '/admin/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
@@ -369,6 +376,11 @@ const ApiRegistrarPurchaseRoute = ApiRegistrarPurchaseRouteImport.update({
 const ApiRegistrarPollRoute = ApiRegistrarPollRouteImport.update({
   id: '/api/registrar/poll',
   path: '/api/registrar/poll',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWaitlistRoute = ApiPublicWaitlistRouteImport.update({
+  id: '/api/public/waitlist',
+  path: '/api/public/waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicTrackRuntimeErrorRoute =
@@ -600,6 +612,7 @@ export interface FileRoutesByFullPath {
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -639,6 +652,7 @@ export interface FileRoutesByFullPath {
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
+  '/api/public/waitlist': typeof ApiPublicWaitlistRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
@@ -693,6 +707,7 @@ export interface FileRoutesByTo {
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -732,6 +747,7 @@ export interface FileRoutesByTo {
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
+  '/api/public/waitlist': typeof ApiPublicWaitlistRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
@@ -787,6 +803,7 @@ export interface FileRoutesById {
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -826,6 +843,7 @@ export interface FileRoutesById {
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
+  '/api/public/waitlist': typeof ApiPublicWaitlistRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
@@ -882,6 +900,7 @@ export interface FileRouteTypes {
     | '/admin/projects'
     | '/admin/qa'
     | '/admin/users'
+    | '/admin/waitlist'
     | '/api/backend'
     | '/api/coach'
     | '/api/discuss'
@@ -921,6 +940,7 @@ export interface FileRouteTypes {
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
+    | '/api/public/waitlist'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
@@ -975,6 +995,7 @@ export interface FileRouteTypes {
     | '/admin/projects'
     | '/admin/qa'
     | '/admin/users'
+    | '/admin/waitlist'
     | '/api/backend'
     | '/api/coach'
     | '/api/discuss'
@@ -1014,6 +1035,7 @@ export interface FileRouteTypes {
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
+    | '/api/public/waitlist'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
@@ -1068,6 +1090,7 @@ export interface FileRouteTypes {
     | '/admin/projects'
     | '/admin/qa'
     | '/admin/users'
+    | '/admin/waitlist'
     | '/api/backend'
     | '/api/coach'
     | '/api/discuss'
@@ -1107,6 +1130,7 @@ export interface FileRouteTypes {
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
+    | '/api/public/waitlist'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
     | '/api/registrar/search'
@@ -1162,6 +1186,7 @@ export interface RootRouteChildren {
   AdminProjectsRoute: typeof AdminProjectsRoute
   AdminQaRoute: typeof AdminQaRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  AdminWaitlistRoute: typeof AdminWaitlistRoute
   ApiBackendRoute: typeof ApiBackendRoute
   ApiCoachRoute: typeof ApiCoachRoute
   ApiDiscussRoute: typeof ApiDiscussRoute
@@ -1198,6 +1223,7 @@ export interface RootRouteChildren {
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
   ApiPublicTrackFailureRoute: typeof ApiPublicTrackFailureRoute
   ApiPublicTrackRuntimeErrorRoute: typeof ApiPublicTrackRuntimeErrorRoute
+  ApiPublicWaitlistRoute: typeof ApiPublicWaitlistRoute
   ApiRegistrarPollRoute: typeof ApiRegistrarPollRoute
   ApiRegistrarPurchaseRoute: typeof ApiRegistrarPurchaseRoute
   ApiRegistrarSearchRoute: typeof ApiRegistrarSearchRoute
@@ -1499,6 +1525,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBackendRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/waitlist': {
+      id: '/admin/waitlist'
+      path: '/admin/waitlist'
+      fullPath: '/admin/waitlist'
+      preLoaderRoute: typeof AdminWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/admin/users'
@@ -1602,6 +1635,13 @@ declare module '@tanstack/react-router' {
       path: '/api/registrar/poll'
       fullPath: '/api/registrar/poll'
       preLoaderRoute: typeof ApiRegistrarPollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/waitlist': {
+      id: '/api/public/waitlist'
+      path: '/api/public/waitlist'
+      fullPath: '/api/public/waitlist'
+      preLoaderRoute: typeof ApiPublicWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/track-runtime-error': {
@@ -1928,6 +1968,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminProjectsRoute: AdminProjectsRoute,
   AdminQaRoute: AdminQaRoute,
   AdminUsersRoute: AdminUsersRoute,
+  AdminWaitlistRoute: AdminWaitlistRoute,
   ApiBackendRoute: ApiBackendRoute,
   ApiCoachRoute: ApiCoachRoute,
   ApiDiscussRoute: ApiDiscussRoute,
@@ -1964,6 +2005,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicTrackRoute: ApiPublicTrackRoute,
   ApiPublicTrackFailureRoute: ApiPublicTrackFailureRoute,
   ApiPublicTrackRuntimeErrorRoute: ApiPublicTrackRuntimeErrorRoute,
+  ApiPublicWaitlistRoute: ApiPublicWaitlistRoute,
   ApiRegistrarPollRoute: ApiRegistrarPollRoute,
   ApiRegistrarPurchaseRoute: ApiRegistrarPurchaseRoute,
   ApiRegistrarSearchRoute: ApiRegistrarSearchRoute,
