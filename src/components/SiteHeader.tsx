@@ -15,6 +15,8 @@ import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
 import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
+import { PetalBrand } from "@/components/PetalBrand";
+
 import { BillingSheet } from "@/components/BillingSheet";
 import { MobileNavSheet } from "@/components/MobileNavSheet";
 import {
@@ -65,17 +67,10 @@ export function SiteHeader() {
         }`}
       >
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:h-16 sm:gap-4 sm:px-6 lg:px-8">
-          <Link to="/" className="group flex items-center gap-2">
-            <img
-              src="/petal-logo.png"
-              alt=""
-              aria-hidden="true"
-              className="h-8 w-8 object-contain transition-transform group-hover:-rotate-6 sm:h-9 sm:w-9"
-            />
-            <span className="font-display text-2xl font-black tracking-[-0.03em] text-foreground transition-opacity group-hover:opacity-80 sm:text-[1.7rem]">
-              Petal
-            </span>
+          <Link to="/" className="flex items-center">
+            <PetalBrand />
           </Link>
+
 
           {/* Desktop nav: marketing links when signed-out, product cluster when signed-in */}
           <nav className="hidden flex-1 items-center justify-center gap-1 text-sm md:flex">

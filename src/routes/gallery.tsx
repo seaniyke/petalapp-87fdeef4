@@ -167,6 +167,7 @@ function GalleryCard({
           projectId={project.id}
           title={project.title}
           subdomain={project.subdomain}
+          buildId={project.published_build_id ?? project.latest_build_id}
           className="h-48 transition-transform duration-500 group-hover:scale-[1.03]"
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />

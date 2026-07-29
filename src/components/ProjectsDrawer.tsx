@@ -198,6 +198,7 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
                       projectId={p.id}
                       title={p.title}
                       subdomain={p.subdomain}
+                      buildId={p.published_build_id ?? p.latest_build_id}
                       className="h-12 w-16 shrink-0 overflow-hidden rounded-lg"
                     />
                     <div className="min-w-0 flex-1">

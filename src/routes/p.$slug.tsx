@@ -11,7 +11,7 @@ import { resolvePublishedUrl, type PublishedUrlResult } from "@/lib/published-ur
 import { toVisitorSummary } from "@/lib/visitor-summary";
 import { supabase } from "@/integrations/supabase/client";
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
-import logo from "/petal-logo.png";
+import { PetalBrand } from "@/components/PetalBrand";
 import {
   Dialog,
   DialogContent,
@@ -110,10 +110,10 @@ function PublicPreview() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold">
-            <img src={logo} alt="" className="h-6 w-6" />
-            <span className="font-display text-base tracking-tight">Petal</span>
+          <Link to="/" className="inline-flex items-center">
+            <PetalBrand />
           </Link>
+
           <Link
             to="/gallery"
             className="text-xs text-muted-foreground hover:text-foreground"
@@ -186,6 +186,7 @@ function PublicPreview() {
               title={project.title}
               subdomain={project.subdomain}
               publishedUrl={published.url}
+              buildId={project.published_build_id ?? project.latest_build_id}
               fit="contain"
               className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-[1.03]"
             />
