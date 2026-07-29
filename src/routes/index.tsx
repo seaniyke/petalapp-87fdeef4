@@ -794,6 +794,7 @@ function Landing() {
                             projectId={p.id}
                             title={p.title}
                             subdomain={p.subdomain}
+                            buildId={p.published_build_id ?? p.latest_build_id}
                             className="h-36 sm:h-40"
                           />
                           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
@@ -877,6 +878,7 @@ function Landing() {
                               projectId={p.id}
                               title={p.title}
                               subdomain={p.subdomain}
+                              buildId={p.published_build_id ?? p.latest_build_id}
                               className="h-36 sm:h-40"
                             />
                             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />

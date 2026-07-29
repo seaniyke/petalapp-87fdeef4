@@ -201,6 +201,7 @@ function ProjectCard({ project, onDelete }: { project: ProjectRow; onDelete: () 
             projectId={project.id}
             title={project.title}
             subdomain={project.subdomain}
+            buildId={project.published_build_id ?? project.latest_build_id}
             className="h-28"
           />
           <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-card/90 px-2 py-0.5 text-[10px] font-medium text-muted-foreground backdrop-blur">
