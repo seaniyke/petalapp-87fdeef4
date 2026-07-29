@@ -511,7 +511,7 @@ function Landing() {
                   to="/coffee"
                   className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-foreground backdrop-blur transition hover:border-primary/50 hover:text-primary"
                 >
-                  ☕ Buy us a coffee
+                  ☕ Buy us a cup of coffee
                 </Link>
               </div>
 
