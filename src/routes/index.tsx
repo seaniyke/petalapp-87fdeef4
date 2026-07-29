@@ -1311,7 +1311,7 @@ function Landing() {
               <div className="relative text-center">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-background/60">Your turn</p>
                 <h2 className="mx-auto mt-4 max-w-3xl font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
-                  Your next product is <span className="italic text-coral">one sentence</span> away.
+                  Your next app is <span className="italic text-coral">one sentence</span> away.
                 </h2>
                 <p className="mx-auto mt-5 max-w-xl text-base text-background/70 sm:text-lg">
                   Web, mobile, backend or extension — describe it, Petal ships it.
