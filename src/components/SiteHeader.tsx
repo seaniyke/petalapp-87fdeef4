@@ -15,6 +15,8 @@ import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
 import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
+import { PetalBrand } from "@/components/PetalBrand";
+
 import { BillingSheet } from "@/components/BillingSheet";
 import { MobileNavSheet } from "@/components/MobileNavSheet";
 import {
