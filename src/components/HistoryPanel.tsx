@@ -25,6 +25,8 @@ type Props = {
   currentFiles: ProjectFile[];
   onRestore: (files: ProjectFile[]) => Promise<void> | void;
   refreshKey: number;
+  /** Render an icon-only trigger that fits inside the grouped toolbar. */
+  iconOnly?: boolean;
 };
 
 function timeAgo(iso: string) {
@@ -38,7 +40,7 @@ function timeAgo(iso: string) {
   return `${d}d ago`;
 }
 
-export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey }: Props) {
+export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey, iconOnly }: Props) {
   const [open, setOpen] = useState(false);
   const [versions, setVersions] = useState<VersionRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -140,10 +142,16 @@ export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey }:
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <button
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted"
+          className={
+            iconOnly
+              ? "grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              : "inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted"
+          }
           title="Version history"
+          aria-label="Version history"
         >
-          <History className="h-3.5 w-3.5" /> History
+          <History className="h-3.5 w-3.5" />
+          {!iconOnly && "History"}
         </button>
       </SheetTrigger>
       <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
