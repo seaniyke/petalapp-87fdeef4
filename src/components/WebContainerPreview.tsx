@@ -6,7 +6,7 @@ import { PreviewCrashFallback } from "@/components/PreviewCrashFallback";
 import {
   ensurePickerInstalled,
   getContainer,
-  installDeps,
+  ensureDeps,
   mountProject,
   startDevServer,
   stopDevServer,
@@ -144,8 +144,6 @@ export function WebContainerPreview({
           setPhase("booting");
           await getContainer();
           setPhase("installing");
-          // Auto-show logs so users can see install progress instead of a silent spinner.
-          setShowLogs(true);
           await mountProject(files);
           // Hard cap install + dev start — surfaces an error instead of spinning forever.
           timeoutRef.current = setTimeout(() => {
@@ -157,7 +155,7 @@ export function WebContainerPreview({
             setShowLogs(true);
             onBootFailed?.(msg);
           }, INSTALL_TIMEOUT_MS);
-          const code = await installDeps();
+          const code = await ensureDeps();
           if (cancelled) return;
           if (code !== 0) {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -308,7 +306,7 @@ export function WebContainerPreview({
   return (
     <div className="relative flex h-full w-full flex-col">
       {/* Status strip */}
-      {phase !== "ready" && phase !== "idle" && (
+      {phase !== "ready" && phase !== "idle" && !serverUrl && (
         <div className="flex items-center justify-between gap-2 border-b border-border bg-card/80 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur">
           <div className="inline-flex items-center gap-2">
             {phase !== "error" && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -444,11 +442,11 @@ export function WebContainerPreview({
 function phaseLabel(p: Phase): string {
   switch (p) {
     case "booting":
-      return "Booting WebContainer…";
+      return "Warming up your app…";
     case "installing":
-      return "Installing dependencies…";
+      return "Getting things ready…";
     case "starting":
-      return "Starting dev server…";
+      return "Almost there…";
     case "ready":
       return "Ready";
     case "error":
