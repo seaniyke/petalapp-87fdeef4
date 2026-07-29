@@ -110,10 +110,10 @@ function PublicPreview() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold">
-            <img src={logo} alt="" className="h-6 w-6" />
-            <span className="font-display text-base tracking-tight">Petal</span>
+          <Link to="/" className="inline-flex items-center">
+            <PetalBrand />
           </Link>
+
           <Link
             to="/gallery"
             className="text-xs text-muted-foreground hover:text-foreground"
