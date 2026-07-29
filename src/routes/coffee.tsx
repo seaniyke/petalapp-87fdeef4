@@ -70,9 +70,7 @@ function CoffeePage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const finalMinor = customAmount
-      ? Math.round(Number(customAmount) * 100)
-      : amountMinor;
+    const finalMinor = customAmount ? Math.round(Number(customAmount) * 100) : amountMinor;
     if (!Number.isFinite(finalMinor) || finalMinor <= 0) {
       setError("Please enter a valid amount.");
       return;
@@ -118,11 +116,11 @@ function CoffeePage() {
               <Coffee className="h-3.5 w-3.5 text-primary" /> Support the makers
             </div>
             <h1 className="heading-editorial mt-7 text-5xl sm:text-6xl md:text-7xl">
-              Buy Petal <em>a coffee.</em>
+              Buy Petal <em>a cup of coffee.</em>
             </h1>
             <p className="mx-auto mt-5 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Petal is built by a small team. If it saved you time or made you
-              smile, drop a tip — it keeps the servers warm and the features shipping.
+              Petal is built by a small team. If it saved you time or made you smile, drop a tip — it keeps the servers
+              warm and the features shipping.
             </p>
             <p className="mt-4 text-sm text-muted-foreground">
               Want to go bigger?{" "}
@@ -132,7 +130,6 @@ function CoffeePage() {
               .
             </p>
           </div>
-
 
           <form
             onSubmit={submit}
@@ -186,9 +183,7 @@ function CoffeePage() {
                 ))}
               </div>
               <div className="mt-3">
-                <label className="block text-xs text-muted-foreground">
-                  Or a custom amount ({currency})
-                </label>
+                <label className="block text-xs text-muted-foreground">Or a custom amount ({currency})</label>
                 <input
                   type="number"
                   min="1"
