@@ -27,15 +27,19 @@ const deployUrlCache = new Map<string, Promise<string | null>>();
 function fetchDeployUrl(buildId: string): Promise<string | null> {
   const cached = deployUrlCache.get(buildId);
   if (cached) return cached;
-  const p = supabase
-    .from("project_builds")
-    .select("status, dist_path")
-    .eq("id", buildId)
-    .maybeSingle()
-    .then(({ data }) =>
-      data?.status === "ready" && data.dist_path ? data.dist_path : null,
-    )
-    .catch(() => null);
+  const p = (async () => {
+    try {
+      const { data } = await supabase
+        .from("project_builds")
+        .select("status, dist_path")
+        .eq("id", buildId)
+        .maybeSingle();
+      return data?.status === "ready" && data.dist_path ? data.dist_path : null;
+    } catch {
+      return null;
+    }
+  })();
+
   deployUrlCache.set(buildId, p);
   return p;
 }
