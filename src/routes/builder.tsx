@@ -3073,66 +3073,96 @@ function Builder() {
               <Code2 className="h-3.5 w-3.5" /> <span>Code</span>
             </button>
           </div>
-          {/* Desktop toolbar */}
-          <button
-            onClick={() => setPaletteOpen(true)}
-            className="hidden h-8 items-center gap-1.5 rounded-lg border border-border px-2 text-xs text-muted-foreground transition hover:bg-muted md:inline-flex"
-            title="Command palette (⌘K)"
-          >
-            <CommandIcon className="h-3.5 w-3.5" />
-            <span className="font-mono">⌘K</span>
-          </button>
-          <button
-            onClick={() => setPreviewKey((k) => k + 1)}
-            disabled={!files.length}
-            className="hidden h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40 md:grid"
-            title="Reload preview"
-          >
-            <RotateCw className="h-4 w-4" />
-          </button>
-          {project && (
-            <div className="hidden md:block">
+          {/* Desktop toolbar — one joined utility cluster keeps the chrome calm
+              instead of a row of loose, equally-weighted buttons. */}
+          <div className="hidden items-center gap-0.5 rounded-lg border border-border bg-background p-0.5 md:flex">
+            <button
+              onClick={() => setPreviewKey((k) => k + 1)}
+              disabled={!files.length}
+              className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+              title="Reload preview"
+              aria-label="Reload preview"
+            >
+              <RotateCw className="h-3.5 w-3.5" />
+            </button>
+            {project && (
               <HistoryPanel
                 projectId={project.id}
                 currentFiles={files}
                 onRestore={handleRestore}
                 refreshKey={historyKey}
+                iconOnly
               />
-            </div>
-          )}
-          {project && (
-            <button
-              type="button"
-              onClick={() => setShieldOpen(true)}
-              className="hidden h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted md:grid"
-              title="Petal Shield — security audit"
-              aria-label="Open Petal Shield"
-            >
-              <Shield className="h-4 w-4" />
-            </button>
-          )}
-          {project && (
-            <button
-              type="button"
-              onClick={() => setSharePreviewOpen(true)}
-              className="hidden h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted md:grid"
-              title="Share preview & gather feedback"
-              aria-label="Share preview"
-            >
-              <Link2 className="h-4 w-4" />
-            </button>
-          )}
-          {project && (
-            <button
-              type="button"
-              onClick={() => setCommentsOpen(true)}
-              className="hidden h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted md:grid"
-              title="Visitor feedback"
-              aria-label="Open visitor feedback"
-            >
-              <MessageSquare className="h-4 w-4" />
-            </button>
-          )}
+            )}
+            {project && (
+              <button
+                type="button"
+                onClick={() => setShieldOpen(true)}
+                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                title="Petal Shield — security audit"
+                aria-label="Open Petal Shield"
+              >
+                <Shield className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {project && (
+              <button
+                type="button"
+                onClick={() => setSharePreviewOpen(true)}
+                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                title="Share preview & gather feedback"
+                aria-label="Share preview"
+              >
+                <Link2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {project && (
+              <button
+                type="button"
+                onClick={() => setCommentsOpen(true)}
+                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                title="Visitor feedback"
+                aria-label="Open visitor feedback"
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <span aria-hidden className="mx-0.5 h-4 w-px bg-border" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  title="More"
+                  aria-label="More actions"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onSelect={() => setPaletteOpen(true)}>
+                  <CommandIcon className="mr-2 h-3.5 w-3.5" />
+                  Command palette
+                  <span className="ml-auto font-mono text-[10px] text-muted-foreground">⌘K</span>
+                </DropdownMenuItem>
+                {project && (
+                  <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
+                    <SettingsIcon className="mr-2 h-3.5 w-3.5" />
+                    Project settings
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  onSelect={() => {
+                    if (files.length) downloadProject();
+                  }}
+                  disabled={!files.length}
+                >
+                  <Download className="mr-2 h-3.5 w-3.5" />
+                  Export code
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           {project && <ReadinessBadge files={files} project={project} />}
           {project && (
             <div className="hidden md:block">
@@ -3177,13 +3207,7 @@ function Builder() {
               onScrollHandled={() => setSettingsScrollTo(null)}
             />
           )}
-          <button
-            onClick={downloadProject}
-            disabled={!files.length}
-            className="hidden h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted disabled:opacity-40 md:inline-flex"
-          >
-            <Download className="h-3.5 w-3.5" /> Export
-          </button>
+
         </div>
       </header>
 
