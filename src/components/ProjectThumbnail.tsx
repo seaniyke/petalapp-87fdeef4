@@ -13,9 +13,32 @@
  *   https://api.microlink.io/?url=<URL>&screenshot=true&meta=false&embed=screenshot.url
  * It caches results aggressively, so repeat visits are instant.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PETAL_ROOT_DOMAIN } from "@/lib/petal-subdomain";
 import { PetalLoader } from "@/components/PetalLoader";
+import { supabase } from "@/integrations/supabase/client";
+
+/**
+ * Cache of build id -> deployment URL so a 60-card gallery doesn't fire the
+ * same lookup twice. Shared across every mounted thumbnail.
+ */
+const deployUrlCache = new Map<string, Promise<string | null>>();
+
+function fetchDeployUrl(buildId: string): Promise<string | null> {
+  const cached = deployUrlCache.get(buildId);
+  if (cached) return cached;
+  const p = supabase
+    .from("project_builds")
+    .select("status, dist_path")
+    .eq("id", buildId)
+    .maybeSingle()
+    .then(({ data }) =>
+      data?.status === "ready" && data.dist_path ? data.dist_path : null,
+    )
+    .catch(() => null);
+  deployUrlCache.set(buildId, p);
+  return p;
+}
 
 export function ProjectThumbnail({
   projectId,
@@ -24,6 +47,7 @@ export function ProjectThumbnail({
   subdomain,
   customDomain,
   publishedUrl,
+  buildId,
   fit = "cover",
 }: {
   projectId: string;
@@ -35,14 +59,40 @@ export function ProjectThumbnail({
   customDomain?: string | null;
   /** Explicit override — used by callers that already resolved the URL. */
   publishedUrl?: string | null;
+  /**
+   * The project's published (or latest) build id. When the project has no
+   * subdomain or custom domain we resolve this build's deployment URL and
+   * screenshot that, so every shipped app has a real thumbnail.
+   */
+  buildId?: string | null;
   /** "cover" crops to fill (grid tiles); "contain" shows the whole page (detail hero). */
   fit?: "cover" | "contain";
 }) {
-  const url = resolveLiveUrl({ projectId, subdomain, customDomain, publishedUrl });
+  const [deployUrl, setDeployUrl] = useState<string | null>(null);
+  const needsDeployUrl = !publishedUrl && !customDomain && !subdomain && !!buildId;
+
+  useEffect(() => {
+    if (!needsDeployUrl || !buildId) return;
+    let alive = true;
+    void fetchDeployUrl(buildId).then((url) => {
+      if (alive) setDeployUrl(url);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [needsDeployUrl, buildId]);
+
+  const url = resolveLiveUrl({
+    projectId,
+    subdomain,
+    customDomain,
+    publishedUrl: publishedUrl ?? deployUrl,
+  });
   const contain = fit === "contain";
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const showImage = url && !failed;
+
 
   return (
     <div
