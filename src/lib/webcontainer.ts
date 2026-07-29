@@ -472,12 +472,75 @@ export async function installDeps(): Promise<number> {
   if (installPromise) return installPromise;
   const wc = await getContainer();
   emitLog({ stream: "system", text: "$ npm install" });
-  const proc = await wc.spawn("npm", ["install"]);
+  // Fast flags: skip the registry audit + funding round-trips and reuse the
+  // local cache whenever possible. Cuts a cold install roughly in half.
+  const proc = await wc.spawn("npm", [
+    "install",
+    "--prefer-offline",
+    "--no-audit",
+    "--no-fund",
+    "--progress=false",
+    "--loglevel=error",
+  ]);
   installPromise = pipeProcess("npm install", proc).finally(() => {
     installPromise = null;
   });
   return installPromise;
 }
+
+/**
+ * True when every dependency listed in the mounted package.json already has a
+ * folder in node_modules. Lets us skip `npm install` entirely on projects the
+ * prewarm (or a previous project in this session) already covered — that's
+ * what makes the preview "just open" instead of showing an install spinner.
+ */
+async function depsSatisfied(): Promise<boolean> {
+  const wc = await getContainer();
+  try {
+    const raw = await wc.fs.readFile("package.json", "utf-8");
+    const pkg = JSON.parse(raw) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    const names = [
+      ...Object.keys(pkg.dependencies ?? {}),
+      ...Object.keys(pkg.devDependencies ?? {}),
+    ];
+    if (names.length === 0) return true;
+    const top = new Set(await wc.fs.readdir("node_modules"));
+    const scopeCache = new Map<string, Set<string>>();
+    for (const name of names) {
+      if (name.startsWith("@")) {
+        const [scope, pkgName] = name.split("/");
+        if (!top.has(scope)) return false;
+        let entries = scopeCache.get(scope);
+        if (!entries) {
+          entries = new Set(await wc.fs.readdir(`node_modules/${scope}`));
+          scopeCache.set(scope, entries);
+        }
+        if (!entries.has(pkgName)) return false;
+      } else if (!top.has(name)) {
+        return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Install only when something is actually missing. Returns an npm exit code
+ * (0 when the install was skipped).
+ */
+export async function ensureDeps(): Promise<number> {
+  if (await depsSatisfied()) {
+    emitLog({ stream: "system", text: "Dependencies already present — skipping install." });
+    return 0;
+  }
+  return installDeps();
+}
+
 
 /**
  * Pre-warm the WebContainer BEFORE the user opens a specific project so the
