@@ -10,6 +10,9 @@ import {
   Code2,
   Sparkles,
   RotateCw,
+  MoreHorizontal,
+  Settings as SettingsIcon,
+
   Download,
   FolderOpen,
   Command as CommandIcon,
