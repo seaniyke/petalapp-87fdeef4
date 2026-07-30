@@ -122,6 +122,7 @@ function WaitlistStatusPage() {
             </p>
             <Link
               to="/auth"
+              search={{ mode: "signup", redirect: undefined }}
               className="mt-6 inline-flex h-11 items-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:brightness-105"
             >
               Join the waitlist
@@ -143,7 +144,7 @@ function WaitlistStatusPage() {
                   </p>
                   <Link
                     to="/auth"
-                    search={{ mode: "signup" }}
+                    search={{ mode: "signup", redirect: undefined }}
                     className="mt-6 inline-flex h-12 items-center rounded-full bg-primary px-6 text-base font-medium text-primary-foreground hover:brightness-105"
                   >
                     Start building

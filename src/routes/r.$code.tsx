@@ -36,7 +36,11 @@ function ReferralLanding() {
 
   useEffect(() => {
     if (code) rememberReferral(code);
-    void navigate({ to: "/auth", search: { mode: "signup" }, replace: true });
+    void navigate({
+      to: "/auth",
+      search: { mode: "signup", redirect: undefined },
+      replace: true,
+    });
   }, [code, navigate]);
 
   return (

@@ -90,7 +90,7 @@ const stylesheetRecoveryScript = `(function(){var key='petal:reloaded-after-styl
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script dangerouslySetInnerHTML={{ __html: stylesheetRecoveryScript }} />
