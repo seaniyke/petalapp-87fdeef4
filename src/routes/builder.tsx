@@ -188,6 +188,7 @@ import { toast } from "sonner";
 const CodeEditor = lazy(() =>
   import("@/components/CodeEditor").then((m) => ({ default: m.CodeEditor })),
 );
+import { CodeExplorer } from "@/components/CodeExplorer";
 const CommandPalette = lazy(() =>
   import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })),
 );
@@ -4816,64 +4817,39 @@ function Builder() {
               </div>
             </div>
           ) : (
-            <div className="grid min-h-0 flex-1 grid-cols-[140px_1fr] sm:grid-cols-[200px_1fr]">
-              <div className="min-h-0 overflow-y-auto border-r-2 border-foreground/10 bg-sidebar">
-                <div className="sticky top-0 z-10 border-b-2 border-foreground/10 bg-sidebar px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.18em] text-foreground">
-                  Files
-                </div>
-                {files.length === 0 && (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">No files yet.</div>
-                )}
-                {files.map((f) => (
-                  <button
-                    key={f.path}
-                    onClick={() => setActiveFile(f.path)}
-                    className={`flex w-full items-center gap-2 border-l-2 px-3 py-1.5 text-left text-xs transition ${
-                      activeFile === f.path
-                        ? "border-foreground bg-card font-semibold text-foreground"
-                        : "border-transparent text-muted-foreground hover:border-foreground/20 hover:bg-card/60 hover:text-foreground"
-                    }`}
-                  >
-                    <FileCode2 className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{f.path}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="min-h-0 overflow-hidden bg-card">
-                {activeFile ? (
-                  <Suspense
-                    fallback={
-                      <div className="grid h-full place-items-center text-xs text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      </div>
-                    }
-                  >
-                    <CodeEditor
-                      path={activeFile}
-                      value={activeContent}
-                      onChange={(next) => {
-                        setFiles((prev) =>
-                          prev.map((f) => (f.path === activeFile ? { ...f, content: next } : f)),
-                        );
-                      }}
-                      onBlur={async () => {
-                        if (!project) return;
-                        try {
-                          await saveProjectFiles(project.id, files);
-                        } catch (e) {
-                          toast.error("Couldn't save edits");
-                          console.error(e);
-                        }
-                      }}
-                    />
-                  </Suspense>
-                ) : (
-                  <div className="grid h-full place-items-center p-6 text-xs text-muted-foreground">
-                    Select a file to edit.
+            <CodeExplorer
+              files={files}
+              activeFile={activeFile}
+              onSelect={setActiveFile}
+              projectName={project?.title ?? null}
+            >
+              <Suspense
+                fallback={
+                  <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   </div>
-                )}
-              </div>
-            </div>
+                }
+              >
+                <CodeEditor
+                  path={activeFile ?? ""}
+                  value={activeContent}
+                  onChange={(next) => {
+                    setFiles((prev) =>
+                      prev.map((f) => (f.path === activeFile ? { ...f, content: next } : f)),
+                    );
+                  }}
+                  onBlur={async () => {
+                    if (!project) return;
+                    try {
+                      await saveProjectFiles(project.id, files);
+                    } catch (e) {
+                      toast.error("Couldn't save edits");
+                      console.error(e);
+                    }
+                  }}
+                />
+              </Suspense>
+            </CodeExplorer>
           )}
         </main>
       </div>
