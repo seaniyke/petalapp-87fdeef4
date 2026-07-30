@@ -263,21 +263,26 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
 
 function UsageRow({
   label,
-  topupUsedCents,
+  usedCents,
+  hint,
 }: {
   label: string;
-  topupUsedCents: number;
+  usedCents: number;
+  hint?: string;
 }) {
   return (
     <div>
       <h4 className="text-sm font-semibold">{label}</h4>
       <div className="mt-2 text-xl font-semibold tabular-nums">
-        {formatUsdCents(topupUsedCents)}
+        {formatUsdCents(usedCents)}
       </div>
-      <div className="text-xs text-muted-foreground">Top-ups used this month</div>
+      <div className="text-xs text-muted-foreground">
+        Used this month{hint ? ` · ${hint}` : ""}
+      </div>
     </div>
   );
 }
+
 
 function ProjectUsageRow({
   project,
