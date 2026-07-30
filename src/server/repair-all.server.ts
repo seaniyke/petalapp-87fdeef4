@@ -29,6 +29,8 @@ import { validateRouteGraph } from "./route-graph.server";
 import { sweepTailwindTokens } from "./tailwind-token-sweep.server";
 import { stubMissingAssets } from "./asset-stubber.server";
 import { enforceRuntimeContracts } from "./runtime-contract.server";
+import { fixRouterImports } from "./router-imports.server";
+import { fixCssEscapes } from "./css-escape-fixer.server";
 
 export interface RepairAllResult {
   files: ProjectFile[];
@@ -100,6 +102,20 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   const route = validateRouteGraph(files);
   files = route.files;
   for (const n of route.notes) notes.push(n);
+
+  // 6b. Router import autofix — `createBrowserRouter` & friends used without
+  //     an import crash at runtime ("Can't find variable: …").
+  const routerImports = fixRouterImports(files);
+  files = routerImports.files;
+  for (const n of routerImports.notes) notes.push(n);
+
+  // 6c. CSS escape/theme sanitizer — literal `\n` inside styles.css aborts
+  //     the Tailwind v4 build ("@theme blocks must only contain…").
+  const cssEsc = fixCssEscapes(files);
+  files = cssEsc.files;
+  for (const n of cssEsc.notes) notes.push(n);
+
+
 
   // 7. Tailwind token sweep — inject missing semantic tokens into styles.css.
   const tw = sweepTailwindTokens(files);
