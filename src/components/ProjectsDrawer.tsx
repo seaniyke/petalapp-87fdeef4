@@ -19,12 +19,9 @@ import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import { useAuth } from "@/lib/auth";
 import {
   listProjects,
-  setProjectStarred,
   type ProjectRow,
 } from "@/lib/projects";
 import { toast } from "sonner";
-
-type Section = "all" | "starred" | "mine";
 
 interface ProjectsDrawerProps {
   open: boolean;
@@ -33,13 +30,13 @@ interface ProjectsDrawerProps {
   currentProjectId?: string | null;
 }
 
+
 export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: ProjectsDrawerProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
-  const [section, setSection] = useState<Section>("all");
 
   // Lazy-load on first open. Refetch silently each open so recent activity stays fresh.
   useEffect(() => {
@@ -62,12 +59,9 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, user]);
 
-  const filtered = useMemo(() => {
-    if (!projects) return [] as ProjectRow[];
+  const recents = useMemo(() => {
+    let list = projects ?? [];
     const q = query.trim().toLowerCase();
-    let list = projects;
-    if (section === "starred") list = list.filter((p) => (p as { is_starred?: boolean }).is_starred);
-    if (section === "mine" && user) list = list.filter((p) => p.owner_id === user.id);
     if (q) {
       list = list.filter(
         (p) =>
@@ -75,10 +69,8 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
           (p.summary ?? "").toLowerCase().includes(q),
       );
     }
-    return list;
-  }, [projects, query, section, user]);
-
-  const recents = useMemo(() => (projects ?? []).slice(0, 4), [projects]);
+    return list.slice(0, 4);
+  }, [projects, query]);
 
   function go(to: string, search?: Record<string, unknown>) {
     onOpenChange(false);
@@ -98,30 +90,13 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
     navigate({ to: "/builder", search: { id, prompt: undefined, mode: undefined, attachKey: undefined } });
   }
 
-  async function toggleStar(p: ProjectRow, e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    const cur = (p as { is_starred?: boolean }).is_starred ?? false;
-    // optimistic
-    setProjects((prev) =>
-      prev ? prev.map((x) => (x.id === p.id ? ({ ...x, is_starred: !cur } as ProjectRow) : x)) : prev,
-    );
-    try {
-      await setProjectStarred(p.id, !cur);
-    } catch (err) {
-      setProjects((prev) =>
-        prev ? prev.map((x) => (x.id === p.id ? ({ ...x, is_starred: cur } as ProjectRow) : x)) : prev,
-      );
-      toast.error(err instanceof Error ? err.message : "Could not update");
-    }
-  }
-
   const initial = (user?.email ?? "?")[0]?.toUpperCase() ?? "?";
   const displayName =
     (user?.user_metadata?.full_name as string | undefined) ??
     (user?.user_metadata?.name as string | undefined) ??
     user?.email ??
     "Workspace";
+
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -219,7 +194,7 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
             <SectionRow
               icon={<LayoutGrid className="h-4 w-4" />}
               label="All projects"
-              active={section === "all"}
+              active={false}
               onClick={() => {
                 onOpenChange(false);
                 navigate({ to: "/projects" });
@@ -228,57 +203,25 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
             <SectionRow
               icon={<Star className="h-4 w-4" />}
               label="Starred"
-              active={section === "starred"}
-              onClick={() => setSection("starred")}
+              active={false}
+              onClick={() => {
+                onOpenChange(false);
+                navigate({ to: "/projects" });
+              }}
             />
             <SectionRow
               icon={<UserIcon className="h-4 w-4" />}
               label="Created by me"
-              active={section === "mine"}
-              onClick={() => setSection("mine")}
+              active={false}
+              onClick={() => {
+                onOpenChange(false);
+                navigate({ to: "/projects" });
+              }}
             />
-          </div>
 
-          {/* Filtered list */}
-          <div className="mt-2 space-y-0.5">
-            {filtered.length === 0 && !loading && (
-              <div className="px-3 py-6 text-center text-xs text-muted-foreground">
-                {query ? "No matches." : section === "starred" ? "Star a project to pin it here." : "No projects yet."}
-              </div>
-            )}
-            {filtered.map((p) => {
-              const starred = (p as { is_starred?: boolean }).is_starred ?? false;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => openProject(p.id)}
-                  className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-muted ${
-                    currentProjectId === p.id ? "bg-muted" : ""
-                  }`}
-                >
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-primary/10 text-[11px] font-semibold text-primary">
-                    {(p.title || "?")[0]?.toUpperCase()}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm">{p.title}</span>
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => toggleStar(p, e)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") toggleStar(p, e as unknown as React.MouseEvent);
-                    }}
-                    aria-label={starred ? "Unstar" : "Star"}
-                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition ${
-                      starred ? "text-amber-500 opacity-100" : "opacity-0 group-hover:opacity-100"
-                    } hover:bg-background hover:text-amber-500`}
-                  >
-                    <Star className={`h-3.5 w-3.5 ${starred ? "fill-current" : ""}`} />
-                  </span>
-                </button>
-              );
-            })}
           </div>
         </div>
+
 
         {/* Workspace footer */}
         {user && (
