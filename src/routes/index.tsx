@@ -517,8 +517,16 @@ function Landing() {
               </div>
 
               <h1 className="mt-6 font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
-                From Idea to App in Days.
+                From Idea to{" "}
+                <span className="relative inline-block whitespace-nowrap">
+                  <span className="relative z-10">App in Days.</span>
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-0 bottom-[0.08em] z-0 h-[0.28em] rounded-full bg-primary/35"
+                  />
+                </span>
               </h1>
+
 
               <p className="mx-auto mt-5 max-w-xl text-balance text-base font-medium text-muted-foreground sm:text-xl md:text-2xl">
                 Describe what you want to build. Start free with trial credits — no card required.
