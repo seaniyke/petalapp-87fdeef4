@@ -58,10 +58,14 @@ function usesConsumer(content: string): boolean {
 }
 
 function hasProvider(content: string): boolean {
+  // Symbols coming from the TanStack compatibility shim are inert factories,
+  // not real router providers — they must not suppress <BrowserRouter>.
+  if (/from\s*["']@\/lib\/router-compat["']/.test(content)) return false;
   return PROVIDERS.some(
     (name) => new RegExp(`<${name}[\\s/>]`).test(content) || new RegExp(`(?<![\\w.$])${name}\\s*\\(`).test(content),
   );
 }
+
 
 function ensureBrowserRouterImport(content: string): string {
   if (/import[^;]*\bBrowserRouter\b[^;]*from/.test(content)) return content;
