@@ -31,7 +31,7 @@ type ShareTarget = {
   id: string;
   label: string;
   href: (url: string, text: string) => string;
-  icon: (props: { className?: string }) => JSX.Element;
+  icon: (props: { className?: string }) => React.ReactElement;
 };
 
 const SHARE_TARGETS: ShareTarget[] = [
