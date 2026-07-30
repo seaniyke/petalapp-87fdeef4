@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Zap } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { SiteHeader } from "@/components/SiteHeader";
 import { AccountHubGrid } from "@/components/AccountHubGrid";
 import { InviteFriendsCard } from "@/components/InviteFriendsCard";
@@ -31,6 +32,7 @@ function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [economyMode, setEconomyMode] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [cloudOpen, setCloudOpen] = useState(false);
   const [cloudPanelOpen, setCloudPanelOpen] = useState(false);
@@ -45,13 +47,14 @@ function ProfilePage() {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("display_name, avatar_url")
+        .select("display_name, avatar_url, economy_mode")
         .eq("id", user.id)
         .maybeSingle();
       if (cancelled) return;
       if (data) {
         setDisplayName(data.display_name ?? "");
         setAvatarUrl(data.avatar_url ?? "");
+        setEconomyMode(data.economy_mode ?? false);
       }
       setLoading(false);
     })();
@@ -71,6 +74,7 @@ function ProfilePage() {
         id: user.id,
         display_name: trimmedName || null,
         avatar_url: trimmedAvatar || null,
+        economy_mode: economyMode,
       },
       { onConflict: "id" },
     );
@@ -175,6 +179,26 @@ function ProfilePage() {
               placeholder="https://…"
               disabled={loading}
             />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="economy_mode" className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-primary" />
+                  Economy mode
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Route low-risk edits to cheaper models and stretch your credits.
+                </p>
+              </div>
+              <Switch
+                id="economy_mode"
+                checked={economyMode}
+                onCheckedChange={setEconomyMode}
+                disabled={loading}
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-2">

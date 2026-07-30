@@ -16,6 +16,13 @@ import {
 
 export type Provider = "lovable" | "openrouter";
 
+export type BudgetConfigRow = {
+  feature: AiFeature;
+  enabled: boolean;
+  allowedModels: string[];
+  shadowPct: number;
+};
+
 export type AiFeatureRow = {
   feature: AiFeature;
   effective: Provider;
@@ -24,6 +31,9 @@ export type AiFeatureRow = {
   model: string | null;
   fallbackModel: string | null;
   locked: boolean;
+  budgetEnabled: boolean;
+  budgetModels: string[] | null;
+  shadowPct: number | null;
 };
 
 export type AiCostRow = {
@@ -60,7 +70,7 @@ export async function listProviderSettings(): Promise<{
 }> {
   const { data, error } = await supabaseAdmin
     .from("ai_provider_settings")
-    .select("feature, provider, model, fallback_model");
+    .select("feature, provider, model, fallback_model, budget_enabled, budget_models, shadow_pct");
   if (error) throw new Error(error.message);
 
   type Row = {
@@ -68,6 +78,9 @@ export async function listProviderSettings(): Promise<{
     provider: string | null;
     model: string | null;
     fallback_model: string | null;
+    budget_enabled: boolean | null;
+    budget_models: string[] | null;
+    shadow_pct: number | null;
   };
   const overrides = new Map<string, Row>();
   for (const row of (data ?? []) as Row[]) {
@@ -90,6 +103,9 @@ export async function listProviderSettings(): Promise<{
       model: r?.model ?? null,
       fallbackModel: r?.fallback_model ?? null,
       locked: false,
+      budgetEnabled: r?.budget_enabled ?? true,
+      budgetModels: r?.budget_models ?? null,
+      shadowPct: r?.shadow_pct ?? null,
     };
   });
 
@@ -170,6 +186,67 @@ export async function setProviderSetting(
     if (error) throw new Error(error.message);
   }
 
+  invalidateProviderCache();
+}
+
+export async function getBudgetConfig(): Promise<{ rows: BudgetConfigRow[] }> {
+  const { data, error } = await supabaseAdmin
+    .from("ai_provider_settings")
+    .select("feature, budget_enabled, budget_models, shadow_pct");
+  if (error) throw new Error(error.message);
+
+  const rows: BudgetConfigRow[] = ALL_AI_FEATURES.map((feature) => {
+    const r = (data ?? []).find((x) => x.feature === feature);
+    return {
+      feature,
+      enabled: r?.budget_enabled ?? true,
+      allowedModels: r?.budget_models ?? [],
+      shadowPct: r?.shadow_pct ?? 0,
+    };
+  });
+  return { rows };
+}
+
+export type SetBudgetInput = {
+  feature: AiFeature;
+  enabled?: boolean;
+  models?: string[];
+  shadowPct?: number;
+};
+
+export async function setBudgetConfig(userId: string, input: SetBudgetInput): Promise<void> {
+  if (!ALL_AI_FEATURES.includes(input.feature)) {
+    throw new Error(`Unknown feature: ${input.feature}`);
+  }
+  const { data: existing } = await supabaseAdmin
+    .from("ai_provider_settings")
+    .select("feature, provider, model, fallback_model, budget_enabled, budget_models, shadow_pct")
+    .eq("feature", input.feature)
+    .maybeSingle();
+
+  const next = {
+    feature: input.feature,
+    provider: existing?.provider ?? "lovable",
+    model: existing?.model ?? null,
+    fallback_model: existing?.fallback_model ?? null,
+    budget_enabled:
+      input.enabled === undefined ? (existing?.budget_enabled ?? true) : input.enabled,
+    budget_models:
+      input.models === undefined
+        ? (existing?.budget_models ?? null)
+        : input.models.length > 0
+          ? input.models
+          : null,
+    shadow_pct:
+      input.shadowPct === undefined ? (existing?.shadow_pct ?? 0) : Math.max(0, input.shadowPct),
+    updated_at: new Date().toISOString(),
+    updated_by: userId,
+  };
+
+  const { error } = await supabaseAdmin.from("ai_provider_settings").upsert(next, {
+    onConflict: "feature",
+  });
+  if (error) throw new Error(error.message);
   invalidateProviderCache();
 }
 

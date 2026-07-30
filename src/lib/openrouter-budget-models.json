@@ -1,0 +1,62 @@
+[
+  {
+    "id": "qwen/qwen3.7-flash",
+    "name": "Qwen 3.7 Flash",
+    "context": 1000000,
+    "vision": true,
+    "tools": true,
+    "inputUsdPerM": 0.03,
+    "outputUsdPerM": 0.13,
+    "features": ["generate", "discuss", "triage", "coach", "memory", "preflight", "docs"]
+  },
+  {
+    "id": "openai/gpt-oss-20b",
+    "name": "GPT-OSS 20B",
+    "context": 131072,
+    "vision": false,
+    "tools": true,
+    "inputUsdPerM": 0.03,
+    "outputUsdPerM": 0.13,
+    "features": ["generate", "discuss", "triage", "coach", "memory", "preflight", "docs"]
+  },
+  {
+    "id": "meta-llama/llama-3.1-8b-instruct",
+    "name": "Llama 3.1 8B Instruct",
+    "context": 131072,
+    "vision": false,
+    "tools": true,
+    "inputUsdPerM": 0.05,
+    "outputUsdPerM": 0.08,
+    "features": ["discuss", "triage", "coach", "memory", "preflight", "docs"]
+  },
+  {
+    "id": "poolside/laguna-xs-2.1",
+    "name": "Poolside Laguna XS 2.1",
+    "context": 262144,
+    "vision": false,
+    "tools": true,
+    "inputUsdPerM": 0.06,
+    "outputUsdPerM": 0.12,
+    "features": ["generate", "discuss", "memory", "preflight", "docs"]
+  },
+  {
+    "id": "mistralai/mistral-nemo",
+    "name": "Mistral Nemo",
+    "context": 131072,
+    "vision": false,
+    "tools": true,
+    "inputUsdPerM": 0.02,
+    "outputUsdPerM": 0.03,
+    "features": ["discuss", "triage", "coach", "memory", "preflight", "docs"]
+  },
+  {
+    "id": "google/gemma-3-12b-it",
+    "name": "Gemma 3 12B IT",
+    "context": 131072,
+    "vision": true,
+    "tools": true,
+    "inputUsdPerM": 0.05,
+    "outputUsdPerM": 0.15,
+    "features": ["generate", "discuss", "triage", "coach", "memory", "preflight", "docs"]
+  }
+]

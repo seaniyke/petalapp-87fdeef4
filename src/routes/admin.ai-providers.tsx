@@ -23,6 +23,7 @@ import {
   ExternalLink,
   Save,
   RefreshCw,
+  Zap,
 } from "lucide-react";
 import { AdminTabs } from "@/components/AdminTabs";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -30,13 +31,18 @@ import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import type {
   AiFeatureRow,
   AiCostRow,
+  BudgetConfigRow,
   SetProviderInput,
+  SetBudgetInput,
 } from "@/server/ai-provider-admin.server";
 import type { AiFeature } from "@/server/ai-provider.server";
+import budgetCatalog from "@/lib/openrouter-budget-models.json";
 
 /**
  * Call the admin API with the user's Supabase access token. We use a plain
@@ -44,7 +50,7 @@ import type { AiFeature } from "@/server/ai-provider.server";
  * forward the Supabase bearer token — see `routes/api/admin/ai-providers.ts`.
  */
 async function callAdminApi<T>(
-  action: "list" | "set" | "costs" | "router-snapshot" | "router-config",
+  action: "list" | "set" | "costs" | "router-snapshot" | "router-config" | "budget-config" | "set-budget",
   payload: Record<string, unknown> = {},
 ): Promise<T> {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -150,9 +156,11 @@ function AiProvidersPage() {
   const { ready } = useAdminGuard("/admin/ai-providers");
 
   const [rows, setRows] = useState<AiFeatureRow[] | null>(null);
+  const [budgetRows, setBudgetRows] = useState<BudgetConfigRow[] | null>(null);
   const [openrouterReady, setOpenrouterReady] = useState(true);
   const [loading, setLoading] = useState(true);
   const [savingFeature, setSavingFeature] = useState<AiFeature | null>(null);
+  const [savingBudget, setSavingBudget] = useState<AiFeature | null>(null);
 
   const [costLoading, setCostLoading] = useState(false);
   const [costRows, setCostRows] = useState<AiCostRow[] | null>(null);
@@ -170,6 +178,8 @@ function AiProvidersPage() {
       }>("list");
       setRows(res.rows);
       setOpenrouterReady(res.openrouterKeyConfigured);
+      const budgetRes = await callAdminApi<{ rows: BudgetConfigRow[] }>("budget-config");
+      setBudgetRows(budgetRes.rows);
     } catch (e) {
       console.error(e);
       toast.error(e instanceof Error ? e.message : "Failed to load provider settings");
@@ -254,6 +264,26 @@ function AiProvidersPage() {
     }
   };
 
+  const onBudgetSave = async (
+    feature: AiFeature,
+    enabled: boolean,
+    models: string[],
+    shadowPct: number,
+  ) => {
+    setSavingBudget(feature);
+    try {
+      const input: SetBudgetInput = { feature, enabled, models, shadowPct };
+      await callAdminApi<{ ok: true }>("set-budget", { input });
+      toast.success(`${FEATURE_DETAILS[feature].label}: budget config saved`);
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingBudget(null);
+    }
+  };
+
   if (!ready) {
     return (
       <div className="min-h-screen bg-background">
@@ -297,6 +327,14 @@ function AiProvidersPage() {
 
         {/* Tier 4 — Smart router */}
         <SmartRouterCard />
+
+        {/* Budget tier routing */}
+        <BudgetModelsCard
+          rows={budgetRows}
+          featureRows={rows}
+          saving={savingBudget}
+          onSave={onBudgetSave}
+        />
 
         {/* OpenRouter status banner */}
         <Card
@@ -828,6 +866,236 @@ function SmartRouterCard() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function BudgetModelsCard({
+  rows,
+  featureRows,
+  saving,
+  onSave,
+}: {
+  rows: BudgetConfigRow[] | null;
+  featureRows: AiFeatureRow[] | null;
+  saving: AiFeature | null;
+  onSave: (feature: AiFeature, enabled: boolean, models: string[], shadowPct: number) => void;
+}) {
+  const [editing, setEditing] = useState<AiFeature | null>(null);
+  const [draftEnabled, setDraftEnabled] = useState<Record<AiFeature, boolean>>({} as Record<AiFeature, boolean>);
+  const [draftModels, setDraftModels] = useState<Record<AiFeature, string[]>>({} as Record<AiFeature, string[]>);
+  const [draftShadow, setDraftShadow] = useState<Record<AiFeature, number>>({} as Record<AiFeature, number>);
+
+  useEffect(() => {
+    if (!rows) return;
+    const enabled: Record<string, boolean> = {};
+    const models: Record<string, string[]> = {};
+    const shadow: Record<string, number> = {};
+    for (const r of rows) {
+      enabled[r.feature] = r.enabled;
+      models[r.feature] = r.allowedModels;
+      shadow[r.feature] = r.shadowPct;
+    }
+    setDraftEnabled(enabled as Record<AiFeature, boolean>);
+    setDraftModels(models as Record<AiFeature, string[]>);
+    setDraftShadow(shadow as Record<AiFeature, number>);
+  }, [rows]);
+
+  const features = rows?.map((r) => r.feature) ?? [];
+
+  return (
+    <Card className="mb-6 border-border/60">
+      <CardContent className="p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              <h2 className="font-display text-lg font-semibold">Budget-tier routing</h2>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Ultra-cheap OpenRouter models used when a user enables Economy mode.
+            </p>
+          </div>
+          <a
+            href="https://openrouter.ai/models"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+          >
+            OpenRouter models <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+
+        {!rows || !featureRows ? (
+          <div className="py-6 text-center text-sm text-muted-foreground">
+            <Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {features.map((feature) => {
+              const row = rows.find((r) => r.feature === feature)!;
+              const featureRow = featureRows.find((r) => r.feature === feature);
+              const isEditing = editing === feature;
+              const isSaving = saving === feature;
+              const enabled = draftEnabled[feature] ?? row.enabled;
+              const selected = draftModels[feature] ?? row.allowedModels;
+              const shadow = draftShadow[feature] ?? row.shadowPct;
+              const available = budgetCatalog.filter((m) => m.features.includes(feature));
+              const hasOpenRouter = featureRow?.effective === "openrouter";
+
+              return (
+                <div key={feature} className="rounded-md border border-border/60 p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {FEATURE_DETAILS[feature].label}
+                      </span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] ${
+                          enabled ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {enabled ? "ON" : "OFF"}
+                      </span>
+                      {!hasOpenRouter && enabled && (
+                        <span className="text-[10px] text-amber-500">needs OpenRouter provider</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isEditing ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditing(null)}
+                            disabled={isSaving}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              onSave(feature, enabled, selected, shadow);
+                              setEditing(null);
+                            }}
+                            disabled={isSaving}
+                          >
+                            {isSaving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                            Save
+                          </Button>
+                        </>
+                      ) : (
+                        <Button variant="outline" size="sm" onClick={() => setEditing(feature)}>
+                          Edit
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {isEditing ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id={`budget-${feature}`}
+                          checked={enabled}
+                          onCheckedChange={(v) =>
+                            setDraftEnabled((prev) => ({ ...prev, [feature]: v }))
+                          }
+                        />
+                        <Label htmlFor={`budget-${feature}`} className="text-sm">
+                          Enable budget routing for {FEATURE_DETAILS[feature].label}
+                        </Label>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-xs">Allowed budget models</Label>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {available.map((m) => {
+                            const active = selected.includes(m.id);
+                            return (
+                              <button
+                                key={m.id}
+                                onClick={() => {
+                                  setDraftModels((prev) => {
+                                    const current = prev[feature] ?? row.allowedModels;
+                                    const next = current.includes(m.id)
+                                      ? current.filter((id) => id !== m.id)
+                                      : [...current, m.id];
+                                    return { ...prev, [feature]: next };
+                                  });
+                                }}
+                                className={`flex items-center justify-between rounded-md border p-2 text-left text-xs transition ${
+                                  active
+                                    ? "border-primary bg-primary/5"
+                                    : "border-border/60 hover:bg-muted/30"
+                                }`}
+                              >
+                                <div>
+                                  <div className="font-medium">{m.name}</div>
+                                  <div className="mt-0.5 text-[10px] text-muted-foreground">
+                                    ${m.inputUsdPerM.toFixed(2)} in / ${m.outputUsdPerM.toFixed(2)} out per M
+                                  </div>
+                                </div>
+                                {active && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs">Shadow percentage</Label>
+                          <span className="text-xs font-medium">{shadow}%</span>
+                        </div>
+                        <Input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={5}
+                          value={shadow}
+                          onChange={(e) =>
+                            setDraftShadow((prev) => ({
+                              ...prev,
+                              [feature]: parseInt(e.target.value, 10),
+                            }))
+                          }
+                          className="w-full"
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          Percentage of eligible traffic to divert to budget models even without user economy mode (for
+                          testing).
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">
+                      {selected.length === 0 ? (
+                        "No budget models selected."
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {selected.map((id) => {
+                            const m = budgetCatalog.find((x) => x.id === id);
+                            return (
+                              <span
+                                key={id}
+                                className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-foreground"
+                              >
+                                {m?.name ?? id}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {shadow > 0 && <span className="ml-2">· shadow {shadow}%</span>}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>

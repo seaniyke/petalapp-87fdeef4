@@ -18,7 +18,10 @@ import {
   listProviderSettings,
   setProviderSetting,
   getCostSummary,
+  getBudgetConfig,
+  setBudgetConfig,
   type SetProviderInput,
+  type SetBudgetInput,
 } from "@/server/ai-provider-admin.server";
 import {
   getRouterSnapshot,
@@ -100,6 +103,18 @@ export const Route = createFileRoute("/api/admin/ai-providers")({
               const patch = (body.config ?? {}) as Partial<RouterConfig>;
               const next = await setRouterConfig(userId, patch);
               return Response.json({ ok: true, config: next });
+            }
+            case "budget-config": {
+              const config = await getBudgetConfig();
+              return Response.json(config);
+            }
+            case "set-budget": {
+              const input = body as unknown as { input: SetBudgetInput };
+              if (!input.input || typeof input.input !== "object") {
+                return Response.json({ error: "Missing input" }, { status: 400 });
+              }
+              await setBudgetConfig(userId, input.input);
+              return Response.json({ ok: true });
             }
             default:
               return Response.json({ error: "Unknown action" }, { status: 400 });
