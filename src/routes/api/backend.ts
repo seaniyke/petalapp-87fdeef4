@@ -186,7 +186,13 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
   const free = Number(wallet?.runtime_free_balance_cents ?? 0);
   const totalBalance = topup + free;
 
-  if (!PAID_PLAN_CODES.has(planCode)) {
+  // Full access = paid plan OR purchased (pay-as-you-go) credits remaining.
+  const topupCredits = Number(
+    (wallet as { topup_credits_remaining?: number } | null)?.topup_credits_remaining ?? 0,
+  );
+  const hasAccess = PAID_PLAN_CODES.has(planCode) || topupCredits > 0;
+  if (!hasAccess) {
+
     return new Response(
       JSON.stringify({
         error: "Backends are included with paid plans. Upgrade to add a backend.",
