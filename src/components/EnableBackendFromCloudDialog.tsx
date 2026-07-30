@@ -151,8 +151,6 @@ export function EnableBackendFromCloudDialog({
                   auto-pause after 7 days to save credits.
                 </p>
               </div>
-                </p>
-              </div>
 
               {!hasBalance && (
                 <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
