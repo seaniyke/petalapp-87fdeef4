@@ -2200,7 +2200,7 @@ Forbidden defaults
 
   const upstream = await aiChatCompletions({
     feature: "generate",
-    providerOverride,
+    budgetAware: true,
     body: {
       model,
       messages: finalMessages,
