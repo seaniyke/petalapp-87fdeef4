@@ -23,6 +23,7 @@ import { template as waitlistConfirmation } from './waitlist-confirmation'
 import { template as waitlistAnnouncement } from './waitlist-announcement'
 import { template as waitlistInvite } from './waitlist-invite'
 import { template as waitlistReferralMilestone } from './waitlist-referral-milestone'
+import { template as cryptoPaymentConfirmed } from './crypto-payment-confirmed'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'backend-renewal-reminder': backendRenewalReminder,
