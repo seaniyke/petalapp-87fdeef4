@@ -2759,6 +2759,120 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_app_records: {
+        Row: {
+          collection: string
+          created_at: string
+          data: Json
+          id: string
+          owner_key: string | null
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          collection: string
+          created_at?: string
+          data?: Json
+          id?: string
+          owner_key?: string | null
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          collection?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          owner_key?: string | null
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_app_records_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_app_users: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string
+          id: string
+          password_hash: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email: string
+          id?: string
+          password_hash: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          id?: string
+          password_hash?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_app_users_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_backends: {
+        Row: {
+          api_key: string
+          created_at: string
+          enabled_at: string
+          last_active_at: string
+          project_id: string
+          row_count: number
+          updated_at: string
+        }
+        Insert: {
+          api_key: string
+          created_at?: string
+          enabled_at?: string
+          last_active_at?: string
+          project_id: string
+          row_count?: number
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          created_at?: string
+          enabled_at?: string
+          last_active_at?: string
+          project_id?: string
+          row_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_backends_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stripe_events: {
         Row: {
           id: string

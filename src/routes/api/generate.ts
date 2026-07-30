@@ -17,7 +17,7 @@ import { applyScaffoldKit, applyScaffoldKitForPatch, STYLES_CSS } from "@/server
 import { getBuildTarget } from "@/lib/build-targets";
 import { inferWebSubtype, getWebSubtypeAddendum } from "@/lib/web-subtype";
 
-import { lookupBackendForGenerate } from "@/server/backend-connector.server";
+import { lookupBackendForGenerate, lookupSharedBackendForGenerate } from "@/server/backend-connector.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
 import {
   loadInstalledCodes,
@@ -1560,6 +1560,12 @@ Forbidden defaults
   // Look up the project's attached backend (BYO Supabase). When present,
   // we both inject the pre-configured client and tell the AI it exists.
   const backend = body.projectId ? await lookupBackendForGenerate(body.projectId) : null;
+  const sharedBackend =
+    !backend && body.projectId ? await lookupSharedBackendForGenerate(body.projectId) : null;
+
+  const sharedBackendBlock = sharedBackend
+    ? `\n\n### Backend (Petal Cloud, shared tier) is connected\nThis project has a FREE shared backend: a real database + user accounts, no SQL and no migrations. Use the pre-configured client — never call createClient, never import @supabase/supabase-js, never write SQL or emit a MIGRATION block.\n\nImports:\n- import { db, auth } from "@/integrations/backend/client"\n- import { useAuth, AuthProvider } from "@/integrations/backend/auth"\n\nData API (collections are created on first write):\n- await db.list<T>("tasks", { mine: true, limit: 50 }) -> { records }\n- await db.create("tasks", { title, done: false })\n- await db.update("tasks", id, { done: true })\n- await db.remove("tasks", id)\nEach record is { id, collection, user_id, data, created_at, updated_at } — your fields live under \`record.data\`.\n\nAuth: auth.signUp / auth.signIn / auth.signOut, or useAuth() for { user, loading }. Wrap the app once with <AuthProvider>.\nLimits: 5,000 rows and 25 collections. Never overwrite anything under src/integrations/backend/ — protected.\n`
+    : "";
 
   const backendBlock = backend
     ? `\n\n### Backend (auth + database + storage) is connected\nThe project has a backend. Use the pre-configured client — never call createClient yourself, never import from @supabase/supabase-js directly, never hard-code URLs or keys.\n\nImports:\n- import { supabase } from "@/integrations/backend/client"\n- import { useAuth, AuthProvider } from "@/integrations/backend/auth"\n- import { uploadFile, getPublicUrl } from "@/integrations/backend/storage"\n\nWrap the app once with <AuthProvider>. Never overwrite anything under src/integrations/backend/ — those files are protected.\n\nIf you need a new table, end your summary with a fenced sql block prefixed "MIGRATION:" — do not try to run it. The user runs migrations manually.\n`
@@ -2004,6 +2010,7 @@ Forbidden defaults
     capabilitiesBlock +
     multiEditBlock +
     backendBlock +
+    sharedBackendBlock +
     schemaBlock +
     integrationsBlock +
     knowledgeBlock +
@@ -2414,6 +2421,8 @@ Forbidden defaults
           // Also inject the backend kit when a backend is attached.
           nextFiles = applyScaffoldKit(parsed.files, {
             backend: backend ?? undefined,
+            sharedBackend: sharedBackend ?? undefined,
+            target: buildTarget.id,
           });
           // NOTE: Previously we called scaffoldRouteStubs() here to emit
           // TanStack `src/routes/*.tsx` files for routes the model didn't
@@ -2836,6 +2845,8 @@ Forbidden defaults
           // create + at build-trigger time.
           nextFiles = applyScaffoldKitForPatch(patched, {
             backend: backend ?? undefined,
+            sharedBackend: sharedBackend ?? undefined,
+            target: buildTarget.id,
           });
         }
         if (!nextFiles.some((f) => f.path === "index.html")) {

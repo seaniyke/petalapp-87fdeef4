@@ -16,6 +16,8 @@
  */
 import type { ProjectFile } from "./generate.server";
 import { backendKit, BACKEND_DEPS } from "./backend-kit";
+import { sharedBackendKit, type SharedBackendKitOpts } from "./shared-backend-kit";
+import { extensionKit } from "./scaffold-kit-extension";
 import { EXAMPLES_PACK } from "./examples-pack";
 import { EXAMPLES_PACK_2 } from "./examples-pack-2";
 import { PETAL_SOURCE_PLUGIN } from "./petal-source-plugin";
@@ -3993,7 +3995,11 @@ function mergePackageJson(
  */
 export function applyScaffoldKit(
   aiFiles: ProjectFile[],
-  opts?: { backend?: { url: string; anonKey: string } },
+  opts?: {
+    backend?: { url: string; anonKey: string };
+    sharedBackend?: SharedBackendKitOpts;
+    target?: string;
+  },
 ): ProjectFile[] {
   const map = new Map<string, string>();
   for (const f of aiFiles) map.set(f.path, f.content);
@@ -4016,6 +4022,14 @@ export function applyScaffoldKit(
       map.set(f.path, f.content);
     }
     extraDeps = BACKEND_DEPS;
+  } else if (opts?.sharedBackend) {
+    for (const f of sharedBackendKit(opts.sharedBackend)) map.set(f.path, f.content);
+  }
+
+  // Chrome extension target: add MV3 primitives the model shouldn't have to
+  // reproduce. Additive only — never clobber a popup/background the AI wrote.
+  if (opts?.target === "extension") {
+    for (const f of extensionKit()) if (!map.has(f.path)) map.set(f.path, f.content);
   }
 
   // Always fix package.json (merge deps + any backend deps).
@@ -4045,7 +4059,11 @@ function shouldOverwriteDuringPatch(path: string): boolean {
  */
 export function applyScaffoldKitForPatch(
   files: ProjectFile[],
-  opts?: { backend?: { url: string; anonKey: string } },
+  opts?: {
+    backend?: { url: string; anonKey: string };
+    sharedBackend?: SharedBackendKitOpts;
+    target?: string;
+  },
 ): ProjectFile[] {
   const map = new Map<string, string>();
   for (const f of files) map.set(f.path, f.content);
@@ -4063,6 +4081,14 @@ export function applyScaffoldKitForPatch(
       if (!map.has(f.path)) map.set(f.path, f.content);
     }
     extraDeps = BACKEND_DEPS;
+  } else if (opts?.sharedBackend) {
+    for (const f of sharedBackendKit(opts.sharedBackend)) map.set(f.path, f.content);
+  }
+
+  // Chrome extension target: add MV3 primitives the model shouldn't have to
+  // reproduce. Additive only — never clobber a popup/background the AI wrote.
+  if (opts?.target === "extension") {
+    for (const f of extensionKit()) if (!map.has(f.path)) map.set(f.path, f.content);
   }
 
   map.set("package.json", mergePackageJson(map.get("package.json"), extraDeps));
