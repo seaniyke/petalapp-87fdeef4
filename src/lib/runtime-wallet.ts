@@ -133,10 +133,13 @@ export async function fetchRuntimeUsageSplit(userId: string): Promise<RuntimeUsa
   let aiCents = 0;
   for (const r of data ?? []) {
     const amt = Math.abs(Number(r.delta_cents));
+    // AI meters are explicit; everything else (backend hours, domains, storage,
+    // egress, future meters) counts as Cloud so no spend goes unreported.
     if (r.meter === "app_ai" || r.meter === "image_gen") aiCents += amt;
-    else if (r.meter === "backend_hour" || r.meter === "domain") cloudCents += amt;
+    else cloudCents += amt;
   }
   return { cloudCents, aiCents };
+
 }
 
 /** Format USD cents as "$X.XX" / "$X" if whole dollar. */
