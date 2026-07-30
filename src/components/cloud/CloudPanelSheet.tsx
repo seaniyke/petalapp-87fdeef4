@@ -155,7 +155,12 @@ export function CloudPanelSheet({
             <NeedsProject view="secrets" />
           ))}
 
-        {view === "logs" && <CloudLogsView />}
+        {view === "logs" &&
+          (projectId ? (
+            <CloudLogsView projectId={projectId} />
+          ) : (
+            <NeedsProject view="logs" />
+          ))}
 
         {view === "advanced" &&
           (projectId ? (
