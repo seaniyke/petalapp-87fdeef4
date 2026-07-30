@@ -2254,6 +2254,59 @@ export type Database = {
           },
         ]
       }
+      project_git_links: {
+        Row: {
+          access_token: string
+          auto_sync: boolean
+          branch: string
+          created_at: string
+          id: string
+          last_commit_sha: string | null
+          last_error: string | null
+          last_synced_at: string | null
+          project_id: string
+          provider: string
+          repo_full_name: string
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          auto_sync?: boolean
+          branch?: string
+          created_at?: string
+          id?: string
+          last_commit_sha?: string | null
+          last_error?: string | null
+          last_synced_at?: string | null
+          project_id: string
+          provider?: string
+          repo_full_name: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          auto_sync?: boolean
+          branch?: string
+          created_at?: string
+          id?: string
+          last_commit_sha?: string | null
+          last_error?: string | null
+          last_synced_at?: string | null
+          project_id?: string
+          provider?: string
+          repo_full_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_git_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_integration_secrets: {
         Row: {
           ciphertext: string
