@@ -33,6 +33,8 @@ import {
   type ProjectRow,
   type ProjectBackend,
 } from "@/lib/projects";
+import { Search } from "lucide-react";
+import { WebsiteInfoSheet } from "@/components/WebsiteInfoSheet";
 import { DomainsSection } from "@/components/DomainsSection";
 import { EmailSection } from "@/components/EmailSection";
 // MobileAppPanel intentionally not imported — the legacy Codemagic + GitHub
@@ -109,6 +111,7 @@ export function ProjectSettingsSheet({
   const [cloudOpen, setCloudOpen] = useState(false);
   const [balanceOpen, setBalanceOpen] = useState(false);
   const [domainsOpen, setDomainsOpen] = useState(false);
+  const [seoOpen, setSeoOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -337,6 +340,14 @@ export function ProjectSettingsSheet({
       }}
     />
     <CloudBalanceSheet open={balanceOpen} onOpenChange={setBalanceOpen} />
+
+    {/* SEO & sharing — reuses the same editor the publish flow opens. */}
+    <WebsiteInfoSheet
+      open={seoOpen}
+      onOpenChange={setSeoOpen}
+      project={project}
+      onChange={onChange}
+    />
 
     {/* Dedicated Domains sheet — top-level entry, mirrors how Lovable
         surfaces Domains as its own settings page. */}
