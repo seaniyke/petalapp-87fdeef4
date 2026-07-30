@@ -107,6 +107,7 @@ import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public
 import { Route as ApiBillingSubscriptionStatusRouteImport } from './routes/api/billing/subscription/status'
 import { Route as ApiBillingSubscriptionManageLinkRouteImport } from './routes/api/billing/subscription/manage-link'
 import { Route as ApiBillingSubscriptionCancelRouteImport } from './routes/api/billing/subscription/cancel'
+import { Route as ApiBillingCryptoCheckRouteImport } from './routes/api/billing/crypto.check'
 
 const WaitlistRoute = WaitlistRouteImport.update({
   id: '/waitlist',
@@ -613,6 +614,11 @@ const ApiBillingSubscriptionCancelRoute =
     path: '/api/billing/subscription/cancel',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiBillingCryptoCheckRoute = ApiBillingCryptoCheckRouteImport.update({
+  id: '/check',
+  path: '/check',
+  getParentRoute: () => ApiBillingCryptoRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -672,7 +678,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
-  '/api/billing/crypto': typeof ApiBillingCryptoRoute
+  '/api/billing/crypto': typeof ApiBillingCryptoRouteWithChildren
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -691,6 +697,7 @@ export interface FileRoutesByFullPath {
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/billing/crypto/check': typeof ApiBillingCryptoCheckRoute
   '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
@@ -772,7 +779,7 @@ export interface FileRoutesByTo {
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
-  '/api/billing/crypto': typeof ApiBillingCryptoRoute
+  '/api/billing/crypto': typeof ApiBillingCryptoRouteWithChildren
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -791,6 +798,7 @@ export interface FileRoutesByTo {
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/billing/crypto/check': typeof ApiBillingCryptoCheckRoute
   '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
@@ -873,7 +881,7 @@ export interface FileRoutesById {
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
-  '/api/billing/crypto': typeof ApiBillingCryptoRoute
+  '/api/billing/crypto': typeof ApiBillingCryptoRouteWithChildren
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -892,6 +900,7 @@ export interface FileRoutesById {
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/billing/crypto/check': typeof ApiBillingCryptoCheckRoute
   '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
@@ -994,6 +1003,7 @@ export interface FileRouteTypes {
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
+    | '/api/billing/crypto/check'
     | '/api/billing/subscription/cancel'
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
@@ -1094,6 +1104,7 @@ export interface FileRouteTypes {
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
+    | '/api/billing/crypto/check'
     | '/api/billing/subscription/cancel'
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
@@ -1194,6 +1205,7 @@ export interface FileRouteTypes {
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
+    | '/api/billing/crypto/check'
     | '/api/billing/subscription/cancel'
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
@@ -1274,7 +1286,7 @@ export interface RootRouteChildren {
   ApiAdminCreditsRoute: typeof ApiAdminCreditsRoute
   ApiAdminDigestsRoute: typeof ApiAdminDigestsRoute
   ApiAdminPaystackPlansRoute: typeof ApiAdminPaystackPlansRoute
-  ApiBillingCryptoRoute: typeof ApiBillingCryptoRoute
+  ApiBillingCryptoRoute: typeof ApiBillingCryptoRouteWithChildren
   ApiBillingInitializeRoute: typeof ApiBillingInitializeRoute
   ApiBillingVerifyRoute: typeof ApiBillingVerifyRoute
   ApiBuildsCallbackRoute: typeof ApiBuildsCallbackRoute
@@ -2004,6 +2016,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBillingSubscriptionCancelRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/billing/crypto/check': {
+      id: '/api/billing/crypto/check'
+      path: '/check'
+      fullPath: '/api/billing/crypto/check'
+      preLoaderRoute: typeof ApiBillingCryptoCheckRouteImport
+      parentRoute: typeof ApiBillingCryptoRoute
+    }
   }
 }
 
@@ -2039,6 +2058,17 @@ const ApiDomainsRouteChildren: ApiDomainsRouteChildren = {
 const ApiDomainsRouteWithChildren = ApiDomainsRoute._addFileChildren(
   ApiDomainsRouteChildren,
 )
+
+interface ApiBillingCryptoRouteChildren {
+  ApiBillingCryptoCheckRoute: typeof ApiBillingCryptoCheckRoute
+}
+
+const ApiBillingCryptoRouteChildren: ApiBillingCryptoRouteChildren = {
+  ApiBillingCryptoCheckRoute: ApiBillingCryptoCheckRoute,
+}
+
+const ApiBillingCryptoRouteWithChildren =
+  ApiBillingCryptoRoute._addFileChildren(ApiBillingCryptoRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -2096,7 +2126,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminCreditsRoute: ApiAdminCreditsRoute,
   ApiAdminDigestsRoute: ApiAdminDigestsRoute,
   ApiAdminPaystackPlansRoute: ApiAdminPaystackPlansRoute,
-  ApiBillingCryptoRoute: ApiBillingCryptoRoute,
+  ApiBillingCryptoRoute: ApiBillingCryptoRouteWithChildren,
   ApiBillingInitializeRoute: ApiBillingInitializeRoute,
   ApiBillingVerifyRoute: ApiBillingVerifyRoute,
   ApiBuildsCallbackRoute: ApiBuildsCallbackRoute,
