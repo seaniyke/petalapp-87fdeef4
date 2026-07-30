@@ -238,6 +238,25 @@ export function ProjectSettingsSheet({
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </button>
 
+        {/* SEO & sharing — title, description, favicon and social image. */}
+        <button
+          type="button"
+          onClick={() => setSeoOpen(true)}
+          id="settings-seo"
+          className="mt-3 flex w-full scroll-mt-4 items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-left transition hover:border-primary/40 hover:bg-muted/60"
+        >
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background text-primary">
+            <Search className="h-4 w-4" />
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-medium">SEO &amp; sharing</div>
+            <div className="text-xs text-muted-foreground">
+              Title, description, favicon and the image links unfurl with.
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
+
         {/* Backend section */}
         <div id="settings-backend" className="scroll-mt-4">
           <BackendSection projectId={project.id} />
