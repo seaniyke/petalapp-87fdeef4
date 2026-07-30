@@ -31,6 +31,7 @@ import { stubMissingAssets } from "./asset-stubber.server";
 import { enforceRuntimeContracts } from "./runtime-contract.server";
 import { fixRouterImports } from "./router-imports.server";
 import { fixCssEscapes } from "./css-escape-fixer.server";
+import { repairBuildConfigImports } from "./build-config-repair.server";
 
 export interface RepairAllResult {
   files: ProjectFile[];
@@ -41,6 +42,13 @@ export interface RepairAllResult {
 export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   let files = input;
   const notes: string[] = [];
+
+  // 0. Build-config import repair. Config files are deliberately excluded
+  // from model edits and bare-import stripping, so deterministic healing is
+  // the only safe path for legacy corruption such as `path is not defined`.
+  const buildConfig = repairBuildConfigImports(files);
+  files = buildConfig.files;
+  notes.push(...buildConfig.notes);
 
   // 1. Extension normalizer — must run FIRST so case-insensitive path
   //    matching in the import-resolver sees the post-rename layout.
