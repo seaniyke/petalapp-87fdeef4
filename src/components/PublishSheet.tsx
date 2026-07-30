@@ -31,6 +31,13 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+import {
   Globe,
   Lock,
   Copy,
