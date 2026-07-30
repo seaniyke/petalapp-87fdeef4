@@ -1154,6 +1154,65 @@ export const Route = createFileRoute("/api/admin/credits")({
             return Response.json({ announcements: data ?? [] });
           }
 
+          // ----- CLOUD COSTS -----
+          if (body.action === "cloud_cost") {
+            const { data: backends, error: backendsErr } = await supabaseAdmin
+              .from("project_backends")
+              .select(
+                "project_id, provider, status, supabase_project_ref, paused_at, created_at",
+              )
+              .eq("provider", "managed_petal");
+            if (backendsErr) return Response.json({ error: backendsErr.message }, { status: 500 });
+
+            const { data: projects, error: projectsErr } = await supabaseAdmin
+              .from("projects")
+              .select("id, backend_type, owner_id, title");
+            if (projectsErr) return Response.json({ error: projectsErr.message }, { status: 500 });
+
+            const rows = backends ?? [];
+            const byStatus: Record<string, number> = { ready: 0, provisioning: 0, paused: 0, failed: 0 };
+            for (const b of rows) {
+              const s = (b as { status: string }).status;
+              byStatus[s] = (byStatus[s] ?? 0) + 1;
+            }
+
+            const byType: Record<string, number> = { dedicated: 0, shared: 0 };
+            const backendTypeMap = new Map<string, string>();
+            for (const p of (projects ?? []) as unknown as Array<{ id: string; backend_type: string }>) {
+              const t = p.backend_type || "shared";
+              byType[t] = (byType[t] ?? 0) + 1;
+              backendTypeMap.set(p.id, t);
+            }
+
+            const dedicatedReady = rows.filter(
+              (b) => (b as { status: string }).status === "ready" && backendTypeMap.get((b as { project_id: string }).project_id) === "dedicated",
+            ).length;
+
+            const pausedSince = new Date(Date.now() - 30 * 86_400_000).toISOString();
+            const recentlyPaused = rows.filter(
+              (b) => (b as { status: string }).status === "paused" && (b as { paused_at?: string | null }).paused_at && (b as { paused_at: string }).paused_at > pausedSince,
+            ).length;
+
+            const recentlyHibernated = rows.filter(
+              (b) =>
+                (b as { status: string }).status === "paused" &&
+                (b as { paused_at?: string | null }).paused_at &&
+                (b as { paused_at: string }).paused_at > pausedSince,
+            ).length;
+
+            return Response.json({
+              total_backends: rows.length,
+              by_status: byStatus,
+              by_type: byType,
+              dedicated_ready: dedicatedReady,
+              recently_paused: recentlyPaused,
+              recently_hibernated: recentlyHibernated,
+              projects_with_backends: Array.from(new Set(rows.map((b) => (b as { project_id: string }).project_id))).length,
+              // Free Supabase projects are zero direct cost, but each dedicated backend is a project that can be paused to save quota.
+              estimated_active_supabase_projects: dedicatedReady,
+            });
+          }
+
           // ----- CRYPTO PAYMENTS -----
           if (body.action === "crypto_payments") {
             const status = String(body.status ?? "pending");
