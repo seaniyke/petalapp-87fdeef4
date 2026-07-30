@@ -64,15 +64,12 @@ export function WholeStackSection() {
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-xs font-bold uppercase tracking-[0.28em] text-primary">No, seriously</p>
           <h2 className="mt-3 font-display text-4xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
-            Everyone thinks it's
+            From Idea to App
             <br />
-            <span className="italic text-muted-foreground line-through decoration-primary decoration-4">
-              just the frontend
-            </span>
+            <span className="italic text-primary">in Days</span>
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-lg font-medium text-muted-foreground">
-            It never is. Here's the whole stack Petal handles for you — the twelve things that usually turn a weekend
-            idea into a six-month project.
+            Describe what you want to build. Start free with trial credits — no card required.
           </p>
         </div>
 
