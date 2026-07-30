@@ -51,7 +51,11 @@ type BackendAction =
   | "provision-status"
   | "provision-retry"
   | "managed-credentials"
-  | "enable-managed";
+  | "enable-managed"
+  | "enable-shared"
+  | "shared-status"
+  | "disable-shared";
+
 
 async function backendApi<T>(action: BackendAction, body: unknown): Promise<T> {
   const { data: sess } = await supabase.auth.getSession();
