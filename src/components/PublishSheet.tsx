@@ -819,15 +819,38 @@ export function PublishSheet({
             {cta.label}
           </button>
         </div>
-      </DrawerContent>
-    </Drawer>
-    <WebsiteInfoSheet
-      open={websiteInfoOpen}
-      onOpenChange={setWebsiteInfoOpen}
-      project={project}
-      onChange={onChange}
-    />
     </>
+  );
+
+  return (
+    <>
+      {isMobile === false ? (
+        // Desktop: a compact panel anchored under the Publish button, like
+        // Lovable's popover — never a full-height drawer.
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent
+            className="left-auto right-4 top-16 max-h-[min(78vh,640px)] w-[380px] max-w-[calc(100vw-2rem)] translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-2xl p-4 text-[13px] shadow-xl data-[state=closed]:slide-out-to-left-0 data-[state=closed]:slide-out-to-top-0 data-[state=open]:slide-in-from-left-0 data-[state=open]:slide-in-from-top-2 sm:max-w-[380px] sm:rounded-2xl"
+          >
+            <DialogTitle className="sr-only">Publish</DialogTitle>
+            {content}
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <Drawer open={open} onOpenChange={onOpenChange}>
+          <DrawerContent className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <DrawerTitle className="sr-only">Publish</DrawerTitle>
+            {content}
+          </DrawerContent>
+        </Drawer>
+      )}
+      <WebsiteInfoSheet
+        open={websiteInfoOpen}
+        onOpenChange={setWebsiteInfoOpen}
+        project={project}
+        onChange={onChange}
+      />
+    </>
+
   );
 }
 
