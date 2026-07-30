@@ -42,6 +42,16 @@ import {
 
 const SCANNABLE = /\.(tsx?|jsx?)$/;
 
+/**
+ * Build-tooling configs are scaffold-owned and run in Node, not in the browser
+ * bundle. They must never be touched by the import stripper.
+ */
+const CONFIG_FILES = /(^|\/)(vite|vitest|tailwind|postcss|eslint)\.config\.[cm]?[jt]s$/;
+function isBuildConfig(p: string): boolean {
+  return CONFIG_FILES.test(p) || p === "petal-source-plugin.mjs";
+}
+
+
 // Captures `import { a, b as c } from "spec"` and `import D, { a } from "spec"`
 // and `import "spec"`. We work on the matched substring; the regex is
 // anchored to a line start (with optional leading whitespace) to avoid
