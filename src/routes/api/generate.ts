@@ -470,6 +470,20 @@ async function authorize(request: Request): Promise<string | Response> {
   return data.claims.sub;
 }
 
+async function loadEconomyMode(userId: string): Promise<boolean> {
+  try {
+    const { data } = await supabaseAdmin
+      .from("profiles")
+      .select("economy_mode")
+      .eq("id", userId)
+      .maybeSingle();
+    return data?.economy_mode ?? false;
+  } catch (e) {
+    console.warn("[generate] failed to load economy_mode", e);
+    return false;
+  }
+}
+
 type ParsedTool = {
   name: "write_project" | "patch_files" | null;
   args: string;
@@ -1313,6 +1327,8 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   if (authResult instanceof Response) return authResult;
   const userId = authResult;
 
+  const economyMode = await loadEconomyMode(userId);
+
   // P0-4: app-level abuse protection. Runs BEFORE the credit floor check
   // so rate-limited requests never charge the wallet.
   const rl = checkGenerateRateLimit(userId);
@@ -2087,7 +2103,7 @@ Forbidden defaults
   // hard reasoning to the strong one. Regex-only when unambiguous;
   // sub-50ms AI fallback otherwise.
   const phaseTag = await classifyPhase(lastUserContent);
-  const tier = modelTierForPhase(phaseTag.phase);
+  const tier = modelTierForPhase(phaseTag.phase, economyMode, phaseTag.confidence);
 
   // Smart model routing (Phase 4). Default to "smart". Vision turns
   // ALWAYS go to a vision-capable model regardless of preset.
@@ -2184,6 +2200,7 @@ Forbidden defaults
 
   const upstream = await aiChatCompletions({
     feature: "generate",
+    providerOverride,
     body: {
       model,
       messages: finalMessages,

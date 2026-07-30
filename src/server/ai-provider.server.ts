@@ -1,3 +1,5 @@
+import rawBudgetModelCatalog from "@/lib/openrouter-budget-models.json";
+
 /**
  * AI provider abstraction.
  *
@@ -43,12 +45,70 @@ function featureOverrideEnv(feature: AiFeature): string {
   return `AI_PROVIDER_${feature.toUpperCase()}`;
 }
 
-// ---------------- DB override cache ----------------
+export interface BudgetModel {
+  id: string;
+  name: string;
+  context: number;
+  vision: boolean;
+  tools: boolean;
+  inputUsdPerM: number;
+  outputUsdPerM: number;
+  features: AiFeature[];
+}
+
+export const BUDGET_MODELS: BudgetModel[] = rawBudgetModelCatalog as BudgetModel[];
+
+/** Which budget models are eligible for a given feature. */
+export function getBudgetModelsForFeature(feature: AiFeature): BudgetModel[] {
+  return BUDGET_MODELS.filter((m) => m.features.includes(feature));
+}
+
+/** Default budget pick per feature; prefers the first model that supports the feature. */
+export function defaultBudgetModelForFeature(feature: AiFeature): string | undefined {
+  return getBudgetModelsForFeature(feature)[0]?.id;
+}
+
+function isVisionHeavy(messages: unknown[]): boolean {
+  if (!Array.isArray(messages)) return false;
+  return messages.some((m) => {
+    if (typeof m !== "object" || m === null) return false;
+    const content = (m as { content?: unknown }).content;
+    if (!Array.isArray(content)) return false;
+    return content.some(
+      (c) =>
+        typeof c === "object" &&
+        c !== null &&
+        (c as { type?: string }).type === "image_url",
+    );
+  });
+}
+
+function pickBudgetModelForFeature(
+  feature: AiFeature,
+  messages: unknown[],
+  allowed?: string[] | null,
+): string | undefined {
+  const candidates = allowed && allowed.length > 0
+    ? BUDGET_MODELS.filter((m) => allowed.includes(m.id))
+    : getBudgetModelsForFeature(feature);
+  if (candidates.length === 0) return undefined;
+  const needsVision = isVisionHeavy(messages);
+  // Prefer vision-capable budget models when the request has images.
+  const visionFirst = [...candidates].sort((a, b) => {
+    const aOk = a.vision === needsVision || a.vision;
+    const bOk = b.vision === needsVision || b.vision;
+    return Number(bOk) - Number(aOk);
+  });
+  return visionFirst[0]?.id;
+}
 
 type FeatureSettings = {
   provider: Provider | null;
   model: string | null;
   fallback_model: string | null;
+  budget_enabled: boolean | null;
+  budget_models: string[] | null;
+  shadow_pct: number | null;
 };
 
 const CACHE_TTL_MS = 30_000;
@@ -68,13 +128,16 @@ async function loadDbSettings(): Promise<Map<string, FeatureSettings>> {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data } = await supabaseAdmin
         .from("ai_provider_settings")
-        .select("feature, provider, model, fallback_model");
+        .select("feature, provider, model, fallback_model, budget_enabled, budget_models, shadow_pct");
       const map = new Map<string, FeatureSettings>();
       for (const row of (data ?? []) as Array<{
         feature: string;
         provider: string | null;
         model: string | null;
         fallback_model: string | null;
+        budget_enabled: boolean | null;
+        budget_models: string[] | null;
+        shadow_pct: number | null;
       }>) {
         map.set(row.feature, {
           provider:
@@ -83,6 +146,9 @@ async function loadDbSettings(): Promise<Map<string, FeatureSettings>> {
               : null,
           model: row.model || null,
           fallback_model: row.fallback_model || null,
+          budget_enabled: row.budget_enabled ?? null,
+          budget_models: row.budget_models ?? null,
+          shadow_pct: row.shadow_pct ?? null,
         });
       }
       cachedSettings = map;
@@ -124,6 +190,67 @@ async function resolveProvider(feature: AiFeature): Promise<Provider> {
 export async function getProviderForFeature(feature: AiFeature): Promise<Provider> {
   return resolveProvider(feature);
 }
+
+/** Load a user's economy-mode preference from their profile. */
+export async function getUserEconomyMode(userId: string): Promise<boolean> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select("economy_mode")
+      .eq("id", userId)
+      .single();
+    if (error || !data) return false;
+    return data.economy_mode ?? false;
+  } catch (err) {
+    console.warn("[economy] failed to load user economy mode:", err);
+    return false;
+  }
+}
+
+export interface BudgetConfig {
+  enabled: boolean;
+  allowedModels: string[];
+  shadowPct: number;
+  defaultModel: string | undefined;
+}
+
+export async function getBudgetConfigForFeature(feature: AiFeature): Promise<BudgetConfig> {
+  const settings = await loadDbSettings();
+  const s = settings.get(feature);
+  const enabled = s?.budget_enabled ?? true;
+  const allowedModels = s?.budget_models && s.budget_models.length > 0
+    ? s.budget_models
+    : getBudgetModelsForFeature(feature).map((m) => m.id);
+  const shadowPct = s?.shadow_pct ?? 0;
+  return {
+    enabled,
+    allowedModels,
+    shadowPct,
+    defaultModel: defaultBudgetModelForFeature(feature),
+  };
+}
+
+/** Pick a budget model for a request if the feature allows it. */
+export async function resolveBudgetModel(
+  feature: AiFeature,
+  messages: unknown[],
+): Promise<string | undefined> {
+  const cfg = await getBudgetConfigForFeature(feature);
+  if (!cfg.enabled || cfg.allowedModels.length === 0) return undefined;
+  return pickBudgetModelForFeature(feature, messages, cfg.allowedModels);
+}
+
+/** Decide whether to shadow-route to budget models for A/B testing. */
+export async function shouldShadowBudget(feature: AiFeature): Promise<boolean> {
+  const cfg = await getBudgetConfigForFeature(feature);
+  if (!cfg.enabled || cfg.allowedModels.length === 0) return false;
+  if (cfg.shadowPct <= 0) return false;
+  if (cfg.shadowPct >= 100) return true;
+  const roll = Math.random() * 100;
+  return roll < cfg.shadowPct;
+}
+
 
 async function resolveModelOverride(
   feature: AiFeature,
@@ -194,6 +321,13 @@ const MODEL_PRICE_PER_M_TOKENS: Array<{ match: RegExp; inUsd: number; outUsd: nu
   { match: /gemini-(2\.5|3\.?\d?)-flash-lite/i, inUsd: 0.1, outUsd: 0.4 },
   { match: /gemini-(2\.5|3\.?\d?)-flash/i, inUsd: 0.3, outUsd: 1.2 },
   { match: /deepseek/i, inUsd: 0.3, outUsd: 1.2 },
+  // Budget-tier OpenRouter models (as of mid-2026, used when economy mode is on).
+  { match: /qwen\/qwen3\.7-flash/i, inUsd: 0.03, outUsd: 0.13 },
+  { match: /openai\/gpt-oss-20b/i, inUsd: 0.03, outUsd: 0.13 },
+  { match: /meta-llama\/llama-3\.1-8b-instruct/i, inUsd: 0.05, outUsd: 0.08 },
+  { match: /poolside\/laguna-xs-2\.1/i, inUsd: 0.06, outUsd: 0.12 },
+  { match: /mistralai\/mistral-nemo/i, inUsd: 0.02, outUsd: 0.03 },
+  { match: /google\/gemma-3-12b-it/i, inUsd: 0.05, outUsd: 0.15 },
 ];
 
 function estimateCostUsdMicro(
@@ -405,8 +539,16 @@ export interface AiCallOptions {
   body: Record<string, unknown>;
   signal?: AbortSignal;
   meta?: AiCallMeta;
+  /**
+   * When true, this call may be routed to an ultra-cheap budget model via
+   * OpenRouter if the user has economy mode enabled or if admin shadow testing
+   * is active. Callers should opt in for non-critical, low-risk features.
+   */
+  budgetAware?: boolean;
   /** Optional timeout-tier override. Inferred from `body.stream` when omitted. */
   timeoutTier?: AiCallTimeoutTier;
+  /** Force a specific provider regardless of the per-feature DB setting. */
+  providerOverride?: Provider;
 }
 
 /**
@@ -419,12 +561,47 @@ export interface AiCallOptions {
  * change — we only inspect the response *status* before deciding to retry.
  */
 export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> {
-  const provider = await resolveProvider(opts.feature);
+  // Economy mode / shadow budget routing: cheapen eligible features for users
+  // who opted in or for the admin-configured shadow percentage.
+  let budgetProviderOverride = opts.providerOverride;
+  let budgetModelOverride: string | undefined;
+  if (
+    opts.budgetAware &&
+    opts.meta?.userId &&
+    opts.feature !== "image" &&
+    opts.feature !== "recovery"
+  ) {
+    try {
+      const [economy, cfg, shadow] = await Promise.all([
+        getUserEconomyMode(opts.meta.userId),
+        getBudgetConfigForFeature(opts.feature),
+        shouldShadowBudget(opts.feature),
+      ]);
+      if (cfg.enabled && cfg.allowedModels.length > 0 && (economy || shadow)) {
+        const picked = await pickBudgetModelForFeature(
+          opts.feature,
+          (opts.body.messages as unknown[] | undefined) ?? [],
+          cfg.allowedModels,
+        );
+        if (picked) {
+          budgetModelOverride = picked;
+          budgetProviderOverride = "openrouter";
+        }
+      }
+    } catch (err) {
+      // Budget routing is best-effort; never block a request because the
+      // economy check failed.
+      console.warn("[budget] routing failed, using default model:", err);
+    }
+  }
+
+  const provider = budgetProviderOverride ?? (await resolveProvider(opts.feature));
   const { model: dbModel, fallback } = await resolveModelOverride(opts.feature);
 
   // DB model wins over caller-supplied model (operator overrides have priority).
+  // Budget model wins over DB model because it is a per-user cost preference.
   const callerModel = (opts.body.model as string | undefined) ?? undefined;
-  let primaryModel = dbModel || callerModel || null;
+  let primaryModel = budgetModelOverride || dbModel || callerModel || null;
 
   // Kill-switch: if the primary model is currently cooling off because of a
   // high `no_edit_emitted` rate, swap it for the configured fallback BEFORE
@@ -447,6 +624,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     primaryModel && primaryModel !== callerModel
       ? { ...opts.body, model: primaryModel }
       : opts.body;
+
 
   const t0 = Date.now();
   const primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);

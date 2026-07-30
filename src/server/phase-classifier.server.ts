@@ -19,6 +19,8 @@ import { aiChatCompletions } from "@/server/ai-provider.server";
 
 export type Phase = "implement" | "debug" | "refactor" | "plan" | "docs";
 
+export type ModelTier = "cheap" | "smart" | "budget";
+
 export interface PhaseTag {
   phase: Phase;
   confidence: "low" | "medium" | "high";
@@ -125,18 +127,25 @@ export async function classifyPhase(prompt: string): Promise<PhaseTag> {
 
 /**
  * Map a phase to a model preference. The caller still gets to override
- * (e.g. vision turns force a vision model). "cheap" = fast/cheap,
- * "smart" = strong reasoning.
+ * (e.g. vision turns force a vision model). "cheap" = fast/cheap Lovable-AI
+ * models, "smart" = strong reasoning models, "budget" = ultra-cheap OpenRouter
+ * models (used when a user enables economy mode).
  *
- * Tuning note (2026-05-04): `implement` was previously "cheap" which sent
- * almost every build through the flash model. That trades depth for speed
- * and the verifier pass-rate slipped to ~66%. We now route `implement` to
- * "smart" too — the smart router still falls back to fast when telemetry
- * shows fast wins, but the *default* errs on the side of doing the work
- * properly the first time (fewer auto-fix loops = fewer credits net).
- * Only `docs` stays cheap because it's mostly prose.
+ * Tuning note (2026-07-30): Economy mode pushes low-risk phases (`docs`, low-
+ * confidence `implement`) to the budget tier so users can stretch their credits.
+ * High-stakes phases (debug, refactor, plan) stay on strong models to avoid
+ * expensive auto-fix loops.
  */
-export function modelTierForPhase(phase: Phase): "cheap" | "smart" {
+export function modelTierForPhase(
+  phase: Phase,
+  economyMode: boolean = false,
+  confidence: "low" | "medium" | "high" = "medium",
+): ModelTier {
+  if (economyMode) {
+    if (phase === "docs") return "budget";
+    if (phase === "implement" && confidence === "low") return "budget";
+    return "smart";
+  }
   switch (phase) {
     case "docs":
       return "cheap";

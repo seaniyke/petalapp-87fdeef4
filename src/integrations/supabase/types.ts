@@ -159,26 +159,35 @@ export type Database = {
       }
       ai_provider_settings: {
         Row: {
+          budget_enabled: boolean | null
+          budget_models: string[] | null
           fallback_model: string | null
           feature: string
           model: string | null
           provider: string
+          shadow_pct: number | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          budget_enabled?: boolean | null
+          budget_models?: string[] | null
           fallback_model?: string | null
           feature: string
           model?: string | null
           provider: string
+          shadow_pct?: number | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          budget_enabled?: boolean | null
+          budget_models?: string[] | null
           fallback_model?: string | null
           feature?: string
           model?: string | null
           provider?: string
+          shadow_pct?: number | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -1933,6 +1942,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string | null
+          economy_mode: boolean | null
           id: string
           updated_at: string
         }
@@ -1940,6 +1950,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          economy_mode?: boolean | null
           id: string
           updated_at?: string
         }
@@ -1947,6 +1958,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          economy_mode?: boolean | null
           id?: string
           updated_at?: string
         }
