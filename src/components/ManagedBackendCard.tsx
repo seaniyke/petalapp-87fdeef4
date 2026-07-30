@@ -271,7 +271,6 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
 
   /* ---------------- Paused ---------------- */
   if (phase === "paused") {
-    const isHibernated = backend?.errorMessage?.toLowerCase().includes("inactivity");
     return (
       <>
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
