@@ -1077,6 +1077,9 @@ function Landing() {
             </div>
           </section>
 
+          <WholeStackSection />
+
+
           {/* Community showcase — replaces the old mobile hero (now lives on /features/mobile) */}
           <section id="community" className="relative overflow-hidden px-4 py-24 sm:px-6 sm:py-32">
             <div
