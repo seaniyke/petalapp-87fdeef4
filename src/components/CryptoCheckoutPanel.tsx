@@ -55,6 +55,65 @@ export function CryptoCheckoutPanel({
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tracked, setTracked] = useState<Tracked | null>(null);
+  const trackedRef = useRef<Tracked | null>(null);
+  trackedRef.current = tracked;
+
+  // Live status: realtime on the row plus a polled on-demand explorer check,
+  // so the user sees pending → confirmed without touching anything.
+  useEffect(() => {
+    const id = tracked?.id;
+    if (!id) return;
+    if (tracked.status !== "pending") return;
+    let cancelled = false;
+
+    const apply = (row: Record<string, unknown>) => {
+      if (cancelled) return;
+      setTracked({
+        id,
+        status: (row.status as TrackedStatus) ?? "pending",
+        confirmations: row.confirmations == null ? null : Number(row.confirmations),
+        note: (row.verify_note as string) ?? (row.admin_note as string) ?? null,
+      });
+    };
+
+    const channel = supabase
+      .channel(`crypto-pay:${id}:${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "crypto_payments", filter: `id=eq.${id}` },
+        (payload) => apply(payload.new as Record<string, unknown>),
+      )
+      .subscribe();
+
+    const check = async () => {
+      if (cancelled || trackedRef.current?.status !== "pending") return;
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return;
+      const res = await fetch("/api/billing/crypto/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ paymentId: id }),
+      });
+      if (!res.ok) return;
+      const json = (await res.json().catch(() => ({}))) as {
+        payment?: Record<string, unknown>;
+      };
+      if (json.payment) apply(json.payment);
+    };
+
+    void check();
+    const timer = setInterval(check, 20_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      clearInterval(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [tracked?.id, tracked?.status]);
+
+
 
   if (!wallet) {
     return (
