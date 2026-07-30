@@ -72,6 +72,8 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
   const [currency, setCurrency] = useState<string>("USD");
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [selectedPackCode, setSelectedPackCode] = useState<string | null>(null);
+  const [selectedPlanCode, setSelectedPlanCode] = useState<string | null>(null);
+
   const [subStatus, setSubStatus] = useState<{
     hasPaystackSubscription: boolean;
     cancelAtPeriodEnd: boolean;
@@ -186,6 +188,8 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
 
   const paid = useMemo(() => plans.filter((p) => p.code !== "free"), [plans]);
   const currentPlanCode = wallet?.plan_code ?? "free";
+  const activePlanCode = selectedPlanCode ?? paid[0]?.code ?? null;
+
   // Pay-as-you-go: free-plan user whose purchased credits unlock paid features.
   const payAsYouGo =
     currentPlanCode === "free" && Number(wallet?.topup_credits_remaining ?? 0) > 0;
@@ -493,43 +497,121 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
 
           <Separator />
 
-          {/* 5. Plan picker */}
-          <section ref={plansRef} className="scroll-mt-4">
-            <h3 className="mb-3 text-sm font-semibold">Choose a plan</h3>
-            <div className="space-y-3">
-              {paid.map((p) => {
-                const isCurrent = p.code === currentPlanCode;
-                const conv = activeCurrency
-                  ? convertPrice({
-                      itemKind: "plan",
-                      itemCode: p.code,
-                      usdCents: p.price_cents,
-                      currency,
-                      currencies,
-                      overrides,
-                    })
-                  : null;
-                const busy = busyKey === `plan:${p.code}`;
-                return (
-                  <PlanCard
-                    key={p.code}
-                    plan={p}
-                    priceLabel={
-                      conv && activeCurrency
-                        ? formatMoney(conv.amountMinor, activeCurrency)
-                        : `$${(p.price_cents / 100).toFixed(0)}`
-                    }
-                    isLocalPrice={conv?.source === "override"}
-                    isCurrent={isCurrent && !expired}
-                    isRenew={isCurrent && expired}
-                    busy={busy}
-                    disabled={!user || busy}
-                    onClick={() => startCheckout("plan", p.code)}
-                  />
-
-                );
-              })}
+          {/* 5. Top-up packs — pay as you go comes first */}
+          <section ref={topupRef} className="scroll-mt-4">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold">Top up credits</h3>
+              <p className="text-xs text-muted-foreground">
+                Pay as you go — buy credits once, no subscription needed. Your paid
+                features stay unlocked while you have credits. Credits expire 12
+                months after purchase.
+              </p>
             </div>
+
+            <TopupPicker
+              packs={packs}
+              selectedCode={selectedPackCode}
+              onSelect={setSelectedPackCode}
+              activeCurrency={activeCurrency}
+              currency={currency}
+              currencies={currencies}
+              overrides={overrides}
+              busyKey={busyKey}
+              disabled={!user}
+              onBuy={(code) => startCheckout("pack", code)}
+            />
+
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => setCryptoPackOpen((v) => !v)}
+                className="text-xs font-semibold text-foreground underline underline-offset-2 hover:text-primary"
+              >
+                {cryptoPackOpen ? "Hide crypto payment" : "Pay for credits with crypto →"}
+              </button>
+              {cryptoPackOpen &&
+                (() => {
+                  const pack = packs.find((x) => x.code === selectedPackCode) ?? packs[0];
+                  if (!pack) return null;
+                  return (
+                    <div className="mt-3">
+                      <CryptoCheckoutPanel
+                        purpose="pack"
+                        itemCode={pack.code}
+                        itemLabel={`${pack.credits.toLocaleString()} credits`}
+                        usdCents={pack.price_cents}
+                      />
+                    </div>
+                  );
+                })()}
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* 6. Plan picker — one selector, one card */}
+          <section ref={plansRef} className="scroll-mt-4">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold">Or subscribe monthly</h3>
+              <p className="text-xs text-muted-foreground">
+                Pick a plan for monthly credits that refill automatically.
+              </p>
+            </div>
+
+            {paid.length > 1 && (
+              <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
+                {paid.map((p) => {
+                  const active = p.code === activePlanCode;
+                  return (
+                    <button
+                      key={p.code}
+                      type="button"
+                      onClick={() => setSelectedPlanCode(p.code)}
+                      className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                        active
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {p.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {(() => {
+              const p = paid.find((x) => x.code === activePlanCode) ?? paid[0];
+              if (!p) return null;
+              const isCurrent = p.code === currentPlanCode;
+              const conv = activeCurrency
+                ? convertPrice({
+                    itemKind: "plan",
+                    itemCode: p.code,
+                    usdCents: p.price_cents,
+                    currency,
+                    currencies,
+                    overrides,
+                  })
+                : null;
+              return (
+                <PlanCard
+                  plan={p}
+                  priceLabel={
+                    conv && activeCurrency
+                      ? formatMoney(conv.amountMinor, activeCurrency)
+                      : `$${(p.price_cents / 100).toFixed(0)}`
+                  }
+                  isLocalPrice={conv?.source === "override"}
+                  isCurrent={isCurrent && !expired}
+                  isRenew={isCurrent && expired}
+                  busy={busyKey === `plan:${p.code}`}
+                  disabled={!user || busyKey === `plan:${p.code}`}
+                  onClick={() => startCheckout("plan", p.code)}
+                />
+              );
+            })()}
+
             <p className="mt-2 text-[11px] text-muted-foreground">
               Card-based payments auto-renew monthly. You can cancel anytime — access continues until the period ends.
             </p>
@@ -537,7 +619,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               <button
                 type="button"
                 onClick={() =>
-                  setCryptoPlanCode((cur) => (cur ? null : (paid[0]?.code ?? null)))
+                  setCryptoPlanCode((cur) => (cur ? null : (activePlanCode ?? null)))
                 }
                 className="text-xs font-semibold text-foreground underline underline-offset-2 hover:text-primary"
               >
@@ -545,24 +627,8 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               </button>
               {cryptoPlanCode && (
                 <div className="mt-3 space-y-3">
-                  <div className="flex flex-wrap gap-1.5">
-                    {paid.map((p) => (
-                      <button
-                        key={p.code}
-                        type="button"
-                        onClick={() => setCryptoPlanCode(p.code)}
-                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                          p.code === cryptoPlanCode
-                            ? "border-foreground bg-foreground text-background"
-                            : "border-border text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {p.name}
-                      </button>
-                    ))}
-                  </div>
                   {(() => {
-                    const p = paid.find((x) => x.code === cryptoPlanCode);
+                    const p = paid.find((x) => x.code === activePlanCode) ?? paid[0];
                     if (!p) return null;
                     return (
                       <CryptoCheckoutPanel
@@ -581,61 +647,6 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
             </div>
           </section>
 
-          <Separator />
-
-          {/* 6. Top-up packs */}
-          <section ref={topupRef} className="scroll-mt-4">
-            <div className="mb-3">
-              <h3 className="text-sm font-semibold">Top up credits</h3>
-              <p className="text-xs text-muted-foreground">
-                Pay as you go — buy credits once, no subscription needed. Your paid
-                features stay unlocked while you have credits. Credits expire 12
-                months after purchase.
-              </p>
-            </div>
-
-            {(
-              <TopupPicker
-                packs={packs}
-                selectedCode={selectedPackCode}
-                onSelect={setSelectedPackCode}
-                activeCurrency={activeCurrency}
-                currency={currency}
-                currencies={currencies}
-                overrides={overrides}
-                busyKey={busyKey}
-                disabled={!user}
-                onBuy={(code) => startCheckout("pack", code)}
-              />
-            )}
-
-            {(
-              <div className="mt-3">
-                <button
-                  type="button"
-                  onClick={() => setCryptoPackOpen((v) => !v)}
-                  className="text-xs font-semibold text-foreground underline underline-offset-2 hover:text-primary"
-                >
-                  {cryptoPackOpen ? "Hide crypto payment" : "Pay for credits with crypto →"}
-                </button>
-                {cryptoPackOpen &&
-                  (() => {
-                    const pack = packs.find((x) => x.code === selectedPackCode) ?? packs[0];
-                    if (!pack) return null;
-                    return (
-                      <div className="mt-3">
-                        <CryptoCheckoutPanel
-                          purpose="pack"
-                          itemCode={pack.code}
-                          itemLabel={`${pack.credits.toLocaleString()} credits`}
-                          usdCents={pack.price_cents}
-                        />
-                      </div>
-                    );
-                  })()}
-              </div>
-            )}
-          </section>
 
           {onOpenCloudBalance && (
             <div className="mt-6 rounded-xl border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
