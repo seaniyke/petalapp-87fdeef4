@@ -25,13 +25,14 @@ Fix: pass an explicit `redirect` on all three links so referral landings and wai
 
 ## Gap 3 — Missing production keys
 
-Referenced in code but absent from the secret store:
+Only three secrets are actually needed for Petal to launch cleanly. These are referenced in the codebase but are not configured in the secret store:
 
-- `INTERNAL_HEALTH_TOKEN` — the internal health endpoint returns an error without it, so uptime monitoring can't be pointed at it.
-- `PETAL_SIGNING_MASTER_KEY` — mobile signing profiles can't be encrypted, so mobile publish will fail on first real use.
-- `RESEND_FROM_ADDRESS` — currently falls back to an empty string rather than a named sender.
+- `INTERNAL_HEALTH_TOKEN` — a random token you pick. The `/api/internal/health` endpoint requires it to respond; without it, uptime monitoring and deploy checks fail.
+- `PETAL_SIGNING_MASTER_KEY` — a random encryption key used to protect mobile signing-profile credentials at rest. Without it, the mobile publish pipeline will error the first time it tries to store a signing profile.
+- `RESEND_FROM_ADDRESS` — the email address Resend should send from (e.g. `noreply@buildwithpetal.com`). Without it, the from-address falls back to an empty string, which explains why some emails show up as "petalapp" instead of "Petal AI".
 
-Fix: I'll request these three as secrets. The remaining absent keys (`ALCHEMY_API_KEY`, `HELIUS_API_KEY`, `MORALIS_API_KEY`, `STRIPE_SECRET_KEY`) only affect optional generated-app features, not Petal itself — leaving those out is fine for launch.
+The other keys you mentioned are **not** needed for Petal itself. They are only referenced in the integration-resolver code so that user-generated apps can optionally call Alchemy, Helius, Moralis or Stripe if the app asks for them. Petal works fine without them; I will leave them out of the launch plan.
+
 
 ## Not blocking launch
 
