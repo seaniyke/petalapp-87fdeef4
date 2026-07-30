@@ -55,7 +55,11 @@ async function hibernateIdleBackends(): Promise<{
       await pauseForProject(b.project_id);
       await supabaseAdmin
         .from("project_backends")
-        .update({ status: "paused", paused_at: new Date().toISOString() })
+        .update({
+          status: "paused",
+          paused_at: new Date().toISOString(),
+          error_message: "Paused after 7 days of inactivity. Top up to bring it back online.",
+        })
         .eq("project_id", b.project_id);
       await supabaseAdmin
         .from("projects")
