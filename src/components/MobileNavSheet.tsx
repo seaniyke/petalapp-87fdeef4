@@ -27,6 +27,8 @@ import {
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { CreditBadge } from "@/components/CreditBadge";
+import { ThemeToggle } from "@/components/ThemeToggle";
+
 
 type Props = {
   open: boolean;
@@ -141,6 +143,14 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
               label="What's new"
             />
           </Section>
+
+          <Section title="Appearance">
+            <div className="flex items-center justify-between px-3 py-1.5">
+              <span className="text-sm font-medium">Theme</span>
+              <ThemeToggle />
+            </div>
+          </Section>
+
 
           {isReady && !user && (
             <div className="mt-auto border-t border-border/60 px-5 pt-4">

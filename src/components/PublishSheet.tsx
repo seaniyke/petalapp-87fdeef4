@@ -31,6 +31,13 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+import {
   Globe,
   Lock,
   Copy,
@@ -89,7 +96,9 @@ export function PublishSheet({
   onManageDomains,
   onOpenSettings,
 }: Props) {
+  const isMobile = useIsMobile();
   const buildSnap = useBuildActivity(project.latest_build_id ?? null);
+
   const [resolved, setResolved] = useState<PublishedUrlResult>({
     url: null,
     source: "none",
@@ -436,16 +445,14 @@ export function PublishSheet({
         ? "bg-primary/15 text-primary hover:bg-primary/20"
         : "bg-primary text-primary-foreground hover:bg-primary/90";
 
-  return (
+  const content = (
     <>
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <DrawerTitle className="sr-only">Publish</DrawerTitle>
+
 
         {/* Header */}
         <div className="mt-2 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">
+            <h2 className="text-base font-semibold tracking-tight sm:text-lg">
               {isUnpublished
                 ? "Not published yet"
                 : visibility === "private"
@@ -821,15 +828,38 @@ export function PublishSheet({
             {cta.label}
           </button>
         </div>
-      </DrawerContent>
-    </Drawer>
-    <WebsiteInfoSheet
-      open={websiteInfoOpen}
-      onOpenChange={setWebsiteInfoOpen}
-      project={project}
-      onChange={onChange}
-    />
     </>
+  );
+
+  return (
+    <>
+      {isMobile === false ? (
+        // Desktop: a compact panel anchored under the Publish button, like
+        // Lovable's popover — never a full-height drawer.
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent
+            className="left-auto right-4 top-16 max-h-[min(78vh,640px)] w-[380px] max-w-[calc(100vw-2rem)] translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-2xl p-4 text-[13px] shadow-xl data-[state=closed]:slide-out-to-left-0 data-[state=closed]:slide-out-to-top-0 data-[state=open]:slide-in-from-left-0 data-[state=open]:slide-in-from-top-2 sm:max-w-[380px] sm:rounded-2xl"
+          >
+            <DialogTitle className="sr-only">Publish</DialogTitle>
+            {content}
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <Drawer open={open} onOpenChange={onOpenChange}>
+          <DrawerContent className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <DrawerTitle className="sr-only">Publish</DrawerTitle>
+            {content}
+          </DrawerContent>
+        </Drawer>
+      )}
+      <WebsiteInfoSheet
+        open={websiteInfoOpen}
+        onOpenChange={setWebsiteInfoOpen}
+        project={project}
+        onChange={onChange}
+      />
+    </>
+
   );
 }
 

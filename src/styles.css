@@ -154,7 +154,8 @@
   --secondary-foreground: oklch(0.96 0.005 80);
 
   --muted: oklch(0.17 0.005 60);
-  --muted-foreground: oklch(0.65 0.01 70);
+  /* Raised from 0.65 → 0.74 so secondary copy clears WCAG AA on near-black. */
+  --muted-foreground: oklch(0.74 0.012 70);
 
   --accent: oklch(0.19 0.006 60);
   --accent-foreground: oklch(0.97 0.005 80);
@@ -162,9 +163,25 @@
   --destructive: oklch(0.62 0.2 25);
   --destructive-foreground: oklch(0.98 0.005 80);
 
-  --border: oklch(1 0 0 / 6%);
-  --input: oklch(1 0 0 / 8%);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 14%);
   --ring: oklch(0.78 0.14 25);
+
+  /* Pastel accents must invert in dark mode — the light pastels are near-white
+     and made `text-foreground` chips (e.g. "Coming next") unreadable. These are
+     deep, low-chroma tints that keep light foreground text legible. */
+  --coral: oklch(0.32 0.075 25);
+  --mint: oklch(0.3 0.05 165);
+  --butter: oklch(0.33 0.06 95);
+  --lilac: oklch(0.31 0.045 305);
+  --sky: oklch(0.31 0.045 230);
+
+  --chart-1: oklch(0.72 0.14 25);
+  --chart-2: oklch(0.74 0.11 165);
+  --chart-3: oklch(0.78 0.12 95);
+  --chart-4: oklch(0.72 0.11 305);
+  --chart-5: oklch(0.74 0.1 230);
+
 
   --sidebar: oklch(0.145 0.005 60);
   --sidebar-foreground: oklch(0.97 0.005 80);
@@ -172,7 +189,7 @@
   --sidebar-primary-foreground: oklch(0.16 0.005 60);
   --sidebar-accent: oklch(0.19 0.006 60);
   --sidebar-accent-foreground: oklch(0.97 0.005 80);
-  --sidebar-border: oklch(1 0 0 / 6%);
+  --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.78 0.14 25);
 }
 
