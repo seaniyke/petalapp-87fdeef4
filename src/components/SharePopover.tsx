@@ -3,6 +3,7 @@ import { Globe, Copy, Check, Loader2, Lock, ArrowRight, Sparkles } from "lucide-
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { updateProject, type ProjectRow } from "@/lib/projects";
+import { hasFullAccess } from "@/lib/billing";
 import { useWallet } from "@/hooks/use-wallet";
 import { toast } from "sonner";
 
@@ -19,9 +20,9 @@ export function SharePopover({ project, onChange, onConnectDomain, onUpgrade }: 
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const { wallet } = useWallet();
-  // Only Pro/Business users can make a project private. The DB enforces this
-  // too — the toggle is gated client-side just to keep the UX honest.
-  const isPaid = !!wallet && wallet.plan_code !== "free";
+  // Private projects need full access: a paid plan OR purchased credits
+  // (pay as you go). The DB enforces the same rule via has_full_access().
+  const isPaid = hasFullAccess(wallet);
 
   const shareUrl =
     typeof window !== "undefined"
@@ -31,7 +32,7 @@ export function SharePopover({ project, onChange, onConnectDomain, onUpgrade }: 
   async function toggle(next: boolean) {
     // Free users can switch to public freely, but cannot switch back to private.
     if (!next && !isPaid) {
-      toast.error("Upgrade to Pro to make projects private.");
+      toast.error("Buy credits or upgrade to a paid plan to make projects private.");
       return;
     }
     setBusy(true);

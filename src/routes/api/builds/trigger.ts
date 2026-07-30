@@ -228,10 +228,12 @@ export const Route = createFileRoute("/api/builds/trigger")({
         try {
           const { data: wallet } = await supabaseAdmin
             .from("user_wallets")
-            .select("plan_code")
+            .select("plan_code, topup_credits_remaining")
             .eq("user_id", userId)
             .maybeSingle();
-          const isPaidPlan = !!wallet?.plan_code && wallet.plan_code !== "free";
+          const isPaidPlan =
+            (!!wallet?.plan_code && wallet.plan_code !== "free") ||
+            Number(wallet?.topup_credits_remaining ?? 0) > 0;
           hideBadge = isPaidPlan && project.hide_petal_badge === true;
         } catch (e) {
           console.warn(

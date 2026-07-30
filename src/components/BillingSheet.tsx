@@ -186,6 +186,9 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
 
   const paid = useMemo(() => plans.filter((p) => p.code !== "free"), [plans]);
   const currentPlanCode = wallet?.plan_code ?? "free";
+  // Pay-as-you-go: free-plan user whose purchased credits unlock paid features.
+  const payAsYouGo =
+    currentPlanCode === "free" && Number(wallet?.topup_credits_remaining ?? 0) > 0;
   const activeCurrency = useMemo(
     () => currencies.find((c) => c.code === currency) ?? null,
     [currencies, currency],
@@ -341,7 +344,9 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                 </h3>
                 {currentPlanCode === "free" ? (
                   <p className="text-xs text-muted-foreground">
-                    Upgrade for monthly credits and on-demand top-ups.
+                    {payAsYouGo
+                      ? "Pay as you go — your purchased credits keep paid features unlocked."
+                      : "Subscribe for monthly credits, or just buy credits once — no subscription needed."}
                   </p>
                 ) : renewsLabel ? (
                   <p className="text-xs text-muted-foreground">
@@ -364,8 +369,9 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                   {plan.monthly_free_cap ? ` (up to ${plan.monthly_free_cap}/month)` : ""}
                 </PlanFeature>
               ) : null}
-              {currentPlanCode !== "free" && (
-                <PlanFeature>On-demand credit top-ups</PlanFeature>
+              <PlanFeature>On-demand credit top-ups (no subscription needed)</PlanFeature>
+              {payAsYouGo && (
+                <PlanFeature>Paid features unlocked by your credit balance</PlanFeature>
               )}
               {currentPlanCode === "business" && (
                 <PlanFeature>Priority support</PlanFeature>
@@ -376,7 +382,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               <Button size="sm" variant="outline" onClick={scrollToPlans}>
                 {currentPlanCode === "free" ? "See plans" : "Change plan"}
               </Button>
-              {currentPlanCode !== "free" && (
+              {(
                 <Button size="sm" variant="outline" onClick={scrollToTopups}>
                   <Plus className="mr-1 h-3.5 w-3.5" />
                   Top up credits
@@ -582,21 +588,13 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
             <div className="mb-3">
               <h3 className="text-sm font-semibold">Top up credits</h3>
               <p className="text-xs text-muted-foreground">
-                One-time credits. Expire 12 months after purchase.
+                Pay as you go — buy credits once, no subscription needed. Your paid
+                features stay unlocked while you have credits. Credits expire 12
+                months after purchase.
               </p>
             </div>
 
-            {currentPlanCode === "free" ? (
-              <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center">
-                <Sparkles className="mx-auto h-5 w-5 text-primary" />
-                <p className="mt-2 text-sm font-medium">
-                  Upgrade to buy top-up credits
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Top-up packs are available on Pro and Business plans.
-                </p>
-              </div>
-            ) : (
+            {(
               <TopupPicker
                 packs={packs}
                 selectedCode={selectedPackCode}
@@ -611,7 +609,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               />
             )}
 
-            {currentPlanCode !== "free" && (
+            {(
               <div className="mt-3">
                 <button
                   type="button"

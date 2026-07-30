@@ -287,6 +287,17 @@ function BillingDashboard() {
             <Button size="sm" className="mt-3 w-full" onClick={() => setPlanOpen(true)}>
               {planCode === "free" ? "Upgrade" : "Manage plan"}
             </Button>
+            {planCode === "free" && (
+              <button
+                type="button"
+                onClick={() => setPlanOpen(true)}
+                className="mt-2 w-full text-xs font-semibold text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              >
+                {Number(w?.topup_credits_remaining ?? 0) > 0
+                  ? "Pay as you go — buy more credits"
+                  : "No subscription? Just buy credits →"}
+              </button>
+            )}
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-4">
@@ -296,7 +307,8 @@ function BillingDashboard() {
             </div>
             <div className="mt-2 text-2xl font-bold tabular-nums">{credits}</div>
             <p className="mt-1 text-xs font-medium text-muted-foreground">
-              {Number(w?.topup_credits_remaining ?? 0)} from top-ups · never expire
+              {Number(w?.topup_credits_remaining ?? 0)} from top-ups · expire 12 months
+              after purchase
             </p>
             <Button
               size="sm"
