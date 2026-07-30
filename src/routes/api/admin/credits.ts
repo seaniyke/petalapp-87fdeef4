@@ -1154,7 +1154,153 @@ export const Route = createFileRoute("/api/admin/credits")({
             return Response.json({ announcements: data ?? [] });
           }
 
+          // ----- CRYPTO PAYMENTS -----
+          if (body.action === "crypto_payments") {
+            const status = String(body.status ?? "pending");
+            let q = supabaseAdmin
+              .from("crypto_payments" as never)
+              .select("*")
+              .order("created_at", { ascending: false })
+              .limit(200);
+            if (status !== "all") q = q.eq("status", status);
+            const { data, error } = await q;
+            if (error) return Response.json({ error: error.message }, { status: 500 });
+
+            const rows = (data ?? []) as unknown as Array<{ user_id: string }>;
+            const ids = Array.from(new Set(rows.map((r) => r.user_id)));
+            const emails = new Map<string, string | null>();
+            for (const id of ids) {
+              const { data: u } = await supabaseAdmin.auth.admin.getUserById(id);
+              emails.set(id, u?.user?.email ?? null);
+            }
+            return Response.json({
+              payments: rows.map((r) => ({ ...r, email: emails.get(r.user_id) ?? null })),
+            });
+          }
+
+          if (body.action === "crypto_payment_review") {
+            const id = String(body.payment_id ?? "");
+            const decision = String(body.decision ?? "");
+            const note = String(body.note ?? "").slice(0, 500) || null;
+            if (!UUID_RE.test(id)) {
+              return Response.json({ error: "Invalid payment_id" }, { status: 400 });
+            }
+            if (decision !== "confirm" && decision !== "reject") {
+              return Response.json({ error: "Invalid decision" }, { status: 400 });
+            }
+
+            const { data: payRaw, error: payErr } = await supabaseAdmin
+              .from("crypto_payments" as never)
+              .select("*")
+              .eq("id", id)
+              .maybeSingle();
+            if (payErr) return Response.json({ error: payErr.message }, { status: 500 });
+            if (!payRaw) return Response.json({ error: "Not found" }, { status: 404 });
+            const pay = payRaw as unknown as {
+              id: string;
+              user_id: string;
+              reference: string;
+              purpose: string;
+              item_code: string;
+              usd_amount_cents: number;
+              status: string;
+              environment: string;
+            };
+            if (pay.status !== "pending") {
+              return Response.json({ error: `Already ${pay.status}` }, { status: 409 });
+            }
+
+            if (decision === "reject") {
+              const { error } = await supabaseAdmin
+                .from("crypto_payments" as never)
+                .update({
+                  status: "rejected",
+                  admin_note: note,
+                  reviewed_by: adminId,
+                  reviewed_at: new Date().toISOString(),
+                } as never)
+                .eq("id", id)
+                .eq("status", "pending");
+              if (error) return Response.json({ error: error.message }, { status: 500 });
+              return Response.json({ ok: true, status: "rejected" });
+            }
+
+            // Confirm — credit using the SAME RPCs the card flow uses, then
+            // flip the row. Conditional update guards double-crediting.
+            const { data: claimed, error: claimErr } = await supabaseAdmin
+              .from("crypto_payments" as never)
+              .update({
+                status: "confirmed",
+                admin_note: note,
+                reviewed_by: adminId,
+                reviewed_at: new Date().toISOString(),
+              } as never)
+              .eq("id", id)
+              .eq("status", "pending")
+              .select("id");
+            if (claimErr) return Response.json({ error: claimErr.message }, { status: 500 });
+            if (!claimed?.length) {
+              return Response.json({ error: "Already reviewed" }, { status: 409 });
+            }
+
+            try {
+              if (pay.purpose === "pack") {
+                const { error } = await supabaseAdmin.rpc("apply_paystack_topup", {
+                  _user_id: pay.user_id,
+                  _pack_code: pay.item_code,
+                  _reference: pay.reference,
+                  _environment: pay.environment,
+                });
+                if (error) throw new Error(error.message);
+              } else if (pay.purpose === "plan") {
+                const { error } = await supabaseAdmin.rpc("apply_paystack_plan_grant", {
+                  _user_id: pay.user_id,
+                  _plan_code: pay.item_code,
+                  _reference: pay.reference,
+                });
+                if (error) throw new Error(error.message);
+              } else if (pay.purpose === "runtime_topup") {
+                const { error } = await supabaseAdmin.rpc(
+                  "apply_paystack_runtime_topup",
+                  {
+                    _user_id: pay.user_id,
+                    _reference: pay.reference,
+                    _amount_cents: pay.usd_amount_cents as never,
+                    _metadata: {
+                      method: "crypto",
+                      item_code: pay.item_code,
+                      environment: pay.environment,
+                    } as never,
+                  },
+                );
+                if (error) throw new Error(error.message);
+              } else {
+                throw new Error(`Unknown purpose ${pay.purpose}`);
+              }
+            } catch (e) {
+              // Roll back the claim so an admin can retry after fixing it.
+              await supabaseAdmin
+                .from("crypto_payments" as never)
+                .update({ status: "pending", admin_note: `Credit failed: ${
+                  e instanceof Error ? e.message : "unknown"
+                }` } as never)
+                .eq("id", id);
+              return Response.json(
+                { error: e instanceof Error ? e.message : "Credit failed" },
+                { status: 500 },
+              );
+            }
+
+            await supabaseAdmin
+              .from("crypto_payments" as never)
+              .update({ credited_at: new Date().toISOString() } as never)
+              .eq("id", id);
+
+            return Response.json({ ok: true, status: "confirmed" });
+          }
+
           return Response.json({ error: "Unknown action" }, { status: 400 });
+
 
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Server error";

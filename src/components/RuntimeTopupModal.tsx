@@ -34,6 +34,7 @@ import {
 } from "@/lib/runtime-wallet";
 import { useWallet } from "@/hooks/use-wallet";
 import { BillingSheet } from "@/components/BillingSheet";
+import { CryptoCheckoutPanel } from "@/components/CryptoCheckoutPanel";
 
 type Props = {
   open: boolean;
@@ -71,6 +72,7 @@ export function RuntimeTopupModal({
   const [customNaira, setCustomNaira] = useState<string>("2000");
   const [submitting, setSubmitting] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
+  const [cryptoOpen, setCryptoOpen] = useState(false);
 
   // Cheapest pack that satisfies minUsdCents (if any)
   const recommendedPackCode = useMemo(() => {
@@ -344,8 +346,47 @@ export function RuntimeTopupModal({
                 </p>
               </div>
             )}
+
+            <div className="border-t border-border pt-3">
+              <button
+                type="button"
+                onClick={() => setCryptoOpen((v) => !v)}
+                className="text-xs font-semibold underline underline-offset-2 hover:text-primary"
+              >
+                {cryptoOpen ? "Hide crypto payment" : "Prefer crypto? Pay with USDT, BTC or ETH →"}
+              </button>
+              {cryptoOpen &&
+                (() => {
+                  const selected = packs.find((p) => p.code === selectedPack);
+                  const customCents =
+                    mode === "custom"
+                      ? Math.round((Number(customNaira) || 0) / 1500 * 100)
+                      : 0;
+                  const usdCents =
+                    mode === "custom" ? customCents : (selected?.amount_cents ?? 0);
+                  if (usdCents < 100) {
+                    return (
+                      <p className="mt-2 text-[11px] text-muted-foreground">
+                        Pick a pack or enter at least ₦1,500 to pay in crypto.
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="mt-3">
+                      <CryptoCheckoutPanel
+                        purpose="runtime_topup"
+                        itemCode={mode === "custom" ? "custom" : (selected?.code ?? "custom")}
+                        itemLabel="your Cloud + AI balance"
+                        usdCents={usdCents}
+                        customUsdCents={mode === "custom" ? customCents : undefined}
+                      />
+                    </div>
+                  );
+                })()}
+            </div>
           </div>
         )}
+
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>

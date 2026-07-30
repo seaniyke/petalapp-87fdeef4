@@ -55,6 +55,7 @@ import {
 } from "@/lib/billing";
 import { toast } from "sonner";
 import petalLogo from "@/assets/petal-logo.png";
+import { CryptoCheckoutPanel } from "@/components/CryptoCheckoutPanel";
 
 type Props = {
   open: boolean;
@@ -78,6 +79,8 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
     status: string | null;
   } | null>(null);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [cryptoPlanCode, setCryptoPlanCode] = useState<string | null>(null);
+  const [cryptoPackOpen, setCryptoPackOpen] = useState(false);
   const topupRef = useRef<HTMLDivElement | null>(null);
   const plansRef = useRef<HTMLDivElement | null>(null);
 
@@ -524,6 +527,52 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
             <p className="mt-2 text-[11px] text-muted-foreground">
               Card-based payments auto-renew monthly. You can cancel anytime — access continues until the period ends.
             </p>
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setCryptoPlanCode((cur) => (cur ? null : (paid[0]?.code ?? null)))
+                }
+                className="text-xs font-semibold text-foreground underline underline-offset-2 hover:text-primary"
+              >
+                {cryptoPlanCode ? "Hide crypto payment" : "Prefer crypto? Pay with USDT, BTC or ETH →"}
+              </button>
+              {cryptoPlanCode && (
+                <div className="mt-3 space-y-3">
+                  <div className="flex flex-wrap gap-1.5">
+                    {paid.map((p) => (
+                      <button
+                        key={p.code}
+                        type="button"
+                        onClick={() => setCryptoPlanCode(p.code)}
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                          p.code === cryptoPlanCode
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                  {(() => {
+                    const p = paid.find((x) => x.code === cryptoPlanCode);
+                    if (!p) return null;
+                    return (
+                      <CryptoCheckoutPanel
+                        purpose="plan"
+                        itemCode={p.code}
+                        itemLabel={`${p.name} plan`}
+                        usdCents={p.price_cents}
+                      />
+                    );
+                  })()}
+                  <p className="text-[11px] text-muted-foreground">
+                    Crypto plans don't auto-renew — send again when the month is up.
+                  </p>
+                </div>
+              )}
+            </div>
           </section>
 
           <Separator />
@@ -560,6 +609,33 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                 disabled={!user}
                 onBuy={(code) => startCheckout("pack", code)}
               />
+            )}
+
+            {currentPlanCode !== "free" && (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => setCryptoPackOpen((v) => !v)}
+                  className="text-xs font-semibold text-foreground underline underline-offset-2 hover:text-primary"
+                >
+                  {cryptoPackOpen ? "Hide crypto payment" : "Pay for credits with crypto →"}
+                </button>
+                {cryptoPackOpen &&
+                  (() => {
+                    const pack = packs.find((x) => x.code === selectedPackCode) ?? packs[0];
+                    if (!pack) return null;
+                    return (
+                      <div className="mt-3">
+                        <CryptoCheckoutPanel
+                          purpose="pack"
+                          itemCode={pack.code}
+                          itemLabel={`${pack.credits.toLocaleString()} credits`}
+                          usdCents={pack.price_cents}
+                        />
+                      </div>
+                    );
+                  })()}
+              </div>
             )}
           </section>
 

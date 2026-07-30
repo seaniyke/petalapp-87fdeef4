@@ -80,6 +80,7 @@ import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigge
 import { Route as ApiBuildsCallbackRouteImport } from './routes/api/builds/callback'
 import { Route as ApiBillingVerifyRouteImport } from './routes/api/billing/verify'
 import { Route as ApiBillingInitializeRouteImport } from './routes/api/billing/initialize'
+import { Route as ApiBillingCryptoRouteImport } from './routes/api/billing/crypto'
 import { Route as ApiAdminPaystackPlansRouteImport } from './routes/api/admin/paystack-plans'
 import { Route as ApiAdminDigestsRouteImport } from './routes/api/admin/digests'
 import { Route as ApiAdminCreditsRouteImport } from './routes/api/admin/credits'
@@ -462,6 +463,11 @@ const ApiBillingInitializeRoute = ApiBillingInitializeRouteImport.update({
   path: '/api/billing/initialize',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBillingCryptoRoute = ApiBillingCryptoRouteImport.update({
+  id: '/api/billing/crypto',
+  path: '/api/billing/crypto',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminPaystackPlansRoute = ApiAdminPaystackPlansRouteImport.update({
   id: '/api/admin/paystack-plans',
   path: '/api/admin/paystack-plans',
@@ -659,6 +665,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
+  '/api/billing/crypto': typeof ApiBillingCryptoRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -757,6 +764,7 @@ export interface FileRoutesByTo {
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
+  '/api/billing/crypto': typeof ApiBillingCryptoRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -856,6 +864,7 @@ export interface FileRoutesById {
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
+  '/api/billing/crypto': typeof ApiBillingCryptoRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -956,6 +965,7 @@ export interface FileRouteTypes {
     | '/api/admin/credits'
     | '/api/admin/digests'
     | '/api/admin/paystack-plans'
+    | '/api/billing/crypto'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/callback'
@@ -1054,6 +1064,7 @@ export interface FileRouteTypes {
     | '/api/admin/credits'
     | '/api/admin/digests'
     | '/api/admin/paystack-plans'
+    | '/api/billing/crypto'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/callback'
@@ -1152,6 +1163,7 @@ export interface FileRouteTypes {
     | '/api/admin/credits'
     | '/api/admin/digests'
     | '/api/admin/paystack-plans'
+    | '/api/billing/crypto'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/callback'
@@ -1249,6 +1261,7 @@ export interface RootRouteChildren {
   ApiAdminCreditsRoute: typeof ApiAdminCreditsRoute
   ApiAdminDigestsRoute: typeof ApiAdminDigestsRoute
   ApiAdminPaystackPlansRoute: typeof ApiAdminPaystackPlansRoute
+  ApiBillingCryptoRoute: typeof ApiBillingCryptoRoute
   ApiBillingInitializeRoute: typeof ApiBillingInitializeRoute
   ApiBillingVerifyRoute: typeof ApiBillingVerifyRoute
   ApiBuildsCallbackRoute: typeof ApiBuildsCallbackRoute
@@ -1788,6 +1801,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBillingInitializeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/billing/crypto': {
+      id: '/api/billing/crypto'
+      path: '/api/billing/crypto'
+      fullPath: '/api/billing/crypto'
+      preLoaderRoute: typeof ApiBillingCryptoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/paystack-plans': {
       id: '/api/admin/paystack-plans'
       path: '/api/admin/paystack-plans'
@@ -2055,6 +2075,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminCreditsRoute: ApiAdminCreditsRoute,
   ApiAdminDigestsRoute: ApiAdminDigestsRoute,
   ApiAdminPaystackPlansRoute: ApiAdminPaystackPlansRoute,
+  ApiBillingCryptoRoute: ApiBillingCryptoRoute,
   ApiBillingInitializeRoute: ApiBillingInitializeRoute,
   ApiBillingVerifyRoute: ApiBillingVerifyRoute,
   ApiBuildsCallbackRoute: ApiBuildsCallbackRoute,
