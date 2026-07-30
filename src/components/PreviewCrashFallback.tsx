@@ -109,14 +109,17 @@ function plainCause(reason: string): string {
     return "There's a typo in the code Petal just wrote.";
   if (r.includes("failed to resolve") || r.includes("cannot find module"))
     return "A file or package the app imports is missing.";
+  if (r.includes(".stores") || r.includes("basename") || r.includes("usecontext"))
+    return "A page used navigation before the app's router was set up.";
   if (r.includes("is not defined") || r.includes("is not a function"))
     return "Something the page uses hasn't been created yet.";
   if (r.includes("install") || r.includes("npm") || r.includes("enoent"))
     return "Installing the app's packages didn't finish.";
-  if (r.includes("undefined") && r.includes("reading"))
+  if (r.includes("null is not an object") || (r.includes("undefined") && r.includes("reading")))
     return "The page tried to read data that isn't there yet.";
   return "The running app hit an error it couldn't recover from.";
 }
+
 
 /** Best-effort file path from a stack trace / build error. */
 function fileFromError(reason: string): string | null {
