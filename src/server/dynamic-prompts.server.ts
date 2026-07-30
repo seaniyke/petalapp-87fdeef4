@@ -202,29 +202,30 @@ Composition rules — this is the difference between forgettable and memorable:
   // Fires on landing/marketing/site requests. The default failure mode for
   // AI builders is "stuff everything onto index.tsx with hash anchors" —
   // which kills SSR per-page metadata, makes deep links unshareable, and
-  // teaches users that Petal only does one-pagers. TanStack Start's
-  // file-based routing makes proper multi-page trivial; this snippet tells
+  // teaches users that Petal only does one-pagers. The generated Vite app's
+  // React Router setup makes proper multi-page routing straightforward; this tells
   // the model to USE it and to TELL the user it did.
   multiPage: {
     triggers:
       /\b(site|website|landing|marketing|portfolio|agency|consultancy|saas|studio|business|brand|services|about|pricing|contact|blog|faq|case stud|product page)\b/i,
     body: `\n\n[Reinforcement — Prefer real pages over one long scroll]
-If the brief implies multiple sections that could each stand alone (Services, About, Contact, Pricing, Blog, FAQ, Case Studies, Portfolio, Team, Careers), scaffold them as SEPARATE TanStack routes under src/routes/ — not as <section id="..."> blocks on a single index page with hash-anchor nav.
+If the brief implies multiple sections that could each stand alone (Services, About, Contact, Pricing, Blog, FAQ, Case Studies, Portfolio, Team, Careers), create separate page components under src/pages/ and register each path in the EXISTING React Router <Routes> tree in src/App.tsx — not as <section id="..."> blocks on one page with hash-anchor nav.
 
 Why this matters (don't skip):
-- Each route gets its own SSR <head> (title, description, og:title, og:description) — hash anchors all share the home page metadata, which makes them invisible to Google and identical when shared on social.
+- Each route gets its own title and description — hash anchors all share the home page metadata and look identical when shared.
 - Deep links like /pricing or /case-studies/$slug actually work — users can bookmark and share them.
 - Adding a new page later becomes "create one file" instead of "refactor a 600-line index".
 
 Default decomposition for marketing/business sites:
-- src/routes/index.tsx — home (hero + brief highlights + CTA only; do NOT cram every section here)
-- src/routes/about.tsx
-- src/routes/services.tsx (or features.tsx for product sites)
-- src/routes/pricing.tsx (when relevant)
-- src/routes/contact.tsx
-- src/routes/blog.index.tsx + src/routes/blog.$slug.tsx (when blog requested)
+- src/pages/Home.tsx — home (hero + brief highlights + CTA only; do NOT cram every section here)
+- src/pages/About.tsx
+- src/pages/Services.tsx (or Features.tsx for product sites)
+- src/pages/Pricing.tsx (when relevant)
+- src/pages/Contact.tsx
+- src/pages/Blog.tsx + src/pages/BlogPost.tsx (when blog requested)
+- src/App.tsx — the single existing <Router>/<Routes> tree that registers all paths
 
-Each route file MUST set its own head() with route-specific title + description + og:title + og:description. Do NOT copy the home page metadata into child routes.
+Each page MUST set route-specific title and description metadata when it renders. Do NOT copy the home page metadata into child pages.
 
 Hash anchors (#section) are allowed ONLY for in-page scrolling within a single long page (e.g. a TOC inside a docs page). They are NEVER the primary cross-section nav.
 
@@ -606,7 +607,7 @@ A list-shaped surface is not "done" when it renders an array. If the list will h
 2. FILTERS — at least ONE domain-relevant facet (status, category, tag, price band, date range). Render as \`<Select>\`, \`<Combobox>\`, or shadcn \`<ToggleGroup>\`; NEVER free-text with no picker.
 3. SORT — user-controllable sort (name / newest / price / relevance). Table headers become clickable; card grids get a \`<Select>\` sort control.
 4. PAGINATION or infinite scroll — never render 500 DOM nodes at once. 20-30 per page is the floor; use \`<Pagination>\` from the kit or intersection-observer for infinite.
-5. URL SYNC — every search/filter/sort/page value MUST live in the URL (\`?q=&status=open&sort=newest&page=2\`). Use TanStack Router \`useNavigate({ search })\` + \`Route.useSearch()\` so users can share, refresh, and back-button. NEVER stash filter state in \`useState\` only.
+5. URL SYNC — every search/filter/sort/page value MUST live in the URL (\`?q=&status=open&sort=newest&page=2\`). Use \`useSearchParams()\` from \`@/components/ui/router\` so users can share, refresh, and back-button. NEVER stash filter state in \`useState\` only.
 6. EMPTY-FILTER STATE — when filters return zero, show \`<EmptyState title="No matches" description="Try clearing filters" action={<Button onClick={clear}>Clear filters</Button>} />\`. NEVER a blank list.
 7. RESULT COUNT — always visible ("48 results" / "Showing 1–20 of 48"). Users need to know filters are working.
 
@@ -645,10 +646,10 @@ Every surface that renders data (list, detail, dashboard, profile, feed, form re
 
 1. LOADING — first paint of ANY async data uses a skeleton, not a spinner-in-the-middle and never a blank page. Kit: \`<Skeleton className="h-4 w-32" />\` stacked to mimic the final shape. For grids: render 6-8 skeleton cards matching the real card dimensions. NEVER a text "Loading…" as the only feedback.
 2. EMPTY — zero rows / zero results always renders \`<EmptyState icon={<domain-icon>} title description action={<Button>...</Button>} />\`. The action is a real next step (Create, Invite, Import, Clear filters), never a dead-end message. Empty state copy references the domain ("No customers yet. Add your first one to start tracking.") — never generic ("Nothing here").
-3. ERROR — every \`try/catch\` around a mutation shows \`toast.error(friendlyMessage)\`. Every route with a loader sets \`errorComponent\` on \`createFileRoute\` returning a card with the error message + a "Try again" button that calls \`router.invalidate()\`. Never let a thrown promise silently kill the page.
+3. ERROR — every \`try/catch\` around a mutation shows \`toast.error(friendlyMessage)\`. Every async page renders a friendly error state with a real "Try again" action that repeats the request. Never let a thrown promise silently kill the page.
 
 For routes specifically:
-- Set BOTH \`errorComponent\` and \`notFoundComponent\` on every route with a loader (see the errors-notfound rules).
+- Register a wildcard \`*\` route with a useful not-found page.
 - Wrap the component body in a defensive \`try/catch\` when it does heavy computation that could throw at render.
 
 The three-state contract is what makes an app feel real. Users forgive slow. They do NOT forgive blank.`,
@@ -692,13 +693,12 @@ RESPONSIVE — sidebar becomes a hamburger \`<Sheet>\` on mobile. Widgets stack 
 
 Forbidden: dashboard that is a marketing hero + one chart. Dashboard that hides real domain data behind "Feature coming soon". Dashboard without persistent nav.`,
   },
-  // Fires whenever a new route is being created. Reinforces that route.head()
-  // is not optional — every route must ship route-specific SEO.
+  // Fires whenever a new route is being created. Reinforces route-specific SEO.
   perRouteSEO: {
     triggers:
       /\b(route|page|multi-?page|landing|about|pricing|contact|blog|faq|features?|services|portfolio|gallery|docs|changelog|privacy|terms|marketing|site|website)\b/i,
-    body: `\n\n[Reinforcement — Per-route SEO (every route.head() is required)]
-Every new TanStack route file MUST set its own \`head()\` in \`createFileRoute\`. Copy-pasting the home-page metadata into a child route is a bug — search engines and social crawlers will treat them as duplicates.
+    body: `\n\n[Reinforcement — Per-route SEO]
+Every new React Router page MUST set a route-specific document title and description when it renders. Copy-pasting home-page metadata into a child page is a bug. Do not import TanStack Router or call \`createFileRoute\` in generated apps.
 
 Required per-route (in the \`head()\` return):
 - \`meta: [{ title }]\` — 40-60 chars, includes the site/brand name (e.g. "Pricing — Acme").

@@ -7,8 +7,11 @@
  * `RouterProvider` (or nothing at all). Nothing in the type-free build
  * catches it — it only explodes in the browser.
  *
- * This pass scans every TS/JS file for known react-router-dom exports used
- * as free identifiers, and augments (or adds) the `react-router-dom` import.
+ * This pass scans every TS/JS file for known router exports used as free
+ * identifiers, and augments (or adds) the correct package import. Generated
+ * apps normally use react-router-dom, but older projects can still contain a
+ * TanStack file route. Leaving its import stripped while keeping the call is
+ * a production-only `Can't find variable: createFileRoute` crash.
  */
 
 import type { ProjectFile } from "./generate.server";
@@ -35,6 +38,17 @@ const ROUTER_EXPORTS = [
   "useSearchParams",
   "useRouteError",
   "ScrollRestoration",
+] as const;
+
+/** TanStack APIs found in legacy generated route files. Keep this deliberately
+ * small: generated apps should not start using TanStack Router for new routes,
+ * but old source must remain executable while users migrate it. */
+const TANSTACK_ROUTER_EXPORTS = [
+  "createFileRoute",
+  "createRootRoute",
+  "createRootRouteWithContext",
+  "createLazyFileRoute",
+  "getRouteApi",
 ] as const;
 
 const CODE_EXT = /\.(tsx|ts|jsx|js|mjs)$/i;
@@ -69,25 +83,38 @@ export function fixRouterImports(files: ProjectFile[]): RouterImportFixResult {
     const missing = ROUTER_EXPORTS.filter(
       (name) => usedAsValue(content, name) && !alreadyBound(content, name),
     );
-    if (missing.length === 0) return f;
+    const missingTanstack = TANSTACK_ROUTER_EXPORTS.filter(
+      (name) => usedAsValue(content, name) && !alreadyBound(content, name),
+    );
+    if (missing.length === 0 && missingTanstack.length === 0) return f;
 
-    const existing = /import\s*\{([^}]*)\}\s*from\s*["']react-router-dom["'];?/;
-    if (existing.test(content)) {
-      content = content.replace(existing, (_m, inner: string) => {
-        const names = inner
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        for (const n of missing) if (!names.includes(n)) names.push(n);
-        return `import { ${names.join(", ")} } from "react-router-dom";`;
-      });
-    } else {
-      content = `import { ${missing.join(", ")} } from "react-router-dom";\n${content}`;
+    if (missing.length > 0) {
+      content = addNamedImports(content, "react-router-dom", missing);
+      notes.push(`router-imports: added ${missing.join(", ")} to ${f.path}`);
     }
 
-    notes.push(`router-imports: added ${missing.join(", ")} to ${f.path}`);
+    if (missingTanstack.length > 0) {
+      content = addNamedImports(content, "@tanstack/react-router", missingTanstack);
+      notes.push(`router-imports: added ${missingTanstack.join(", ")} to ${f.path}`);
+    }
     return { ...f, content };
   });
 
   return { files: out, notes };
+}
+
+function addNamedImports(content: string, spec: string, missing: readonly string[]): string {
+  const escaped = spec.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const existing = new RegExp(`import\\s*\\{([^}]*)\\}\\s*from\\s*["']${escaped}["'];?`);
+  if (!existing.test(content)) {
+    return `import { ${missing.join(", ")} } from "${spec}";\n${content}`;
+  }
+  return content.replace(existing, (_match, inner: string) => {
+    const names = inner
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
+    for (const name of missing) if (!names.includes(name)) names.push(name);
+    return `import { ${names.join(", ")} } from "${spec}";`;
+  });
 }

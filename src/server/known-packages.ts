@@ -22,8 +22,12 @@ export const KNOWN_PACKAGES: Record<string, string> = {
   "@hookform/resolvers": "^3.9.0",
 
   // Routing — only React Router DOM. TanStack Router lives in the BUILDER
-  // template, not in generated apps (those are plain Vite SPAs).
+  // template, not in new generated apps (those are plain Vite SPAs).
+  // Keep TanStack Router available on demand so legacy generated route files
+  // can be repaired and rebuilt instead of having their import stripped while
+  // `createFileRoute(...)` remains and crashes at runtime.
   "react-router-dom": "^6.28.0",
+  "@tanstack/react-router": "^1.168.27",
 
   // Validation
   zod: "^3.23.8",

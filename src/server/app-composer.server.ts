@@ -16,10 +16,8 @@
  *   - resolved example file paths for the closest references
  *   - explicit guardrails (DEMO banner, mobile-first, key-required)
  *
- * It also exposes `scaffoldRouteStubs(blueprint)` — minimal TanStack route
- * file shells for each route — so on initial builds the model gets a
- * pre-laid filesystem and just fills in screens, instead of inventing
- * routing from scratch and forgetting half the pages.
+ * Route-file stubs are no longer injected: generated projects use the
+ * canonical Vite + React Router scaffold and wire pages into `src/App.tsx`.
  */
 
 import type { ProjectFile } from "./generate.server";
