@@ -108,7 +108,6 @@ export function CryptoCheckoutPanel({
     return () => {
       cancelled = true;
       clearInterval(timer);
-      clearInterval(timer);
       supabase.removeChannel(channel);
     };
   }, [tracked?.id, tracked?.status]);
