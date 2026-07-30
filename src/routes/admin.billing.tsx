@@ -15,6 +15,7 @@ import {
   type CreditPack,
   type PriceOverride,
 } from "@/lib/billing";
+import { adminApi, fmtUsd, fmtDate } from "@/lib/admin-api";
 import { AdminTabs } from "@/components/AdminTabs";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,7 @@ function AdminBillingPage() {
             <TabsTrigger value="addons">Add-ons</TabsTrigger>
             <TabsTrigger value="currencies">Currencies & rates</TabsTrigger>
             <TabsTrigger value="overrides">Price overrides</TabsTrigger>
+            <TabsTrigger value="crypto">Crypto payments</TabsTrigger>
           </TabsList>
           <TabsContent value="plans">
             <PlansPanel />
@@ -119,6 +121,9 @@ function AdminBillingPage() {
           </TabsContent>
           <TabsContent value="overrides">
             <OverridesPanel />
+          </TabsContent>
+          <TabsContent value="crypto">
+            <CryptoPaymentsPanel />
           </TabsContent>
         </Tabs>
       </main>
@@ -1425,5 +1430,158 @@ function ProvisionPaystackPlansButton() {
       {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
       Provision Paystack plans
     </Button>
+  );
+}
+
+/* ---------------------------- Crypto payments ---------------------------- */
+
+type CryptoPaymentRow = {
+  id: string;
+  email: string | null;
+  reference: string;
+  purpose: string;
+  item_code: string;
+  usd_amount_cents: number;
+  asset: string;
+  chain: string;
+  tx_hash: string;
+  amount_sent: string | number | null;
+  status: string;
+  admin_note: string | null;
+  created_at: string;
+};
+
+function CryptoPaymentsPanel() {
+  const [rows, setRows] = useState<CryptoPaymentRow[]>([]);
+  const [status, setStatus] = useState("pending");
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function load(next = status) {
+    setLoading(true);
+    try {
+      const res = await adminApi<{ payments: CryptoPaymentRow[] }>({
+        action: "crypto_payments",
+        status: next,
+      });
+      setRows(res.payments ?? []);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load(status);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  async function review(id: string, decision: "confirm" | "reject") {
+    if (decision === "confirm" && !confirm("Confirmed on-chain? This credits the account.")) return;
+    setBusyId(id);
+    try {
+      await adminApi({ action: "crypto_payment_review", payment_id: id, decision });
+      toast.success(decision === "confirm" ? "Credited" : "Rejected");
+      await load(status);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Review failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Crypto payments</CardTitle>
+        <CardDescription>
+          Plans, credit packs and Cloud top-ups paid in crypto. Verify the transaction hash
+          on-chain, then confirm — confirming applies exactly the same credit as a card payment.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex gap-2">
+          {["pending", "confirmed", "rejected", "all"].map((s) => (
+            <Button
+              key={s}
+              size="sm"
+              variant={status === s ? "default" : "outline"}
+              onClick={() => setStatus(s)}
+            >
+              {s}
+            </Button>
+          ))}
+        </div>
+        {loading ? (
+          <div className="flex items-center py-8 text-sm text-muted-foreground">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+          </div>
+        ) : rows.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Nothing here.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>For</TableHead>
+                <TableHead>USD</TableHead>
+                <TableHead>Sent</TableHead>
+                <TableHead>Tx hash</TableHead>
+                <TableHead>When</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="text-xs">{r.email ?? "—"}</TableCell>
+                  <TableCell className="text-xs">
+                    {r.purpose} · {r.item_code}
+                  </TableCell>
+                  <TableCell className="text-xs">{fmtUsd(r.usd_amount_cents)}</TableCell>
+                  <TableCell className="text-xs">
+                    {r.amount_sent ? `${r.amount_sent} ${r.asset}` : r.asset}
+                    <div className="text-[10px] text-muted-foreground">{r.chain}</div>
+                  </TableCell>
+                  <TableCell className="max-w-[180px] truncate font-mono text-[11px]">
+                    {r.tx_hash}
+                  </TableCell>
+                  <TableCell className="text-xs">{fmtDate(r.created_at)}</TableCell>
+                  <TableCell className="text-xs">
+                    {r.status}
+                    {r.admin_note ? (
+                      <div className="text-[10px] text-muted-foreground">{r.admin_note}</div>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {r.status === "pending" ? (
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          disabled={busyId === r.id}
+                          onClick={() => review(r.id, "confirm")}
+                        >
+                          Confirm
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busyId === r.id}
+                          onClick={() => review(r.id, "reject")}
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 }
