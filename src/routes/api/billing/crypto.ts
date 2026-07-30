@@ -50,11 +50,11 @@ export const Route = createFileRoute("/api/billing/crypto")({
         const { data } = await supabaseAdmin
           .from("crypto_payments")
           .select(
-            "id, reference, purpose, item_code, usd_amount_cents, asset, chain, tx_hash, amount_sent, status, admin_note, created_at",
+            "id, reference, purpose, item_code, usd_amount_cents, asset, chain, tx_hash, amount_sent, status, admin_note, verify_note, confirmations, detected_usd_cents, last_checked_at, credited_at, created_at",
           )
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
-          .limit(20);
+          .limit(50);
         return json({ payments: data ?? [] });
       },
 
