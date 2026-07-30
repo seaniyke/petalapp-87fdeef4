@@ -13,6 +13,7 @@ const TABS: Tab[] = [
   { to: "/admin/waitlist", label: "Waitlist" },
   { to: "/admin/ledgers", label: "Ledgers" },
   { to: "/admin/billing", label: "Billing" },
+  { to: "/admin/cloud-cost", label: "Cloud Cost" },
   { to: "/admin/ai-providers", label: "AI Providers" },
   { to: "/admin/ai-spend", label: "AI Spend" },
   { to: "/admin/pipeline", label: "Pipeline" },
