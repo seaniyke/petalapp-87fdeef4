@@ -170,33 +170,44 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
                 </div>
               </div>
 
-              {/* Free grant + per-meter top-up usage */}
+              {/* Free grant + per-meter usage */}
               <div className="space-y-4 rounded-2xl bg-muted/40 p-5">
                 <div>
                   <h4 className="text-sm font-semibold">Free Cloud + AI credit</h4>
                   <div className="mt-2 text-xl font-semibold tabular-nums">
                     {qualified
-                      ? `${formatUsdCents(freeUsedCents)} / ${formatUsdCents(monthlyGrant)}`
+                      ? `${formatUsdCents(freeRemainingCents)} left of ${formatUsdCents(monthlyGrant)}`
                       : `Locked`}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  {qualified && (
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-border/60">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{
+                          width: `${Math.min(100, Math.max(0, (freeRemainingCents / Math.max(1, monthlyGrant)) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div className="mt-2 text-xs text-muted-foreground">
                     {qualified
-                      ? `One-time grant. Shared across Cloud and AI.`
+                      ? `One-time grant. Shared across Cloud and AI. ${formatUsdCents(freeUsedCents)} used so far.`
                       : `Upgrade to a paid plan or top up once to unlock $${(monthlyGrant / 100).toFixed(0)} free Cloud + AI credit.`}
                   </div>
                 </div>
                 <div className="border-t border-border/60" />
-                <UsageRow label="Cloud" topupUsedCents={split.cloudCents} />
+                <UsageRow label="Cloud" usedCents={split.cloudCents} hint="Backend hosting, database & domains" />
                 <div className="border-t border-border/60" />
-                <UsageRow label="AI" topupUsedCents={split.aiCents} />
+                <UsageRow label="AI" usedCents={split.aiCents} hint="Petal AI calls & image generation" />
               </div>
 
               {/* Project breakdown */}
               <Collapsible className="rounded-2xl bg-muted/40">
-                <CollapsibleTrigger className="flex w-full items-center justify-between px-5 py-4 text-left">
+                <CollapsibleTrigger className="group flex w-full items-center justify-between px-5 py-4 text-left">
                   <span className="text-base font-semibold">Project breakdown</span>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground transition group-data-[state=open]:rotate-180" />
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
                 </CollapsibleTrigger>
+
                 <CollapsibleContent className="space-y-3 px-5 pb-5">
                   {projects.length === 0 ? (
                     <p className="text-xs text-muted-foreground">No projects yet.</p>
@@ -252,21 +263,26 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
 
 function UsageRow({
   label,
-  topupUsedCents,
+  usedCents,
+  hint,
 }: {
   label: string;
-  topupUsedCents: number;
+  usedCents: number;
+  hint?: string;
 }) {
   return (
     <div>
       <h4 className="text-sm font-semibold">{label}</h4>
       <div className="mt-2 text-xl font-semibold tabular-nums">
-        {formatUsdCents(topupUsedCents)}
+        {formatUsdCents(usedCents)}
       </div>
-      <div className="text-xs text-muted-foreground">Top-ups used this month</div>
+      <div className="text-xs text-muted-foreground">
+        Used this month{hint ? ` · ${hint}` : ""}
+      </div>
     </div>
   );
 }
+
 
 function ProjectUsageRow({
   project,

@@ -271,6 +271,12 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
   const totalAvailable = breakdown.total;
   const planMonthlyCap = plan?.monthly_credits ?? 0;
   const dailyCap = plan?.daily_free_credits ?? 0;
+  // Free credits are capped per month too (e.g. 5/day, 30/month = 6 days).
+  const monthlyFreeRemaining =
+    plan?.monthly_free_cap == null
+      ? Infinity
+      : Math.max(0, plan.monthly_free_cap - Number(wallet?.monthly_free_used ?? 0));
+
   // Estimate "denominator" for the progress bar — what they could have at the
   // start of the period: monthly grant + daily allowance + any topup left.
   const progressDenominator = Math.max(1, planMonthlyCap + dailyCap + breakdown.topup);
@@ -369,10 +375,13 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               ) : null}
               {plan?.daily_free_credits ? (
                 <PlanFeature>
-                  {plan.daily_free_credits} daily credits
-                  {plan.monthly_free_cap ? ` (up to ${plan.monthly_free_cap}/month)` : ""}
+                  {plan.daily_free_credits} free credits a day
+                  {plan.monthly_free_cap
+                    ? ` — up to ${Math.floor(plan.monthly_free_cap / plan.daily_free_credits)} days a month (${plan.monthly_free_cap} max)`
+                    : ""}
                 </PlanFeature>
               ) : null}
+
               <PlanFeature>On-demand credit top-ups (no subscription needed)</PlanFeature>
               {payAsYouGo && (
                 <PlanFeature>Paid features unlocked by your credit balance</PlanFeature>
@@ -440,12 +449,19 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               <CreditRow
                 label="Daily credits"
                 sub={
-                  dailyCap
-                    ? `Resets to ${dailyCap} credits ${dailyResetText ?? "soon"}`
-                    : "Not included on this plan"
+                  !dailyCap
+                    ? "Not included on this plan"
+                    : monthlyFreeRemaining === 0
+                      ? `Monthly free cap reached (${plan?.monthly_free_cap}) — resets in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
+                      : `Resets to ${dailyCap} credits ${dailyResetText ?? "soon"}${
+                          plan?.monthly_free_cap
+                            ? ` · ${monthlyFreeRemaining} of ${plan.monthly_free_cap} free credits left this month`
+                            : ""
+                        }`
                 }
                 value={breakdown.daily}
               />
+
               <CreditRow
                 label="Monthly credits"
                 sub={
@@ -778,9 +794,12 @@ function PlanCard({
       <ul className="mt-3 space-y-1.5 text-xs text-muted-foreground">
         <PlanFeature>{plan.monthly_credits.toLocaleString()} monthly credits</PlanFeature>
         <PlanFeature>
-          {plan.daily_free_credits} daily credits
-          {plan.monthly_free_cap ? ` (up to ${plan.monthly_free_cap}/month)` : ""}
+          {plan.daily_free_credits} free credits a day
+          {plan.monthly_free_cap
+            ? ` — up to ${Math.floor(plan.monthly_free_cap / Math.max(1, plan.daily_free_credits))} days a month`
+            : ""}
         </PlanFeature>
+
         <PlanFeature>$5 free Cloud + AI credit (one-time, on first upgrade)</PlanFeature>
         <PlanFeature>Petal Cloud — backend, database, auth &amp; storage</PlanFeature>
         <PlanFeature>Petal AI — call Gemini &amp; GPT-5 with no API key</PlanFeature>
