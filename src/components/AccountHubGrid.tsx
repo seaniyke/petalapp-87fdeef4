@@ -4,7 +4,15 @@
  * (mounted by the parent route) via callback props.
  */
 import { Link } from "@tanstack/react-router";
-import { Cloud, Sparkles, Wallet, FolderOpen, Settings, ArrowRight } from "lucide-react";
+import {
+  Cloud,
+  Sparkles,
+  Wallet,
+  FolderOpen,
+  Settings,
+  ArrowRight,
+  Receipt,
+} from "lucide-react";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
 type Props = {
@@ -39,6 +47,12 @@ export function AccountHubGrid({ onOpenBilling, onOpenCloudBalance, onOpenCloud 
           icon={<Wallet className="h-5 w-5" />}
           title="Cloud & AI balance"
           description="Runtime balance, project caps and Cloud/AI usage."
+        />
+        <CardLink
+          to="/billing"
+          icon={<Receipt className="h-5 w-5" />}
+          title="Billing & receipts"
+          description="Plan, renewal date, payment history and PDF receipts."
         />
         <CardLink
           to="/projects"
@@ -109,7 +123,7 @@ function CardLink({
   title,
   description,
 }: {
-  to: "/projects" | "/admin";
+  to: "/projects" | "/admin" | "/billing";
   icon: React.ReactNode;
   title: string;
   description: string;
