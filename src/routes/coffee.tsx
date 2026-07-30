@@ -135,10 +135,42 @@ function CoffeePage() {
             </p>
           </div>
 
+          {/* Payment method */}
+          <div className="mt-8 flex justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMethod("card")}
+              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                method === "card"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <CreditCard className="h-4 w-4" /> Card & mobile money
+            </button>
+            <button
+              type="button"
+              onClick={() => setMethod("crypto")}
+              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                method === "crypto"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Bitcoin className="h-4 w-4" /> Crypto
+            </button>
+          </div>
+
+          {method === "crypto" ? (
+            <div className="mt-6">
+              <CryptoTipPanel />
+            </div>
+          ) : (
           <form
             onSubmit={submit}
-            className="mt-10 rounded-3xl border border-border bg-card/90 p-6 shadow-[var(--shadow-soft)] backdrop-blur sm:p-8"
+            className="mt-6 rounded-3xl border border-border bg-card/90 p-6 shadow-[var(--shadow-soft)] backdrop-blur sm:p-8"
           >
+
             {/* Currency */}
             <div className="mb-5">
               <label className="mb-2 block text-sm font-medium">Currency</label>
