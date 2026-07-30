@@ -996,6 +996,26 @@ function emitConversationalFallback(
   );
 }
 
+function emitDeterministicRepair(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+  args: { summary: string; files: ProjectFile[] },
+): void {
+  controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: args.summary })));
+  controller.enqueue(
+    encoder.encode(
+      sse({
+        type: "result",
+        files: args.files,
+        summary: args.summary,
+        plan: undefined,
+        recap: undefined,
+        creditsCharged: 0,
+      }),
+    ),
+  );
+}
+
 // Question-first guard removed. Whether a turn is a question is decided
 // upstream by /api/triage — the SINGLE source of truth for asking. By the
 // time generate runs, the turn is unambiguously a build/edit/fix, so we
@@ -2524,6 +2544,32 @@ Forbidden defaults
             const planScopeHit =
               allowedPathSet !== null &&
               violations.some((v) => !allowedPathSet!.has(v.path));
+
+            // The model may correctly diagnose a scaffold/build-config fault,
+            // but it is not allowed to edit those files directly. Before
+            // refusing the turn, run Petal's trusted deterministic repair
+            // layer. This closes the old contradiction where Petal said it
+            // would fix vite.config.ts, dropped its own op, then asked the
+            // user to rephrase. User/plan-protected paths remain untouched.
+            if (!userGlobsHit && !planScopeHit && violations.length > 0) {
+              const healedScaffold = applyScaffoldKitForPatch(currentFiles, {
+                backend: backend ?? undefined,
+                sharedBackend: sharedBackend ?? undefined,
+                target: buildTarget.id,
+              });
+              const healed = runAllRepairs(healedScaffold);
+              const before = new Map(currentFiles.map((f) => [f.path, f.content]));
+              const changed = healed.files.some((f) => before.get(f.path) !== f.content) ||
+                healed.files.length !== currentFiles.length;
+              if (changed) {
+                const summary = body.isAutoFix
+                  ? "I repaired the build configuration and restored the project to a buildable state."
+                  : "I fixed the build configuration safely and re-ran Petal's project repairs.";
+                console.info("[protected-path-self-heal]", healed.notes.join("; ") || "scaffold restored");
+                emitDeterministicRepair(controller, encoder, { files: healed.files, summary });
+                return;
+              }
+            }
             recorder.record({
               tier: "apply_ops",
               outcome: "failed",
