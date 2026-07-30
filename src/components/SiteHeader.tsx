@@ -120,6 +120,8 @@ export function SiteHeader() {
           </nav>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
+            <ThemeToggle />
+
             {!isReady ? (
               <div
                 aria-hidden="true"
