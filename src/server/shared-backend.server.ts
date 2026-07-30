@@ -69,7 +69,7 @@ export async function hashPassword(password: string): Promise<string> {
     "deriveBits",
   ]);
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt, iterations: 100_000, hash: "SHA-256" },
+    { name: "PBKDF2", salt: salt as unknown as BufferSource, iterations: 100_000, hash: "SHA-256" },
     keyMaterial,
     256,
   );
@@ -85,7 +85,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
   const bits = await crypto.subtle.deriveBits(
     {
       name: "PBKDF2",
-      salt: fromB64url(saltStr),
+      salt: fromB64url(saltStr) as unknown as BufferSource,
       iterations: Number(iterStr) || 100_000,
       hash: "SHA-256",
     },
@@ -269,7 +269,7 @@ export async function createRecord(opts: {
       project_id: opts.projectId,
       collection: opts.collection,
       owner_key: opts.ownerKey,
-      data: opts.data,
+      data: opts.data as never,
     })
     .select("id, collection, owner_key, data, created_at, updated_at")
     .single();
@@ -285,7 +285,7 @@ export async function updateRecord(opts: {
 }): Promise<RecordRow | null> {
   let q = supabaseAdmin
     .from("shared_app_records")
-    .update({ data: opts.data })
+    .update({ data: opts.data as never })
     .eq("project_id", opts.projectId)
     .eq("id", opts.id);
   if (opts.ownerKey) q = q.eq("owner_key", opts.ownerKey);
