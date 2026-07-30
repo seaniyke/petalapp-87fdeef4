@@ -115,10 +115,14 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
   const code = files.filter((f) => CODE_EXT.test(f.path));
   if (code.length === 0) return { files, notes };
 
-  const anyConsumer = code.some((f) => usesConsumer(f.content));
+  const anyConsumer = code.some(
+    (f) => !f.path.includes("router-compat") && usesConsumer(f.content),
+  );
   if (!anyConsumer) return { files, notes };
 
-  const anyProvider = code.some((f) => hasProvider(f.content));
+  const anyProvider = code.some(
+    (f) => !f.path.includes("router-compat") && hasProvider(f.content),
+  );
   if (anyProvider) return { files, notes };
 
   // Preferred injection point: the entry file that calls .render(...)
