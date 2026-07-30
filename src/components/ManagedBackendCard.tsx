@@ -267,6 +267,8 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
     );
   }
 
+  const tierLabel = backend?.backendType === "dedicated" ? "Dedicated" : "Managed";
+
   /* ---------------- Paused ---------------- */
   if (phase === "paused") {
     const isHibernated = backend?.errorMessage?.toLowerCase().includes("inactivity");
