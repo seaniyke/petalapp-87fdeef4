@@ -138,6 +138,11 @@ export function ProjectSettingsSheet({
   // directly instead of scrolling.
   useEffect(() => {
     if (!open || !scrollTo) return;
+    if (scrollTo === "seo") {
+      setSeoOpen(true);
+      onScrollHandled?.();
+      return;
+    }
     if (scrollTo === "domains") {
       setDomainsOpen(true);
       onScrollHandled?.();
