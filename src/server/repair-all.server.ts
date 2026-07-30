@@ -98,12 +98,20 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   files = routerImports.files;
   for (const n of routerImports.notes) notes.push(n);
 
-  // 4c. Router provider guarantee. Router primitives without a mounted
+  // 4c. TanStack Router consumers with no TanStack router mounted crash at
+  // render with `null is not an object (evaluating 'n.stores')`. Route them
+  // through a react-router-dom compatibility shim BEFORE the provider pass.
+  const tanstackFallback = fixTanstackRouterWithoutProvider(files);
+  files = tanstackFallback.files;
+  for (const n of tanstackFallback.notes) notes.push(n);
+
+  // 4d. Router provider guarantee. Router primitives without a mounted
   // <BrowserRouter> crash at render with
   // `Cannot destructure property 'basename' from null`.
   const routerProvider = fixMissingRouterProvider(files);
   files = routerProvider.files;
   for (const n of routerProvider.notes) notes.push(n);
+
 
   // 5. Bare import resolver — alias, install, or strip unresolved bare specs.
   const bare = repairBareImports(files);
