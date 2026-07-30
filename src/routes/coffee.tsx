@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
-import { Coffee, Heart, Loader2, ArrowRight } from "lucide-react";
+import { CryptoTipPanel } from "@/components/CryptoTipPanel";
+import { Coffee, Heart, Loader2, ArrowRight, CreditCard, Bitcoin } from "lucide-react";
+
 
 export const Route = createFileRoute("/coffee")({
   head: () => ({
