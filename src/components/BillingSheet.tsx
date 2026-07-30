@@ -369,10 +369,13 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               ) : null}
               {plan?.daily_free_credits ? (
                 <PlanFeature>
-                  {plan.daily_free_credits} daily credits
-                  {plan.monthly_free_cap ? ` (up to ${plan.monthly_free_cap}/month)` : ""}
+                  {plan.daily_free_credits} free credits a day
+                  {plan.monthly_free_cap
+                    ? ` — up to ${Math.floor(plan.monthly_free_cap / plan.daily_free_credits)} days a month (${plan.monthly_free_cap} max)`
+                    : ""}
                 </PlanFeature>
               ) : null}
+
               <PlanFeature>On-demand credit top-ups (no subscription needed)</PlanFeature>
               {payAsYouGo && (
                 <PlanFeature>Paid features unlocked by your credit balance</PlanFeature>
