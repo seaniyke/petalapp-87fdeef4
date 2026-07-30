@@ -178,7 +178,7 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
   //    hit the balance_empty branch.
   const { data: wallet } = await supabaseAdmin
     .from("user_wallets")
-    .select("plan_code, runtime_topup_balance_cents, runtime_free_balance_cents")
+    .select("plan_code, topup_credits_remaining, runtime_topup_balance_cents, runtime_free_balance_cents")
     .eq("user_id", userId)
     .maybeSingle();
   const planCode = String(wallet?.plan_code ?? "free");
@@ -195,7 +195,8 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
 
     return new Response(
       JSON.stringify({
-        error: "Backends are included with paid plans. Upgrade to add a backend.",
+        error:
+          "Backends need a paid plan or credits in your wallet. Buy credits or upgrade to add a backend.",
         code: "plan_upgrade_required",
         requiredPlan: "pro",
         currentPlan: planCode,
