@@ -73,6 +73,11 @@ async function runHourlyCharges(): Promise<{
     });
     if (result.ok) {
       charged++;
+      // Bump activity so idle hibernation doesn't pause active backends.
+      await supabaseAdmin
+        .from("project_backends")
+        .update({ last_active_at: new Date().toISOString() })
+        .eq("project_id", p.id);
       continue;
     }
     blocked++;

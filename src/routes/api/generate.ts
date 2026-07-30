@@ -1869,6 +1869,7 @@ Forbidden defaults
   const dynamic = pickDynamicSnippets({
     messages,
     hasBackend: Boolean(backend),
+    buildTarget,
   });
 
   const dateBlock = renderCurrentDateBlock();

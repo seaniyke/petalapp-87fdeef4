@@ -2035,6 +2035,7 @@ export type Database = {
           error_message: string | null
           health_checked_at: string | null
           id: string
+          last_active_at: string | null
           paused_at: string | null
           project_id: string
           provider: string
@@ -2049,6 +2050,7 @@ export type Database = {
           error_message?: string | null
           health_checked_at?: string | null
           id?: string
+          last_active_at?: string | null
           paused_at?: string | null
           project_id: string
           provider?: string
@@ -2063,6 +2065,7 @@ export type Database = {
           error_message?: string | null
           health_checked_at?: string | null
           id?: string
+          last_active_at?: string | null
           paused_at?: string | null
           project_id?: string
           provider?: string
@@ -2481,6 +2484,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          backend_type: string
           created_at: string
           custom_instructions: string | null
           hide_petal_badge: boolean
@@ -2510,6 +2514,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          backend_type?: string
           created_at?: string
           custom_instructions?: string | null
           hide_petal_badge?: boolean
@@ -2539,6 +2544,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          backend_type?: string
           created_at?: string
           custom_instructions?: string | null
           hide_petal_badge?: boolean

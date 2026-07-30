@@ -108,10 +108,10 @@ export function EnableBackendFromCloudDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Database className="h-4 w-4" />
-              Enable managed backend
+              Enable dedicated backend
             </DialogTitle>
             <DialogDescription>
-              Database, auth and storage for your project.
+              A dedicated database, auth and storage project just for your app.
             </DialogDescription>
           </DialogHeader>
 
@@ -123,11 +123,11 @@ export function EnableBackendFromCloudDialog({
             <div className="space-y-3">
               <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
                 <p className="font-medium text-foreground">
-                  Backends are included with paid plans.
+                  Dedicated backends are included with paid plans.
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Upgrade to add a backend. We'll add $5 of runtime credit to
-                  get you started — no top-up required.
+                  Upgrade to add your own dedicated Supabase project. We'll add
+                  $5 of runtime credit to get you started — no top-up required.
                 </p>
               </div>
             </div>
@@ -147,7 +147,8 @@ export function EnableBackendFromCloudDialog({
                   </span>
                 </div>
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  Ready to power your project whenever you need it.
+                  Backends cost $0.04/hr while active. Idle dedicated projects
+                  auto-pause after 7 days to save credits.
                 </p>
               </div>
 
