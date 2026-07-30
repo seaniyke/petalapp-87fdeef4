@@ -555,6 +555,69 @@ export type Database = {
         }
         Relationships: []
       }
+      crypto_payments: {
+        Row: {
+          admin_note: string | null
+          amount_sent: number | null
+          asset: string
+          chain: string
+          created_at: string
+          credited_at: string | null
+          environment: string
+          id: string
+          item_code: string
+          purpose: string
+          reference: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          tx_hash: string
+          usd_amount_cents: number
+          user_id: string
+          wallet_address: string
+        }
+        Insert: {
+          admin_note?: string | null
+          amount_sent?: number | null
+          asset: string
+          chain: string
+          created_at?: string
+          credited_at?: string | null
+          environment?: string
+          id?: string
+          item_code: string
+          purpose: string
+          reference: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tx_hash: string
+          usd_amount_cents: number
+          user_id: string
+          wallet_address: string
+        }
+        Update: {
+          admin_note?: string | null
+          amount_sent?: number | null
+          asset?: string
+          chain?: string
+          created_at?: string
+          credited_at?: string | null
+          environment?: string
+          id?: string
+          item_code?: string
+          purpose?: string
+          reference?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tx_hash?: string
+          usd_amount_cents?: number
+          user_id?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       domain_slots: {
         Row: {
           addon_code: string
