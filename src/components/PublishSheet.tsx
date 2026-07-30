@@ -448,8 +448,32 @@ export function PublishSheet({
         ? "bg-primary/15 text-primary hover:bg-primary/20"
         : "bg-primary text-primary-foreground hover:bg-primary/90";
 
+  const siteMeta = project as ProjectRow & {
+    site_title?: string | null;
+    site_description?: string | null;
+    site_icon_url?: string | null;
+  };
+
   const content = (
     <>
+        {(publishing || buildStatus === "pending") && !justPublished && (
+          <PublishingCard isUpdate={hasPublishedBuild} />
+        )}
+
+        {justPublished && !publishing && (
+          <PublishSuccessCard
+            isUpdate={hasPublishedBuild && !isUnpublished}
+            url={resolved.url}
+            display={resolved.display}
+            title={siteMeta.site_title || project.title}
+            description={siteMeta.site_description ?? project.summary}
+            iconUrl={siteMeta.site_icon_url}
+            onEditWebsiteInfo={() => setWebsiteInfoOpen(true)}
+            onDismiss={() => setJustPublished(false)}
+          />
+        )}
+
+
 
 
         {/* Header */}
