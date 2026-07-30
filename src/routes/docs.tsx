@@ -11,6 +11,8 @@ import {
   GitBranch,
   Wrench,
   HelpCircle,
+  Layers,
+  Gift,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 
