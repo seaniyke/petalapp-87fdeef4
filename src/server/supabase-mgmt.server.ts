@@ -207,3 +207,32 @@ export async function runQuery(
   });
   return Array.isArray(result) ? result : [];
 }
+
+/**
+ * Query a managed project's Logflare-backed log endpoints via the Mgmt API's
+ * analytics proxy. `sql` is BigQuery-flavoured SQL over the log sources
+ * (`edge_logs`, `postgres_logs`, `auth_logs`, `function_edge_logs`, ...).
+ *
+ * The window is bounded by ISO timestamps — without them the endpoint
+ * defaults to the last minute, which usually looks empty to users.
+ */
+export async function queryLogs(
+  ref: string,
+  sql: string,
+  opts: { minutes?: number } = {},
+): Promise<Record<string, unknown>[]> {
+  const minutes = Math.min(Math.max(opts.minutes ?? 60, 1), 60 * 24);
+  const end = new Date();
+  const start = new Date(end.getTime() - minutes * 60_000);
+  const qs = new URLSearchParams({
+    sql,
+    iso_timestamp_start: start.toISOString(),
+    iso_timestamp_end: end.toISOString(),
+  });
+  const res = await mgmt<{ result?: Record<string, unknown>[] } | Record<string, unknown>[]>(
+    "GET",
+    `/projects/${ref}/analytics/endpoints/logs.all?${qs.toString()}`,
+  );
+  if (Array.isArray(res)) return res;
+  return Array.isArray(res?.result) ? res.result : [];
+}
