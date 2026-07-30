@@ -94,6 +94,7 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiTurnsIdEventsRouteImport } from './routes/api/turns.$id.events'
+import { Route as ApiPublicSharedSplatRouteImport } from './routes/api/public/shared/$'
 import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
 import { Route as ApiPublicMobileCallbackRouteImport } from './routes/api/public/mobile/callback'
 import { Route as ApiPublicEmailSendRouteImport } from './routes/api/public/email/send'
@@ -542,6 +543,11 @@ const ApiTurnsIdEventsRoute = ApiTurnsIdEventsRouteImport.update({
   path: '/api/turns/$id/events',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSharedSplatRoute = ApiPublicSharedSplatRouteImport.update({
+  id: '/api/public/shared/$',
+  path: '/api/public/shared/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPaystackWebhookRoute =
   ApiPublicPaystackWebhookRouteImport.update({
     id: '/api/public/paystack/webhook',
@@ -743,6 +749,7 @@ export interface FileRoutesByFullPath {
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
+  '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -848,6 +855,7 @@ export interface FileRoutesByTo {
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
+  '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -954,6 +962,7 @@ export interface FileRoutesById {
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
+  '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -1061,6 +1070,7 @@ export interface FileRouteTypes {
     | '/api/public/email/send'
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
+    | '/api/public/shared/$'
     | '/api/turns/$id/events'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -1166,6 +1176,7 @@ export interface FileRouteTypes {
     | '/api/public/email/send'
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
+    | '/api/public/shared/$'
     | '/api/turns/$id/events'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -1271,6 +1282,7 @@ export interface FileRouteTypes {
     | '/api/public/email/send'
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
+    | '/api/public/shared/$'
     | '/api/turns/$id/events'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -1373,6 +1385,7 @@ export interface RootRouteChildren {
   ApiPublicEmailSendRoute: typeof ApiPublicEmailSendRoute
   ApiPublicMobileCallbackRoute: typeof ApiPublicMobileCallbackRoute
   ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
+  ApiPublicSharedSplatRoute: typeof ApiPublicSharedSplatRoute
   ApiTurnsIdEventsRoute: typeof ApiTurnsIdEventsRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -1978,6 +1991,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTurnsIdEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/shared/$': {
+      id: '/api/public/shared/$'
+      path: '/api/public/shared/$'
+      fullPath: '/api/public/shared/$'
+      preLoaderRoute: typeof ApiPublicSharedSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/paystack/webhook': {
       id: '/api/public/paystack/webhook'
       path: '/api/public/paystack/webhook'
@@ -2246,6 +2266,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicEmailSendRoute: ApiPublicEmailSendRoute,
   ApiPublicMobileCallbackRoute: ApiPublicMobileCallbackRoute,
   ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
+  ApiPublicSharedSplatRoute: ApiPublicSharedSplatRoute,
   ApiTurnsIdEventsRoute: ApiTurnsIdEventsRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
