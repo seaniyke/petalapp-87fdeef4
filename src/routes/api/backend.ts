@@ -498,6 +498,63 @@ async function handleManagedCredentials(userId: string, body: unknown): Promise<
 
 }
 
+/* ---------------- Shared-tier actions ---------------- */
+
+/**
+ * Free tier: a real database, auth and REST API that lives inside Petal Cloud
+ * instead of spawning a dedicated Supabase project. No plan or balance gate.
+ */
+async function handleEnableShared(userId: string, body: unknown): Promise<Response> {
+  const parsed = ProjectIdInput.safeParse(body);
+  if (!parsed.success) return new Response(parsed.error.message, { status: 400 });
+  const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
+  if (ownerErr) return ownerErr;
+
+  const { data: existing } = await supabaseAdmin
+    .from("project_backends")
+    .select("provider")
+    .eq("project_id", parsed.data.projectId)
+    .maybeSingle();
+  if (existing) {
+    return new Response(
+      JSON.stringify({
+        error: "This project already has a backend attached.",
+        code: "already_connected",
+      }),
+      { status: 409, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const { enableSharedBackend, SHARED_LIMITS } = await import("@/server/shared-backend.server");
+  const backend = await enableSharedBackend(parsed.data.projectId);
+  return Response.json({ ...backend, limits: SHARED_LIMITS, backendType: "shared" });
+}
+
+async function handleSharedStatus(userId: string, body: unknown): Promise<Response> {
+  const parsed = ProjectIdInput.safeParse(body);
+  if (!parsed.success) return new Response(parsed.error.message, { status: 400 });
+  const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
+  if (ownerErr) return ownerErr;
+  const { getSharedBackend, sharedUsage, SHARED_LIMITS } = await import(
+    "@/server/shared-backend.server"
+  );
+  const backend = await getSharedBackend(parsed.data.projectId);
+  if (!backend) return Response.json({ enabled: false, limits: SHARED_LIMITS });
+  const usage = await sharedUsage(parsed.data.projectId);
+  return Response.json({ enabled: true, ...backend, usage, limits: SHARED_LIMITS });
+}
+
+async function handleDisableShared(userId: string, body: unknown): Promise<Response> {
+  const parsed = ProjectIdInput.safeParse(body);
+  if (!parsed.success) return new Response(parsed.error.message, { status: 400 });
+  const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
+  if (ownerErr) return ownerErr;
+  const { disableSharedBackend } = await import("@/server/shared-backend.server");
+  await disableSharedBackend(parsed.data.projectId);
+  return Response.json({ ok: true });
+}
+
+
 export const Route = createFileRoute("/api/backend")({
   server: {
     handlers: {
