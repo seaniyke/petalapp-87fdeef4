@@ -632,12 +632,15 @@ function Builder() {
     () => new Set(),
   );
   const { plan: currentPlan, wallet: currentWallet, loading: walletLoading } = useWallet();
-  // Derive paid-plan from the wallet's plan_code directly. The plans catalog
-  // can lag (or omit grandfathered plan codes), which previously caused paid
-  // users to see "Upgrade" on suggestion chips during the load gap.
+  // Derive access from the wallet directly. Paid features unlock via an
+  // active subscription OR pay-as-you-go: purchased credits still remaining.
+  // The plans catalog can lag (or omit grandfathered plan codes), which
+  // previously caused paid users to see "Upgrade" on suggestion chips.
   const isPaidPlan =
     (currentWallet?.plan_code && currentWallet.plan_code !== "free") ||
+    Number(currentWallet?.topup_credits_remaining ?? 0) > 0 ||
     (!!currentPlan && currentPlan.code !== "free");
+
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
   // Visual element edit (Phase 5): selected element from the preview iframe.
   type PickedElement = {
