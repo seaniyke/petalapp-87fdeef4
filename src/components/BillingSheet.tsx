@@ -781,9 +781,12 @@ function PlanCard({
       <ul className="mt-3 space-y-1.5 text-xs text-muted-foreground">
         <PlanFeature>{plan.monthly_credits.toLocaleString()} monthly credits</PlanFeature>
         <PlanFeature>
-          {plan.daily_free_credits} daily credits
-          {plan.monthly_free_cap ? ` (up to ${plan.monthly_free_cap}/month)` : ""}
+          {plan.daily_free_credits} free credits a day
+          {plan.monthly_free_cap
+            ? ` — up to ${Math.floor(plan.monthly_free_cap / Math.max(1, plan.daily_free_credits))} days a month`
+            : ""}
         </PlanFeature>
+
         <PlanFeature>$5 free Cloud + AI credit (one-time, on first upgrade)</PlanFeature>
         <PlanFeature>Petal Cloud — backend, database, auth &amp; storage</PlanFeature>
         <PlanFeature>Petal AI — call Gemini &amp; GPT-5 with no API key</PlanFeature>
