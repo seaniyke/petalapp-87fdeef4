@@ -818,6 +818,8 @@ export function pickDynamicSnippets(args: {
   messages: Array<{ role: string; content: unknown }>;
   /** When true, skip the auth block (no backend connected). */
   hasBackend: boolean;
+  /** Force-include target-specific craft snippets regardless of keywords. */
+  buildTarget?: { id: string };
 }): { snippets: DynamicSnippetKey[]; text: string } {
   const latestUserTurn = [...args.messages].reverse().find((m) => m.role === "user");
   const haystack = messageText(latestUserTurn?.content).toLowerCase();
@@ -836,6 +838,21 @@ export function pickDynamicSnippets(args: {
     matched.push("noBackendGate");
   }
 
+  // Always enforce target-specific craft rules when the build target is
+  // mobile, backend, or extension — even if the latest user turn doesn't
+  // re-state the target (e.g. "make it blue" on a mobile app must still
+  // use native primitives).
+  const targetId = args.buildTarget?.id ?? "web";
+  if (targetId === "mobile" || targetId === "ios" || targetId === "android" || targetId === "web-mobile") {
+    if (!matched.includes("mobileCraft")) matched.push("mobileCraft");
+  }
+  if (targetId === "backend") {
+    if (!matched.includes("backendCraft")) matched.push("backendCraft");
+  }
+  if (targetId === "extension") {
+    if (!matched.includes("chromeExtensionCraft")) matched.push("chromeExtensionCraft");
+  }
+
   for (const key of Object.keys(SNIPPETS) as DynamicSnippetKey[]) {
     if (key === "kitCore") continue;
     if (key === "noBackendGate") continue; // handled above
@@ -845,6 +862,9 @@ export function pickDynamicSnippets(args: {
     // Without one, the noBackendGate snippet already tells the model to
     // scaffold UI-only and prompt the user to enable a backend.
     if ((key === "fileUpload" || key === "webhook" || key === "cronJob" || key === "payments") && !args.hasBackend) continue;
+    // Target-specific craft snippets are already forced above; skip keyword
+    // matching for them so they don't double-count toward the cap.
+    if (key === "mobileCraft" || key === "backendCraft" || key === "chromeExtensionCraft") continue;
     const def = SNIPPETS[key];
     // "always" snippets are baseline reinforcements (e.g. verifyBeforeDone)
     // and ALWAYS go in. Topical snippets only fire on a keyword match.
