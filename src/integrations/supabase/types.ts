@@ -3494,6 +3494,7 @@ export type Database = {
         Args: { _plan_code: string; _reference: string; _user_id: string }
         Returns: undefined
       }
+      has_full_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
