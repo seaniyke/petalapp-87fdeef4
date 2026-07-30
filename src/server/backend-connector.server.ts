@@ -19,3 +19,25 @@ export async function lookupBackendForGenerate(projectId: string): Promise<{
   if (data.status !== "ready") return null;
   return { url: data.supabase_url, anonKey: data.anon_key };
 }
+
+/**
+ * Shared (free) tier lookup. Returns the injection opts for
+ * `sharedBackendKit` when the project has a shared backend enabled.
+ */
+export async function lookupSharedBackendForGenerate(projectId: string): Promise<{
+  projectId: string;
+  apiKey: string;
+  baseUrl: string;
+} | null> {
+  const { data, error } = await supabaseAdmin
+    .from("shared_backends")
+    .select("api_key, enabled")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (error || !data || data.enabled === false) return null;
+  return {
+    projectId,
+    apiKey: data.api_key as string,
+    baseUrl: process.env.PETAL_PUBLIC_ORIGIN || "https://buildwithpetal.com",
+  };
+}
