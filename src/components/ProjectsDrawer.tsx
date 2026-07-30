@@ -229,56 +229,23 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
               icon={<Star className="h-4 w-4" />}
               label="Starred"
               active={section === "starred"}
-              onClick={() => setSection("starred")}
+              onClick={() => {
+                onOpenChange(false);
+                navigate({ to: "/projects" });
+              }}
             />
             <SectionRow
               icon={<UserIcon className="h-4 w-4" />}
               label="Created by me"
               active={section === "mine"}
-              onClick={() => setSection("mine")}
+              onClick={() => {
+                onOpenChange(false);
+                navigate({ to: "/projects" });
+              }}
             />
           </div>
-
-          {/* Filtered list */}
-          <div className="mt-2 space-y-0.5">
-            {filtered.length === 0 && !loading && (
-              <div className="px-3 py-6 text-center text-xs text-muted-foreground">
-                {query ? "No matches." : section === "starred" ? "Star a project to pin it here." : "No projects yet."}
-              </div>
-            )}
-            {filtered.map((p) => {
-              const starred = (p as { is_starred?: boolean }).is_starred ?? false;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => openProject(p.id)}
-                  className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-muted ${
-                    currentProjectId === p.id ? "bg-muted" : ""
-                  }`}
-                >
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-primary/10 text-[11px] font-semibold text-primary">
-                    {(p.title || "?")[0]?.toUpperCase()}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm">{p.title}</span>
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => toggleStar(p, e)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") toggleStar(p, e as unknown as React.MouseEvent);
-                    }}
-                    aria-label={starred ? "Unstar" : "Star"}
-                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition ${
-                      starred ? "text-amber-500 opacity-100" : "opacity-0 group-hover:opacity-100"
-                    } hover:bg-background hover:text-amber-500`}
-                  >
-                    <Star className={`h-3.5 w-3.5 ${starred ? "fill-current" : ""}`} />
-                  </span>
-                </button>
-              );
-            })}
-          </div>
         </div>
+
 
         {/* Workspace footer */}
         {user && (
