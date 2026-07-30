@@ -235,17 +235,45 @@ export function BuildActivityCard({
           : `${creditsCharged.toFixed(creditsCharged < 10 ? 1 : 0)} credits`
       : null;
 
+  // Completion collapses to one scannable line: Done · 7 files · 1m 12s · 2 credits
+  const doneBits = [
+    fileCount > 0 ? `${fileCount} file${fileCount === 1 ? "" : "s"}` : null,
+    elapsed > 0 ? formatDuration(elapsed) : null,
+    costLabel,
+  ].filter(Boolean) as string[];
+
   const headline = isComplete
-    ? fileCount > 0
-      ? `Done — ${fileCount} file${fileCount === 1 ? "" : "s"} updated`
-      : "Done — your app is live"
+    ? `Done${doneBits.length ? ` · ${doneBits.join(" · ")}` : " — your app is live"}`
     : (currentPhase?.label ?? "Working…");
 
+  // Verb + filename chip for the live step, the way a teammate would say it.
+  const activeFile =
+    isActive && currentPhase?.id === "writing" && latestPath ? latestPath.split("/").pop() : null;
+
   const CurrentIcon = currentPhase ? PHASE_ICONS[currentPhase.id] : Sparkles;
+
+  // Six-segment phase rail so progress is visible without opening anything.
+  const phaseIndex = phases.findIndex((p) => p.id === currentPhase?.id);
 
   return (
     <>
       <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-sm backdrop-blur-sm transition-all">
+        <div className="flex gap-px" aria-hidden>
+          {phases.map((p, i) => (
+            <span
+              key={p.id}
+              className={`h-1 flex-1 transition-colors duration-500 ${
+                p.status === "failed"
+                  ? "bg-destructive"
+                  : p.status === "done" || isComplete
+                    ? "bg-primary/70"
+                    : i === phaseIndex
+                      ? "bg-primary/70 animate-pulse"
+                      : "bg-border/60"
+              }`}
+            />
+          ))}
+        </div>
         <div className="flex items-center gap-2.5 px-3.5 py-3">
           <span
             className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
@@ -265,27 +293,27 @@ export function BuildActivityCard({
             <div className="flex items-baseline gap-2">
               <span
                 key={`label-${headline}`}
-                className={`truncate text-[14.5px] font-semibold tracking-[-0.01em] animate-fade-in motion-reduce:animate-none ${
+                className={`truncate text-[14.5px] font-bold tracking-[-0.01em] animate-fade-in motion-reduce:animate-none ${
                   isActive ? "petal-shimmer" : "text-foreground"
                 }`}
               >
                 {headline}
               </span>
-              {elapsed > 0 && (
-                <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground/70 tabular-nums">
-                  {elapsed}s
-                </span>
+              {activeFile && (
+                <code className="shrink-0 truncate rounded bg-muted px-1.5 py-0.5 font-mono text-[10.5px] font-semibold">
+                  {activeFile}
+                </code>
               )}
-              {costLabel && isComplete && (
-                <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  {costLabel}
+              {elapsed > 0 && !isComplete && (
+                <span className="shrink-0 font-mono text-[10.5px] font-semibold text-muted-foreground/70 tabular-nums">
+                  {elapsed}s
                 </span>
               )}
             </div>
             {subCaption && (
               <div
                 key={`cap-${subCaption}`}
-                className="mt-0.5 truncate text-[12px] text-muted-foreground animate-fade-in motion-reduce:animate-none"
+                className="mt-0.5 line-clamp-2 text-[12px] font-medium text-muted-foreground animate-fade-in motion-reduce:animate-none"
               >
                 {subCaption}
               </div>
@@ -296,7 +324,7 @@ export function BuildActivityCard({
           <button
             type="button"
             onClick={() => setDetailsOpen(true)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border/70 bg-background px-3 py-2 text-[13px] font-semibold transition hover:bg-muted"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border/70 bg-background px-3 py-2 text-[13px] font-bold transition hover:bg-muted"
           >
             <ListTree className="h-3.5 w-3.5" aria-hidden />
             Details
@@ -305,7 +333,7 @@ export function BuildActivityCard({
             type="button"
             onClick={onOpenPreview}
             disabled={!onOpenPreview}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border/70 bg-background px-3 py-2 text-[13px] font-semibold transition hover:bg-muted disabled:opacity-40"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border/70 bg-background px-3 py-2 text-[13px] font-bold transition hover:bg-muted disabled:opacity-40"
           >
             <Play className="h-3.5 w-3.5" aria-hidden />
             Preview
@@ -324,11 +352,14 @@ export function BuildActivityCard({
         designCaption={designCaption}
         latestPath={latestPath}
         writtenPaths={writtenPaths}
+        fileTimestamps={fileTimestamps}
         completedPaths={completedPaths}
         finalFileLines={finalFileLines}
         fileChanges={fileChanges}
+        creditsCharged={creditsCharged}
         onReviewChanges={onReviewChanges}
       />
+
     </>
   );
 }
