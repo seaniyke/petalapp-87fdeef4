@@ -123,14 +123,24 @@ export function EnableBackendFromCloudDialog({
             <div className="space-y-3">
               <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
                 <p className="font-medium text-foreground">
-                  Dedicated backends are included with paid plans.
+                  Free shared backend — no card, no waiting.
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Upgrade to add your own dedicated Supabase project. We'll add
-                  $5 of runtime credit to get you started — no top-up required.
+                  Your app gets a real database, user sign-up/sign-in and a REST
+                  API hosted inside Petal Cloud. Up to 5,000 rows and 25
+                  collections.
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
+                <p className="font-medium text-foreground">Want a dedicated backend?</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Upgrade for your own isolated database project with unlimited
+                  rows, storage and SQL access. We'll add $5 of runtime credit to
+                  get you started.
                 </p>
               </div>
             </div>
+
           ) : (
             <div className="space-y-3">
               <div className="rounded-lg border border-border bg-muted/30 p-4">
