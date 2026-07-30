@@ -173,16 +173,18 @@ export function IdeaCoach({
           <Sparkles className="h-3 w-3 text-lilac" aria-hidden />
           Idea coach
         </div>
-        <span
-          className={cn(
-            "rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider",
-            state.step === "final"
-              ? "bg-mint/40 text-foreground/80"
-              : "bg-lilac/30 text-foreground/70",
-          )}
-        >
-          {turnLabel}
-        </span>
+        {turnLabel ? (
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider",
+              state.step === "final"
+                ? "bg-mint/40 text-foreground/80"
+                : "bg-lilac/30 text-foreground/70",
+            )}
+          >
+            {turnLabel}
+          </span>
+        ) : null}
       </div>
 
       {/* Live preview card — only once we have something to show */}
