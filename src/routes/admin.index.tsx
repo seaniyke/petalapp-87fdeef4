@@ -13,6 +13,7 @@ import {
   TrendingDown,
   Activity,
   Gauge,
+  Cloud,
 } from "lucide-react";
 import { AdminTabs } from "@/components/AdminTabs";
 import { SiteHeader } from "@/components/SiteHeader";
