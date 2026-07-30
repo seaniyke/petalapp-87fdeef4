@@ -37,7 +37,6 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
   const [projects, setProjects] = useState<ProjectRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
-  const [section, setSection] = useState<Section>("all");
 
   // Lazy-load on first open. Refetch silently each open so recent activity stays fresh.
   useEffect(() => {
@@ -60,12 +59,9 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, user]);
 
-  const filtered = useMemo(() => {
-    if (!projects) return [] as ProjectRow[];
+  const recents = useMemo(() => {
+    let list = projects ?? [];
     const q = query.trim().toLowerCase();
-    let list = projects;
-    if (section === "starred") list = list.filter((p) => (p as { is_starred?: boolean }).is_starred);
-    if (section === "mine" && user) list = list.filter((p) => p.owner_id === user.id);
     if (q) {
       list = list.filter(
         (p) =>
@@ -73,10 +69,8 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
           (p.summary ?? "").toLowerCase().includes(q),
       );
     }
-    return list;
-  }, [projects, query, section, user]);
-
-  const recents = useMemo(() => (projects ?? []).slice(0, 4), [projects]);
+    return list.slice(0, 4);
+  }, [projects, query]);
 
   function go(to: string, search?: Record<string, unknown>) {
     onOpenChange(false);
@@ -96,30 +90,13 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
     navigate({ to: "/builder", search: { id, prompt: undefined, mode: undefined, attachKey: undefined } });
   }
 
-  async function toggleStar(p: ProjectRow, e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    const cur = (p as { is_starred?: boolean }).is_starred ?? false;
-    // optimistic
-    setProjects((prev) =>
-      prev ? prev.map((x) => (x.id === p.id ? ({ ...x, is_starred: !cur } as ProjectRow) : x)) : prev,
-    );
-    try {
-      await setProjectStarred(p.id, !cur);
-    } catch (err) {
-      setProjects((prev) =>
-        prev ? prev.map((x) => (x.id === p.id ? ({ ...x, is_starred: cur } as ProjectRow) : x)) : prev,
-      );
-      toast.error(err instanceof Error ? err.message : "Could not update");
-    }
-  }
-
   const initial = (user?.email ?? "?")[0]?.toUpperCase() ?? "?";
   const displayName =
     (user?.user_metadata?.full_name as string | undefined) ??
     (user?.user_metadata?.name as string | undefined) ??
     user?.email ??
     "Workspace";
+
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
