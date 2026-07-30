@@ -21,13 +21,19 @@ export function PreviewCrashFallback({
   lastNarration,
   onRetry,
   onAskRepair,
+  onOpenFile,
 }: {
   reason: string;
   lastPath?: string | null;
   lastNarration?: string | null;
   onRetry: () => void;
   onAskRepair?: () => void;
+  /** Jump the code editor to the file the crash points at. */
+  onOpenFile?: (path: string) => void;
 }) {
+  const cause = plainCause(reason);
+  const culprit = fileFromError(reason) ?? lastPath ?? null;
+
   return (
     <div className="grid h-full w-full place-items-center bg-aurora p-6">
       <div className="w-full max-w-sm rounded-2xl border border-destructive/30 bg-card/95 p-5 shadow-sm backdrop-blur">
@@ -35,12 +41,13 @@ export function PreviewCrashFallback({
           <span className="grid h-7 w-7 place-items-center rounded-full bg-destructive/10 text-destructive">
             <AlertTriangle className="h-4 w-4" />
           </span>
-          <h3 className="text-sm font-semibold text-foreground">Preview crashed</h3>
+          <h3 className="text-sm font-bold text-foreground">Preview stopped</h3>
         </div>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          The running app threw an unrecoverable error. Your code is safe — only the live
-          preview stopped. Try reloading first; if it crashes again, ask Petal to repair.
+        <p className="text-xs font-medium leading-relaxed text-muted-foreground">
+          {cause} Your code is safe — only the live preview stopped. Reload first; if it happens
+          again, let Petal fix it.
         </p>
+
 
         <div className="mt-3 rounded-lg border border-border/60 bg-muted/40 p-2.5 text-[11px] leading-relaxed">
           <div className="font-mono text-destructive break-words line-clamp-3">{reason}</div>
