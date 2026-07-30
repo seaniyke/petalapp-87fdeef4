@@ -201,6 +201,8 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
 
   for (const file of files) {
     if (!SCANNABLE.test(file.path)) continue;
+    if (isBuildConfig(file.path)) continue;
+
     let src = byPath.get(file.path) ?? file.content;
 
     // Collect imports first; we mutate `src` in a second pass so we don't
