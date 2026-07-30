@@ -34,6 +34,7 @@ import {
 } from "@/lib/runtime-wallet";
 import { useWallet } from "@/hooks/use-wallet";
 import { BillingSheet } from "@/components/BillingSheet";
+import { CryptoCheckoutPanel } from "@/components/CryptoCheckoutPanel";
 
 type Props = {
   open: boolean;
@@ -71,6 +72,7 @@ export function RuntimeTopupModal({
   const [customNaira, setCustomNaira] = useState<string>("2000");
   const [submitting, setSubmitting] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
+  const [cryptoOpen, setCryptoOpen] = useState(false);
 
   // Cheapest pack that satisfies minUsdCents (if any)
   const recommendedPackCode = useMemo(() => {
