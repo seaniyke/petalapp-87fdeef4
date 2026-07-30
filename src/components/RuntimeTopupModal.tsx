@@ -32,6 +32,7 @@ import {
   formatUsdCents,
   type RuntimeTopupPack,
 } from "@/lib/runtime-wallet";
+import { hasFullAccess } from "@/lib/billing";
 import { useWallet } from "@/hooks/use-wallet";
 import { BillingSheet } from "@/components/BillingSheet";
 import { CryptoCheckoutPanel } from "@/components/CryptoCheckoutPanel";
@@ -63,7 +64,9 @@ export function RuntimeTopupModal({
   onUpgrade,
 }: Props) {
   const { wallet, loading: walletLoading } = useWallet();
-  const isFree = wallet?.plan_code === "free";
+  // Locked only when the user has neither a paid plan nor purchased credits.
+  // Pay-as-you-go credit buyers get the same access as subscribers.
+  const isFree = !hasFullAccess(wallet);
 
   const [loading, setLoading] = useState(true);
   const [packs, setPacks] = useState<RuntimeTopupPack[]>([]);
@@ -171,19 +174,19 @@ export function RuntimeTopupModal({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Lock className="h-4 w-4" />
-                Top-ups require Pro
+                Unlock Cloud + AI top-ups
               </DialogTitle>
               <DialogDescription>
-                The Cloud + AI balance is a paid feature. Upgrade to Pro to add funds and unlock
-                managed backend, custom domains and higher AI limits.
+                Cloud + AI balance unlocks with any paid plan — or just buy build
+                credits once, no subscription needed.
               </DialogDescription>
             </DialogHeader>
 
             <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
               <p className="font-medium text-foreground">You're on the Free plan.</p>
               <p className="mt-1 text-muted-foreground">
-                Free includes daily build credits but doesn't support paid top-ups. Once on Pro you
-                can add any amount in Naira and use it across Cloud and AI.
+                Buy a credit pack once or subscribe — either unlocks Cloud + AI
+                top-ups, managed backend, custom domains and higher AI limits.
               </p>
             </div>
 
@@ -204,7 +207,7 @@ export function RuntimeTopupModal({
                 className="inline-flex items-center gap-1.5"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                Upgrade to Pro
+                Buy credits or upgrade
               </Button>
             </DialogFooter>
           </DialogContent>
