@@ -3166,7 +3166,17 @@ function Builder() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          {project && <ReadinessBadge files={files} project={project} />}
+          {project && (
+            <ReadinessBadge
+              files={files}
+              project={project}
+              onFix={(prompt) => submitPrompt(prompt)}
+              onConnectDomain={() => {
+                setSettingsScrollTo("domains");
+                setSettingsOpen(true);
+              }}
+            />
+          )}
           {project && (
             <div className="hidden md:block">
               <SharePopover
