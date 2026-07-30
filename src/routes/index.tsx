@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SampleAppShowcase } from "@/components/SampleAppShowcase";
+import { WholeStackSection } from "@/components/WholeStackSection";
 import { StartIdeasPanel } from "@/components/StartIdeasPanel";
 import { ComposerModePicker, type ComposerMode } from "@/components/ComposerModePicker";
 import { IdeaCoach } from "@/components/IdeaCoach";
@@ -516,7 +517,7 @@ function Landing() {
               </div>
 
               <h1 className="mt-6 font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
-                Web, mobile, backend —{" "}
+                The whole stack —{" "}
                 <span className="relative whitespace-nowrap">
                   <span className="relative z-10 italic">just chat</span>
                   <span className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50" aria-hidden />
@@ -524,9 +525,11 @@ function Landing() {
                 .
               </h1>
 
-              <p className="mx-auto mt-5 max-w-xl text-balance text-base text-muted-foreground sm:text-xl md:text-2xl">
-                One sentence. A real app, mobile build, API, or Chrome extension — live in minutes.
+              <p className="mx-auto mt-5 max-w-xl text-balance text-base font-medium text-muted-foreground sm:text-xl md:text-2xl">
+                Frontend, database, auth, hosting, security — Petal builds all twelve layers and puts your web, mobile,
+                API or extension live in minutes.
               </p>
+
             </>
           )}
 
@@ -964,16 +967,17 @@ function Landing() {
             />
             <div className="mx-auto max-w-6xl">
               <div className="mx-auto max-w-3xl text-center">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">Why Petal</p>
+                <p className="text-xs font-bold uppercase tracking-[0.28em] text-primary">Why Petal</p>
                 <h2 className="mt-3 font-display text-4xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
-                  One chat.
+                  The whole stack.
                   <br />
-                  <span className="italic text-primary">Real</span> software.
+                  <span className="italic text-primary">Shipped.</span>
                 </h2>
-                <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
-                  Web, mobile, backends, and Chrome extensions — Petal picks the stack, writes the code, runs a live
-                  preview, and ships it.
+                <p className="mx-auto mt-5 max-w-xl text-lg font-medium text-muted-foreground">
+                  Web, mobile, backends, Chrome extensions. Database, auth, hosting, security — Petal builds every layer
+                  and puts it live. Not a mockup. A real app with a real URL.
                 </p>
+
               </div>
 
               <div className="mt-16 grid gap-5 md:grid-cols-3">
@@ -1076,6 +1080,9 @@ function Landing() {
               </div>
             </div>
           </section>
+
+          <WholeStackSection />
+
 
           {/* Community showcase — replaces the old mobile hero (now lives on /features/mobile) */}
           <section id="community" className="relative overflow-hidden px-4 py-24 sm:px-6 sm:py-32">
