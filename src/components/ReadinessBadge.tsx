@@ -43,9 +43,18 @@ const CATEGORY_LABEL: Record<ReadinessCheck["category"], string> = {
 export type ReadinessBadgeProps = {
   files: ProjectFile[];
   project: ProjectRow | null;
+  /** Runs a build prompt for a checklist item the user wants Petal to fix. */
+  onFix?: (prompt: string) => void;
+  /** Opens the custom-domain flow. */
+  onConnectDomain?: () => void;
 };
 
-export function ReadinessBadge({ files, project }: ReadinessBadgeProps) {
+export function ReadinessBadge({
+  files,
+  project,
+  onFix,
+  onConnectDomain,
+}: ReadinessBadgeProps) {
   const [open, setOpen] = useState(false);
 
   const report = useMemo(() => {
@@ -56,12 +65,24 @@ export function ReadinessBadge({ files, project }: ReadinessBadgeProps) {
 
   if (!report) return null;
 
+  // Unfinished work first — the whole point is "what do I do next".
   const grouped = CATEGORY_ORDER.map((cat) => ({
     cat,
-    items: report.checks.filter((c) => c.category === cat),
+    items: report.checks
+      .filter((c) => c.category === cat)
+      .sort((a, b) => Number(a.passed) - Number(b.passed)),
   })).filter((g) => g.items.length);
 
   const remaining = report.totalChecks - report.passedCount;
+
+  const runFix = (check: ReadinessCheck) => {
+    const fix = READINESS_FIXES[check.id];
+    if (!fix) return;
+    setOpen(false);
+    if (fix.kind === "domain") onConnectDomain?.();
+    else onFix?.(fix.prompt);
+  };
+
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
