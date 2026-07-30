@@ -135,19 +135,39 @@ export function BuildActivityCard({
     return () => clearInterval(t);
   }, [isActive]);
 
-  // Rolling "thinking log" — ring buffer of the last few narration lines.
-  const [thinkingLog, setThinkingLog] = useState<Array<{ id: number; text: string }>>([]);
+  // Rolling "thinking log" — ring buffer of the last few narration lines,
+  // timestamped so the details trace can roll them into "Thought for Ns".
+  const [thinkingLog, setThinkingLog] = useState<ThoughtTick[]>([]);
   useEffect(() => {
     const text = (latestNarration ?? latestCycleProgress ?? "").trim();
     if (!text) return;
     setThinkingLog((prev) => {
       if (prev[prev.length - 1]?.text === text) return prev;
-      return [...prev, { id: (prev[prev.length - 1]?.id ?? 0) + 1, text }].slice(-12);
+      return [...prev, { id: (prev[prev.length - 1]?.id ?? 0) + 1, text, ts: Date.now() }].slice(-24);
     });
   }, [latestNarration, latestCycleProgress]);
   useEffect(() => {
     if (!isActive && !isComplete) setThinkingLog([]);
   }, [isActive, isComplete]);
+
+  // First time we saw each file stream in — gives the trace a real clock so
+  // edits interleave with thoughts instead of being bolted on at the end.
+  const [fileTimestamps, setFileTimestamps] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!writtenPaths?.length) return;
+    setFileTimestamps((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const p of writtenPaths) {
+        if (next[p] == null) {
+          next[p] = Date.now();
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [writtenPaths]);
+
 
   const currentPhase: Phase =
     phases.find((p) => p.status === "active") ??
