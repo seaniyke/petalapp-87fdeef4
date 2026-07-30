@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useWallet } from "@/hooks/use-wallet";
 import { fetchRuntimeWallet, formatUsdCents } from "@/lib/runtime-wallet";
-import { enableManagedBackend } from "@/lib/projects";
+import { enableManagedBackend, enableSharedBackend } from "@/lib/projects";
 import { RuntimeTopupModal } from "@/components/RuntimeTopupModal";
 import { BillingSheet } from "@/components/BillingSheet";
 
@@ -77,6 +77,20 @@ export function EnableBackendFromCloudDialog({
   const hasBalance = totalBalanceCents > 0;
   const canEnable = isPaidPlan && hasBalance;
 
+  async function handleEnableShared() {
+    setSubmitting(true);
+    try {
+      await enableSharedBackend(projectId);
+      toast.success("Your free backend is live");
+      onOpenChange(false);
+      onEnabled?.();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't enable backend");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function handleEnable() {
     setSubmitting(true);
     try {
@@ -108,7 +122,7 @@ export function EnableBackendFromCloudDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Database className="h-4 w-4" />
-              Enable dedicated backend
+              {isPaidPlan ? "Enable dedicated backend" : "Enable backend"}
             </DialogTitle>
             <DialogDescription>
               A dedicated database, auth and storage project just for your app.
@@ -184,19 +198,36 @@ export function EnableBackendFromCloudDialog({
               Cancel
             </Button>
             {!isPaidPlan ? (
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => {
-                  onOpenChange(false);
-                  setBillingOpen(true);
-                }}
-                disabled={loading}
-                className="inline-flex items-center gap-1.5"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Upgrade to add backend
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    onOpenChange(false);
+                    setBillingOpen(true);
+                  }}
+                  disabled={loading || submitting}
+                  className="inline-flex items-center gap-1.5"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Upgrade for dedicated
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleEnableShared}
+                  disabled={loading || submitting}
+                  className="inline-flex items-center gap-1.5"
+                >
+                  {submitting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Database className="h-3.5 w-3.5" />
+                  )}
+                  Start free backend
+                </Button>
+              </>
             ) : canEnable ? (
               <Button
                 type="button"
