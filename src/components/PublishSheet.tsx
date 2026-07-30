@@ -107,8 +107,10 @@ export function PublishSheet({
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [justPublished, setJustPublished] = useState(false);
   const [visibilityBusy, setVisibilityBusy] = useState(false);
   const [websiteInfoOpen, setWebsiteInfoOpen] = useState(false);
+
   // Visitor analytics — database-backed traffic for the project's published site.
   // We fetch on open/range changes and subscribe to the daily rollup so the
   // count updates as new visits are recorded.
