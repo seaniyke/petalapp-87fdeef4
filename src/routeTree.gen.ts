@@ -27,6 +27,7 @@ import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BillingIndexRouteImport } from './routes/billing.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as RCodeRouteImport } from './routes/r.$code'
@@ -198,6 +199,11 @@ const AuthRoute = AuthRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BillingIndexRoute = BillingIndexRouteImport.update({
+  id: '/billing/',
+  path: '/billing/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -680,6 +686,7 @@ export interface FileRoutesByFullPath {
   '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
+  '/billing/': typeof BillingIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
@@ -782,6 +789,7 @@ export interface FileRoutesByTo {
   '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin': typeof AdminIndexRoute
+  '/billing': typeof BillingIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
@@ -885,6 +893,7 @@ export interface FileRoutesById {
   '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
+  '/billing/': typeof BillingIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
@@ -989,6 +998,7 @@ export interface FileRouteTypes {
     | '/r/$code'
     | '/share/$token'
     | '/admin/'
+    | '/billing/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
@@ -1091,6 +1101,7 @@ export interface FileRouteTypes {
     | '/r/$code'
     | '/share/$token'
     | '/admin'
+    | '/billing'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
@@ -1193,6 +1204,7 @@ export interface FileRouteTypes {
     | '/r/$code'
     | '/share/$token'
     | '/admin/'
+    | '/billing/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
@@ -1294,6 +1306,7 @@ export interface RootRouteChildren {
   RCodeRoute: typeof RCodeRoute
   ShareTokenRoute: typeof ShareTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  BillingIndexRoute: typeof BillingIndexRoute
   ApiAdminAiProvidersRoute: typeof ApiAdminAiProvidersRoute
   ApiAdminCreditsRoute: typeof ApiAdminCreditsRoute
   ApiAdminDigestsRoute: typeof ApiAdminDigestsRoute
@@ -1467,6 +1480,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/billing/': {
+      id: '/billing/'
+      path: '/billing'
+      fullPath: '/billing/'
+      preLoaderRoute: typeof BillingIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -2142,6 +2162,7 @@ const rootRouteChildren: RootRouteChildren = {
   RCodeRoute: RCodeRoute,
   ShareTokenRoute: ShareTokenRoute,
   AdminIndexRoute: AdminIndexRoute,
+  BillingIndexRoute: BillingIndexRoute,
   ApiAdminAiProvidersRoute: ApiAdminAiProvidersRoute,
   ApiAdminCreditsRoute: ApiAdminCreditsRoute,
   ApiAdminDigestsRoute: ApiAdminDigestsRoute,
