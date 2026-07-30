@@ -160,7 +160,7 @@ export function IdeaCoach({
   };
 
   const turnLabel = useMemo(() => {
-    if (state.step === "seed") return "free first pick";
+    if (state.step === "seed") return "";
     if (state.step === "final") return `done · ${state.history.length} turn${state.history.length === 1 ? "" : "s"}`;
     return `½ credit · turn ${state.turn}`;
   }, [state.step, state.turn, state.history.length]);
