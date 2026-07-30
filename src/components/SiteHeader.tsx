@@ -16,6 +16,8 @@ import { useIsAdmin } from "@/hooks/use-is-admin";
 
 import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { PetalBrand } from "@/components/PetalBrand";
+import { ThemeToggle } from "@/components/ThemeToggle";
+
 
 
 import { BillingSheet } from "@/components/BillingSheet";
