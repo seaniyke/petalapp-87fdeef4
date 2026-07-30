@@ -110,6 +110,8 @@ export function PublishSheet({
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [justPublished, setJustPublished] = useState(false);
+  /** User hit Publish while a build was still running — finish once it's ready. */
+  const [awaitingBuild, setAwaitingBuild] = useState(false);
   const [visibilityBusy, setVisibilityBusy] = useState(false);
   const [websiteInfoOpen, setWebsiteInfoOpen] = useState(false);
 
