@@ -270,6 +270,8 @@ function CoffeePage() {
               Secure checkout by Paystack. Cards, bank transfer, mobile money.
             </p>
           </form>
+          )}
+
         </div>
       </main>
     </div>
