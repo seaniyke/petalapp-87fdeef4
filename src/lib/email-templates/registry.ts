@@ -36,6 +36,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'waitlist-announcement': waitlistAnnouncement,
   'waitlist-invite': waitlistInvite,
   'waitlist-referral-milestone': waitlistReferralMilestone,
-  'waitlist-referral-milestone': waitlistReferralMilestone,
   'crypto-payment-confirmed': cryptoPaymentConfirmed,
 }
