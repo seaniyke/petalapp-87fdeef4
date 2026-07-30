@@ -317,7 +317,6 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
     ? Math.floor((Date.now() - new Date(backend.lastActiveAt).getTime()) / (24 * 60 * 60 * 1000))
     : 0;
   const looksIdle = idleDays >= 7;
-  const tierLabel = backend?.backendType === "dedicated" ? "Dedicated" : "Managed";
 
   return (
     <>
