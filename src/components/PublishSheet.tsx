@@ -288,14 +288,45 @@ export function PublishSheet({
       // Latest build is ready → pin it as published.
       const result = await publishProject({ projectId: project.id });
       onChange({ ...project, ...result.project } as ProjectRow);
+      setAwaitingBuild(false);
       setJustPublished(true);
     } catch (e) {
+      setAwaitingBuild(false);
       toast.error(e instanceof Error ? e.message : "Couldn't publish");
 
     } finally {
       setPublishing(false);
     }
   }
+
+  // Finish a publish the user requested mid-build: as soon as the build turns
+  // ready we pin it, so they land on the success card without a second tap.
+  useEffect(() => {
+    if (!awaitingBuild || publishing) return;
+    if (buildStatus !== "ready" || !project.latest_build_id) return;
+    let cancelled = false;
+    void (async () => {
+      setPublishing(true);
+      try {
+        const result = await publishProject({ projectId: project.id });
+        if (cancelled) return;
+        onChange({ ...project, ...result.project } as ProjectRow);
+        setJustPublished(true);
+      } catch (e) {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Couldn't publish");
+      } finally {
+        if (!cancelled) {
+          setAwaitingBuild(false);
+          setPublishing(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awaitingBuild, publishing, buildStatus, project.latest_build_id]);
+
 
   async function changeVisibility(next: PublishVisibility) {
     if (visibility === next) return;
