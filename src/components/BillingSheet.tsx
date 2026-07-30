@@ -186,6 +186,8 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
 
   const paid = useMemo(() => plans.filter((p) => p.code !== "free"), [plans]);
   const currentPlanCode = wallet?.plan_code ?? "free";
+  const activePlanCode = selectedPlanCode ?? paid[0]?.code ?? null;
+
   // Pay-as-you-go: free-plan user whose purchased credits unlock paid features.
   const payAsYouGo =
     currentPlanCode === "free" && Number(wallet?.topup_credits_remaining ?? 0) > 0;
