@@ -1,4 +1,4 @@
-import { AlertTriangle, RotateCw, Wrench } from "lucide-react";
+import { AlertTriangle, FileCode2, RotateCw, Wrench } from "lucide-react";
 
 /**
  * Plan #3 — Preview crash → static fallback.
