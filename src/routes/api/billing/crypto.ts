@@ -75,26 +75,23 @@ export const Route = createFileRoute("/api/billing/crypto")({
         if (!wallet) return json({ error: "Unknown wallet." }, 400);
 
         try {
-          // Packs and Cloud top-ups stay paid-plan gated, exactly like card.
-          if (parsed.purpose !== "plan") {
-            const { data: walletRow } = await supabaseAdmin
-              .from("user_wallets")
-              .select("plan_code")
-              .eq("user_id", user.id)
-              .maybeSingle();
-            if ((walletRow?.plan_code ?? "free") === "free") {
+          // Credit packs are pay-as-you-go: ANY signed-in user can buy one,
+          // no subscription needed. Cloud + AI runtime top-ups still need
+          // full access (subscription OR purchased credits remaining).
+          if (parsed.purpose === "runtime_topup") {
+            const { hasFullAccess } = await import("@/server/entitlements.server");
+            if (!(await hasFullAccess(user.id))) {
               return json(
                 {
                   error:
-                    parsed.purpose === "runtime_topup"
-                      ? "Upgrade to a paid plan to top up your Cloud + AI balance."
-                      : "Upgrade to a paid plan to buy credits.",
+                    "Buy credits or upgrade to a paid plan to top up your Cloud + AI balance.",
                   code: "upgrade_required",
                 },
                 403,
               );
             }
           }
+
 
           // --- Server-side USD price resolution ---
           let usdAmountCents: number;
