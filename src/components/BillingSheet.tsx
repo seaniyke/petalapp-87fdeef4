@@ -443,12 +443,19 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               <CreditRow
                 label="Daily credits"
                 sub={
-                  dailyCap
-                    ? `Resets to ${dailyCap} credits ${dailyResetText ?? "soon"}`
-                    : "Not included on this plan"
+                  !dailyCap
+                    ? "Not included on this plan"
+                    : monthlyFreeRemaining === 0
+                      ? `Monthly free cap reached (${plan?.monthly_free_cap}) — resets in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
+                      : `Resets to ${dailyCap} credits ${dailyResetText ?? "soon"}${
+                          plan?.monthly_free_cap
+                            ? ` · ${monthlyFreeRemaining} of ${plan.monthly_free_cap} free credits left this month`
+                            : ""
+                        }`
                 }
                 value={breakdown.daily}
               />
+
               <CreditRow
                 label="Monthly credits"
                 sub={
