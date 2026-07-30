@@ -267,18 +267,24 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
     );
   }
 
-  /* ---------------- Paused (Cloud balance ran out) ---------------- */
+  /* ---------------- Paused ---------------- */
   if (phase === "paused") {
+    const isHibernated = backend?.errorMessage?.toLowerCase().includes("inactivity");
     return (
       <>
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
           <div className="flex items-start gap-2">
             <PauseCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
             <div className="flex-1 text-sm">
-              <div className="font-medium">Backend paused</div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Backend paused</span>
+                <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                  {tierLabel}
+                </span>
+              </div>
               <div className="mt-0.5 text-xs text-muted-foreground">
-                Your Cloud balance ran out and the 48-hour grace period ended. Top up
-                to bring your data back online — your tables and rows are preserved.
+                {backend?.errorMessage ||
+                  "Your Cloud balance ran out and the 48-hour grace period ended. Top up to bring your data back online — your tables and rows are preserved."}
               </div>
             </div>
           </div>
