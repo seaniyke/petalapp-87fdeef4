@@ -5,10 +5,28 @@
  * Flow: pick a network → send → paste the tx hash. We record it as pending
  * and an admin confirms it on-chain, which credits the account.
  */
-import { useState } from "react";
-import { Check, Copy, Loader2, Bitcoin, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Check,
+  Copy,
+  Loader2,
+  Bitcoin,
+  ShieldCheck,
+  Clock,
+  AlertTriangle,
+} from "lucide-react";
 import { ACTIVE_WALLETS, qrUrl } from "@/lib/crypto-tips";
 import { supabase } from "@/integrations/supabase/client";
+
+/** What the tracker shows once a hash has been submitted. */
+type TrackedStatus = "pending" | "confirmed" | "needs_review" | "rejected";
+
+type Tracked = {
+  id: string;
+  status: TrackedStatus;
+  confirmations: number | null;
+  note: string | null;
+};
 
 export type CryptoPurpose = "plan" | "pack" | "runtime_topup";
 
