@@ -202,29 +202,30 @@ Composition rules — this is the difference between forgettable and memorable:
   // Fires on landing/marketing/site requests. The default failure mode for
   // AI builders is "stuff everything onto index.tsx with hash anchors" —
   // which kills SSR per-page metadata, makes deep links unshareable, and
-  // teaches users that Petal only does one-pagers. TanStack Start's
-  // file-based routing makes proper multi-page trivial; this snippet tells
+  // teaches users that Petal only does one-pagers. The generated Vite app's
+  // React Router setup makes proper multi-page routing straightforward; this tells
   // the model to USE it and to TELL the user it did.
   multiPage: {
     triggers:
       /\b(site|website|landing|marketing|portfolio|agency|consultancy|saas|studio|business|brand|services|about|pricing|contact|blog|faq|case stud|product page)\b/i,
     body: `\n\n[Reinforcement — Prefer real pages over one long scroll]
-If the brief implies multiple sections that could each stand alone (Services, About, Contact, Pricing, Blog, FAQ, Case Studies, Portfolio, Team, Careers), scaffold them as SEPARATE TanStack routes under src/routes/ — not as <section id="..."> blocks on a single index page with hash-anchor nav.
+If the brief implies multiple sections that could each stand alone (Services, About, Contact, Pricing, Blog, FAQ, Case Studies, Portfolio, Team, Careers), create separate page components under src/pages/ and register each path in the EXISTING React Router <Routes> tree in src/App.tsx — not as <section id="..."> blocks on one page with hash-anchor nav.
 
 Why this matters (don't skip):
-- Each route gets its own SSR <head> (title, description, og:title, og:description) — hash anchors all share the home page metadata, which makes them invisible to Google and identical when shared on social.
+- Each route gets its own title and description — hash anchors all share the home page metadata and look identical when shared.
 - Deep links like /pricing or /case-studies/$slug actually work — users can bookmark and share them.
 - Adding a new page later becomes "create one file" instead of "refactor a 600-line index".
 
 Default decomposition for marketing/business sites:
-- src/routes/index.tsx — home (hero + brief highlights + CTA only; do NOT cram every section here)
-- src/routes/about.tsx
-- src/routes/services.tsx (or features.tsx for product sites)
-- src/routes/pricing.tsx (when relevant)
-- src/routes/contact.tsx
-- src/routes/blog.index.tsx + src/routes/blog.$slug.tsx (when blog requested)
+- src/pages/Home.tsx — home (hero + brief highlights + CTA only; do NOT cram every section here)
+- src/pages/About.tsx
+- src/pages/Services.tsx (or Features.tsx for product sites)
+- src/pages/Pricing.tsx (when relevant)
+- src/pages/Contact.tsx
+- src/pages/Blog.tsx + src/pages/BlogPost.tsx (when blog requested)
+- src/App.tsx — the single existing <Router>/<Routes> tree that registers all paths
 
-Each route file MUST set its own head() with route-specific title + description + og:title + og:description. Do NOT copy the home page metadata into child routes.
+Each page MUST set route-specific title and description metadata when it renders. Do NOT copy the home page metadata into child pages.
 
 Hash anchors (#section) are allowed ONLY for in-page scrolling within a single long page (e.g. a TOC inside a docs page). They are NEVER the primary cross-section nav.
 
