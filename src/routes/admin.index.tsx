@@ -338,6 +338,12 @@ function AdminIndexPage() {
             icon={<CreditCard className="h-5 w-5" />}
           />
           <SectionCard
+            to="/admin/cloud-cost"
+            title="Cloud cost"
+            description="Managed backend footprint, idle projects, and tier breakdown."
+            icon={<Cloud className="h-5 w-5" />}
+          />
+          <SectionCard
             to="/admin/ai-providers"
             title="AI Providers"
             description="Route each AI feature to Petal AI or OpenRouter to control cost."
