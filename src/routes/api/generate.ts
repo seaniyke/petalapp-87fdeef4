@@ -2463,6 +2463,29 @@ Forbidden defaults
             console.warn(
               `[generate] patch_files returned ${Array.isArray(parsed.ops) ? "empty" : "missing"} ops — replying conversationally`,
             );
+
+            // A build-repair turn must not depend on the model choosing to
+            // emit an op for a protected scaffold file. Heal the managed
+            // shell directly before considering a no-edit fallback.
+            if (body.isAutoFix) {
+              const healedScaffold = applyScaffoldKitForPatch(currentFiles, {
+                backend: backend ?? undefined,
+                sharedBackend: sharedBackend ?? undefined,
+                target: buildTarget.id,
+              });
+              const healed = runAllRepairs(healedScaffold);
+              const before = new Map(currentFiles.map((f) => [f.path, f.content]));
+              const changed = healed.files.some((f) => before.get(f.path) !== f.content) ||
+                healed.files.length !== currentFiles.length;
+              if (changed) {
+                console.info("[empty-op-self-heal]", healed.notes.join("; ") || "scaffold restored");
+                emitDeterministicRepair(controller, encoder, {
+                  files: healed.files,
+                  summary: "I repaired the project configuration and restored the managed build files.",
+                });
+                return;
+              }
+            }
             recorder.record({
               tier: "apply_ops",
               outcome: "failed",
