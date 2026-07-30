@@ -3364,7 +3364,17 @@ function Builder() {
               // routes through the normal askPetalToFix flow.
               if (m.role === "assistant" && m.error) {
                 if ((petalIsWorking || isLive) && isBuildFailureCardTitle(m.error.title)) return null;
-                const isTail = i === messages.length - 1;
+                // The action buttons stay live on the MOST RECENT error card,
+                // even when status chips / system notes were appended after
+                // it — otherwise the card renders with no way to retry.
+                let lastErrorIdx = -1;
+                for (let k = messages.length - 1; k >= 0; k--) {
+                  if (messages[k].role === "assistant" && messages[k].error) {
+                    lastErrorIdx = k;
+                    break;
+                  }
+                }
+                const isTail = i === lastErrorIdx;
                 return (
                   <div key={i} className="flex justify-start">
                     <PetalErrorCard
@@ -3375,7 +3385,7 @@ function Builder() {
                             ? retryDeploy
                             : lastUserPrompt
                               ? retry
-                              : undefined
+                              : retryDeploy
                           : undefined
                       }
                       onAskFix={
@@ -3383,6 +3393,7 @@ function Builder() {
                           ? askPetalToFix
                           : undefined
                       }
+
                       onBuyCredits={
                         m.error.actionKind === "buy-credits"
                           ? () => setBillingOpen(true)
