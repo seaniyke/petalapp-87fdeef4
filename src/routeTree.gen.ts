@@ -100,6 +100,7 @@ import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/ap
 import { Route as ApiPublicCronMobileCertExpiryRouteImport } from './routes/api/public/cron/mobile-cert-expiry'
 import { Route as ApiPublicCoffeeVerifyRouteImport } from './routes/api/public/coffee/verify'
 import { Route as ApiPublicCoffeeInitializeRouteImport } from './routes/api/public/coffee/initialize'
+import { Route as ApiPublicCoffeeCryptoRouteImport } from './routes/api/public/coffee/crypto'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
 import { Route as ApiBillingSubscriptionStatusRouteImport } from './routes/api/billing/subscription/status'
 import { Route as ApiBillingSubscriptionManageLinkRouteImport } from './routes/api/billing/subscription/manage-link'
@@ -571,6 +572,11 @@ const ApiPublicCoffeeInitializeRoute =
     path: '/api/public/coffee/initialize',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCoffeeCryptoRoute = ApiPublicCoffeeCryptoRouteImport.update({
+  id: '/api/public/coffee/crypto',
+  path: '/api/public/coffee/crypto',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicBuildsCallbackRoute = ApiPublicBuildsCallbackRouteImport.update({
   id: '/api/public/builds/callback',
   path: '/api/public/builds/callback',
@@ -675,6 +681,7 @@ export interface FileRoutesByFullPath {
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
@@ -772,6 +779,7 @@ export interface FileRoutesByTo {
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
@@ -870,6 +878,7 @@ export interface FileRoutesById {
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
+  '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
@@ -969,6 +978,7 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
+    | '/api/public/coffee/crypto'
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
     | '/api/public/cron/mobile-cert-expiry'
@@ -1066,6 +1076,7 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
+    | '/api/public/coffee/crypto'
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
     | '/api/public/cron/mobile-cert-expiry'
@@ -1163,6 +1174,7 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
     | '/api/public/builds/callback'
+    | '/api/public/coffee/crypto'
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
     | '/api/public/cron/mobile-cert-expiry'
@@ -1258,6 +1270,7 @@ export interface RootRouteChildren {
   ApiBillingSubscriptionManageLinkRoute: typeof ApiBillingSubscriptionManageLinkRoute
   ApiBillingSubscriptionStatusRoute: typeof ApiBillingSubscriptionStatusRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
+  ApiPublicCoffeeCryptoRoute: typeof ApiPublicCoffeeCryptoRoute
   ApiPublicCoffeeInitializeRoute: typeof ApiPublicCoffeeInitializeRoute
   ApiPublicCoffeeVerifyRoute: typeof ApiPublicCoffeeVerifyRoute
   ApiPublicCronMobileCertExpiryRoute: typeof ApiPublicCronMobileCertExpiryRoute
@@ -1915,6 +1928,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCoffeeInitializeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/coffee/crypto': {
+      id: '/api/public/coffee/crypto'
+      path: '/api/public/coffee/crypto'
+      fullPath: '/api/public/coffee/crypto'
+      preLoaderRoute: typeof ApiPublicCoffeeCryptoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/builds/callback': {
       id: '/api/public/builds/callback'
       path: '/api/public/builds/callback'
@@ -2056,6 +2076,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBillingSubscriptionManageLinkRoute: ApiBillingSubscriptionManageLinkRoute,
   ApiBillingSubscriptionStatusRoute: ApiBillingSubscriptionStatusRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
+  ApiPublicCoffeeCryptoRoute: ApiPublicCoffeeCryptoRoute,
   ApiPublicCoffeeInitializeRoute: ApiPublicCoffeeInitializeRoute,
   ApiPublicCoffeeVerifyRoute: ApiPublicCoffeeVerifyRoute,
   ApiPublicCronMobileCertExpiryRoute: ApiPublicCronMobileCertExpiryRoute,
