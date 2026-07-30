@@ -155,9 +155,12 @@ export function CryptoCheckoutPanel({
           customUsdCents,
         }),
       });
-      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      const json = (await res.json().catch(() => ({}))) as { error?: string; id?: string };
       if (!res.ok) throw new Error(json.error || "Could not record your payment.");
       setDone(true);
+      if (json.id) {
+        setTracked({ id: json.id, status: "pending", confirmations: null, note: null });
+      }
       onSubmitted?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -167,13 +170,48 @@ export function CryptoCheckoutPanel({
   };
 
   if (done) {
+    const status = tracked?.status ?? "pending";
+    const confirmed = status === "confirmed";
+    const flagged = status === "needs_review" || status === "rejected";
     return (
       <div className="rounded-xl border border-border bg-muted/30 p-4 text-center">
-        <ShieldCheck className="mx-auto h-5 w-5 text-primary" />
-        <p className="mt-2 text-sm font-semibold">Payment submitted 🙌</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          We're confirming it on-chain. {itemLabel} lands on your account as soon
-          as it clears — usually within a few minutes.
+        {confirmed ? (
+          <ShieldCheck className="mx-auto h-5 w-5 text-emerald-500" />
+        ) : flagged ? (
+          <AlertTriangle className="mx-auto h-5 w-5 text-amber-500" />
+        ) : (
+          <Clock className="mx-auto h-5 w-5 animate-pulse text-primary" />
+        )}
+        <p className="mt-2 text-sm font-bold">
+          {confirmed
+            ? "Payment confirmed 🎉"
+            : flagged
+              ? "We're taking a closer look"
+              : "Watching the chain…"}
+        </p>
+        <p className="mt-1 text-xs font-medium text-muted-foreground">
+          {confirmed
+            ? `${itemLabel} has been added to your account.`
+            : flagged
+              ? tracked?.note ||
+                "Something didn't line up with the amount. Our team will review it shortly."
+              : `We're confirming your transfer on-chain. ${itemLabel} lands automatically once it clears.`}
+        </p>
+
+        {!confirmed && !flagged && (
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-[11px] font-bold">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+            </span>
+            {tracked?.confirmations != null
+              ? `${tracked.confirmations} confirmation${tracked.confirmations === 1 ? "" : "s"}`
+              : "Looking up transaction"}
+          </div>
+        )}
+
+        <p className="mt-3 text-[11px] font-medium text-muted-foreground">
+          You can close this — we'll email you the receipt either way.
         </p>
       </div>
     );
