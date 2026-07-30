@@ -271,6 +271,12 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
   const totalAvailable = breakdown.total;
   const planMonthlyCap = plan?.monthly_credits ?? 0;
   const dailyCap = plan?.daily_free_credits ?? 0;
+  // Free credits are capped per month too (e.g. 5/day, 30/month = 6 days).
+  const monthlyFreeRemaining =
+    plan?.monthly_free_cap == null
+      ? Infinity
+      : Math.max(0, plan.monthly_free_cap - Number(wallet?.monthly_free_used ?? 0));
+
   // Estimate "denominator" for the progress bar — what they could have at the
   // start of the period: monthly grant + daily allowance + any topup left.
   const progressDenominator = Math.max(1, planMonthlyCap + dailyCap + breakdown.topup);
