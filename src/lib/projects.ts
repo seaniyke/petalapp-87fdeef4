@@ -6,7 +6,7 @@ export type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 
 export type ProjectBackend = {
   status: "connecting" | "ready" | "failed" | "paused" | "provisioning";
-  provider: "byo_supabase" | "managed_petal" | "managed_supabase";
+  provider: "byo_supabase" | "managed_petal" | "managed_supabase" | "shared_petal";
   supabaseUrl: string;
   anonKey: string;
   errorMessage: string | null;
@@ -14,12 +14,19 @@ export type ProjectBackend = {
   pausedAt?: string | null;
   /** ISO timestamp of when provisioning started (managed only). */
   provisioningStartedAt?: string | null;
+  /** ISO timestamp of the last usage signal (managed only). */
+  lastActiveAt?: string | null;
   /**
    * For managed backends only: when set, the project's Cloud balance has run
    * out and the backend will be paused after this timestamp unless the user
    * tops up. Cleared automatically once the user adds Cloud balance.
    */
   graceUntil?: string | null;
+  /**
+   * The project's backend tier: `shared` (default, no dedicated project) or
+   * `dedicated` (a provisioned Supabase project).
+   */
+  backendType?: "shared" | "dedicated";
 } | null;
 
 export type ManagedProvisionStatus = {

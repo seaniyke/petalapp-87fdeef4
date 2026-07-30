@@ -158,7 +158,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
         <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
           <p className="text-sm font-medium">Add Petal Cloud backend</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Auth, database and file storage — fully managed by Petal.
+            Dedicated auth, database and file storage — fully managed by Petal.
           </p>
           <Button
             size="sm"
@@ -305,6 +305,12 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
   }
 
   /* ---------------- Ready ---------------- */
+  const idleDays = backend?.lastActiveAt
+    ? Math.floor((Date.now() - new Date(backend.lastActiveAt).getTime()) / (24 * 60 * 60 * 1000))
+    : 0;
+  const looksIdle = idleDays >= 7;
+  const tierLabel = backend?.backendType === "dedicated" ? "Dedicated" : "Managed";
+
   return (
     <>
       <div className="rounded-lg border border-border bg-muted/30 p-3">
@@ -313,6 +319,9 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
           <div className="flex-1 text-sm">
             <div className="flex items-center gap-2">
               <span className="font-medium">Petal Cloud connected</span>
+              <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                {tierLabel}
+              </span>
             </div>
             <div className="mt-0.5 text-xs text-muted-foreground">
               Auth, database and file storage are live and wired into your app.
@@ -342,6 +351,36 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
             </Button>
           </div>
         )}
+
+        {looksIdle && !inGrace && (
+          <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 px-2.5 py-2">
+            <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="flex-1 text-[11px] leading-snug">
+              <span className="font-medium text-foreground">Low activity</span>{" "}
+              <span className="text-muted-foreground">
+                Backend auto-pauses after 7 days of inactivity. Top up to keep
+                it always on.
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-3 flex justify-end">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleDownload}
+            disabled={downloading}
+            className="inline-flex items-center gap-1.5"
+          >
+            {downloading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
+            Download credentials
+          </Button>
+        </div>
       </div>
       <RuntimeTopupModal
         open={topupOpen}

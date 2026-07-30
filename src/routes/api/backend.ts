@@ -31,6 +31,13 @@ import {
  */
 const PAID_PLAN_CODES = new Set(["pro", "business"]);
 
+const BACKEND_TYPE = {
+  SHARED: "shared",
+  DEDICATED: "dedicated",
+} as const;
+
+type BackendType = (typeof BACKEND_TYPE)[keyof typeof BACKEND_TYPE];
+
 const SUPABASE_URL_RE = /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i;
 
 const ConnectInput = z.object({
@@ -88,6 +95,12 @@ async function handleStatus(userId: string, body: unknown): Promise<Response> {
   const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
   if (ownerErr) return ownerErr;
 
+  const { data: projectMeta } = await supabaseAdmin
+    .from("projects")
+    .select("backend_type")
+    .eq("id", parsed.data.projectId)
+    .maybeSingle();
+
   // Managed backends may still be warming up after the original enable request
   // returns. Treat a regular status check as an opportunity to finalize/recover
   // so the UI does not depend on a separate polling path staying mounted.
@@ -99,17 +112,23 @@ async function handleStatus(userId: string, body: unknown): Promise<Response> {
 
   if (providerRow?.provider === "managed_petal") {
     await refreshStatus(parsed.data.projectId);
+    // Any status check counts as activity; keeps hibernation at bay.
+    await supabaseAdmin
+      .from("project_backends")
+      .update({ last_active_at: new Date().toISOString() })
+      .eq("project_id", parsed.data.projectId)
+      .eq("provider", "managed_petal");
   }
 
   const { data, error } = await supabaseAdmin
     .from("project_backends")
     .select(
-      "status, provider, supabase_url, anon_key, error_message, supabase_project_ref, paused_at, provisioning_started_at",
+      "status, provider, supabase_url, anon_key, error_message, supabase_project_ref, paused_at, provisioning_started_at, last_active_at",
     )
     .eq("project_id", parsed.data.projectId)
     .maybeSingle();
   if (error) return new Response(error.message, { status: 500 });
-  if (!data) return Response.json(null);
+  if (!data) return Response.json({ backendType: projectMeta?.backend_type ?? "shared" });
 
   // For managed backends, surface the project's grace window (if any) so
   // the UI can show a "top up to keep your backend live" warning.
@@ -132,17 +151,23 @@ async function handleStatus(userId: string, body: unknown): Promise<Response> {
     supabaseProjectRef: data.supabase_project_ref,
     pausedAt: data.paused_at,
     provisioningStartedAt: data.provisioning_started_at,
+    lastActiveAt: data.last_active_at,
     graceUntil,
+    backendType: projectMeta?.backend_type ?? "shared",
   });
 }
 
 /**
  * POST /api/backend?action=enable-managed
  *
- * Cloud-balance enable: requires the user's Cloud top-up balance ≥ $10.
+ * Cloud-balance enable: requires the user's Cloud top-up balance > $0.
  * Inserts a `project_backends` row in `provisioning` state and kicks off the
  * upstream Supabase provision in the background. Idempotent — if a row
  * already exists, returns its current state.
+ *
+ * Cost guard: dedicated managed backends are a premium feature. The user must
+ * be on a paid plan OR have purchased pay-as-you-go credits, and must have a
+ * positive Cloud balance. Free users see an upgrade prompt instead of a top-up.
  */
 async function handleEnableManaged(userId: string, body: unknown): Promise<Response> {
   const parsed = ProjectIdInput.safeParse(body);
@@ -172,10 +197,10 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
   // Plan + balance check.
   // Rule:
   //  - Free plan: blocked. UI surfaces an upgrade prompt instead of top-up.
-  //  - Paid plan: allowed as long as the runtime wallet has > $0 (free + topup).
-  //    The first paid-plan upgrade auto-grants $5 so this is non-blocking
-  //    for new paying users; only paid users who fully drained their wallet
-  //    hit the balance_empty branch.
+  //  - Paid plan or purchased credits: allowed as long as the runtime wallet
+  //    has > $0 (free + topup). The first paid-plan upgrade auto-grants $5 so
+  //    this is non-blocking for new paying users; only paid users who fully
+  //    drained their wallet hit the balance_empty branch.
   const { data: wallet } = await supabaseAdmin
     .from("user_wallets")
     .select("plan_code, topup_credits_remaining, runtime_topup_balance_cents, runtime_free_balance_cents")
@@ -192,7 +217,6 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
   );
   const hasAccess = PAID_PLAN_CODES.has(planCode) || topupCredits > 0;
   if (!hasAccess) {
-
     return new Response(
       JSON.stringify({
         error:
@@ -217,6 +241,12 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
     );
   }
 
+  // Mark this project as a dedicated backend before provisioning.
+  await supabaseAdmin
+    .from("projects")
+    .update({ backend_type: BACKEND_TYPE.DEDICATED })
+    .eq("id", parsed.data.projectId);
+
   const { error: insertErr } = await supabaseAdmin.from("project_backends").insert({
     project_id: parsed.data.projectId,
     provider: "managed_petal",
@@ -224,6 +254,7 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
     supabase_url: "",
     anon_key: "",
     provisioning_started_at: new Date().toISOString(),
+    last_active_at: new Date().toISOString(),
   });
   if (insertErr) return new Response(insertErr.message, { status: 500 });
 
@@ -243,11 +274,15 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
     const msg = e instanceof Error ? e.message : String(e);
     // ensureUpstreamProjectRef already marked the row 'failed' with an error
     // message — but we want the user to be able to immediately re-click
-    // Enable, so delete the row entirely.
+    // Enable, so delete the row entirely and reset the backend type.
     await supabaseAdmin
       .from("project_backends")
       .delete()
       .eq("project_id", parsed.data.projectId);
+    await supabaseAdmin
+      .from("projects")
+      .update({ backend_type: BACKEND_TYPE.SHARED })
+      .eq("id", parsed.data.projectId);
     return new Response(
       JSON.stringify({
         error: `Couldn't create your backend: ${msg.slice(0, 300)}`,
@@ -347,6 +382,11 @@ async function handleDisconnect(userId: string, body: unknown): Promise<Response
     .delete()
     .eq("project_id", parsed.data.projectId);
   if (error) return new Response(error.message, { status: 500 });
+  // Reset the project's backend tier to shared so it can be re-enabled later.
+  await supabaseAdmin
+    .from("projects")
+    .update({ backend_type: BACKEND_TYPE.SHARED, runtime_grace_until: null, runtime_paused: false })
+    .eq("id", parsed.data.projectId);
   return Response.json({ ok: true });
 }
 
