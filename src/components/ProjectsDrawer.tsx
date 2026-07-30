@@ -19,12 +19,9 @@ import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import { useAuth } from "@/lib/auth";
 import {
   listProjects,
-  setProjectStarred,
   type ProjectRow,
 } from "@/lib/projects";
 import { toast } from "sonner";
-
-type Section = "all" | "starred" | "mine";
 
 interface ProjectsDrawerProps {
   open: boolean;
@@ -32,6 +29,7 @@ interface ProjectsDrawerProps {
   /** Optional: project id to highlight as "current". */
   currentProjectId?: string | null;
 }
+
 
 export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: ProjectsDrawerProps) {
   const { user, signOut } = useAuth();
