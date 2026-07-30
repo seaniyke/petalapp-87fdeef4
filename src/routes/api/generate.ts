@@ -2574,7 +2574,17 @@ Forbidden defaults
             // layer. This closes the old contradiction where Petal said it
             // would fix vite.config.ts, dropped its own op, then asked the
             // user to rephrase. User/plan-protected paths remain untouched.
-            if (!userGlobsHit && !planScopeHit && violations.length > 0) {
+            const onlyBuildConfigViolations = violations.every((v) =>
+              /(^|\/)(vite|vitest|tailwind|postcss|eslint)\.config\.[cm]?[jt]s$/.test(v.path) ||
+              v.path === "tsconfig.json" ||
+              v.path === "petal-source-plugin.mjs",
+            );
+            if (
+              !userGlobsHit &&
+              !planScopeHit &&
+              violations.length > 0 &&
+              (body.isAutoFix || onlyBuildConfigViolations)
+            ) {
               const healedScaffold = applyScaffoldKitForPatch(currentFiles, {
                 backend: backend ?? undefined,
                 sharedBackend: sharedBackend ?? undefined,
