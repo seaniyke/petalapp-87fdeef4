@@ -275,9 +275,10 @@ export function PublishSheet({
       // Latest build is ready → pin it as published.
       const result = await publishProject({ projectId: project.id });
       onChange({ ...project, ...result.project } as ProjectRow);
-      toast.success(isUnpublished ? "Your app is live 🎉" : "Update published");
+      setJustPublished(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't publish");
+
     } finally {
       setPublishing(false);
     }
