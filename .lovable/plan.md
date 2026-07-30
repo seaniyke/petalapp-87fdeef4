@@ -1,66 +1,51 @@
-# Petal Growth Engine: viral waitlist + referral
+# Petal Builder UX — beat Lovable at its own game
 
-## What the best do (research)
+Goal: the moment-to-moment feel of using Petal (streaming, details trace, publish, preview) should read as more alive, more legible and more confident than Lovable's. Four surfaces need work, judged against the reference shots.
 
-- **Robinhood (~1M pre-launch signups):** the confirmation page *is* the product. After joining you immediately see **your position in line** and "move up the list — invite friends". Each referral bumps you up. Position + scarcity + a share link, nothing else.
-- **Superhuman (180k waiting, $30/mo):** the wait was deliberate. Position emails, personal onboarding on approval, and hand-picked batch invites. Lesson: **approval must feel personal and earned**, not automated spam.
-- **Dropbox / Perplexity Comet:** referrers get **product value** (storage, Pro months, credits), not swag. Two-sided rewards convert far better than one-sided.
-- **Academic finding (Tuck/Chicago Booth):** line-jumping by referral is only accepted when the rule is **transparent and applies to everyone** — hidden queue-jumping breeds resentment.
-- **Common failure mode:** treating waitlist emails as a list you own. Signup ≠ user. Most lists go cold in 2–3 weeks without touchpoints.
+## 1. Streaming trace that reads like a colleague working
 
-**Direct answer to your question:** no — a waitlist signup is *not* a user. It's an intent signal with a short shelf life. The whole design below is about (a) making each signup recruit more signups, and (b) shrinking the gap between "joined" and "built their first app".
+Today Petal's Details sheet renders one flat list: phases, then a "thinking log", then every file, then verifier events — all in fixed groups, out of true chronological order, all rows the same weight. Lovable instead shows a single interleaved trace of typed steps: `Thought for 8s` (expandable, with the actual reasoning paragraph), `Reading billing library and email registry`, `Read database`, `Edited receipt-pdf.ts`.
 
-## Proposed system for Petal
+Changes:
 
-### 1. Referral loop (the core)
-- Every signup gets a code (`petal.../r/ab12cd`) and a shareable link.
-- Post-signup screen becomes a **status page**, not a dead-end "thanks": position in line, people behind you, referral link with one-tap copy + WhatsApp/X/IG share, and a live counter.
-- **Referral math (transparent, shown on the page):** each verified referral moves you up 15 spots; 3 referrals = instant approval + auto-invite email. Milestones at 1 / 3 / 10.
-- Anti-abuse: referrals only count on a distinct verified email; self-referral, same-IP and disposable-domain referrals silently don't count toward jumps.
+- **One chronological trace.** Replace the four stacked lists with a single time-ordered stream of typed entries (`thought`, `reading`, `edit`, `check`, `phase`, `deploy`). Every entry carries a timestamp so the order is real, not grouped by kind.
+- **Thought entries with duration.** Group consecutive reasoning narration into a single `Thought for Ns` row, collapsed by default, expanding to the full text — same as the reference. Duration comes from the gap between the first and last narration tick in the group.
+- **Step-type icons and weights.** Thought (lamp), read/scan (magnifier), edit (pencil + filename chip + `+n/−n`), check (tick/wrench/cross), deploy (rocket). Filenames stay as monospace chips; full path shown on expand.
+- **Live tail.** While active, the last row pulses and the sheet auto-scrolls to it; a sticky footer shows elapsed time and current phase so it never feels frozen.
+- **Petal's edge over Lovable:** a `Summary` tab alongside Timeline/Changes with a plain-English "what I did and why" recap plus counts (files touched, checks passed, credits) — Lovable makes you read the trace to work that out.
 
-### 2. Two-sided reward, paid in Petal credits
-- Referrer: bonus build credits granted at first sign-in for each friend who signs in (not merely joins).
-- Friend: a welcome credit bump, so the invite is worth *receiving*. This is the single biggest conversion lever and reuses the existing wallet/credit ledger.
-- Credits only unlock on sign-in, so the incentive is to bring real builders, not email addresses.
+## 2. Chat-thread activity card
 
-### 3. Approval → activation, not just access
-- Approve & invite already exists; add **auto-approve rules** (3+ referrals, or admin-set daily drip of N people) so growth doesn't depend on you clicking.
-- Invite email gets a **24-hour urgency window** and lands the user directly in the composer with a starter idea prefilled.
-- If an approved person never signs in: nudge at day 2 and day 7, then release the spot.
+The compact card is close but static. Make the collapsed card carry more signal without growing:
 
-### 4. Keeping the list warm
-- A short "while you wait" sequence reusing the existing template system: day 0 confirmation (exists), day 3 "here's what people are shipping with Petal", day 7 "you moved up / here's your link again".
-- Leaderboard email to top referrers monthly.
+- Show the current step line the way the reference does — action verb + filename chip ("Editing `receipt-pdf.ts`") with a secondary caption underneath.
+- Rotate the caption smoothly (fade, not jump), keep a two-line max.
+- On completion the card collapses to one line: `Done · 7 files · 1m 12s · 2 credits`, with Details / Preview.
+- Add a thin phase progress rail across the card top (six segments, filling) so progress is visible at a glance.
 
-### 5. Public proof surfaces
-- Live signup counter + recent-builds strip on the landing page (social proof drives the share).
-- Approved builders' public projects (gallery) linked from the waitlist status page — this is Petal's unfair advantage: the waitlist can *see* what they're waiting for.
+## 3. Publish flow (reference: "Updating your project" → "Your website was updated")
 
-### 6. Post-launch: the loop doesn't stop
-The same referral primitives keep running after waitlist mode is off — invite a friend, both get credits — so the growth engine survives the launch instead of being thrown away.
+Petal currently has no in-progress or celebratory publish state and no share surface.
 
-### 7. Admin instrumentation
-Waitlist tab gains: referral leaderboard, K-factor (invites sent → signups → sign-ins), source breakdown, conversion funnel (joined → approved → signed in → first build), and auto-approve controls.
+- **In-progress card:** compact centered spinner, "Publishing your app — this takes a minute or two. You can close this and keep building."
+- **Success card:** animated check, "Your app is live", then a live SEO/social preview row (favicon, title, domain, description) rendered from the project's real metadata, plus a hint to ask Petal to change title/description/icon.
+- **Share row:** X, LinkedIn, Reddit, WhatsApp (better fit for Petal's audience than Discord), each opening a prefilled intent URL.
+- **Actions:** Copy link / Visit site.
+- Keeps the existing compact popover-on-desktop, drawer-on-mobile shape.
 
-## Technical outline
+## 4. Preview failure state (reference: blank frame + sad file icon)
 
-- **DB:** add `referral_code`, `referred_by`, `position`, `referral_count`, `invited_at`, `first_signin_at` to `waitlist_signups`; new `waitlist_referrals` (referrer, referred, status, counted_at) with unique constraint on referred email. Grants + RLS as usual; all reads via admin/service paths.
-- **Public routes:** `/api/public/waitlist` extended to return status (position, count, code); new `/r/$code` route that sets the referral attribution then redirects to the waitlist form.
-- **Status page:** new `/waitlist/status?token=…` (opaque token emailed + stored locally) so people can return to their position without an account.
-- **Credits:** grant through the existing `grant_credits` / runtime-ledger RPCs at first sign-in, keyed idempotently on the referral row so retries can't double-pay.
-- **Emails:** three new templates in the existing registry (`waitlist-position`, `waitlist-referral-milestone`, `waitlist-nudge`), sent through the existing queue with per-recipient idempotency keys.
-- **Anti-abuse:** email normalization (gmail dots/plus), IP + user-agent heuristics already captured on signup, disposable-domain blocklist.
+The broken-preview frame currently shows a bare icon. Replace with a recovery card: plain-language cause when we know it (syntax error, build failed, dependency install), a `Reload preview` button, an `Ask Petal to fix it` button that fires a real repair prompt with the captured error, and a link to open the file at fault.
 
-## Rollout order
+## 5. Young, confident tone pass
 
-1. Referral codes + attribution + status page with position & share link (the loop).
-2. Two-sided credit rewards on first sign-in.
-3. Auto-approve rules + activation-focused invite email + nudges.
-4. Admin leaderboard, funnel metrics, drip controls.
-5. Warm-up email sequence and public proof surfaces.
-6. Flip referrals on permanently for post-launch growth.
+Keep the phase copy young but tighten it so it never reads as filler: short verb-first lines, no exclamation spam, one emoji max per phase, and consistent past tense on completion.
 
-## Open choices
+## Technical notes
 
-- Reward size: I'd suggest a modest credit grant per referral with a cap (e.g. first 10 referrals) so it stays affordable — exact numbers are yours to set.
-- Whether referrals should *instantly* approve at 3, or just accelerate position. Instant approval grows fastest; position-only keeps quality control with you.
+- New `src/lib/build-trace.ts`: `TraceEntry` union + `buildTrace()` that merges phases, narration, file writes and timeline events into one sorted array, and `groupThoughts()` for the `Thought for Ns` rollup. Pure functions, unit-testable, no React.
+- `BuildDetailsSheet.tsx` rewritten to render `TraceEntry[]` with per-type rows; gains a third `Summary` tab.
+- `BuildActivityCard.tsx` gains the progress rail and the verb+file current-step line; props unchanged apart from what already flows in.
+- `PublishSheet.tsx` gains `publishing` / `published` states and a new `PublishSuccessCard` subcomponent; share links are plain `window.open` intents, no SDKs.
+- `PreviewCrashFallback.tsx` gains the recovery actions, wired to the existing send-prompt path in `builder.tsx`.
+- No server, schema or billing changes. Streaming event shapes stay as-is — the richer trace is derived client-side from events Petal already emits (`narration`, `cycle_progress`, `phase`, `file_complete`, `timeline`).
