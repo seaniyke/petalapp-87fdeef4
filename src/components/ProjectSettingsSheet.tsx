@@ -37,6 +37,7 @@ import { Search } from "lucide-react";
 import { WebsiteInfoSheet } from "@/components/WebsiteInfoSheet";
 import { DomainsSection } from "@/components/DomainsSection";
 import { EmailSection } from "@/components/EmailSection";
+import { GitSyncSection } from "@/components/GitSyncSection";
 // MobileAppPanel intentionally not imported — the legacy Codemagic + GitHub
 // mirror flow is superseded by the in-builder Expo/EAS pipeline
 // (DevicePreviewFrame + MobilePublishSheet). Surfacing it caused
@@ -274,6 +275,9 @@ export function ProjectSettingsSheet({
         <div id="settings-email" className="scroll-mt-4">
           <EmailSection projectId={project.id} />
         </div>
+
+        {/* GitHub sync */}
+        <GitSyncSection projectId={project.id} />
 
         {/* Legacy mobile panel removed — mobile lives in the builder now
             (device preview + Ship sheet). */}
