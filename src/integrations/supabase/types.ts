@@ -438,42 +438,54 @@ export type Database = {
       coffee_tips: {
         Row: {
           amount_minor: number
+          chain: string | null
           created_at: string
           currency_code: string
           environment: string | null
           id: string
           message: string | null
+          method: string
           paid_at: string | null
           reference: string
           status: string
           supporter_email: string
           supporter_name: string | null
+          tx_hash: string | null
+          wallet_address: string | null
         }
         Insert: {
           amount_minor: number
+          chain?: string | null
           created_at?: string
           currency_code: string
           environment?: string | null
           id?: string
           message?: string | null
+          method?: string
           paid_at?: string | null
           reference: string
           status?: string
           supporter_email: string
           supporter_name?: string | null
+          tx_hash?: string | null
+          wallet_address?: string | null
         }
         Update: {
           amount_minor?: number
+          chain?: string | null
           created_at?: string
           currency_code?: string
           environment?: string | null
           id?: string
           message?: string | null
+          method?: string
           paid_at?: string | null
           reference?: string
           status?: string
           supporter_email?: string
           supporter_name?: string | null
+          tx_hash?: string | null
+          wallet_address?: string | null
         }
         Relationships: []
       }

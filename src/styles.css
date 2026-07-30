@@ -188,7 +188,12 @@
      - 1.5 line-height for body, tightened for headlines below.
      - text-rendering + cv11 enables tabular-friendly numerals via Inter Tight. */
   html {
-    font-size: 15px;
+    font-size: 16.5px;
+  }
+  @media (min-width: 768px) {
+    html {
+      font-size: 17px;
+    }
   }
   html, body {
     background-color: var(--color-background);
@@ -197,6 +202,7 @@
     font-feature-settings: "cv11", "ss01", "ss03";
     letter-spacing: -0.011em;
     line-height: 1.5;
+    font-weight: 450;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -206,11 +212,34 @@
     letter-spacing: -0.022em;
     line-height: 1.1;
   }
+  /* Small text carries the most information density — keep it thick and
+     legible on both phones and desktops instead of thin and grey. */
+  .text-xs {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: -0.004em;
+  }
+  .text-sm {
+    font-size: 0.925rem;
+    font-weight: 550;
+  }
+  .text-base {
+    font-weight: 500;
+  }
+  /* Muted copy at small sizes gets extra weight so it never looks washed out. */
+  .text-muted-foreground.text-xs,
+  .text-muted-foreground.text-sm {
+    font-weight: 600;
+  }
   /* Tighten tracking on larger UI text — gives buttons, labels, and big
      numbers that confident iOS density. */
   .text-lg, .text-xl, .text-2xl, .text-3xl, .text-4xl, .text-5xl {
     letter-spacing: -0.018em;
   }
+  .text-lg, .text-xl {
+    font-weight: 600;
+  }
+
 }
 
 @layer utilities {
