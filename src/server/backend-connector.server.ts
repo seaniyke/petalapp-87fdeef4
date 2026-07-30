@@ -31,10 +31,10 @@ export async function lookupSharedBackendForGenerate(projectId: string): Promise
 } | null> {
   const { data, error } = await supabaseAdmin
     .from("shared_backends")
-    .select("api_key, enabled")
+    .select("api_key")
     .eq("project_id", projectId)
     .maybeSingle();
-  if (error || !data || data.enabled === false) return null;
+  if (error || !data) return null;
   return {
     projectId,
     apiKey: data.api_key as string,
