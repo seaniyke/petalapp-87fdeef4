@@ -20,13 +20,32 @@ export type CryptoWallet = {
 };
 
 export const CRYPTO_WALLETS: CryptoWallet[] = [
-  { id: "usdt-trc20", asset: "USDT", network: "TRON (TRC-20)", address: "" },
-  { id: "usdt-erc20", asset: "USDT", network: "Ethereum (ERC-20)", address: "" },
-  { id: "usdt-bep20", asset: "USDT", network: "BNB Smart Chain (BEP-20)", address: "" },
-  { id: "btc", asset: "BTC", network: "Bitcoin", address: "" },
-  { id: "eth", asset: "ETH", network: "Ethereum", address: "" },
-  { id: "sol", asset: "SOL", network: "Solana", address: "" },
+  {
+    id: "usdt-trc20",
+    asset: "USDT",
+    network: "TRON (TRC-20)",
+    address: "TDz6CcbY6AcZa52gaPAabeJVE6FyfrgPTw",
+  },
+  {
+    id: "usdt-erc20",
+    asset: "USDT",
+    network: "Ethereum (ERC-20)",
+    address: "0x0380b3d109be405091A6BD2F20A060e457e240dE",
+  },
+  {
+    id: "btc",
+    asset: "BTC",
+    network: "Bitcoin",
+    address: "bc1qxedh2rmv3jkw6legcmdjkd4ynpleqghkd07rn6",
+  },
+  {
+    id: "eth",
+    asset: "ETH",
+    network: "Ethereum",
+    address: "0x0380b3d109be405091A6BD2F20A060e457e240dE",
+  },
 ];
+
 
 export const ACTIVE_WALLETS = CRYPTO_WALLETS.filter((w) => w.address.trim().length > 0);
 

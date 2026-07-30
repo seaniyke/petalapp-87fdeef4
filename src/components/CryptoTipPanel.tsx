@@ -119,7 +119,7 @@ export function CryptoTipPanel() {
           width={132}
           height={132}
           loading="lazy"
-          className="h-33 w-33 shrink-0 rounded-xl bg-white p-1"
+          className="h-[132px] w-[132px] shrink-0 rounded-xl bg-white p-1"
         />
         <div className="min-w-0 flex-1 text-center sm:text-left">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
