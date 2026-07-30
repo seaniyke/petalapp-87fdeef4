@@ -90,6 +90,27 @@ export function computeBreakdown(wallet: Wallet | null, plan: Plan | null): Cred
   return { daily, monthly, topup, total: daily + monthly + topup };
 }
 
+/**
+ * Does this user get the paid feature set?
+ *
+ * Two ways to qualify, and they're equal:
+ *   - an active subscription (plan_code !== "free"), or
+ *   - pay as you go: purchased credits still remaining.
+ *
+ * Mirrors `public.has_full_access(uuid)` in the database.
+ */
+export function hasFullAccess(wallet: Wallet | null | undefined): boolean {
+  if (!wallet) return false;
+  return wallet.plan_code !== "free" || Number(wallet.topup_credits_remaining ?? 0) > 0;
+}
+
+/** True when access is coming from purchased credits rather than a plan. */
+export function isPayAsYouGo(wallet: Wallet | null | undefined): boolean {
+  if (!wallet) return false;
+  return wallet.plan_code === "free" && Number(wallet.topup_credits_remaining ?? 0) > 0;
+}
+
+
 export async function fetchWallet(userId: string): Promise<Wallet | null> {
   const { data, error } = await supabase
     .from("user_wallets")
