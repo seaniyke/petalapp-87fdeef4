@@ -139,6 +139,28 @@ export async function enableManagedBackend(
   return backendApi<{ ok: true; status: "provisioning" }>("enable-managed", { projectId });
 }
 
+export type SharedBackendInfo = {
+  enabled: boolean;
+  projectId?: string;
+  apiKey?: string;
+  enabledAt?: string;
+  usage?: { rows: number; users: number; collections: string[] };
+  limits?: { maxRowsPerProject: number; maxCollections: number; maxPageSize: number };
+};
+
+/** Free tier: a shared backend that lives inside Petal Cloud (no dedicated project). */
+export async function enableSharedBackend(projectId: string): Promise<SharedBackendInfo> {
+  return backendApi<SharedBackendInfo>("enable-shared", { projectId });
+}
+
+export async function getSharedBackendStatus(projectId: string): Promise<SharedBackendInfo> {
+  return backendApi<SharedBackendInfo>("shared-status", { projectId });
+}
+
+export async function disableSharedBackend(projectId: string): Promise<{ ok: true }> {
+  return backendApi<{ ok: true }>("disable-shared", { projectId });
+}
+
 export async function listProjects(): Promise<ProjectRow[]> {
   // The "My projects" page must show ONLY the signed-in user's own projects.
   // Without this filter, the public-projects RLS policy ("is_public = true")
