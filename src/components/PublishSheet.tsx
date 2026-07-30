@@ -110,6 +110,8 @@ export function PublishSheet({
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [justPublished, setJustPublished] = useState(false);
+  /** User hit Publish while a build was still running — finish once it's ready. */
+  const [awaitingBuild, setAwaitingBuild] = useState(false);
   const [visibilityBusy, setVisibilityBusy] = useState(false);
   const [websiteInfoOpen, setWebsiteInfoOpen] = useState(false);
 
@@ -258,40 +260,73 @@ export function PublishSheet({
   /**
    * Publish (or re-publish) the project. Pins the current latest ready build
    * as the published build via /api/publish. If the latest build is still
-   * pending or failed we kick off a fresh build first so the user gets a
-   * single "Publish" interaction instead of two.
+   * pending or failed we kick off a fresh build first and remember that the
+   * user asked to publish — the effect below finishes the job the moment the
+   * build turns ready, so "Publish" is always a single interaction.
    */
   async function publishNow() {
     setPublishing(true);
     try {
-      // No build yet at all → trigger one. The user can publish once it's ready.
+      // No build yet at all → trigger one, then auto-publish when it lands.
       if (!project.latest_build_id) {
         await triggerBuild(project.id);
-        toast.success("Building your app — publish will be available when it's ready.");
+        setAwaitingBuild(true);
         return;
       }
-      // Latest build failed → retry the build first.
+      // Latest build failed → retry the build first, then auto-publish.
       if (buildStatus === "failed") {
         await triggerBuild(project.id);
-        toast.success("Retrying the build…");
+        setAwaitingBuild(true);
         return;
       }
-      // Latest build still pending → wait it out.
+      // Latest build still pending → wait it out, then auto-publish.
       if (buildStatus === "pending") {
-        toast.info("A build is already in progress — publish will be available when it finishes.");
+        setAwaitingBuild(true);
         return;
       }
+
       // Latest build is ready → pin it as published.
       const result = await publishProject({ projectId: project.id });
       onChange({ ...project, ...result.project } as ProjectRow);
+      setAwaitingBuild(false);
       setJustPublished(true);
     } catch (e) {
+      setAwaitingBuild(false);
       toast.error(e instanceof Error ? e.message : "Couldn't publish");
 
     } finally {
       setPublishing(false);
     }
   }
+
+  // Finish a publish the user requested mid-build: as soon as the build turns
+  // ready we pin it, so they land on the success card without a second tap.
+  useEffect(() => {
+    if (!awaitingBuild || publishing) return;
+    if (buildStatus !== "ready" || !project.latest_build_id) return;
+    let cancelled = false;
+    void (async () => {
+      setPublishing(true);
+      try {
+        const result = await publishProject({ projectId: project.id });
+        if (cancelled) return;
+        onChange({ ...project, ...result.project } as ProjectRow);
+        setJustPublished(true);
+      } catch (e) {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Couldn't publish");
+      } finally {
+        if (!cancelled) {
+          setAwaitingBuild(false);
+          setPublishing(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awaitingBuild, publishing, buildStatus, project.latest_build_id]);
+
 
   async function changeVisibility(next: PublishVisibility) {
     if (visibility === next) return;
@@ -463,24 +498,27 @@ export function PublishSheet({
     site_icon_url?: string | null;
   };
 
-  const content = (
-    <>
-        {(publishing || buildStatus === "pending") && !justPublished && (
-          <PublishingCard isUpdate={hasPublishedBuild} />
-        )}
+  // Lovable-style focused states: while we're pushing (or right after we
+  // finished) the sheet shows ONLY that moment — no settings list behind it.
+  const isBusyPublishing = (publishing || buildStatus === "pending") && !justPublished;
+  const showSuccess = justPublished && !publishing;
 
-        {justPublished && !publishing && (
-          <PublishSuccessCard
-            isUpdate={hasPublishedBuild && !isUnpublished}
-            url={resolved.url}
-            display={resolved.display}
-            title={siteMeta.site_title || project.title}
-            description={siteMeta.site_description ?? project.summary}
-            iconUrl={siteMeta.site_icon_url}
-            onEditWebsiteInfo={() => setWebsiteInfoOpen(true)}
-            onDismiss={() => setJustPublished(false)}
-          />
-        )}
+  const content = isBusyPublishing ? (
+    <PublishingCard isUpdate={hasPublishedBuild} />
+  ) : showSuccess ? (
+    <PublishSuccessCard
+      isUpdate={hasPublishedBuild && !isUnpublished}
+      url={resolved.url}
+      display={resolved.display}
+      title={siteMeta.site_title || project.title}
+      description={siteMeta.site_description ?? project.summary}
+      iconUrl={siteMeta.site_icon_url}
+      onEditWebsiteInfo={() => setWebsiteInfoOpen(true)}
+      onDismiss={() => setJustPublished(false)}
+    />
+  ) : (
+    <>
+
 
 
 
