@@ -96,7 +96,9 @@ export function PublishSheet({
   onManageDomains,
   onOpenSettings,
 }: Props) {
+  const isMobile = useIsMobile();
   const buildSnap = useBuildActivity(project.latest_build_id ?? null);
+
   const [resolved, setResolved] = useState<PublishedUrlResult>({
     url: null,
     source: "none",
