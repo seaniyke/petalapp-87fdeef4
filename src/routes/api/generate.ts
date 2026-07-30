@@ -2422,6 +2422,7 @@ Forbidden defaults
           nextFiles = applyScaffoldKit(parsed.files, {
             backend: backend ?? undefined,
             sharedBackend: sharedBackend ?? undefined,
+            target: buildTarget.id,
           });
           // NOTE: Previously we called scaffoldRouteStubs() here to emit
           // TanStack `src/routes/*.tsx` files for routes the model didn't
@@ -2845,6 +2846,7 @@ Forbidden defaults
           nextFiles = applyScaffoldKitForPatch(patched, {
             backend: backend ?? undefined,
             sharedBackend: sharedBackend ?? undefined,
+            target: buildTarget.id,
           });
         }
         if (!nextFiles.some((f) => f.path === "index.html")) {
