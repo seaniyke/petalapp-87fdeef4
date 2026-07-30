@@ -90,12 +90,73 @@ const sections: Section[] = [
           <li><strong>One change per message.</strong> Ship it, then ask for the next thing.</li>
           <li><strong>Reference the surface.</strong> "On the pricing page, make the Pro card the highlighted plan."</li>
           <li><strong>Show, don't tell.</strong> Attach a screenshot for layout or style references.</li>
+          <li><strong>Name the outcome, not the code.</strong> "Users should see their own orders only" beats "add a where clause".</li>
           <li><strong>Push back.</strong> If something looks off, say what's wrong and what you expected.</li>
           <li><strong>Use Chat mode</strong> for planning and questions; switch to Build mode to make changes.</li>
+        </ul>
+        <p>
+          A good first prompt has three parts: <em>what it is</em>, <em>who it's for</em>, and{" "}
+          <em>the two or three things it must do</em>. Example: "A booking site for a barber
+          shop — customers pick a service, choose a time slot, and get a confirmation email."
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "targets",
+    title: "What you can build",
+    icon: Layers,
+    blurb: "Web apps, mobile apps, backends, and Chrome extensions.",
+    body: (
+      <>
+        <p>
+          Petal picks the right target from your prompt — say "mobile app" or "Chrome
+          extension" and the whole project is scaffolded for it.
+        </p>
+        <ul>
+          <li>
+            <strong>Web apps</strong> — React + TypeScript with routing, a design system, and
+            SEO-ready pages. Published on a free subdomain or your own domain.
+          </li>
+          <li>
+            <strong>Mobile apps</strong> — one React Native codebase for iOS and Android, with
+            a live phone preview you can open in Expo Go. Petal builds the signed{" "}
+            <code>.ipa</code> and <code>.apk</code> for you; store submission still needs your
+            own Apple or Google developer account.
+          </li>
+          <li>
+            <strong>Backends & APIs</strong> — typed server functions, Postgres with row-level
+            security, scheduled jobs, and webhooks.
+          </li>
+          <li>
+            <strong>Chrome extensions</strong> — Manifest V3 with a background service worker,
+            popup UI, and packaged ZIP ready to upload.
+          </li>
         </ul>
       </>
     ),
   },
+  {
+    id: "attachments",
+    title: "Images, screenshots & voice",
+    icon: MessageSquare,
+    blurb: "Give Petal references instead of describing them.",
+    body: (
+      <>
+        <ul>
+          <li><strong>Attach a screenshot</strong> of what's wrong and circle the area — Petal reads the markup.</li>
+          <li><strong>Attach a reference design</strong> and say "match this layout, keep our colours".</li>
+          <li><strong>Upload a logo or photo</strong> and ask Petal to use it in the app.</li>
+          <li><strong>Dictate</strong> with the mic in the composer when typing a long brief is slow.</li>
+        </ul>
+        <p>
+          Need images you don't have? Ask for them — Petal generates illustrations, hero art,
+          and icons directly into the project.
+        </p>
+      </>
+    ),
+  },
+
   {
     id: "cloud",
     title: "Petal Cloud (backend)",
