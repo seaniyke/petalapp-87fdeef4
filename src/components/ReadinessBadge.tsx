@@ -56,6 +56,8 @@ export function ReadinessBadge({ files, project }: ReadinessBadgeProps) {
     items: report.checks.filter((c) => c.category === cat),
   })).filter((g) => g.items.length);
 
+  const remaining = report.totalChecks - report.passedCount;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -65,11 +67,16 @@ export function ReadinessBadge({ files, project }: ReadinessBadgeProps) {
             "hidden h-8 items-center gap-2 rounded-lg border px-2.5 text-xs font-medium transition hover:opacity-80 md:inline-flex",
             LEVEL_STYLES[report.level],
           )}
-          title="Production readiness"
+          title="Launch checklist"
         >
           <Rocket className="h-3.5 w-3.5" />
-          <span>{LEVEL_LABEL[report.level]}</span>
-          <span className="tabular-nums opacity-80">{report.score}/100</span>
+          <span>
+            {report.level === "production"
+              ? "Launch ready"
+              : remaining === 1
+                ? "1 step to launch"
+                : `${remaining} steps to launch`}
+          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
@@ -77,18 +84,22 @@ export function ReadinessBadge({ files, project }: ReadinessBadgeProps) {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Readiness
+                Launch checklist
               </div>
               <div className="mt-0.5 text-lg font-semibold">
-                {LEVEL_LABEL[report.level]}
+                {report.level === "production"
+                  ? "You're launch ready 🎉"
+                  : remaining === 1
+                    ? "1 step to go"
+                    : `${remaining} steps to go`}
               </div>
             </div>
             <div className="text-right">
               <div className="text-3xl font-semibold tabular-nums">
-                {report.score}
+                {report.passedCount}
               </div>
               <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                / 100
+                / {report.totalChecks} done
               </div>
             </div>
           </div>
@@ -106,9 +117,10 @@ export function ReadinessBadge({ files, project }: ReadinessBadgeProps) {
             />
           </div>
           <div className="mt-2 text-[11px] text-muted-foreground">
-            {report.passedCount} of {report.totalChecks} checks passed
+            {LEVEL_LABEL[report.level]} · knock these out whenever you're ready.
           </div>
         </div>
+
         <div className="max-h-80 overflow-y-auto p-2">
           {grouped.map(({ cat, items }) => (
             <div key={cat} className="mb-2 last:mb-0">
