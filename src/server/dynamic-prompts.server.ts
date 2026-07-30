@@ -607,7 +607,7 @@ A list-shaped surface is not "done" when it renders an array. If the list will h
 2. FILTERS — at least ONE domain-relevant facet (status, category, tag, price band, date range). Render as \`<Select>\`, \`<Combobox>\`, or shadcn \`<ToggleGroup>\`; NEVER free-text with no picker.
 3. SORT — user-controllable sort (name / newest / price / relevance). Table headers become clickable; card grids get a \`<Select>\` sort control.
 4. PAGINATION or infinite scroll — never render 500 DOM nodes at once. 20-30 per page is the floor; use \`<Pagination>\` from the kit or intersection-observer for infinite.
-5. URL SYNC — every search/filter/sort/page value MUST live in the URL (\`?q=&status=open&sort=newest&page=2\`). Use TanStack Router \`useNavigate({ search })\` + \`Route.useSearch()\` so users can share, refresh, and back-button. NEVER stash filter state in \`useState\` only.
+5. URL SYNC — every search/filter/sort/page value MUST live in the URL (\`?q=&status=open&sort=newest&page=2\`). Use \`useSearchParams()\` from \`@/components/ui/router\` so users can share, refresh, and back-button. NEVER stash filter state in \`useState\` only.
 6. EMPTY-FILTER STATE — when filters return zero, show \`<EmptyState title="No matches" description="Try clearing filters" action={<Button onClick={clear}>Clear filters</Button>} />\`. NEVER a blank list.
 7. RESULT COUNT — always visible ("48 results" / "Showing 1–20 of 48"). Users need to know filters are working.
 
@@ -646,10 +646,10 @@ Every surface that renders data (list, detail, dashboard, profile, feed, form re
 
 1. LOADING — first paint of ANY async data uses a skeleton, not a spinner-in-the-middle and never a blank page. Kit: \`<Skeleton className="h-4 w-32" />\` stacked to mimic the final shape. For grids: render 6-8 skeleton cards matching the real card dimensions. NEVER a text "Loading…" as the only feedback.
 2. EMPTY — zero rows / zero results always renders \`<EmptyState icon={<domain-icon>} title description action={<Button>...</Button>} />\`. The action is a real next step (Create, Invite, Import, Clear filters), never a dead-end message. Empty state copy references the domain ("No customers yet. Add your first one to start tracking.") — never generic ("Nothing here").
-3. ERROR — every \`try/catch\` around a mutation shows \`toast.error(friendlyMessage)\`. Every route with a loader sets \`errorComponent\` on \`createFileRoute\` returning a card with the error message + a "Try again" button that calls \`router.invalidate()\`. Never let a thrown promise silently kill the page.
+3. ERROR — every \`try/catch\` around a mutation shows \`toast.error(friendlyMessage)\`. Every async page renders a friendly error state with a real "Try again" action that repeats the request. Never let a thrown promise silently kill the page.
 
 For routes specifically:
-- Set BOTH \`errorComponent\` and \`notFoundComponent\` on every route with a loader (see the errors-notfound rules).
+- Register a wildcard \`*\` route with a useful not-found page.
 - Wrap the component body in a defensive \`try/catch\` when it does heavy computation that could throw at render.
 
 The three-state contract is what makes an app feel real. Users forgive slow. They do NOT forgive blank.`,
@@ -693,13 +693,12 @@ RESPONSIVE — sidebar becomes a hamburger \`<Sheet>\` on mobile. Widgets stack 
 
 Forbidden: dashboard that is a marketing hero + one chart. Dashboard that hides real domain data behind "Feature coming soon". Dashboard without persistent nav.`,
   },
-  // Fires whenever a new route is being created. Reinforces that route.head()
-  // is not optional — every route must ship route-specific SEO.
+  // Fires whenever a new route is being created. Reinforces route-specific SEO.
   perRouteSEO: {
     triggers:
       /\b(route|page|multi-?page|landing|about|pricing|contact|blog|faq|features?|services|portfolio|gallery|docs|changelog|privacy|terms|marketing|site|website)\b/i,
-    body: `\n\n[Reinforcement — Per-route SEO (every route.head() is required)]
-Every new TanStack route file MUST set its own \`head()\` in \`createFileRoute\`. Copy-pasting the home-page metadata into a child route is a bug — search engines and social crawlers will treat them as duplicates.
+    body: `\n\n[Reinforcement — Per-route SEO]
+Every new React Router page MUST set a route-specific document title and description when it renders. Copy-pasting home-page metadata into a child page is a bug. Do not import TanStack Router or call \`createFileRoute\` in generated apps.
 
 Required per-route (in the \`head()\` return):
 - \`meta: [{ title }]\` — 40-60 chars, includes the site/brand name (e.g. "Pricing — Acme").
