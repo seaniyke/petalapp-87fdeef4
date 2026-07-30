@@ -58,10 +58,14 @@ function usesConsumer(content: string): boolean {
 }
 
 function hasProvider(content: string): boolean {
+  // Symbols coming from the TanStack compatibility shim are inert factories,
+  // not real router providers — they must not suppress <BrowserRouter>.
+  if (/from\s*["']@\/lib\/router-compat["']/.test(content)) return false;
   return PROVIDERS.some(
     (name) => new RegExp(`<${name}[\\s/>]`).test(content) || new RegExp(`(?<![\\w.$])${name}\\s*\\(`).test(content),
   );
 }
+
 
 function ensureBrowserRouterImport(content: string): string {
   if (/import[^;]*\bBrowserRouter\b[^;]*from/.test(content)) return content;
@@ -111,10 +115,14 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
   const code = files.filter((f) => CODE_EXT.test(f.path));
   if (code.length === 0) return { files, notes };
 
-  const anyConsumer = code.some((f) => usesConsumer(f.content));
+  const anyConsumer = code.some(
+    (f) => !f.path.includes("router-compat") && usesConsumer(f.content),
+  );
   if (!anyConsumer) return { files, notes };
 
-  const anyProvider = code.some((f) => hasProvider(f.content));
+  const anyProvider = code.some(
+    (f) => !f.path.includes("router-compat") && hasProvider(f.content),
+  );
   if (anyProvider) return { files, notes };
 
   // Preferred injection point: the entry file that calls .render(...)
