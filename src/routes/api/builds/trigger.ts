@@ -33,6 +33,7 @@ import { autofixFiles } from "@/server/stream-autofixer";
 import { shimMissingUiPrimitives } from "@/server/shim-missing-ui.server";
 import { stripTypeOnlyValueImports } from "@/server/strip-type-only-value-imports.server";
 import { injectPreviewGuard } from "@/server/preview-guard.server";
+import { runAllRepairs } from "@/server/repair-all.server";
 import {
   buildIntegrationEnvFiles,
   mergeFilesIntoPayload,
@@ -132,13 +133,25 @@ export const Route = createFileRoute("/api/builds/trigger")({
           ? { url: backendRow.supabase_url, anonKey: backendRow.anon_key }
           : undefined;
         const scaffolded = applyScaffoldKit(files, { backend });
+        // Publish-time self-heal for legacy projects. Generation already runs
+        // this composition pass, but older saved files can predate a repair.
+        // In particular, a stripped TanStack import with a surviving
+        // `createFileRoute(...)` call builds successfully and then crashes in
+        // the browser. Running the same deterministic repairs here guarantees
+        // the deploy payload is safe even before the user makes another edit.
+        const repaired = runAllRepairs(scaffolded);
+        if (repaired.notes.length > 0) {
+          console.info(
+            `[build-repair] project=${projectId}: ${repaired.notes.join("; ")}`,
+          );
+        }
         // 2c) Defense-in-depth: keep tsconfig "paths" and Vite aliases in sync.
         //     If `vite.config.ts` is ever missing an alias for a tsconfig
         //     `paths` entry (older project, manual edit, AI emitted a slimmer
         //     config), Rollup would fail to resolve `@/...` imports at build
         //     time. This step injects any missing aliases. No-op when they're
         //     already aligned (the canonical scaffold already declares them).
-        const aliasFixed = syncViteAliasesWithTsconfig(scaffolded);
+        const aliasFixed = syncViteAliasesWithTsconfig(repaired.files);
 
         // 2d) Validate `src/styles.css` and fall back to the canonical scaffold
         //     CSS if it's broken. Tailwind v4 aborts the entire build on any
