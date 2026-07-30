@@ -56,6 +56,8 @@ import {
   Search,
 } from "lucide-react";
 import { WebsiteInfoSheet } from "@/components/WebsiteInfoSheet";
+import { PublishingCard, PublishSuccessCard } from "@/components/PublishSuccessCard";
+
 import { supabase } from "@/integrations/supabase/client";
 import { triggerBuild } from "@/lib/builds";
 import { publishProject, type PublishVisibility } from "@/lib/publish";
@@ -107,8 +109,10 @@ export function PublishSheet({
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [justPublished, setJustPublished] = useState(false);
   const [visibilityBusy, setVisibilityBusy] = useState(false);
   const [websiteInfoOpen, setWebsiteInfoOpen] = useState(false);
+
   // Visitor analytics — database-backed traffic for the project's published site.
   // We fetch on open/range changes and subscribe to the daily rollup so the
   // count updates as new visits are recorded.
@@ -127,11 +131,18 @@ export function PublishSheet({
   const [slugClaiming, setSlugClaiming] = useState(false);
   const slugDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Fresh state every time the sheet opens — the celebration is for the
+  // publish that just happened, not the one from an hour ago.
+  useEffect(() => {
+    if (!open) setJustPublished(false);
+  }, [open]);
+
   // Re-resolve the live URL whenever the sheet opens or the build flips to
   // ready. We don't subscribe directly because `useBuildActivity` already
   // pushes us re-renders, and the resolve call is cheap (two indexed reads).
   useEffect(() => {
     if (!open) return;
+
     let cancelled = false;
     void (async () => {
       const r = await resolvePublishedUrl(
@@ -273,9 +284,10 @@ export function PublishSheet({
       // Latest build is ready → pin it as published.
       const result = await publishProject({ projectId: project.id });
       onChange({ ...project, ...result.project } as ProjectRow);
-      toast.success(isUnpublished ? "Your app is live 🎉" : "Update published");
+      setJustPublished(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't publish");
+
     } finally {
       setPublishing(false);
     }
@@ -445,8 +457,32 @@ export function PublishSheet({
         ? "bg-primary/15 text-primary hover:bg-primary/20"
         : "bg-primary text-primary-foreground hover:bg-primary/90";
 
+  const siteMeta = project as ProjectRow & {
+    site_title?: string | null;
+    site_description?: string | null;
+    site_icon_url?: string | null;
+  };
+
   const content = (
     <>
+        {(publishing || buildStatus === "pending") && !justPublished && (
+          <PublishingCard isUpdate={hasPublishedBuild} />
+        )}
+
+        {justPublished && !publishing && (
+          <PublishSuccessCard
+            isUpdate={hasPublishedBuild && !isUnpublished}
+            url={resolved.url}
+            display={resolved.display}
+            title={siteMeta.site_title || project.title}
+            description={siteMeta.site_description ?? project.summary}
+            iconUrl={siteMeta.site_icon_url}
+            onEditWebsiteInfo={() => setWebsiteInfoOpen(true)}
+            onDismiss={() => setJustPublished(false)}
+          />
+        )}
+
+
 
 
         {/* Header */}

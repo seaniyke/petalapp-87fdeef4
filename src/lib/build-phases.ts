@@ -47,40 +47,41 @@ export function defaultPhases(): Phase[] {
 const PHASE_TEMPLATES: Record<PhaseId, Omit<Phase, "id" | "status">> = {
   thinking: {
     emoji: "🌸",
-    label: "Getting the brief",
+    label: "Reading your brief",
     doneLabel: "Plan locked",
-    reassurance: "Working out which files to touch and in what order.",
+    reassurance: "Working out which files to touch, and in what order.",
   },
   designing: {
     emoji: "✨",
-    label: "Styling it up",
-    doneLabel: "Look locked in",
-    reassurance: "Choosing layout, palette, and components.",
+    label: "Choosing the look",
+    doneLabel: "Look locked",
+    reassurance: "Picking layout, palette and components.",
   },
   writing: {
     emoji: "📝",
-    label: "Building it out",
+    label: "Writing the code",
     doneLabel: "Code written",
-    reassurance: "Editing files now — you'll see each one stream in.",
+    reassurance: "Editing files now — each one streams in as it lands.",
   },
   polishing: {
     emoji: "🎨",
-    label: "Double-checking everything",
-    doneLabel: "Verified",
+    label: "Checking my work",
+    doneLabel: "Checks passed",
     reassurance: "Type-checking and running safety checks on the new code.",
   },
   deploying: {
     emoji: "🚀",
-    label: "Going live",
-    doneLabel: "Deployed",
+    label: "Shipping it",
+    doneLabel: "Shipped",
     reassurance: "Bundling and pushing to the edge — usually 30–60s.",
   },
   live: {
     emoji: "🌟",
     label: "Live",
-    doneLabel: "It's live 🎉",
+    doneLabel: "Live 🎉",
   },
 };
+
 
 /** Return a copy of `phases` with `nextActive` set to active. Marks every
  *  earlier phase as done, leaves later phases pending. Idempotent. */
