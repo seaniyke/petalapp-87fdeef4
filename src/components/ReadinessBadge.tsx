@@ -5,11 +5,16 @@
  * Reuses Petal Shield's analyzer so we don't double-scan.
  */
 import { useMemo, useState } from "react";
-import { Check, X, Rocket, ChevronRight } from "lucide-react";
+import { Check, Rocket, Wand2, Globe } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { analyzeProject } from "@/lib/petal-shield";
-import { evaluateReadiness, LEVEL_LABEL, type ReadinessCheck } from "@/lib/readiness";
+import {
+  evaluateReadiness,
+  LEVEL_LABEL,
+  READINESS_FIXES,
+  type ReadinessCheck,
+} from "@/lib/readiness";
 import type { ProjectFile } from "@/server/generate.server";
 import type { ProjectRow } from "@/lib/projects";
 
