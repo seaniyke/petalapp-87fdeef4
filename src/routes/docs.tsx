@@ -326,6 +326,26 @@ const sections: Section[] = [
     ),
   },
   {
+    id: "invites",
+    title: "Invites & referrals",
+    icon: Gift,
+    blurb: "Bring friends in and earn build credits.",
+    body: (
+      <>
+        <p>
+          Petal is invite-led while we're in early access. Everyone who joins gets a personal
+          referral link from their <Link to="/profile" className="underline">profile</Link>.
+        </p>
+        <ul>
+          <li>Share your link — friends who join through it move up the waitlist.</li>
+          <li>Invite three friends and your own access is unlocked automatically.</li>
+          <li>When a friend signs in for the first time, you both receive build credits.</li>
+          <li>Track invited, started-building, and credits earned from your profile.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
     id: "faq",
     title: "FAQ",
     icon: HelpCircle,
@@ -336,10 +356,14 @@ const sections: Section[] = [
         <p><strong>Can I export my database?</strong> Yes. Open the Cloud panel → Database → Tables and use the export action on the table you want.</p>
         <p><strong>How do I copy a project?</strong> Open the project, click its name in the top left, go to Settings, and choose Remix.</p>
         <p><strong>What does a credit cover?</strong> One Build‑mode message. Try‑to‑fix retries are free.</p>
+        <p><strong>Do I need to know how to code?</strong> No. Petal writes and wires the code; you describe the outcome. If you do code, you can export the project and keep going in your own editor.</p>
+        <p><strong>Can I build iOS and Android from one prompt?</strong> Yes — one mobile project ships to both.</p>
+        <p><strong>Who owns what I build?</strong> You do — the code, the data, and the domain.</p>
         <p><strong>Where is my project ID?</strong> It's in the URL of the builder.</p>
       </>
     ),
   },
+
 ];
 
 function DocsPage() {
