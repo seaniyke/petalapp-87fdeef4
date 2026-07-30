@@ -131,11 +131,18 @@ export function PublishSheet({
   const [slugClaiming, setSlugClaiming] = useState(false);
   const slugDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Fresh state every time the sheet opens — the celebration is for the
+  // publish that just happened, not the one from an hour ago.
+  useEffect(() => {
+    if (!open) setJustPublished(false);
+  }, [open]);
+
   // Re-resolve the live URL whenever the sheet opens or the build flips to
   // ready. We don't subscribe directly because `useBuildActivity` already
   // pushes us re-renders, and the resolve call is cheap (two indexed reads).
   useEffect(() => {
     if (!open) return;
+
     let cancelled = false;
     void (async () => {
       const r = await resolvePublishedUrl(
