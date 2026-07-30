@@ -60,8 +60,10 @@ const PRESETS: Record<Currency, { label: string; minor: number }[]> = {
 };
 
 function CoffeePage() {
+  const [method, setMethod] = useState<"card" | "crypto">("card");
   const [currency, setCurrency] = useState<Currency>("USD");
   const [amountMinor, setAmountMinor] = useState<number>(500);
+
   const [customAmount, setCustomAmount] = useState<string>("");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
