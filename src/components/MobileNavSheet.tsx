@@ -142,6 +142,14 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
             />
           </Section>
 
+          <Section title="Appearance">
+            <div className="flex items-center justify-between px-3 py-1.5">
+              <span className="text-sm font-medium">Theme</span>
+              <ThemeToggle />
+            </div>
+          </Section>
+
+
           {isReady && !user && (
             <div className="mt-auto border-t border-border/60 px-5 pt-4">
               <Link
