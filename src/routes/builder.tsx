@@ -188,6 +188,7 @@ import { toast } from "sonner";
 const CodeEditor = lazy(() =>
   import("@/components/CodeEditor").then((m) => ({ default: m.CodeEditor })),
 );
+import { CodeExplorer } from "@/components/CodeExplorer";
 const CommandPalette = lazy(() =>
   import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })),
 );
