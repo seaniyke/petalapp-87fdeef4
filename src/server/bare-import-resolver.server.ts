@@ -42,6 +42,16 @@ import {
 
 const SCANNABLE = /\.(tsx?|jsx?)$/;
 
+/**
+ * Build-tooling configs are scaffold-owned and run in Node, not in the browser
+ * bundle. They must never be touched by the import stripper.
+ */
+const CONFIG_FILES = /(^|\/)(vite|vitest|tailwind|postcss|eslint)\.config\.[cm]?[jt]s$/;
+function isBuildConfig(p: string): boolean {
+  return CONFIG_FILES.test(p) || p === "petal-source-plugin.mjs";
+}
+
+
 // Captures `import { a, b as c } from "spec"` and `import D, { a } from "spec"`
 // and `import "spec"`. We work on the matched substring; the regex is
 // anchored to a line start (with optional leading whitespace) to avoid
@@ -62,14 +72,28 @@ export interface BareImportRepairResult {
 }
 
 /** Same canonical builtins as Node + the Vite alias prefix. We never touch these. */
+/** Node.js built-in modules — always resolvable, never npm packages. */
+const NODE_BUILTINS = new Set([
+  "assert", "buffer", "child_process", "cluster", "console", "constants", "crypto",
+  "dgram", "dns", "domain", "events", "fs", "http", "http2", "https", "inspector",
+  "module", "net", "os", "path", "perf_hooks", "process", "punycode", "querystring",
+  "readline", "repl", "stream", "string_decoder", "timers", "tls", "trace_events",
+  "tty", "url", "util", "v8", "vm", "worker_threads", "zlib",
+]);
+
 function isBareSpecifier(spec: string): boolean {
   if (spec.startsWith(".")) return false;
   if (spec.startsWith("@/")) return false;
   if (spec.startsWith("/")) return false;
   if (spec.startsWith("http://") || spec.startsWith("https://")) return false;
   if (spec.startsWith("data:") || spec.startsWith("virtual:")) return false;
+  // Node built-ins (`node:path`, `path`, `node:url/…`) are provided by the
+  // runtime. Stripping them corrupts build configs (`path is not defined`).
+  if (spec.startsWith("node:")) return false;
+  if (NODE_BUILTINS.has(spec.split("/")[0])) return false;
   return true;
 }
+
 
 /** Split a bare specifier into package name and subpath: "date-fns/format" → ["date-fns", "format"]. */
 function splitPackage(spec: string): { pkg: string; subpath: string } {
@@ -177,6 +201,8 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
 
   for (const file of files) {
     if (!SCANNABLE.test(file.path)) continue;
+    if (isBuildConfig(file.path)) continue;
+
     let src = byPath.get(file.path) ?? file.content;
 
     // Collect imports first; we mutate `src` in a second pass so we don't
