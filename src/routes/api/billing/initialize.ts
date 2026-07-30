@@ -48,36 +48,26 @@ export const Route = createFileRoute("/api/billing/initialize")({
         }
 
         try {
-          // Top-up packs and project add-ons require an active paid plan.
-          // We gate this server-side so a free-tier user can't bypass the
-          // UI and POST directly to /api/billing/initialize.
-          //
-          // Runtime top-ups ALSO require a paid plan (free users only get the
-          // monthly $10 free allowance — they can't buy more runtime).
-          if (
-            parsed.purpose === "pack" ||
-            parsed.purpose === "addon" ||
-            parsed.purpose === "runtime_topup"
-          ) {
-            const { data: walletRow } = await supabaseAdmin
-              .from("user_wallets")
-              .select("plan_code")
-              .eq("user_id", userData.user.id)
-              .maybeSingle();
-            const planCode = walletRow?.plan_code ?? "free";
-            if (planCode === "free") {
+          // Credit packs are pay-as-you-go: any signed-in user can buy one
+          // without a subscription. Project add-ons and Cloud + AI runtime
+          // top-ups require full access — a paid plan OR purchased credits
+          // still remaining. Gated server-side so the UI can't be bypassed.
+          if (parsed.purpose === "addon" || parsed.purpose === "runtime_topup") {
+            const { hasFullAccess } = await import("@/server/entitlements.server");
+            if (!(await hasFullAccess(userData.user.id))) {
               return new Response(
                 JSON.stringify({
                   error:
                     parsed.purpose === "runtime_topup"
-                      ? "Upgrade to a paid plan to top up your Cloud + AI balance."
-                      : "Upgrade to a paid plan to buy credits.",
+                      ? "Buy credits or upgrade to a paid plan to top up your Cloud + AI balance."
+                      : "Buy credits or upgrade to a paid plan to add this.",
                   code: "upgrade_required",
                 }),
                 { status: 403, headers: { "Content-Type": "application/json" } },
               );
             }
           }
+
 
           // Add-on purchases must be tied to a project the caller owns.
           if (parsed.purpose === "addon") {
