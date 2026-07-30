@@ -95,7 +95,7 @@ function InvestPage() {
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
-                  Built-in payments, domains, email and hosting on <span className="font-medium text-foreground">buildwithpetal.com</span>.
+                  Built-in payments, domains, email and hosting.
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
