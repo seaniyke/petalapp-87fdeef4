@@ -1206,6 +1206,16 @@ export const Route = createFileRoute("/api/admin/credits")({
               status: string;
               environment: string;
             };
+            // `needs_review` rows were flagged by the auto-verifier — an admin
+            // can still act on them, so put them back in the pending lane first.
+            if (pay.status === "needs_review") {
+              await supabaseAdmin
+                .from("crypto_payments" as never)
+                .update({ status: "pending" } as never)
+                .eq("id", id)
+                .eq("status", "needs_review");
+              pay.status = "pending";
+            }
             if (pay.status !== "pending") {
               return Response.json({ error: `Already ${pay.status}` }, { status: 409 });
             }
