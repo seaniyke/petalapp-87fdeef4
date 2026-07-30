@@ -27,6 +27,7 @@ import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BillingIndexRouteImport } from './routes/billing.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as RCodeRouteImport } from './routes/r.$code'
@@ -80,6 +81,7 @@ import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigge
 import { Route as ApiBuildsCallbackRouteImport } from './routes/api/builds/callback'
 import { Route as ApiBillingVerifyRouteImport } from './routes/api/billing/verify'
 import { Route as ApiBillingInitializeRouteImport } from './routes/api/billing/initialize'
+import { Route as ApiBillingHistoryRouteImport } from './routes/api/billing/history'
 import { Route as ApiBillingCryptoRouteImport } from './routes/api/billing/crypto'
 import { Route as ApiAdminPaystackPlansRouteImport } from './routes/api/admin/paystack-plans'
 import { Route as ApiAdminDigestsRouteImport } from './routes/api/admin/digests'
@@ -99,6 +101,7 @@ import { Route as ApiPublicCronSubscriptionRenewalReminderRouteImport } from './
 import { Route as ApiPublicCronSelfLearningDigestRouteImport } from './routes/api/public/cron/self-learning-digest'
 import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/api/public/cron/runtime-backend-hour'
 import { Route as ApiPublicCronMobileCertExpiryRouteImport } from './routes/api/public/cron/mobile-cert-expiry'
+import { Route as ApiPublicCronCryptoVerifyRouteImport } from './routes/api/public/cron/crypto-verify'
 import { Route as ApiPublicCoffeeVerifyRouteImport } from './routes/api/public/coffee/verify'
 import { Route as ApiPublicCoffeeInitializeRouteImport } from './routes/api/public/coffee/initialize'
 import { Route as ApiPublicCoffeeCryptoRouteImport } from './routes/api/public/coffee/crypto'
@@ -106,6 +109,7 @@ import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public
 import { Route as ApiBillingSubscriptionStatusRouteImport } from './routes/api/billing/subscription/status'
 import { Route as ApiBillingSubscriptionManageLinkRouteImport } from './routes/api/billing/subscription/manage-link'
 import { Route as ApiBillingSubscriptionCancelRouteImport } from './routes/api/billing/subscription/cancel'
+import { Route as ApiBillingCryptoCheckRouteImport } from './routes/api/billing/crypto.check'
 
 const WaitlistRoute = WaitlistRouteImport.update({
   id: '/waitlist',
@@ -195,6 +199,11 @@ const AuthRoute = AuthRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BillingIndexRoute = BillingIndexRouteImport.update({
+  id: '/billing/',
+  path: '/billing/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -463,6 +472,11 @@ const ApiBillingInitializeRoute = ApiBillingInitializeRouteImport.update({
   path: '/api/billing/initialize',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBillingHistoryRoute = ApiBillingHistoryRouteImport.update({
+  id: '/api/billing/history',
+  path: '/api/billing/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiBillingCryptoRoute = ApiBillingCryptoRouteImport.update({
   id: '/api/billing/crypto',
   path: '/api/billing/crypto',
@@ -567,6 +581,12 @@ const ApiPublicCronMobileCertExpiryRoute =
     path: '/api/public/cron/mobile-cert-expiry',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronCryptoVerifyRoute =
+  ApiPublicCronCryptoVerifyRouteImport.update({
+    id: '/api/public/cron/crypto-verify',
+    path: '/api/public/cron/crypto-verify',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCoffeeVerifyRoute = ApiPublicCoffeeVerifyRouteImport.update({
   id: '/api/public/coffee/verify',
   path: '/api/public/coffee/verify',
@@ -606,6 +626,11 @@ const ApiBillingSubscriptionCancelRoute =
     path: '/api/billing/subscription/cancel',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiBillingCryptoCheckRoute = ApiBillingCryptoCheckRouteImport.update({
+  id: '/check',
+  path: '/check',
+  getParentRoute: () => ApiBillingCryptoRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -661,11 +686,13 @@ export interface FileRoutesByFullPath {
   '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
+  '/billing/': typeof BillingIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
-  '/api/billing/crypto': typeof ApiBillingCryptoRoute
+  '/api/billing/crypto': typeof ApiBillingCryptoRouteWithChildren
+  '/api/billing/history': typeof ApiBillingHistoryRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -684,6 +711,7 @@ export interface FileRoutesByFullPath {
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/billing/crypto/check': typeof ApiBillingCryptoCheckRoute
   '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
@@ -691,6 +719,7 @@ export interface FileRoutesByFullPath {
   '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
+  '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
@@ -760,11 +789,13 @@ export interface FileRoutesByTo {
   '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin': typeof AdminIndexRoute
+  '/billing': typeof BillingIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
-  '/api/billing/crypto': typeof ApiBillingCryptoRoute
+  '/api/billing/crypto': typeof ApiBillingCryptoRouteWithChildren
+  '/api/billing/history': typeof ApiBillingHistoryRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -783,6 +814,7 @@ export interface FileRoutesByTo {
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/billing/crypto/check': typeof ApiBillingCryptoCheckRoute
   '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
@@ -790,6 +822,7 @@ export interface FileRoutesByTo {
   '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
+  '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
@@ -860,11 +893,13 @@ export interface FileRoutesById {
   '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
+  '/billing/': typeof BillingIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
   '/api/admin/paystack-plans': typeof ApiAdminPaystackPlansRoute
-  '/api/billing/crypto': typeof ApiBillingCryptoRoute
+  '/api/billing/crypto': typeof ApiBillingCryptoRouteWithChildren
+  '/api/billing/history': typeof ApiBillingHistoryRoute
   '/api/billing/initialize': typeof ApiBillingInitializeRoute
   '/api/billing/verify': typeof ApiBillingVerifyRoute
   '/api/builds/callback': typeof ApiBuildsCallbackRoute
@@ -883,6 +918,7 @@ export interface FileRoutesById {
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/billing/crypto/check': typeof ApiBillingCryptoCheckRoute
   '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
@@ -890,6 +926,7 @@ export interface FileRoutesById {
   '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
+  '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
@@ -961,11 +998,13 @@ export interface FileRouteTypes {
     | '/r/$code'
     | '/share/$token'
     | '/admin/'
+    | '/billing/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
     | '/api/admin/paystack-plans'
     | '/api/billing/crypto'
+    | '/api/billing/history'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/callback'
@@ -984,6 +1023,7 @@ export interface FileRouteTypes {
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
+    | '/api/billing/crypto/check'
     | '/api/billing/subscription/cancel'
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
@@ -991,6 +1031,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/crypto'
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
+    | '/api/public/cron/crypto-verify'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
@@ -1060,11 +1101,13 @@ export interface FileRouteTypes {
     | '/r/$code'
     | '/share/$token'
     | '/admin'
+    | '/billing'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
     | '/api/admin/paystack-plans'
     | '/api/billing/crypto'
+    | '/api/billing/history'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/callback'
@@ -1083,6 +1126,7 @@ export interface FileRouteTypes {
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
+    | '/api/billing/crypto/check'
     | '/api/billing/subscription/cancel'
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
@@ -1090,6 +1134,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/crypto'
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
+    | '/api/public/cron/crypto-verify'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
@@ -1159,11 +1204,13 @@ export interface FileRouteTypes {
     | '/r/$code'
     | '/share/$token'
     | '/admin/'
+    | '/billing/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
     | '/api/admin/paystack-plans'
     | '/api/billing/crypto'
+    | '/api/billing/history'
     | '/api/billing/initialize'
     | '/api/billing/verify'
     | '/api/builds/callback'
@@ -1182,6 +1229,7 @@ export interface FileRouteTypes {
     | '/api/registrar/purchase'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
+    | '/api/billing/crypto/check'
     | '/api/billing/subscription/cancel'
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
@@ -1189,6 +1237,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/crypto'
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
+    | '/api/public/cron/crypto-verify'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
@@ -1257,11 +1306,13 @@ export interface RootRouteChildren {
   RCodeRoute: typeof RCodeRoute
   ShareTokenRoute: typeof ShareTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  BillingIndexRoute: typeof BillingIndexRoute
   ApiAdminAiProvidersRoute: typeof ApiAdminAiProvidersRoute
   ApiAdminCreditsRoute: typeof ApiAdminCreditsRoute
   ApiAdminDigestsRoute: typeof ApiAdminDigestsRoute
   ApiAdminPaystackPlansRoute: typeof ApiAdminPaystackPlansRoute
-  ApiBillingCryptoRoute: typeof ApiBillingCryptoRoute
+  ApiBillingCryptoRoute: typeof ApiBillingCryptoRouteWithChildren
+  ApiBillingHistoryRoute: typeof ApiBillingHistoryRoute
   ApiBillingInitializeRoute: typeof ApiBillingInitializeRoute
   ApiBillingVerifyRoute: typeof ApiBillingVerifyRoute
   ApiBuildsCallbackRoute: typeof ApiBuildsCallbackRoute
@@ -1286,6 +1337,7 @@ export interface RootRouteChildren {
   ApiPublicCoffeeCryptoRoute: typeof ApiPublicCoffeeCryptoRoute
   ApiPublicCoffeeInitializeRoute: typeof ApiPublicCoffeeInitializeRoute
   ApiPublicCoffeeVerifyRoute: typeof ApiPublicCoffeeVerifyRoute
+  ApiPublicCronCryptoVerifyRoute: typeof ApiPublicCronCryptoVerifyRoute
   ApiPublicCronMobileCertExpiryRoute: typeof ApiPublicCronMobileCertExpiryRoute
   ApiPublicCronRuntimeBackendHourRoute: typeof ApiPublicCronRuntimeBackendHourRoute
   ApiPublicCronSelfLearningDigestRoute: typeof ApiPublicCronSelfLearningDigestRoute
@@ -1428,6 +1480,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/billing/': {
+      id: '/billing/'
+      path: '/billing'
+      fullPath: '/billing/'
+      preLoaderRoute: typeof BillingIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -1801,6 +1860,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBillingInitializeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/billing/history': {
+      id: '/api/billing/history'
+      path: '/api/billing/history'
+      fullPath: '/api/billing/history'
+      preLoaderRoute: typeof ApiBillingHistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/billing/crypto': {
       id: '/api/billing/crypto'
       path: '/api/billing/crypto'
@@ -1934,6 +2000,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronMobileCertExpiryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/crypto-verify': {
+      id: '/api/public/cron/crypto-verify'
+      path: '/api/public/cron/crypto-verify'
+      fullPath: '/api/public/cron/crypto-verify'
+      preLoaderRoute: typeof ApiPublicCronCryptoVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/coffee/verify': {
       id: '/api/public/coffee/verify'
       path: '/api/public/coffee/verify'
@@ -1983,6 +2056,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBillingSubscriptionCancelRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/billing/crypto/check': {
+      id: '/api/billing/crypto/check'
+      path: '/check'
+      fullPath: '/api/billing/crypto/check'
+      preLoaderRoute: typeof ApiBillingCryptoCheckRouteImport
+      parentRoute: typeof ApiBillingCryptoRoute
+    }
   }
 }
 
@@ -2018,6 +2098,17 @@ const ApiDomainsRouteChildren: ApiDomainsRouteChildren = {
 const ApiDomainsRouteWithChildren = ApiDomainsRoute._addFileChildren(
   ApiDomainsRouteChildren,
 )
+
+interface ApiBillingCryptoRouteChildren {
+  ApiBillingCryptoCheckRoute: typeof ApiBillingCryptoCheckRoute
+}
+
+const ApiBillingCryptoRouteChildren: ApiBillingCryptoRouteChildren = {
+  ApiBillingCryptoCheckRoute: ApiBillingCryptoCheckRoute,
+}
+
+const ApiBillingCryptoRouteWithChildren =
+  ApiBillingCryptoRoute._addFileChildren(ApiBillingCryptoRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -2071,11 +2162,13 @@ const rootRouteChildren: RootRouteChildren = {
   RCodeRoute: RCodeRoute,
   ShareTokenRoute: ShareTokenRoute,
   AdminIndexRoute: AdminIndexRoute,
+  BillingIndexRoute: BillingIndexRoute,
   ApiAdminAiProvidersRoute: ApiAdminAiProvidersRoute,
   ApiAdminCreditsRoute: ApiAdminCreditsRoute,
   ApiAdminDigestsRoute: ApiAdminDigestsRoute,
   ApiAdminPaystackPlansRoute: ApiAdminPaystackPlansRoute,
-  ApiBillingCryptoRoute: ApiBillingCryptoRoute,
+  ApiBillingCryptoRoute: ApiBillingCryptoRouteWithChildren,
+  ApiBillingHistoryRoute: ApiBillingHistoryRoute,
   ApiBillingInitializeRoute: ApiBillingInitializeRoute,
   ApiBillingVerifyRoute: ApiBillingVerifyRoute,
   ApiBuildsCallbackRoute: ApiBuildsCallbackRoute,
@@ -2100,6 +2193,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCoffeeCryptoRoute: ApiPublicCoffeeCryptoRoute,
   ApiPublicCoffeeInitializeRoute: ApiPublicCoffeeInitializeRoute,
   ApiPublicCoffeeVerifyRoute: ApiPublicCoffeeVerifyRoute,
+  ApiPublicCronCryptoVerifyRoute: ApiPublicCronCryptoVerifyRoute,
   ApiPublicCronMobileCertExpiryRoute: ApiPublicCronMobileCertExpiryRoute,
   ApiPublicCronRuntimeBackendHourRoute: ApiPublicCronRuntimeBackendHourRoute,
   ApiPublicCronSelfLearningDigestRoute: ApiPublicCronSelfLearningDigestRoute,

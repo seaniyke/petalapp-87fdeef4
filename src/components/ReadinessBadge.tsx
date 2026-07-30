@@ -5,11 +5,16 @@
  * Reuses Petal Shield's analyzer so we don't double-scan.
  */
 import { useMemo, useState } from "react";
-import { Check, X, Rocket, ChevronRight } from "lucide-react";
+import { Check, Rocket, Wand2, Globe } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { analyzeProject } from "@/lib/petal-shield";
-import { evaluateReadiness, LEVEL_LABEL, type ReadinessCheck } from "@/lib/readiness";
+import {
+  evaluateReadiness,
+  LEVEL_LABEL,
+  READINESS_FIXES,
+  type ReadinessCheck,
+} from "@/lib/readiness";
 import type { ProjectFile } from "@/server/generate.server";
 import type { ProjectRow } from "@/lib/projects";
 
@@ -38,9 +43,18 @@ const CATEGORY_LABEL: Record<ReadinessCheck["category"], string> = {
 export type ReadinessBadgeProps = {
   files: ProjectFile[];
   project: ProjectRow | null;
+  /** Runs a build prompt for a checklist item the user wants Petal to fix. */
+  onFix?: (prompt: string) => void;
+  /** Opens the custom-domain flow. */
+  onConnectDomain?: () => void;
 };
 
-export function ReadinessBadge({ files, project }: ReadinessBadgeProps) {
+export function ReadinessBadge({
+  files,
+  project,
+  onFix,
+  onConnectDomain,
+}: ReadinessBadgeProps) {
   const [open, setOpen] = useState(false);
 
   const report = useMemo(() => {
@@ -51,12 +65,24 @@ export function ReadinessBadge({ files, project }: ReadinessBadgeProps) {
 
   if (!report) return null;
 
+  // Unfinished work first — the whole point is "what do I do next".
   const grouped = CATEGORY_ORDER.map((cat) => ({
     cat,
-    items: report.checks.filter((c) => c.category === cat),
+    items: report.checks
+      .filter((c) => c.category === cat)
+      .sort((a, b) => Number(a.passed) - Number(b.passed)),
   })).filter((g) => g.items.length);
 
   const remaining = report.totalChecks - report.passedCount;
+
+  const runFix = (check: ReadinessCheck) => {
+    const fix = READINESS_FIXES[check.id];
+    if (!fix) return;
+    setOpen(false);
+    if (fix.kind === "domain") onConnectDomain?.();
+    else onFix?.(fix.prompt);
+  };
+
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -128,41 +154,55 @@ export function ReadinessBadge({ files, project }: ReadinessBadgeProps) {
                 {CATEGORY_LABEL[cat]}
               </div>
               <ul className="space-y-0.5">
-                {items.map((c) => (
-                  <li
-                    key={c.id}
-                    className="flex items-start gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted/50"
-                  >
-                    <span
-                      className={cn(
-                        "mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full",
-                        c.passed
-                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {c.passed ? (
-                        <Check className="h-3 w-3" />
-                      ) : (
-                        <X className="h-3 w-3" />
-                      )}
-                    </span>
-                    <div className="min-w-0 flex-1">
+                {items.map((c) => {
+                  const fix = READINESS_FIXES[c.id];
+                  const actionable = !c.passed && !!fix && (fix.kind === "domain" ? !!onConnectDomain : !!onFix);
+                  return (
+                    <li key={c.id}>
                       <div
                         className={cn(
-                          "font-medium leading-tight",
-                          !c.passed && "text-foreground",
+                          "flex items-start gap-2 rounded-md px-2 py-1.5 text-xs",
+                          c.passed ? "opacity-70" : "hover:bg-muted/50",
                         )}
                       >
-                        {c.label}
+                        <span
+                          className={cn(
+                            "mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full",
+                            c.passed
+                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                              : "bg-muted text-muted-foreground",
+                          )}
+                        >
+                          {c.passed ? (
+                            <Check className="h-3 w-3" />
+                          ) : (
+                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                          )}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold leading-tight">{c.label}</div>
+                          <div className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                            {c.detail}
+                          </div>
+                          {actionable && (
+                            <button
+                              type="button"
+                              onClick={() => runFix(c)}
+                              className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-bold transition hover:border-foreground/40 hover:bg-muted"
+                            >
+                              {fix.kind === "domain" ? (
+                                <Globe className="h-3 w-3" />
+                              ) : (
+                                <Wand2 className="h-3 w-3" />
+                              )}
+                              {fix.cta}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="mt-0.5 text-[11px] text-muted-foreground">
-                        {c.detail}
-                      </div>
-                    </div>
-                    <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/40" />
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}

@@ -1206,6 +1206,16 @@ export const Route = createFileRoute("/api/admin/credits")({
               status: string;
               environment: string;
             };
+            // `needs_review` rows were flagged by the auto-verifier — an admin
+            // can still act on them, so put them back in the pending lane first.
+            if (pay.status === "needs_review") {
+              await supabaseAdmin
+                .from("crypto_payments" as never)
+                .update({ status: "pending" } as never)
+                .eq("id", id)
+                .eq("status", "needs_review");
+              pay.status = "pending";
+            }
             if (pay.status !== "pending") {
               return Response.json({ error: `Already ${pay.status}` }, { status: 409 });
             }
@@ -1225,76 +1235,20 @@ export const Route = createFileRoute("/api/admin/credits")({
               return Response.json({ ok: true, status: "rejected" });
             }
 
-            // Confirm — credit using the SAME RPCs the card flow uses, then
-            // flip the row. Conditional update guards double-crediting.
-            const { data: claimed, error: claimErr } = await supabaseAdmin
-              .from("crypto_payments" as never)
-              .update({
-                status: "confirmed",
-                admin_note: note,
-                reviewed_by: adminId,
-                reviewed_at: new Date().toISOString(),
-              } as never)
-              .eq("id", id)
-              .eq("status", "pending")
-              .select("id");
-            if (claimErr) return Response.json({ error: claimErr.message }, { status: 500 });
-            if (!claimed?.length) {
-              return Response.json({ error: "Already reviewed" }, { status: 409 });
+            // Confirm — same shared path the background verifier uses, so
+            // crediting, rollback and the receipt email never diverge.
+            const { creditCryptoPayment } = await import(
+              "@/server/crypto-credit.server"
+            );
+            const res = await creditCryptoPayment({
+              payment: payRaw as unknown as import("@/server/crypto-credit.server").CryptoPaymentRow,
+              origin: new URL(request.url).origin,
+              reviewedBy: adminId,
+              note,
+            });
+            if (!res.ok) {
+              return Response.json({ error: res.error }, { status: res.conflict ? 409 : 500 });
             }
-
-            try {
-              if (pay.purpose === "pack") {
-                const { error } = await supabaseAdmin.rpc("apply_paystack_topup", {
-                  _user_id: pay.user_id,
-                  _pack_code: pay.item_code,
-                  _reference: pay.reference,
-                  _environment: pay.environment,
-                });
-                if (error) throw new Error(error.message);
-              } else if (pay.purpose === "plan") {
-                const { error } = await supabaseAdmin.rpc("apply_paystack_plan_grant", {
-                  _user_id: pay.user_id,
-                  _plan_code: pay.item_code,
-                  _reference: pay.reference,
-                });
-                if (error) throw new Error(error.message);
-              } else if (pay.purpose === "runtime_topup") {
-                const { error } = await supabaseAdmin.rpc(
-                  "apply_paystack_runtime_topup",
-                  {
-                    _user_id: pay.user_id,
-                    _reference: pay.reference,
-                    _amount_cents: pay.usd_amount_cents as never,
-                    _metadata: {
-                      method: "crypto",
-                      item_code: pay.item_code,
-                      environment: pay.environment,
-                    } as never,
-                  },
-                );
-                if (error) throw new Error(error.message);
-              } else {
-                throw new Error(`Unknown purpose ${pay.purpose}`);
-              }
-            } catch (e) {
-              // Roll back the claim so an admin can retry after fixing it.
-              await supabaseAdmin
-                .from("crypto_payments" as never)
-                .update({ status: "pending", admin_note: `Credit failed: ${
-                  e instanceof Error ? e.message : "unknown"
-                }` } as never)
-                .eq("id", id);
-              return Response.json(
-                { error: e instanceof Error ? e.message : "Credit failed" },
-                { status: 500 },
-              );
-            }
-
-            await supabaseAdmin
-              .from("crypto_payments" as never)
-              .update({ credited_at: new Date().toISOString() } as never)
-              .eq("id", id);
 
             return Response.json({ ok: true, status: "confirmed" });
           }

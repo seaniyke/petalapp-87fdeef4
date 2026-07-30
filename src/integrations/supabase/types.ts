@@ -561,12 +561,16 @@ export type Database = {
           amount_sent: number | null
           asset: string
           chain: string
+          confirmations: number | null
           created_at: string
           credited_at: string | null
+          detected_usd_cents: number | null
           environment: string
           id: string
           item_code: string
+          last_checked_at: string | null
           purpose: string
+          receipt_email_sent_at: string | null
           reference: string
           reviewed_at: string | null
           reviewed_by: string | null
@@ -574,6 +578,8 @@ export type Database = {
           tx_hash: string
           usd_amount_cents: number
           user_id: string
+          verify_attempts: number
+          verify_note: string | null
           wallet_address: string
         }
         Insert: {
@@ -581,12 +587,16 @@ export type Database = {
           amount_sent?: number | null
           asset: string
           chain: string
+          confirmations?: number | null
           created_at?: string
           credited_at?: string | null
+          detected_usd_cents?: number | null
           environment?: string
           id?: string
           item_code: string
+          last_checked_at?: string | null
           purpose: string
+          receipt_email_sent_at?: string | null
           reference: string
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -594,6 +604,8 @@ export type Database = {
           tx_hash: string
           usd_amount_cents: number
           user_id: string
+          verify_attempts?: number
+          verify_note?: string | null
           wallet_address: string
         }
         Update: {
@@ -601,12 +613,16 @@ export type Database = {
           amount_sent?: number | null
           asset?: string
           chain?: string
+          confirmations?: number | null
           created_at?: string
           credited_at?: string | null
+          detected_usd_cents?: number | null
           environment?: string
           id?: string
           item_code?: string
+          last_checked_at?: string | null
           purpose?: string
+          receipt_email_sent_at?: string | null
           reference?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -614,6 +630,8 @@ export type Database = {
           tx_hash?: string
           usd_amount_cents?: number
           user_id?: string
+          verify_attempts?: number
+          verify_note?: string | null
           wallet_address?: string
         }
         Relationships: []

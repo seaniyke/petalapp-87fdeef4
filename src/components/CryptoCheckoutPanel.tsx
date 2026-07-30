@@ -5,10 +5,28 @@
  * Flow: pick a network → send → paste the tx hash. We record it as pending
  * and an admin confirms it on-chain, which credits the account.
  */
-import { useState } from "react";
-import { Check, Copy, Loader2, Bitcoin, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Check,
+  Copy,
+  Loader2,
+  Bitcoin,
+  ShieldCheck,
+  Clock,
+  AlertTriangle,
+} from "lucide-react";
 import { ACTIVE_WALLETS, qrUrl } from "@/lib/crypto-tips";
 import { supabase } from "@/integrations/supabase/client";
+
+/** What the tracker shows once a hash has been submitted. */
+type TrackedStatus = "pending" | "confirmed" | "needs_review" | "rejected";
+
+type Tracked = {
+  id: string;
+  status: TrackedStatus;
+  confirmations: number | null;
+  note: string | null;
+};
 
 export type CryptoPurpose = "plan" | "pack" | "runtime_topup";
 
@@ -37,6 +55,64 @@ export function CryptoCheckoutPanel({
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tracked, setTracked] = useState<Tracked | null>(null);
+  const trackedRef = useRef<Tracked | null>(null);
+  trackedRef.current = tracked;
+
+  // Live status: realtime on the row plus a polled on-demand explorer check,
+  // so the user sees pending → confirmed without touching anything.
+  useEffect(() => {
+    const id = tracked?.id;
+    if (!id) return;
+    if (tracked.status !== "pending") return;
+    let cancelled = false;
+
+    const apply = (row: Record<string, unknown>) => {
+      if (cancelled) return;
+      setTracked({
+        id,
+        status: (row.status as TrackedStatus) ?? "pending",
+        confirmations: row.confirmations == null ? null : Number(row.confirmations),
+        note: (row.verify_note as string) ?? (row.admin_note as string) ?? null,
+      });
+    };
+
+    const channel = supabase
+      .channel(`crypto-pay:${id}:${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "crypto_payments", filter: `id=eq.${id}` },
+        (payload) => apply(payload.new as Record<string, unknown>),
+      )
+      .subscribe();
+
+    const check = async () => {
+      if (cancelled || trackedRef.current?.status !== "pending") return;
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return;
+      const res = await fetch("/api/billing/crypto/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ paymentId: id }),
+      });
+      if (!res.ok) return;
+      const json = (await res.json().catch(() => ({}))) as {
+        payment?: Record<string, unknown>;
+      };
+      if (json.payment) apply(json.payment);
+    };
+
+    void check();
+    const timer = setInterval(check, 20_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [tracked?.id, tracked?.status]);
+
+
 
   if (!wallet) {
     return (
@@ -79,9 +155,12 @@ export function CryptoCheckoutPanel({
           customUsdCents,
         }),
       });
-      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      const json = (await res.json().catch(() => ({}))) as { error?: string; id?: string };
       if (!res.ok) throw new Error(json.error || "Could not record your payment.");
       setDone(true);
+      if (json.id) {
+        setTracked({ id: json.id, status: "pending", confirmations: null, note: null });
+      }
       onSubmitted?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -91,13 +170,48 @@ export function CryptoCheckoutPanel({
   };
 
   if (done) {
+    const status = tracked?.status ?? "pending";
+    const confirmed = status === "confirmed";
+    const flagged = status === "needs_review" || status === "rejected";
     return (
       <div className="rounded-xl border border-border bg-muted/30 p-4 text-center">
-        <ShieldCheck className="mx-auto h-5 w-5 text-primary" />
-        <p className="mt-2 text-sm font-semibold">Payment submitted 🙌</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          We're confirming it on-chain. {itemLabel} lands on your account as soon
-          as it clears — usually within a few minutes.
+        {confirmed ? (
+          <ShieldCheck className="mx-auto h-5 w-5 text-emerald-500" />
+        ) : flagged ? (
+          <AlertTriangle className="mx-auto h-5 w-5 text-amber-500" />
+        ) : (
+          <Clock className="mx-auto h-5 w-5 animate-pulse text-primary" />
+        )}
+        <p className="mt-2 text-sm font-bold">
+          {confirmed
+            ? "Payment confirmed 🎉"
+            : flagged
+              ? "We're taking a closer look"
+              : "Watching the chain…"}
+        </p>
+        <p className="mt-1 text-xs font-medium text-muted-foreground">
+          {confirmed
+            ? `${itemLabel} has been added to your account.`
+            : flagged
+              ? tracked?.note ||
+                "Something didn't line up with the amount. Our team will review it shortly."
+              : `We're confirming your transfer on-chain. ${itemLabel} lands automatically once it clears.`}
+        </p>
+
+        {!confirmed && !flagged && (
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-[11px] font-bold">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+            </span>
+            {tracked?.confirmations != null
+              ? `${tracked.confirmations} confirmation${tracked.confirmations === 1 ? "" : "s"}`
+              : "Looking up transaction"}
+          </div>
+        )}
+
+        <p className="mt-3 text-[11px] font-medium text-muted-foreground">
+          You can close this — we'll email you the receipt either way.
         </p>
       </div>
     );

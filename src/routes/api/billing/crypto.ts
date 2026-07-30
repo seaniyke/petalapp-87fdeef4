@@ -50,11 +50,11 @@ export const Route = createFileRoute("/api/billing/crypto")({
         const { data } = await supabaseAdmin
           .from("crypto_payments")
           .select(
-            "id, reference, purpose, item_code, usd_amount_cents, asset, chain, tx_hash, amount_sent, status, admin_note, created_at",
+            "id, reference, purpose, item_code, usd_amount_cents, asset, chain, tx_hash, amount_sent, status, admin_note, verify_note, confirmations, detected_usd_cents, last_checked_at, credited_at, created_at",
           )
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
-          .limit(20);
+          .limit(50);
         return json({ payments: data ?? [] });
       },
 
@@ -122,19 +122,23 @@ export const Route = createFileRoute("/api/billing/crypto")({
 
           const reference = `crypto_${parsed.txHash.replace(/[^a-zA-Z0-9]/g, "").slice(0, 48)}`;
 
-          const { error } = await supabaseAdmin.from("crypto_payments").insert({
-            user_id: user.id,
-            reference,
-            purpose: parsed.purpose,
-            item_code: parsed.itemCode,
-            usd_amount_cents: usdAmountCents,
-            asset: wallet.asset,
-            chain: wallet.network,
-            wallet_address: wallet.address,
-            tx_hash: parsed.txHash.trim(),
-            amount_sent: parsed.amountSent ?? null,
-            environment: getEnvironment(),
-          } as never);
+          const { data: inserted, error } = await supabaseAdmin
+            .from("crypto_payments")
+            .insert({
+              user_id: user.id,
+              reference,
+              purpose: parsed.purpose,
+              item_code: parsed.itemCode,
+              usd_amount_cents: usdAmountCents,
+              asset: wallet.asset,
+              chain: wallet.network,
+              wallet_address: wallet.address,
+              tx_hash: parsed.txHash.trim(),
+              amount_sent: parsed.amountSent ?? null,
+              environment: getEnvironment(),
+            } as never)
+            .select("id")
+            .single();
 
           if (error) {
             if (error.code === "23505") {
@@ -146,7 +150,12 @@ export const Route = createFileRoute("/api/billing/crypto")({
             throw new Error(error.message);
           }
 
-          return json({ ok: true, reference, usdAmountCents });
+          return json({
+            ok: true,
+            id: (inserted as unknown as { id: string } | null)?.id ?? null,
+            reference,
+            usdAmountCents,
+          });
         } catch (err) {
           console.error("[billing crypto] failed", err);
           return json({ error: "Could not record your payment. Try again." }, 500);

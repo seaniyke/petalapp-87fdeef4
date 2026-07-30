@@ -244,3 +244,71 @@ export const LEVEL_LABEL: Record<ReadinessReport["level"], string> = {
   beta: "Beta",
   production: "Production",
 };
+
+/**
+ * Every unfinished check has to be one tap away from being fixed, otherwise
+ * the checklist is just a scoreboard. Most fixes are a build prompt Petal can
+ * run; the domain one opens the domain flow instead.
+ */
+export type ReadinessFix =
+  | { kind: "prompt"; cta: string; prompt: string }
+  | { kind: "domain"; cta: string };
+
+export const READINESS_FIXES: Record<ReadinessCheckId, ReadinessFix> = {
+  shield_clean: {
+    kind: "prompt",
+    cta: "Fix security issues",
+    prompt:
+      "Run through the app for security problems and fix them: remove any hardcoded secrets or API keys from client code, move privileged calls to the server, validate all user input, and make sure nothing sensitive is exposed to the browser.",
+  },
+  custom_domain: { kind: "domain", cta: "Connect a domain" },
+  auth_wired: {
+    kind: "prompt",
+    cta: "Add sign in",
+    prompt:
+      "Add authentication to this app: email + password and Google sign-in, a polished sign-in/sign-up page, a profiles table, session handling, sign-out, and protect the pages that need a logged-in user.",
+  },
+  error_boundaries: {
+    kind: "prompt",
+    cta: "Add error handling",
+    prompt:
+      "Add error boundaries and not-found handling to every route so a failed data load never shows a blank screen. Include a friendly error screen with a retry button.",
+  },
+  loading_states: {
+    kind: "prompt",
+    cta: "Add loading states",
+    prompt:
+      "Add proper loading states across the app: skeleton placeholders for lists and cards, spinners on buttons while actions run, and disabled states so nothing can be double-submitted.",
+  },
+  seo_metadata: {
+    kind: "prompt",
+    cta: "Improve SEO",
+    prompt:
+      "Add SEO metadata to every page: a unique title and meta description, Open Graph and Twitter card tags, semantic headings with a single H1 per page, alt text on images, and JSON-LD structured data where it fits.",
+  },
+  responsive_design: {
+    kind: "prompt",
+    cta: "Make it responsive",
+    prompt:
+      "Make the whole app fully responsive on mobile: fix any horizontal overflow, stack layouts on small screens, use readable font sizes, and make sure every tap target is comfortable on a phone.",
+  },
+  analytics: {
+    kind: "prompt",
+    cta: "Turn on analytics",
+    prompt:
+      "Add privacy-friendly analytics: track page views and the key conversion actions in this app, and show the results somewhere I can see them.",
+  },
+  rls_policies: {
+    kind: "prompt",
+    cta: "Lock down the database",
+    prompt:
+      "Review every database table: enable row-level security, add policies that scope rows to the owning user, and add the matching grants so the app still works. Do not leave any table publicly writable.",
+  },
+  no_placeholder: {
+    kind: "prompt",
+    cta: "Write real content",
+    prompt:
+      "Replace all placeholder and lorem ipsum copy with real, specific content written for this product — headlines, feature descriptions, testimonials, FAQ and calls to action.",
+  },
+};
+
