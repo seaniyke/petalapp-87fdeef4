@@ -253,11 +253,9 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
             {results.map((r) => {
               const isSelected = selected?.hostname === r.hostname;
               const isPremium = r.tier === "premium";
-              // Premiums need a separate fee-acknowledgement flow we haven't
-              // built yet — show price but disable the option.
+              // Premium domains are not self-serve yet; surface the price
+              // but keep the option disabled until we wire the premium flow.
               const canBuy = r.available && r.priceCents != null && !isPremium;
-              // Distinguish a real "taken" from an upstream error so we don't
-              // mislead the user when Cloudflare itself failed.
               const isCheckError =
                 !r.available &&
                 r.reason != null &&
@@ -266,7 +264,9 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
               const rightLabel = canBuy
                 ? `${localizedPrice(r.priceCents!)}/yr`
                 : isPremium
-                ? "Premium — coming soon"
+                ? r.priceCents != null
+                  ? `Premium · ${localizedPrice(r.priceCents!)}/yr`
+                  : "Premium"
                 : isCheckError
                 ? "Unavailable"
                 : "Taken";
