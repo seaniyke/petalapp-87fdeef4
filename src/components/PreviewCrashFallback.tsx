@@ -71,7 +71,7 @@ export function PreviewCrashFallback({
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground transition hover:bg-muted"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-bold text-foreground transition hover:bg-muted"
           >
             <RotateCw className="h-3.5 w-3.5" />
             Reload preview
@@ -80,10 +80,20 @@ export function PreviewCrashFallback({
             <button
               type="button"
               onClick={onAskRepair}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition hover:opacity-90"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:opacity-90"
             >
               <Wrench className="h-3.5 w-3.5" />
-              Ask Petal to repair
+              Ask Petal to fix it
+            </button>
+          )}
+          {culprit && onOpenFile && (
+            <button
+              type="button"
+              onClick={() => onOpenFile(culprit)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-bold text-foreground transition hover:bg-muted"
+            >
+              <FileCode2 className="h-3.5 w-3.5" />
+              Open {culprit.split("/").pop()}
             </button>
           )}
         </div>
@@ -91,3 +101,26 @@ export function PreviewCrashFallback({
     </div>
   );
 }
+
+/** Turn a raw runtime error into something a non-developer can act on. */
+function plainCause(reason: string): string {
+  const r = reason.toLowerCase();
+  if (r.includes("syntaxerror") || r.includes("unexpected token"))
+    return "There's a typo in the code Petal just wrote.";
+  if (r.includes("failed to resolve") || r.includes("cannot find module"))
+    return "A file or package the app imports is missing.";
+  if (r.includes("is not defined") || r.includes("is not a function"))
+    return "Something the page uses hasn't been created yet.";
+  if (r.includes("install") || r.includes("npm") || r.includes("enoent"))
+    return "Installing the app's packages didn't finish.";
+  if (r.includes("undefined") && r.includes("reading"))
+    return "The page tried to read data that isn't there yet.";
+  return "The running app hit an error it couldn't recover from.";
+}
+
+/** Best-effort file path from a stack trace / build error. */
+function fileFromError(reason: string): string | null {
+  const m = reason.match(/((?:src|app)\/[\w./-]+\.(?:tsx?|jsx?|css))/);
+  return m ? m[1] : null;
+}
+
