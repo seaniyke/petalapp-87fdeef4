@@ -2010,6 +2010,7 @@ Forbidden defaults
     capabilitiesBlock +
     multiEditBlock +
     backendBlock +
+    sharedBackendBlock +
     schemaBlock +
     integrationsBlock +
     knowledgeBlock +
