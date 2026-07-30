@@ -194,7 +194,7 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
             <SectionRow
               icon={<LayoutGrid className="h-4 w-4" />}
               label="All projects"
-              active={section === "all"}
+              active={false}
               onClick={() => {
                 onOpenChange(false);
                 navigate({ to: "/projects" });
@@ -203,7 +203,7 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
             <SectionRow
               icon={<Star className="h-4 w-4" />}
               label="Starred"
-              active={section === "starred"}
+              active={false}
               onClick={() => {
                 onOpenChange(false);
                 navigate({ to: "/projects" });
@@ -212,12 +212,13 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
             <SectionRow
               icon={<UserIcon className="h-4 w-4" />}
               label="Created by me"
-              active={section === "mine"}
+              active={false}
               onClick={() => {
                 onOpenChange(false);
                 navigate({ to: "/projects" });
               }}
             />
+
           </div>
         </div>
 
