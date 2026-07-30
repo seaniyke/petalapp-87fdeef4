@@ -30,6 +30,7 @@ import { sweepTailwindTokens } from "./tailwind-token-sweep.server";
 import { stubMissingAssets } from "./asset-stubber.server";
 import { enforceRuntimeContracts } from "./runtime-contract.server";
 import { fixRouterImports } from "./router-imports.server";
+import { fixMissingRouterProvider } from "./router-provider.server";
 import { fixCssEscapes } from "./css-escape-fixer.server";
 import { repairBuildConfigImports } from "./build-config-repair.server";
 
@@ -94,6 +95,13 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   const routerImports = fixRouterImports(files);
   files = routerImports.files;
   for (const n of routerImports.notes) notes.push(n);
+
+  // 4c. Router provider guarantee. Router primitives without a mounted
+  // <BrowserRouter> crash at render with
+  // `Cannot destructure property 'basename' from null`.
+  const routerProvider = fixMissingRouterProvider(files);
+  files = routerProvider.files;
+  for (const n of routerProvider.notes) notes.push(n);
 
   // 5. Bare import resolver — alias, install, or strip unresolved bare specs.
   const bare = repairBareImports(files);
