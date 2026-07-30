@@ -60,6 +60,7 @@ import { Route as AdminMobileSigningRouteImport } from './routes/admin.mobile-si
 import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
 import { Route as AdminFailuresRouteImport } from './routes/admin.failures'
 import { Route as AdminDigestRouteImport } from './routes/admin.digest'
+import { Route as AdminCloudCostRouteImport } from './routes/admin.cloud-cost'
 import { Route as AdminBillingRouteImport } from './routes/admin.billing'
 import { Route as AdminAiSpendRouteImport } from './routes/admin.ai-spend'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
@@ -367,6 +368,11 @@ const AdminDigestRoute = AdminDigestRouteImport.update({
   path: '/admin/digest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCloudCostRoute = AdminCloudCostRouteImport.update({
+  id: '/admin/cloud-cost',
+  path: '/admin/cloud-cost',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminBillingRoute = AdminBillingRouteImport.update({
   id: '/admin/billing',
   path: '/admin/billing',
@@ -661,6 +667,7 @@ export interface FileRoutesByFullPath {
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/cloud-cost': typeof AdminCloudCostRoute
   '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
@@ -765,6 +772,7 @@ export interface FileRoutesByTo {
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/cloud-cost': typeof AdminCloudCostRoute
   '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
@@ -870,6 +878,7 @@ export interface FileRoutesById {
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/cloud-cost': typeof AdminCloudCostRoute
   '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
@@ -976,6 +985,7 @@ export interface FileRouteTypes {
     | '/admin/ai-providers'
     | '/admin/ai-spend'
     | '/admin/billing'
+    | '/admin/cloud-cost'
     | '/admin/digest'
     | '/admin/failures'
     | '/admin/ledgers'
@@ -1080,6 +1090,7 @@ export interface FileRouteTypes {
     | '/admin/ai-providers'
     | '/admin/ai-spend'
     | '/admin/billing'
+    | '/admin/cloud-cost'
     | '/admin/digest'
     | '/admin/failures'
     | '/admin/ledgers'
@@ -1184,6 +1195,7 @@ export interface FileRouteTypes {
     | '/admin/ai-providers'
     | '/admin/ai-spend'
     | '/admin/billing'
+    | '/admin/cloud-cost'
     | '/admin/digest'
     | '/admin/failures'
     | '/admin/ledgers'
@@ -1289,6 +1301,7 @@ export interface RootRouteChildren {
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminAiSpendRoute: typeof AdminAiSpendRoute
   AdminBillingRoute: typeof AdminBillingRoute
+  AdminCloudCostRoute: typeof AdminCloudCostRoute
   AdminDigestRoute: typeof AdminDigestRoute
   AdminFailuresRoute: typeof AdminFailuresRoute
   AdminLedgersRoute: typeof AdminLedgersRoute
@@ -1727,6 +1740,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDigestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/cloud-cost': {
+      id: '/admin/cloud-cost'
+      path: '/admin/cloud-cost'
+      fullPath: '/admin/cloud-cost'
+      preLoaderRoute: typeof AdminCloudCostRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/billing': {
       id: '/admin/billing'
       path: '/admin/billing'
@@ -2153,6 +2173,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminAiSpendRoute: AdminAiSpendRoute,
   AdminBillingRoute: AdminBillingRoute,
+  AdminCloudCostRoute: AdminCloudCostRoute,
   AdminDigestRoute: AdminDigestRoute,
   AdminFailuresRoute: AdminFailuresRoute,
   AdminLedgersRoute: AdminLedgersRoute,
