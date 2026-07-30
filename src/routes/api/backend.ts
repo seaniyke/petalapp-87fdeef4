@@ -587,6 +587,12 @@ export const Route = createFileRoute("/api/backend")({
             return handleManagedCredentials(auth, body);
           case "enable-managed":
             return handleEnableManaged(auth, body);
+          case "enable-shared":
+            return handleEnableShared(auth, body);
+          case "shared-status":
+            return handleSharedStatus(auth, body);
+          case "disable-shared":
+            return handleDisableShared(auth, body);
           default:
             return new Response("Unknown action", { status: 400 });
         }
