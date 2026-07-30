@@ -517,17 +517,11 @@ function Landing() {
               </div>
 
               <h1 className="mt-6 font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
-                The whole stack —{" "}
-                <span className="relative whitespace-nowrap">
-                  <span className="relative z-10 italic">just chat</span>
-                  <span className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50" aria-hidden />
-                </span>
-                .
+                From Idea to App in Days.
               </h1>
 
               <p className="mx-auto mt-5 max-w-xl text-balance text-base font-medium text-muted-foreground sm:text-xl md:text-2xl">
-                Frontend, database, auth, hosting, security — Petal builds all twelve layers and puts your web, mobile,
-                API or extension live in minutes.
+                Describe what you want to build. Start free with trial credits — no card required.
               </p>
 
             </>
