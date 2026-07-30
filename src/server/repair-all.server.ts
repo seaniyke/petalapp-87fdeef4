@@ -31,6 +31,8 @@ import { stubMissingAssets } from "./asset-stubber.server";
 import { enforceRuntimeContracts } from "./runtime-contract.server";
 import { fixRouterImports } from "./router-imports.server";
 import { fixMissingRouterProvider } from "./router-provider.server";
+import { fixTanstackRouterWithoutProvider } from "./tanstack-router-fallback.server";
+
 import { fixCssEscapes } from "./css-escape-fixer.server";
 import { repairBuildConfigImports } from "./build-config-repair.server";
 
