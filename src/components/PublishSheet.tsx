@@ -463,24 +463,27 @@ export function PublishSheet({
     site_icon_url?: string | null;
   };
 
-  const content = (
-    <>
-        {(publishing || buildStatus === "pending") && !justPublished && (
-          <PublishingCard isUpdate={hasPublishedBuild} />
-        )}
+  // Lovable-style focused states: while we're pushing (or right after we
+  // finished) the sheet shows ONLY that moment — no settings list behind it.
+  const isBusyPublishing = (publishing || buildStatus === "pending") && !justPublished;
+  const showSuccess = justPublished && !publishing;
 
-        {justPublished && !publishing && (
-          <PublishSuccessCard
-            isUpdate={hasPublishedBuild && !isUnpublished}
-            url={resolved.url}
-            display={resolved.display}
-            title={siteMeta.site_title || project.title}
-            description={siteMeta.site_description ?? project.summary}
-            iconUrl={siteMeta.site_icon_url}
-            onEditWebsiteInfo={() => setWebsiteInfoOpen(true)}
-            onDismiss={() => setJustPublished(false)}
-          />
-        )}
+  const content = isBusyPublishing ? (
+    <PublishingCard isUpdate={hasPublishedBuild} />
+  ) : showSuccess ? (
+    <PublishSuccessCard
+      isUpdate={hasPublishedBuild && !isUnpublished}
+      url={resolved.url}
+      display={resolved.display}
+      title={siteMeta.site_title || project.title}
+      description={siteMeta.site_description ?? project.summary}
+      iconUrl={siteMeta.site_icon_url}
+      onEditWebsiteInfo={() => setWebsiteInfoOpen(true)}
+      onDismiss={() => setJustPublished(false)}
+    />
+  ) : (
+    <>
+
 
 
 
