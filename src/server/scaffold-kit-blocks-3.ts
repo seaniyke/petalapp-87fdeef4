@@ -706,9 +706,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Menu, X } from "lucide-react";
 
 export interface SidebarNavItem {
-  id: string;
+  id?: string;
   label: string;
-  icon?: React.ReactNode;
+  icon?: React.ElementType | React.ReactNode;
+  to?: string;
   href?: string;
   active?: boolean;
   onClick?: () => void;
@@ -735,6 +736,12 @@ export function SidebarShell({
 }) {
   const [open, setOpen] = React.useState(false);
   const items = Array.isArray(nav) ? nav : [];
+  const renderIcon = (icon: SidebarNavItem["icon"]) => {
+    if (!icon) return null;
+    if (React.isValidElement(icon)) return icon;
+    const Icon = icon as React.ElementType;
+    return <Icon className="h-4 w-4" />;
+  };
   return (
     <div className={cn("min-h-screen bg-background", className)}>
       <aside className={cn("fixed inset-y-0 left-0 z-40 w-64 border-r border-border bg-card transition-transform md:translate-x-0", open ? "translate-x-0" : "-translate-x-full")}>
@@ -745,9 +752,9 @@ export function SidebarShell({
         <ScrollArea className="h-[calc(100vh-3.5rem-3rem)]">
           <nav className="space-y-1 p-3">
             {items.map((it) => (
-              <a key={it.id} href={it.href ?? "#"} onClick={(e) => { if (it.onClick) { e.preventDefault(); it.onClick(); } }}
+              <a key={it.id ?? it.to ?? it.href ?? it.label} href={it.to ?? it.href ?? "#"} onClick={(e) => { if (it.onClick) { e.preventDefault(); it.onClick(); } }}
                 className={cn("flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground", it.active && "bg-muted text-foreground font-medium")}>
-                {it.icon && <span className="text-muted-foreground">{it.icon}</span>}
+                {it.icon && <span className="text-muted-foreground">{renderIcon(it.icon)}</span>}
                 <span>{it.label}</span>
               </a>
             ))}

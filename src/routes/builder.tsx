@@ -1684,11 +1684,8 @@ function Builder() {
         attachments?: ChatAttachment[];
         forceBuild?: boolean;
         /** Internal auto-fix run (Petal repairing its own failed build).
-         *  Suppresses the giant error-log prompt from the visible chat
-         *  thread (replaced with a small "Petal is fixing the build —
-         *  free" system note) and tells the server to skip the credit
-         *  charge. The AI still receives the full error log as a user
-         *  message so it can patch the actual cause. */
+         *  Suppresses the giant error-log prompt from the visible chat.
+         *  It is still a normal credit-gated AI turn. */
         isAutoFix?: boolean;
         /** Internal recovery run after the model produced no usable edits.
          *  Petal escalates automatically; the user should not have to pick a
@@ -1712,9 +1709,9 @@ function Builder() {
       if (!text || (busy && !internalRetry)) return;
       // Hard stop at zero credits. The server 402s every AI route, but the
       // composer must not even accept the message — otherwise the user sees
-      // their turn "go through" and then fail. Internal auto-fix runs are
-      // free and stay allowed.
-      if (!opts.isAutoFix && !walletLoading && currentWallet && creditBreakdown.total < 1) {
+      // their turn "go through" and then fail. This includes automatic and
+      // manual repair turns: no AI request is free when the balance is empty.
+      if (!walletLoading && currentWallet && creditBreakdown.total < 1) {
         setFriendlyError({
           title: "You're out of credits",
           message:
@@ -2871,8 +2868,8 @@ function Builder() {
           ].join("\n") + retryNote
         : "The build failed but no error log was captured. Please review the project files for obvious mistakes (missing imports, syntax errors, typos in package.json) and fix them." +
           retryNote;
-      // Auto-fix runs are free and silent; manual ("Ask Petal to fix it")
-      // runs behave like any other build prompt (charged + visible).
+      // Auto-fix runs are silent; both automatic and manual repairs are
+      // credit-gated like every other AI turn.
       void send(prompt, { isRetry: false, isAutoFix: opts.isAuto === true });
     },
     [send, effectiveBuildSnap],
@@ -3433,7 +3430,7 @@ function Builder() {
                   </div>
                 );
               }
-              // System notes (e.g. "Petal is auto-fixing the build — free")
+              // System notes (e.g. "Petal is auto-fixing the build")
               // render as a small centered chip, not a chat bubble — they're
               // status updates, not part of the conversation.
               if (m.role === "system" || m.system) {

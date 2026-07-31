@@ -17,7 +17,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { generatePetalImage } from "@/server/image-generation.server";
-import { spendCredit, checkCreditBalance } from "@/server/credits.server";
+import { spendCredit, refundCredit } from "@/server/credits.server";
 import { chargeRuntime } from "@/server/runtime-wallet.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
@@ -137,10 +137,11 @@ export const Route = createFileRoute("/api/generate-image")({
         // 4. Authenticated builder calls: pre-flight balance check ONLY.
         //    We charge the 1 credit AFTER the image is successfully generated.
         //    Anonymous calls skip credits entirely.
+        let reservation: Awaited<ReturnType<typeof spendCredit>> | null = null;
         if (userId) {
-          const balance = await checkCreditBalance({ userId, amount: 1.0 });
-          if (!balance.ok) {
-            if (balance.reason === "insufficient_credits") {
+          reservation = await spendCredit({ userId, amount: 1, reason: "ai_image_charge", projectId: body.projectId ?? null, metadata: { route: "/api/generate-image", reserved: true } });
+          if (!reservation.ok) {
+            if (reservation.reason === "insufficient_credits") {
               return new Response(
                 JSON.stringify({
                   error:
@@ -166,16 +167,7 @@ export const Route = createFileRoute("/api/generate-image")({
           // Charge once, post-success. Anonymous callers (end-user apps) hit
           // the project owner's runtime wallet instead of build credits.
           if (userId) {
-            const charge = await spendCredit({
-              userId,
-              amount: 1.0,
-              reason: "ai_image_charge",
-              projectId: body.projectId ?? null,
-              metadata: { route: "/api/generate-image" },
-            });
-            if (!charge.ok) {
-              console.warn("[credits] post-image charge failed", charge);
-            }
+            // Credit was reserved atomically before invoking the generator.
           } else if (body.projectId) {
             // Look up the project's owner so we can debit their runtime wallet.
             const { data: proj } = await supabaseAdmin
@@ -229,6 +221,9 @@ export const Route = createFileRoute("/api/generate-image")({
             },
           );
         } catch (e) {
+          if (userId && reservation?.ok) {
+            await refundCredit({ userId, ledgerId: reservation.ledgerId, reason: "image_generation_failed" });
+          }
           const message = e instanceof Error ? e.message : "Image generation failed";
           console.error("/api/generate-image error", e);
           const status = /402/.test(message) ? 402 : /429/.test(message) ? 429 : 500;

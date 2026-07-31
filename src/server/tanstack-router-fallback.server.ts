@@ -78,14 +78,31 @@ function importsTanstackRouter(files: ProjectFile[]): boolean {
   );
 }
 
-function hasGeneratedRouteTree(files: ProjectFile[]): boolean {
-  return files.some(
+function generatedRouteTree(files: ProjectFile[]): ProjectFile | undefined {
+  return files.find(
     (f) => /(?:^|\/)routeTree\.gen\.(?:ts|tsx|js|jsx)$/i.test(f.path) && /export\s+(?:const|var|let)\s+routeTree\b/.test(f.content),
   );
 }
 
+/**
+ * A real TanStack-generated tree wires every file route to its parent with
+ * `.update({ getParentRoute: ... })`. A short hand-written tree that merely
+ * imports Route objects and calls `root.addChildren([...])` builds, but its
+ * children still have no parentRoute and TanStack throws `Invariant failed`
+ * while initializing them.
+ */
+function hasValidGeneratedRouteTree(files: ProjectFile[]): boolean {
+  const tree = generatedRouteTree(files);
+  if (!tree) return false;
+  const hasFileRoutes = files.some(
+    (f) => /^src\/routes\/.+\.(?:tsx|jsx)$/i.test(f.path) && /\bcreateFileRoute\s*\(/.test(f.content),
+  );
+  if (!hasFileRoutes) return true;
+  return /\.update\s*\(\s*\{[\s\S]*?getParentRoute\s*:/.test(tree.content);
+}
+
 function restoreTanstackBootstrap(files: ProjectFile[]): TanstackFallbackResult | null {
-  if (!hasGeneratedRouteTree(files)) return null;
+  if (!hasValidGeneratedRouteTree(files)) return null;
   const main = files.find((f) => /src\/main\.(?:tsx|jsx)$/i.test(f.path) && /\.render\s*\(/.test(f.content));
   if (!main || !/<App\s*\/>/.test(main.content)) return null;
 
@@ -125,7 +142,7 @@ function restoreTanstackBootstrap(files: ProjectFile[]): TanstackFallbackResult 
  * tree during the first render and throws a message-less invariant.
  */
 function routeTreeImportBroken(files: ProjectFile[]): boolean {
-  const paths = new Set(files.map((f) => f.path));
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
   const exts = ["", ".ts", ".tsx", ".js", ".jsx"];
   for (const f of files) {
     if (!CODE_EXT.test(f.path)) continue;
@@ -137,7 +154,10 @@ function routeTreeImportBroken(files: ProjectFile[]): boolean {
       const base = spec.startsWith(".")
         ? normalize(`${dir}/${spec}`)
         : spec.replace(/^@\//, "src/");
-      if (!exts.some((e) => paths.has(base + e))) return true;
+      const target = exts.map((e) => base + e).find((path) => byPath.has(path));
+      if (!target) return true;
+      if (!/export\s+(?:const|var|let)\s+routeTree\b/.test(byPath.get(target) ?? "")) return true;
+      if (/routeTree\.gen$/i.test(base) && !hasValidGeneratedRouteTree(files)) return true;
     }
   }
   return false;
@@ -205,8 +225,14 @@ function buildFileRouteTable(files: ProjectFile[]): TanstackFallbackResult | nul
   if (entries.length === 0) return null;
 
   const imports = entries.map((e) => `import { Route as ${e.id} } from "${e.spec}";`).join("\n");
+  const registrations = entries
+    .map((e) => `registerRoute("${e.url}", ${e.id} as any);`)
+    .join("\n");
   const consts = entries
-    .map((e) => `const C${e.id} = (${e.id} as any)?.component ?? (() => null);`)
+    .map((e) => {
+      const routeVar = `Route${e.id}`;
+      return `const ${routeVar} = ${e.id} as any;\nconst C${e.id} = ${routeVar}?.component ?? (() => null);`;
+    })
     .join("\n");
   const children = entries
     .map((e) => `      <RRRoute path="${e.url}" element={<C${e.id} />} />`)
@@ -223,25 +249,32 @@ function buildFileRouteTable(files: ProjectFile[]): TanstackFallbackResult | nul
  * tree, so the TanStack router could not be constructed. These routes are
  * mounted with react-router instead, which keeps every page reachable.
  */
-import { Routes, Route as RRRoute } from "react-router-dom";
+import { BrowserRouter, Routes, Route as RRRoute } from "react-router-dom";
+import { registerRoute } from "@/lib/router-compat";
 ${hasApp ? 'import App from "@/App";\n' : ""}${imports}
 
 ${consts}
+${registrations}
 
 export function GeneratedRoutes() {
   return (
-    <Routes>
+    <BrowserRouter>
+      <Routes>
 ${body}
-    </Routes>
+      </Routes>
+    </BrowserRouter>
   );
 }
 `;
 
   const routesPath = "src/generated-routes.tsx";
   let mainContent = main.content.replace(/<App\s*\/>/, "<GeneratedRoutes />");
-  if (mainContent === main.content) return null;
+  const alreadyUsesGeneratedRoutes = /<GeneratedRoutes\s*\/>/.test(mainContent);
+  if (mainContent === main.content && !alreadyUsesGeneratedRoutes) return null;
   mainContent = mainContent.replace(/import\s+App\s+from\s*["'][^"']+["'];?\n?/, "");
-  mainContent = `import { GeneratedRoutes } from "./generated-routes";\n${mainContent}`;
+  if (!/import\s*\{[^}]*\bGeneratedRoutes\b[^}]*\}\s*from\s*["']\.\/generated-routes["']/.test(mainContent)) {
+    mainContent = `import { GeneratedRoutes } from "./generated-routes";\n${mainContent}`;
+  }
 
   const next = files
     .filter((f) => f.path !== routesPath)
@@ -258,6 +291,38 @@ ${body}
 
 export function fixTanstackRouterWithoutProvider(files: ProjectFile[]): TanstackFallbackResult {
   const notes: string[] = [];
+  // Idempotent recovery: an earlier import-resolver pass may have created a
+  // default-only placeholder for `./generated-routes` after the first router
+  // repair rewrote TanStack imports to the compatibility shim. On subsequent
+  // runs there are no @tanstack imports left, so repair that stale generated
+  // module before the normal early return below.
+  const mainUsesGeneratedRoutes = files.some(
+    (f) => /src\/main\.(?:tsx|jsx)$/i.test(f.path) && /<GeneratedRoutes\s*\/>/.test(f.content),
+  );
+  const validGeneratedRoutes = files.some(
+    (f) => f.path === "src/generated-routes.tsx" && /export\s+function\s+GeneratedRoutes\b/.test(f.content),
+  );
+  if (mainUsesGeneratedRoutes && !validGeneratedRoutes) {
+    const regenerated = buildFileRouteTable(
+      files.filter((f) => f.path !== "src/generated-routes.tsx"),
+    );
+    if (regenerated) return regenerated;
+  }
+  const importsCompatShim = files.some(
+    (f) => CODE_EXT.test(f.path) && /from\s*["']@\/lib\/router-compat["']/.test(f.content),
+  );
+  const validCompatShim = files.some(
+    (f) => f.path === SHIM_PATH && /export\s+function\s+Link\b/.test(f.content),
+  );
+  if (importsCompatShim && !validCompatShim) {
+    return {
+      files: [
+        ...files.filter((f) => f.path !== SHIM_PATH),
+        { path: SHIM_PATH, content: SHIM_SOURCE },
+      ],
+      notes: ["tanstack-router-fallback: restored the router compatibility shim"],
+    };
+  }
   if (!importsTanstackRouter(files)) return { files, notes };
 
   let working = files;
@@ -340,6 +405,11 @@ import {
 } from "react-router-dom";
 
 type To = string | { to?: string; href?: string; search?: Record<string, unknown>; hash?: string };
+const routeRegistry = new Map<string, any>();
+
+export function registerRoute(path: string, route: any) {
+  routeRegistry.set(path, route);
+}
 
 function toPath(target: To | undefined): string {
   if (!target) return "/";
@@ -415,7 +485,21 @@ export function redirect(target: To) {
 /** Route-definition helpers become inert factories: the react-router route
  *  table is what actually renders, so these must not throw when imported. */
 export function createFileRoute(_path?: string) {
-  return (options: any) => ({ ...options, path: _path });
+  return (options: any) => {
+    const route = {
+      ...options,
+      path: _path,
+      useLoaderData: () => {
+        const params = useRRParams();
+        return options?.loader ? options.loader({ params }) : undefined;
+      },
+      useParams: useRRParams,
+      useSearch,
+      useNavigate,
+    };
+    if (_path) routeRegistry.set(_path.replace(/\$([^/]+)/g, ":$1"), route);
+    return route;
+  };
 }
 
 export const createLazyFileRoute = createFileRoute;

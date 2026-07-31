@@ -13,7 +13,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
-import { spendCredit, checkCreditBalance } from "@/server/credits.server";
+import { spendCredit, refundCredit } from "@/server/credits.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
 import { lookupBackendForGenerate } from "@/server/backend-connector.server";
 import {
@@ -108,15 +108,15 @@ export const Route = createFileRoute("/api/discuss")({
 
         // Pre-flight balance check ONLY — no hold. We charge the flat
         // 1 credit for discuss AFTER the AI replies successfully.
-        const balance = await checkCreditBalance({ userId, amount: 1.0 });
-        if (!balance.ok) {
-          if (balance.reason === "insufficient_credits") {
+        const reservation = await spendCredit({ userId, amount: 1, reason: "ai_discuss_charge", projectId: body.projectId ?? null, metadata: { route: "/api/discuss", reserved: true } });
+        if (!reservation.ok) {
+          if (reservation.reason === "insufficient_credits") {
             return new Response(
               "You're out of credits. Add credits in Settings → Plans & Credits to keep going.",
               { status: 402 },
             );
           }
-          return new Response("Could not verify credit balance. Try again.", { status: 500 });
+          return new Response("Could not reserve a credit. Try again.", { status: 500 });
         }
 
         // Compact file context: just the path list + first ~30 lines of each file,
@@ -215,6 +215,7 @@ export const Route = createFileRoute("/api/discuss")({
         });
 
         if (!upstream.ok) {
+          await refundCredit({ userId, ledgerId: reservation.ledgerId, reason: "discuss_failed" });
           // Nothing was charged yet — just surface a friendly error.
           let msg = `AI gateway error (${upstream.status})`;
           if (upstream.status === 429) msg = "Rate limit reached. Please wait a moment.";
@@ -236,6 +237,7 @@ export const Route = createFileRoute("/api/discuss")({
         };
         const reply = json.choices?.[0]?.message?.content?.trim() ?? "";
         if (!reply) {
+          await refundCredit({ userId, ledgerId: reservation.ledgerId, reason: "discuss_empty_reply" });
           // Nothing was charged — just report the failure.
           return new Response("Empty reply from AI.", { status: 502 });
         }
@@ -258,17 +260,6 @@ export const Route = createFileRoute("/api/discuss")({
         // Charge ONCE, after success. If the wallet emptied between the
         // pre-flight check and now, we still deliver the reply (the user
         // already received it) and log a warning.
-        const charge = await spendCredit({
-          userId,
-          amount: 1.0,
-          reason: "ai_discuss_charge",
-          projectId: body.projectId ?? null,
-          metadata: { route: "/api/discuss" },
-        });
-        if (!charge.ok) {
-          console.warn("[credits] post-discuss charge failed", charge);
-        }
-
         return Response.json({ reply: cleanReply });
       },
     },

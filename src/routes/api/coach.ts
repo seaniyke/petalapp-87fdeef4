@@ -12,7 +12,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { spendCredit, checkCreditBalance } from "@/server/credits.server";
+import { spendCredit, refundCredit } from "@/server/credits.server";
 import {
   coachTurn,
   MAX_COACH_TURNS,
@@ -72,9 +72,9 @@ export const Route = createFileRoute("/api/coach")({
         const userInput = typeof body.userInput === "string" ? body.userInput.slice(0, 500) : "";
 
         // Pre-flight balance check. We charge 0.5 credit AFTER the AI replies.
-        const balance = await checkCreditBalance({ userId, amount: COACH_TURN_COST });
-        if (!balance.ok) {
-          if (balance.reason === "insufficient_credits") {
+        const reservation = await spendCredit({ userId, amount: COACH_TURN_COST, reason: "ai_coach_charge", metadata: { route: "/api/coach", turn, reserved: true } });
+        if (!reservation.ok) {
+          if (reservation.reason === "insufficient_credits") {
             return new Response(
               "Coach needs ½ credit to keep going. Top up in Settings → Plans & Credits.",
               { status: 402 },
@@ -87,6 +87,7 @@ export const Route = createFileRoute("/api/coach")({
         try {
           result = await coachTurn({ turn, history, userInput });
         } catch (e) {
+          await refundCredit({ userId, ledgerId: reservation.ledgerId, reason: "coach_failed" });
           const status = (e as { status?: number }).status;
           if (status === 429) {
             return new Response("Coach is a bit busy. Try again in a moment.", { status: 429 });
@@ -102,16 +103,6 @@ export const Route = createFileRoute("/api/coach")({
         }
 
         // Charge ONCE, after success. Fractional 0.5 — wallet ledger is numeric(10,2).
-        const charge = await spendCredit({
-          userId,
-          amount: COACH_TURN_COST,
-          reason: "ai_coach_charge",
-          metadata: { route: "/api/coach", turn, isFinal: result.isFinal },
-        });
-        if (!charge.ok) {
-          console.warn("[credits] post-coach charge failed", charge);
-        }
-
         return Response.json({
           ...result,
           turn,
