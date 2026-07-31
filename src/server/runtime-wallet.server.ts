@@ -48,7 +48,18 @@ export type ChargeRuntimeResult =
  *  the caller can surface — never throws on cap/balance issues. */
 export async function chargeRuntime(opts: ChargeRuntimeOptions): Promise<ChargeRuntimeResult> {
   if (!Number.isFinite(opts.cents) || opts.cents <= 0) {
-    return { ok: true, freeAfter: 0, topupAfter: 0 };
+    // A non-positive charge is a caller bug. Report the REAL balance so UI
+    // built from freeAfter/topupAfter doesn't render a phantom "$0.00".
+    console.warn("[runtime-wallet] ignoring non-positive charge", {
+      meter: opts.meter,
+      cents: opts.cents,
+    });
+    try {
+      const bal = await getRuntimeBalance(opts.userId);
+      return { ok: true, freeAfter: bal.freeBalanceCents, topupAfter: bal.topupBalanceCents };
+    } catch {
+      return { ok: true, freeAfter: 0, topupAfter: 0 };
+    }
   }
   const cents = Math.round(opts.cents);
   try {
