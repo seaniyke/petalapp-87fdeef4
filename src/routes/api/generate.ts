@@ -26,6 +26,11 @@ import {
   type AgentLoopResult,
   type ChatMessage as AgentChatMessage,
 } from "@/server/agent-loop.server";
+import {
+  runCritic,
+  criticDisclosure,
+  type CriticRejection,
+} from "@/server/critic-agent.server";
 
 import { applyScaffoldKit, applyScaffoldKitForPatch, STYLES_CSS } from "@/server/scaffold-kit";
 import { getBuildTarget } from "@/lib/build-targets";
@@ -2608,6 +2613,8 @@ Forbidden defaults
         // Honesty ledger — paths the model asked to change that end up
         // byte-identical after apply + recovery.
         const unappliedPaths: string[] = [];
+        // Ops the critic refused to apply this turn (disclosed in the summary).
+        const criticRejections: CriticRejection[] = [];
 
 
         // (Question-first guard removed — see comment near the top of this
@@ -2838,8 +2845,8 @@ Forbidden defaults
               ops: safeOps,
               files: currentFiles,
               userPrompt: lastUserContent,
-              projectId,
-              userId: userId ?? null,
+              projectId: body.projectId ?? "unknown",
+              userId,
               signal: request.signal,
             });
             if (verdict.rejections.length > 0) {
