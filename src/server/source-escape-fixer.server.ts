@@ -103,6 +103,20 @@ export function unescapeCodePositions(src: string): { out: string; count: number
       continue;
     }
 
+    // A single- or double-quoted string can NEVER span a newline in valid
+    // JS/TS. If we hit one while "inside" a quote, the quote was not a string
+    // at all — almost always an apostrophe in JSX text ("Rhys's workshop") or
+    // inside a comment. Snap back to code position, otherwise the scanner
+    // stays desynced for the rest of the file and every real `\n`-in-code
+    // below it is skipped. That desync is exactly why the jewelry build kept
+    // failing on `name: "…",\n    role: …` even with this pass enabled.
+    if ((state === "sq" || state === "dq") && (ch === "\n" || ch === "\r")) {
+      state = "code";
+      out += ch;
+      i++;
+      continue;
+    }
+
     // Inside a literal — copy escapes verbatim.
     if (ch === "\\" && i + 1 < n) {
       out += ch + next;
@@ -127,6 +141,7 @@ export function unescapeCodePositions(src: string): { out: string; count: number
     }
     out += ch;
     i++;
+
   }
 
   return { out, count };
