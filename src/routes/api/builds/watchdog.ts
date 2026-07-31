@@ -115,13 +115,26 @@ export const Route = createFileRoute("/api/builds/watchdog")({
           return Response.json({ ok: true, action: "failed", reason: "retries_exhausted" });
         }
 
-        // Bump counter atomically by reading current value first (no UPDATE
-        // RETURNING here keeps the path simple).
-        const nextRetry = (build.retry_count ?? 0) + 1;
-        await supabaseAdmin
+        // Compare-and-swap the retry counter. Two tabs (or a retry-happy
+        // client) could both read retry_count=0 and both re-post the same
+        // build to Railway, doubling the work and racing two callbacks onto
+        // one row. Constraining the UPDATE to the value we just read means
+        // exactly one caller wins; the loser backs off.
+        const currentRetry = build.retry_count ?? 0;
+        const nextRetry = currentRetry + 1;
+        const { data: claimed } = await supabaseAdmin
           .from("project_builds")
           .update({ retry_count: nextRetry, last_retry_at: new Date().toISOString() })
-          .eq("id", buildId);
+          .eq("id", buildId)
+          .eq("status", "pending")
+          .eq("retry_count", currentRetry)
+          .select("id")
+          .maybeSingle();
+        if (!claimed) {
+          // Someone else already claimed this retry, or the build stopped
+          // being pending in the meantime. Doing nothing is correct.
+          return Response.json({ ok: true, action: "noop", reason: "already_claimed" });
+        }
 
         // Re-load files + reapply the healing pipeline. A second pass through
         // the autofix/shim/type-strip steps frequently rescues a build whose
