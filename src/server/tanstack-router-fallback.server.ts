@@ -114,18 +114,178 @@ function restoreTanstackBootstrap(files: ProjectFile[]): TanstackFallbackResult 
   };
 }
 
+/**
+ * Does the bootstrap import a `routeTree` module that does not exist?
+ *
+ * Production failure mode (minified TanStack build):
+ *   `Invariant failed`
+ *
+ * `createRouter({ routeTree: undefined })` passes the build (the missing
+ * module is aliased away / tree-shaken) but TanStack asserts on the route
+ * tree during the first render and throws a message-less invariant.
+ */
+function routeTreeImportBroken(files: ProjectFile[]): boolean {
+  const paths = new Set(files.map((f) => f.path));
+  const exts = ["", ".ts", ".tsx", ".js", ".jsx"];
+  for (const f of files) {
+    if (!CODE_EXT.test(f.path)) continue;
+    const rx = /import\s*\{[^}]*\brouteTree\b[^}]*\}\s*from\s*["']([^"']+)["']/g;
+    let m: RegExpExecArray | null;
+    while ((m = rx.exec(f.content))) {
+      const spec = m[1];
+      const dir = f.path.split("/").slice(0, -1).join("/");
+      const base = spec.startsWith(".")
+        ? normalize(`${dir}/${spec}`)
+        : spec.replace(/^@\//, "src/");
+      if (!exts.some((e) => paths.has(base + e))) return true;
+    }
+  }
+  return false;
+}
+
+function normalize(p: string): string {
+  const out: string[] = [];
+  for (const seg of p.split("/")) {
+    if (seg === "." || seg === "") continue;
+    if (seg === "..") out.pop();
+    else out.push(seg);
+  }
+  return out.join("/");
+}
+
+/** Tear a broken TanStack bootstrap back down to a plain `<App />` render so
+ *  the shim + BrowserRouter passes can take over. */
+function dismantleBrokenBootstrap(files: ProjectFile[]): ProjectFile[] {
+  const hasApp = files.some((f) => /^src\/App\.(tsx|jsx)$/i.test(f.path));
+  return files
+    .filter((f) => f.path !== ROUTER_PATH)
+    .map((f) => {
+      if (!/src\/main\.(?:tsx|jsx)$/i.test(f.path)) return f;
+      let c = f.content
+        .replace(/import\s*\{[^}]*\bRouterProvider\b[^}]*\}\s*from\s*["']@tanstack\/react-router["'];?\n?/g, "")
+        .replace(/import\s*\{[^}]*\brouter\b[^}]*\}\s*from\s*["']\.\/router["'];?\n?/g, "")
+        .replace(/<RouterProvider\b[^>]*\/>/g, hasApp ? "<App />" : "<div />");
+      if (hasApp && !/import\s+App\s+from/.test(c)) c = `import App from "./App";\n${c}`;
+      return { ...f, content: c };
+    });
+}
+
+/** URL path for a file-based TanStack route module. */
+function routeUrlFromPath(path: string): string | null {
+  const rel = path.replace(/^src\/routes\//, "").replace(/\.(tsx|jsx|ts|js)$/i, "");
+  if (rel === "__root" || rel.startsWith("-")) return null;
+  const segs = rel
+    .split("/")
+    .flatMap((s) => s.split("."))
+    .filter((s) => s && s !== "index" && !s.startsWith("_"))
+    .map((s) => (s.startsWith("$") ? (s === "$" ? "*" : `:${s.slice(1)}`) : s));
+  return "/" + segs.join("/");
+}
+
+/**
+ * Build a react-router route table from file-based TanStack route modules.
+ * Their `Route` exports become inert objects under the shim, so we read the
+ * `component` off them and mount it with react-router instead.
+ */
+function buildFileRouteTable(files: ProjectFile[]): TanstackFallbackResult | null {
+  const routeFiles = files.filter(
+    (f) => /^src\/routes\/.+\.(tsx|jsx)$/i.test(f.path) && /\bcreateFileRoute\s*\(/.test(f.content),
+  );
+  if (routeFiles.length === 0) return null;
+  const main = files.find((f) => /src\/main\.(?:tsx|jsx)$/i.test(f.path) && /\.render\s*\(/.test(f.content));
+  if (!main) return null;
+
+  const hasApp = files.some((f) => /^src\/App\.(tsx|jsx)$/i.test(f.path));
+  const entries = routeFiles
+    .map((f, i) => ({ url: routeUrlFromPath(f.path), spec: "@/" + f.path.replace(/^src\//, "").replace(/\.(tsx|jsx)$/i, ""), id: `R${i}` }))
+    .filter((e): e is { url: string; spec: string; id: string } => e.url !== null)
+    // Static segments before dynamic ones so `/products/new` wins over `/products/:slug`.
+    .sort((a, b) => Number(a.url.includes(":")) - Number(b.url.includes(":")));
+
+  if (entries.length === 0) return null;
+
+  const imports = entries.map((e) => `import { Route as ${e.id} } from "${e.spec}";`).join("\n");
+  const consts = entries
+    .map((e) => `const C${e.id} = (${e.id} as any)?.component ?? (() => null);`)
+    .join("\n");
+  const children = entries
+    .map((e) => `      <RRRoute path="${e.url}" element={<C${e.id} />} />`)
+    .join("\n");
+
+  const body = hasApp
+    ? `    <RRRoute element={<App />}>\n${children}\n    </RRRoute>`
+    : children;
+
+  const content = `/**
+ * Auto-generated route table.
+ *
+ * This app declares file-based TanStack routes but has no generated route
+ * tree, so the TanStack router could not be constructed. These routes are
+ * mounted with react-router instead, which keeps every page reachable.
+ */
+import { Routes, Route as RRRoute } from "react-router-dom";
+${hasApp ? 'import App from "@/App";\n' : ""}${imports}
+
+${consts}
+
+export function GeneratedRoutes() {
+  return (
+    <Routes>
+${body}
+    </Routes>
+  );
+}
+`;
+
+  const routesPath = "src/generated-routes.tsx";
+  let mainContent = main.content.replace(/<App\s*\/>/, "<GeneratedRoutes />");
+  if (mainContent === main.content) return null;
+  mainContent = mainContent.replace(/import\s+App\s+from\s*["'][^"']+["'];?\n?/, "");
+  mainContent = `import { GeneratedRoutes } from "./generated-routes";\n${mainContent}`;
+
+  const next = files
+    .filter((f) => f.path !== routesPath)
+    .map((f) => (f.path === main.path ? { ...f, content: mainContent } : f));
+  next.push({ path: routesPath, content });
+
+  return {
+    files: next,
+    notes: [
+      `tanstack-router-fallback: mounted ${entries.length} file-based route(s) through react-router (no generated route tree)`,
+    ],
+  };
+}
+
 export function fixTanstackRouterWithoutProvider(files: ProjectFile[]): TanstackFallbackResult {
   const notes: string[] = [];
-  if (!importsTanstackRouter(files) || routerMounted(files)) return { files, notes };
+  if (!importsTanstackRouter(files)) return { files, notes };
 
-  // A generated route tree means this is a real file-based TanStack app whose
-  // entry point was lost or replaced. Restore the real provider so route
-  // loaders, params, nested layouts, and head metadata continue to work.
-  const restored = restoreTanstackBootstrap(files);
-  if (restored) return restored;
+  let working = files;
+  if (routerMounted(files)) {
+    // A mounted router that points at a missing route tree throws
+    // "Invariant failed" on first render. Tear it down and fall through to
+    // the deterministic react-router path below.
+    if (!routeTreeImportBroken(files)) return { files, notes };
+    working = dismantleBrokenBootstrap(files);
+    notes.push(
+      "tanstack-router-fallback: removed a router bootstrap that pointed at a missing route tree",
+    );
+  } else {
+    // A generated route tree means this is a real file-based TanStack app whose
+    // entry point was lost or replaced. Restore the real provider so route
+    // loaders, params, nested layouts, and head metadata continue to work.
+    const restored = restoreTanstackBootstrap(files);
+    if (restored) return restored;
+  }
+
+  const table = buildFileRouteTable(working);
+  if (table) {
+    working = table.files;
+    notes.push(...table.notes);
+  }
 
   const rewritten: string[] = [];
-  const out = files.map((f) => {
+  const out = working.map((f) => {
     if (!CODE_EXT.test(f.path)) return f;
     if (!TANSTACK_SPEC.test(f.content)) return f;
 
@@ -149,7 +309,7 @@ export function fixTanstackRouterWithoutProvider(files: ProjectFile[]): Tanstack
     return { ...f, content: next };
   });
 
-  if (rewritten.length === 0) return { files, notes };
+  if (rewritten.length === 0) return { files: working, notes };
 
   const withShim = out.some((f) => f.path === SHIM_PATH)
     ? out

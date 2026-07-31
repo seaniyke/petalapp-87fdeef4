@@ -109,6 +109,8 @@ function plainCause(reason: string): string {
     return "There's a typo in the code Petal just wrote.";
   if (r.includes("failed to resolve") || r.includes("cannot find module"))
     return "A file or package the app imports is missing.";
+  if (r.includes("invariant failed"))
+    return "The app's pages weren't wired to its router.";
   if (r.includes(".stores") || r.includes("basename") || r.includes("usecontext"))
     return "A page used navigation before the app's router was set up.";
   if (r.includes("is not defined") || r.includes("is not a function"))
