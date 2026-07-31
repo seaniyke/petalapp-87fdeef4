@@ -1,7 +1,12 @@
 import type { ProjectFile } from "./generate.server";
 
 const GUARD_PATH = "public/__petal_guard.js";
-const GUARD_VERSION = 4;
+// Bump on every behavioural change to the guard script. The version is
+// stamped into (a) the script URL query so a CDN can never serve a stale
+// copy, (b) the tag's data attribute, (c) a window global, and (d) every
+// error report — so a crash coming from an out-of-date cached guard is
+// immediately identifiable instead of looking like a live-code bug.
+const GUARD_VERSION = 5;
 const DEFAULT_INGEST_URL =
   "https://buildwithpetal.com/api/public/track-runtime-error";
 
@@ -39,6 +44,9 @@ function buildGuardScript(opts: GuardOptions): string {
   }
 
   function post(type, payload) {
+    try {
+      if (payload && typeof payload === "object") payload.guardVersion = VERSION;
+    } catch (_) {}
     try { parent.postMessage({ type: type, payload: payload }, "*"); } catch (_) {}
     // Also POST to Petal's ingest endpoint so deployed apps (no parent
     // iframe) surface crashes back to the project owner. Best-effort; we
@@ -55,6 +63,7 @@ function buildGuardScript(opts: GuardOptions): string {
         lineno: (payload && payload.lineno) || null,
         colno: (payload && payload.colno) || null,
         pageUrl: (location && location.href) ? String(location.href).slice(0, 1000) : null,
+        guardVersion: VERSION,
       });
       if (navigator && typeof navigator.sendBeacon === "function") {
         try {
@@ -200,8 +209,12 @@ export function injectPreviewGuard(
   }
 
   const versionAttr = `data-petal-preview-guard-version="${GUARD_VERSION}"`;
-  const guardTag = `<script src="/__petal_guard.js" ${versionAttr}></script>`;
-  const stripped = index.replace(/\s*<script\s+src=["']\/__petal_guard\.js["'][^>]*><\/script>/gi, "");
+  const guardTag = `<script src="/__petal_guard.js?v=${GUARD_VERSION}" ${versionAttr}></script>`;
+  // Strip ANY previously injected guard tag, including older `?v=` URLs.
+  const stripped = index.replace(
+    /\s*<script\s+src=["']\/__petal_guard\.js(?:\?[^"']*)?["'][^>]*><\/script>/gi,
+    "",
+  );
   const moduleScript = /<script\b(?=[^>]*\btype=["']module["'])(?=[^>]*\bsrc=["']\/src\/main\.tsx["'])[^>]*><\/script>/i;
   const moduleMatch = stripped.match(moduleScript)?.[0];
   const next = stripped.includes(guardTag)
