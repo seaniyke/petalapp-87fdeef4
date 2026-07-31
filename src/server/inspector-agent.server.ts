@@ -104,7 +104,7 @@ export async function runInspector(args: {
       const res = await aiChatCompletions({
         feature: "triage",
         budgetAware: true,
-        timeoutTier: "fast",
+        timeoutTier: "default",
         signal: args.signal,
         meta: { projectId: args.projectId, userId: args.userId ?? null },
         body: {
