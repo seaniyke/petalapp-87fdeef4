@@ -229,7 +229,7 @@ export function BuildActivityCard({
   const costLabel =
     typeof creditsCharged === "number"
       ? creditsCharged === 0
-        ? "Free"
+        ? "Auto-repair"
         : creditsCharged === 1
           ? "1 credit"
           : `${creditsCharged.toFixed(creditsCharged < 10 ? 1 : 0)} credits`
