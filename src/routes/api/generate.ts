@@ -2540,7 +2540,7 @@ Forbidden defaults
           // NOT end up byte-different after apply + recovery. Surfaced to the
           // user at the end of the turn so Petal can never claim "done" for a
           // file it silently failed to touch.
-          const unappliedPaths: string[] = [];
+          
           const violations = parsed.ops.filter((op) => isProtectedPath(op.path));
 
           if (violations.length) {
