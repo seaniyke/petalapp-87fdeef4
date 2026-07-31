@@ -223,12 +223,15 @@ function Landing() {
   }, [user, profileDisplayName, profileFetched]);
 
   // Curated set of 5 hero greetings. Edit this list to change what shows up
-  // before the user's first name (e.g. "Dream big, Ikechukwu."). Picks one
-  // at random per page load so it feels fresh without flickering mid-session.
-  const heroGreeting = useMemo(() => {
+  // before the user's first name (e.g. "Dream big, Ikechukwu."). Picked once
+  // AFTER mount — choosing during render made the server and client disagree
+  // and React threw away the hydrated tree (visible flash on first paint).
+  const [heroGreeting, setHeroGreeting] = useState("Dream big,");
+  useEffect(() => {
     const greetings = ["Dream big,", "Let's build,", "Make magic,", "Ship it,", "What's next,"];
-    return greetings[Math.floor(Math.random() * greetings.length)];
+    setHeroGreeting(greetings[Math.floor(Math.random() * greetings.length)]);
   }, []);
+
 
   const [projects, setProjects] = useState<ProjectRow[] | null>(null);
   const [projectsLoading, setProjectsLoading] = useState(false);
