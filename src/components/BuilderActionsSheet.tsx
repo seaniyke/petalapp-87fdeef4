@@ -199,7 +199,7 @@ export function BuilderActionsSheet({
 
 
         {/* Primary actions */}
-        <ul className="mt-3 divide-y divide-border/60 rounded-2xl bg-card">
+        <ul className="mt-1 py-1">
           <ActionRow
             icon={<Share2 className="h-5 w-5" />}
             label="Share"
