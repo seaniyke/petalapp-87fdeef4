@@ -15,7 +15,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import {
-  ChevronRight,
+  ChevronDown,
   ChevronDown,
   Settings as SettingsIcon,
   Pencil,
