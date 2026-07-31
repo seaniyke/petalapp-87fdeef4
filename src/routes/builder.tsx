@@ -121,6 +121,13 @@ import { RevertPreviewDialog } from "@/components/RevertPreviewDialog";
 import { PartialRevertDialog } from "@/components/PartialRevertDialog";
 import type { VersionRow } from "@/lib/versions";
 import { BuilderActionsSheet } from "@/components/BuilderActionsSheet";
+import { AnalyticsSheet } from "@/components/AnalyticsSheet";
+import { AgentIntegrationsSheet } from "@/components/AgentIntegrationsSheet";
+import { PaymentsSheet } from "@/components/PaymentsSheet";
+import { ConnectorsSheet } from "@/components/ConnectorsSheet";
+import { WebsiteInfoSheet } from "@/components/WebsiteInfoSheet";
+import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
+
 import { PublishSheet } from "@/components/PublishSheet";
 import { RenameProjectDialog } from "@/components/RenameProjectDialog";
 import { BillingSheet } from "@/components/BillingSheet";
