@@ -1307,6 +1307,7 @@ function Builder() {
       // let the user retry the deploy when they're ready.
       if (isInfrastructureBuildError(effectiveBuildSnap.errorMessage)) {
         if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
+        persistRecovery(project?.id);
         if (busy) return;
         persistFriendlyError(friendlyBuildServiceBusy(effectiveBuildSnap.errorMessage));
         return;
@@ -1322,6 +1323,7 @@ function Builder() {
         // and fire the same prompt the manual button would.
         autoFixRef.current.attempts = used + 1;
         autoFixRef.current.handledBuildIds.add(buildId);
+        persistRecovery(project?.id);
         setFriendlyError(autoFixingBuild(used + 1));
         setActivityVisible(true);
         // Defer to next tick so React commits the state above before send()
@@ -1332,6 +1334,8 @@ function Builder() {
         return () => clearTimeout(t);
       }
       if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
+      persistRecovery(project?.id);
+
       // Don't surface the manual-fix card while Petal is actively working or
       // while a replacement deploy has just been requested. The failed build
       // row can arrive during that transition; showing that card beside
