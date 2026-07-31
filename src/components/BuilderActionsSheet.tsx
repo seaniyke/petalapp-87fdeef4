@@ -36,6 +36,10 @@ import {
   Plug,
   ShieldCheck,
   Search as SearchIcon,
+  RotateCw,
+  Link2,
+  MessageSquare,
+  Download,
 } from "lucide-react";
 import { useWallet } from "@/hooks/use-wallet";
 import { useTheme, type Theme } from "@/hooks/use-theme";
@@ -60,6 +64,10 @@ type Props = {
   onOpenConnectors: () => void;
   onOpenSecurity: () => void;
   onOpenSeo: () => void;
+  onReloadPreview: () => void;
+  onOpenSharePreview: () => void;
+  onOpenComments: () => void;
+  onExportCode: () => void;
 };
 
 export function BuilderActionsSheet({
@@ -80,6 +88,10 @@ export function BuilderActionsSheet({
   onOpenConnectors,
   onOpenSecurity,
   onOpenSeo,
+  onReloadPreview,
+  onOpenSharePreview,
+  onOpenComments,
+  onExportCode,
 }: Props) {
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -326,6 +338,42 @@ export function BuilderActionsSheet({
                 onClick={() => {
                   onOpenChange(false);
                   onOpenSeo();
+                }}
+              />
+              <ActionRow
+                nested
+                icon={<RotateCw className="h-5 w-5" />}
+                label="Reload preview"
+                onClick={() => {
+                  onOpenChange(false);
+                  onReloadPreview();
+                }}
+              />
+              <ActionRow
+                nested
+                icon={<Link2 className="h-5 w-5" />}
+                label="Share preview link"
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenSharePreview();
+                }}
+              />
+              <ActionRow
+                nested
+                icon={<MessageSquare className="h-5 w-5" />}
+                label="Visitor feedback"
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenComments();
+                }}
+              />
+              <ActionRow
+                nested
+                icon={<Download className="h-5 w-5" />}
+                label="Export code"
+                onClick={() => {
+                  onOpenChange(false);
+                  onExportCode();
                 }}
               />
             </>
