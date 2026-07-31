@@ -4417,6 +4417,7 @@ Forbidden defaults
         // Phase 6 — flush per-tier telemetry in a single insert.
         // Idempotent and never throws; safe in finally.
         void recorder.flush();
+        releaseBuildLock(userId);
         controller.close();
       }
     },
