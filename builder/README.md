@@ -42,6 +42,37 @@ Communication is signed with HMAC-SHA256 using a shared secret on both sides.
 
 5. **Copy the URL** (e.g. `https://petal-builder-production.up.railway.app`). You'll paste this into the main Petal app as `BUILDER_SERVICE_URL`.
 
+## Redeploying (after changing anything in `builder/`)
+
+The builder is a **separate service** from the Petal app. Publishing Petal does
+not touch it — code under `builder/` only goes live when you redeploy here.
+
+```sh
+cd builder
+railway up          # rebuilds the Dockerfile and rolls out
+```
+
+If the CLI isn't linked on this machine: `railway login` then
+`railway link` (pick the existing `petal-builder` project) before `railway up`.
+You can also redeploy from the dashboard: Railway → petal-builder → Deployments
+→ **Redeploy** on the latest commit.
+
+**Verify it took**, from anywhere:
+
+```sh
+curl -s https://<your-builder>.up.railway.app/healthz
+# {"ok":true,"inFlight":0,"queued":0,"execInFlight":0,"execQueued":0}
+```
+
+The `execInFlight` / `execQueued` keys only exist on builds that include the
+`/exec` command surface. If they're missing, the old image is still running.
+
+No new environment variables are required for `/exec` — it reuses
+`BUILDER_SHARED_SECRET`. Optional tuning: `MAX_CONCURRENT_EXEC` (default 4),
+`MAX_EXEC_QUEUE` (default 30). Until the redeploy lands, the Petal app simply
+reports script execution as unavailable and falls back to normal edits.
+
+
 ## Local development
 
 ```sh
