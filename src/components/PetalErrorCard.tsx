@@ -25,13 +25,53 @@ type Props = {
   persisted?: boolean;
 };
 
+/**
+ * Turn a raw bundler log into one human sentence plus the file it points at.
+ * Stack frames ("    at …") are dropped — they are never actionable for the
+ * person reading this card, and on a phone they crowded out the real message.
+ */
+function summarizeTechnicalDetail(
+  raw: string | undefined,
+): { message: string; location?: string } | null {
+  if (!raw) return null;
+  const lines = raw
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && !/^at\s/.test(l));
+  if (lines.length === 0) return null;
+
+  const errorLine =
+    lines.find((l) => /^(error|x |✘|ERROR)/i.test(l) && !/^error during build/i.test(l)) ??
+    lines.find((l) => /error/i.test(l)) ??
+    lines[0];
+
+  // "/app/builds/<id>/src/routes/products/$slug.tsx:9:21: ERROR: Expected …"
+  const located = /([\w./$@-]+\.[a-z]{2,4}):(\d+):(\d+)/i.exec(errorLine);
+  let message = errorLine
+    .replace(/^(x|✘)\s*/i, "")
+    .replace(/^error(\s+during\s+build)?:?\s*/i, "")
+    .replace(/^\[[^\]]+\]\s*/, "");
+  let location: string | undefined;
+  if (located) {
+    message = message.slice(located.index + located[0].length).replace(/^:?\s*(ERROR:)?\s*/i, "");
+    const shortPath = located[1].replace(/^.*?\/src\//, "src/");
+    location = `${shortPath} · line ${located[2]}`;
+  }
+  if (!message) message = errorLine;
+  return { message: message.slice(0, 240), location };
+}
+
 export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredits }: Props) {
   const [showDetails, setShowDetails] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const summary = summarizeTechnicalDetail(error.technicalDetail);
 
   const isAskFix = error.actionKind === "ask-fix";
   const isRetry = error.actionKind === "retry";
   const isDismiss = error.actionKind === "dismiss";
   const isBuyCredits = error.actionKind === "buy-credits";
+
 
   return (
     <div className="mr-2 w-full max-w-[520px]">
