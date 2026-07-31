@@ -41,17 +41,31 @@ export async function getContainer(): Promise<WebContainer> {
   emitLog({ stream: "system", text: "Booting WebContainer…" });
   // Lazy-import keeps ~150KB out of the initial /builder bundle.
   const { WebContainer } = await import("@webcontainer/api");
-  bootPromise = WebContainer.boot().then((wc) => {
-    instance = wc;
-    wc.on("server-ready", (_port, url) => {
-      emitLog({ stream: "system", text: `Dev server ready at ${url}` });
-      emitServer(url);
+  bootPromise = WebContainer.boot()
+    .then((wc) => {
+      instance = wc;
+      wc.on("server-ready", (_port, url) => {
+        emitLog({ stream: "system", text: `Dev server ready at ${url}` });
+        emitServer(url);
+      });
+      wc.on("error", ({ message }) => {
+        emitLog({ stream: "stderr", text: `WebContainer error: ${message}` });
+      });
+      return wc;
+    })
+    .catch((err) => {
+      // A failed boot used to be cached forever: `bootPromise` stayed a
+      // rejected promise, so every later call re-threw the SAME error and the
+      // preview could never recover without a full page reload. Clear it so
+      // the next attempt genuinely retries.
+      bootPromise = null;
+      instance = null;
+      emitLog({
+        stream: "stderr",
+        text: `WebContainer failed to boot: ${err instanceof Error ? err.message : String(err)}`,
+      });
+      throw err;
     });
-    wc.on("error", ({ message }) => {
-      emitLog({ stream: "stderr", text: `WebContainer error: ${message}` });
-    });
-    return wc;
-  });
   return bootPromise;
 }
 
@@ -494,6 +508,53 @@ export async function installDeps(): Promise<number> {
  * prewarm (or a previous project in this session) already covered — that's
  * what makes the preview "just open" instead of showing an install spinner.
  */
+/**
+ * Minimal semver-range check — enough for the ranges npm packages actually
+ * use in generated projects (`^x.y.z`, `~x.y.z`, exact pins, `*`, `latest`,
+ * and `x || y` unions). Anything we can't confidently parse is treated as
+ * satisfied, so we never force a needless reinstall.
+ */
+function rangeSatisfied(installed: string, range: string): boolean {
+  const want = (range ?? "").trim();
+  if (!want || want === "*" || want === "latest" || want === "x") return true;
+  // Non-registry specifiers (workspace:, file:, git urls) — nothing to compare.
+  if (/^(workspace:|file:|link:|npm:|git|https?:)/i.test(want)) return true;
+  if (want.includes("||")) return want.split("||").some((r) => rangeSatisfied(installed, r));
+
+  const parse = (v: string) => v.replace(/^[^0-9]*/, "").split(".").map((n) => parseInt(n, 10) || 0);
+  const [iMaj, iMin, iPat] = parse(installed);
+  const m = want.match(/^([\^~>=<]*)\s*v?(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
+  if (!m) return true;
+  const op = m[1];
+  const maj = parseInt(m[2], 10);
+  const min = m[3] === undefined ? 0 : parseInt(m[3], 10);
+  const pat = m[4] === undefined ? 0 : parseInt(m[4], 10);
+  const gte = iMaj > maj || (iMaj === maj && (iMin > min || (iMin === min && iPat >= pat)));
+
+  if (op.startsWith("^")) return iMaj === maj && gte;
+  if (op.startsWith("~")) return iMaj === maj && iMin === min && gte;
+  if (op.startsWith(">")) return gte;
+  if (op.startsWith("<")) return !gte;
+  // Exact pin.
+  return iMaj === maj && iMin === min && iPat === pat;
+}
+
+async function installedVersionSatisfies(
+  wc: WebContainer,
+  name: string,
+  range: string,
+): Promise<boolean> {
+  try {
+    const raw = await wc.fs.readFile(`node_modules/${name}/package.json`, "utf-8");
+    const version = (JSON.parse(raw) as { version?: string }).version;
+    if (!version) return true;
+    return rangeSatisfied(version, range);
+  } catch {
+    // No manifest to read — presence check already passed; don't thrash.
+    return true;
+  }
+}
+
 async function depsSatisfied(): Promise<boolean> {
   const wc = await getContainer();
   try {
@@ -502,10 +563,11 @@ async function depsSatisfied(): Promise<boolean> {
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
     };
-    const names = [
-      ...Object.keys(pkg.dependencies ?? {}),
-      ...Object.keys(pkg.devDependencies ?? {}),
-    ];
+    const wanted: Record<string, string> = {
+      ...(pkg.dependencies ?? {}),
+      ...(pkg.devDependencies ?? {}),
+    };
+    const names = Object.keys(wanted);
     if (names.length === 0) return true;
     const top = new Set(await wc.fs.readdir("node_modules"));
     const scopeCache = new Map<string, Set<string>>();
@@ -522,6 +584,12 @@ async function depsSatisfied(): Promise<boolean> {
       } else if (!top.has(name)) {
         return false;
       }
+      // Presence is not enough. The prewarm container installs a baseline set
+      // of deps, so a folder can exist at the WRONG major version (react 18
+      // where the project wants react 19). Skipping the install then produces
+      // a preview that fails in confusing ways. Check the installed version
+      // against the requested range too.
+      if (!(await installedVersionSatisfies(wc, name, wanted[name]))) return false;
     }
     return true;
   } catch {
