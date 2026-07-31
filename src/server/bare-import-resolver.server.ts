@@ -218,6 +218,12 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
       return full;
     });
 
+    // When a file imports the same specifier twice (the model does this a lot
+    // after a merge), `String.replace` would keep rewriting the FIRST copy and
+    // leave the later ones broken. Advance a cursor so each hit rewrites its
+    // own occurrence.
+    let cursor = 0;
+
     for (const { full, importChunk, spec } of hits) {
       if (!isBareSpecifier(spec)) continue;
 
@@ -225,9 +231,14 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
       const aliased = PACKAGE_ALIASES[spec];
       if (aliased) {
         const newLine = rewriteSpec(full, spec, aliased);
-        src = src.replace(full, newLine);
-        result.rewrites.push({ path: file.path, from: spec, to: aliased });
+        const at = src.indexOf(full, cursor);
+        if (at >= 0) {
+          src = src.slice(0, at) + newLine + src.slice(at + full.length);
+          cursor = at + newLine.length;
+          result.rewrites.push({ path: file.path, from: spec, to: aliased });
+        }
       }
+
 
       // Recompute spec for downstream steps.
       const effectiveSpec = aliased ?? spec;
