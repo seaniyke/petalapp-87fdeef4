@@ -155,7 +155,21 @@ export async function fetchCurrencies(): Promise<BillingCurrency[]> {
   return (data ?? []).map((c) => ({ ...c, usd_rate: Number(c.usd_rate) })) as BillingCurrency[];
 }
 
+/**
+ * Displayed price overrides for active, purchasable items.
+ *
+ * The underlying table is admin-only (internal pricing data), so this goes
+ * through a controlled server endpoint that returns just what the storefront
+ * needs. Admin tooling reads the table directly instead.
+ */
 export async function fetchPriceOverrides(): Promise<PriceOverride[]> {
+  const { getPublicPriceOverrides } = await import("./billing-pricing.functions");
+  const data = await getPublicPriceOverrides();
+  return data as PriceOverride[];
+}
+
+/** Admin-only: full override list read straight from the table. */
+export async function fetchAllPriceOverrides(): Promise<PriceOverride[]> {
   const { data, error } = await supabase
     .from("billing_price_overrides")
     .select("item_kind, item_code, currency_code, amount_minor");
