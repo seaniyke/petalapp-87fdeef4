@@ -225,6 +225,16 @@ export async function streamGenerate(
               suggestions: evt.suggestions,
             });
             break;
+          // Agent-tool activity (inspector search/read, codemod, check) rides
+          // the same timeline rail as the deterministic repair passes.
+          case "tool_step":
+            handlers.onTimeline?.({
+              step: "agent_tool",
+              outcome: evt.isError ? "failed" : "ok",
+              message: evt.label,
+              ts: Date.now(),
+            });
+            break;
           case "timeline":
             handlers.onTimeline?.({
               step: evt.step,
