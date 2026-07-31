@@ -17,6 +17,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
+import { secretsMatch } from "@/server/rate-limit.server";
   buildSelfLearningDigest,
   renderDigestHtml,
   resolveAdminRecipients,
@@ -148,7 +149,7 @@ export const Route = createFileRoute("/api/public/cron/self-learning-digest")({
         const secret = process.env.BUILDER_SHARED_SECRET;
         if (!secret) return new Response("Server misconfigured", { status: 500 });
         const provided = request.headers.get("x-petal-cron-secret");
-        if (!provided || provided !== secret) return unauthorized();
+        if (!secretsMatch(provided, secret)) return unauthorized();
 
         // Allow ?skip_email=1 for safe manual reruns from the admin page.
         const skipEmail = new URL(request.url).searchParams.get("skip_email") === "1";
@@ -175,7 +176,7 @@ export const Route = createFileRoute("/api/public/cron/self-learning-digest")({
         const provided =
           request.headers.get("x-petal-cron-secret") ??
           new URL(request.url).searchParams.get("secret");
-        if (!provided || provided !== secret) return unauthorized();
+        if (!secretsMatch(provided, secret)) return unauthorized();
         const skipEmail = new URL(request.url).searchParams.get("skip_email") === "1";
         try {
           const result = await runDigest({ skipEmail });

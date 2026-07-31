@@ -16,6 +16,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getSubscriptionManageLink } from "@/server/paystack.server";
 import { sendBillingEmail, formatMinorAmount } from "@/server/billing-email.server";
+import { secretsMatch } from "@/server/rate-limit.server";
 
 const REMINDER_DAYS = [7, 3, 1];
 const FOLLOWUP_NUDGE_CAP_DAYS = 14;
@@ -214,7 +215,7 @@ export const Route = createFileRoute(
         const secret = process.env.BUILDER_SHARED_SECRET;
         if (!secret) return new Response("Server misconfigured", { status: 500 });
         const provided = request.headers.get("x-petal-cron-secret");
-        if (!provided || provided !== secret) return unauthorized();
+        if (!secretsMatch(provided, secret)) return unauthorized();
         try {
           const origin = new URL(request.url).origin;
           const result = await processSubscriptions(origin);
@@ -231,7 +232,7 @@ export const Route = createFileRoute(
         const provided =
           request.headers.get("x-petal-cron-secret") ??
           new URL(request.url).searchParams.get("secret");
-        if (!provided || provided !== secret) return unauthorized();
+        if (!secretsMatch(provided, secret)) return unauthorized();
         try {
           const origin = new URL(request.url).origin;
           const result = await processSubscriptions(origin);
