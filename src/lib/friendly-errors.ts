@@ -404,14 +404,15 @@ export function friendlyBuildFailure(rawLog: string | null | undefined): Friendl
   }
 
   return {
-    title: "Build needs one more pass",
+    title: "One thing is blocking the build",
     message:
-      "Petal tried free fixes, but the latest build still has an error. Tap below to run one more targeted pass with the latest log, or open Discuss mode to investigate together.",
+      "Nothing is lost — your app and chat are safe. Tap “Try one more fix” and Petal will send this exact error back to itself for a targeted pass. If it still fails, just tell Petal what you wanted in the box below.",
     actionLabel: "Try one more fix",
     actionKind: "ask-fix",
     technicalDetail: tail,
   };
 }
+
 
 /**
  * Detect build failures that are NOT the user's code — they're infrastructure
