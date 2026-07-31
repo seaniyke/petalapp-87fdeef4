@@ -10,6 +10,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowLeft,
   ChevronDown,
   ChevronRight,
   Copy,
@@ -18,6 +19,7 @@ import {
   FileJson,
   FileText,
   Image as ImageIcon,
+  PanelLeft,
   Search,
   X,
 } from "lucide-react";
@@ -103,12 +105,15 @@ export function CodeExplorer({
   activeFile,
   onSelect,
   projectName,
+  onBack,
   children,
 }: {
   files: ExplorerFile[];
   activeFile: string | null;
   onSelect: (path: string | null) => void;
   projectName?: string | null;
+  /** Return to the preview (used by the mobile toolbar). */
+  onBack?: () => void;
   /** The editor surface for the active (text) file. */
   children: React.ReactNode;
 }) {
@@ -117,6 +122,7 @@ export function CodeExplorer({
   const [tabs, setTabs] = useState<string[]>(activeFile ? [activeFile] : []);
   const [zipping, setZipping] = useState(false);
   const [dims, setDims] = useState<string | null>(null);
+  const [treeOpen, setTreeOpen] = useState(!activeFile);
   const searchRef = useRef<HTMLInputElement | null>(null);
 
   const filtered = useMemo(() => {
@@ -217,7 +223,10 @@ export function CodeExplorer({
         return (
           <button
             key={n.path}
-            onClick={() => onSelect(n.path)}
+            onClick={() => {
+              onSelect(n.path);
+              setTreeOpen(false);
+            }}
             style={{ paddingLeft: 8 + depth * 12 }}
             className={`flex w-full items-center gap-1.5 py-1.5 pr-2 text-left text-[12px] font-semibold transition ${
               isActive
