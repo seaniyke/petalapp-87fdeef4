@@ -5,6 +5,7 @@
  */
 import { mkdir, writeFile, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { healSyntax } from "./syntax-heal.js";
 
 export type ProjectFile = { path: string; content: string };
 
