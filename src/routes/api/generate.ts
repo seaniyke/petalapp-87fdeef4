@@ -1448,6 +1448,22 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     return new Response("Could not verify credit balance. Try again.", { status: 500 });
   }
 
+  // The real bill is settled AFTER the build (token-priced), so the cheap
+  // floor check above is a TOCTOU window: N parallel requests all pass it and
+  // all get delivered while only the first can be paid for. One build in
+  // flight per user closes that window. The lock is TTL-based so a crashed or
+  // aborted turn can never lock a user out permanently.
+  if (!acquireBuildLock(userId)) {
+    return new Response(
+      JSON.stringify({
+        error:
+          "You already have a build running. Wait for it to finish before starting another one.",
+      }),
+      { status: 429, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+
   // ===========================================================================
   // Plan Mode v1 — propose-only short-circuit.
   // When `planFirst` is true and there is no `approvedPlanId` yet, we run the
