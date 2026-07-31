@@ -206,6 +206,7 @@ import { CollapsibleSegment } from "@/components/CollapsibleSegment";
 import { sanitizeNarrative } from "@/lib/sanitize-narrative";
 import { guardBackendClaims } from "@/lib/backend-claim-guard";
 import { runProjectMigrations } from "@/lib/managed-migrations.functions";
+import { loadRecoveryState, saveRecoveryState } from "@/lib/recovery-budget";
 const WebContainerPreview = lazy(() =>
   import("@/components/WebContainerPreview").then((m) => ({ default: m.WebContainerPreview })),
 );
