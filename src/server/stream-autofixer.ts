@@ -400,9 +400,8 @@ export function autofixFiles(files: ProjectFile[]): { files: ProjectFile[]; repo
     for (const n of brandWire.notes) report.notes.push(n);
   }
   // Deterministic array-safety hardener. See array-safety-fixer.server.ts
-
   // for the rule set. Runs after shadcn so it sees the final import shape.
-  const arrFix = fixArraySafety(shadcnOut);
+  const arrFix = fixArraySafety(brandWire.files);
   const out = arrFix.files;
   if (arrFix.fixes.length > 0) {
     const totalRewrites = arrFix.fixes.reduce((n, f) => n + f.rewrites, 0);
