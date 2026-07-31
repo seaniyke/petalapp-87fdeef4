@@ -54,15 +54,20 @@ export interface TanstackFallbackResult {
 
 /** Is a real TanStack router actually mounted in this graph? */
 function routerMounted(files: ProjectFile[]): boolean {
-  return files.some((f) => {
-    if (!CODE_EXT.test(f.path)) return false;
-    if (f.path.includes("router-compat")) return false;
-    const c = f.content;
-    return (
-      /\bcreateRouter\s*\(/.test(c) &&
-      (/<RouterProvider\b/.test(c) || /routeTree/.test(c))
-    );
-  });
+  const executable = files.filter(
+    (f) => CODE_EXT.test(f.path) && !f.path.includes("router-compat") && !/\.(?:md|mdx)$/i.test(f.path),
+  );
+  const createsRouter = executable.some(
+    (f) =>
+      /\bcreateRouter\s*\(/.test(f.content) &&
+      /import[^;]*\bcreateRouter\b[^;]*from\s*["']@tanstack\/react-router["']/.test(f.content),
+  );
+  const mountsProvider = executable.some(
+    (f) =>
+      /<RouterProvider\b/.test(f.content) &&
+      /import[^;]*\bRouterProvider\b[^;]*from\s*["']@tanstack\/react-router["']/.test(f.content),
+  );
+  return createsRouter && mountsProvider;
 }
 
 function importsTanstackRouter(files: ProjectFile[]): boolean {

@@ -1390,6 +1390,23 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     );
   }
 
+  // Every user-initiated AI turn must have at least the build floor available,
+  // including Plan-first proposals. Keep this before every early-return path
+  // so an empty wallet cannot still consume planning or generation tokens.
+  const balance = await checkCreditBalance({ userId, amount: BUILD_FLOOR });
+  if (!balance.ok) {
+    if (balance.reason === "insufficient_credits") {
+      return new Response(
+        JSON.stringify({
+          error:
+            "You're out of credits. Add credits in Settings → Plans & Credits to keep generating.",
+        }),
+        { status: 402, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    return new Response("Could not verify credit balance. Try again.", { status: 500 });
+  }
+
   // ===========================================================================
   // Plan Mode v1 — propose-only short-circuit.
   // When `planFirst` is true and there is no `approvedPlanId` yet, we run the
@@ -1499,20 +1516,6 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   // user is charged once, after the build succeeds, based on actual
   // token usage (see post-flight section below). This keeps the
   // experience honest: failed/aborted builds cost nothing.
-  const balance = await checkCreditBalance({ userId, amount: BUILD_FLOOR });
-  if (!balance.ok) {
-    if (balance.reason === "insufficient_credits") {
-      return new Response(
-        JSON.stringify({
-          error:
-            "You're out of credits. Add credits in Settings → Plans & Credits to keep generating.",
-        }),
-        { status: 402, headers: { "Content-Type": "application/json" } },
-      );
-    }
-    return new Response("Could not verify credit balance. Try again.", { status: 500 });
-  }
-
   const isInitial = currentFiles.length === 0;
   const baseSystem = isInitial ? SYSTEM_PROMPT_INITIAL : SYSTEM_PROMPT_PATCH;
 

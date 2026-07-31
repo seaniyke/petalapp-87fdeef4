@@ -41,6 +41,7 @@ import { loadProjectMemoryBlock } from "@/server/project-memory.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import { detectHighStakesIntent, highStakesClarifyInstruction } from "@/lib/high-stakes-intent";
 import { detectLanguage, renderLanguageHint } from "@/server/lang-detect.server";
+import { checkCreditBalance } from "@/server/credits.server";
 
 type Body = {
   messages: ChatMessage[];
@@ -313,6 +314,20 @@ export const Route = createFileRoute("/api/triage")({
         const messages = Array.isArray(body.messages) ? body.messages.slice(-10) : [];
         if (messages.length === 0) {
           return new Response("messages must not be empty", { status: 400 });
+        }
+
+        // Triage itself is not separately charged, but it is still an AI turn.
+        // Enforce the same entry floor as discuss/build so a zero-credit wallet
+        // cannot keep chatting through this conversational front door.
+        const balance = await checkCreditBalance({ userId: authResult, amount: 1.0 });
+        if (!balance.ok) {
+          if (balance.reason === "insufficient_credits") {
+            return new Response(
+              "You're out of credits. Add credits in Settings → Plans & Credits to keep going.",
+              { status: 402 },
+            );
+          }
+          return new Response("Could not verify credit balance. Try again.", { status: 500 });
         }
 
         // Compact context: project state in one line. Triage only needs to know
