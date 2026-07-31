@@ -22,6 +22,7 @@ import { z } from "zod";
 import { verify, sign } from "./signing.js";
 import { materializeProject, cleanupProject, type ProjectFile } from "./fs-helpers.js";
 import { buildAndDeploy, BuildError } from "./build.js";
+import { runExecSession, ExecError, MAX_COMMANDS_PER_SESSION } from "./exec.js";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const SHARED_SECRET = process.env.BUILDER_SHARED_SECRET;
