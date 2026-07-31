@@ -93,9 +93,14 @@ export async function postBuildToRailway(args: {
   // idempotent, so running them again after runAllRepairs costs nothing.
   const escaped = fixSourceEscapes(args.files);
   const importHealed = fixImportSyntax(escaped.files);
-  for (const n of [...escaped.notes, ...importHealed.notes]) {
+  // `<BrandMark/>` with no import compiles fine and then white-screens the
+  // published app with `Can't find variable: BrandMark`. Heal it here too so
+  // no build pathway can ship it.
+  const brandWired = ensureBrandMarkWired(importHealed.files);
+  for (const n of [...escaped.notes, ...importHealed.notes, ...brandWired.notes]) {
     console.warn(`[builder-last-mile] project=${args.projectId}: ${n}`);
   }
+
 
   // Rewrite stale copyright years (e.g. "© 2024" → "© 2026") that the LLM
   // emitted from its training-data cutoff. Cheap, runs on every build.
