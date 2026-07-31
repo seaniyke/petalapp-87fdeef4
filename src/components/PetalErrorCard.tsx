@@ -129,9 +129,10 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
                 <button
                   type="button"
                   onClick={() => setShowDetails((s) => !s)}
-                  className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[12px] font-medium text-muted-foreground transition hover:text-foreground"
+                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2.5 text-[12px] font-medium text-muted-foreground transition hover:text-foreground"
+                  aria-expanded={showDetails}
                 >
-                  Details
+                  {showDetails ? "Hide details" : "What went wrong"}
                   <ChevronDown
                     className={`h-3.5 w-3.5 transition-transform ${showDetails ? "rotate-180" : ""}`}
                   />
@@ -140,10 +141,56 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
             </div>
 
             {showDetails && error.technicalDetail && (
-              <pre className="mt-2.5 max-h-44 overflow-auto rounded-2xl border border-foreground/8 bg-background/60 p-2.5 text-[11px] leading-snug text-muted-foreground">
-                {error.technicalDetail}
-              </pre>
+              <div className="mt-2.5 min-w-0 space-y-2">
+                {/* Plain-language summary first — the raw stack is noise for
+                    most people and, on a phone, it used to be the only thing
+                    they could see. */}
+                {summary && (
+                  <div className="min-w-0 rounded-2xl border border-foreground/8 bg-background/60 p-2.5">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      The problem
+                    </div>
+                    <p className="mt-1 break-words text-[12.5px] leading-snug text-foreground">
+                      {summary.message}
+                    </p>
+                    {summary.location && (
+                      <p className="mt-1 break-all font-mono text-[11px] leading-snug text-muted-foreground">
+                        {summary.location}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowRaw((s) => !s)}
+                    className="inline-flex h-7 items-center rounded-full border border-foreground/12 px-2.5 text-[11.5px] font-medium text-muted-foreground transition hover:text-foreground"
+                  >
+                    {showRaw ? "Hide technical log" : "Technical log"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard
+                        ?.writeText(error.technicalDetail ?? "")
+                        .then(() => setCopied(true))
+                        .then(() => window.setTimeout(() => setCopied(false), 1600));
+                    }}
+                    className="inline-flex h-7 items-center rounded-full border border-foreground/12 px-2.5 text-[11.5px] font-medium text-muted-foreground transition hover:text-foreground"
+                  >
+                    {copied ? "Copied" : "Copy log"}
+                  </button>
+                </div>
+
+                {showRaw && (
+                  <pre className="max-h-44 w-full min-w-0 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words rounded-2xl border border-foreground/8 bg-background/60 p-2.5 text-[11px] leading-snug text-muted-foreground">
+                    {error.technicalDetail}
+                  </pre>
+                )}
+              </div>
             )}
+
           </div>
         </div>
       </div>
