@@ -14,6 +14,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { ProjectFile } from "@/server/generate.server";
 import { injectPetalBadge } from "@/server/petal-badge.server";
 import { freshenStaleYears } from "@/server/freshen-stale-years.server";
+import type { VerifyPlan } from "@/server/verify-plan.server";
 
 const MAX_AGE_SECONDS = 5 * 60;
 
