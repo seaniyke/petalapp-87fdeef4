@@ -109,7 +109,13 @@ function releaseSlot() {
   if (next) next();
 }
 
-fastify.get("/healthz", async () => ({ ok: true, inFlight, queued: queue.length }));
+fastify.get("/healthz", async () => ({
+  ok: true,
+  inFlight,
+  queued: queue.length,
+  execInFlight,
+  execQueued: execQueue.length,
+}));
 
 fastify.post("/build", async (req, reply) => {
   // 1) Verify signature.
