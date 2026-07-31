@@ -431,6 +431,8 @@ export function CodeExplorer({
           )}
         </div>
       </div>
+      </div>
     </div>
   );
 }
+
