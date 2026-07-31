@@ -2961,6 +2961,37 @@ function Builder() {
     askPetalToFixManualRef.current = () => askPetalToFix({ isAuto: false });
   }, [askPetalToFix]);
 
+  // Post-deploy browser verification. The build is "ready" — it compiled and
+  // shipped — but a real browser found the app broken in use (blank route,
+  // console error, sign-in that never lands, a create flow whose item never
+  // appears). That is exactly the class of defect a compile check cannot see,
+  // so we feed the findings straight back as one silent repair turn.
+  // Once per build id, and never while another turn is in flight.
+  useEffect(() => {
+    if (!project?.id || busy) return;
+    const snap = effectiveBuildSnap;
+    const buildId = project.latest_build_id;
+    if (!snap || !buildId || snap.status !== "ready") return;
+    const defects = snap.verification && !snap.verification.ok ? snap.verification.defects : [];
+    if (defects.length === 0) return;
+    if (verifyFixRef.current.projectId !== project.id) {
+      verifyFixRef.current = { projectId: project.id, handled: new Set() };
+    }
+    if (verifyFixRef.current.handled.has(buildId)) return;
+    verifyFixRef.current.handled.add(buildId);
+
+    const prompt = [
+      "I opened the deployed app in a real browser and it does not work correctly. Findings:",
+      "",
+      ...defects.slice(0, 15).map((d) => `- ${d}`),
+      "",
+      "Fix the root cause of each finding in the project files. Do not add placeholder content or comments describing the fix — make the app actually work. Keep the changes minimal and do not redesign anything that already works.",
+    ].join("\n");
+    void send(prompt, { isRetry: false, isAutoFix: true });
+  }, [project?.id, project?.latest_build_id, effectiveBuildSnap, busy, send]);
+
+
+
   async function downloadProject() {
     if (!files.length) return;
     // Lazy-load jszip — keeps ~100KB out of the initial /builder bundle.
