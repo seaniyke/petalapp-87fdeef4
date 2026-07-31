@@ -34,3 +34,19 @@ const second = fixSourceEscapes(res.files);
 assert.equal(second.notes.length, 0);
 
 console.log("source-escape-fixer: all assertions passed");
+
+// Regression: an apostrophe in JSX text (not a string) used to desync the
+// scanner so every later code-position `\n` was skipped.
+const apostrophe = [
+  "export const A = () => (",
+  "  <p>Rhys's workshop</p>",
+  ");",
+  "const team = [",
+  '  { name: "Rhys Sterling",\\n    role: "Master Jeweler" },',
+  "];",
+].join("\n");
+const apRes = unescapeCodePositions(apostrophe);
+if (apRes.count !== 1 || apRes.out.includes("\\n")) {
+  throw new Error("apostrophe desync regression: " + JSON.stringify(apRes));
+}
+console.log("source-escape-fixer: apostrophe regression passed");
