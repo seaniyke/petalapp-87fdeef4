@@ -93,8 +93,13 @@ export const Route = createFileRoute("/api/public/waitlist")({
           const enabled = data?.value === true;
 
           // Optional per-person access check: ?email=someone@example.com
+          // Throttled — otherwise this is an unauthenticated oracle for bulk
+          // "is this address on the waitlist / approved" enumeration.
           const emailParam = url.searchParams.get("email");
           if (emailParam) {
+            const throttled = throttlePublicWrite(request, "waitlist_lookup", 10, 60);
+            if (throttled) return throttled;
+
             const email = emailParam.trim().toLowerCase().slice(0, 255);
             const { data: row } = await supabaseAdmin
               .from("waitlist_signups" as never)
