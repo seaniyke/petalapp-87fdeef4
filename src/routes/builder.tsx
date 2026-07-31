@@ -2486,7 +2486,18 @@ function Builder() {
         void clearMessageDraft(proj.id);
       }
     },
-    [busy, messages, files, ensureProject, pendingAttachments, supersedeBuildId, restoreBuildId],
+    [
+      busy,
+      messages,
+      files,
+      ensureProject,
+      pendingAttachments,
+      supersedeBuildId,
+      restoreBuildId,
+      creditBreakdown.total,
+      currentWallet,
+      walletLoading,
+    ],
   );
   // Keep the latest send reference available to the service-enabled effect
   // without making that effect re-subscribe on every keystroke.
