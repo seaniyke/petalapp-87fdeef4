@@ -53,7 +53,8 @@ type Handlers = {
       | "rls_sanity"
       | "file_budget"
       | "post_stream_autofix"
-      | "image_resolve";
+      | "image_resolve"
+      | "agent_tool";
     outcome: "ok" | "fixed" | "skipped" | "failed";
     message: string;
     count?: number;
@@ -222,6 +223,16 @@ export async function streamGenerate(
               verdict: evt.verdict,
               gaps: evt.gaps,
               suggestions: evt.suggestions,
+            });
+            break;
+          // Agent-tool activity (inspector search/read, codemod, check) rides
+          // the same timeline rail as the deterministic repair passes.
+          case "tool_step":
+            handlers.onTimeline?.({
+              step: "agent_tool",
+              outcome: evt.isError ? "failed" : "ok",
+              message: evt.label,
+              ts: Date.now(),
             });
             break;
           case "timeline":

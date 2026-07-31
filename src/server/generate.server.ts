@@ -514,6 +514,8 @@ export type StreamEvent =
   | { type: "summary_delta"; delta: string }
   | { type: "recap_delta"; delta: string }
   | { type: "tool"; name: "write_project" | "patch_files" }
+  // One agent-tool invocation (inspector search/read, codemod script, check).
+  | { type: "tool_step"; tool: string; label: string; isError?: boolean }
   | { type: "phase"; phase: "thinking" | "designing" | "writing" | "polishing" }
   | { type: "design_vibe"; vibe: string; rationale: string }
   | { type: "file_progress"; written: number; latestPath?: string }
@@ -647,7 +649,8 @@ export type StreamEvent =
         | "rls_sanity"
         | "file_budget"
         | "post_stream_autofix"
-        | "image_resolve";
+        | "image_resolve"
+      | "agent_tool";
       /** "ok" = ran clean, "fixed" = ran and changed something, "skipped" = gated off. */
       outcome: "ok" | "fixed" | "skipped" | "failed";
       /** ≤80 char human-readable description shown on the row. */
