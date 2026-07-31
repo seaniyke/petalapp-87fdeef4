@@ -39,6 +39,7 @@ import { fixComponentChildren } from "./component-child.server";
 import { ensureBrandIdentity } from "./brand-identity.server";
 import { repairBuildConfigImports } from "./build-config-repair.server";
 import { fixSourceEscapes } from "./source-escape-fixer.server";
+import { fixImportSyntax } from "./import-syntax-fixer.server";
 
 export interface RepairAllResult {
   files: ProjectFile[];
