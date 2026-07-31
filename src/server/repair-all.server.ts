@@ -36,7 +36,7 @@ import { fixTanstackRouterWithoutProvider } from "./tanstack-router-fallback.ser
 import { fixCssEscapes } from "./css-escape-fixer.server";
 import { fixBlockProps } from "./block-props.server";
 import { fixComponentChildren } from "./component-child.server";
-import { ensureBrandIdentity } from "./brand-identity.server";
+import { ensureBrandIdentity, ensureBrandMarkWired } from "./brand-identity.server";
 import { repairBuildConfigImports } from "./build-config-repair.server";
 import { fixSourceEscapes } from "./source-escape-fixer.server";
 import { fixImportSyntax } from "./import-syntax-fixer.server";
