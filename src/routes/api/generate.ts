@@ -2375,6 +2375,25 @@ Forbidden defaults
       try {
         controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Reading your request and choosing the safest edit path…" })));
+        // Replay the Inspector's investigation into the timeline so the user
+        // sees the same trace Petal worked from (searched → read → concluded).
+        for (const step of inspectorReport?.steps ?? []) {
+          controller.enqueue(
+            encoder.encode(
+              sse({ type: "tool_step", tool: step.tool, label: step.label, isError: !!step.isError }),
+            ),
+          );
+        }
+        if (inspectorReport?.ok && inspectorReport.targetPaths.length > 0) {
+          controller.enqueue(
+            encoder.encode(
+              sse({
+                type: "status",
+                message: `Located the change in ${inspectorReport.targetPaths.join(", ")}.`,
+              }),
+            ),
+          );
+        }
         if (designDirection) {
           controller.enqueue(
             encoder.encode(
