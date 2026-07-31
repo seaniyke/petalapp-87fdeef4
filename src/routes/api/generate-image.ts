@@ -157,58 +157,66 @@ export const Route = createFileRoute("/api/generate-image")({
           }
         }
 
-        // 5. Invoke the upstream image generator. Charge ONLY on success.
+        // 5. Anonymous (end-user app) calls debit the project owner's runtime
+        //    wallet. This MUST happen BEFORE we invoke the generator, otherwise
+        //    a zero-balance project can burn unlimited upstream spend and only
+        //    then get a 402 back (free-resource loop).
+        if (!userId && body.projectId) {
+          const { data: proj } = await supabaseAdmin
+            .from("projects")
+            .select("owner_id, runtime_paused")
+            .eq("id", body.projectId)
+            .maybeSingle();
+          if (proj?.owner_id) {
+            if (proj.runtime_paused) {
+              return new Response(
+                JSON.stringify({
+                  error: "This app's runtime is paused. The owner needs to top up.",
+                }),
+                {
+                  status: 402,
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*",
+                  },
+                },
+              );
+            }
+            const charge = await chargeRuntime({
+              userId: proj.owner_id,
+              projectId: body.projectId,
+              meter: "image_gen",
+              cents: RUNTIME_IMAGE_CENTS,
+              metadata: { route: "/api/generate-image", anonymous: true },
+            });
+            if (!charge.ok) {
+              console.warn("[runtime-wallet] image_gen charge blocked", charge);
+              const message =
+                charge.reason === "project_cap_exceeded"
+                  ? "This app hit its spend cap. The owner needs to raise it or top up."
+                  : charge.reason === "workspace_cap_exceeded"
+                    ? "This workspace hit its spend cap. The owner needs to raise it or top up."
+                    : "This app's Cloud + AI balance is exhausted. The owner needs to top up.";
+              return new Response(JSON.stringify({ error: message }), {
+                status: 402,
+                headers: {
+                  "Content-Type": "application/json",
+                  "Access-Control-Allow-Origin": "*",
+                },
+              });
+            }
+          }
+        }
+
+        // 6. Invoke the upstream image generator. Everything is already paid
+        //    for at this point (build credit reserved, or runtime wallet
+        //    debited), so a failure below refunds instead of charging.
         try {
           const result = await generatePetalImage({
             prompt,
             aspectRatio: body.aspectRatio,
           });
 
-          // Charge once, post-success. Anonymous callers (end-user apps) hit
-          // the project owner's runtime wallet instead of build credits.
-          if (userId) {
-            // Credit was reserved atomically before invoking the generator.
-          } else if (body.projectId) {
-            // Look up the project's owner so we can debit their runtime wallet.
-            const { data: proj } = await supabaseAdmin
-              .from("projects")
-              .select("owner_id, runtime_paused")
-              .eq("id", body.projectId)
-              .maybeSingle();
-            if (proj?.owner_id) {
-              if (proj.runtime_paused) {
-                return new Response(
-                  JSON.stringify({
-                    error: "This app's runtime is paused. The owner needs to top up.",
-                  }),
-                  { status: 402, headers: { "Content-Type": "application/json" } },
-                );
-              }
-              const charge = await chargeRuntime({
-                userId: proj.owner_id,
-                projectId: body.projectId,
-                meter: "image_gen",
-                cents: RUNTIME_IMAGE_CENTS,
-                metadata: { route: "/api/generate-image", anonymous: true },
-              });
-              if (!charge.ok) {
-                console.warn("[runtime-wallet] image_gen charge blocked", charge);
-                const message =
-                  charge.reason === "project_cap_exceeded"
-                    ? "This app hit its spend cap. The owner needs to raise it or top up."
-                    : charge.reason === "workspace_cap_exceeded"
-                      ? "This workspace hit its spend cap. The owner needs to raise it or top up."
-                      : "This app's Cloud + AI balance is exhausted. The owner needs to top up.";
-                return new Response(JSON.stringify({ error: message }), {
-                  status: 402,
-                  headers: {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                  },
-                });
-              }
-            }
-          }
 
           return new Response(
             JSON.stringify({ url: result.url, cached: result.cached }),
