@@ -106,7 +106,7 @@ export async function postBuildToRailway(args: {
   // Rewrite stale copyright years (e.g. "© 2024" → "© 2026") that the LLM
   // emitted from its training-data cutoff. Cheap, runs on every build.
   const { files: yearFreshened, replacements: yearReplacements } = freshenStaleYears(
-    importHealed.files,
+    brandWired.files,
   );
   if (yearReplacements > 0) {
     console.log(`[builder] freshened ${yearReplacements} stale year reference(s)`);
