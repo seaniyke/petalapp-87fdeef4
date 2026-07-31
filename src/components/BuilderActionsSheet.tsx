@@ -380,22 +380,27 @@ function ActionRow({
   onClick: () => void;
 }) {
   return (
-    <li className={cn(nested && "bg-muted/30")}>
+    <li>
       <button
         type="button"
         onClick={onClick}
         className={cn(
-          "flex w-full items-center gap-3 px-4 py-3.5 text-left transition active:bg-muted/60",
-          nested && "py-3 pl-9",
+          "flex w-full items-center gap-3.5 rounded-xl px-4 py-3 text-left transition active:bg-muted/60",
+          nested && "py-2.5 pl-11",
         )}
       >
-        <span className="text-foreground/80">{icon}</span>
-        <span className={cn("flex-1 font-medium", nested ? "text-[15px]" : "text-base")}>
+        <span className="shrink-0 text-foreground/70">{icon}</span>
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate font-medium",
+            nested ? "text-[15px] text-foreground/90" : "text-[17px]",
+          )}
+        >
           {label}
         </span>
-        {trailing ?? <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+        {trailing}
       </button>
-
     </li>
   );
 }
+
