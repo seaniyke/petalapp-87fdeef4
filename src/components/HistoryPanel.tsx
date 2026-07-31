@@ -83,10 +83,23 @@ export function HistoryPanel({
     }
   }
 
+  // Switching projects must wipe the previous project's versions and any
+  // in-progress row state — otherwise the panel briefly lists another
+  // project's history and "restore" can target a stale version id.
+  useEffect(() => {
+    setVersions([]);
+    setBusyId(null);
+    setEditingId(null);
+    setEditValue("");
+    setPreviewVersion(null);
+    setPartialVersion(null);
+  }, [projectId]);
+
   useEffect(() => {
     if (open) void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, refreshKey]);
+  }, [open, refreshKey, projectId]);
+
 
   async function handleSaveCurrent() {
     setLoading(true);
