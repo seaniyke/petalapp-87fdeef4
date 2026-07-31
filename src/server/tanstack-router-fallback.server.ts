@@ -225,6 +225,9 @@ function buildFileRouteTable(files: ProjectFile[]): TanstackFallbackResult | nul
   if (entries.length === 0) return null;
 
   const imports = entries.map((e) => `import { Route as ${e.id} } from "${e.spec}";`).join("\n");
+  const registrations = entries
+    .map((e) => `registerRoute("${e.url}", ${e.id} as any);`)
+    .join("\n");
   const consts = entries
     .map((e) => {
       const routeVar = `Route${e.id}`;
@@ -232,7 +235,7 @@ function buildFileRouteTable(files: ProjectFile[]): TanstackFallbackResult | nul
     })
     .join("\n");
   const children = entries
-    .map((e) => `      <RRRoute path="${e.url}" element={<RouteContext.Provider value={Route${e.id}}><C${e.id} /></RouteContext.Provider>} />`)
+    .map((e) => `      <RRRoute path="${e.url}" element={<C${e.id} />} />`)
     .join("\n");
 
   const body = hasApp
@@ -246,13 +249,12 @@ function buildFileRouteTable(files: ProjectFile[]): TanstackFallbackResult | nul
  * tree, so the TanStack router could not be constructed. These routes are
  * mounted with react-router instead, which keeps every page reachable.
  */
-import { createContext, useContext } from "react";
 import { BrowserRouter, Routes, Route as RRRoute } from "react-router-dom";
+import { registerRoute } from "@/lib/router-compat";
 ${hasApp ? 'import App from "@/App";\n' : ""}${imports}
 
 ${consts}
-
-const RouteContext = createContext<any>(null);
+${registrations}
 
 export function GeneratedRoutes() {
   return (
@@ -262,10 +264,6 @@ ${body}
       </Routes>
     </BrowserRouter>
   );
-}
-
-export function useCurrentRoute() {
-  return useContext(RouteContext);
 }
 `;
 
@@ -407,6 +405,11 @@ import {
 } from "react-router-dom";
 
 type To = string | { to?: string; href?: string; search?: Record<string, unknown>; hash?: string };
+const routeRegistry = new Map<string, any>();
+
+export function registerRoute(path: string, route: any) {
+  routeRegistry.set(path, route);
+}
 
 function toPath(target: To | undefined): string {
   if (!target) return "/";
@@ -482,17 +485,21 @@ export function redirect(target: To) {
 /** Route-definition helpers become inert factories: the react-router route
  *  table is what actually renders, so these must not throw when imported. */
 export function createFileRoute(_path?: string) {
-  return (options: any) => ({
-    ...options,
-    path: _path,
-    useLoaderData: () => {
-      const params = useRRParams();
-      return options?.loader ? options.loader({ params }) : undefined;
-    },
-    useParams: useRRParams,
-    useSearch,
-    useNavigate,
-  });
+  return (options: any) => {
+    const route = {
+      ...options,
+      path: _path,
+      useLoaderData: () => {
+        const params = useRRParams();
+        return options?.loader ? options.loader({ params }) : undefined;
+      },
+      useParams: useRRParams,
+      useSearch,
+      useNavigate,
+    };
+    if (_path) routeRegistry.set(_path.replace(/\$([^/]+)/g, ":$1"), route);
+    return route;
+  };
 }
 
 export const createLazyFileRoute = createFileRoute;
