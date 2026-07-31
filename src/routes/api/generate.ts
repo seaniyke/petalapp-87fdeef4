@@ -2536,7 +2536,13 @@ Forbidden defaults
             // Plan Mode v1 — when a plan was approved, ANY file outside its
             // allow-list is treated as protected and dropped.
             (allowedPathSet !== null && !allowedPathSet.has(p));
+          // Honesty ledger — every path the model asked to change that did
+          // NOT end up byte-different after apply + recovery. Surfaced to the
+          // user at the end of the turn so Petal can never claim "done" for a
+          // file it silently failed to touch.
+          const unappliedPaths: string[] = [];
           const violations = parsed.ops.filter((op) => isProtectedPath(op.path));
+
           if (violations.length) {
             console.warn(
               "Dropping protected-path ops:",
