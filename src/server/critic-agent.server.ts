@@ -154,7 +154,7 @@ export function findDeterministicDefects(
     if ((op.op === "update" || op.op === "create") && prev) {
       const prevLines = prev.split("\n").length;
       const nextLines = content.split("\n").length;
-      const rewriteAsked = /\b(rewrite|simplif|shorten|strip|reduce|clean up|trim|minimal)\b/.test(prompt);
+      const rewriteAsked = /\b(rewrite|simplif\w*|shorten|strip|reduce|clean up|trim|minimal)\b/.test(prompt);
       if (prevLines >= 80 && nextLines < prevLines * 0.25 && !rewriteAsked) {
         out.push({
           path: op.path,
