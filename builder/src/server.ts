@@ -29,8 +29,10 @@ const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
 const CALLBACK_URL = process.env.PETAL_CALLBACK_URL; // https://app.example.com/api/builds/callback
 
-const MAX_CONCURRENT = Number(process.env.MAX_CONCURRENT_BUILDS ?? 2);
-const MAX_QUEUE = Number(process.env.MAX_QUEUE ?? 20);
+const MAX_CONCURRENT = Number(process.env.MAX_CONCURRENT_BUILDS ?? 3);
+const MAX_QUEUE = Number(process.env.MAX_QUEUE ?? 50);
+/** Hard ceiling on a single job so a wedged install can never leak a slot. */
+const JOB_TIMEOUT_MS = Number(process.env.JOB_TIMEOUT_MS ?? 12 * 60 * 1000);
 
 if (!SHARED_SECRET) throw new Error("BUILDER_SHARED_SECRET env var is required");
 if (!CF_API_TOKEN) throw new Error("CLOUDFLARE_API_TOKEN env var is required");
