@@ -3112,7 +3112,7 @@ function Builder() {
       "Fix the root cause of each finding in the project files. Do not add placeholder content or comments describing the fix — make the app actually work. Keep the changes minimal and do not redesign anything that already works.",
     ].join("\n");
     void send(prompt, { isRetry: false, isAutoFix: true });
-  }, [project?.id, project?.latest_build_id, effectiveBuildSnap, busy, send, claimAutoRecovery]);
+  }, [project?.id, project?.latest_build_id, effectiveBuildSnap, busy, send, claimAutoRecovery, hydrateRecovery, persistRecovery]);
 
 
 
