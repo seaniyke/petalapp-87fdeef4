@@ -250,7 +250,7 @@ export function BuildDetailsSheet({
                 value={
                   typeof creditsCharged === "number"
                     ? creditsCharged === 0
-                      ? "Free"
+                      ? "Auto-repair"
                       : creditsCharged.toFixed(creditsCharged < 10 ? 1 : 0)
                     : "—"
                 }

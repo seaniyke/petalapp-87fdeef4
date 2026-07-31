@@ -24,6 +24,7 @@ const CODE_EXT = /\.(tsx|ts|jsx|js|mjs)$/i;
 const TANSTACK_SPEC = /["']@tanstack\/react-router["']/;
 const SHIM_PATH = "src/lib/router-compat.tsx";
 const SHIM_SPEC = "@/lib/router-compat";
+const ROUTER_PATH = "src/router.tsx";
 
 /** Symbols the shim can stand in for. */
 const SHIMMED = new Set([
@@ -42,6 +43,7 @@ const SHIMMED = new Set([
   "RouterProvider",
   "createRouter",
   "createRootRoute",
+  "createRootRouteWithContext",
   "createFileRoute",
   "createLazyFileRoute",
   "getRouteApi",
@@ -54,15 +56,20 @@ export interface TanstackFallbackResult {
 
 /** Is a real TanStack router actually mounted in this graph? */
 function routerMounted(files: ProjectFile[]): boolean {
-  return files.some((f) => {
-    if (!CODE_EXT.test(f.path)) return false;
-    if (f.path.includes("router-compat")) return false;
-    const c = f.content;
-    return (
-      /\bcreateRouter\s*\(/.test(c) &&
-      (/<RouterProvider\b/.test(c) || /routeTree/.test(c))
-    );
-  });
+  const executable = files.filter(
+    (f) => CODE_EXT.test(f.path) && !f.path.includes("router-compat") && !/\.(?:md|mdx)$/i.test(f.path),
+  );
+  const createsRouter = executable.some(
+    (f) =>
+      /\bcreateRouter\s*\(/.test(f.content) &&
+      /import[^;]*\bcreateRouter\b[^;]*from\s*["']@tanstack\/react-router["']/.test(f.content),
+  );
+  const mountsProvider = executable.some(
+    (f) =>
+      /<RouterProvider\b/.test(f.content) &&
+      /import[^;]*\bRouterProvider\b[^;]*from\s*["']@tanstack\/react-router["']/.test(f.content),
+  );
+  return createsRouter && mountsProvider;
 }
 
 function importsTanstackRouter(files: ProjectFile[]): boolean {
@@ -71,9 +78,51 @@ function importsTanstackRouter(files: ProjectFile[]): boolean {
   );
 }
 
+function hasGeneratedRouteTree(files: ProjectFile[]): boolean {
+  return files.some(
+    (f) => /(?:^|\/)routeTree\.gen\.(?:ts|tsx|js|jsx)$/i.test(f.path) && /export\s+(?:const|var|let)\s+routeTree\b/.test(f.content),
+  );
+}
+
+function restoreTanstackBootstrap(files: ProjectFile[]): TanstackFallbackResult | null {
+  if (!hasGeneratedRouteTree(files)) return null;
+  const main = files.find((f) => /src\/main\.(?:tsx|jsx)$/i.test(f.path) && /\.render\s*\(/.test(f.content));
+  if (!main || !/<App\s*\/>/.test(main.content)) return null;
+
+  let mainContent = main.content.replace(/<App\s*\/>/, "<RouterProvider router={router} />");
+  if (!/import[^;]*\bRouterProvider\b[^;]*from\s*["']@tanstack\/react-router["']/.test(mainContent)) {
+    mainContent = `import { RouterProvider } from "@tanstack/react-router";\n${mainContent}`;
+  }
+  if (!/import[^;]*\brouter\b[^;]*from\s*["'].\/router["']/.test(mainContent)) {
+    mainContent = `import { router } from "./router";\n${mainContent}`;
+  }
+
+  const routerSource = `import { createRouter } from "@tanstack/react-router";\nimport { routeTree } from "./routeTree.gen";\n\nexport const router = createRouter({ routeTree });\n`;
+  const routerExists = files.some((f) => f.path === ROUTER_PATH);
+  const next = files.map((f) => {
+    if (f.path === main.path) return { ...f, content: mainContent };
+    if (f.path === ROUTER_PATH) return { ...f, content: routerSource };
+    return f;
+  });
+  if (!routerExists) next.push({ path: ROUTER_PATH, content: routerSource });
+
+  return {
+    files: next,
+    notes: [
+      "tanstack-router-fallback: restored the missing router bootstrap from the generated route tree",
+    ],
+  };
+}
+
 export function fixTanstackRouterWithoutProvider(files: ProjectFile[]): TanstackFallbackResult {
   const notes: string[] = [];
   if (!importsTanstackRouter(files) || routerMounted(files)) return { files, notes };
+
+  // A generated route tree means this is a real file-based TanStack app whose
+  // entry point was lost or replaced. Restore the real provider so route
+  // loaders, params, nested layouts, and head metadata continue to work.
+  const restored = restoreTanstackBootstrap(files);
+  if (restored) return restored;
 
   const rewritten: string[] = [];
   const out = files.map((f) => {
@@ -213,6 +262,10 @@ export const createLazyFileRoute = createFileRoute;
 
 export function createRootRoute(options: any = {}) {
   return { ...options };
+}
+
+export function createRootRouteWithContext() {
+  return (options: any = {}) => ({ ...options });
 }
 
 export function getRouteApi(_id?: string) {

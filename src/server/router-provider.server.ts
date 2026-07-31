@@ -46,6 +46,10 @@ const PROVIDERS = [
 
 const CODE_EXT = /\.(tsx|jsx)$/i;
 
+function isExecutableSource(path: string): boolean {
+  return CODE_EXT.test(path) && !/\.(?:md|mdx)$/i.test(path);
+}
+
 export interface RouterProviderFixResult {
   files: ProjectFile[];
   notes: string[];
@@ -61,9 +65,19 @@ function hasProvider(content: string): boolean {
   // Symbols coming from the TanStack compatibility shim are inert factories,
   // not real router providers — they must not suppress <BrowserRouter>.
   if (/from\s*["']@\/lib\/router-compat["']/.test(content)) return false;
-  return PROVIDERS.some(
-    (name) => new RegExp(`<${name}[\\s/>]`).test(content) || new RegExp(`(?<![\\w.$])${name}\\s*\\(`).test(content),
-  );
+  return PROVIDERS.some((name) => {
+    const used =
+      new RegExp(`<${name}[\\s/>]`).test(content) ||
+      new RegExp(`(?<![\\w.$])${name}\\s*\\(`).test(content);
+    if (!used) return false;
+    // A JSX example, comment, or string containing `<RouterProvider>` is not
+    // a mounted provider. Require the provider identifier to be imported or
+    // locally declared in the same executable module.
+    return (
+      new RegExp(`import[^;]*\\b${name}\\b[^;]*from`).test(content) ||
+      new RegExp(`\\b(?:const|let|var|function|class)\\s+${name}\\b`).test(content)
+    );
+  });
 }
 
 
@@ -112,7 +126,7 @@ function wrapRootRender(content: string): string | null {
 
 export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFixResult {
   const notes: string[] = [];
-  const code = files.filter((f) => CODE_EXT.test(f.path));
+  const code = files.filter((f) => isExecutableSource(f.path));
   if (code.length === 0) return { files, notes };
 
   const anyConsumer = code.some(
