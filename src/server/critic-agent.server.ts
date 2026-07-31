@@ -282,7 +282,7 @@ export async function runCritic(args: {
     try {
       const res = await aiChatCompletions({
         feature: "generate",
-        timeoutTier: "fast",
+        timeoutTier: "default",
         signal: args.signal,
         meta: { projectId: args.projectId, userId: args.userId ?? null, phase: "critic" },
         body: {
