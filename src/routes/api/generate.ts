@@ -3043,7 +3043,10 @@ Forbidden defaults
             for (const p of prevByPath.keys()) {
               if (!nextByPath.has(p)) changedPaths.push(p);
             }
-            if (changedPaths.length === 0) {
+            // A codemod that already landed this turn IS a real change, even
+            // if the emit call then had nothing left to add. Only the case
+            // where literally nothing moved is a dead end.
+            if (changedPaths.length === 0 && (agentLoop?.changedPaths.length ?? 0) === 0) {
               const claimed = Array.from(new Set(safeOps.map((o) => o.path))).slice(0, 4).join(", ");
               console.warn(`[generate] no-op patch — ops applied but file contents unchanged (${claimed})`);
               recorder.record({
