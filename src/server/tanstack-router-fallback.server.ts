@@ -142,7 +142,7 @@ function restoreTanstackBootstrap(files: ProjectFile[]): TanstackFallbackResult 
  * tree during the first render and throws a message-less invariant.
  */
 function routeTreeImportBroken(files: ProjectFile[]): boolean {
-  const paths = new Set(files.map((f) => f.path));
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
   const exts = ["", ".ts", ".tsx", ".js", ".jsx"];
   for (const f of files) {
     if (!CODE_EXT.test(f.path)) continue;
@@ -154,7 +154,9 @@ function routeTreeImportBroken(files: ProjectFile[]): boolean {
       const base = spec.startsWith(".")
         ? normalize(`${dir}/${spec}`)
         : spec.replace(/^@\//, "src/");
-      if (!exts.some((e) => paths.has(base + e))) return true;
+      const target = exts.map((e) => base + e).find((path) => byPath.has(path));
+      if (!target) return true;
+      if (!/export\s+(?:const|var|let)\s+routeTree\b/.test(byPath.get(target) ?? "")) return true;
       if (/routeTree\.gen$/i.test(base) && !hasValidGeneratedRouteTree(files)) return true;
     }
   }

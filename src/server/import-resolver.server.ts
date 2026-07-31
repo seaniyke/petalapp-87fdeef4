@@ -219,6 +219,10 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
       }
 
       // 2. No remap target — create a stub so the build resolves.
+      // A generated TanStack route tree is structural runtime data, not a UI
+      // component. A generic stub leaves its named export undefined and causes
+      // a browser-only invariant crash; the router-aware pass repairs it.
+      if (/(?:^|\/)routeTree\.gen$/i.test(spec)) continue;
       const stubPath = specToStubPath(f.path, spec);
       if (!stubPath) continue;
       if (byPath.has(stubPath)) continue;
