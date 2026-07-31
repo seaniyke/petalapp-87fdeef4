@@ -139,6 +139,16 @@ fastify.post("/build", async (req, reply) => {
   void runBuild(body).finally(releaseSlot);
 });
 
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`Build exceeded ${Math.round(ms / 1000)}s and was cancelled`)),
+      ms,
+    );
+    p.then(resolve, reject).finally(() => clearTimeout(timer));
+  });
+}
+
 async function runBuild(body: BuildBody): Promise<void> {
   const log = fastify.log.child({ projectId: body.projectId, buildId: body.buildId });
   log.info("Build started");
