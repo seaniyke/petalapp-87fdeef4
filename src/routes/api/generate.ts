@@ -4143,6 +4143,13 @@ Forbidden defaults
           }
         }
 
+        // Critic gate disclosure: name every op that was refused before apply.
+        if (criticRejections.length > 0) {
+          const note = criticDisclosure(criticRejections);
+          summary = `${summary}${note}`;
+          controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+        }
+
         // Honesty gate: if the model claimed edits to files that never
         // actually changed, say so instead of letting its "done!" summary
         // ship unchallenged.
