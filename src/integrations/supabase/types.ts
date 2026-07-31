@@ -2145,6 +2145,7 @@ export type Database = {
           ready_at: string | null
           retry_count: number
           status: string
+          verification: Json | null
         }
         Insert: {
           created_at?: string
@@ -2156,6 +2157,7 @@ export type Database = {
           ready_at?: string | null
           retry_count?: number
           status?: string
+          verification?: Json | null
         }
         Update: {
           created_at?: string
@@ -2167,6 +2169,7 @@ export type Database = {
           ready_at?: string | null
           retry_count?: number
           status?: string
+          verification?: Json | null
         }
         Relationships: [
           {
