@@ -3,9 +3,10 @@
 
 FROM node:20-slim
 
-# Wrangler needs git for some operations; install minimal tools.
+# Wrangler needs git; the /exec sandbox needs ripgrep + python3 for the
+# inspection and codemod tool surface (see src/exec.ts allowlist).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git ca-certificates \
+    git ca-certificates ripgrep python3 \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
