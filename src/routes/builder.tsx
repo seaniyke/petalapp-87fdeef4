@@ -3084,9 +3084,8 @@ function Builder() {
     if (!snap || !buildId || snap.status !== "ready") return;
     const defects = snap.verification && !snap.verification.ok ? snap.verification.defects : [];
     if (defects.length === 0) return;
-    if (verifyFixRef.current.projectId !== project.id) {
-      verifyFixRef.current = { projectId: project.id, handled: new Set() };
-    }
+    hydrateRecovery(project.id);
+
     if (verifyFixRef.current.handled.has(buildId)) return;
     verifyFixRef.current.handled.add(buildId); persistRecovery(projectIdRef.current);
     // Shared turn budget — without this the verifier and the repair turn it
