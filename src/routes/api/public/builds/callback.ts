@@ -105,7 +105,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         error_message: null,
         ready_at: new Date().toISOString(),
         // Null when the build predates verification or the plan was empty.
-        verification: payload.verification ?? null,
+        verification: (payload.verification ?? null) as never,
       })
       .eq("id", payload.buildId);
 
