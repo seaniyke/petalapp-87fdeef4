@@ -216,25 +216,130 @@ function ensureFavicon(html: string, initials: string, brand: string): string {
   return out;
 }
 
-export function ensureBrandIdentity(files: ProjectFile[]): {
+/**
+ * Guarantee that every `<BrandMark/>` usage resolves at runtime.
+ *
+ * Root cause of `Can't find variable: BrandMark`: the brand contract prompt
+ * tells the model to render `<BrandMark/>`, and the model happily does — in a
+ * header/footer — without importing it, or without ever authoring
+ * `src/components/brand-mark.tsx`. TypeScript-loose JSX treats the unknown
+ * PascalCase tag as `any`, so the build passes and the preview white-screens.
+ *
+ * This pass is deterministic and idempotent:
+ *   - creates `src/components/brand-mark.tsx` when anything references it,
+ *   - repairs a stub that lost the named export,
+ *   - injects the import into every file that uses the tag undeclared.
+ *
+ * Runs BEFORE the local import resolver so the resolver never stubs the file.
+ */
+export function ensureBrandMarkWired(files: ProjectFile[]): {
   files: ProjectFile[];
   notes: string[];
 } {
   const notes: string[] = [];
-  // Only web app graphs (index.html present) get this treatment.
-  const html = files.find((f) => f.path === "index.html");
-  if (!html) return { files, notes };
+  const MODULE = "@/components/brand-mark";
+
+  const usesTag = (src: string) => /<BrandMark[\s/>]/.test(stripNoise(src));
+  const referenced = files.some(
+    (f) =>
+      /\.(tsx|jsx)$/.test(f.path) &&
+      f.path !== BRAND_MARK_PATH &&
+      (usesTag(f.content) || f.content.includes(MODULE)),
+  );
+  if (!referenced) return { files, notes };
 
   const brand = detectBrandName(files);
   const initials = initialsFrom(brand);
 
   let next = [...files];
+  const existing = next.find((f) => f.path === BRAND_MARK_PATH);
+  if (!existing) {
+    next.push({ path: BRAND_MARK_PATH, content: brandMarkSource(initials) });
+    notes.push(`brand-identity: created ${BRAND_MARK_PATH} (monogram "${initials}")`);
+  } else if (!/export\s+(?:function|const)\s+BrandMark\b/.test(existing.content)) {
+    // A stub (or a default-only module) can't satisfy `{ BrandMark }`.
+    next = next.map((f) =>
+      f.path === BRAND_MARK_PATH ? { ...f, content: brandMarkSource(initials) } : f,
+    );
+    notes.push(`brand-identity: repaired ${BRAND_MARK_PATH} (missing named export)`);
+  }
+
+  let wired = 0;
+  next = next.map((f) => {
+    if (!/\.(tsx|jsx)$/.test(f.path) || f.path === BRAND_MARK_PATH) return f;
+    if (!usesTag(f.content)) return f;
+    if (isBrandMarkDeclared(f.content)) return f;
+    wired++;
+    return { ...f, content: injectBrandMarkImport(f.content) };
+  });
+  if (wired > 0) notes.push(`brand-identity: wired <BrandMark/> import into ${wired} file(s)`);
+
+  return { files: next, notes };
+}
+
+/** Strip comments and string/template literals so tag scans aren't poisoned. */
+function stripNoise(src: string): string {
+  return src
+    .replace(/\/\/[^\n]*/g, " ")
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/`(?:\\[\s\S]|\$\{[\s\S]*?\}|[^`\\])*`/g, " ")
+    .replace(/"(?:\\[\s\S]|[^"\\])*"/g, " ")
+    .replace(/'(?:\\[\s\S]|[^'\\])*'/g, " ");
+}
+
+/** Is `BrandMark` imported or locally declared in this module? */
+function isBrandMarkDeclared(src: string): boolean {
+  const clean = stripNoise(src);
+  if (/(?:const|let|var|function|class)\s+BrandMark\b/.test(clean)) return true;
+  const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]*)\})?[^;\n]*from/g;
+  let m: RegExpExecArray | null;
+  while ((m = importRe.exec(clean))) {
+    if (m[1] === "BrandMark") return true;
+    if (m[2]) {
+      for (const part of m[2].split(",")) {
+        const local = part.trim().replace(/^type\s+/i, "").split(/\s+as\s+/i).pop()?.trim();
+        if (local === "BrandMark") return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Insert the BrandMark import after the last top-level import (or at top). */
+function injectBrandMarkImport(src: string): string {
+  const line = `import { BrandMark } from "@/components/brand-mark";\n`;
+  const importRe = /^import[^\n]*\n/gm;
+  let lastEnd = 0;
+  let m: RegExpExecArray | null;
+  while ((m = importRe.exec(src))) lastEnd = m.index + m[0].length;
+  if (lastEnd === 0) return line + src;
+  return src.slice(0, lastEnd) + line + src.slice(lastEnd);
+}
+
+export function ensureBrandIdentity(files: ProjectFile[]): {
+  files: ProjectFile[];
+  notes: string[];
+} {
+  const notes: string[] = [];
+  // Wiring first: it must happen even for graphs with no index.html
+  // (Expo/extension targets), and before any placeholder swap.
+  const wiredPass = ensureBrandMarkWired(files);
+  let next = wiredPass.files;
+  notes.push(...wiredPass.notes);
+
+  // Only web app graphs (index.html present) get the rest of the treatment.
+  const html = next.find((f) => f.path === "index.html");
+  if (!html) return { files: next, notes };
+
+  const brand = detectBrandName(next);
+  const initials = initialsFrom(brand);
 
   // 1. Guarantee the mark component exists.
   if (!next.some((f) => f.path === BRAND_MARK_PATH)) {
     next.push({ path: BRAND_MARK_PATH, content: brandMarkSource(initials) });
     notes.push(`brand-identity: created ${BRAND_MARK_PATH} (monogram "${initials}")`);
   }
+
 
   // 2. Swap placeholder glyphs used as the logo.
   let swaps = 0;
