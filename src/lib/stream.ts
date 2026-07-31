@@ -260,7 +260,11 @@ export async function streamGenerate(
               summary: evt.summary,
               risk: evt.risk,
               files: evt.files,
+              auto: evt.auto,
             });
+            break;
+          case "plan_skipped":
+            handlers.onPlanSkipped?.(evt.reason);
             break;
           case "plan_scope_violation":
             handlers.onPlanScopeViolation?.(evt.droppedPaths);
