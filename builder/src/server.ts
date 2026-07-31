@@ -29,6 +29,15 @@ import {
   DepsError,
   MAX_PACKAGES_PER_INSTALL,
 } from "./deps.js";
+import {
+  runVerification,
+  MAX_ROUTES,
+  MAX_FLOWS,
+  MAX_STEPS_PER_FLOW,
+  VERIFY_TIMEOUT_MS,
+  type VerifyPlan,
+  type VerifyReport,
+} from "./verify.js";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const SHARED_SECRET = process.env.BUILDER_SHARED_SECRET;
@@ -77,6 +86,40 @@ fastify.addHook("preHandler", async (req) => {
   if (target.rawBody === undefined) target.rawBody = JSON.stringify(req.body ?? {});
 });
 
+/** Declarative browser verification plan, produced by the Petal app. */
+const VerifyStepSchema = z.object({
+  action: z.enum(["goto", "click", "fill", "select", "expectText", "expectUrl", "wait"]),
+  path: z.string().max(256).optional(),
+  selector: z.string().max(512).optional(),
+  value: z.string().max(512).optional(),
+  ms: z.number().int().min(0).max(10_000).optional(),
+  optional: z.boolean().optional(),
+});
+const VerifyPlanSchema = z.object({
+  routes: z.array(z.string().max(256)).max(MAX_ROUTES).default([]),
+  auth: z
+    .object({
+      signupPath: z.string().max(256),
+      loginPath: z.string().max(256),
+      email: z.string().email().max(200),
+      password: z.string().min(8).max(128),
+      name: z.string().max(120).optional(),
+      protectedRoutes: z.array(z.string().max(256)).max(MAX_ROUTES).default([]),
+    })
+    .optional(),
+  flows: z
+    .array(
+      z.object({
+        name: z.string().max(120),
+        requiresAuth: z.boolean().optional(),
+        steps: z.array(VerifyStepSchema).max(MAX_STEPS_PER_FLOW),
+      }),
+    )
+    .max(MAX_FLOWS)
+    .optional(),
+  screenshots: z.boolean().optional(),
+});
+
 const FileSchema = z.object({
   path: z.string().min(1).max(512),
   content: z.string(),
@@ -88,6 +131,8 @@ const BuildBodySchema = z.object({
   // ~150 section blocks, examples pack) plus the user's generated files.
   // The 8 MB → 32 MB bodyLimit bump above ensures we can still receive it.
   files: z.array(FileSchema).min(1).max(2000),
+  /** Omitted by older callers — the build then behaves exactly as before. */
+  verify: VerifyPlanSchema.optional(),
 });
 type BuildBody = z.infer<typeof BuildBodySchema>;
 
@@ -123,6 +168,8 @@ fastify.get("/healthz", async () => ({
   execQueued: execQueue.length,
   // Presence of this key tells the app that /exec supports install + test modes.
   execModes: ["inspect", "codemod", "install", "test"],
+  // Presence tells the app that /build can run post-deploy browser verification.
+  verify: true,
 }));
 
 fastify.post("/build", async (req, reply) => {
@@ -290,11 +337,42 @@ async function runBuild(body: BuildBody): Promise<void> {
     );
 
     log.info({ url: result.url, durationMs: result.durationMs }, "Build succeeded");
+
+    // Post-deploy browser verification. Blocking by design: the build is not
+    // reported ready until we know whether the deployed app actually renders,
+    // signs a user in, and survives its core write flows. A verifier failure is
+    // never a build failure — the deploy is real either way, so we report the
+    // URL with whatever report we managed to produce.
+    let verification: VerifyReport | undefined;
+    if (body.verify) {
+      const plan: VerifyPlan = { baseUrl: result.url, ...body.verify };
+      try {
+        verification = await withTimeout(runVerification(plan), VERIFY_TIMEOUT_MS);
+        log.info(
+          { ok: verification.ok, defects: verification.defects.length },
+          "Verification finished",
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log.warn({ err: message }, "Verification could not run");
+        verification = {
+          ok: true,
+          baseUrl: result.url,
+          durationMs: 0,
+          routes: [],
+          flows: [],
+          defects: [],
+          skipped: message.slice(0, 300),
+        } as VerifyReport & { skipped: string };
+      }
+    }
+
     await postCallback({
       buildId: body.buildId,
       projectId: body.projectId,
       status: "ready",
       url: result.url,
+      ...(verification ? { verification: stripScreenshots(verification) } : {}),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -312,8 +390,27 @@ async function runBuild(body: BuildBody): Promise<void> {
   }
 }
 
+/**
+ * Screenshots are megabytes of base64 and the webhook body is signed and
+ * parsed whole — keep them on this side of the wire.
+ */
+function stripScreenshots(report: VerifyReport): VerifyReport {
+  return {
+    ...report,
+    routes: report.routes.map(({ screenshot: _s, ...rest }) => rest),
+    flows: report.flows.map(({ screenshot: _s, ...rest }) => rest),
+    ...(report.auth ? { auth: { ...report.auth, screenshot: undefined } } : {}),
+  };
+}
+
 type Callback =
-  | { buildId: string; projectId: string; status: "ready"; url: string }
+  | {
+      buildId: string;
+      projectId: string;
+      status: "ready";
+      url: string;
+      verification?: VerifyReport;
+    }
   | { buildId: string; projectId: string; status: "failed"; errorMessage: string; logs: string };
 
 async function postCallback(payload: Callback): Promise<void> {

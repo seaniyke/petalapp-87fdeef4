@@ -15,6 +15,12 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
 
+# Chromium + its system libs for the post-deploy verifier (src/verify.ts).
+# Installed after npm install so the playwright package version and the browser
+# revision it expects always match.
+RUN npx playwright install --with-deps chromium \
+  && rm -rf /var/lib/apt/lists/*
+
 # Compile TypeScript.
 COPY tsconfig.json ./
 COPY src ./src

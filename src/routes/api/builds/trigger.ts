@@ -26,6 +26,7 @@ import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { postBuildToRailway } from "@/server/builder.server";
+import { buildVerifyPlan } from "@/server/verify-plan.server";
 import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { syncViteAliasesWithTsconfig } from "@/server/sync-vite-aliases.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
@@ -278,7 +279,15 @@ export const Route = createFileRoute("/api/builds/trigger")({
 
         // 4) Fire the build. If the network call fails, mark the row as failed.
         try {
-          await postBuildToRailway({ projectId, buildId: build.id, files: withEnv, hideBadge });
+          // Blocking post-deploy browser verification: the build isn't "ready"
+          // until a real browser has loaded it, signed a throwaway user in, and
+          // run the app's core write flows.
+          const verify = await buildVerifyPlan({
+            files: withEnv,
+            projectId,
+            userId: userId ?? null,
+          }).catch(() => undefined);
+          await postBuildToRailway({ projectId, buildId: build.id, files: withEnv, hideBadge, verify });
         } catch (e) {
           const message = e instanceof Error ? e.message : "Failed to reach builder";
           console.error("postBuildToRailway failed", message);

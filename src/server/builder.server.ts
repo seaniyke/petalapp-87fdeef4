@@ -14,6 +14,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { ProjectFile } from "@/server/generate.server";
 import { injectPetalBadge } from "@/server/petal-badge.server";
 import { freshenStaleYears } from "@/server/freshen-stale-years.server";
+import type { VerifyPlan } from "@/server/verify-plan.server";
 
 const MAX_AGE_SECONDS = 5 * 60;
 
@@ -71,6 +72,12 @@ export async function postBuildToRailway(args: {
    * (e.g. paid-plan project that has hidden the badge in settings).
    */
   hideBadge?: boolean;
+  /**
+   * Post-deploy browser verification plan. When present the builder loads the
+   * deployed app in a real browser, signs a throwaway user in, runs the write
+   * flows, and returns findings on the callback.
+   */
+  verify?: VerifyPlan;
 }): Promise<void> {
   const builderUrl = process.env.BUILDER_URL;
   const sharedSecret = process.env.BUILDER_SHARED_SECRET;
@@ -89,6 +96,7 @@ export async function postBuildToRailway(args: {
     projectId: args.projectId,
     buildId: args.buildId,
     files: filesToShip,
+    ...(args.verify ? { verify: args.verify } : {}),
   });
   const { timestamp, signature } = signRequest(sharedSecret, body);
 

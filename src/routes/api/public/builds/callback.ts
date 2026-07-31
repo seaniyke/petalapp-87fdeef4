@@ -14,12 +14,30 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifySignature } from "@/server/builder.server";
 
+/**
+ * Browser-verification report. Kept loose on purpose: the builder owns the
+ * shape, and a schema mismatch must never reject an otherwise-good callback.
+ */
+const VerificationSchema = z
+  .object({
+    ok: z.boolean(),
+    baseUrl: z.string().max(500).optional(),
+    durationMs: z.number().optional(),
+    routes: z.array(z.record(z.string(), z.unknown())).max(40).optional(),
+    auth: z.record(z.string(), z.unknown()).optional(),
+    flows: z.array(z.record(z.string(), z.unknown())).max(20).optional(),
+    defects: z.array(z.string().max(1000)).max(60).optional(),
+    skipped: z.string().max(500).optional(),
+  })
+  .passthrough();
+
 const CallbackSchema = z.discriminatedUnion("status", [
   z.object({
     status: z.literal("ready"),
     buildId: z.string().uuid(),
     projectId: z.string().uuid(),
     url: z.string().url().max(500),
+    verification: VerificationSchema.optional(),
   }),
   z.object({
     status: z.literal("failed"),
@@ -86,6 +104,8 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         dist_path: payload.url,
         error_message: null,
         ready_at: new Date().toISOString(),
+        // Null when the build predates verification or the plan was empty.
+        verification: (payload.verification ?? null) as never,
       })
       .eq("id", payload.buildId);
 

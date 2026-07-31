@@ -1,0 +1,1 @@
+ALTER TABLE public.project_builds ADD COLUMN IF NOT EXISTS verification jsonb;

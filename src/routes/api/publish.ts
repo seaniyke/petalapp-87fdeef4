@@ -30,6 +30,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { freshenStaleYears } from "@/server/freshen-stale-years.server";
 import { postBuildToRailway } from "@/server/builder.server";
+import { buildVerifyPlan } from "@/server/verify-plan.server";
 import type { ProjectFile } from "@/server/generate.server";
 import { applyScaffoldKit } from "@/server/scaffold-kit";
 import { runAllRepairs } from "@/server/repair-all.server";
@@ -89,6 +90,7 @@ async function repairAndReshipIfNeeded(
       buildId: build.id,
       files: freshened,
       hideBadge: hidePetalBadge,
+      verify: await buildVerifyPlan({ files: freshened, projectId }).catch(() => undefined),
     });
     console.log(
       `[publish] repaired ${repaired.notes.length} issue(s), freshened ${replacements} stale year ref(s), and persisted ${changed.length} file(s) for project=${projectId} (build=${build.id})`,

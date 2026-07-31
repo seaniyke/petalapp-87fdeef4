@@ -33,7 +33,22 @@ export type BuildSnapshot = {
    *  a friendly "deploy stalled" card after a long wait — independent of the
    *  server-side reaper which only kicks in after 20 minutes. */
   observedAt: number;
+  /** Post-deploy browser check: null when the build predates verification or
+   *  the run was skipped. `defects` is already human-readable. */
+  verification: { ok: boolean; defects: string[]; skipped?: string } | null;
 };
+
+/** Narrow the jsonb column without trusting its shape. */
+function readVerification(raw: unknown): BuildSnapshot["verification"] {
+  if (!raw || typeof raw !== "object") return null;
+  const v = raw as { ok?: unknown; defects?: unknown; skipped?: unknown };
+  if (typeof v.ok !== "boolean") return null;
+  return {
+    ok: v.ok,
+    defects: Array.isArray(v.defects) ? v.defects.filter((d): d is string => typeof d === "string") : [],
+    ...(typeof v.skipped === "string" ? { skipped: v.skipped } : {}),
+  };
+}
 
 export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | null {
   const [snap, setSnap] = useState<BuildSnapshot | null>(null);
@@ -74,6 +89,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       status: string | null;
       dist_path: string | null;
       error_message: string | null;
+      verification?: unknown;
     }) => {
       if (cancelled) return;
       setSnap((prev) => {
@@ -84,6 +100,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
           // Preserve the very first observation timestamp across updates so
           // the long-wait escalation timer is stable for the whole deploy.
           observedAt: prev?.observedAt ?? Date.now(),
+          verification: readVerification(data.verification),
         };
         if (next.status === "ready" || next.status === "failed") {
           if (terminalSince == null) terminalSince = Date.now();
@@ -94,7 +111,8 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
           prev &&
           prev.status === next.status &&
           prev.distPath === next.distPath &&
-          prev.errorMessage === next.errorMessage
+          prev.errorMessage === next.errorMessage &&
+          (prev.verification?.defects.length ?? -1) === (next.verification?.defects.length ?? -1)
         ) {
           return prev;
         }
@@ -102,10 +120,12 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       });
     };
 
+    const BUILD_COLUMNS = "status, dist_path, error_message, verification";
+
     const fetchOnce = async () => {
       const { data } = await supabase
         .from("project_builds")
-        .select("status, dist_path, error_message")
+        .select(BUILD_COLUMNS)
         .eq("id", latestBuildId)
         .maybeSingle();
       if (data) apply(data);
@@ -127,7 +147,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       if (!newestId || newestId === latestBuildId) return;
       const { data: latest } = await supabase
         .from("project_builds")
-        .select("status, dist_path, error_message")
+        .select(BUILD_COLUMNS)
         .eq("id", newestId)
         .maybeSingle();
       if (latest) apply(latest);
