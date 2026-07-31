@@ -150,6 +150,15 @@ const PACKAGE_JSON = `{
 `;
 const INDEX_HTML = `<!doctype html><html><body><div id="root"></div></body></html>`;
 
+// Every real project has a mount file. Fixtures that omitted it tripped the
+// blank-render check for a reason unrelated to what they were testing, which
+// made the suite permanently red and hid genuine regressions.
+const MAIN_TSX = `import { createRoot } from "react-dom/client";
+import App from "./App";
+
+createRoot(document.getElementById("root")!).render(<App />);
+`;
+
 // =============================================================================
 // Phase 5b — RLS sanity fixtures (Tier 2.9)
 // =============================================================================
@@ -217,13 +226,32 @@ export default function Posts() {
 `;
 
 
+// The healthy fixture imports shadcn-style primitives; real projects always
+// have them on disk, so the fixture ships them too rather than tripping the
+// missing-sibling check for an unrelated reason.
+const UI_CONTAINER = `export function Container({ children }: { children?: React.ReactNode }) {
+  return <div className="mx-auto max-w-5xl px-4">{children}</div>;
+}
+
+export function Stack({ children }: { children?: React.ReactNode }) {
+  return <div className="flex flex-col gap-4">{children}</div>;
+}
+`;
+const UI_BUTTON = `export function Button({ children }: { children?: React.ReactNode }) {
+  return <button type="button">{children}</button>;
+}
+`;
+
 export const FIXTURES: PipelineFixture[] = [
   {
     name: "clean turn — verifier passes, no budget hit",
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "src/App.tsx", content: HEALTHY_PAGE },
+      { path: "src/components/ui/container.tsx", content: UI_CONTAINER },
+      { path: "src/components/ui/button.tsx", content: UI_BUTTON },
     ],
     changedPaths: ["src/App.tsx"],
     expectIssueIncludes: [],
@@ -234,6 +262,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "src/App.tsx", content: TRUNCATED_PAGE },
     ],
     changedPaths: ["src/App.tsx"],
@@ -246,6 +275,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "src/App.tsx", content: oversize },
     ],
     changedPaths: ["src/App.tsx"],
@@ -257,6 +287,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "src/App.tsx", content: softWarnFile },
     ],
     changedPaths: ["src/App.tsx"],
@@ -268,6 +299,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "src/App.tsx", content: HALLUCINATED_PACKAGE },
     ],
     changedPaths: ["src/App.tsx"],
@@ -278,6 +310,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "src/store.ts", content: STORE_FILE },
       { path: "src/App.tsx", content: PAGE_USING_DANGLING_NAMED },
     ],
@@ -289,6 +322,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "src/App.tsx", content: RUNTIME_CRASH_PAGE },
     ],
     changedPaths: ["src/App.tsx"],
@@ -299,6 +333,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "src/App.tsx", content: SAFE_PROP_WITH_DEFAULT },
     ],
     changedPaths: ["src/App.tsx"],
@@ -309,6 +344,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "src/App.tsx", content: SAFE_PROP_WITH_GUARD },
     ],
     changedPaths: ["src/App.tsx"],
@@ -319,6 +355,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "src/App.tsx", content: CONDITIONAL_HOOK_PAGE },
     ],
     changedPaths: ["src/App.tsx"],
@@ -329,6 +366,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "src/App.tsx", content: JSX_TYPO_PAGE },
     ],
     changedPaths: ["src/App.tsx"],
@@ -339,6 +377,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "src/integrations/supabase/client.ts", content: `export const supabase = {} as any;\n` },
       { path: "supabase/migrations/0001_init.sql", content: RLS_HEALTHY_MIGRATION },
       { path: "src/App.tsx", content: RLS_HEALTHY_PAGE },
@@ -351,6 +390,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "supabase/migrations/0001_init.sql", content: RLS_HEALTHY_MIGRATION },
       { path: "src/App.tsx", content: RLS_MISSING_TABLE_PAGE },
     ],
@@ -362,6 +402,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "supabase/migrations/0001_init.sql", content: RLS_NO_RLS_MIGRATION },
       { path: "src/App.tsx", content: RLS_NO_RLS_PAGE },
     ],
@@ -373,6 +414,7 @@ export const FIXTURES: PipelineFixture[] = [
     files: [
       { path: "package.json", content: PACKAGE_JSON },
       { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
       { path: "supabase/migrations/0001_init.sql", content: RLS_NO_POLICY_MIGRATION },
       { path: "src/App.tsx", content: RLS_NO_POLICY_PAGE },
     ],

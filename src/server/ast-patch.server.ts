@@ -159,6 +159,10 @@ function addImport(source: string, specifier: string, from: string, isDefault: b
     if (stmt.type !== "ImportDeclaration") continue;
     const src = (stmt as { source?: { value?: string } }).source?.value;
     if (src !== from) continue;
+    // `import type { Foo } from "x"` is erased at compile time — merging a
+    // value specifier into it produces `undefined` at runtime. Leave it alone
+    // and fall through to inserting a separate value import.
+    if ((stmt as { importKind?: string }).importKind === "type") continue;
     const specs = (stmt as { specifiers?: Node[] }).specifiers ?? [];
     const already = specs.some((s) => {
       if (isDefault) return s.type === "ImportDefaultSpecifier";
@@ -166,6 +170,7 @@ function addImport(source: string, specifier: string, from: string, isDefault: b
       return s.type === "ImportSpecifier" && local === specifier;
     });
     if (already) return source;
+
     // Merge into existing import line.
     const start = stmt.start ?? -1;
     const end = stmt.end ?? -1;
@@ -186,7 +191,11 @@ function addImport(source: string, specifier: string, from: string, isDefault: b
         );
       }
     }
-    return source.slice(0, start) + merged + source.slice(end);
+    // A bare side-effect import (`import "./x"`) matches neither shape above,
+    // so `merged` comes back untouched. Silently returning it would drop the
+    // requested specifier — fall through and add a real import line instead.
+    if (merged !== original) return source.slice(0, start) + merged + source.slice(end);
+    break;
   }
 
   // No existing import — insert after last top-level import, else at file start.
@@ -238,49 +247,75 @@ function replaceJsxBlock(source: string, blockId: string, jsx: string): string {
   const tag = tagMatch[1];
 
   // Find the end of the opening tag.
-  let cursor = openLt + 1;
-  let inStr: string | null = null;
-  while (cursor < source.length) {
-    const ch = source[cursor];
-    if (inStr) {
-      if (ch === inStr) inStr = null;
-    } else if (ch === '"' || ch === "'") {
-      inStr = ch;
-    } else if (ch === ">") {
-      break;
-    }
-    cursor += 1;
-  }
-  if (cursor >= source.length) throw new Error(`ast_patch: unterminated open tag`);
-  const selfClose = source[cursor - 1] === "/";
-  let closeEnd = cursor + 1;
+  const opened = findTagEnd(source, openLt);
+  if (!opened) throw new Error(`ast_patch: unterminated open tag`);
+  let closeEnd = opened.end;
 
-  if (!selfClose) {
-    // Find matching close tag, accounting for nested same-tag elements.
+  if (!opened.selfClosing) {
+    // Find the matching close tag, accounting for nested same-tag elements.
+    //
+    // The previous implementation advanced two independent regexes and
+    // treated EVERY nested `<tag` as a depth increase — including
+    // self-closing ones like `<div />`. Depth then never returned to zero and
+    // the scan either threw or swallowed the rest of the file. Walk the
+    // occurrences in a single ordered pass and ask each open tag whether it
+    // actually closes itself.
+    const tokenRe = new RegExp(`<(/?)${escapeRe(tag)}(?=[\\s/>])`, "g");
+    tokenRe.lastIndex = closeEnd;
     let depth = 1;
-    const openRe = new RegExp(`<${escapeRe(tag)}(\\s|>|/)`, "g");
-    const closeRe = new RegExp(`</${escapeRe(tag)}\\s*>`, "g");
-    openRe.lastIndex = closeEnd;
-    closeRe.lastIndex = closeEnd;
-    while (depth > 0) {
-      const o = openRe.exec(source);
-      const c = closeRe.exec(source);
-      if (!c) throw new Error(`ast_patch: matching </${tag}> not found`);
-      if (o && o.index < c.index) {
+    let token: RegExpExecArray | null;
+    while ((token = tokenRe.exec(source)) !== null) {
+      const isClose = token[1] === "/";
+      const bounds = findTagEnd(source, token.index);
+      if (!bounds) break;
+      if (isClose) {
+        depth -= 1;
+        if (depth === 0) {
+          closeEnd = bounds.end;
+          break;
+        }
+      } else if (!bounds.selfClosing) {
         depth += 1;
-        closeRe.lastIndex = o.index + 1;
-        continue;
       }
-      depth -= 1;
-      closeEnd = c.index + c[0].length;
-      if (depth === 0) break;
-      openRe.lastIndex = closeEnd;
-      closeRe.lastIndex = closeEnd;
+      tokenRe.lastIndex = bounds.end;
     }
+    if (depth !== 0) throw new Error(`ast_patch: matching </${tag}> not found`);
   }
 
   return source.slice(0, openLt) + jsx + source.slice(closeEnd);
 }
+
+/**
+ * Given the index of a `<`, return the index just past the matching `>` and
+ * whether the tag closes itself. String-aware so a `>` inside an attribute
+ * value (`title=">>"`), or a `/` inside a URL, doesn't end the tag early.
+ */
+function findTagEnd(source: string, ltIndex: number): { end: number; selfClosing: boolean } | null {
+  let cursor = ltIndex + 1;
+  let inStr: string | null = null;
+  let braceDepth = 0;
+  while (cursor < source.length) {
+    const ch = source[cursor];
+    if (inStr) {
+      if (ch === "\\") cursor += 1;
+      else if (ch === inStr) inStr = null;
+    } else if (ch === '"' || ch === "'" || ch === "`") {
+      inStr = ch;
+    } else if (ch === "{") {
+      // Expression container — `>` inside `onClick={() => x}` is not the end.
+      braceDepth += 1;
+    } else if (ch === "}") {
+      if (braceDepth > 0) braceDepth -= 1;
+    } else if (ch === ">" && braceDepth === 0) {
+      let back = cursor - 1;
+      while (back > ltIndex && /\s/.test(source[back])) back -= 1;
+      return { end: cursor + 1, selfClosing: source[back] === "/" };
+    }
+    cursor += 1;
+  }
+  return null;
+}
+
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
