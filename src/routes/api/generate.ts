@@ -127,9 +127,10 @@ type Body = {
   customInstructions?: string;
   /** Required to look up the project's attached backend (BYO Supabase). */
   projectId?: string;
-  /** When true, this run is a free internal auto-fix triggered by Petal
-   *  itself after a failed build. Skip credit charging — the user did not
-   *  ask for this turn, Petal is fixing its own mistake. */
+  /** When true, this run is an internal auto-fix triggered by Petal itself
+   *  after a failed build. It changes prompt shaping and scaffold healing
+   *  ONLY — it does NOT skip credit checks or charging. Every model call
+   *  costs money, so every model call is metered. */
   isAutoFix?: boolean;
   /** Plan Mode v1 — when true, run the cheap planning model first, emit
    *  `plan_proposed`, persist the plan, and end the stream. */
@@ -3836,11 +3837,13 @@ Forbidden defaults
             }
             if (!charge.ok) {
               console.warn("[credits] post-build charge failed", charge);
+              await recordUnpaidBuild(userId, body.projectId ?? null, priced.amount, charge);
             }
           } else if (charge.ok) {
             finalCharged = priced.amount;
           } else {
             console.warn("[credits] post-build charge failed", charge);
+            await recordUnpaidBuild(userId, body.projectId ?? null, priced.amount, charge);
           }
         }
 
@@ -4261,6 +4264,32 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       "X-Accel-Buffering": "no",
     },
   });
+}
+
+
+/**
+ * A build that ran but could not be charged is revenue we silently lost, and
+ * previously it left nothing behind but a console warning. Record it so the
+ * balance can be reconciled instead of disappearing.
+ */
+async function recordUnpaidBuild(
+  userId: string,
+  projectId: string | null,
+  amount: number,
+  charge: { reason?: string },
+) {
+  try {
+    await supabaseAdmin.from("pipeline_failures").insert({
+      surface: "credit_settlement",
+      signature: "post_build_charge_failed",
+      raw_message: `post-build charge of ${amount} credits failed (${charge.reason ?? "unknown"})`,
+      user_id: userId,
+      project_id: projectId,
+      extra: { amount, reason: charge.reason ?? "unknown" } as never,
+    });
+  } catch (e) {
+    console.error("[credits] could not record unpaid build", (e as Error).message);
+  }
 }
 
 export const Route = createFileRoute("/api/generate")({
