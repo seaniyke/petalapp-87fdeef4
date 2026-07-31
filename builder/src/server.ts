@@ -29,6 +29,15 @@ import {
   DepsError,
   MAX_PACKAGES_PER_INSTALL,
 } from "./deps.js";
+import {
+  runVerification,
+  MAX_ROUTES,
+  MAX_FLOWS,
+  MAX_STEPS_PER_FLOW,
+  VERIFY_TIMEOUT_MS,
+  type VerifyPlan,
+  type VerifyReport,
+} from "./verify.js";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const SHARED_SECRET = process.env.BUILDER_SHARED_SECRET;
@@ -77,6 +86,40 @@ fastify.addHook("preHandler", async (req) => {
   if (target.rawBody === undefined) target.rawBody = JSON.stringify(req.body ?? {});
 });
 
+/** Declarative browser verification plan, produced by the Petal app. */
+const VerifyStepSchema = z.object({
+  action: z.enum(["goto", "click", "fill", "select", "expectText", "expectUrl", "wait"]),
+  path: z.string().max(256).optional(),
+  selector: z.string().max(512).optional(),
+  value: z.string().max(512).optional(),
+  ms: z.number().int().min(0).max(10_000).optional(),
+  optional: z.boolean().optional(),
+});
+const VerifyPlanSchema = z.object({
+  routes: z.array(z.string().max(256)).max(MAX_ROUTES).default([]),
+  auth: z
+    .object({
+      signupPath: z.string().max(256),
+      loginPath: z.string().max(256),
+      email: z.string().email().max(200),
+      password: z.string().min(8).max(128),
+      name: z.string().max(120).optional(),
+      protectedRoutes: z.array(z.string().max(256)).max(MAX_ROUTES).default([]),
+    })
+    .optional(),
+  flows: z
+    .array(
+      z.object({
+        name: z.string().max(120),
+        requiresAuth: z.boolean().optional(),
+        steps: z.array(VerifyStepSchema).max(MAX_STEPS_PER_FLOW),
+      }),
+    )
+    .max(MAX_FLOWS)
+    .optional(),
+  screenshots: z.boolean().optional(),
+});
+
 const FileSchema = z.object({
   path: z.string().min(1).max(512),
   content: z.string(),
@@ -88,6 +131,8 @@ const BuildBodySchema = z.object({
   // ~150 section blocks, examples pack) plus the user's generated files.
   // The 8 MB → 32 MB bodyLimit bump above ensures we can still receive it.
   files: z.array(FileSchema).min(1).max(2000),
+  /** Omitted by older callers — the build then behaves exactly as before. */
+  verify: VerifyPlanSchema.optional(),
 });
 type BuildBody = z.infer<typeof BuildBodySchema>;
 
@@ -123,6 +168,8 @@ fastify.get("/healthz", async () => ({
   execQueued: execQueue.length,
   // Presence of this key tells the app that /exec supports install + test modes.
   execModes: ["inspect", "codemod", "install", "test"],
+  // Presence tells the app that /build can run post-deploy browser verification.
+  verify: true,
 }));
 
 fastify.post("/build", async (req, reply) => {
