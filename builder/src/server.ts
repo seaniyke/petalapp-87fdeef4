@@ -139,6 +139,100 @@ fastify.post("/build", async (req, reply) => {
   void runBuild(body).finally(releaseSlot);
 });
 
+// ---------------------------------------------------------------------------
+// /exec — sandboxed inspection + codemod sessions.
+//
+// Deliberately synchronous (unlike /build): sessions are capped at 60s and the
+// caller — Petal's agent loop — needs the output inline to decide what to do
+// next. Runs on its own slot pool so an inspection burst can never starve a
+// deploy.
+// ---------------------------------------------------------------------------
+
+const ExecCommandSchema = z.object({
+  bin: z.string().min(1).max(64),
+  args: z.array(z.string().max(4096)).max(64).default([]),
+  cwd: z.string().max(512).optional(),
+  stdin: z.string().max(256 * 1024).optional(),
+});
+const ExecBodySchema = z.object({
+  projectId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  mode: z.enum(["inspect", "codemod"]),
+  files: z.array(FileSchema).min(1).max(2000),
+  commands: z.array(ExecCommandSchema).min(1).max(MAX_COMMANDS_PER_SESSION),
+});
+
+let execInFlight = 0;
+const execQueue: Array<() => void> = [];
+function acquireExecSlot(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (execInFlight < MAX_CONCURRENT_EXEC) {
+      execInFlight++;
+      return resolve();
+    }
+    if (execQueue.length >= MAX_EXEC_QUEUE) {
+      return reject(new Error("Exec queue full"));
+    }
+    execQueue.push(() => {
+      execInFlight++;
+      resolve();
+    });
+  });
+}
+function releaseExecSlot() {
+  execInFlight--;
+  const next = execQueue.shift();
+  if (next) next();
+}
+
+fastify.post("/exec", async (req, reply) => {
+  const ts = req.headers["x-petal-timestamp"] as string | undefined;
+  const sig = req.headers["x-petal-signature"] as string | undefined;
+  const raw = (req as unknown as { rawBody: string }).rawBody;
+  if (!verify(SHARED_SECRET, raw, ts, sig)) {
+    req.log.warn({ ts }, "Rejected exec: bad signature");
+    return reply.code(401).send({ error: "Invalid signature" });
+  }
+
+  const parsed = ExecBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return reply.code(400).send({ error: "Invalid body", details: parsed.error.flatten() });
+  }
+  const body = parsed.data;
+
+  try {
+    await acquireExecSlot();
+  } catch {
+    return reply.code(503).send({ error: "Exec pool is busy, please retry" });
+  }
+
+  const log = fastify.log.child({ projectId: body.projectId, sessionId: body.sessionId });
+  let dir: string | null = null;
+  try {
+    dir = await materializeProject(body.sessionId, body.files);
+    const out = await runExecSession({
+      root: dir,
+      mode: body.mode,
+      commands: body.commands,
+      original: body.files,
+    });
+    log.info(
+      { commands: out.results.length, changed: out.changedFiles.length },
+      "Exec session finished",
+    );
+    return reply.code(200).send(out);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log.warn({ err: message }, "Exec session failed");
+    const status = err instanceof ExecError ? 400 : 500;
+    return reply.code(status).send({ error: message });
+  } finally {
+    if (dir) await cleanupProject(body.sessionId);
+    releaseExecSlot();
+  }
+});
+
+
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(
