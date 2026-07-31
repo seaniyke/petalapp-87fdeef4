@@ -9,7 +9,7 @@ import {
   fetchCurrencies,
   fetchPlans,
   fetchCreditPacks,
-  fetchPriceOverrides,
+  fetchAllPriceOverrides,
   type BillingCurrency,
   type Plan,
   type CreditPack,
@@ -316,7 +316,7 @@ function OverridesPanel() {
         fetchPlans(),
         fetchCreditPacks(),
         fetchCurrencies(),
-        fetchPriceOverrides(),
+        fetchAllPriceOverrides(),
         supabase
           .from("billing_addons")
           .select("code, name, price_cents")
