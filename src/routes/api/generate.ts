@@ -2927,7 +2927,22 @@ Forbidden defaults
                 turn_id: turnId,
               },
             });
+
+            // Per-path honesty check. Some ops landed (so we're past the
+            // all-or-nothing gate above) but individual files the model
+            // claimed to edit may still be byte-identical — that's the
+            // "Petal said it did it but it didn't" failure mode.
+            const changedSet = new Set(changedPaths);
+            for (const p of new Set(safeOps.map((o) => o.path))) {
+              if (!changedSet.has(p)) unappliedPaths.push(p);
+            }
+            for (const v of violations) {
+              if (!changedSet.has(v.path) && !unappliedPaths.includes(v.path)) {
+                unappliedPaths.push(v.path);
+              }
+            }
           }
+
 
           // Heal-on-patch: re-apply the canonical scaffold to old saved
           // projects whose `src/components/ui/*`, `package.json`, or
