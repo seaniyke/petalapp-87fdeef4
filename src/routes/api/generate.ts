@@ -14,6 +14,11 @@ import {
 } from "@/server/generate.server";
 import { detectCrossCuttingIntent, pickPinnedPaths } from "@/server/intent-targets.server";
 import { resolveEditIntent } from "@/server/edit-intent.server";
+import {
+  runInspector,
+  inspectorBriefingBlock,
+  type InspectorReport,
+} from "@/server/inspector-agent.server";
 
 import { applyScaffoldKit, applyScaffoldKitForPatch, STYLES_CSS } from "@/server/scaffold-kit";
 import { getBuildTarget } from "@/lib/build-targets";
@@ -1913,7 +1918,7 @@ Forbidden defaults
     inspectorReport = await runInspector({
       userRequest: lastUserContent,
       files: editablePromptFiles,
-      projectId: projectId ?? "unknown",
+      projectId: body.projectId ?? "unknown",
       userId,
     });
     if (inspectorReport.ok) {
@@ -1922,7 +1927,7 @@ Forbidden defaults
       );
     }
   }
-  const inspectorTargets = (inspectorReport?.targetPaths ?? []).filter((p) =>
+  const inspectorTargets = (inspectorReport?.targetPaths ?? []).filter((p: string) =>
     editablePromptFiles.some((f) => f.path === p),
   );
   const resolvedTargetPaths =
