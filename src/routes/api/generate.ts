@@ -13,6 +13,8 @@ import {
   type StreamEvent,
 } from "@/server/generate.server";
 import { detectCrossCuttingIntent, pickPinnedPaths } from "@/server/intent-targets.server";
+import { resolveEditIntent } from "@/server/edit-intent.server";
+
 import { applyScaffoldKit, applyScaffoldKitForPatch, STYLES_CSS } from "@/server/scaffold-kit";
 import { getBuildTarget } from "@/lib/build-targets";
 import { inferWebSubtype, getWebSubtypeAddendum } from "@/lib/web-subtype";
@@ -266,9 +268,17 @@ function trimFilesForPrompt(
   files: ProjectFile[],
   latestPrompt = "",
   pinnedPaths: string[] = [],
+  // Paths resolved as the literal target of a targeted edit. These are never
+  // truncated: the model has to quote their bytes verbatim in `replace` ops,
+  // and a "...trimmed for context budget..." tail is exactly how a targeted
+  // edit turns into a hallucinated snippet that fails to match.
+  fullPaths: string[] = [],
 ): { files: ProjectFile[]; omitted: number } {
+
   const multiEditIntent = detectMultiEditIntent(latestPrompt);
-  const pinned = new Set(pinnedPaths);
+  const full = new Set(fullPaths);
+  const pinned = new Set([...pinnedPaths, ...fullPaths]);
+
   // Cross-cutting intents need a larger budget — the whole point of pinning
   // is so the model sees every page/component at once.
   const expandForPinned = pinned.size > 0;
@@ -293,7 +303,9 @@ function trimFilesForPrompt(
     return terms.some((term) => haystack.includes(term));
   };
   const rank = (path: string): number => {
+    if (full.has(path)) return -2; // resolved edit target — first in the prompt
     if (pinned.has(path)) return -1; // pinned wins over everything
+
     if (path === "src/App.tsx") return 0;
     if (path === "src/main.tsx") return 1;
     if (path === "src/styles.css") return 2;
@@ -312,9 +324,12 @@ function trimFilesForPrompt(
   )) {
     if (picked.length >= fileLimit && !pinned.has(file.path)) break;
     const isPinned = pinned.has(file.path);
-    const limit = isPinned || isPromptRelevant(file)
-      ? RELEVANT_FILE_CONTEXT_CHAR_LIMIT
-      : LARGE_FILE_CONTEXT_CHAR_LIMIT;
+    const limit = full.has(file.path)
+      ? Number.POSITIVE_INFINITY
+      : isPinned || isPromptRelevant(file)
+        ? RELEVANT_FILE_CONTEXT_CHAR_LIMIT
+        : LARGE_FILE_CONTEXT_CHAR_LIMIT;
+
     const content =
       file.content.length > limit
         ? `${file.content.slice(0, limit)}\n\n/* ...trimmed for context budget... */`
@@ -1866,14 +1881,34 @@ Forbidden defaults
       `[intent-targets] cross-cutting ask detected — pinning ${pinnedPaths.length} file(s) into prompt context`,
     );
   }
+  // Targeted-edit resolution — "change the hero headline", "remove the second
+  // pricing card", "rename Get Started to Try free". We match the user's
+  // literal anchors (quoted copy, component names, routes, file names,
+  // section vocabulary) against the real project bytes, then force those
+  // files into the prompt UNTRUNCATED so the model can quote them verbatim
+  // in `replace` ops instead of retyping them from memory.
+  const editIntent = isInitial
+    ? null
+    : resolveEditIntent(lastUserContent, editablePromptFiles);
+  const editTargetPaths =
+    editIntent?.isTargetedEdit && !isCrossCutting ? editIntent.pinnedPaths : [];
+  if (editTargetPaths.length > 0) {
+    console.info(
+      `[edit-intent] verb=${editIntent!.verb} resolved ${editTargetPaths.length} target file(s): ${editTargetPaths.join(", ")}`,
+    );
+  }
   const promptBudget = trimFilesForPrompt(
     editablePromptFiles,
     multiEditPromptContext || lastUserContent,
     pinnedPaths,
+    editTargetPaths,
   );
   const crossCuttingAddendum = isCrossCutting
     ? `\n\nThis is a cross-cutting request — the user wants the change applied across ${pinnedPaths.length} app file(s). The current contents of every page, route, and app-level component are included in full above. This is enough scope: DO NOT ask the user to name a smaller element. For each existing file you materially redesign, emit ONE \`update\` op with the COMPLETE new file contents. For large existing files, a full-page/whole-component redesign is allowed even if it replaces most of the file; otherwise split the redesigned surface into new smaller components and update the parent imports. Skip files that already satisfy the request rather than emitting no-op edits.`
-    : "";
+    : editTargetPaths.length > 0
+      ? editIntent!.briefing
+      : "";
+
   const filesContext = isInitial
     ? ""
     : `\n\nEditable app file manifest (all app-owned files Petal may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Petal-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
