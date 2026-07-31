@@ -396,9 +396,10 @@ export function friendlyBuildFailure(rawLog: string | null | undefined): Friendl
     return {
       title: "A styling rule isn't quite right",
       message:
-        "Petal tried free fixes, but the latest build still has a stylesheet error. Tap below to run one more targeted pass.",
+        "Your app is safe — one CSS rule is stopping the build. Tap “Try one more fix” and Petal will repair it using this exact error.",
       actionLabel: "Try one more fix",
       actionKind: "ask-fix",
+
       technicalDetail: tail,
     };
   }
