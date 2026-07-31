@@ -1274,6 +1274,39 @@ function Builder() {
     };
   }, [searchId]);
 
+  // Phase 4 #22 — per-turn progress state is global to the builder, so a
+  // project switch has to wipe it. Without this the new project inherits the
+  // old one's phase list, written-file counts, timeline and streaming text.
+  // Skips the very first run so an auto-sent initial prompt isn't cancelled.
+  const lastProjectKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const key = searchId ?? null;
+    const previous = lastProjectKeyRef.current;
+    lastProjectKeyRef.current = key;
+    if (previous === null || previous === key) return;
+    setBusy(false);
+    setError(null);
+    setFriendlyError(null);
+    setPhases(defaultPhases());
+    setActivityVisible(false);
+    setDesignCaption("");
+    setFilesWritten(0);
+    setLatestPath(undefined);
+    setLatestNarration(undefined);
+    setLatestCycleProgress(undefined);
+    setWrittenPaths([]);
+    setCompletedPaths(new Set());
+    setFinalFileLines({});
+    setFileChanges({});
+    setTimelineEvents([]);
+    setStreamingAssistant("");
+    setStreamingPlan("");
+    setStreamingRecap("");
+    setStreamingPreamble("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchId]);
+
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
