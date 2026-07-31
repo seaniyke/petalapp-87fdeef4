@@ -45,6 +45,24 @@ export interface RepairAllResult {
   files: ProjectFile[];
   /** Plain-language summary lines suitable for telemetry / logs. */
   notes: string[];
+  /**
+   * Iteration Standard #4 — the deterministic passes that actually fired on
+   * this run, as stable ids (the note prefix, e.g. `shadcn-imports`). The
+   * turn recorder persists these so we can see when the SAME pass keeps
+   * firing turn after turn: that means the model is re-emitting a broken
+   * shape and the repair is masking it, not fixing it.
+   */
+  firedPasses: string[];
+}
+
+/** Note lines are `"<pass-id>: human text"`. Everything else is unlabeled. */
+function passIdsFromNotes(notes: string[]): string[] {
+  const ids = new Set<string>();
+  for (const n of notes) {
+    const m = /^([a-z0-9-]+):/i.exec(n.trim());
+    if (m) ids.add(m[1].toLowerCase());
+  }
+  return Array.from(ids);
 }
 
 export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
@@ -199,5 +217,5 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   files = rt.files;
   for (const n of rt.notes) notes.push(n);
 
-  return { files, notes };
+  return { files, notes, firedPasses: passIdsFromNotes(notes) };
 }

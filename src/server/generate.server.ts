@@ -611,6 +611,27 @@ export type StreamEvent =
   | { type: "cycle_start"; cycle: number; intent: "writing" | "fixing" | "verifying" }
   | { type: "cycle_progress"; cycle: number; message: string }
   | { type: "cycle_end"; cycle: number; outcome: "clean" | "retrying" | "hard-stop" }
+  /**
+   * Iteration Standard #1/#2 — the single, honest terminal state of a turn.
+   * Emitted exactly once, immediately before the `result` event, and derived
+   * from a BYTE COMPARISON of the project before/after — never from what the
+   * model claimed in prose.
+   *
+   *   applied  — at least one file's bytes changed
+   *   answered — a deliberate chat-only turn; no file edits were claimed
+   *   blocked  — edits were refused (protected path, plan scope, critic)
+   *   failed   — the turn errored out
+   *
+   * `changedPaths` is the authoritative list of mutated files. `blockedPaths`
+   * and `reason` are only present for `blocked`.
+   */
+  | {
+      type: "turn_outcome";
+      outcome: "applied" | "answered" | "blocked" | "failed";
+      changedPaths: string[];
+      blockedPaths?: string[];
+      reason?: string;
+    }
   | {
       type: "result";
       files: ProjectFile[];
@@ -862,6 +883,26 @@ export function applyOps(current: ProjectFile[], ops: FileOp[]): ProjectFile[] {
   const map = new Map(current.map((f) => [f.path, f.content]));
   for (const op of ops) applyOneOp(map, op);
   return Array.from(map, ([path, content]) => ({ path, content }));
+}
+
+/**
+ * Iteration Standard #2 — byte-diff two snapshots of a project.
+ *
+ * This is the ONLY sanctioned way to answer "did this turn actually change
+ * anything?". The model's prose is never evidence: it routinely says "done"
+ * for a file it left byte-identical. Returns every path whose content
+ * differs, plus every path that disappeared.
+ */
+export function diffChangedPaths(
+  before: ProjectFile[],
+  after: ProjectFile[],
+): string[] {
+  const prev = new Map(before.map((f) => [f.path, f.content]));
+  const next = new Map(after.map((f) => [f.path, f.content]));
+  const changed: string[] = [];
+  for (const [p, c] of next) if (prev.get(p) !== c) changed.push(p);
+  for (const p of prev.keys()) if (!next.has(p)) changed.push(p);
+  return changed;
 }
 
 export type AppliedOpResult = {

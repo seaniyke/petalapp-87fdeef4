@@ -7,6 +7,7 @@ import {
   WRITE_PROJECT_TOOL,
   PATCH_FILES_TOOL,
   applyOpsPartial,
+  diffChangedPaths,
   type ChatMessage,
   type ProjectFile,
   type FileOp,
@@ -1008,14 +1009,58 @@ async function recoverMissingToolOutput(args: {
  * provider auth) still throws and goes through the outer humanized error
  * path — those are real errors and the error card is appropriate there.
  */
+/**
+ * Iteration Standard #1 — emit the single terminal state of this turn.
+ * Always call this immediately before the `result` event, exactly once.
+ */
+function emitTurnOutcome(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+  args: {
+    outcome: "applied" | "answered" | "blocked" | "failed";
+    changedPaths: string[];
+    blockedPaths?: string[];
+    reason?: string;
+  },
+): void {
+  controller.enqueue(
+    encoder.encode(
+      sse({
+        type: "turn_outcome",
+        outcome: args.outcome,
+        changedPaths: args.changedPaths.slice(0, 50),
+        ...(args.blockedPaths && args.blockedPaths.length
+          ? { blockedPaths: Array.from(new Set(args.blockedPaths)).slice(0, 20) }
+          : {}),
+        ...(args.reason ? { reason: args.reason } : {}),
+      }),
+    ),
+  );
+}
+
+
 function emitConversationalFallback(
   controller: ReadableStreamDefaultController<Uint8Array>,
   encoder: TextEncoder,
-  args: { summary: string; files: ProjectFile[]; suggestions?: string[] },
+  args: {
+    summary: string;
+    files: ProjectFile[];
+    suggestions?: string[];
+    /** Defaults to "answered". Pass "blocked" when edits were refused. */
+    outcome?: "answered" | "blocked";
+    blockedPaths?: string[];
+    reason?: string;
+  },
 ): void {
   controller.enqueue(
     encoder.encode(sse({ type: "summary_delta", delta: args.summary })),
   );
+  emitTurnOutcome(controller, encoder, {
+    outcome: args.outcome ?? "answered",
+    changedPaths: [],
+    blockedPaths: args.blockedPaths,
+    reason: args.reason,
+  });
   controller.enqueue(
     encoder.encode(
       sse({
@@ -1037,9 +1082,13 @@ function emitConversationalFallback(
 function emitDeterministicRepair(
   controller: ReadableStreamDefaultController<Uint8Array>,
   encoder: TextEncoder,
-  args: { summary: string; files: ProjectFile[] },
+  args: { summary: string; files: ProjectFile[]; changedPaths?: string[] },
 ): void {
   controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: args.summary })));
+  emitTurnOutcome(controller, encoder, {
+    outcome: "applied",
+    changedPaths: args.changedPaths ?? [],
+  });
   controller.enqueue(
     encoder.encode(
       sse({
@@ -1410,6 +1459,12 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   // stage (apply, recovery, repairs, ledger) must diff against the post-codemod
   // state, not the state the request arrived with.
   let currentFiles = Array.isArray(body.currentFiles) ? body.currentFiles : [];
+  /**
+   * Iteration Standard #2 — immutable snapshot of the project as it was when
+   * this turn started. The turn's terminal state is decided by byte-diffing
+   * the final files against THIS, never by trusting the model's prose.
+   */
+  const turnBaselineFiles = currentFiles;
   if (messages.length === 0) {
     return new Response("messages must not be empty", { status: 400 });
   }
@@ -2766,7 +2821,84 @@ Forbidden defaults
           // NOT end up byte-different after apply + recovery. Surfaced to the
           // user at the end of the turn so Petal can never claim "done" for a
           // file it silently failed to touch.
-          
+
+          /**
+           * Iteration Standard #3 — "blocked never means stuck".
+           *
+           * When ops are dropped (protected path, plan scope, critic verdict)
+           * the model gets EXACTLY ONE more round: we hand back the ops that
+           * were refused, the reason each was refused, and the constraint it
+           * has to respect. Only after this round may a rejection be shown to
+           * the user. Bounded to one call per turn — `opRepairRoundUsed` is
+           * the hard cap, so this can never loop.
+           */
+          let opRepairRoundUsed = false;
+          const requestOpRepair = async (args: {
+            problem: string;
+            refused: Array<{ op: string; path: string; reason: string }>;
+            constraint: string;
+          }): Promise<FileOp[]> => {
+            if (opRepairRoundUsed || isInitial) return [];
+            opRepairRoundUsed = true;
+            const refusedList = args.refused
+              .slice(0, 12)
+              .map((r) => `- ${r.op} ${r.path} — ${r.reason}`)
+              .join("\n");
+            controller.enqueue(
+              encoder.encode(
+                sse({
+                  type: "tool_step",
+                  tool: "op_repair",
+                  label: `Reworking ${args.refused.length} rejected change(s)`,
+                }),
+              ),
+            );
+            try {
+              const res = await structuredRetryCompletion({
+                messages: [
+                  ...finalMessages,
+                  {
+                    role: "user" as const,
+                    content:
+                      `Some of the edits in your last tool call were refused before they were applied:\n` +
+                      `${refusedList}\n\n` +
+                      `${args.constraint}\n\n` +
+                      `Re-emit ONLY the refused work as a single patch_files tool call that respects that ` +
+                      `constraint. Use \`update\` with the COMPLETE file contents rather than \`replace\` ` +
+                      `when you are unsure the search snippet matches exactly. Do not repeat edits that ` +
+                      `were already accepted. If the refused work genuinely cannot be done within the ` +
+                      `constraint, return an empty ops array — do not invent a workaround that breaks the app.`,
+                  },
+                ],
+                isInitial: false,
+                problem: `op_repair:${args.problem.slice(0, 80)}`,
+                hasBackend: Boolean(backend),
+                tool: PATCH_FILES_TOOL,
+                maxTokens: Math.max(maxCompletionTokens, 12_000),
+                crossCuttingIntent: isCrossCutting,
+                signal: request.signal,
+                meta: {
+                  phase: phaseTag.phase,
+                  promptChars: lastUserContent.length,
+                  hadAttachments: hasVisionTurn,
+                  chosenBy: "op_repair_round",
+                  projectId: body.projectId ?? null,
+                  userId,
+                },
+              });
+              if (!res.ok || !res.body) return [];
+              const repairedCollected = await relayAndCollect(res, controller, encoder);
+              const payload = parseCollectedProject(repairedCollected, false);
+              return (payload.parsed.ops ?? []).filter((op) => !isProtectedPath(op.path));
+            } catch (err) {
+              console.warn(
+                "[op-repair] round failed:",
+                err instanceof Error ? err.message : err,
+              );
+              return [];
+            }
+          };
+
           const violations = parsed.ops.filter((op) => isProtectedPath(op.path));
 
           if (violations.length) {
@@ -2843,13 +2975,40 @@ Forbidden defaults
                 return;
               }
             }
+            const blockReason = planScopeHit
+              ? "plan_scope_blocked"
+              : userGlobsHit
+              ? "user_protected_path"
+              : "protected_path_only";
+            // Iteration Standard #3 — one rework round before we tell the
+            // user "no". Most of these are the model reaching for the UI kit
+            // when the same change belongs in app code.
+            const reworked = await requestOpRepair({
+              problem: blockReason,
+              refused: violations.map((v) => ({
+                op: v.op,
+                path: v.path,
+                reason: planScopeHit
+                  ? "outside the approved plan scope"
+                  : userGlobsHit
+                  ? "protected by the user's PETAL.md rules"
+                  : "reserved framework file (UI kit / build config)",
+              })),
+              constraint: planScopeHit
+                ? `You may only touch these files: ${Array.from(allowedPathSet ?? []).slice(0, 40).join(", ")}.`
+                : "Do NOT edit files under src/components/ui/, src/components/blocks/, src/components/examples/, src/components/mobile/, src/integrations/backend/, vite.config.ts, tsconfig.json or src/lib/utils.ts. Achieve the same user-visible result from app code (routes, page sections, app-level components, styles.css tokens) instead.",
+            });
+            if (reworked.length > 0) {
+              console.info(`[op-repair] recovered ${reworked.length} op(s) after ${blockReason}`);
+              safeOps = reworked;
+            } else {
             recorder.record({
               tier: "apply_ops",
               outcome: "failed",
               duration_ms: 0,
               issue_count: violations.length || astDroppedOps || 1,
               details: {
-                reason: planScopeHit ? "plan_scope_blocked" : userGlobsHit ? "user_protected_path" : "protected_path_only",
+                reason: blockReason,
                 total_ops: parsed.ops.length,
                 safe_ops: safeOps.length,
                 protected_ops: violations.map(opDigest),
@@ -2862,7 +3021,7 @@ Forbidden defaults
               projectId: body.projectId ?? null,
               userId,
               model,
-              reason: planScopeHit ? "plan_scope_blocked" : userGlobsHit ? "user_protected_path" : "protected_path_only",
+              reason: blockReason,
               isInitial,
               toolName: collected.name,
               totalOps: parsed.ops.length,
@@ -2872,13 +3031,20 @@ Forbidden defaults
             });
             emitConversationalFallback(controller, encoder, {
               files: currentFiles,
+              outcome: "blocked",
+              reason: blockReason,
+              blockedPaths: violations.map((v) => v.path),
               summary: planScopeHit
                 ? "The change you asked for would touch files outside the plan you approved. Re-send the message and approve the new files in the plan card, or send without Plan first to let me pick the scope."
                 : userGlobsHit
                 ? "The change you asked for would touch files you've marked as protected in PETAL.md. Update PETAL.md to allow them, or rephrase the request to target other files."
                 : "The change you asked for would touch files I keep reserved for the framework (the UI kit / build config). I can do this a different way — tell me the user-visible behavior you want and I'll wire it up in app code instead.",
+              suggestions: planScopeHit
+                ? ["Approve the wider scope and retry", "Do it without Plan first"]
+                : ["Do it in app code instead", "Describe the result you want instead"],
             });
             return;
+            }
           }
           // CRITIC GATE — last review before bytes hit the project.
           // Deterministic rules (elisions, blanked files, no-op replaces,
@@ -2886,7 +3052,7 @@ Forbidden defaults
           // model review. Rejected ops are dropped, never rewritten, and
           // disclosed in the summary. A failing critic approves everything.
           {
-            const verdict = await runCritic({
+            let verdict = await runCritic({
               ops: safeOps,
               files: currentFiles,
               userPrompt: lastUserContent,
@@ -2909,13 +3075,55 @@ Forbidden defaults
                   ),
                 );
               }
+              // Iteration Standard #3 — hand the rejections back once and let
+              // the model re-emit the same work properly (usually a full-file
+              // `update` instead of a `replace` whose snippet never matched).
+              const reworked = await requestOpRepair({
+                problem: "critic_rejection",
+                refused: verdict.rejections.map((r) => ({
+                  op: r.op,
+                  path: r.path,
+                  reason: r.reason,
+                })),
+                constraint:
+                  "Never elide code with comments like `// ... rest unchanged`, never blank a file, and never emit a `replace` whose search text does not appear verbatim in the current file. Emit the COMPLETE new contents of each file you change.",
+              });
+              if (reworked.length > 0) {
+                const second = await runCritic({
+                  ops: reworked,
+                  files: currentFiles,
+                  userPrompt: lastUserContent,
+                  projectId: body.projectId ?? "unknown",
+                  userId,
+                  signal: request.signal,
+                });
+                if (second.ops.length > 0) {
+                  console.info(`[op-repair] critic accepted ${second.ops.length} reworked op(s)`);
+                  const reworkedPaths = new Set(second.ops.map((o) => o.path));
+                  const kept = criticRejections.filter(
+                    (r) => !reworkedPaths.has(r.path),
+                  );
+                  criticRejections.length = 0;
+                  criticRejections.push(...kept, ...second.rejections);
+                  verdict = {
+                    ...verdict,
+                    ops: [...verdict.ops, ...second.ops],
+                    rejections: second.rejections,
+                    blockedEverything: false,
+                  };
+                }
+              }
             }
             if (verdict.blockedEverything) {
               emitConversationalFallback(controller, encoder, {
                 files: currentFiles,
+                outcome: "blocked",
+                reason: "critic_rejection",
+                blockedPaths: verdict.rejections.map((r) => r.path),
                 summary:
                   "I reviewed the change before applying it and it was clearly wrong, so I stopped rather than break your app." +
                   criticDisclosure(verdict.rejections),
+                suggestions: ["Try that edit again", "Break it into smaller steps"],
               });
               return;
             }
@@ -4210,6 +4418,19 @@ Forbidden defaults
           console.warn(`[generate] unapplied paths disclosed to user: ${unappliedPaths.join(", ")}`);
         }
 
+
+        // Iteration Standard #1 — one turn, one terminal state, decided by a
+        // byte diff against the snapshot taken when the turn began.
+        {
+          const turnChanged = diffChangedPaths(turnBaselineFiles, nextFiles);
+          emitTurnOutcome(controller, encoder, {
+            outcome: turnChanged.length > 0 ? "applied" : "answered",
+            changedPaths: turnChanged,
+            ...(unappliedPaths.length > 0
+              ? { blockedPaths: unappliedPaths, reason: "unapplied_claims" }
+              : {}),
+          });
+        }
 
         controller.enqueue(
           encoder.encode(

@@ -2020,6 +2020,13 @@ function Builder() {
       let resultPlan: string | undefined;
       let resultRecap: string | undefined;
       let resultNoFileChanges = false;
+      // Iteration Standard — the server's byte-diffed verdict for this turn.
+      let turnOutcome: {
+        outcome: "applied" | "answered" | "blocked" | "failed";
+        changedPaths: string[];
+        blockedPaths?: string[];
+        reason?: string;
+      } | null = null;
       // Layer 5 — populated by onSelfCheck so we can attach gap-driven
       // follow-up chips to the assistant message and on error suggestions.
       let resultSuggestions: string[] = [];
@@ -2280,6 +2287,14 @@ function Builder() {
                 `Skipped ${dropped.length} file${dropped.length === 1 ? "" : "s"} outside the approved plan.`,
               );
             },
+            onTurnOutcome: (o) => {
+              turnOutcome = o;
+              if (o.outcome === "applied") {
+                setLatestCycleProgress(
+                  `Updated ${o.changedPaths.length} file${o.changedPaths.length === 1 ? "" : "s"}.`,
+                );
+              }
+            },
           },
           controller.signal,
         );
@@ -2295,6 +2310,13 @@ function Builder() {
         if (!resultFiles) throw new Error("No result returned.");
 
         if (resultNoFileChanges) {
+          const outcomeNow = turnOutcome as {
+            outcome: "applied" | "answered" | "blocked" | "failed";
+            changedPaths: string[];
+            blockedPaths?: string[];
+            reason?: string;
+          } | null;
+          const wasBlocked = outcomeNow?.outcome === "blocked";
           const fallbackText = guardBackendClaims(resultSummary || "I couldn't find a safe file change for that turn.", resultFiles, "I couldn't find a safe file change for that turn.");
           const preambleText = partialPreamble.trim();
           const assistantMsg: ChatMessage = {
@@ -2315,7 +2337,9 @@ function Builder() {
           setStreamingRecap("");
           setStreamingPreamble("");
           setLatestCycleProgress(undefined);
-          setLastUserPrompt(null);
+          // A blocked turn is recoverable: keep the prompt so "Retry" stays
+          // live. An answered turn is complete, so clear it.
+          if (!wasBlocked) setLastUserPrompt(null);
           setPhases((p) => completeThrough(p, "polishing"));
           setActivityVisible(false);
           await appendMessages(proj.id, [assistantMsg]).catch((persistErr) => {
