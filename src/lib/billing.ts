@@ -233,3 +233,41 @@ export function formatMoney(amountMinor: number, currency: BillingCurrency): str
       : major.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return `${currency.symbol}${formatted}`;
 }
+
+/**
+ * Free-allowance reset clocks.
+ *
+ * Phase 4 #23 — `daily_free_reset_at` / `monthly_free_reset_at` /
+ * `runtime_free_reset_at` are **date-only** columns that stamp the period the
+ * counter currently belongs to (see `computeBreakdown`, which compares them
+ * with today's UTC date). They are NOT future timestamps. Reading them with
+ * `new Date(...)` therefore yields a moment in the past, which is why every
+ * countdown in the UI collapsed to "soon" / "0 days".
+ *
+ * The real reset boundaries are derived from the clock instead: the next UTC
+ * midnight, and the first UTC day of the next month.
+ */
+export function nextDailyResetAt(now: Date = new Date()): Date {
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0),
+  );
+}
+
+export function nextMonthlyResetAt(now: Date = new Date()): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+}
+
+/** "in 3h 20m" / "in 12m" until the next daily free-credit reset. */
+export function dailyResetCountdown(now: Date = new Date()): string {
+  const ms = nextDailyResetAt(now).getTime() - now.getTime();
+  const hours = Math.floor(ms / (60 * 60 * 1000));
+  const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
+  if (hours > 0) return `in ${hours}h ${minutes}m`;
+  return `in ${Math.max(1, minutes)}m`;
+}
+
+/** Whole days until the monthly free allowance resets (always >= 1). */
+export function monthlyResetDays(now: Date = new Date()): number {
+  const ms = nextMonthlyResetAt(now).getTime() - now.getTime();
+  return Math.max(1, Math.ceil(ms / (24 * 60 * 60 * 1000)));
+}

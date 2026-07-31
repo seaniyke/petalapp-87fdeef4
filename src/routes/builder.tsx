@@ -536,6 +536,14 @@ function Builder() {
   useEffect(() => {
     projectIdRef.current = project?.id ?? null;
   }, [project?.id]);
+  // Phase 4 #22 — the URL is the source of truth for "which project is on
+  // screen". It flips the instant the user switches, well before the async
+  // bootstrap swaps `project` state, so a turn still streaming for the old
+  // project can see the switch immediately and stop writing to the UI.
+  useEffect(() => {
+    if (searchId) projectIdRef.current = searchId;
+  }, [searchId]);
+
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   // Build vs Discuss mode. Discuss = chat-only, no file changes (Base44/Lovable parity).
@@ -1266,6 +1274,39 @@ function Builder() {
     };
   }, [searchId]);
 
+  // Phase 4 #22 — per-turn progress state is global to the builder, so a
+  // project switch has to wipe it. Without this the new project inherits the
+  // old one's phase list, written-file counts, timeline and streaming text.
+  // Skips the very first run so an auto-sent initial prompt isn't cancelled.
+  const lastProjectKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const key = searchId ?? null;
+    const previous = lastProjectKeyRef.current;
+    lastProjectKeyRef.current = key;
+    if (previous === null || previous === key) return;
+    setBusy(false);
+    setError(null);
+    setFriendlyError(null);
+    setPhases(defaultPhases());
+    setActivityVisible(false);
+    setDesignCaption("");
+    setFilesWritten(0);
+    setLatestPath(undefined);
+    setLatestNarration(undefined);
+    setLatestCycleProgress(undefined);
+    setWrittenPaths([]);
+    setCompletedPaths(new Set());
+    setFinalFileLines({});
+    setFileChanges({});
+    setTimelineEvents([]);
+    setStreamingAssistant("");
+    setStreamingPlan("");
+    setStreamingRecap("");
+    setStreamingPreamble("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchId]);
+
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
@@ -1547,9 +1588,16 @@ function Builder() {
             // container hasn't booted yet (initial turn) or the file is
             // server-only (sql / lockfiles). HMR picks it up in-place.
             if (content) {
-              void import("@/lib/webcontainer").then(({ streamWriteFile }) =>
-                streamWriteFile(path, content),
-              );
+              // Phase 4 #23 — a rejected chunk import (offline, stale asset
+              // hash after a deploy) used to surface as an unhandled promise
+              // rejection and could trip the global error overlay mid-build.
+              // The live preview refreshes from the full file set at the end
+              // of the turn, so failing quietly here is safe.
+              void import("@/lib/webcontainer")
+                .then(({ streamWriteFile }) => streamWriteFile(path, content))
+                .catch((err) => {
+                  console.warn("Live preview write skipped for", path, err);
+                });
             }
           },
           onFileValidated: (path, ok, errors) => {
@@ -2028,9 +2076,13 @@ function Builder() {
               });
               // Phase 4 #12 — stream the file into the WebContainer mid-turn.
               if (content) {
-                void import("@/lib/webcontainer").then(({ streamWriteFile }) =>
-                  streamWriteFile(path, content),
-                );
+                // Phase 4 #23 — see the note on the sibling call above: never
+                // let a failed chunk load become an unhandled rejection.
+                void import("@/lib/webcontainer")
+                  .then(({ streamWriteFile }) => streamWriteFile(path, content))
+                  .catch((err) => {
+                    console.warn("Live preview write skipped for", path, err);
+                  });
               }
             },
             onFileValidated: (path, ok, errors) => {
@@ -2367,6 +2419,11 @@ function Builder() {
         }
       } catch (e) {
         if (controller.signal.aborted) return;
+        // Phase 4 #22 — the failure belongs to a project the user has since
+        // navigated away from. Surfacing it would stamp the old project's
+        // error card onto the project now on screen.
+        if (projectIdRef.current !== proj.id) return;
+
         const msg = e instanceof Error ? e.message : "Something went wrong.";
         setError(msg);
         const isNoEditFailure =
@@ -2468,20 +2525,30 @@ function Builder() {
         // activity card suppress its duplicate copy by comparing against tail.
         persistFriendlyError(friendly);
       } finally {
+        // Phase 4 #22 — a turn that finishes (or aborts) AFTER the user has
+        // switched projects must not touch the UI any more. Every setter
+        // below is global to the builder, so running them unconditionally
+        // killed the *new* project's spinner and wiped its streaming text.
+        const stillCurrent = projectIdRef.current === proj.id;
         if (abortRef.current === controller) abortRef.current = null;
-        setBusy(false);
-        // Drop any partial streaming text — either it became a real message
-        // above, or the run failed/aborted and we don't want a stale bubble.
-        setStreamingAssistant("");
-        setStreamingPlan("");
-        setStreamingRecap("");
-        setStreamingPreamble("");
+        if (stillCurrent) {
+          setBusy(false);
+          // Drop any partial streaming text — either it became a real message
+          // above, or the run failed/aborted and we don't want a stale bubble.
+          setStreamingAssistant("");
+          setStreamingPlan("");
+          setStreamingRecap("");
+          setStreamingPreamble("");
+        }
         // Tear down the streaming-draft writer and wipe the row so the next
         // refresh doesn't resurrect a reply that's already been promoted into
-        // the chat thread (or that failed and shouldn't reappear).
+        // the chat thread (or that failed and shouldn't reappear). This is
+        // per-project persistence, so it is safe (and required) even after a
+        // switch — it targets `proj.id`, not whatever is on screen now.
         draftWriter.cancel();
         void clearMessageDraft(proj.id);
       }
+
     },
     [
       busy,

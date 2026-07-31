@@ -43,6 +43,8 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   computeBreakdown,
   convertPrice,
+  dailyResetCountdown,
+  monthlyResetDays as computeMonthlyResetDays,
   fetchCreditPacks,
   fetchCurrencies,
   fetchPriceOverrides,
@@ -248,24 +250,16 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
   const expiresSoon = daysUntilExpiry != null && daysUntilExpiry > 0 && daysUntilExpiry <= 5;
   const showWarningBanner = currentPlanCode !== "free" && (expired || expiresSoon);
 
-  // Daily reset countdown
-  const dailyResetText = useMemo(() => {
-    if (!wallet?.daily_free_reset_at) return null;
-    const ms = new Date(wallet.daily_free_reset_at).getTime() - Date.now();
-    if (ms <= 0) return "soon";
-    const hours = Math.floor(ms / (60 * 60 * 1000));
-    const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
-    if (hours > 0) return `in ${hours}h ${minutes}m`;
-    return `in ${minutes}m`;
-  }, [wallet?.daily_free_reset_at]);
-
-  // Monthly reset countdown (in days)
-  const monthlyResetDays = useMemo(() => {
-    if (!wallet?.monthly_free_reset_at) return null;
-    const ms = new Date(wallet.monthly_free_reset_at).getTime() - Date.now();
-    if (ms <= 0) return 0;
-    return Math.ceil(ms / (24 * 60 * 60 * 1000));
-  }, [wallet?.monthly_free_reset_at]);
+  // Daily / monthly reset countdowns.
+  // Phase 4 #23 — these used to read the wallet's `*_reset_at` columns as if
+  // they were future timestamps. They are date-only period stamps pointing at
+  // the CURRENT period, so the maths always went negative and every user saw
+  // "resets soon" / "0 days". The boundaries come from the clock instead.
+  const dailyResetText = useMemo(() => dailyResetCountdown(), [wallet?.daily_free_used]);
+  const monthlyResetDays = useMemo(
+    () => computeMonthlyResetDays(),
+    [wallet?.monthly_free_used],
+  );
 
   // Total credits (used for progress bar)
   const totalAvailable = breakdown.total;
