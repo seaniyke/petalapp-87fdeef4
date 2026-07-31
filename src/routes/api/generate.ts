@@ -19,6 +19,13 @@ import {
   inspectorBriefingBlock,
   type InspectorReport,
 } from "@/server/inspector-agent.server";
+import {
+  runAgentLoop,
+  shouldRunAgentLoop,
+  agentLoopSummaryBlock,
+  type AgentLoopResult,
+  type ChatMessage as AgentChatMessage,
+} from "@/server/agent-loop.server";
 
 import { applyScaffoldKit, applyScaffoldKitForPatch, STYLES_CSS } from "@/server/scaffold-kit";
 import { getBuildTarget } from "@/lib/build-targets";
