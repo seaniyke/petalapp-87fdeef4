@@ -59,8 +59,14 @@ export const Route = createFileRoute("/api/billing/crypto")({
       },
 
       POST: async ({ request }) => {
+        // Rate limit before any DB work: each pending row costs verifier-cron
+        // cycles for up to 48h, so unlimited fabricated hashes are a cost DoS.
+        const throttled = throttlePublicWrite(request, "billing_crypto", 5, 30);
+        if (throttled) return throttled;
+
         const user = await requireUser(request);
         if (!user) return new Response("Unauthorized", { status: 401 });
+
 
         let parsed: z.infer<typeof Body>;
         try {
