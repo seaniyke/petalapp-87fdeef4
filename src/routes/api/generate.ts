@@ -3790,9 +3790,7 @@ Forbidden defaults
           );
         }
         let finalCharged = 0;
-        if (body.isAutoFix) {
-          console.log(`[credits] auto-fix run — skipping charge of ${priced.amount} (would-be)`);
-        } else {
+        {
           const tryCharge = async (amount: number) =>
             spendCredit({
               userId,

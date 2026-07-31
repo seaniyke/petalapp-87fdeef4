@@ -99,9 +99,8 @@ export async function streamGenerate(
     model?: "fast" | "smart" | "best" | "deep";
     customInstructions?: string;
     projectId?: string;
-    /** When true, this run is a free internal auto-fix triggered by Petal
-     *  itself (after a failed build). The server skips credit charging and
-     *  the client suppresses the giant prompt from the chat thread. */
+    /** When true, this is a silent internal auto-fix triggered by Petal after
+     *  a failed build. It remains credit-gated and charged like every AI turn. */
     isAutoFix?: boolean;
     /** Plan Mode — propose a plan first instead of generating immediately. */
     planFirst?: boolean;
