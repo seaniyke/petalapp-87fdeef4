@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { fixTanstackRouterWithoutProvider } from "../tanstack-router-fallback.server";
 import { fixMissingRouterProvider } from "../router-provider.server";
+import { repairUnresolvedImports } from "../import-resolver.server";
 
 const broken = [
   {
@@ -166,6 +167,8 @@ const contextOnlyFallback = fixTanstackRouterWithoutProvider([
       'import { createRootRouteWithContext } from "@tanstack/react-router";\nexport const Route = createRootRouteWithContext<any>()({ component: App });',
   },
 ]);
+const unresolvedTree = repairUnresolvedImports([{ path: "src/router.tsx", content: 'import { routeTree } from "./routeTree.gen"; export { routeTree };' }]);
+assert.equal(unresolvedTree.files.some((f) => /routeTree\.gen\.(tsx|ts)$/.test(f.path)), false, "generic repair must not fabricate a route tree");
 assert.match(
   contextOnlyFallback.files.find((f) => f.path === "src/root.tsx")?.content ?? "",
   /@\/lib\/router-compat/,

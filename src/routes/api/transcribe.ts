@@ -9,6 +9,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
+import { checkCreditBalance } from "@/server/credits.server";
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/audio/transcriptions";
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB ≈ ~10 min of opus
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/api/transcribe")({
         if (!authHeader?.startsWith("Bearer ")) {
           return new Response("unauthorized", { status: 401 });
         }
+        let userId: string;
         try {
           const supabase = createClient(
             process.env.SUPABASE_URL!,
@@ -34,9 +36,12 @@ export const Route = createFileRoute("/api/transcribe")({
           );
           const { data, error } = await supabase.auth.getUser();
           if (error || !data?.user) return new Response("unauthorized", { status: 401 });
+          userId = data.user.id;
         } catch {
           return new Response("unauthorized", { status: 401 });
         }
+        const balance = await checkCreditBalance({ userId, amount: 0.01 });
+        if (!balance.ok) return new Response("You're out of credits. Add credits to keep chatting.", { status: balance.reason === "insufficient_credits" ? 402 : 500 });
 
         const contentLength = Number(request.headers.get("content-length") || "0");
         if (contentLength > MAX_BYTES) {
