@@ -121,6 +121,13 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
     notes.push(`array-safety: hardened ${total} access(es) across ${arr.fixes.length} file(s)`);
   }
 
+  // 3b. BrandMark wiring MUST precede the import resolver: otherwise the
+  //     resolver stubs `@/components/brand-mark` (or leaves the tag
+  //     undeclared) and the preview dies with `Can't find variable: BrandMark`.
+  const brandWire = ensureBrandMarkWired(files);
+  files = brandWire.files;
+  for (const n of brandWire.notes) notes.push(n);
+
   // 4. Local import resolver — remap or stub unresolved `@/` and `./` imports.
   const localImports = repairUnresolvedImports(files);
   files = localImports.files;
