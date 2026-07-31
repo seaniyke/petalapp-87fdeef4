@@ -391,7 +391,15 @@ export function autofixFiles(files: ProjectFile[]): { files: ProjectFile[]; repo
         .join("; ")}${fixes.length > 3 ? "…" : ""})`,
     );
   }
+  // Brand mark wiring — `<BrandMark/>` without an import (or without the
+  // module at all) is a ReferenceError at render, not a build error.
+  const brandWire = ensureBrandMarkWired(shadcnOut);
+  if (brandWire.notes.length > 0) {
+    report.fixedCount += brandWire.notes.length;
+    for (const n of brandWire.notes) report.notes.push(n);
+  }
   // Deterministic array-safety hardener. See array-safety-fixer.server.ts
+
   // for the rule set. Runs after shadcn so it sees the final import shape.
   const arrFix = fixArraySafety(shadcnOut);
   const out = arrFix.files;
