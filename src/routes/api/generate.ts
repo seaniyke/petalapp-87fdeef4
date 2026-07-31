@@ -1389,7 +1389,10 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   }
   const rawMessages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
   let messages = trimMessagesForGeneration(rawMessages);
-  const currentFiles = Array.isArray(body.currentFiles) ? body.currentFiles : [];
+  // `let`: the pre-emit agent loop may land a codemod, and every downstream
+  // stage (apply, recovery, repairs, ledger) must diff against the post-codemod
+  // state, not the state the request arrived with.
+  let currentFiles = Array.isArray(body.currentFiles) ? body.currentFiles : [];
   if (messages.length === 0) {
     return new Response("messages must not be empty", { status: 400 });
   }
