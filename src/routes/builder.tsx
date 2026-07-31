@@ -851,6 +851,32 @@ function Builder() {
     projectId: null,
     attempts: 0,
   });
+  // ---------------------------------------------------------------------
+  // Unified automatic-recovery budget.
+  //
+  // Petal has four independent self-healing paths (build-failure auto-fix,
+  // no-edit escalation, transient-connection retry, post-deploy browser
+  // verification). Each used to carry its own counter, and some reset
+  // whenever a build went green — so a single user edit could chain them
+  // forever: fix -> deploy -> verifier finds a defect -> fix -> deploy...
+  // One shared budget per USER turn makes the behaviour predictable: at most
+  // MAX_TURN_AUTO_RECOVERIES silent repair turns per thing the user asked
+  // for, after which Petal stops and hands control back with a clear card.
+  // ---------------------------------------------------------------------
+  const MAX_TURN_AUTO_RECOVERIES = 3;
+  const turnRecoveryRef = useRef<{ key: string | null; used: number }>({
+    key: null,
+    used: 0,
+  });
+  const beginUserTurn = useCallback((projectId: string | null | undefined) => {
+    turnRecoveryRef.current = { key: `${projectId ?? "none"}:${Date.now()}`, used: 0 };
+  }, []);
+  /** Returns true (and spends one unit) when another silent repair is allowed. */
+  const claimAutoRecovery = useCallback(() => {
+    if (turnRecoveryRef.current.used >= MAX_TURN_AUTO_RECOVERIES) return false;
+    turnRecoveryRef.current.used += 1;
+    return true;
+  }, []);
   // When a user starts a new AI turn or retries a stalled deploy, the previous
   // `latest_build_id` is no longer the thing the chat should react to. Without
   // this, an old pending deploy can keep re-opening the "Publishing is taking
@@ -1244,7 +1270,7 @@ function Builder() {
         startedBuildIdsRef.current.has(buildId) &&
         !autoFixRef.current.handledBuildIds.has(buildId);
       const used = autoFixRef.current.attempts;
-      if (shouldAutoFix && used < MAX_AUTO_FIX_ATTEMPTS && !busy) {
+      if (shouldAutoFix && used < MAX_AUTO_FIX_ATTEMPTS && !busy && claimAutoRecovery()) {
         // Auto-fix path: bump the counter, show a calm "fixing it" panel,
         // and fire the same prompt the manual button would.
         autoFixRef.current.attempts = used + 1;
@@ -1779,6 +1805,8 @@ function Builder() {
     ) => {
       const text = content.trim();
       const internalRetry = opts.isRetry || opts.isAutoFix || opts.isAutoContinue;
+      // A genuinely new user turn refills the automatic-recovery budget.
+      if (!internalRetry) beginUserTurn(projectIdRef.current);
       if (!text || (busy && !internalRetry)) return;
       // Hard stop at zero credits. The server 402s every AI route, but the
       // composer must not even accept the message — otherwise the user sees
@@ -2468,7 +2496,12 @@ function Builder() {
           e instanceof PipelineError
             ? e.kind === "upstream_timeout" || e.kind === "upstream_unavailable" || e.kind === "unknown"
             : /\b(load failed|failed to fetch|network error|fetch failed|request aborted)\b/i.test(msg);
-        if (isNoEditFailure && !opts.isAutoFix && noEditRecoveryRef.current.attempts < 1) {
+        if (
+          isNoEditFailure &&
+          !opts.isAutoFix &&
+          noEditRecoveryRef.current.attempts < 1 &&
+          claimAutoRecovery()
+        ) {
           noEditRecoveryRef.current.attempts += 1;
           setActivityVisible(true);
           setFriendlyError({
@@ -2488,7 +2521,12 @@ function Builder() {
           }, 250);
           return;
         }
-        if (isTransientGenerateFailure && !opts.isAutoFix && transientGenerateRecoveryRef.current.attempts < 1) {
+        if (
+          isTransientGenerateFailure &&
+          !opts.isAutoFix &&
+          transientGenerateRecoveryRef.current.attempts < 1 &&
+          claimAutoRecovery()
+        ) {
           transientGenerateRecoveryRef.current.attempts += 1;
           setActivityVisible(true);
           setFriendlyError({
@@ -3000,6 +3038,9 @@ function Builder() {
     }
     if (verifyFixRef.current.handled.has(buildId)) return;
     verifyFixRef.current.handled.add(buildId);
+    // Shared turn budget — without this the verifier and the repair turn it
+    // triggers can ping-pong forever on one user edit.
+    if (!claimAutoRecovery()) return;
 
     const prompt = [
       "I opened the deployed app in a real browser and it does not work correctly. Findings:",
@@ -3009,7 +3050,7 @@ function Builder() {
       "Fix the root cause of each finding in the project files. Do not add placeholder content or comments describing the fix — make the app actually work. Keep the changes minimal and do not redesign anything that already works.",
     ].join("\n");
     void send(prompt, { isRetry: false, isAutoFix: true });
-  }, [project?.id, project?.latest_build_id, effectiveBuildSnap, busy, send]);
+  }, [project?.id, project?.latest_build_id, effectiveBuildSnap, busy, send, claimAutoRecovery]);
 
 
 
