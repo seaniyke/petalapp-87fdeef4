@@ -17,6 +17,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { chargeRuntime } from "@/server/runtime-wallet.server";
 import { pauseForProject } from "@/server/managed-backend.server";
+import { secretsMatch } from "@/server/rate-limit.server";
 
 /** USD cents charged per active backend per hour. 4¢/hr ≈ $29/mo full-time;
  * underlying managed Supabase costs ~$10/mo so we keep ~65% margin. */
@@ -123,7 +124,7 @@ export const Route = createFileRoute("/api/public/cron/runtime-backend-hour")({
         const secret = process.env.BUILDER_SHARED_SECRET;
         if (!secret) return new Response("Server misconfigured", { status: 500 });
         const provided = request.headers.get("x-petal-cron-secret");
-        if (!provided || provided !== secret) return unauthorized();
+        if (!secretsMatch(provided, secret)) return unauthorized();
         try {
           const result = await runHourlyCharges();
           return Response.json({ ok: true, ...result });
@@ -139,7 +140,7 @@ export const Route = createFileRoute("/api/public/cron/runtime-backend-hour")({
         const provided =
           request.headers.get("x-petal-cron-secret") ??
           new URL(request.url).searchParams.get("secret");
-        if (!provided || provided !== secret) return unauthorized();
+        if (!secretsMatch(provided, secret)) return unauthorized();
         try {
           const result = await runHourlyCharges();
           return Response.json({ ok: true, ...result });

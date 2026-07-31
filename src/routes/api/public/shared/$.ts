@@ -14,6 +14,7 @@
  *   PATCH  /api/public/shared/:projectId/records/:collection/:id
  *   DELETE /api/public/shared/:projectId/records/:collection/:id
  */
+import type { RecordScope } from "@/server/shared-backend.server";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import {
@@ -114,15 +115,26 @@ async function handle(request: Request): Promise<Response> {
     const recordId = parts[3];
     const url = new URL(request.url);
     const mine = url.searchParams.get("mine") === "1";
-    const scopeKey = mine || recordId ? userId : null;
+    // Writes are always ownership-scoped by the *verified* end-user token.
+    // Never derive the scope from anything the caller can choose.
+    const scopeKey = userId;
     if (mine && !userId) return json({ error: "Sign in required" }, 401);
+
+    // Reads default to "shared" (own rows + un-owned guest rows). A caller
+    // must ask for `scope=all` explicitly to read a genuinely public
+    // collection — it is never the implicit behaviour, because that leaked
+    // every end user's rows to every other end user.
+    const rawScope = url.searchParams.get("scope");
+    const scope: RecordScope =
+      mine || rawScope === "own" ? "own" : rawScope === "all" ? "all" : "shared";
 
     try {
       if (request.method === "GET") {
         const rows = await listRecords({
           projectId,
           collection,
-          ownerKey: mine ? userId : null,
+          ownerKey: userId,
+          scope,
           limit: Number(url.searchParams.get("limit") ?? 50),
           offset: Number(url.searchParams.get("offset") ?? 0),
         });

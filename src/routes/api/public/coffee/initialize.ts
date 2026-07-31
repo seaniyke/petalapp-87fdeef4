@@ -10,6 +10,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { initializeTransaction, getEnvironment } from "@/server/paystack.server";
+import { throttlePublicWrite } from "@/server/rate-limit.server";
 
 const SUPPORTED = ["USD", "NGN", "GHS", "KES", "ZAR"] as const;
 
@@ -26,6 +27,9 @@ export const Route = createFileRoute("/api/public/coffee/initialize")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Unauthenticated write with attacker-controlled fields — brake it.
+        const throttled = throttlePublicWrite(request, "coffee_init", 5, 30);
+        if (throttled) return throttled;
         let parsed: z.infer<typeof Body>;
         try {
           parsed = Body.parse(await request.json());

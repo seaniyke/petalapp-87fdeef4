@@ -14,6 +14,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { secretsMatch } from "@/server/rate-limit.server";
 
 const WARN_WINDOW_DAYS = 30;
 
@@ -70,7 +71,7 @@ export const Route = createFileRoute("/api/public/cron/mobile-cert-expiry")({
         const secret = process.env.BUILDER_SHARED_SECRET;
         if (!secret) return new Response("Server misconfigured", { status: 500 });
         const provided = request.headers.get("x-petal-cron-secret");
-        if (!provided || provided !== secret) return unauthorized();
+        if (!secretsMatch(provided, secret)) return unauthorized();
         try {
           const result = await scanExpiringCerts();
           return Response.json({ ok: true, ...result });
@@ -86,7 +87,7 @@ export const Route = createFileRoute("/api/public/cron/mobile-cert-expiry")({
         const provided =
           request.headers.get("x-petal-cron-secret") ??
           new URL(request.url).searchParams.get("secret");
-        if (!provided || provided !== secret) return unauthorized();
+        if (!secretsMatch(provided, secret)) return unauthorized();
         try {
           const result = await scanExpiringCerts();
           return Response.json({ ok: true, ...result });

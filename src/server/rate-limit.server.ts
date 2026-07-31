@@ -119,3 +119,55 @@ export function rateLimitResponse(result: RateLimitResult): Response {
   });
 }
 
+
+/* ------------------------------------------------------------------ *
+ * Public-endpoint helpers
+ *
+ * Tip, pledge and waitlist forms are unauthenticated and accept
+ * attacker-supplied name/email/amount straight into tables that hold
+ * personal data. They get an IP-keyed brake on top of the same
+ * sliding-window limiter used above.
+ * ------------------------------------------------------------------ */
+
+/** Best-effort caller identity for throttling. Never used for authorization. */
+export function callerKey(request: Request): string {
+  return (
+    request.headers.get("cf-connecting-ip") ??
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown"
+  );
+}
+
+/**
+ * Throttle an unauthenticated public write by caller IP.
+ * Returns a 429 Response when the caller is over budget, else null.
+ */
+export function throttlePublicWrite(
+  request: Request,
+  bucket: string,
+  perMin = 5,
+  perHour = 40,
+): Response | null {
+  const result = checkRateLimit(`public:${bucket}`, callerKey(request), perMin, perHour);
+  return result.ok ? null : rateLimitResponse(result);
+}
+
+/**
+ * Constant-time shared-secret comparison.
+ *
+ * `provided !== expected` leaks how many leading characters matched through
+ * timing. Every cron/webhook secret check should use this instead.
+ */
+export function secretsMatch(
+  provided: string | null | undefined,
+  expected: string | null | undefined,
+): boolean {
+  if (!provided || !expected) return false;
+  const a = new TextEncoder().encode(provided);
+  const b = new TextEncoder().encode(expected);
+  // Fixed-length loop so iteration count never depends on the secret.
+  const len = Math.max(a.length, b.length);
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < len; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
+  return diff === 0;
+}

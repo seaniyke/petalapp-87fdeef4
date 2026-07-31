@@ -9,10 +9,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
-import { checkCreditBalance } from "@/server/credits.server";
+import { checkCreditBalance, spendCredit } from "@/server/credits.server";
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/audio/transcriptions";
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB ≈ ~10 min of opus
+/**
+ * Dictation is cheap but not free — the gateway bills us per request. The
+ * balance check below used to run WITHOUT a matching charge, which meant a
+ * single credit in the wallet bought unlimited transcription forever.
+ */
+const TRANSCRIBE_COST = 0.05;
 
 export const Route = createFileRoute("/api/transcribe")({
   server: {
@@ -40,7 +46,7 @@ export const Route = createFileRoute("/api/transcribe")({
         } catch {
           return new Response("unauthorized", { status: 401 });
         }
-        const balance = await checkCreditBalance({ userId, amount: 0.01 });
+        const balance = await checkCreditBalance({ userId, amount: TRANSCRIBE_COST });
         if (!balance.ok) return new Response("You're out of credits. Add credits to keep chatting.", { status: balance.reason === "insufficient_credits" ? 402 : 500 });
 
         const contentLength = Number(request.headers.get("content-length") || "0");
@@ -74,6 +80,14 @@ export const Route = createFileRoute("/api/transcribe")({
           return new Response("transcription failed", { status: 502 });
         }
         const json = (await res.json()) as { text?: string };
+        // Charge only after a successful transcription, so a gateway failure
+        // never costs the user anything.
+        await spendCredit({
+          userId,
+          amount: TRANSCRIBE_COST,
+          reason: "ai_transcribe_charge",
+          metadata: { lang },
+        });
         return Response.json({ text: (json.text ?? "").trim() });
       },
     },
