@@ -1588,9 +1588,16 @@ function Builder() {
             // container hasn't booted yet (initial turn) or the file is
             // server-only (sql / lockfiles). HMR picks it up in-place.
             if (content) {
-              void import("@/lib/webcontainer").then(({ streamWriteFile }) =>
-                streamWriteFile(path, content),
-              );
+              // Phase 4 #23 — a rejected chunk import (offline, stale asset
+              // hash after a deploy) used to surface as an unhandled promise
+              // rejection and could trip the global error overlay mid-build.
+              // The live preview refreshes from the full file set at the end
+              // of the turn, so failing quietly here is safe.
+              void import("@/lib/webcontainer")
+                .then(({ streamWriteFile }) => streamWriteFile(path, content))
+                .catch((err) => {
+                  console.warn("Live preview write skipped for", path, err);
+                });
             }
           },
           onFileValidated: (path, ok, errors) => {
@@ -2069,9 +2076,13 @@ function Builder() {
               });
               // Phase 4 #12 — stream the file into the WebContainer mid-turn.
               if (content) {
-                void import("@/lib/webcontainer").then(({ streamWriteFile }) =>
-                  streamWriteFile(path, content),
-                );
+                // Phase 4 #23 — see the note on the sibling call above: never
+                // let a failed chunk load become an unhandled rejection.
+                void import("@/lib/webcontainer")
+                  .then(({ streamWriteFile }) => streamWriteFile(path, content))
+                  .catch((err) => {
+                    console.warn("Live preview write skipped for", path, err);
+                  });
               }
             },
             onFileValidated: (path, ok, errors) => {
