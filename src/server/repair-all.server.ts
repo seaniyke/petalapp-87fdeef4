@@ -38,6 +38,7 @@ import { fixBlockProps } from "./block-props.server";
 import { fixComponentChildren } from "./component-child.server";
 import { ensureBrandIdentity } from "./brand-identity.server";
 import { repairBuildConfigImports } from "./build-config-repair.server";
+import { fixSourceEscapes } from "./source-escape-fixer.server";
 
 export interface RepairAllResult {
   files: ProjectFile[];
