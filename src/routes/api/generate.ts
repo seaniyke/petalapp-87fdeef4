@@ -3916,6 +3916,22 @@ Forbidden defaults
           }
         }
 
+        // Honesty gate: if the model claimed edits to files that never
+        // actually changed, say so instead of letting its "done!" summary
+        // ship unchallenged.
+        if (unappliedPaths.length > 0) {
+          const list = unappliedPaths.slice(0, 5).join(", ");
+          const more = unappliedPaths.length > 5 ? ` (+${unappliedPaths.length - 5} more)` : "";
+          const note =
+            `\n\nHeads up — I could not actually change ${list}${more} on this pass, ` +
+            `even though I described those edits. Tell me exactly what should change there ` +
+            `(the text or element, and what it should become) and I'll redo just that part.`;
+          summary = `${summary}${note}`;
+          controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+          console.warn(`[generate] unapplied paths disclosed to user: ${unappliedPaths.join(", ")}`);
+        }
+
+
         controller.enqueue(
           encoder.encode(
             sse({
