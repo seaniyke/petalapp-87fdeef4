@@ -38,6 +38,7 @@ import { fixBlockProps } from "./block-props.server";
 import { fixComponentChildren } from "./component-child.server";
 import { ensureBrandIdentity } from "./brand-identity.server";
 import { repairBuildConfigImports } from "./build-config-repair.server";
+import { fixSourceEscapes } from "./source-escape-fixer.server";
 
 export interface RepairAllResult {
   files: ProjectFile[];
@@ -48,6 +49,14 @@ export interface RepairAllResult {
 export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   let files = input;
   const notes: string[] = [];
+
+  // 0a. Literal escape repair for source files. A stray `\n` in code
+  // position ("Syntax error \"n\"") kills the esbuild transform before any
+  // other pass gets a chance, so this must run first.
+  const srcEsc = fixSourceEscapes(files);
+  files = srcEsc.files;
+  notes.push(...srcEsc.notes);
+
 
   // 0. Build-config import repair. Config files are deliberately excluded
   // from model edits and bare-import stripping, so deterministic healing is

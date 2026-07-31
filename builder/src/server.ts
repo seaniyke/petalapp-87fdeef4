@@ -29,8 +29,10 @@ const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
 const CALLBACK_URL = process.env.PETAL_CALLBACK_URL; // https://app.example.com/api/builds/callback
 
-const MAX_CONCURRENT = Number(process.env.MAX_CONCURRENT_BUILDS ?? 2);
-const MAX_QUEUE = Number(process.env.MAX_QUEUE ?? 20);
+const MAX_CONCURRENT = Number(process.env.MAX_CONCURRENT_BUILDS ?? 3);
+const MAX_QUEUE = Number(process.env.MAX_QUEUE ?? 50);
+/** Hard ceiling on a single job so a wedged install can never leak a slot. */
+const JOB_TIMEOUT_MS = Number(process.env.JOB_TIMEOUT_MS ?? 12 * 60 * 1000);
 
 if (!SHARED_SECRET) throw new Error("BUILDER_SHARED_SECRET env var is required");
 if (!CF_API_TOKEN) throw new Error("CLOUDFLARE_API_TOKEN env var is required");
@@ -137,16 +139,30 @@ fastify.post("/build", async (req, reply) => {
   void runBuild(body).finally(releaseSlot);
 });
 
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`Build exceeded ${Math.round(ms / 1000)}s and was cancelled`)),
+      ms,
+    );
+    p.then(resolve, reject).finally(() => clearTimeout(timer));
+  });
+}
+
 async function runBuild(body: BuildBody): Promise<void> {
   const log = fastify.log.child({ projectId: body.projectId, buildId: body.buildId });
   log.info("Build started");
   let dir: string | null = null;
   try {
     dir = await materializeProject(body.buildId, body.files);
-    const result = await buildAndDeploy(dir, body.projectId, {
-      apiToken: CF_API_TOKEN!,
-      accountId: CF_ACCOUNT_ID!,
-    });
+    const result = await withTimeout(
+      buildAndDeploy(dir, body.projectId, {
+        apiToken: CF_API_TOKEN!,
+        accountId: CF_ACCOUNT_ID!,
+      }),
+      JOB_TIMEOUT_MS,
+    );
+
     log.info({ url: result.url, durationMs: result.durationMs }, "Build succeeded");
     await postCallback({
       buildId: body.buildId,
