@@ -2367,6 +2367,11 @@ function Builder() {
         }
       } catch (e) {
         if (controller.signal.aborted) return;
+        // Phase 4 #22 — the failure belongs to a project the user has since
+        // navigated away from. Surfacing it would stamp the old project's
+        // error card onto the project now on screen.
+        if (projectIdRef.current !== proj.id) return;
+
         const msg = e instanceof Error ? e.message : "Something went wrong.";
         setError(msg);
         const isNoEditFailure =
