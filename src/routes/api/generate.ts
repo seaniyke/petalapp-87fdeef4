@@ -2313,7 +2313,51 @@ Forbidden defaults
       chosenBy = `${chosenBy}+ctx_upgrade`;
     }
   }
-  const finalMessages = budget.messages;
+  let finalMessages = budget.messages;
+
+  // ---------------------------------------------------------------------
+  // Pre-emit agent loop. For work that spans many files or is mechanical,
+  // give the model real hands before it writes: grep, read, run a codemod on
+  // a real checkout, run the verifier — up to 5 rounds. The emit call below
+  // is unchanged and still forced to a single structured payload; it just
+  // runs with the transcript of everything the loop learned appended.
+  // ---------------------------------------------------------------------
+  let agentLoop: AgentLoopResult | null = null;
+  if (
+    shouldRunAgentLoop({
+      isInitial,
+      isCrossCutting,
+      prompt: lastUserContent,
+      fileCount: currentFiles.length,
+    })
+  ) {
+    agentLoop = await runAgentLoop({
+      model,
+      messages: finalMessages as AgentChatMessage[],
+      files: currentFiles,
+      projectId: body.projectId ?? "unknown",
+      userId,
+      signal: request.signal,
+    });
+    if (agentLoop.steps.length > 0) {
+      console.info(
+        `[agent-loop] rounds=${agentLoop.rounds} steps=${agentLoop.steps.length} converged=${agentLoop.converged} changed=${agentLoop.changedPaths.length}`,
+      );
+      // Adopt any codemod result BEFORE the emit call so every later stage
+      // diffs against the real post-codemod bytes.
+      currentFiles = agentLoop.files;
+      finalMessages = [
+        ...finalMessages,
+        ...(agentLoop.transcript as typeof finalMessages),
+        {
+          role: "user",
+          content: `${agentLoopSummaryBlock(agentLoop)}\n\nNow emit the final structured edit for whatever still needs changing.`,
+        } as (typeof finalMessages)[number],
+      ];
+    }
+  }
+
+
 
   const upstream = await aiChatCompletions({
     feature: "generate",
