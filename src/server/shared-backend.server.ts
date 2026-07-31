@@ -223,10 +223,25 @@ const shape = (r: Record<string, unknown>): RecordRow => ({
   updatedAt: r.updated_at as string,
 });
 
+/**
+ * Read scope for a collection listing.
+ *
+ * - `own`    — only the caller's rows. Requires an end-user token.
+ * - `shared` — the caller's rows plus un-owned (guest) rows. DEFAULT.
+ *              Guest-only apps store everything with a null owner, so they
+ *              keep working, while one signed-in user can never read
+ *              another signed-in user's rows.
+ * - `all`    — every row in the collection. Only for genuinely public data
+ *              (a product catalog, a public leaderboard). Must be asked for
+ *              explicitly; it is never the default.
+ */
+export type RecordScope = "own" | "shared" | "all";
+
 export async function listRecords(opts: {
   projectId: string;
   collection: string;
   ownerKey?: string | null;
+  scope?: RecordScope;
   limit?: number;
   offset?: number;
 }): Promise<RecordRow[]> {
@@ -238,7 +253,17 @@ export async function listRecords(opts: {
     .eq("collection", opts.collection)
     .order("created_at", { ascending: false })
     .range(opts.offset ?? 0, (opts.offset ?? 0) + limit - 1);
-  if (opts.ownerKey) q = q.eq("owner_key", opts.ownerKey);
+
+  const scope: RecordScope = opts.scope ?? "shared";
+  if (scope === "own") {
+    // A caller with no identity owns nothing — return nothing rather than
+    // silently widening to everyone else's rows.
+    q = opts.ownerKey ? q.eq("owner_key", opts.ownerKey) : q.is("owner_key", null).limit(0);
+  } else if (scope === "shared") {
+    q = opts.ownerKey
+      ? q.or(`owner_key.is.null,owner_key.eq.${opts.ownerKey}`)
+      : q.is("owner_key", null);
+  }
   const { data, error } = await q;
   if (error) throw new Error(error.message);
   return (data ?? []).map(shape);
@@ -288,7 +313,11 @@ export async function updateRecord(opts: {
     .update({ data: opts.data as never })
     .eq("project_id", opts.projectId)
     .eq("id", opts.id);
-  if (opts.ownerKey) q = q.eq("owner_key", opts.ownerKey);
+  // Ownership is ALWAYS enforced. A caller with no end-user token may only
+  // touch un-owned (guest) rows — it must never be able to reach a row that
+  // belongs to a signed-in end user just by omitting its Authorization
+  // header. `owner_key` is null-scoped rather than unfiltered for that case.
+  q = opts.ownerKey ? q.eq("owner_key", opts.ownerKey) : q.is("owner_key", null);
   const { data, error } = await q
     .select("id, collection, owner_key, data, created_at, updated_at")
     .maybeSingle();
@@ -306,7 +335,8 @@ export async function deleteRecord(opts: {
     .delete()
     .eq("project_id", opts.projectId)
     .eq("id", opts.id);
-  if (opts.ownerKey) q = q.eq("owner_key", opts.ownerKey);
+  // Same rule as updateRecord: never unfiltered.
+  q = opts.ownerKey ? q.eq("owner_key", opts.ownerKey) : q.is("owner_key", null);
   const { data, error } = await q.select("id").maybeSingle();
   if (error) throw new Error(error.message);
   return Boolean(data);
