@@ -470,7 +470,17 @@ export function redirect(target: To) {
 /** Route-definition helpers become inert factories: the react-router route
  *  table is what actually renders, so these must not throw when imported. */
 export function createFileRoute(_path?: string) {
-  return (options: any) => ({ ...options, path: _path });
+  return (options: any) => ({
+    ...options,
+    path: _path,
+    useLoaderData: () => {
+      const params = useRRParams();
+      return options?.loader ? options.loader({ params }) : undefined;
+    },
+    useParams: useRRParams,
+    useSearch,
+    useNavigate,
+  });
 }
 
 export const createLazyFileRoute = createFileRoute;

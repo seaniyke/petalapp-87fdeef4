@@ -149,6 +149,11 @@ assert.match(
   /export function Link/,
   "a later repair run must restore a stubbed compatibility shim",
 );
+assert.match(
+  restoredCompat.files.find((f) => f.path === "src/lib/router-compat.tsx")?.content ?? "",
+  /useLoaderData:/,
+  "the compatibility route object must support Route.useLoaderData()",
+);
 
 const contextOnlyFallback = fixTanstackRouterWithoutProvider([
   {
