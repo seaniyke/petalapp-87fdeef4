@@ -1542,6 +1542,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             );
           }
         } finally {
+          releaseBuildLock(userId);
           controller.close();
         }
       },
