@@ -25,13 +25,53 @@ type Props = {
   persisted?: boolean;
 };
 
+/**
+ * Turn a raw bundler log into one human sentence plus the file it points at.
+ * Stack frames ("    at …") are dropped — they are never actionable for the
+ * person reading this card, and on a phone they crowded out the real message.
+ */
+function summarizeTechnicalDetail(
+  raw: string | undefined,
+): { message: string; location?: string } | null {
+  if (!raw) return null;
+  const lines = raw
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && !/^at\s/.test(l));
+  if (lines.length === 0) return null;
+
+  const errorLine =
+    lines.find((l) => /^(error|x |✘|ERROR)/i.test(l) && !/^error during build/i.test(l)) ??
+    lines.find((l) => /error/i.test(l)) ??
+    lines[0];
+
+  // "/app/builds/<id>/src/routes/products/$slug.tsx:9:21: ERROR: Expected …"
+  const located = /([\w./$@-]+\.[a-z]{2,4}):(\d+):(\d+)/i.exec(errorLine);
+  let message = errorLine
+    .replace(/^(x|✘)\s*/i, "")
+    .replace(/^error(\s+during\s+build)?:?\s*/i, "")
+    .replace(/^\[[^\]]+\]\s*/, "");
+  let location: string | undefined;
+  if (located) {
+    message = message.slice(located.index + located[0].length).replace(/^:?\s*(ERROR:)?\s*/i, "");
+    const shortPath = located[1].replace(/^.*?\/src\//, "src/");
+    location = `${shortPath} · line ${located[2]}`;
+  }
+  if (!message) message = errorLine;
+  return { message: message.slice(0, 240), location };
+}
+
 export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredits }: Props) {
   const [showDetails, setShowDetails] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const summary = summarizeTechnicalDetail(error.technicalDetail);
 
   const isAskFix = error.actionKind === "ask-fix";
   const isRetry = error.actionKind === "retry";
   const isDismiss = error.actionKind === "dismiss";
   const isBuyCredits = error.actionKind === "buy-credits";
+
 
   return (
     <div className="mr-2 w-full max-w-[520px]">
@@ -129,9 +169,10 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
                 <button
                   type="button"
                   onClick={() => setShowDetails((s) => !s)}
-                  className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[12px] font-medium text-muted-foreground transition hover:text-foreground"
+                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2.5 text-[12px] font-medium text-muted-foreground transition hover:text-foreground"
+                  aria-expanded={showDetails}
                 >
-                  Details
+                  {showDetails ? "Hide details" : "What went wrong"}
                   <ChevronDown
                     className={`h-3.5 w-3.5 transition-transform ${showDetails ? "rotate-180" : ""}`}
                   />
@@ -140,10 +181,56 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
             </div>
 
             {showDetails && error.technicalDetail && (
-              <pre className="mt-2.5 max-h-44 overflow-auto rounded-2xl border border-foreground/8 bg-background/60 p-2.5 text-[11px] leading-snug text-muted-foreground">
-                {error.technicalDetail}
-              </pre>
+              <div className="mt-2.5 min-w-0 space-y-2">
+                {/* Plain-language summary first — the raw stack is noise for
+                    most people and, on a phone, it used to be the only thing
+                    they could see. */}
+                {summary && (
+                  <div className="min-w-0 rounded-2xl border border-foreground/8 bg-background/60 p-2.5">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      The problem
+                    </div>
+                    <p className="mt-1 break-words text-[12.5px] leading-snug text-foreground">
+                      {summary.message}
+                    </p>
+                    {summary.location && (
+                      <p className="mt-1 break-all font-mono text-[11px] leading-snug text-muted-foreground">
+                        {summary.location}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowRaw((s) => !s)}
+                    className="inline-flex h-7 items-center rounded-full border border-foreground/12 px-2.5 text-[11.5px] font-medium text-muted-foreground transition hover:text-foreground"
+                  >
+                    {showRaw ? "Hide technical log" : "Technical log"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard
+                        ?.writeText(error.technicalDetail ?? "")
+                        .then(() => setCopied(true))
+                        .then(() => window.setTimeout(() => setCopied(false), 1600));
+                    }}
+                    className="inline-flex h-7 items-center rounded-full border border-foreground/12 px-2.5 text-[11.5px] font-medium text-muted-foreground transition hover:text-foreground"
+                  >
+                    {copied ? "Copied" : "Copy log"}
+                  </button>
+                </div>
+
+                {showRaw && (
+                  <pre className="max-h-44 w-full min-w-0 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words rounded-2xl border border-foreground/8 bg-background/60 p-2.5 text-[11px] leading-snug text-muted-foreground">
+                    {error.technicalDetail}
+                  </pre>
+                )}
+              </div>
             )}
+
           </div>
         </div>
       </div>

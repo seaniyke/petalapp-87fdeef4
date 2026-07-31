@@ -39,6 +39,7 @@ import { fixComponentChildren } from "./component-child.server";
 import { ensureBrandIdentity } from "./brand-identity.server";
 import { repairBuildConfigImports } from "./build-config-repair.server";
 import { fixSourceEscapes } from "./source-escape-fixer.server";
+import { fixImportSyntax } from "./import-syntax-fixer.server";
 
 export interface RepairAllResult {
   files: ProjectFile[];
@@ -56,6 +57,14 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   const srcEsc = fixSourceEscapes(files);
   files = srcEsc.files;
   notes.push(...srcEsc.notes);
+
+  // 0a-2. Malformed import statements (`import { X } '…'` — no `from`) abort
+  // the esbuild transform exactly like the escape bug, so heal them here too,
+  // before any pass tries to read the import graph.
+  const importSyntax = fixImportSyntax(files);
+  files = importSyntax.files;
+  notes.push(...importSyntax.notes);
+
 
 
   // 0. Build-config import repair. Config files are deliberately excluded
