@@ -145,10 +145,14 @@ async function runBuild(body: BuildBody): Promise<void> {
   let dir: string | null = null;
   try {
     dir = await materializeProject(body.buildId, body.files);
-    const result = await buildAndDeploy(dir, body.projectId, {
-      apiToken: CF_API_TOKEN!,
-      accountId: CF_ACCOUNT_ID!,
-    });
+    const result = await withTimeout(
+      buildAndDeploy(dir, body.projectId, {
+        apiToken: CF_API_TOKEN!,
+        accountId: CF_ACCOUNT_ID!,
+      }),
+      JOB_TIMEOUT_MS,
+    );
+
     log.info({ url: result.url, durationMs: result.durationMs }, "Build succeeded");
     await postCallback({
       buildId: body.buildId,
