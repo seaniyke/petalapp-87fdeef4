@@ -31,7 +31,14 @@ export async function materializeProject(
 ): Promise<string> {
   const dir = join(BUILDS_ROOT, buildId);
   await mkdir(dir, { recursive: true });
-  for (const f of files) {
+  // Pre-flight syntax heal on the exact bytes esbuild will parse. One
+  // malformed import kills the whole build, so this runs unconditionally
+  // regardless of what the app server already repaired.
+  const healed = healSyntax(files);
+  if (healed.notes.length > 0) {
+    console.warn(`[pre-flight-heal] build=${buildId}: ${healed.notes.join("; ")}`);
+  }
+  for (const f of healed.files) {
     const full = safeJoin(dir, f.path);
     await mkdir(dirname(full), { recursive: true });
     await writeFile(full, f.content, "utf8");
