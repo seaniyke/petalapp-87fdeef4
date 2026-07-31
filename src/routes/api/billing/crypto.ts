@@ -16,6 +16,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getEnvironment } from "@/server/paystack.server";
 import { resolvePrice } from "@/server/billing-pricing.server";
 import { CRYPTO_WALLETS } from "@/lib/crypto-tips";
+import { throttlePublicWrite } from "@/server/rate-limit.server";
+
 
 const Body = z.object({
   purpose: z.enum(["plan", "pack", "runtime_topup"]),
