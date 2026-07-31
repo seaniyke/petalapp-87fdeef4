@@ -315,3 +315,59 @@ export function renderApprovedPlanBlock(plan: PlanProposal): string {
   const list = plan.files.map((f) => `- [${f.intent}] ${f.path} — ${f.reason}`).join("\n");
   return `\n\n### Approved plan (locked scope)\nThe user has APPROVED this plan. You MUST limit your file operations to the paths below. Do NOT touch any other file. If satisfying the request truly requires a file outside this list, return a brief summary explaining why and emit no file ops.\n\nSummary: ${plan.summary}\nRisk: ${plan.risk}\n\nFiles:\n${list}\n`;
 }
+
+/**
+ * Plan Mode v2 — should Petal propose a plan *without* being asked?
+ *
+ * The composer's "Plan first" toggle only ever fired when a user found it,
+ * which meant the common case was Petal deciding silently and the user seeing
+ * scope only after files moved. Competitors show a plan by default for work
+ * that is big enough to be worth reviewing. This is that gate.
+ *
+ * The bar is deliberately high: a plan round trip costs a model call and a
+ * click, so trivial edits — the bulk of turns — must stay instant. We plan
+ * when the request is structural, multi-part, or long-form prose, and only on
+ * projects that already exist (the first build has nothing to scope against).
+ */
+export function shouldAutoPlan(args: {
+  prompt: string;
+  fileCount: number;
+  isInitial: boolean;
+  isAutoFix?: boolean;
+}): boolean {
+  if (args.isInitial || args.isAutoFix) return false;
+  // Under a handful of files there is no meaningful scope to review.
+  if (args.fileCount < 4) return false;
+
+  const raw = args.prompt.trim();
+  const p = raw.toLowerCase();
+
+  // Explicit "just do it" always wins over the heuristic.
+  if (/\b(just do it|no plan|don'?t plan|skip the plan|quick(ly)?)\b/.test(p)) return false;
+
+  // Small, well-understood tweaks never plan, even when phrased at length.
+  const trivial =
+    /^(fix|change|update|tweak|adjust|make|set|move|remove|delete|rename)\b/.test(p) &&
+    raw.length < 90 &&
+    !/\bpage|route|feature|flow|auth|database|schema|payment|checkout|dashboard\b/.test(p);
+  if (trivial) return false;
+
+  // Structural work — anything that adds surface area or touches data/auth.
+  const structural =
+    /\b(add|build|create|implement|introduce|integrate|set up|setup|wire up|redesign|rebuild|refactor|migrate|restructure)\b/.test(
+      p,
+    ) &&
+    /\b(page|pages|route|routes|screen|section|feature|flow|dashboard|auth|login|signup|account|database|schema|table|api|endpoint|payment|checkout|subscription|onboarding|search|admin|profile|settings|notification|upload|chat)\b/.test(
+      p,
+    );
+  if (structural) return true;
+
+  // Multi-part requests: bullet lists or several sentences of instructions.
+  const bullets = (raw.match(/^\s*(?:[-*•]|\d+[.)])\s+/gm) ?? []).length;
+  if (bullets >= 2) return true;
+
+  // Long-form prose is almost always a compound ask.
+  if (raw.length >= 320) return true;
+
+  return false;
+}
