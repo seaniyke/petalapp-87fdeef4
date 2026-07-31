@@ -63,6 +63,10 @@ export interface ChatMessage {
 const MAX_ROUNDS = 5;
 const MAX_TOOL_CALLS = 14;
 const MAX_CODEMODS = 3;
+/** Installs hit the network and mutate the manifest; two per turn is plenty. */
+const MAX_INSTALLS = 2;
+/** A suite run costs minutes, so it happens at most once per turn. */
+const MAX_TEST_RUNS = 1;
 
 const LOOP_BRIEF = `You now have tools, and a chance to do real work before you write your final answer.
 
@@ -70,6 +74,8 @@ Use them for what you cannot know from the snapshot above:
 - \`search_files\` / \`read_file\` — confirm the exact current bytes of anything you are about to rewrite. Never write a search/replace against text you have not just read.
 - \`run_script\` — run a Node or Python script against a real checkout of the project. Use it for mechanical, repetitive edits spanning many files (renaming a prop everywhere, swapping a class across every page, rewriting every import). Anything it writes to disk is applied to the project. Keep it deterministic and idempotent, and print a one-line summary of what it changed.
 - \`run_check\` — run the static verifier. Call it after any codemod.
+- \`install_packages\` — add an npm dependency on a real checkout. Use this instead of hand-writing a version into package.json when the change needs a package the project does not have. Prefer zero new dependencies; only install what the request genuinely requires.
+- \`run_tests\` — run the project's OWN test suite. Slow. Only when the project has tests AND your change could plausibly break them.
 
 Rules:
 - Prefer one codemod over twenty hand-written edits, and one hand-written edit over a codemod that touches one file.
@@ -121,6 +127,8 @@ export async function runAgentLoop(args: {
   const changedPaths: string[] = [];
   let toolCallCount = 0;
   let codemodCount = 0;
+  let installCount = 0;
+  let testRunCount = 0;
   let rounds = 0;
   let converged = false;
 
@@ -204,6 +212,11 @@ export async function runAgentLoop(args: {
           refusal = "Tool budget for this turn is spent. Stop calling tools and write the edit now.";
         } else if (name === "run_script" && codemodCount >= MAX_CODEMODS) {
           refusal = "Codemod budget for this turn is spent. Make any remaining changes as normal edits.";
+        } else if (name === "install_packages" && installCount >= MAX_INSTALLS) {
+          refusal =
+            "Install budget for this turn is spent. Work with the dependencies the project already has.";
+        } else if (name === "run_tests" && testRunCount >= MAX_TEST_RUNS) {
+          refusal = "The test suite has already run this turn. Do not run it again.";
         }
 
         if (refusal) {
@@ -215,6 +228,8 @@ export async function runAgentLoop(args: {
 
         toolCallCount++;
         if (name === "run_script") codemodCount++;
+        if (name === "install_packages") installCount++;
+        if (name === "run_tests") testRunCount++;
 
         const result = await executeAgentTool({
           call: { name, args: parsed },
@@ -305,5 +320,24 @@ export function shouldRunAgentLoop(args: {
     "migrate",
     "refactor",
   ];
-  return mechanical.some((k) => p.includes(k));
+  if (mechanical.some((k) => p.includes(k))) return true;
+
+  // Dependency work is the other case worth the round trips: the loop can
+  // actually install the package and read back the real resolved version,
+  // instead of the model guessing a version string into package.json.
+  const dependency = [
+    "install ",
+    "npm package",
+    "add a package",
+    "add the package",
+    "dependency",
+    "dependencies",
+    "library for",
+    "use the library",
+  ];
+  if (dependency.some((k) => p.includes(k))) return true;
+
+  // Same for the project's own suite: only when the user asked for it.
+  const tests = ["run the tests", "run tests", "test suite", "make the tests pass"];
+  return tests.some((k) => p.includes(k));
 }

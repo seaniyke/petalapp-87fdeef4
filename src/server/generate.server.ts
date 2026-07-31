@@ -577,7 +577,13 @@ export type StreamEvent =
       summary: string;
       risk: "low" | "medium" | "high";
       files: Array<{ path: string; intent: "edit" | "create" | "delete"; reason: string }>;
+      /** True when Petal proposed the plan on its own (Plan Mode v2), rather
+       *  than because the user toggled "Plan first". */
+      auto?: boolean;
     }
+  /** Auto-plan was wanted but could not be produced; the client should just
+   *  resend the turn with `autoPlan: false` instead of showing an error. */
+  | { type: "plan_skipped"; reason: string }
   /** Emitted when an approved plan tried to apply ops outside its allowed paths. */
   | {
       type: "plan_scope_violation";

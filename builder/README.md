@@ -72,6 +72,28 @@ No new environment variables are required for `/exec` — it reuses
 `MAX_EXEC_QUEUE` (default 30). Until the redeploy lands, the Petal app simply
 reports script execution as unavailable and falls back to normal edits.
 
+### `/exec` modes
+
+`/exec` takes a `mode`, and each mode has a different safety posture:
+
+| mode | what runs | network | writes back |
+|---|---|---|---|
+| `inspect` | allowlisted read-only binaries (`ls`, `cat`, `rg`, `find`…) | no | nothing |
+| `codemod` | `node` / `python3` script piped on stdin | no | every changed file |
+| `install` | `npm install <specs>` | yes | `package.json`, `package-lock.json` only |
+| `test` | `npm install` then the project's own `npm test` | yes | nothing |
+
+`install` validates every spec against a strict registry-package pattern —
+no URLs, git specs, `file:` paths, or flags — and runs with `--ignore-scripts`
+so a malicious postinstall cannot execute. `install` and `test` deliberately do
+**not** run through the exec allowlist: giving every codemod script network
+egress to reach the registry would be a much larger hole than these two narrow,
+argument-validated commands.
+
+Both are minutes-scale (install 4 min, test 5 min plus its install), so the
+Petal side allows a 10-minute round trip for them while ordinary inspect and
+codemod sessions stay capped at 90 seconds.
+
 
 ## Local development
 

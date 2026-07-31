@@ -127,6 +127,7 @@ import {
   loadAndConsumePlan,
   buildAllowedPathSet,
   renderApprovedPlanBlock,
+  shouldAutoPlan,
   type PlanProposal,
 } from "@/server/plan-mode";
 
@@ -161,6 +162,10 @@ type Body = {
   /** Plan Mode v1 — user's edited subset of plan paths to allow. If
    *  omitted, the entire plan's file list is allowed. */
   allowedPaths?: string[];
+  /** Plan Mode v2 — set false to opt out of the automatic plan proposal
+   *  (the composer sends this when the user picked "Just build it", or when
+   *  they turned auto-plan off in settings). Defaults to true. */
+  autoPlan?: boolean;
 };
 
 const PATCH_CONTEXT_FILE_LIMIT = 24;
@@ -1450,7 +1455,21 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   // stream. The composer renders the plan as an approval card; the user picks
   // files (or accepts all) and POSTs back with `approvedPlanId` to resume.
   // ===========================================================================
-  if (body.planFirst && !body.approvedPlanId) {
+  // Plan Mode v2 — a substantial change proposes its scope before touching
+  // files, whether or not the user found the "Plan first" toggle. Trivial
+  // edits and first builds skip straight through.
+  const autoPlanWanted =
+    body.autoPlan !== false &&
+    !body.isAutoFix &&
+    Boolean(body.projectId) &&
+    shouldAutoPlan({
+      prompt: lastContent,
+      fileCount: currentFiles.length,
+      isInitial: currentFiles.length === 0,
+      isAutoFix: body.isAutoFix,
+    });
+
+  if ((body.planFirst || autoPlanWanted) && !body.approvedPlanId) {
     if (!body.projectId) {
       return new Response(
         JSON.stringify({ error: "Plan mode requires a saved project. Save and try again." }),
@@ -1477,6 +1496,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
               sse({
                 type: "plan_proposed",
                 planId,
+                auto: !body.planFirst,
                 summary: plan.summary,
                 risk: plan.risk,
                 files: plan.files,
@@ -1486,17 +1506,25 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
         } catch (e) {
           const raw = e instanceof Error ? e.message : "Planning failed.";
           console.error("[/api/generate] plan_proposal failed", raw);
-          controller.enqueue(
-            planEncoder.encode(
-              sse({
-                type: "error",
-                message:
-                  "Petal couldn't draft a plan for that request. Try sending again without Plan first.",
-                kind: classifyRawError(raw),
-                raw: raw.slice(0, 240),
-              }),
-            ),
-          );
+          if (!body.planFirst) {
+            // Auto-plan is a courtesy, not a gate: if planning fails we tell
+            // the client to just run the turn rather than stranding the user.
+            controller.enqueue(
+              planEncoder.encode(sse({ type: "plan_skipped", reason: "planning_failed" })),
+            );
+          } else {
+            controller.enqueue(
+              planEncoder.encode(
+                sse({
+                  type: "error",
+                  message:
+                    "Petal couldn't draft a plan for that request. Try sending again without Plan first.",
+                  kind: classifyRawError(raw),
+                  raw: raw.slice(0, 240),
+                }),
+              ),
+            );
+          }
         } finally {
           controller.close();
         }

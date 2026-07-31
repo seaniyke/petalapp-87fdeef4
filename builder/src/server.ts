@@ -23,6 +23,12 @@ import { verify, sign } from "./signing.js";
 import { materializeProject, cleanupProject, type ProjectFile } from "./fs-helpers.js";
 import { buildAndDeploy, BuildError } from "./build.js";
 import { runExecSession, ExecError, MAX_COMMANDS_PER_SESSION } from "./exec.js";
+import {
+  runInstallSession,
+  runTestSession,
+  DepsError,
+  MAX_PACKAGES_PER_INSTALL,
+} from "./deps.js";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const SHARED_SECRET = process.env.BUILDER_SHARED_SECRET;
@@ -115,6 +121,8 @@ fastify.get("/healthz", async () => ({
   queued: queue.length,
   execInFlight,
   execQueued: execQueue.length,
+  // Presence of this key tells the app that /exec supports install + test modes.
+  execModes: ["inspect", "codemod", "install", "test"],
 }));
 
 fastify.post("/build", async (req, reply) => {
@@ -167,9 +175,13 @@ const ExecCommandSchema = z.object({
 const ExecBodySchema = z.object({
   projectId: z.string().uuid(),
   sessionId: z.string().uuid(),
-  mode: z.enum(["inspect", "codemod"]),
+  mode: z.enum(["inspect", "codemod", "install", "test"]),
   files: z.array(FileSchema).min(1).max(2000),
-  commands: z.array(ExecCommandSchema).min(1).max(MAX_COMMANDS_PER_SESSION),
+  /** Required for inspect/codemod; ignored by install/test. */
+  commands: z.array(ExecCommandSchema).max(MAX_COMMANDS_PER_SESSION).default([]),
+  /** install mode only. */
+  packages: z.array(z.string().max(128)).max(MAX_PACKAGES_PER_INSTALL).optional(),
+  dev: z.boolean().optional(),
 });
 
 let execInFlight = 0;
@@ -220,12 +232,22 @@ fastify.post("/exec", async (req, reply) => {
   let dir: string | null = null;
   try {
     dir = await materializeProject(body.sessionId, body.files);
-    const out = await runExecSession({
-      root: dir,
-      mode: body.mode,
-      commands: body.commands,
-      original: body.files,
-    });
+    const out =
+      body.mode === "install"
+        ? await runInstallSession({
+            root: dir,
+            packages: body.packages ?? [],
+            dev: Boolean(body.dev),
+            original: body.files,
+          })
+        : body.mode === "test"
+          ? await runTestSession({ root: dir })
+          : await runExecSession({
+              root: dir,
+              mode: body.mode,
+              commands: body.commands,
+              original: body.files,
+            });
     log.info(
       { commands: out.results.length, changed: out.changedFiles.length },
       "Exec session finished",
@@ -234,7 +256,7 @@ fastify.post("/exec", async (req, reply) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log.warn({ err: message }, "Exec session failed");
-    const status = err instanceof ExecError ? 400 : 500;
+    const status = err instanceof ExecError || err instanceof DepsError ? 400 : 500;
     return reply.code(status).send({ error: message });
   } finally {
     if (dir) await cleanupProject(body.sessionId);

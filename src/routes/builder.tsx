@@ -765,6 +765,8 @@ function Builder() {
     allowedPaths: Set<string>;
     /** Original prompt the user submitted, replayed on approve. */
     sourcePrompt: string;
+    /** Petal proposed this on its own (Plan Mode v2) rather than on request. */
+    auto: boolean;
   } | null>(null);
   const composerFileInputRef = useRef<HTMLInputElement>(null);
   const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1750,6 +1752,8 @@ function Builder() {
         approvedPlanId?: string;
         /** Plan Mode v1 — user's edited subset of approved file paths. */
         allowedPaths?: string[];
+        /** Plan Mode v2 — false skips Petal's automatic plan proposal. */
+        autoPlan?: boolean;
       } = {},
     ) => {
       const text = content.trim();
@@ -2025,6 +2029,7 @@ function Builder() {
             planFirst: opts.planFirst,
             approvedPlanId: opts.approvedPlanId,
             allowedPaths: opts.allowedPaths,
+            autoPlan: opts.autoPlan,
             buildTarget,
 
           },
@@ -2160,9 +2165,15 @@ function Builder() {
                 files: plan.files,
                 allowedPaths: new Set(plan.files.map((f) => f.path)),
                 sourcePrompt: text,
+                auto: Boolean(plan.auto),
               });
               setActivityVisible(false);
               setLatestCycleProgress(undefined);
+            },
+            onPlanSkipped: () => {
+              // Planning is a courtesy step. If it failed, run the turn the
+              // user actually asked for instead of surfacing a dead end.
+              void sendRef.current?.(text, { ...opts, autoPlan: false });
             },
             onPlanScopeViolation: (dropped) => {
               setLatestCycleProgress(
@@ -4412,6 +4423,15 @@ function Builder() {
                 setProposedPlan((p) => (p ? { ...p, allowedPaths: new Set() } : p))
               }
               onCancel={() => setProposedPlan(null)}
+              onSkip={
+                proposedPlan.auto
+                  ? () => {
+                      const prompt = proposedPlan.sourcePrompt;
+                      setProposedPlan(null);
+                      void sendRef.current?.(prompt, { autoPlan: false });
+                    }
+                  : undefined
+              }
               onApprove={() => {
                 const plan = proposedPlan;
                 setProposedPlan(null);
