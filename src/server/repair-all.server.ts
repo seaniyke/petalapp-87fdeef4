@@ -34,6 +34,8 @@ import { fixMissingRouterProvider } from "./router-provider.server";
 import { fixTanstackRouterWithoutProvider } from "./tanstack-router-fallback.server";
 
 import { fixCssEscapes } from "./css-escape-fixer.server";
+import { fixBlockProps } from "./block-props.server";
+import { ensureBrandIdentity } from "./brand-identity.server";
 import { repairBuildConfigImports } from "./build-config-repair.server";
 
 export interface RepairAllResult {
@@ -154,7 +156,20 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   files = assets.files;
   for (const n of assets.notes) notes.push(n);
 
-  // 9. Runtime contract pass — DOM guard, Dialog Title, Select onValueChange, Providers.
+  // 9a. Kit-block prop contract — flatten invented `sectionHeader={{…}}`
+  //     objects back into real props. Without this the section header never
+  //     renders and the page ships with a tall blank band.
+  const blockProps = fixBlockProps(files);
+  files = blockProps.files;
+  for (const n of blockProps.notes) notes.push(n);
+
+  // 9b. Brand identity — real logo mark component, placeholder-glyph swap,
+  //     and a favicon/apple-touch-icon so apps never ship unbranded.
+  const brand = ensureBrandIdentity(files);
+  files = brand.files;
+  for (const n of brand.notes) notes.push(n);
+
+  // 10. Runtime contract pass — DOM guard, Dialog Title, Select onValueChange, Providers.
   const rt = enforceRuntimeContracts(files);
   files = rt.files;
   for (const n of rt.notes) notes.push(n);
