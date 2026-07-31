@@ -51,9 +51,11 @@ export async function fetchRuntimeWallet(userId: string): Promise<RuntimeWallet>
     .eq("user_id", userId)
     .maybeSingle();
 
-  const nextReset = new Date();
-  nextReset.setUTCDate(1);
-  nextReset.setUTCMonth(nextReset.getUTCMonth() + 1);
+  // Phase 4 #23 — `runtime_free_reset_at` is a date-only stamp for the period
+  // the balance currently belongs to, so echoing it straight through showed
+  // users a reset date in the past. The next boundary is the first UTC day of
+  // next month, derived from the clock.
+  const nextReset = nextMonthlyResetAt();
 
   const qualifiedAt = (data as { runtime_topup_qualified_at?: string | null } | null)
     ?.runtime_topup_qualified_at ?? null;
@@ -61,7 +63,7 @@ export async function fetchRuntimeWallet(userId: string): Promise<RuntimeWallet>
   return {
     freeBalanceCents: Number(data?.runtime_free_balance_cents ?? 0),
     topupBalanceCents: Number(data?.runtime_topup_balance_cents ?? 0),
-    freeResetAt: data?.runtime_free_reset_at ?? nextReset.toISOString().slice(0, 10),
+      freeResetAt: nextReset.toISOString().slice(0, 10),
     workspaceCapCents:
       data?.workspace_cap_cents == null ? null : Number(data.workspace_cap_cents),
     monthlyFreeGrantCents: MONTHLY_FREE_GRANT_CENTS,
