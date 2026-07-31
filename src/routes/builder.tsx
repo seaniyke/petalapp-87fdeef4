@@ -2468,20 +2468,30 @@ function Builder() {
         // activity card suppress its duplicate copy by comparing against tail.
         persistFriendlyError(friendly);
       } finally {
+        // Phase 4 #22 — a turn that finishes (or aborts) AFTER the user has
+        // switched projects must not touch the UI any more. Every setter
+        // below is global to the builder, so running them unconditionally
+        // killed the *new* project's spinner and wiped its streaming text.
+        const stillCurrent = projectIdRef.current === proj.id;
         if (abortRef.current === controller) abortRef.current = null;
-        setBusy(false);
-        // Drop any partial streaming text — either it became a real message
-        // above, or the run failed/aborted and we don't want a stale bubble.
-        setStreamingAssistant("");
-        setStreamingPlan("");
-        setStreamingRecap("");
-        setStreamingPreamble("");
+        if (stillCurrent) {
+          setBusy(false);
+          // Drop any partial streaming text — either it became a real message
+          // above, or the run failed/aborted and we don't want a stale bubble.
+          setStreamingAssistant("");
+          setStreamingPlan("");
+          setStreamingRecap("");
+          setStreamingPreamble("");
+        }
         // Tear down the streaming-draft writer and wipe the row so the next
         // refresh doesn't resurrect a reply that's already been promoted into
-        // the chat thread (or that failed and shouldn't reappear).
+        // the chat thread (or that failed and shouldn't reappear). This is
+        // per-project persistence, so it is safe (and required) even after a
+        // switch — it targets `proj.id`, not whatever is on screen now.
         draftWriter.cancel();
         void clearMessageDraft(proj.id);
       }
+
     },
     [
       busy,
