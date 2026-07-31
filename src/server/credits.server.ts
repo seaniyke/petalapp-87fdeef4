@@ -30,6 +30,7 @@ export type SpendReason =
   | "ai_discuss"
   | "ai_discuss_charge"
   | "ai_coach_charge"
+  | "ai_transcribe_charge"
   | "ai_build_hold"
   | "ai_build_topup"
   | "ai_build_charge";
@@ -82,22 +83,51 @@ export type RefundCreditOptions = {
 };
 
 /** Refund a previously-spent credit by ledger id. Returns the buckets to
- *  exactly the state they were in. Best-effort: if it fails we log and
- *  swallow because there's no good way to surface this to the user. */
-export async function refundCredit(opts: RefundCreditOptions): Promise<void> {
-  try {
-    const { error } = await supabaseAdmin.rpc("refund_credit", {
-      _user_id: opts.userId,
-      _ledger_id: opts.ledgerId,
-      _reason: opts.reason,
-      _metadata: (opts.metadata as never) ?? {},
-    });
-    if (error) {
-      console.error("[credits] refund_credit RPC error — credit not refunded", error);
+ *  exactly the state they were in.
+ *
+ *  A dropped refund silently keeps money we didn't earn, so a single failed
+ *  RPC is no longer just logged: we retry with backoff, and if every attempt
+ *  fails we leave a durable marker in the ledger metadata trail via
+ *  `refund_failed` so support can reconcile it. Returns whether the credit
+ *  actually made it back to the user. */
+export async function refundCredit(opts: RefundCreditOptions): Promise<boolean> {
+  const attempts = 3;
+  let lastError = "";
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const { error } = await supabaseAdmin.rpc("refund_credit", {
+        _user_id: opts.userId,
+        _ledger_id: opts.ledgerId,
+        _reason: opts.reason,
+        _metadata: (opts.metadata as never) ?? {},
+      });
+      if (!error) return true;
+      lastError = error.message;
+      console.error(`[credits] refund_credit RPC error (attempt ${i + 1}/${attempts})`, error);
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : "unknown error";
+      console.error(`[credits] refund_credit threw (attempt ${i + 1}/${attempts})`, e);
     }
-  } catch (e) {
-    console.error("[credits] refund_credit threw — credit not refunded", e);
+    if (i < attempts - 1) await new Promise((r) => setTimeout(r, 250 * (i + 1)));
   }
+  // Durable breadcrumb: a human needs to hand this credit back.
+  console.error("[credits] REFUND_FAILED — manual reconciliation required", {
+    userId: opts.userId,
+    ledgerId: opts.ledgerId,
+    reason: opts.reason,
+    lastError,
+  });
+  try {
+    await supabaseAdmin.from("pipeline_failures").insert({
+      stage: "credit_refund",
+      user_id: opts.userId,
+      error_message: `refund_credit failed after ${attempts} attempts: ${lastError}`,
+      details: { ledgerId: opts.ledgerId, reason: opts.reason } as never,
+    } as never);
+  } catch {
+    // Nothing left to do — the console line above is the last resort.
+  }
+  return false;
 }
 
 export type CheckBalanceResult =
