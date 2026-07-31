@@ -206,6 +206,7 @@ import { CollapsibleSegment } from "@/components/CollapsibleSegment";
 import { sanitizeNarrative } from "@/lib/sanitize-narrative";
 import { guardBackendClaims } from "@/lib/backend-claim-guard";
 import { runProjectMigrations } from "@/lib/managed-migrations.functions";
+import { loadRecoveryState, saveRecoveryState } from "@/lib/recovery-budget";
 const WebContainerPreview = lazy(() =>
   import("@/components/WebContainerPreview").then((m) => ({ default: m.WebContainerPreview })),
 );
@@ -862,21 +863,75 @@ function Builder() {
   // One shared budget per USER turn makes the behaviour predictable: at most
   // MAX_TURN_AUTO_RECOVERIES silent repair turns per thing the user asked
   // for, after which Petal stops and hands control back with a clear card.
+  //
+  // The budget is PERSISTED per project: refs alone reset when the tab is
+  // reloaded or discarded by the OS, which let a returning user walk back
+  // into the exact repair chain Petal had already stopped.
   // ---------------------------------------------------------------------
   const MAX_TURN_AUTO_RECOVERIES = 3;
   const turnRecoveryRef = useRef<{ key: string | null; used: number }>({
     key: null,
     used: 0,
   });
-  const beginUserTurn = useCallback((projectId: string | null | undefined) => {
-    turnRecoveryRef.current = { key: `${projectId ?? "none"}:${Date.now()}`, used: 0 };
+  const recoveryHydratedForRef = useRef<string | null>(null);
+  const persistRecovery = useCallback((projectId: string | null | undefined) => {
+    if (!projectId) return;
+    saveRecoveryState(projectId, {
+      turnKey: turnRecoveryRef.current.key,
+      used: turnRecoveryRef.current.used,
+      autoFixAttempts: autoFixRef.current.attempts,
+      handledBuildIds: [...autoFixRef.current.handledBuildIds],
+      verifyHandledBuildIds: [...verifyFixRef.current.handled],
+      startedBuildIds: [...startedBuildIdsRef.current],
+      noEditAttempts: noEditRecoveryRef.current.attempts,
+      transientAttempts: transientGenerateRecoveryRef.current.attempts,
+      updatedAt: Date.now(),
+    });
   }, []);
+  /**
+   * Restore the persisted budget once per project. Called before any
+   * self-healing decision so a reload can never hand Petal a fresh budget.
+   */
+  const hydrateRecovery = useCallback((projectId: string | null | undefined) => {
+    if (!projectId || recoveryHydratedForRef.current === projectId) return;
+    recoveryHydratedForRef.current = projectId;
+    const s = loadRecoveryState(projectId);
+    turnRecoveryRef.current = { key: s.turnKey, used: s.used };
+    autoFixRef.current = {
+      projectId,
+      attempts: s.autoFixAttempts,
+      handledBuildIds: new Set(s.handledBuildIds),
+    };
+    verifyFixRef.current = { projectId, handled: new Set(s.verifyHandledBuildIds) };
+    startedBuildIdsRef.current = new Set(s.startedBuildIds);
+    noEditRecoveryRef.current = { projectId, attempts: s.noEditAttempts };
+    transientGenerateRecoveryRef.current = { projectId, attempts: s.transientAttempts };
+  }, []);
+  const beginUserTurn = useCallback(
+    (projectId: string | null | undefined) => {
+      recoveryHydratedForRef.current = projectId ?? null;
+      turnRecoveryRef.current = { key: `${projectId ?? "none"}:${Date.now()}`, used: 0 };
+      noEditRecoveryRef.current = { projectId: projectId ?? null, attempts: 0 };
+      transientGenerateRecoveryRef.current = { projectId: projectId ?? null, attempts: 0 };
+      autoFixRef.current = {
+        projectId: projectId ?? null,
+        attempts: 0,
+        handledBuildIds: autoFixRef.current.handledBuildIds,
+      };
+      persistRecovery(projectId);
+    },
+    [persistRecovery],
+  );
   /** Returns true (and spends one unit) when another silent repair is allowed. */
   const claimAutoRecovery = useCallback(() => {
+    const projectId = projectIdRef.current;
+    hydrateRecovery(projectId);
     if (turnRecoveryRef.current.used >= MAX_TURN_AUTO_RECOVERIES) return false;
     turnRecoveryRef.current.used += 1;
+    persistRecovery(projectId);
     return true;
-  }, []);
+  }, [hydrateRecovery, persistRecovery]);
+
   // When a user starts a new AI turn or retries a stalled deploy, the previous
   // `latest_build_id` is no longer the thing the chat should react to. Without
   // this, an old pending deploy can keep re-opening the "Publishing is taking
@@ -1202,24 +1257,16 @@ function Builder() {
     if (!effectiveBuildSnap) return;
     const buildId = project?.latest_build_id ?? null;
 
-    if (autoFixRef.current.projectId !== project?.id) {
-      autoFixRef.current = {
-        projectId: project?.id ?? null,
-        attempts: 0,
-        handledBuildIds: new Set(),
-      };
-    }
-      if (noEditRecoveryRef.current.projectId !== project?.id) {
-        noEditRecoveryRef.current = { projectId: project?.id ?? null, attempts: 0 };
-      }
-      if (transientGenerateRecoveryRef.current.projectId !== project?.id) {
-        transientGenerateRecoveryRef.current = { projectId: project?.id ?? null, attempts: 0 };
-      }
+    // Restore any persisted recovery state for this project first. Without
+    // this, reopening the tab hands Petal a blank slate and it re-runs repair
+    // turns it had already spent (or already refused) for the same build.
+    hydrateRecovery(project?.id);
 
     if (effectiveBuildSnap.status === "ready") {
       setPhases((p) => completeThrough(p, "live"));
       autoFixRef.current.attempts = 0;
-      autoFixRef.current.handledBuildIds.clear();
+      persistRecovery(project?.id);
+
       // The build succeeded — any FriendlyError still on screen is stale
       // (a generation-time hiccup that nonetheless produced a working app,
       // a stalled-deploy warning that just resolved, or an auto-fix card
@@ -1260,6 +1307,7 @@ function Builder() {
       // let the user retry the deploy when they're ready.
       if (isInfrastructureBuildError(effectiveBuildSnap.errorMessage)) {
         if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
+        persistRecovery(project?.id);
         if (busy) return;
         persistFriendlyError(friendlyBuildServiceBusy(effectiveBuildSnap.errorMessage));
         return;
@@ -1275,6 +1323,7 @@ function Builder() {
         // and fire the same prompt the manual button would.
         autoFixRef.current.attempts = used + 1;
         autoFixRef.current.handledBuildIds.add(buildId);
+        persistRecovery(project?.id);
         setFriendlyError(autoFixingBuild(used + 1));
         setActivityVisible(true);
         // Defer to next tick so React commits the state above before send()
@@ -1285,6 +1334,8 @@ function Builder() {
         return () => clearTimeout(t);
       }
       if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
+      persistRecovery(project?.id);
+
       // Don't surface the manual-fix card while Petal is actively working or
       // while a replacement deploy has just been requested. The failed build
       // row can arrive during that transition; showing that card beside
@@ -2257,7 +2308,7 @@ function Builder() {
             ...(resultSuggestions.length > 0 ? { suggestions: resultSuggestions } : {}),
           };
           noEditRecoveryRef.current.attempts = 0;
-          transientGenerateRecoveryRef.current.attempts = 0;
+          transientGenerateRecoveryRef.current.attempts = 0; persistRecovery(projectIdRef.current);
           setMessages((prev) => [...prev, assistantMsg]);
           setStreamingAssistant("");
           setStreamingPlan("");
@@ -2282,7 +2333,7 @@ function Builder() {
         const summary2 = guardBackendClaims(rawSummary2, files2, "Updated the project.");
         const safeRecap = guardBackendClaims(resultRecap, files2, "");
         noEditRecoveryRef.current.attempts = 0;
-        transientGenerateRecoveryRef.current.attempts = 0;
+        transientGenerateRecoveryRef.current.attempts = 0; persistRecovery(projectIdRef.current);
         // Persist the warm preamble alongside the technical summary so the
         // chat thread retains the human voice on refresh — without it, all
         // we'd see in history is the dryer "Updated the project." line.
@@ -2453,7 +2504,7 @@ function Builder() {
           void triggerBuild(proj.id)
             .then(async (build) => {
               restoreBuildId(build.buildId);
-              startedBuildIdsRef.current.add(build.buildId);
+              startedBuildIdsRef.current.add(build.buildId); persistRecovery(projectIdRef.current);
               const r = await getProject(proj.id);
               if (r) setProject(r);
             })
@@ -2502,7 +2553,7 @@ function Builder() {
           noEditRecoveryRef.current.attempts < 1 &&
           claimAutoRecovery()
         ) {
-          noEditRecoveryRef.current.attempts += 1;
+          noEditRecoveryRef.current.attempts += 1; persistRecovery(projectIdRef.current);
           setActivityVisible(true);
           setFriendlyError({
             title: "Petal is trying another way",
@@ -2527,7 +2578,7 @@ function Builder() {
           transientGenerateRecoveryRef.current.attempts < 1 &&
           claimAutoRecovery()
         ) {
-          transientGenerateRecoveryRef.current.attempts += 1;
+          transientGenerateRecoveryRef.current.attempts += 1; persistRecovery(projectIdRef.current);
           setActivityVisible(true);
           setFriendlyError({
             title: "Petal is reconnecting",
@@ -2911,7 +2962,7 @@ function Builder() {
       setAwaitingBuild(true);
       void triggerBuild(project.id)
         .then(async (build) => {
-          startedBuildIdsRef.current.add(build.buildId);
+          startedBuildIdsRef.current.add(build.buildId); persistRecovery(projectIdRef.current);
           const r = await getProject(project.id);
           if (r) setProject(r);
         })
@@ -2962,7 +3013,7 @@ function Builder() {
     void triggerBuild(project.id)
       .then(async (build) => {
         restoreBuildId(build.buildId);
-        startedBuildIdsRef.current.add(build.buildId);
+        startedBuildIdsRef.current.add(build.buildId); persistRecovery(projectIdRef.current);
         const r = await getProject(project.id);
         if (r) setProject(r);
       })
@@ -3033,11 +3084,10 @@ function Builder() {
     if (!snap || !buildId || snap.status !== "ready") return;
     const defects = snap.verification && !snap.verification.ok ? snap.verification.defects : [];
     if (defects.length === 0) return;
-    if (verifyFixRef.current.projectId !== project.id) {
-      verifyFixRef.current = { projectId: project.id, handled: new Set() };
-    }
+    hydrateRecovery(project.id);
+
     if (verifyFixRef.current.handled.has(buildId)) return;
-    verifyFixRef.current.handled.add(buildId);
+    verifyFixRef.current.handled.add(buildId); persistRecovery(projectIdRef.current);
     // Shared turn budget — without this the verifier and the repair turn it
     // triggers can ping-pong forever on one user edit.
     if (!claimAutoRecovery()) {
@@ -3062,7 +3112,7 @@ function Builder() {
       "Fix the root cause of each finding in the project files. Do not add placeholder content or comments describing the fix — make the app actually work. Keep the changes minimal and do not redesign anything that already works.",
     ].join("\n");
     void send(prompt, { isRetry: false, isAutoFix: true });
-  }, [project?.id, project?.latest_build_id, effectiveBuildSnap, busy, send, claimAutoRecovery]);
+  }, [project?.id, project?.latest_build_id, effectiveBuildSnap, busy, send, claimAutoRecovery, hydrateRecovery, persistRecovery]);
 
 
 
@@ -3104,7 +3154,7 @@ function Builder() {
     setAwaitingBuild(true);
     void triggerBuild(project.id)
       .then(async (build) => {
-        startedBuildIdsRef.current.add(build.buildId);
+        startedBuildIdsRef.current.add(build.buildId); persistRecovery(projectIdRef.current);
         const r = await getProject(project.id);
         if (r) setProject(r);
       })
@@ -5225,7 +5275,7 @@ function Builder() {
           setAwaitingBuild(true);
           void triggerBuild(project.id)
             .then((build) => {
-              startedBuildIdsRef.current.add(build.buildId);
+              startedBuildIdsRef.current.add(build.buildId); persistRecovery(projectIdRef.current);
             })
             .catch((err: unknown) => {
               setAwaitingBuild(false);
