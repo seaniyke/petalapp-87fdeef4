@@ -31,11 +31,14 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { freshenStaleYears } from "@/server/freshen-stale-years.server";
 import { postBuildToRailway } from "@/server/builder.server";
 import type { ProjectFile } from "@/server/generate.server";
+import { applyScaffoldKit } from "@/server/scaffold-kit";
+import { runAllRepairs } from "@/server/repair-all.server";
 
 /**
- * Best-effort: rewrite stale copyright years (e.g. "© 2024" → current year)
- * across the project's stored files at publish time. If anything changed,
- * persist the rewrites and ship a fresh build so visitors see current years.
+ * Best-effort: run the same deterministic self-healing used by generation and
+ * build-trigger, then rewrite stale copyright years at publish time. If
+ * anything changed, persist it and ship a fresh build so Publish can never
+ * reuse an artifact that predates a repair-pipeline fix.
  *
  * Why here: previously-shipped builds were generated before our defenses
  * landed, so re-publishing alone wouldn't fix them. This catches them on the
@@ -43,7 +46,7 @@ import type { ProjectFile } from "@/server/generate.server";
  *
  * Silent on failure — publish never fails because of this pass.
  */
-async function freshenAndReshipIfStale(
+async function repairAndReshipIfNeeded(
   projectId: string,
   hidePetalBadge: boolean,
 ): Promise<void> {
@@ -55,17 +58,17 @@ async function freshenAndReshipIfStale(
     if (error || !rows?.length) return;
 
     const files: ProjectFile[] = rows.map((r) => ({ path: r.path, content: r.content }));
-    const { files: freshened, replacements } = freshenStaleYears(files);
-    if (replacements === 0) return;
+    const repaired = runAllRepairs(applyScaffoldKit(files));
+    const { files: freshened, replacements } = freshenStaleYears(repaired.files);
+    const originalByPath = new Map(files.map((f) => [f.path, f.content]));
+    const changed = freshened.filter((f) => originalByPath.get(f.path) !== f.content);
+    if (changed.length === 0) return;
 
-    // Persist only the files that actually changed.
-    const changed = freshened.filter((f, i) => f.content !== files[i].content);
+    // Persist changed and newly synthesized files before shipping.
     for (const f of changed) {
       await supabaseAdmin
         .from("project_files")
-        .update({ content: f.content })
-        .eq("project_id", projectId)
-        .eq("path", f.path);
+        .upsert({ project_id: projectId, path: f.path, content: f.content }, { onConflict: "project_id,path" });
     }
 
     // Create a new build row + ship — re-uses the standard build pipeline so
@@ -88,11 +91,11 @@ async function freshenAndReshipIfStale(
       hideBadge: hidePetalBadge,
     });
     console.log(
-      `[publish] freshened ${replacements} stale year ref(s) for project=${projectId} (build=${build.id})`,
+      `[publish] repaired ${repaired.notes.length} issue(s), freshened ${replacements} stale year ref(s), and persisted ${changed.length} file(s) for project=${projectId} (build=${build.id})`,
     );
   } catch (e) {
     console.warn(
-      `[publish] year-freshen pass failed for project=${projectId}:`,
+      `[publish] repair/reship pass failed for project=${projectId}:`,
       e instanceof Error ? e.message : String(e),
     );
   }
@@ -254,14 +257,13 @@ export const Route = createFileRoute("/api/publish")({
           );
         }
 
-        // Best-effort: rewrite stale "© 2024" → current year in the stored
-        // files and re-ship if anything changed. Only on a real publish action
-        // (pinLatestBuild) and only when going public.
+        // Best-effort: self-heal saved files, refresh stale years, and re-ship
+        // if anything changed. Only on a real public publish action.
         const goingPublic =
           updated.published_visibility === "public" &&
           (pinLatestBuild || visibility === "public");
         if (goingPublic) {
-          await freshenAndReshipIfStale(projectId, project.hide_petal_badge === true);
+          await repairAndReshipIfNeeded(projectId, project.hide_petal_badge === true);
         }
 
         return Response.json({ ok: true, project: updated });

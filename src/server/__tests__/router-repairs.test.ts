@@ -81,4 +81,21 @@ assert.equal(
   "file-based TanStack apps must restore their real router instead of using the compatibility shim",
 );
 
+const contextOnlyFallback = fixTanstackRouterWithoutProvider([
+  {
+    path: "src/main.tsx",
+    content: 'root.render(<App />);',
+  },
+  {
+    path: "src/root.tsx",
+    content:
+      'import { createRootRouteWithContext } from "@tanstack/react-router";\nexport const Route = createRootRouteWithContext<any>()({ component: App });',
+  },
+]);
+assert.match(
+  contextOnlyFallback.files.find((f) => f.path === "src/root.tsx")?.content ?? "",
+  /@\/lib\/router-compat/,
+  "createRootRouteWithContext must not keep an unmounted TanStack import alive",
+);
+
 console.log("router-repairs: all assertions passed");

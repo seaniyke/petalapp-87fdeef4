@@ -43,6 +43,7 @@ const SHIMMED = new Set([
   "RouterProvider",
   "createRouter",
   "createRootRoute",
+  "createRootRouteWithContext",
   "createFileRoute",
   "createLazyFileRoute",
   "getRouteApi",
@@ -261,6 +262,10 @@ export const createLazyFileRoute = createFileRoute;
 
 export function createRootRoute(options: any = {}) {
   return { ...options };
+}
+
+export function createRootRouteWithContext() {
+  return (options: any = {}) => ({ ...options });
 }
 
 export function getRouteApi(_id?: string) {
