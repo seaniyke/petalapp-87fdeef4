@@ -2438,6 +2438,25 @@ Forbidden defaults
             ),
           );
         }
+        // Same for the pre-emit agent loop: every grep, read, codemod and
+        // verifier run shows up as its own timeline row.
+        for (const step of agentLoop?.steps ?? []) {
+          controller.enqueue(
+            encoder.encode(
+              sse({ type: "tool_step", tool: step.tool, label: step.label, isError: !!step.isError }),
+            ),
+          );
+        }
+        if (agentLoop && agentLoop.changedPaths.length > 0) {
+          controller.enqueue(
+            encoder.encode(
+              sse({
+                type: "status",
+                message: `Codemod updated ${agentLoop.changedPaths.length} file${agentLoop.changedPaths.length === 1 ? "" : "s"}.`,
+              }),
+            ),
+          );
+        }
         if (inspectorReport?.ok && inspectorReport.targetPaths.length > 0) {
           controller.enqueue(
             encoder.encode(
