@@ -862,21 +862,75 @@ function Builder() {
   // One shared budget per USER turn makes the behaviour predictable: at most
   // MAX_TURN_AUTO_RECOVERIES silent repair turns per thing the user asked
   // for, after which Petal stops and hands control back with a clear card.
+  //
+  // The budget is PERSISTED per project: refs alone reset when the tab is
+  // reloaded or discarded by the OS, which let a returning user walk back
+  // into the exact repair chain Petal had already stopped.
   // ---------------------------------------------------------------------
   const MAX_TURN_AUTO_RECOVERIES = 3;
   const turnRecoveryRef = useRef<{ key: string | null; used: number }>({
     key: null,
     used: 0,
   });
-  const beginUserTurn = useCallback((projectId: string | null | undefined) => {
-    turnRecoveryRef.current = { key: `${projectId ?? "none"}:${Date.now()}`, used: 0 };
+  const recoveryHydratedForRef = useRef<string | null>(null);
+  const persistRecovery = useCallback((projectId: string | null | undefined) => {
+    if (!projectId) return;
+    saveRecoveryState(projectId, {
+      turnKey: turnRecoveryRef.current.key,
+      used: turnRecoveryRef.current.used,
+      autoFixAttempts: autoFixRef.current.attempts,
+      handledBuildIds: [...autoFixRef.current.handledBuildIds],
+      verifyHandledBuildIds: [...verifyFixRef.current.handled],
+      startedBuildIds: [...startedBuildIdsRef.current],
+      noEditAttempts: noEditRecoveryRef.current.attempts,
+      transientAttempts: transientGenerateRecoveryRef.current.attempts,
+      updatedAt: Date.now(),
+    });
   }, []);
+  /**
+   * Restore the persisted budget once per project. Called before any
+   * self-healing decision so a reload can never hand Petal a fresh budget.
+   */
+  const hydrateRecovery = useCallback((projectId: string | null | undefined) => {
+    if (!projectId || recoveryHydratedForRef.current === projectId) return;
+    recoveryHydratedForRef.current = projectId;
+    const s = loadRecoveryState(projectId);
+    turnRecoveryRef.current = { key: s.turnKey, used: s.used };
+    autoFixRef.current = {
+      projectId,
+      attempts: s.autoFixAttempts,
+      handledBuildIds: new Set(s.handledBuildIds),
+    };
+    verifyFixRef.current = { projectId, handled: new Set(s.verifyHandledBuildIds) };
+    startedBuildIdsRef.current = new Set(s.startedBuildIds);
+    noEditRecoveryRef.current = { projectId, attempts: s.noEditAttempts };
+    transientGenerateRecoveryRef.current = { projectId, attempts: s.transientAttempts };
+  }, []);
+  const beginUserTurn = useCallback(
+    (projectId: string | null | undefined) => {
+      recoveryHydratedForRef.current = projectId ?? null;
+      turnRecoveryRef.current = { key: `${projectId ?? "none"}:${Date.now()}`, used: 0 };
+      noEditRecoveryRef.current = { projectId: projectId ?? null, attempts: 0 };
+      transientGenerateRecoveryRef.current = { projectId: projectId ?? null, attempts: 0 };
+      autoFixRef.current = {
+        projectId: projectId ?? null,
+        attempts: 0,
+        handledBuildIds: autoFixRef.current.handledBuildIds,
+      };
+      persistRecovery(projectId);
+    },
+    [persistRecovery],
+  );
   /** Returns true (and spends one unit) when another silent repair is allowed. */
   const claimAutoRecovery = useCallback(() => {
+    const projectId = projectIdRef.current;
+    hydrateRecovery(projectId);
     if (turnRecoveryRef.current.used >= MAX_TURN_AUTO_RECOVERIES) return false;
     turnRecoveryRef.current.used += 1;
+    persistRecovery(projectId);
     return true;
-  }, []);
+  }, [hydrateRecovery, persistRecovery]);
+
   // When a user starts a new AI turn or retries a stalled deploy, the previous
   // `latest_build_id` is no longer the thing the chat should react to. Without
   // this, an old pending deploy can keep re-opening the "Publishing is taking
