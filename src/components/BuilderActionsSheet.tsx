@@ -138,74 +138,32 @@ export function BuilderActionsSheet({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <DrawerContent className="px-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <DrawerTitle className="sr-only">Project menu</DrawerTitle>
 
-        {/* Credits card — premium surface: layered gradient backdrop, hairline
-            ring, and a meter with gradient fill + animated sheen so credits
-            feel like a living resource rather than a static stat. */}
+        {/* Credits — a quiet status line, not a card. Tapping opens billing. */}
         <button
           type="button"
           onClick={() => {
             onOpenChange(false);
             onOpenBilling();
           }}
-          className={cn(
-            "group relative mt-2 w-full overflow-hidden rounded-2xl p-4 text-left",
-            "bg-gradient-to-br from-card to-muted/70",
-            "ring-1 ring-border/70",
-            "shadow-[0_1px_0_0_hsl(var(--background)/0.6)_inset,0_8px_24px_-12px_hsl(var(--foreground)/0.18)]",
-            "transition-all duration-200 active:scale-[0.99] hover:ring-border",
-          )}
+          className="group mt-1 w-full rounded-xl px-4 py-3 text-left transition active:bg-muted/50"
         >
-          {/* Soft tinted glow that strengthens when the user is low — a quiet
-              ambient cue without a banner. */}
-          <span
-            aria-hidden="true"
-            className={cn(
-              "pointer-events-none absolute inset-0 opacity-60 transition-opacity duration-300",
-              isEmpty
-                ? "bg-[radial-gradient(120%_80%_at_0%_0%,color-mix(in_oklab,var(--destructive)_18%,transparent),transparent_60%)]"
-                : isLow
-                  ? "bg-[radial-gradient(120%_80%_at_0%_0%,color-mix(in_oklab,#f59e0b_22%,transparent),transparent_60%)]"
-                  : "bg-[radial-gradient(120%_80%_at_0%_0%,color-mix(in_oklab,var(--primary)_14%,transparent),transparent_60%)]",
+          <div className="flex items-center justify-between">
+            <span className="text-[15px] font-medium text-muted-foreground">Credits</span>
+            {loading || !wallet ? (
+              <span className="text-sm text-muted-foreground">—</span>
+            ) : (
+              <span className={cn("text-sm font-semibold tabular-nums", countTone)}>
+                {formatCredits(remaining)}
+                <span className="ml-1 font-normal text-muted-foreground">left</span>
+              </span>
             )}
-          />
-
-          <div className="relative flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-base font-semibold tracking-tight">Credits</span>
-              {(isLow || isEmpty) && !loading && wallet && (
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    isEmpty ? "bg-destructive" : "bg-amber-500",
-                    "animate-pulse",
-                  )}
-                />
-              )}
-            </div>
-            <span className="flex items-center gap-1 text-sm">
-              {loading || !wallet ? (
-                <span className="text-muted-foreground">—</span>
-              ) : (
-                <span className={cn("font-semibold tabular-nums", countTone)}>
-                  {formatCredits(remaining)}
-                  <span className="ml-1 font-normal text-muted-foreground">left</span>
-                </span>
-              )}
-              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-            </span>
           </div>
 
-          {/* Meter — taller, inset track, gradient fill, animated sheen. */}
           <div
-            className={cn(
-              "relative mt-3.5 flex h-2.5 w-full overflow-hidden rounded-full",
-              "bg-foreground/[0.06] ring-1 ring-inset ring-foreground/[0.04]",
-              "shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]",
-            )}
+            className="mt-2 flex h-1 w-full overflow-hidden rounded-full bg-foreground/10"
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={Math.round(capacity)}
@@ -214,79 +172,31 @@ export function BuilderActionsSheet({
           >
             <div
               className={cn(
-                "credits-meter-fill h-full transition-[width] duration-700 ease-out",
-                isEmpty
-                  ? "bg-gradient-to-r from-destructive/80 to-destructive"
-                  : isLow
-                    ? "bg-gradient-to-r from-amber-400 to-amber-500"
-                    : "bg-gradient-to-r from-primary to-[color-mix(in_oklab,var(--primary)_70%,white)]",
+                "h-full transition-[width] duration-500 ease-out",
+                isEmpty ? "bg-destructive" : isLow ? "bg-amber-500" : "bg-primary",
               )}
-              style={{
-                width: `${monthlyPct}%`,
-                boxShadow: isEmpty
-                  ? "0 0 0 0 transparent"
-                  : isLow
-                    ? "0 0 12px -2px color-mix(in oklab, #f59e0b 60%, transparent)"
-                    : "0 0 14px -2px color-mix(in oklab, var(--primary) 55%, transparent)",
-              }}
+              style={{ width: `${monthlyPct}%` }}
             />
             {topupPct > 0 && (
               <div
-                className="credits-meter-fill h-full bg-gradient-to-r from-accent to-[color-mix(in_oklab,var(--accent)_75%,white)] transition-[width] duration-700 ease-out"
+                className="h-full bg-accent transition-[width] duration-500 ease-out"
                 style={{ width: `${topupPct}%` }}
               />
             )}
           </div>
 
-          {plan?.code === "free" && (
-            <p
-              className={cn(
-                "relative mt-2.5 flex items-center gap-1.5 text-xs font-medium",
-                isLow || isEmpty ? "text-amber-600 dark:text-amber-400" : "text-primary",
-              )}
-            >
+          {!loading && wallet && (isLow || isEmpty) && (
+            <span className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              {isEmpty
-                ? "Out of credits — upgrade to keep building"
-                : isLow
-                  ? "Running low — upgrade for more monthly credits"
-                  : "Upgrade for more monthly credits"}
-            </p>
+              {(plan?.code ?? "free") === "free"
+                ? "Upgrade for more credits"
+                : "Buy more credits"}
+            </span>
           )}
         </button>
 
-        {/* Quick CTA — surfaces automatically when the wallet drops to 10 or
-            fewer credits. Free-tier users can't buy top-ups, so we route them
-            to the upgrade flow instead of a "Buy credits" button that would
-            dead-end at an upgrade prompt. */}
-        {!loading && wallet && remaining <= 10 && (() => {
-          const isFree = (plan?.code ?? "free") === "free";
-          const label = isFree
-            ? isEmpty
-              ? "Upgrade to keep building"
-              : "Upgrade for more credits"
-            : isEmpty
-              ? "Buy credits to keep building"
-              : "Buy more credits";
-          return (
-            <button
-              type="button"
-              onClick={() => {
-                onOpenChange(false);
-                onOpenBilling();
-              }}
-              className={cn(
-                "mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-xl",
-                "bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground",
-                "shadow-[0_6px_20px_-8px_color-mix(in_oklab,var(--primary)_70%,transparent)]",
-                "ring-1 ring-primary/30 transition active:scale-[0.99] hover:brightness-105",
-              )}
-            >
-              <Sparkles className="h-4 w-4" />
-              {label}
-            </button>
-          );
-        })()}
+        <div className="mx-4 h-px bg-border/60" />
+
 
         {/* Primary actions */}
         <ul className="mt-3 divide-y divide-border/60 rounded-2xl bg-card">
