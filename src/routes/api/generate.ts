@@ -2435,6 +2435,10 @@ Forbidden defaults
         }
 
         let { parsed, summary, plan, recap } = payload;
+        // Honesty ledger — paths the model asked to change that end up
+        // byte-identical after apply + recovery.
+        const unappliedPaths: string[] = [];
+
 
         // (Question-first guard removed — see comment near the top of this
         // file. Triage is the single decision point for "is this a question?";
@@ -2536,7 +2540,13 @@ Forbidden defaults
             // Plan Mode v1 — when a plan was approved, ANY file outside its
             // allow-list is treated as protected and dropped.
             (allowedPathSet !== null && !allowedPathSet.has(p));
+          // Honesty ledger — every path the model asked to change that did
+          // NOT end up byte-different after apply + recovery. Surfaced to the
+          // user at the end of the turn so Petal can never claim "done" for a
+          // file it silently failed to touch.
+          
           const violations = parsed.ops.filter((op) => isProtectedPath(op.path));
+
           if (violations.length) {
             console.warn(
               "Dropping protected-path ops:",
@@ -2921,7 +2931,22 @@ Forbidden defaults
                 turn_id: turnId,
               },
             });
+
+            // Per-path honesty check. Some ops landed (so we're past the
+            // all-or-nothing gate above) but individual files the model
+            // claimed to edit may still be byte-identical — that's the
+            // "Petal said it did it but it didn't" failure mode.
+            const changedSet = new Set(changedPaths);
+            for (const p of new Set(safeOps.map((o) => o.path))) {
+              if (!changedSet.has(p)) unappliedPaths.push(p);
+            }
+            for (const v of violations) {
+              if (!changedSet.has(v.path) && !unappliedPaths.includes(v.path)) {
+                unappliedPaths.push(v.path);
+              }
+            }
           }
+
 
           // Heal-on-patch: re-apply the canonical scaffold to old saved
           // projects whose `src/components/ui/*`, `package.json`, or
@@ -3894,6 +3919,22 @@ Forbidden defaults
             );
           }
         }
+
+        // Honesty gate: if the model claimed edits to files that never
+        // actually changed, say so instead of letting its "done!" summary
+        // ship unchallenged.
+        if (unappliedPaths.length > 0) {
+          const list = unappliedPaths.slice(0, 5).join(", ");
+          const more = unappliedPaths.length > 5 ? ` (+${unappliedPaths.length - 5} more)` : "";
+          const note =
+            `\n\nHeads up — I could not actually change ${list}${more} on this pass, ` +
+            `even though I described those edits. Tell me exactly what should change there ` +
+            `(the text or element, and what it should become) and I'll redo just that part.`;
+          summary = `${summary}${note}`;
+          controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+          console.warn(`[generate] unapplied paths disclosed to user: ${unappliedPaths.join(", ")}`);
+        }
+
 
         controller.enqueue(
           encoder.encode(
