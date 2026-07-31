@@ -27,7 +27,13 @@ type Props = {
   refreshKey: number;
   /** Render an icon-only trigger that fits inside the grouped toolbar. */
   iconOnly?: boolean;
+  /** Controlled open state — used by the mobile menu's "History" row. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Hide the built-in trigger when the panel is opened from elsewhere. */
+  hideTrigger?: boolean;
 };
+
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -40,8 +46,23 @@ function timeAgo(iso: string) {
   return `${d}d ago`;
 }
 
-export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey, iconOnly }: Props) {
-  const [open, setOpen] = useState(false);
+export function HistoryPanel({
+  projectId,
+  currentFiles,
+  onRestore,
+  refreshKey,
+  iconOnly,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger,
+}: Props) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (controlledOpen === undefined) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
+
   const [versions, setVersions] = useState<VersionRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -140,20 +161,23 @@ export function HistoryPanel({ projectId, currentFiles, onRestore, refreshKey, i
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <button
-          className={
-            iconOnly
-              ? "grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              : "inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted"
-          }
-          title="Version history"
-          aria-label="Version history"
-        >
-          <History className="h-3.5 w-3.5" />
-          {!iconOnly && "History"}
-        </button>
-      </SheetTrigger>
+      {!hideTrigger && (
+        <SheetTrigger asChild>
+          <button
+            className={
+              iconOnly
+                ? "grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                : "inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted"
+            }
+            title="Version history"
+            aria-label="Version history"
+          >
+            <History className="h-3.5 w-3.5" />
+            {!iconOnly && "History"}
+          </button>
+        </SheetTrigger>
+      )}
+
       <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
         <SheetHeader className="border-b border-border p-4 text-left">
           <SheetTitle className="font-display text-xl">Version history</SheetTitle>
