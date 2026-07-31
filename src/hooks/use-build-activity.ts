@@ -33,7 +33,22 @@ export type BuildSnapshot = {
    *  a friendly "deploy stalled" card after a long wait — independent of the
    *  server-side reaper which only kicks in after 20 minutes. */
   observedAt: number;
+  /** Post-deploy browser check: null when the build predates verification or
+   *  the run was skipped. `defects` is already human-readable. */
+  verification: { ok: boolean; defects: string[]; skipped?: string } | null;
 };
+
+/** Narrow the jsonb column without trusting its shape. */
+function readVerification(raw: unknown): BuildSnapshot["verification"] {
+  if (!raw || typeof raw !== "object") return null;
+  const v = raw as { ok?: unknown; defects?: unknown; skipped?: unknown };
+  if (typeof v.ok !== "boolean") return null;
+  return {
+    ok: v.ok,
+    defects: Array.isArray(v.defects) ? v.defects.filter((d): d is string => typeof d === "string") : [],
+    ...(typeof v.skipped === "string" ? { skipped: v.skipped } : {}),
+  };
+}
 
 export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | null {
   const [snap, setSnap] = useState<BuildSnapshot | null>(null);
