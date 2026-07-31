@@ -188,7 +188,7 @@ export const checkBuilderHealth = createServerFn({ method: "GET" })
     const base = process.env.BUILDER_URL;
     if (!base) return { reachable: false, error: "BUILDER_URL is not set" };
     try {
-      const res = await fetch(`${base.replace(/\/$/, "")}/health`, {
+      const res = await fetch(`${base.replace(/\/$/, "")}/healthz`, {
         method: "GET",
         signal: AbortSignal.timeout(10_000),
       });
