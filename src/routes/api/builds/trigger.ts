@@ -26,6 +26,7 @@ import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { postBuildToRailway } from "@/server/builder.server";
+import { buildVerifyPlan } from "@/server/verify-plan.server";
 import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { syncViteAliasesWithTsconfig } from "@/server/sync-vite-aliases.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
