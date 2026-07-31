@@ -26,6 +26,11 @@ import {
   type AgentLoopResult,
   type ChatMessage as AgentChatMessage,
 } from "@/server/agent-loop.server";
+import {
+  runCritic,
+  criticDisclosure,
+  type CriticRejection,
+} from "@/server/critic-agent.server";
 
 import { applyScaffoldKit, applyScaffoldKitForPatch, STYLES_CSS } from "@/server/scaffold-kit";
 import { getBuildTarget } from "@/lib/build-targets";
@@ -2608,6 +2613,8 @@ Forbidden defaults
         // Honesty ledger — paths the model asked to change that end up
         // byte-identical after apply + recovery.
         const unappliedPaths: string[] = [];
+        // Ops the critic refused to apply this turn (disclosed in the summary).
+        const criticRejections: CriticRejection[] = [];
 
 
         // (Question-first guard removed — see comment near the top of this
@@ -2828,9 +2835,52 @@ Forbidden defaults
             });
             return;
           }
+          // CRITIC GATE — last review before bytes hit the project.
+          // Deterministic rules (elisions, blanked files, no-op replaces,
+          // entry-file deletes, catastrophic shrink) plus a budget-tier
+          // model review. Rejected ops are dropped, never rewritten, and
+          // disclosed in the summary. A failing critic approves everything.
+          {
+            const verdict = await runCritic({
+              ops: safeOps,
+              files: currentFiles,
+              userPrompt: lastUserContent,
+              projectId: body.projectId ?? "unknown",
+              userId,
+              signal: request.signal,
+            });
+            if (verdict.rejections.length > 0) {
+              criticRejections.push(...verdict.rejections);
+              for (const r of verdict.rejections) {
+                console.warn(`[critic] blocked ${r.op} ${r.path}: ${r.reason}`);
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "tool_step",
+                      tool: "critic",
+                      label: `Blocked ${r.op} on ${r.path}`,
+                      isError: true,
+                    }),
+                  ),
+                );
+              }
+            }
+            if (verdict.blockedEverything) {
+              emitConversationalFallback(controller, encoder, {
+                files: currentFiles,
+                summary:
+                  "I reviewed the change before applying it and it was clearly wrong, so I stopped rather than break your app." +
+                  criticDisclosure(verdict.rejections),
+              });
+              return;
+            }
+            safeOps = verdict.ops;
+          }
+
           // Pre-apply diff summary — informational only (apply still proceeds).
           // Lets the client render a "what's about to change" card so users
           // see scope before the file writes stream in.
+
           try {
             const prevByPath = new Map(currentFiles.map((f) => [f.path, f.content]));
             const seen = new Set<string>();
@@ -4091,6 +4141,13 @@ Forbidden defaults
               (e as Error).message,
             );
           }
+        }
+
+        // Critic gate disclosure: name every op that was refused before apply.
+        if (criticRejections.length > 0) {
+          const note = criticDisclosure(criticRejections);
+          summary = `${summary}${note}`;
+          controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
         }
 
         // Honesty gate: if the model claimed edits to files that never
