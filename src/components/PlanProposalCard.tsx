@@ -106,7 +106,7 @@ export function PlanProposalCard({
           <div className="flex items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Plan
+                {onSkip ? "Petal's plan" : "Plan"}
               </span>
               <span
                 className={cn(
