@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { claimWaitlistReferral } from "@/lib/waitlist-referral.functions";
@@ -32,6 +40,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
   }
 
+  // Supabase fires an auth event every time the tab regains focus (it
+  // revalidates / refreshes the token on visibility change). Each event hands
+  // us a NEW session object even when nothing actually changed. Storing it
+  // blindly changes the context identity, re-renders every consumer and
+  // re-runs their effects — which is exactly the "the whole app reloads when I
+  // come back to the tab" symptom. Only commit a session that is genuinely
+  // different.
+  function sameSession(a: Session | null, b: Session | null) {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    return (
+      a.user?.id === b.user?.id &&
+      a.access_token === b.access_token &&
+      a.expires_at === b.expires_at
+    );
+  }
+
   useEffect(() => {
     let mounted = true;
     let subscription: { unsubscribe: () => void } | undefined;
@@ -45,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         claimReferral(data.session);
 
         const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-          setSession(nextSession);
+          setSession((prev) => (sameSession(prev, nextSession) ? prev : nextSession));
           setIsReady(true);
           claimReferral(nextSession);
         });
@@ -62,15 +87,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
 
-  const value: AuthContextValue = {
-    user: session?.user ?? null,
-    session,
-    loading: !isReady,
-    isReady,
-    signOut: async () => {
-      await supabase.auth.signOut();
-    },
-  };
+  // Stable context identity: a token refresh that yields an equivalent session
+  // must not cascade re-renders through every consumer.
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user: session?.user ?? null,
+      session,
+      loading: !isReady,
+      isReady,
+      signOut: async () => {
+        await supabase.auth.signOut();
+      },
+    }),
+    [session, isReady],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

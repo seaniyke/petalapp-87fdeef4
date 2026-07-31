@@ -197,8 +197,15 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
     }, 4_000);
 
     // Catch-up handlers: iOS suspends background tabs and silently kills WS.
+    // visibilitychange + focus + online all fire within milliseconds of each
+    // other when a phone unlocks, so coalesce them into one catch-up fetch.
+    let lastAlive = 0;
     const onAlive = () => {
-      if (document.visibilityState === "visible") void fetchOnce();
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastAlive < 3000) return;
+      lastAlive = now;
+      void fetchOnce();
     };
     document.addEventListener("visibilitychange", onAlive);
     window.addEventListener("online", onAlive);
