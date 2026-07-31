@@ -3040,7 +3040,19 @@ function Builder() {
     verifyFixRef.current.handled.add(buildId);
     // Shared turn budget — without this the verifier and the repair turn it
     // triggers can ping-pong forever on one user edit.
-    if (!claimAutoRecovery()) return;
+    if (!claimAutoRecovery()) {
+      // Budget spent for this user turn — stop repairing silently and hand
+      // control back instead of looping.
+      persistFriendlyError({
+        title: "A couple of things still need a look",
+        message: `Your app is live, but a browser check found: ${defects
+          .slice(0, 3)
+          .join("; ")}. Petal paused automatic fixes for this request — tap below to keep going.`,
+        actionLabel: "Ask Petal to fix it",
+        actionKind: "retry",
+      });
+      return;
+    }
 
     const prompt = [
       "I opened the deployed app in a real browser and it does not work correctly. Findings:",
