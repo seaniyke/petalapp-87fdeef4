@@ -17,11 +17,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
-import { secretsMatch } from "@/server/rate-limit.server";
   buildSelfLearningDigest,
   renderDigestHtml,
   resolveAdminRecipients,
 } from "@/server/self-learning-digest.server";
+import { secretsMatch } from "@/server/rate-limit.server";
 
 const RESEND_API = "https://api.resend.com";
 const SENDER = "Petal <noreply@buildwithpetal.com>";
