@@ -34,8 +34,8 @@ const FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)\s+(?:form|fom|frm|rom|fo
 const MISSING_FROM_PATTERNS: RegExp[] = [
   // named (optionally with a leading default) — braces may span lines
   /^(\s*import\s+(?:type\s+)?(?:[\w$]+\s*,\s*)?\{[^}]*\})\s+(?!from\b)(['"])/gm,
-  // namespace
-  /^(\s*import\s+(?:type\s+)?\*\s+as\s+[\w$]+)\s+(?!from\b)(['"])/gm,
+  // namespace (optionally with a leading default): `import React, * as ns '…'`
+  /^(\s*import\s+(?:type\s+)?(?:[\w$]+\s*,\s*)?\*\s+as\s+[\w$]+)\s+(?!from\b)(['"])/gm,
   // plain default
   /^(\s*import\s+(?:type\s+)?[\w$]+)\s+(?!from\b)(['"])/gm,
 ];

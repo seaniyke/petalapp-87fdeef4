@@ -25,6 +25,7 @@ import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { postBuildToRailway } from "@/server/builder.server";
+import { runAllRepairs } from "@/server/repair-all.server";
 import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { syncViteAliasesWithTsconfig } from "@/server/sync-vite-aliases.server";
 import { validateStylesCss } from "@/server/validate-styles.server";
@@ -166,7 +167,16 @@ export const Route = createFileRoute("/api/builds/watchdog")({
           ? { url: backendRow.supabase_url, anonKey: backendRow.anon_key }
           : undefined;
         const scaffolded = applyScaffoldKit(files, { backend });
-        const aliasFixed = syncViteAliasesWithTsconfig(scaffolded);
+        // Same deterministic repair composition the trigger route runs. Without
+        // it a retry re-ships whatever syntax fault killed the first attempt
+        // (e.g. an import missing its `from` keyword).
+        const repaired = runAllRepairs(scaffolded);
+        if (repaired.notes.length > 0) {
+          console.info(
+            `[watchdog-repair] project=${build.project_id}: ${repaired.notes.join("; ")}`,
+          );
+        }
+        const aliasFixed = syncViteAliasesWithTsconfig(repaired.files);
         const styleSafeFiles = aliasFixed.map((f) => {
           if (f.path !== "src/styles.css") return f;
           const result = validateStylesCss(f.content);

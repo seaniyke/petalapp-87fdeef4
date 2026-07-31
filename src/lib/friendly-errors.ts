@@ -243,6 +243,25 @@ const PATTERNS: Array<{
     }),
   },
   {
+    // ESBuild parse failure with a precise location, e.g.
+    // `src/routes/products/$slug.tsx:9:21: ERROR: Expected "from" but found …`
+    // Name the file and line in plain language instead of the raw stack.
+    test: /ERROR:\s*Expected\s+"[^"]+"\s+but found|Transform failed with \d+ error/i,
+    build: (raw) => {
+      const loc = raw.match(/([\w$./-]+\.(?:tsx?|jsx?)):(\d+):(\d+)/);
+      const file = loc?.[1]?.replace(/^.*?(src\/)/, "$1") ?? "one of your files";
+      const line = loc?.[2];
+      const where = line ? `${file}, line ${line}` : file;
+      return {
+        title: "One line of code came out malformed",
+        message: `Petal wrote something the build can't read in ${where}. Tap below and Petal will rewrite just that line — no extra credits.`,
+        actionLabel: "Fix that line",
+        actionKind: "ask-fix",
+        technicalDetail: raw,
+      };
+    },
+  },
+  {
     // Vite/Rollup local-file resolution failure — build-log only.
     test: /Could not (?:resolve|load)\s+["']?(\.{1,2}\/|@\/)/i,
     build: (raw) => {

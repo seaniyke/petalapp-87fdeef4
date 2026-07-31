@@ -14,6 +14,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { ProjectFile } from "@/server/generate.server";
 import { injectPetalBadge } from "@/server/petal-badge.server";
 import { freshenStaleYears } from "@/server/freshen-stale-years.server";
+import { fixSourceEscapes } from "@/server/source-escape-fixer.server";
+import { fixImportSyntax } from "@/server/import-syntax-fixer.server";
 import type { VerifyPlan } from "@/server/verify-plan.server";
 
 const MAX_AGE_SECONDS = 5 * 60;
@@ -84,9 +86,22 @@ export async function postBuildToRailway(args: {
   if (!builderUrl) throw new Error("BUILDER_URL is not configured");
   if (!sharedSecret) throw new Error("BUILDER_SHARED_SECRET is not configured");
 
+  // Last-mile syntax safety net. Every build pathway funnels through this
+  // function, so healing here means no caller can ever ship source that
+  // esbuild refuses to parse (literal `\n` in code position, or an import
+  // statement missing its `from` keyword). Both passes are pure and
+  // idempotent, so running them again after runAllRepairs costs nothing.
+  const escaped = fixSourceEscapes(args.files);
+  const importHealed = fixImportSyntax(escaped.files);
+  for (const n of [...escaped.notes, ...importHealed.notes]) {
+    console.warn(`[builder-last-mile] project=${args.projectId}: ${n}`);
+  }
+
   // Rewrite stale copyright years (e.g. "© 2024" → "© 2026") that the LLM
   // emitted from its training-data cutoff. Cheap, runs on every build.
-  const { files: yearFreshened, replacements: yearReplacements } = freshenStaleYears(args.files);
+  const { files: yearFreshened, replacements: yearReplacements } = freshenStaleYears(
+    importHealed.files,
+  );
   if (yearReplacements > 0) {
     console.log(`[builder] freshened ${yearReplacements} stale year reference(s)`);
   }
