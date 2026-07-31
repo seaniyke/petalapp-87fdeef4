@@ -7,6 +7,7 @@
  * monthly free $ grant for Cloud or AI.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { nextMonthlyResetAt } from "@/lib/billing";
 
 export type RuntimeWallet = {
   freeBalanceCents: number;
@@ -63,7 +64,7 @@ export async function fetchRuntimeWallet(userId: string): Promise<RuntimeWallet>
   return {
     freeBalanceCents: Number(data?.runtime_free_balance_cents ?? 0),
     topupBalanceCents: Number(data?.runtime_topup_balance_cents ?? 0),
-      freeResetAt: nextReset.toISOString().slice(0, 10),
+    freeResetAt: nextReset.toISOString().slice(0, 10),
     workspaceCapCents:
       data?.workspace_cap_cents == null ? null : Number(data.workspace_cap_cents),
     monthlyFreeGrantCents: MONTHLY_FREE_GRANT_CENTS,
