@@ -536,6 +536,14 @@ function Builder() {
   useEffect(() => {
     projectIdRef.current = project?.id ?? null;
   }, [project?.id]);
+  // Phase 4 #22 — the URL is the source of truth for "which project is on
+  // screen". It flips the instant the user switches, well before the async
+  // bootstrap swaps `project` state, so a turn still streaming for the old
+  // project can see the switch immediately and stop writing to the UI.
+  useEffect(() => {
+    if (searchId) projectIdRef.current = searchId;
+  }, [searchId]);
+
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   // Build vs Discuss mode. Discuss = chat-only, no file changes (Base44/Lovable parity).
