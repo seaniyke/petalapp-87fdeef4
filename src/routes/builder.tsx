@@ -813,6 +813,11 @@ function Builder() {
   // pass startedBuildIdsRef + handledBuildIds gating.
   const MAX_AUTO_FIX_ATTEMPTS = 3;
   const startedBuildIdsRef = useRef<Set<string>>(new Set());
+  // Build ids whose browser-verification defects we already fed back once.
+  const verifyFixRef = useRef<{ projectId: string | null; handled: Set<string> }>({
+    projectId: null,
+    handled: new Set(),
+  });
   const autoFixRef = useRef<{
     projectId: string | null;
     attempts: number;
