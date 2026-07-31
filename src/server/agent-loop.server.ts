@@ -320,5 +320,24 @@ export function shouldRunAgentLoop(args: {
     "migrate",
     "refactor",
   ];
-  return mechanical.some((k) => p.includes(k));
+  if (mechanical.some((k) => p.includes(k))) return true;
+
+  // Dependency work is the other case worth the round trips: the loop can
+  // actually install the package and read back the real resolved version,
+  // instead of the model guessing a version string into package.json.
+  const dependency = [
+    "install ",
+    "npm package",
+    "add a package",
+    "add the package",
+    "dependency",
+    "dependencies",
+    "library for",
+    "use the library",
+  ];
+  if (dependency.some((k) => p.includes(k))) return true;
+
+  // Same for the project's own suite: only when the user asked for it.
+  const tests = ["run the tests", "run tests", "test suite", "make the tests pass"];
+  return tests.some((k) => p.includes(k));
 }
