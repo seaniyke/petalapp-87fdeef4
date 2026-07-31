@@ -80,7 +80,12 @@ type Handlers = {
     summary: string;
     risk: "low" | "medium" | "high";
     files: Array<{ path: string; intent: "edit" | "create" | "delete"; reason: string }>;
+    /** Petal proposed this on its own rather than because "Plan first" was on. */
+    auto?: boolean;
   }) => void;
+  /** Plan Mode v2 — auto-plan was wanted but could not be produced. The client
+   *  should silently resend the same turn with `autoPlan: false`. */
+  onPlanSkipped?: (reason: string) => void;
   /** Plan Mode v1 — patch tried to touch files outside the approved scope. */
   onPlanScopeViolation?: (droppedPaths: string[]) => void;
   /** Fired once at the very start of every turn. The client should persist
@@ -109,6 +114,8 @@ export async function streamGenerate(
     approvedPlanId?: string;
     /** Plan Mode — user-edited subset of the plan's file list to allow. */
     allowedPaths?: string[];
+    /** Plan Mode v2 — set false to skip the automatic plan proposal. */
+    autoPlan?: boolean;
     /** Build target chip (web / android / ios / backend / extension). */
     buildTarget?: string;
   },
