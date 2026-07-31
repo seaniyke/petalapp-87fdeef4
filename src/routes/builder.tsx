@@ -1257,24 +1257,16 @@ function Builder() {
     if (!effectiveBuildSnap) return;
     const buildId = project?.latest_build_id ?? null;
 
-    if (autoFixRef.current.projectId !== project?.id) {
-      autoFixRef.current = {
-        projectId: project?.id ?? null,
-        attempts: 0,
-        handledBuildIds: new Set(),
-      };
-    }
-      if (noEditRecoveryRef.current.projectId !== project?.id) {
-        noEditRecoveryRef.current = { projectId: project?.id ?? null, attempts: 0 };
-      }
-      if (transientGenerateRecoveryRef.current.projectId !== project?.id) {
-        transientGenerateRecoveryRef.current = { projectId: project?.id ?? null, attempts: 0 };
-      }
+    // Restore any persisted recovery state for this project first. Without
+    // this, reopening the tab hands Petal a blank slate and it re-runs repair
+    // turns it had already spent (or already refused) for the same build.
+    hydrateRecovery(project?.id);
 
     if (effectiveBuildSnap.status === "ready") {
       setPhases((p) => completeThrough(p, "live"));
       autoFixRef.current.attempts = 0;
-      autoFixRef.current.handledBuildIds.clear();
+      persistRecovery(project?.id);
+
       // The build succeeded — any FriendlyError still on screen is stale
       // (a generation-time hiccup that nonetheless produced a working app,
       // a stalled-deploy warning that just resolved, or an auto-fix card
