@@ -19,6 +19,13 @@ import {
   inspectorBriefingBlock,
   type InspectorReport,
 } from "@/server/inspector-agent.server";
+import {
+  runAgentLoop,
+  shouldRunAgentLoop,
+  agentLoopSummaryBlock,
+  type AgentLoopResult,
+  type ChatMessage as AgentChatMessage,
+} from "@/server/agent-loop.server";
 
 import { applyScaffoldKit, applyScaffoldKitForPatch, STYLES_CSS } from "@/server/scaffold-kit";
 import { getBuildTarget } from "@/lib/build-targets";
@@ -1389,7 +1396,10 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   }
   const rawMessages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
   let messages = trimMessagesForGeneration(rawMessages);
-  const currentFiles = Array.isArray(body.currentFiles) ? body.currentFiles : [];
+  // `let`: the pre-emit agent loop may land a codemod, and every downstream
+  // stage (apply, recovery, repairs, ledger) must diff against the post-codemod
+  // state, not the state the request arrived with.
+  let currentFiles = Array.isArray(body.currentFiles) ? body.currentFiles : [];
   if (messages.length === 0) {
     return new Response("messages must not be empty", { status: 400 });
   }
@@ -2310,7 +2320,51 @@ Forbidden defaults
       chosenBy = `${chosenBy}+ctx_upgrade`;
     }
   }
-  const finalMessages = budget.messages;
+  let finalMessages = budget.messages;
+
+  // ---------------------------------------------------------------------
+  // Pre-emit agent loop. For work that spans many files or is mechanical,
+  // give the model real hands before it writes: grep, read, run a codemod on
+  // a real checkout, run the verifier — up to 5 rounds. The emit call below
+  // is unchanged and still forced to a single structured payload; it just
+  // runs with the transcript of everything the loop learned appended.
+  // ---------------------------------------------------------------------
+  let agentLoop: AgentLoopResult | null = null;
+  if (
+    shouldRunAgentLoop({
+      isInitial,
+      isCrossCutting,
+      prompt: lastUserContent,
+      fileCount: currentFiles.length,
+    })
+  ) {
+    agentLoop = await runAgentLoop({
+      model,
+      messages: finalMessages as AgentChatMessage[],
+      files: currentFiles,
+      projectId: body.projectId ?? "unknown",
+      userId,
+      signal: request.signal,
+    });
+    if (agentLoop.steps.length > 0) {
+      console.info(
+        `[agent-loop] rounds=${agentLoop.rounds} steps=${agentLoop.steps.length} converged=${agentLoop.converged} changed=${agentLoop.changedPaths.length}`,
+      );
+      // Adopt any codemod result BEFORE the emit call so every later stage
+      // diffs against the real post-codemod bytes.
+      currentFiles = agentLoop.files;
+      finalMessages = [
+        ...finalMessages,
+        ...(agentLoop.transcript as typeof finalMessages),
+        {
+          role: "user",
+          content: `${agentLoopSummaryBlock(agentLoop)}\n\nNow emit the final structured edit for whatever still needs changing.`,
+        } as (typeof finalMessages)[number],
+      ];
+    }
+  }
+
+
 
   const upstream = await aiChatCompletions({
     feature: "generate",
@@ -2381,6 +2435,25 @@ Forbidden defaults
           controller.enqueue(
             encoder.encode(
               sse({ type: "tool_step", tool: step.tool, label: step.label, isError: !!step.isError }),
+            ),
+          );
+        }
+        // Same for the pre-emit agent loop: every grep, read, codemod and
+        // verifier run shows up as its own timeline row.
+        for (const step of agentLoop?.steps ?? []) {
+          controller.enqueue(
+            encoder.encode(
+              sse({ type: "tool_step", tool: step.tool, label: step.label, isError: !!step.isError }),
+            ),
+          );
+        }
+        if (agentLoop && agentLoop.changedPaths.length > 0) {
+          controller.enqueue(
+            encoder.encode(
+              sse({
+                type: "status",
+                message: `Codemod updated ${agentLoop.changedPaths.length} file${agentLoop.changedPaths.length === 1 ? "" : "s"}.`,
+              }),
             ),
           );
         }
@@ -2970,7 +3043,10 @@ Forbidden defaults
             for (const p of prevByPath.keys()) {
               if (!nextByPath.has(p)) changedPaths.push(p);
             }
-            if (changedPaths.length === 0) {
+            // A codemod that already landed this turn IS a real change, even
+            // if the emit call then had nothing left to add. Only the case
+            // where literally nothing moved is a dead end.
+            if (changedPaths.length === 0 && (agentLoop?.changedPaths.length ?? 0) === 0) {
               const claimed = Array.from(new Set(safeOps.map((o) => o.path))).slice(0, 4).join(", ");
               console.warn(`[generate] no-op patch — ops applied but file contents unchanged (${claimed})`);
               recorder.record({
