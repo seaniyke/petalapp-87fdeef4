@@ -2308,7 +2308,7 @@ function Builder() {
             ...(resultSuggestions.length > 0 ? { suggestions: resultSuggestions } : {}),
           };
           noEditRecoveryRef.current.attempts = 0;
-          transientGenerateRecoveryRef.current.attempts = 0;
+          transientGenerateRecoveryRef.current.attempts = 0; persistRecovery(projectIdRef.current);
           setMessages((prev) => [...prev, assistantMsg]);
           setStreamingAssistant("");
           setStreamingPlan("");
@@ -2333,7 +2333,7 @@ function Builder() {
         const summary2 = guardBackendClaims(rawSummary2, files2, "Updated the project.");
         const safeRecap = guardBackendClaims(resultRecap, files2, "");
         noEditRecoveryRef.current.attempts = 0;
-        transientGenerateRecoveryRef.current.attempts = 0;
+        transientGenerateRecoveryRef.current.attempts = 0; persistRecovery(projectIdRef.current);
         // Persist the warm preamble alongside the technical summary so the
         // chat thread retains the human voice on refresh — without it, all
         // we'd see in history is the dryer "Updated the project." line.
@@ -2504,7 +2504,7 @@ function Builder() {
           void triggerBuild(proj.id)
             .then(async (build) => {
               restoreBuildId(build.buildId);
-              startedBuildIdsRef.current.add(build.buildId);
+              startedBuildIdsRef.current.add(build.buildId); persistRecovery(projectIdRef.current);
               const r = await getProject(proj.id);
               if (r) setProject(r);
             })
@@ -2553,7 +2553,7 @@ function Builder() {
           noEditRecoveryRef.current.attempts < 1 &&
           claimAutoRecovery()
         ) {
-          noEditRecoveryRef.current.attempts += 1;
+          noEditRecoveryRef.current.attempts += 1; persistRecovery(projectIdRef.current);
           setActivityVisible(true);
           setFriendlyError({
             title: "Petal is trying another way",
@@ -2578,7 +2578,7 @@ function Builder() {
           transientGenerateRecoveryRef.current.attempts < 1 &&
           claimAutoRecovery()
         ) {
-          transientGenerateRecoveryRef.current.attempts += 1;
+          transientGenerateRecoveryRef.current.attempts += 1; persistRecovery(projectIdRef.current);
           setActivityVisible(true);
           setFriendlyError({
             title: "Petal is reconnecting",
@@ -2962,7 +2962,7 @@ function Builder() {
       setAwaitingBuild(true);
       void triggerBuild(project.id)
         .then(async (build) => {
-          startedBuildIdsRef.current.add(build.buildId);
+          startedBuildIdsRef.current.add(build.buildId); persistRecovery(projectIdRef.current);
           const r = await getProject(project.id);
           if (r) setProject(r);
         })
@@ -3013,7 +3013,7 @@ function Builder() {
     void triggerBuild(project.id)
       .then(async (build) => {
         restoreBuildId(build.buildId);
-        startedBuildIdsRef.current.add(build.buildId);
+        startedBuildIdsRef.current.add(build.buildId); persistRecovery(projectIdRef.current);
         const r = await getProject(project.id);
         if (r) setProject(r);
       })
@@ -3088,7 +3088,7 @@ function Builder() {
       verifyFixRef.current = { projectId: project.id, handled: new Set() };
     }
     if (verifyFixRef.current.handled.has(buildId)) return;
-    verifyFixRef.current.handled.add(buildId);
+    verifyFixRef.current.handled.add(buildId); persistRecovery(projectIdRef.current);
     // Shared turn budget — without this the verifier and the repair turn it
     // triggers can ping-pong forever on one user edit.
     if (!claimAutoRecovery()) {
@@ -3155,7 +3155,7 @@ function Builder() {
     setAwaitingBuild(true);
     void triggerBuild(project.id)
       .then(async (build) => {
-        startedBuildIdsRef.current.add(build.buildId);
+        startedBuildIdsRef.current.add(build.buildId); persistRecovery(projectIdRef.current);
         const r = await getProject(project.id);
         if (r) setProject(r);
       })
@@ -5276,7 +5276,7 @@ function Builder() {
           setAwaitingBuild(true);
           void triggerBuild(project.id)
             .then((build) => {
-              startedBuildIdsRef.current.add(build.buildId);
+              startedBuildIdsRef.current.add(build.buildId); persistRecovery(projectIdRef.current);
             })
             .catch((err: unknown) => {
               setAwaitingBuild(false);
