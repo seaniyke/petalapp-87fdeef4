@@ -232,9 +232,21 @@ export const Route = createFileRoute("/api/discuss")({
           return new Response(msg, { status: upstream.status === 402 ? 402 : 502 });
         }
 
-        const json = (await upstream.json()) as {
-          choices?: Array<{ message?: { content?: string } }>;
-        };
+        // The credit is ALREADY debited at this point (spendCredit is a real
+        // ledger write, not a hold), so every failure below must refund or the
+        // user pays for a reply they never got. A malformed upstream body used
+        // to throw straight past the refund path.
+        let json: { choices?: Array<{ message?: { content?: string } }> };
+        try {
+          json = (await upstream.json()) as {
+            choices?: Array<{ message?: { content?: string } }>;
+          };
+        } catch (e) {
+          await refundCredit({ userId, ledgerId: reservation.ledgerId, reason: "discuss_bad_response" });
+          console.error("[discuss] could not parse AI response", e);
+          return new Response("The AI response was unreadable. Try again.", { status: 502 });
+        }
+
         const reply = json.choices?.[0]?.message?.content?.trim() ?? "";
         if (!reply) {
           await refundCredit({ userId, ledgerId: reservation.ledgerId, reason: "discuss_empty_reply" });

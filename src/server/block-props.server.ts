@@ -136,31 +136,40 @@ function flattenInFile(src: string): { content: string; changes: number } {
   for (const prop of GROUPED_PROPS) {
     const re = new RegExp(`\\b${prop}=\\{\\{`, "g");
     let guard = 0;
-    // Re-scan from scratch after each rewrite so indices stay valid.
+    // Re-scan after each rewrite so indices stay valid. `from` lets us step
+    // over an occurrence we can't flatten instead of abandoning the whole
+    // prop — later, perfectly valid call sites in the same file used to be
+    // skipped because one earlier occurrence had an unknown key.
+    let from = 0;
     for (;;) {
       if (guard++ > 200) break;
-      re.lastIndex = 0;
+      re.lastIndex = from;
       const m = re.exec(out);
       if (!m) break;
       const openOuter = m.index + prop.length + 1; // the `{` of `={{`
       const closeOuter = matchBrace(out, openOuter);
       if (closeOuter < 0) break;
       const inner = out.slice(openOuter + 1, closeOuter).trim();
-      if (!inner.startsWith("{") || !inner.endsWith("}")) break;
+      if (!inner.startsWith("{") || !inner.endsWith("}")) {
+        from = closeOuter + 1;
+        continue;
+      }
       const attrs = splitObjectBody(inner.slice(1, -1));
       if (!attrs) {
-        // Not a header-shaped object — skip this occurrence permanently by
-        // renaming nothing and moving on to the next prop name.
-        break;
+        // Not a header-shaped object — skip just this occurrence.
+        from = closeOuter + 1;
+        continue;
       }
       const replacement = attrs.map((a) => `${a.key}={${a.value}}`).join(" ");
       out = out.slice(0, m.index) + replacement + out.slice(closeOuter + 1);
       changes++;
+      from = m.index + replacement.length;
     }
   }
 
   return { content: out, changes };
 }
+
 
 export function fixBlockProps(files: ProjectFile[]): {
   files: ProjectFile[];

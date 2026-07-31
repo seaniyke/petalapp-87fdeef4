@@ -118,6 +118,53 @@ function looksLikeComponentRef(expr: string, componentImports: Set<string>): boo
   return componentImports.has(expr);
 }
 
+/**
+ * Blank out string/template literal bodies and comments (preserving length and
+ * newlines) so pattern matching only ever fires on real code positions. Without
+ * this, a template literal holding example markup — common in "code preview"
+ * sections of generated apps — gets its *text* rewritten.
+ */
+function maskLiterals(src: string): string {
+  const out = src.split("");
+  let i = 0;
+  let mode: "code" | "sq" | "dq" | "tpl" | "line" | "block" = "code";
+  while (i < src.length) {
+    const ch = src[i];
+    const next = src[i + 1];
+    if (mode === "code") {
+      if (ch === "/" && next === "/") { mode = "line"; i += 2; continue; }
+      if (ch === "/" && next === "*") { mode = "block"; i += 2; continue; }
+      if (ch === "'") { mode = "sq"; i++; continue; }
+      if (ch === '"') { mode = "dq"; i++; continue; }
+      if (ch === "`") { mode = "tpl"; i++; continue; }
+      i++;
+      continue;
+    }
+    if (mode === "line") {
+      if (ch === "\n") { mode = "code"; i++; continue; }
+      out[i] = " ";
+      i++;
+      continue;
+    }
+    if (mode === "block") {
+      if (ch === "*" && next === "/") { out[i] = " "; out[i + 1] = " "; mode = "code"; i += 2; continue; }
+      if (ch !== "\n") out[i] = " ";
+      i++;
+      continue;
+    }
+    // inside a string / template literal
+    if (ch === "\\") { out[i] = " "; if (i + 1 < src.length) out[i + 1] = " "; i += 2; continue; }
+    if ((mode === "sq" && ch === "'") || (mode === "dq" && ch === '"') || (mode === "tpl" && ch === "`")) {
+      mode = "code";
+      i++;
+      continue;
+    }
+    if (ch !== "\n") out[i] = " ";
+    i++;
+  }
+  return out.join("");
+}
+
 function rewriteFile(source: string): { content: string; changes: number } {
   const componentImports = collectComponentImports(source);
   let changes = 0;
@@ -126,11 +173,28 @@ function rewriteFile(source: string): { content: string; changes: number } {
   // are correct usage and must be left alone.
   const childExpr = /(>[ \t\r\n]*)\{[ \t\r\n]*([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)[ \t\r\n]*\}(?=[ \t\r\n]*<)/g;
 
-  const out = source.replace(childExpr, (full, lead: string, expr: string) => {
-    if (!looksLikeComponentRef(expr, componentImports)) return full;
+  // Match against the masked copy so literals/comments never match, then apply
+  // the edits back onto the real source at the same offsets.
+  const masked = maskLiterals(source);
+  const edits: Array<{ start: number; end: number; text: string }> = [];
+  for (const m of masked.matchAll(childExpr)) {
+    const expr = m[2];
+    if (!looksLikeComponentRef(expr, componentImports)) continue;
+    const start = m.index ?? 0;
+    edits.push({
+      start,
+      end: start + m[0].length,
+      text: `${m[1]}{renderNode(${expr})}`,
+    });
     changes++;
-    return `${lead}{renderNode(${expr})}`;
-  });
+  }
+
+  let out = source;
+  for (let k = edits.length - 1; k >= 0; k--) {
+    const e = edits[k];
+    out = out.slice(0, e.start) + e.text + out.slice(e.end);
+  }
+
 
   if (changes === 0) return { content: source, changes: 0 };
 

@@ -1448,6 +1448,22 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     return new Response("Could not verify credit balance. Try again.", { status: 500 });
   }
 
+  // The real bill is settled AFTER the build (token-priced), so the cheap
+  // floor check above is a TOCTOU window: N parallel requests all pass it and
+  // all get delivered while only the first can be paid for. One build in
+  // flight per user closes that window. The lock is TTL-based so a crashed or
+  // aborted turn can never lock a user out permanently.
+  if (!acquireBuildLock(userId)) {
+    return new Response(
+      JSON.stringify({
+        error:
+          "You already have a build running. Wait for it to finish before starting another one.",
+      }),
+      { status: 429, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+
   // ===========================================================================
   // Plan Mode v1 — propose-only short-circuit.
   // When `planFirst` is true and there is no `approvedPlanId` yet, we run the
@@ -1526,6 +1542,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
             );
           }
         } finally {
+          releaseBuildLock(userId);
           controller.close();
         }
       },
@@ -4401,6 +4418,7 @@ Forbidden defaults
         // Phase 6 — flush per-tier telemetry in a single insert.
         // Idempotent and never throws; safe in finally.
         void recorder.flush();
+        releaseBuildLock(userId);
         controller.close();
       }
     },
@@ -4571,6 +4589,34 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
  * previously it left nothing behind but a console warning. Record it so the
  * balance can be reconciled instead of disappearing.
  */
+/**
+ * One-build-at-a-time lock, keyed by user.
+ *
+ * Builds are priced from token usage AFTER generation, so the pre-flight floor
+ * check cannot know the final bill. Without this lock a user can fire several
+ * requests that all clear the floor simultaneously and receive several builds
+ * they can only pay for once. Entries carry a TTL so an aborted or crashed
+ * turn always frees itself.
+ */
+const BUILD_LOCK_TTL_MS = 6 * 60 * 1000;
+const buildLocks = new Map<string, number>();
+
+function acquireBuildLock(userId: string): boolean {
+  const now = Date.now();
+  const heldUntil = buildLocks.get(userId);
+  if (heldUntil && heldUntil > now) return false;
+  buildLocks.set(userId, now + BUILD_LOCK_TTL_MS);
+  // Opportunistic sweep so the map can't grow unbounded on a long-lived worker.
+  if (buildLocks.size > 200) {
+    for (const [key, expiry] of buildLocks) if (expiry <= now) buildLocks.delete(key);
+  }
+  return true;
+}
+
+function releaseBuildLock(userId: string): void {
+  buildLocks.delete(userId);
+}
+
 async function recordUnpaidBuild(
   userId: string,
   projectId: string | null,
