@@ -89,6 +89,7 @@ async function repairAndReshipIfNeeded(
       buildId: build.id,
       files: freshened,
       hideBadge: hidePetalBadge,
+      verify: await buildVerifyPlan({ files: freshened, projectId }).catch(() => undefined),
     });
     console.log(
       `[publish] repaired ${repaired.notes.length} issue(s), freshened ${replacements} stale year ref(s), and persisted ${changed.length} file(s) for project=${projectId} (build=${build.id})`,
