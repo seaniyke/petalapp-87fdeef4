@@ -113,9 +113,13 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
   // Single shared $5 free grant bucket spans both Cloud and AI usage.
   // It's locked until the user's first paid top-up. Per-meter usage rows
   // below only show top-up spend; free grant is shown once at the top.
-  const monthlyGrant = wallet?.monthlyFreeGrantCents ?? 500;
+  const configuredGrant = wallet?.monthlyFreeGrantCents ?? 500;
   const qualified = wallet?.qualifiedForFreeGrant ?? false;
   const freeRemainingCents = qualified ? wallet?.freeBalanceCents ?? 0 : 0;
+  // A wallet can legitimately hold more than the current configured grant
+  // (legacy/larger grants). Never show "$10 left of $5" — the denominator is
+  // whichever is bigger, so remaining can never exceed the total.
+  const monthlyGrant = Math.max(configuredGrant, freeRemainingCents);
   const freeUsedCents = qualified ? Math.max(0, monthlyGrant - freeRemainingCents) : 0;
 
   return (
