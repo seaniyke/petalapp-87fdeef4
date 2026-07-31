@@ -121,6 +121,13 @@ import { RevertPreviewDialog } from "@/components/RevertPreviewDialog";
 import { PartialRevertDialog } from "@/components/PartialRevertDialog";
 import type { VersionRow } from "@/lib/versions";
 import { BuilderActionsSheet } from "@/components/BuilderActionsSheet";
+import { AnalyticsSheet } from "@/components/AnalyticsSheet";
+import { AgentIntegrationsSheet } from "@/components/AgentIntegrationsSheet";
+import { PaymentsSheet } from "@/components/PaymentsSheet";
+import { ConnectorsSheet } from "@/components/ConnectorsSheet";
+import { WebsiteInfoSheet } from "@/components/WebsiteInfoSheet";
+import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
+
 import { PublishSheet } from "@/components/PublishSheet";
 import { RenameProjectDialog } from "@/components/RenameProjectDialog";
 import { BillingSheet } from "@/components/BillingSheet";
@@ -596,6 +603,15 @@ function Builder() {
   const [shieldOpen, setShieldOpen] = useState(false);
   const [sharePreviewOpen, setSharePreviewOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  // Destinations reachable from the mobile menu's "More" group.
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [cloudPanelOpen, setCloudPanelOpen] = useState(false);
+  const [agentIntegrationsOpen, setAgentIntegrationsOpen] = useState(false);
+  const [paymentsOpen, setPaymentsOpen] = useState(false);
+  const [connectorsOpen, setConnectorsOpen] = useState(false);
+  const [seoOpen, setSeoOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
   // Whether this project already has a backend (BYO or managed). When unknown
   // we treat as "not connected" but suppress the chip until we've checked.
   const [hasBackend, setHasBackend] = useState<boolean | null>(null);
@@ -3385,7 +3401,69 @@ function Builder() {
             onOpenRename={() => setRenameOpen(true)}
             onOpenBilling={() => setBillingOpen(true)}
             onOpenPublish={() => setPublishOpen(true)}
+            onOpenShare={() => setSharePreviewOpen(true)}
+            onOpenCode={() => setView("code")}
+            onOpenFiles={() => setView("code")}
+            onOpenHistory={() => setHistoryOpen(true)}
+            onOpenAnalytics={() => setAnalyticsOpen(true)}
+            onOpenCloud={() => setCloudPanelOpen(true)}
+            onOpenAgentIntegrations={() => setAgentIntegrationsOpen(true)}
+            onOpenPayments={() => setPaymentsOpen(true)}
+            onOpenConnectors={() => setConnectorsOpen(true)}
+            onOpenSecurity={() => setShieldOpen(true)}
+            onOpenSeo={() => setSeoOpen(true)}
           />
+          <AnalyticsSheet
+            open={analyticsOpen}
+            onOpenChange={setAnalyticsOpen}
+            projectId={project.id}
+            onPublish={() => setPublishOpen(true)}
+          />
+          <CloudPanelSheet
+            open={cloudPanelOpen}
+            onOpenChange={setCloudPanelOpen}
+            projectId={project.id}
+            onOpenBalance={() => {
+              setCloudPanelOpen(false);
+              setCloudBalanceOpen(true);
+            }}
+          />
+          <AgentIntegrationsSheet
+            open={agentIntegrationsOpen}
+            onOpenChange={setAgentIntegrationsOpen}
+            onSendPrompt={(prompt) => void send(prompt, { forceBuild: true })}
+          />
+          <PaymentsSheet
+            open={paymentsOpen}
+            onOpenChange={setPaymentsOpen}
+            hasBackend={hasBackend}
+            onSendPrompt={(prompt) => void send(prompt, { forceBuild: true })}
+            onSetupBackend={() => {
+              setSettingsScrollTo("backend");
+              setSettingsOpen(true);
+            }}
+          />
+          <ConnectorsSheet
+            open={connectorsOpen}
+            onOpenChange={setConnectorsOpen}
+            projectId={project.id}
+          />
+          <WebsiteInfoSheet
+            open={seoOpen}
+            onOpenChange={setSeoOpen}
+            project={project}
+            onChange={setProject}
+          />
+          <HistoryPanel
+            projectId={project.id}
+            currentFiles={files}
+            onRestore={handleRestore}
+            refreshKey={historyKey}
+            open={historyOpen}
+            onOpenChange={setHistoryOpen}
+            hideTrigger
+          />
+
           <RenameProjectDialog
             project={project}
             open={renameOpen}
@@ -3865,8 +3943,8 @@ function Builder() {
                                 needsBackendFirst={needsBackendFirst}
                                 onOpenPayments={() => {
                                   const prompt = intent.reason
-                                    ? `Enable payments for "${intent.reason}" using Lovable's built-in payments. Recommend the right provider and set it up end-to-end — no manual API keys.`
-                                    : `Enable payments for this project using Lovable's built-in payments. Recommend the right provider and set it up end-to-end — no manual API keys.`;
+                                    ? `Enable payments for "${intent.reason}" using Petal's built-in payments. Recommend the right provider and set it up end-to-end — no manual API keys.`
+                                    : `Enable payments for this project using Petal's built-in payments. Recommend the right provider and set it up end-to-end — no manual API keys.`;
                                   setDismissedPaymentChips((prev) => {
                                     const next = new Set(prev);
                                     next.add(i);

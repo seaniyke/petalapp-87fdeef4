@@ -8,7 +8,7 @@
  * Opens from either the hamburger button (top-left) or by tapping the
  * centered project name in the header.
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Drawer,
   DrawerContent,
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/drawer";
 import {
   ChevronRight,
+  ChevronDown,
   Settings as SettingsIcon,
   Pencil,
   Sun,
@@ -23,6 +24,18 @@ import {
   Monitor as MonitorIcon,
   Sparkles,
   Globe,
+  Share2,
+  Code2,
+  Files as FilesIcon,
+  History as HistoryIcon,
+  MoreHorizontal,
+  BarChart3,
+  Cloud,
+  Bot,
+  CreditCard,
+  Plug,
+  ShieldCheck,
+  Search as SearchIcon,
 } from "lucide-react";
 import { useWallet } from "@/hooks/use-wallet";
 import { useTheme, type Theme } from "@/hooks/use-theme";
@@ -36,6 +49,17 @@ type Props = {
   onOpenRename: () => void;
   onOpenBilling: () => void;
   onOpenPublish: () => void;
+  onOpenShare: () => void;
+  onOpenCode: () => void;
+  onOpenFiles: () => void;
+  onOpenHistory: () => void;
+  onOpenAnalytics: () => void;
+  onOpenCloud: () => void;
+  onOpenAgentIntegrations: () => void;
+  onOpenPayments: () => void;
+  onOpenConnectors: () => void;
+  onOpenSecurity: () => void;
+  onOpenSeo: () => void;
 };
 
 export function BuilderActionsSheet({
@@ -45,7 +69,20 @@ export function BuilderActionsSheet({
   onOpenRename,
   onOpenBilling,
   onOpenPublish,
+  onOpenShare,
+  onOpenCode,
+  onOpenFiles,
+  onOpenHistory,
+  onOpenAnalytics,
+  onOpenCloud,
+  onOpenAgentIntegrations,
+  onOpenPayments,
+  onOpenConnectors,
+  onOpenSecurity,
+  onOpenSeo,
 }: Props) {
+  const [moreOpen, setMoreOpen] = useState(false);
+
   const { wallet, plan, breakdown, loading } = useWallet();
   const { theme, setTheme } = useTheme();
 
@@ -251,8 +288,16 @@ export function BuilderActionsSheet({
           );
         })()}
 
-        {/* Actions */}
+        {/* Primary actions */}
         <ul className="mt-3 divide-y divide-border/60 rounded-2xl bg-card">
+          <ActionRow
+            icon={<Share2 className="h-5 w-5" />}
+            label="Share"
+            onClick={() => {
+              onOpenChange(false);
+              onOpenShare();
+            }}
+          />
           <ActionRow
             icon={<Globe className="h-5 w-5" />}
             label="Publish"
@@ -269,6 +314,113 @@ export function BuilderActionsSheet({
               onOpenSettings();
             }}
           />
+          <ActionRow
+            icon={<Code2 className="h-5 w-5" />}
+            label="Code"
+            onClick={() => {
+              onOpenChange(false);
+              onOpenCode();
+            }}
+          />
+          <ActionRow
+            icon={<FilesIcon className="h-5 w-5" />}
+            label="Files"
+            onClick={() => {
+              onOpenChange(false);
+              onOpenFiles();
+            }}
+          />
+          <ActionRow
+            icon={<HistoryIcon className="h-5 w-5" />}
+            label="History"
+            onClick={() => {
+              onOpenChange(false);
+              onOpenHistory();
+            }}
+          />
+
+          {/* More — expands in place, mirroring the reference menu. */}
+          <ActionRow
+            icon={<MoreHorizontal className="h-5 w-5" />}
+            label="More"
+            trailing={
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform",
+                  moreOpen && "rotate-180",
+                )}
+              />
+            }
+            onClick={() => setMoreOpen((v) => !v)}
+          />
+          {moreOpen && (
+            <>
+              <ActionRow
+                nested
+                icon={<BarChart3 className="h-5 w-5" />}
+                label="Analytics"
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenAnalytics();
+                }}
+              />
+              <ActionRow
+                nested
+                icon={<Cloud className="h-5 w-5" />}
+                label="Cloud"
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenCloud();
+                }}
+              />
+              <ActionRow
+                nested
+                icon={<Bot className="h-5 w-5" />}
+                label="Agent integrations"
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenAgentIntegrations();
+                }}
+              />
+              <ActionRow
+                nested
+                icon={<CreditCard className="h-5 w-5" />}
+                label="Payments"
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenPayments();
+                }}
+              />
+              <ActionRow
+                nested
+                icon={<Plug className="h-5 w-5" />}
+                label="Connectors"
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenConnectors();
+                }}
+              />
+              <ActionRow
+                nested
+                icon={<ShieldCheck className="h-5 w-5" />}
+                label="Security"
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenSecurity();
+                }}
+              />
+              <ActionRow
+                nested
+                icon={<SearchIcon className="h-5 w-5" />}
+                label="SEO & AI search"
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenSeo();
+                }}
+              />
+            </>
+          )}
+
           <ActionRow
             icon={<Pencil className="h-5 w-5" />}
             label="Rename project"
@@ -297,6 +449,7 @@ export function BuilderActionsSheet({
             onClick={cycleTheme}
           />
         </ul>
+
       </DrawerContent>
     </Drawer>
   );
@@ -306,26 +459,33 @@ function ActionRow({
   icon,
   label,
   trailing,
+  nested,
   onClick,
 }: {
   icon: React.ReactNode;
   label: string;
   trailing?: React.ReactNode;
+  /** Indented child row inside the expanded "More" group. */
+  nested?: boolean;
   onClick: () => void;
 }) {
   return (
-    <li>
+    <li className={cn(nested && "bg-muted/30")}>
       <button
         type="button"
         onClick={onClick}
         className={cn(
           "flex w-full items-center gap-3 px-4 py-3.5 text-left transition active:bg-muted/60",
+          nested && "py-3 pl-9",
         )}
       >
         <span className="text-foreground/80">{icon}</span>
-        <span className="flex-1 text-base font-medium">{label}</span>
+        <span className={cn("flex-1 font-medium", nested ? "text-[15px]" : "text-base")}>
+          {label}
+        </span>
         {trailing ?? <ChevronRight className="h-4 w-4 text-muted-foreground" />}
       </button>
+
     </li>
   );
 }
