@@ -2435,6 +2435,10 @@ Forbidden defaults
         }
 
         let { parsed, summary, plan, recap } = payload;
+        // Honesty ledger — paths the model asked to change that end up
+        // byte-identical after apply + recovery.
+        const unappliedPaths: string[] = [];
+
 
         // (Question-first guard removed — see comment near the top of this
         // file. Triage is the single decision point for "is this a question?";
