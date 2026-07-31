@@ -224,10 +224,13 @@ function buildFileRouteTable(files: ProjectFile[]): TanstackFallbackResult | nul
 
   const imports = entries.map((e) => `import { Route as ${e.id} } from "${e.spec}";`).join("\n");
   const consts = entries
-    .map((e) => `const C${e.id} = (${e.id} as any)?.component ?? (() => null);`)
+    .map((e) => {
+      const routeVar = `Route${e.id}`;
+      return `const ${routeVar} = ${e.id} as any;\nconst C${e.id} = ${routeVar}?.component ?? (() => null);`;
+    })
     .join("\n");
   const children = entries
-    .map((e) => `      <RRRoute path="${e.url}" element={<C${e.id} />} />`)
+    .map((e) => `      <RRRoute path="${e.url}" element={<RouteContext.Provider value={Route${e.id}}><C${e.id} /></RouteContext.Provider>} />`)
     .join("\n");
 
   const body = hasApp
@@ -241,10 +244,13 @@ function buildFileRouteTable(files: ProjectFile[]): TanstackFallbackResult | nul
  * tree, so the TanStack router could not be constructed. These routes are
  * mounted with react-router instead, which keeps every page reachable.
  */
+import { createContext, useContext } from "react";
 import { BrowserRouter, Routes, Route as RRRoute } from "react-router-dom";
 ${hasApp ? 'import App from "@/App";\n' : ""}${imports}
 
 ${consts}
+
+const RouteContext = createContext<any>(null);
 
 export function GeneratedRoutes() {
   return (
@@ -254,6 +260,10 @@ ${body}
       </Routes>
     </BrowserRouter>
   );
+}
+
+export function useCurrentRoute() {
+  return useContext(RouteContext);
 }
 `;
 
