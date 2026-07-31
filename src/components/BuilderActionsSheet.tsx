@@ -37,7 +37,6 @@ import {
   ShieldCheck,
   Search as SearchIcon,
   RotateCw,
-  Link2,
   MessageSquare,
   Download,
 } from "lucide-react";
@@ -65,7 +64,6 @@ type Props = {
   onOpenSecurity: () => void;
   onOpenSeo: () => void;
   onReloadPreview: () => void;
-  onOpenSharePreview: () => void;
   onOpenComments: () => void;
   onExportCode: () => void;
 };
@@ -89,7 +87,6 @@ export function BuilderActionsSheet({
   onOpenSecurity,
   onOpenSeo,
   onReloadPreview,
-  onOpenSharePreview,
   onOpenComments,
   onExportCode,
 }: Props) {
@@ -347,15 +344,6 @@ export function BuilderActionsSheet({
                 onClick={() => {
                   onOpenChange(false);
                   onReloadPreview();
-                }}
-              />
-              <ActionRow
-                nested
-                icon={<Link2 className="h-5 w-5" />}
-                label="Share preview link"
-                onClick={() => {
-                  onOpenChange(false);
-                  onOpenSharePreview();
                 }}
               />
               <ActionRow

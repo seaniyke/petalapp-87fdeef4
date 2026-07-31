@@ -3429,7 +3429,6 @@ function Builder() {
               setMobileTab("preview");
               setPreviewKey((k) => k + 1);
             }}
-            onOpenSharePreview={() => setSharePreviewOpen(true)}
             onOpenComments={() => setCommentsOpen(true)}
             onExportCode={() => {
               if (files.length) downloadProject();
