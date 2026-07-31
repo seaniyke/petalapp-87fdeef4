@@ -119,11 +119,12 @@ export async function refundCredit(opts: RefundCreditOptions): Promise<boolean> 
   });
   try {
     await supabaseAdmin.from("pipeline_failures").insert({
-      stage: "credit_refund",
+      surface: "credit_refund",
+      signature: "refund_credit_failed",
+      raw_message: `refund_credit failed after ${attempts} attempts: ${lastError}`,
       user_id: opts.userId,
-      error_message: `refund_credit failed after ${attempts} attempts: ${lastError}`,
-      details: { ledgerId: opts.ledgerId, reason: opts.reason } as never,
-    } as never);
+      extra: { ledgerId: opts.ledgerId, reason: opts.reason } as never,
+    });
   } catch {
     // Nothing left to do — the console line above is the last resort.
   }
