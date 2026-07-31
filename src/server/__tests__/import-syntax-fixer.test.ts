@@ -47,3 +47,26 @@ assert.equal(res.files[1].content, `import { Separator } '@/s';\n`);
 assert.equal(fixImportSyntax(res.files).notes.length, 0);
 
 console.log("import-syntax-fixer: all assertions passed");
+
+// 6. Default + namespace combo and a trailing comment after the specifier.
+const combo = repairImportSyntax(
+  [
+    `import React, * as ns '@/x';`,
+    `import { Separator } '@/components/ui/separator'; // shadcn`,
+  ].join("\n"),
+);
+assert.equal(combo.count, 2);
+assert.ok(combo.out.includes(`import React, * as ns from '@/x';`));
+assert.ok(combo.out.includes(`from '@/components/ui/separator'; // shadcn`));
+
+// 7. Builder-side pre-flight heal mirrors the app-side pass.
+const { healSyntax } = await import("../../../builder/src/syntax-heal");
+const preflight = healSyntax([
+  { path: "src/routes/products/$slug.tsx", content: `import { Separator } '@/components/ui/separator';\n` },
+  { path: "public/robots.txt", content: `import { Separator } '@/s';\n` },
+]);
+assert.ok(preflight.files[0].content.includes(`} from '@/components/ui/separator';`));
+assert.equal(preflight.files[1].content, `import { Separator } '@/s';\n`);
+assert.equal(healSyntax(preflight.files).notes.length, 0);
+
+console.log("import-syntax-fixer: builder pre-flight assertions passed");
