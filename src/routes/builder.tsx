@@ -3199,17 +3199,31 @@ function Builder() {
           <button
             type="button"
             onClick={() => {
-              if (mobileTab === "chat") {
+              // From the code view the round button always returns to the
+              // live preview — otherwise there's no way back on a phone.
+              if (view === "code") {
+                setView("preview");
+                setMobileTab("preview");
+                setPreviewHasUpdate(false);
+              } else if (mobileTab === "chat") {
                 setMobileTab("preview");
                 setPreviewHasUpdate(false);
               } else {
                 setMobileTab("chat");
               }
             }}
-            aria-label={mobileTab === "chat" ? "Open preview" : "Back to chat"}
+            aria-label={
+              view === "code"
+                ? "Back to preview"
+                : mobileTab === "chat"
+                  ? "Open preview"
+                  : "Back to chat"
+            }
             className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-background text-foreground shadow-sm transition hover:bg-muted active:scale-95 md:hidden"
           >
-            {mobileTab === "chat" ? (
+            {view === "code" ? (
+              <Eye className="h-4 w-4" />
+            ) : mobileTab === "chat" ? (
               <Play className="h-4 w-4 translate-x-[1px] fill-foreground" />
             ) : (
               <MessageSquare className="h-4 w-4" />
@@ -3402,8 +3416,24 @@ function Builder() {
             onOpenBilling={() => setBillingOpen(true)}
             onOpenPublish={() => setPublishOpen(true)}
             onOpenShare={() => setSharePreviewOpen(true)}
-            onOpenCode={() => setView("code")}
-            onOpenFiles={() => setView("code")}
+            onOpenCode={() => {
+              setView("code");
+              setMobileTab("preview");
+            }}
+            onOpenFiles={() => {
+              setView("code");
+              setMobileTab("preview");
+            }}
+            onReloadPreview={() => {
+              setView("preview");
+              setMobileTab("preview");
+              setPreviewKey((k) => k + 1);
+            }}
+            onOpenSharePreview={() => setSharePreviewOpen(true)}
+            onOpenComments={() => setCommentsOpen(true)}
+            onExportCode={() => {
+              if (files.length) downloadProject();
+            }}
             onOpenHistory={() => setHistoryOpen(true)}
             onOpenAnalytics={() => setAnalyticsOpen(true)}
             onOpenCloud={() => setCloudPanelOpen(true)}
@@ -5064,6 +5094,10 @@ function Builder() {
               activeFile={activeFile}
               onSelect={setActiveFile}
               projectName={project?.title ?? null}
+              onBack={() => {
+                setView("preview");
+                setMobileTab("preview");
+              }}
             >
               <Suspense
                 fallback={
