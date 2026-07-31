@@ -88,6 +88,14 @@ type Handlers = {
   onPlanSkipped?: (reason: string) => void;
   /** Plan Mode v1 — patch tried to touch files outside the approved scope. */
   onPlanScopeViolation?: (droppedPaths: string[]) => void;
+  /** Iteration Standard — the one honest terminal state of the turn, derived
+   *  from a byte diff of the project rather than the model's prose. */
+  onTurnOutcome?: (outcome: {
+    outcome: "applied" | "answered" | "blocked" | "failed";
+    changedPaths: string[];
+    blockedPaths?: string[];
+    reason?: string;
+  }) => void;
   /** Fired once at the very start of every turn. The client should persist
    *  this id (e.g. to localStorage keyed by projectId) so it can silently
    *  reconnect via /api/turns/$id/events after a tab close or refresh. */
@@ -275,6 +283,14 @@ export async function streamGenerate(
             break;
           case "plan_scope_violation":
             handlers.onPlanScopeViolation?.(evt.droppedPaths);
+            break;
+          case "turn_outcome":
+            handlers.onTurnOutcome?.({
+              outcome: evt.outcome,
+              changedPaths: evt.changedPaths,
+              blockedPaths: evt.blockedPaths,
+              reason: evt.reason,
+            });
             break;
         }
       }
