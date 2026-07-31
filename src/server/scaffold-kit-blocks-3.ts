@@ -725,6 +725,7 @@ export function SidebarShell({
   topRight,
   children,
   footer,
+  footerContent,
   className,
 }: {
   brand: React.ReactNode;
@@ -732,8 +733,11 @@ export function SidebarShell({
   topRight?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Alias for \`footer\`. */
+  footerContent?: React.ReactNode;
   className?: string;
 }) {
+  const footerNode = footer ?? footerContent;
   const [open, setOpen] = React.useState(false);
   const items = Array.isArray(nav) ? nav : [];
   const renderIcon = (icon: SidebarNavItem["icon"]) => {
@@ -760,12 +764,15 @@ export function SidebarShell({
             ))}
           </nav>
         </ScrollArea>
-        {footer && <div className="border-t border-border p-3 text-xs text-muted-foreground">{footer}</div>}
+        {footerNode && <div className="border-t border-border p-3 text-xs text-muted-foreground">{footerNode}</div>}
       </aside>
       <div className="md:pl-64">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
           <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setOpen(true)}><Menu className="h-4 w-4" /></Button>
-          <div className="flex-1" />
+          {/* The brand lockup must stay visible on mobile — a top bar with
+              only a hamburger and empty space reads as a broken page. */}
+          <div className="min-w-0 flex-1 truncate font-semibold text-foreground md:hidden">{brand}</div>
+          <div className="hidden flex-1 md:block" />
           {topRight}
         </header>
         <main className="px-4 py-6 md:px-8 md:py-8">{children}</main>

@@ -1809,6 +1809,8 @@ Forbidden defaults
         webSubtype: detectedWebSubtype,
         brief: lastUserContent,
       });
+      const { renderBrandContractBlock } = await import("@/server/brand-contract.server");
+      stagedHeroContract += renderBrandContractBlock({ isInitial: true });
     } catch {
       /* never block */
     }
@@ -1841,6 +1843,8 @@ Forbidden defaults
       webSubtype: detectedWebSubtype,
       brief: lastUserContent,
     });
+    const { renderBrandContractBlock } = await import("@/server/brand-contract.server");
+    heroContractBlock += renderBrandContractBlock({ isInitial });
   } catch {
     /* never block a build on contract render failure */
   }
