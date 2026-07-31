@@ -828,13 +828,26 @@ function findBlankRenderIssues(
   }
   if (!app.trim()) {
     issues.push({ path: "src/App.tsx", kind: "blank-render", detail: "missing src/App.tsx leaves the preview blank" });
-  } else if (
-    /PlaceholderIndex|data-lovable-blank-page-placeholder|REPLACE this/i.test(app) ||
-    /return\s+(?:null|<><\/>)\s*;/.test(app) ||
-    !/<[A-Za-z][\w.:-]*(?:\s|>|\/)/.test(app)
-  ) {
-    issues.push({ path: "src/App.tsx", kind: "blank-render", detail: "App renders placeholder, null, or no visible JSX" });
+  } else {
+    const rendersJsx = /<[A-Za-z][\w.:-]*(?:\s|>|\/)/.test(app);
+    // `return null;` is only a blank page when it is the app's ONLY exit.
+    // Guard clauses (`if (!items) return null;`) sit above a perfectly good
+    // JSX return, and flagging them sent the pipeline into pointless repair
+    // loops on healthy code.
+    const returnsNothingAtAll = /return\s+(?:null|<><\/>)\s*;/.test(app) && !rendersJsx;
+    if (
+      /PlaceholderIndex|data-lovable-blank-page-placeholder|REPLACE this/i.test(app) ||
+      returnsNothingAtAll ||
+      !rendersJsx
+    ) {
+      issues.push({
+        path: "src/App.tsx",
+        kind: "blank-render",
+        detail: "App renders placeholder, null, or no visible JSX",
+      });
+    }
   }
+
   return issues;
 }
 
