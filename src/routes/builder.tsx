@@ -631,7 +631,12 @@ function Builder() {
   const [dismissedCronChips, setDismissedCronChips] = useState<Set<number>>(
     () => new Set(),
   );
-  const { plan: currentPlan, wallet: currentWallet, loading: walletLoading } = useWallet();
+  const {
+    plan: currentPlan,
+    wallet: currentWallet,
+    breakdown: creditBreakdown,
+    loading: walletLoading,
+  } = useWallet();
   // Derive access from the wallet directly. Paid features unlock via an
   // active subscription OR pay-as-you-go: purchased credits still remaining.
   // The plans catalog can lag (or omit grandfathered plan codes), which
@@ -1705,6 +1710,20 @@ function Builder() {
       const text = content.trim();
       const internalRetry = opts.isRetry || opts.isAutoFix || opts.isAutoContinue;
       if (!text || (busy && !internalRetry)) return;
+      // Hard stop at zero credits. The server 402s every AI route, but the
+      // composer must not even accept the message — otherwise the user sees
+      // their turn "go through" and then fail. Internal auto-fix runs are
+      // free and stay allowed.
+      if (!opts.isAutoFix && !walletLoading && currentWallet && creditBreakdown.total < 1) {
+        setFriendlyError({
+          title: "You're out of credits",
+          message:
+            "Your balance is empty, so Petal can't run this turn. Top up to keep building — your project is safe and nothing was charged.",
+          actionLabel: "Buy credits",
+          actionKind: "buy-credits",
+        });
+        return;
+      }
       const proj = await ensureProject();
       if (!proj) return;
       supersedeBuildId(proj.latest_build_id);
@@ -2467,7 +2486,18 @@ function Builder() {
         void clearMessageDraft(proj.id);
       }
     },
-    [busy, messages, files, ensureProject, pendingAttachments, supersedeBuildId, restoreBuildId],
+    [
+      busy,
+      messages,
+      files,
+      ensureProject,
+      pendingAttachments,
+      supersedeBuildId,
+      restoreBuildId,
+      creditBreakdown.total,
+      currentWallet,
+      walletLoading,
+    ],
   );
   // Keep the latest send reference available to the service-enabled effect
   // without making that effect re-subscribe on every keystroke.

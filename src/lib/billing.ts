@@ -77,13 +77,29 @@ const CURRENCY_DECIMALS: Record<string, number> = {
   ZAR: 2,
 };
 
+/**
+ * Mirror of `public.check_credit_balance` — including its "reset on a new
+ * UTC day/month" logic. Without the reset the badge kept showing yesterday's
+ * exhausted allowance (0 left) while the server happily allowed the turn.
+ */
 export function computeBreakdown(wallet: Wallet | null, plan: Plan | null): CreditBreakdown {
   if (!wallet || !plan) return { daily: 0, monthly: 0, topup: 0, total: 0 };
-  const dailyAllowance = Math.max(0, plan.daily_free_credits - wallet.daily_free_used);
+
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10); // UTC YYYY-MM-DD
+  const thisMonth = today.slice(0, 7);
+
+  const dailyReset = String(wallet.daily_free_reset_at ?? "").slice(0, 10);
+  const monthlyReset = String(wallet.monthly_free_reset_at ?? "").slice(0, 7);
+
+  const dailyUsed = dailyReset && dailyReset < today ? 0 : wallet.daily_free_used;
+  const monthlyUsed = monthlyReset && monthlyReset < thisMonth ? 0 : wallet.monthly_free_used;
+
+  const dailyAllowance = Math.max(0, plan.daily_free_credits - dailyUsed);
   const monthlyRoom =
     plan.monthly_free_cap == null
       ? Infinity
-      : Math.max(0, plan.monthly_free_cap - wallet.monthly_free_used);
+      : Math.max(0, plan.monthly_free_cap - monthlyUsed);
   const daily = Math.min(dailyAllowance, monthlyRoom);
   const monthly = wallet.monthly_credits_remaining;
   const topup = wallet.topup_credits_remaining;
