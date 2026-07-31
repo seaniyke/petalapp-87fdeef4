@@ -13,6 +13,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { AUTO_APPROVE_AT, MILESTONES } from "@/lib/referral";
+import { throttlePublicWrite } from "@/server/rate-limit.server";
 
 const Body = z.object({
   name: z.string().trim().min(1).max(120),
@@ -112,6 +113,9 @@ export const Route = createFileRoute("/api/public/waitlist")({
       },
 
       POST: async ({ request }) => {
+        // Unauthenticated write with attacker-controlled fields — brake it.
+        const throttled = throttlePublicWrite(request, "waitlist", 5, 30);
+        if (throttled) return throttled;
         let parsed: z.infer<typeof Body>;
         try {
           parsed = Body.parse(await request.json());
