@@ -337,11 +337,42 @@ async function runBuild(body: BuildBody): Promise<void> {
     );
 
     log.info({ url: result.url, durationMs: result.durationMs }, "Build succeeded");
+
+    // Post-deploy browser verification. Blocking by design: the build is not
+    // reported ready until we know whether the deployed app actually renders,
+    // signs a user in, and survives its core write flows. A verifier failure is
+    // never a build failure — the deploy is real either way, so we report the
+    // URL with whatever report we managed to produce.
+    let verification: VerifyReport | undefined;
+    if (body.verify) {
+      const plan: VerifyPlan = { baseUrl: result.url, ...body.verify };
+      try {
+        verification = await withTimeout(runVerification(plan), VERIFY_TIMEOUT_MS);
+        log.info(
+          { ok: verification.ok, defects: verification.defects.length },
+          "Verification finished",
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log.warn({ err: message }, "Verification could not run");
+        verification = {
+          ok: true,
+          baseUrl: result.url,
+          durationMs: 0,
+          routes: [],
+          flows: [],
+          defects: [],
+          skipped: message.slice(0, 300),
+        } as VerifyReport & { skipped: string };
+      }
+    }
+
     await postCallback({
       buildId: body.buildId,
       projectId: body.projectId,
       status: "ready",
       url: result.url,
+      ...(verification ? { verification: stripScreenshots(verification) } : {}),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -359,8 +390,27 @@ async function runBuild(body: BuildBody): Promise<void> {
   }
 }
 
+/**
+ * Screenshots are megabytes of base64 and the webhook body is signed and
+ * parsed whole — keep them on this side of the wire.
+ */
+function stripScreenshots(report: VerifyReport): VerifyReport {
+  return {
+    ...report,
+    routes: report.routes.map(({ screenshot: _s, ...rest }) => rest),
+    flows: report.flows.map(({ screenshot: _s, ...rest }) => rest),
+    ...(report.auth ? { auth: { ...report.auth, screenshot: undefined } } : {}),
+  };
+}
+
 type Callback =
-  | { buildId: string; projectId: string; status: "ready"; url: string }
+  | {
+      buildId: string;
+      projectId: string;
+      status: "ready";
+      url: string;
+      verification?: VerifyReport;
+    }
   | { buildId: string; projectId: string; status: "failed"; errorMessage: string; logs: string };
 
 async function postCallback(payload: Callback): Promise<void> {
