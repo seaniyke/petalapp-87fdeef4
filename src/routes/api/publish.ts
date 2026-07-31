@@ -30,6 +30,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { freshenStaleYears } from "@/server/freshen-stale-years.server";
 import { postBuildToRailway } from "@/server/builder.server";
+import { buildVerifyPlan } from "@/server/verify-plan.server";
 import type { ProjectFile } from "@/server/generate.server";
 import { applyScaffoldKit } from "@/server/scaffold-kit";
 import { runAllRepairs } from "@/server/repair-all.server";
