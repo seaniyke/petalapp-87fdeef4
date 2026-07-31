@@ -35,6 +35,7 @@ import { fixTanstackRouterWithoutProvider } from "./tanstack-router-fallback.ser
 
 import { fixCssEscapes } from "./css-escape-fixer.server";
 import { fixBlockProps } from "./block-props.server";
+import { fixComponentChildren } from "./component-child.server";
 import { ensureBrandIdentity } from "./brand-identity.server";
 import { repairBuildConfigImports } from "./build-config-repair.server";
 
@@ -162,6 +163,12 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   const blockProps = fixBlockProps(files);
   files = blockProps.files;
   for (const n of blockProps.notes) notes.push(n);
+
+  // 9a-2. Component-as-child guard — a lucide icon rendered as `{item.icon}`
+  //     throws React error #31 and whites out the entire preview.
+  const compChild = fixComponentChildren(files);
+  files = compChild.files;
+  for (const n of compChild.notes) notes.push(n);
 
   // 9b. Brand identity — real logo mark component, placeholder-glyph swap,
   //     and a favicon/apple-touch-icon so apps never ship unbranded.
