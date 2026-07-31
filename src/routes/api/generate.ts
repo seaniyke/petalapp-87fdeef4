@@ -4587,6 +4587,34 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
  * previously it left nothing behind but a console warning. Record it so the
  * balance can be reconciled instead of disappearing.
  */
+/**
+ * One-build-at-a-time lock, keyed by user.
+ *
+ * Builds are priced from token usage AFTER generation, so the pre-flight floor
+ * check cannot know the final bill. Without this lock a user can fire several
+ * requests that all clear the floor simultaneously and receive several builds
+ * they can only pay for once. Entries carry a TTL so an aborted or crashed
+ * turn always frees itself.
+ */
+const BUILD_LOCK_TTL_MS = 6 * 60 * 1000;
+const buildLocks = new Map<string, number>();
+
+function acquireBuildLock(userId: string): boolean {
+  const now = Date.now();
+  const heldUntil = buildLocks.get(userId);
+  if (heldUntil && heldUntil > now) return false;
+  buildLocks.set(userId, now + BUILD_LOCK_TTL_MS);
+  // Opportunistic sweep so the map can't grow unbounded on a long-lived worker.
+  if (buildLocks.size > 200) {
+    for (const [key, expiry] of buildLocks) if (expiry <= now) buildLocks.delete(key);
+  }
+  return true;
+}
+
+function releaseBuildLock(userId: string): void {
+  buildLocks.delete(userId);
+}
+
 async function recordUnpaidBuild(
   userId: string,
   projectId: string | null,
