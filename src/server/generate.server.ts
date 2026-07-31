@@ -649,7 +649,8 @@ export type StreamEvent =
         | "rls_sanity"
         | "file_budget"
         | "post_stream_autofix"
-        | "image_resolve";
+        | "image_resolve"
+      | "agent_tool";
       /** "ok" = ran clean, "fixed" = ran and changed something, "skipped" = gated off. */
       outcome: "ok" | "fixed" | "skipped" | "failed";
       /** ≤80 char human-readable description shown on the row. */

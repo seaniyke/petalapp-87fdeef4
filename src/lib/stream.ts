@@ -53,7 +53,8 @@ type Handlers = {
       | "rls_sanity"
       | "file_budget"
       | "post_stream_autofix"
-      | "image_resolve";
+      | "image_resolve"
+      | "agent_tool";
     outcome: "ok" | "fixed" | "skipped" | "failed";
     message: string;
     count?: number;
