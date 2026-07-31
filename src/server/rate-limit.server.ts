@@ -1,72 +1,121 @@
 /**
- * Shared in-memory rate limiter for unauthenticated public endpoints.
+ * App-level rate limiter for /api/generate (P0-4).
  *
- * Tip, pledge and waitlist forms accept attacker-controlled name/email/amount
- * and write straight into tables that hold personal data. Without a throttle
- * a single script can flood them. This is the same tiny per-isolate window
- * `track-failure` already used, lifted into one place so every public write
- * shares it.
+ * Sliding-window, in-memory, per-worker-instance. Cloudflare Workers
+ * scale horizontally, so the effective ceiling is `instances × LIMIT`.
+ * That's intentional — this is an abuse-protection floor, not a billing
+ * boundary (billing is enforced by the credit wallet).
  *
- * Deliberately in-memory: a Worker isolate handles a few hundred req/s, which
- * is plenty to stop spam, and it costs no database round trip on the happy
- * path. It is a spam brake, not a security boundary — endpoints that need a
- * real guarantee must still verify the caller.
+ * Two windows are checked per request:
+ *   - 30 requests / minute / user  (burst protection)
+ *   - 500 requests / hour / user   (sustained-abuse protection)
+ *
+ * On breach we return 429 with a `Retry-After` header so well-behaved
+ * clients back off, and we never charge credits for a rate-limited
+ * request (the limiter runs before the credit floor check).
  */
 
-const BUCKETS = new Map<string, { count: number; resetAt: number }>();
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
+const PER_MIN = 30;
+const PER_HOUR = 500;
 
-/** Best-effort caller identity for throttling. Never used for authorization. */
-export function callerKey(request: Request, scope: string): string {
-  const ip =
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "unknown";
-  return `${scope}:${ip}`;
-}
+// Map<bucket, Map<key, number[]>> of request timestamps (ms).
+const buckets = new Map<string, Map<string, number[]>>();
 
-/**
- * Returns true when the caller has exceeded `max` requests in `windowMs`.
- */
-export function shouldThrottle(
-  key: string,
-  max = 10,
-  windowMs = 60_000,
-): boolean {
-  const now = Date.now();
-  const entry = BUCKETS.get(key);
-  if (!entry || entry.resetAt < now) {
-    BUCKETS.set(key, { count: 1, resetAt: now + windowMs });
-    // Opportunistic sweep so the map can't grow without bound.
-    if (BUCKETS.size > 5_000) {
-      for (const [k, v] of BUCKETS) if (v.resetAt < now) BUCKETS.delete(k);
+// Periodic GC so the maps can't grow unbounded across long-lived workers.
+const GC_EVERY = 5_000;
+let opsSinceGc = 0;
+
+function gc(now: number) {
+  for (const [bucket, inner] of buckets) {
+    for (const [key, arr] of inner) {
+      const trimmed = arr.filter((t) => now - t < HOUR_MS);
+      if (trimmed.length === 0) inner.delete(key);
+      else inner.set(key, trimmed);
     }
-    return false;
+    if (inner.size === 0) buckets.delete(bucket);
   }
-  entry.count += 1;
-  return entry.count > max;
 }
 
-/** Standard 429 body for throttled public writes. */
-export function throttledResponse(): Response {
-  return new Response(
-    JSON.stringify({ error: "Too many requests. Please wait a moment and try again." }),
-    { status: 429, headers: { "content-type": "application/json", "retry-after": "60" } },
-  );
+export interface RateLimitResult {
+  ok: boolean;
+  retryAfterSec?: number;
+  reason?: "per_minute" | "per_hour";
 }
 
 /**
- * Constant-time string comparison for shared secrets.
+ * Generic sliding-window limiter. Two windows per key:
+ *   - perMin  requests / minute / key  (burst protection)
+ *   - perHour requests / hour   / key  (sustained-abuse protection)
  *
- * `a !== b` leaks how many leading characters matched through timing. Every
- * cron/webhook secret check should use this instead.
+ * `bucket` namespaces different surfaces (e.g. "generate", "registrar")
+ * so they don't share counters.
  */
-export function secretsMatch(provided: string | null | undefined, expected: string | null | undefined): boolean {
-  if (!provided || !expected) return false;
-  const a = new TextEncoder().encode(provided);
-  const b = new TextEncoder().encode(expected);
-  // Compare a fixed length so the loop count never depends on the secret.
-  const len = Math.max(a.length, b.length);
-  let diff = a.length ^ b.length;
-  for (let i = 0; i < len; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
-  return diff === 0;
+export function checkRateLimit(
+  bucket: string,
+  key: string,
+  perMin: number,
+  perHour: number,
+): RateLimitResult {
+  const now = Date.now();
+  opsSinceGc++;
+  if (opsSinceGc >= GC_EVERY) {
+    opsSinceGc = 0;
+    gc(now);
+  }
+
+  let inner = buckets.get(bucket);
+  if (!inner) {
+    inner = new Map();
+    buckets.set(bucket, inner);
+  }
+  const arr = inner.get(key) ?? [];
+  const recentMin = arr.filter((t) => now - t < MINUTE_MS);
+  const recentHr = arr.filter((t) => now - t < HOUR_MS);
+
+  if (recentMin.length >= perMin) {
+    const oldest = recentMin[0];
+    return {
+      ok: false,
+      reason: "per_minute",
+      retryAfterSec: Math.max(1, Math.ceil((MINUTE_MS - (now - oldest)) / 1000)),
+    };
+  }
+  if (recentHr.length >= perHour) {
+    const oldest = recentHr[0];
+    return {
+      ok: false,
+      reason: "per_hour",
+      retryAfterSec: Math.max(1, Math.ceil((HOUR_MS - (now - oldest)) / 1000)),
+    };
+  }
+
+  recentHr.push(now);
+  inner.set(key, recentHr);
+  return { ok: true };
 }
+
+/** Back-compat wrapper for /api/generate (30/min, 500/hr per user). */
+export function checkGenerateRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit("generate", userId, 30, 500);
+}
+
+export function rateLimitResponse(result: RateLimitResult): Response {
+  const retry = result.retryAfterSec ?? 60;
+  const body = {
+    error:
+      result.reason === "per_minute"
+        ? "You're sending requests too quickly. Please wait a moment and try again."
+        : "You've hit the hourly request limit. Please try again later.",
+    retryAfterSec: retry,
+  };
+  return new Response(JSON.stringify(body), {
+    status: 429,
+    headers: {
+      "Content-Type": "application/json",
+      "Retry-After": String(retry),
+    },
+  });
+}
+
