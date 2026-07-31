@@ -127,24 +127,56 @@ export async function postBuildToRailway(args: {
     );
   };
 
-  let res: Response;
-  try {
-    res = await attempt(45_000);
-  } catch (err) {
-    if (!isTransient(err)) throw err;
-    console.warn("[builder] first attempt failed, retrying once:", err instanceof Error ? err.message : err);
-    // Brief backoff to give Railway time to finish cold-starting.
-    await new Promise((r) => setTimeout(r, 1500));
-    try {
-      res = await attempt(60_000);
-    } catch (err2) {
-      const msg = err2 instanceof Error ? err2.message : String(err2);
-      throw new Error(`Builder unreachable after retry: ${msg}`);
-    }
-  }
+  // Queue pressure (503 "Builder is busy") and upstream blips (502/504/429)
+  // are NOT failures — the job simply hasn't found a slot yet. Retrying with
+  // backoff turns what used to be a dead-end "Could not reach build service"
+  // card into an invisible wait. Total worst-case wait ≈ 2s+5s+10s+20s.
+  const RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 20_000];
+  const isRetryableStatus = (status: number) =>
+    status === 429 || status === 502 || status === 503 || status === 504;
 
-  if (!res.ok) {
+  let res: Response | null = null;
+  let networkRetried = false;
+
+  for (let i = 0; ; i++) {
+    try {
+      res = await attempt(i === 0 ? 45_000 : 60_000);
+    } catch (err) {
+      if (!isTransient(err) || networkRetried) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(
+          networkRetried ? `Builder unreachable after retry: ${msg}` : msg,
+        );
+      }
+      networkRetried = true;
+      console.warn(
+        "[builder] attempt failed, retrying:",
+        err instanceof Error ? err.message : err,
+      );
+      await new Promise((r) => setTimeout(r, 1500));
+      continue;
+    }
+
+    if (res.ok) return;
+
+    if (isRetryableStatus(res.status) && i < RETRY_DELAYS_MS.length) {
+      // Drain the body so the connection can be reused.
+      await res.text().catch(() => "");
+      const wait = RETRY_DELAYS_MS[i];
+      console.warn(
+        `[builder] busy (${res.status}) — retrying in ${wait}ms (attempt ${i + 2}/${RETRY_DELAYS_MS.length + 1})`,
+      );
+      await new Promise((r) => setTimeout(r, wait));
+      continue;
+    }
+
     const text = await res.text().catch(() => "");
+    if (isRetryableStatus(res.status)) {
+      throw new Error(
+        "The build queue is full right now. Your files are saved — press Retry in a moment and Petal will pick up where it left off.",
+      );
+    }
     throw new Error(`Builder rejected request (${res.status}): ${text.slice(0, 300)}`);
   }
 }
+
