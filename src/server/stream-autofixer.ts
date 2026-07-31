@@ -20,6 +20,7 @@
 import dynamicIconImports from "lucide-react/dynamicIconImports.mjs";
 import type { ProjectFile } from "@/server/generate.server";
 import { fixMissingShadcnImports } from "@/server/shadcn-imports.server";
+import { ensureBrandMarkWired } from "@/server/brand-identity.server";
 import { fixArraySafety } from "@/server/array-safety-fixer.server";
 
 export interface AutofixReport {
@@ -391,9 +392,16 @@ export function autofixFiles(files: ProjectFile[]): { files: ProjectFile[]; repo
         .join("; ")}${fixes.length > 3 ? "…" : ""})`,
     );
   }
+  // Brand mark wiring — `<BrandMark/>` without an import (or without the
+  // module at all) is a ReferenceError at render, not a build error.
+  const brandWire = ensureBrandMarkWired(shadcnOut);
+  if (brandWire.notes.length > 0) {
+    report.fixedCount += brandWire.notes.length;
+    for (const n of brandWire.notes) report.notes.push(n);
+  }
   // Deterministic array-safety hardener. See array-safety-fixer.server.ts
   // for the rule set. Runs after shadcn so it sees the final import shape.
-  const arrFix = fixArraySafety(shadcnOut);
+  const arrFix = fixArraySafety(brandWire.files);
   const out = arrFix.files;
   if (arrFix.fixes.length > 0) {
     const totalRewrites = arrFix.fixes.reduce((n, f) => n + f.rewrites, 0);

@@ -36,7 +36,7 @@ import { fixTanstackRouterWithoutProvider } from "./tanstack-router-fallback.ser
 import { fixCssEscapes } from "./css-escape-fixer.server";
 import { fixBlockProps } from "./block-props.server";
 import { fixComponentChildren } from "./component-child.server";
-import { ensureBrandIdentity } from "./brand-identity.server";
+import { ensureBrandIdentity, ensureBrandMarkWired } from "./brand-identity.server";
 import { repairBuildConfigImports } from "./build-config-repair.server";
 import { fixSourceEscapes } from "./source-escape-fixer.server";
 import { fixImportSyntax } from "./import-syntax-fixer.server";
@@ -120,6 +120,13 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
     const total = arr.fixes.reduce((n, f) => n + f.rewrites, 0);
     notes.push(`array-safety: hardened ${total} access(es) across ${arr.fixes.length} file(s)`);
   }
+
+  // 3b. BrandMark wiring MUST precede the import resolver: otherwise the
+  //     resolver stubs `@/components/brand-mark` (or leaves the tag
+  //     undeclared) and the preview dies with `Can't find variable: BrandMark`.
+  const brandWire = ensureBrandMarkWired(files);
+  files = brandWire.files;
+  for (const n of brandWire.notes) notes.push(n);
 
   // 4. Local import resolver — remap or stub unresolved `@/` and `./` imports.
   const localImports = repairUnresolvedImports(files);
