@@ -254,10 +254,46 @@ export function CodeExplorer({
   }
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,150px)_1fr] sm:grid-cols-[minmax(0,240px)_1fr]">
-      {/* Sidebar */}
-      <div className="flex min-h-0 min-w-0 flex-col border-r-2 border-foreground/10 bg-sidebar">
-        <div className="border-b-2 border-foreground/10 p-2">
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Mobile toolbar — the way back to the preview, plus a files toggle so
+          the tree isn't permanently eating half of a phone screen. */}
+      <div className="flex items-center gap-1.5 border-b border-border/70 bg-card px-2 py-1.5 sm:hidden">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[12.5px] font-bold text-foreground transition active:bg-muted"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Preview
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setTreeOpen((v) => !v)}
+          aria-pressed={treeOpen}
+          className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[12.5px] font-bold transition ${
+            treeOpen ? "bg-muted text-foreground" : "text-muted-foreground active:bg-muted"
+          }`}
+        >
+          <PanelLeft className="h-4 w-4" />
+          Files
+        </button>
+        <span className="ml-auto min-w-0 truncate pl-2 text-[11.5px] font-semibold text-muted-foreground">
+          {activeFile?.split("/").pop() ?? ""}
+        </span>
+      </div>
+
+      <div className="relative grid min-h-0 flex-1 grid-cols-1 sm:grid-cols-[minmax(0,240px)_1fr]">
+        {/* Sidebar — overlay drawer on phones, fixed column from sm up. */}
+        <div
+          className={`flex min-h-0 min-w-0 flex-col border-r border-border/70 bg-sidebar sm:flex ${
+            treeOpen
+              ? "absolute inset-y-0 left-0 z-20 w-[80%] max-w-[300px] shadow-xl sm:static sm:w-auto sm:max-w-none sm:shadow-none"
+              : "hidden"
+          }`}
+        >
+        <div className="border-b border-border/70 p-2">
           <div className="flex items-center gap-1.5 rounded-lg border border-border bg-background px-2">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input
@@ -291,7 +327,7 @@ export function CodeExplorer({
             renderNodes(tree, 0)
           )}
         </div>
-        <div className="border-t-2 border-foreground/10 p-2">
+        <div className="border-t border-border/70 p-2">
           <button
             type="button"
             onClick={downloadZip}
@@ -304,8 +340,19 @@ export function CodeExplorer({
         </div>
       </div>
 
+      {/* Scrim behind the mobile tree */}
+      {treeOpen && (
+        <button
+          type="button"
+          aria-label="Close file tree"
+          onClick={() => setTreeOpen(false)}
+          className="absolute inset-0 z-10 bg-foreground/20 sm:hidden"
+        />
+      )}
+
       {/* Editor pane */}
       <div className="flex min-h-0 min-w-0 flex-col bg-card">
+
         {tabs.length > 0 && (
           <div className="flex min-w-0 items-center gap-1 overflow-x-auto border-b-2 border-foreground/10 px-2 py-1.5">
             {tabs.map((t) => (
