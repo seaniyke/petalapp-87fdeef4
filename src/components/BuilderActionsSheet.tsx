@@ -351,11 +351,11 @@ export function BuilderActionsSheet({
             }
             label="Appearance"
             trailing={
-              <span className="flex items-center gap-1 text-sm text-muted-foreground">
+              <span className="shrink-0 text-sm text-muted-foreground">
                 {themeLabel[theme]}
-                <ChevronRight className="h-4 w-4" />
               </span>
             }
+
             onClick={cycleTheme}
           />
         </ul>
