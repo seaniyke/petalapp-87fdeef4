@@ -4567,6 +4567,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           // user-facing stream. The pipeline already ran to completion server-side.
           void recorder.finish(terminalStatus, { errorMessage: terminalError });
         }
+        releaseBuildLock(userId);
         controller.close();
       }
     },
