@@ -72,6 +72,7 @@ export function PlanProposalCard({
   onSelectNone,
   onCancel,
   onApprove,
+  onSkip,
 }: {
   plan: ProposedPlan;
   onToggle: (path: string, checked: boolean) => void;
@@ -79,6 +80,8 @@ export function PlanProposalCard({
   onSelectNone: () => void;
   onCancel: () => void;
   onApprove: () => void;
+  /** Present only for plans Petal proposed on its own: run the turn unscoped. */
+  onSkip?: () => void;
 }) {
   const total = plan.files.length;
   const selected = plan.allowedPaths.size;
@@ -201,13 +204,24 @@ export function PlanProposalCard({
 
           {/* Footer */}
           <div className="flex items-center justify-between gap-2 border-t border-border/60 px-3 py-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-full px-3 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            >
-              Cancel
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="rounded-full px-3 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                Cancel
+              </button>
+              {onSkip && (
+                <button
+                  type="button"
+                  onClick={onSkip}
+                  className="rounded-full px-3 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                >
+                  Skip plan
+                </button>
+              )}
+            </div>
             <button
               type="button"
               disabled={selected === 0}
