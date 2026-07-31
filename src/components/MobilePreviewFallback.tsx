@@ -164,11 +164,16 @@ export function MobilePreviewFallback({
     // iOS Safari suspends backgrounded tabs and silently kills realtime
     // websockets. Re-fetch whenever the user returns so the preview catches
     // up instead of staying frozen on stale state.
+    // visibilitychange, focus and online all fire together on unlock — one
+    // catch-up is enough, three of them makes the preview visibly re-mount.
+    let lastAlive = 0;
     const onAlive = () => {
-      if (document.visibilityState === "visible") {
-        void loadLatestBuild();
-        void loadLatestReadyBuild();
-      }
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastAlive < 3000) return;
+      lastAlive = now;
+      void loadLatestBuild();
+      void loadLatestReadyBuild();
     };
     document.addEventListener("visibilitychange", onAlive);
     window.addEventListener("online", onAlive);
