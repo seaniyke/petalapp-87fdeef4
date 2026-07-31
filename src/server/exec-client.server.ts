@@ -11,7 +11,7 @@
 import type { ProjectFile } from "@/server/generate.server";
 import { signRequest } from "@/server/builder.server";
 
-export type ExecMode = "inspect" | "codemod";
+export type ExecMode = "inspect" | "codemod" | "install" | "test";
 
 export interface ExecCommand {
   bin: string;
@@ -45,12 +45,17 @@ export function isExecConfigured(): boolean {
 
 /** Wall clock for the whole round trip; the builder caps the session at 60s. */
 const REQUEST_TIMEOUT_MS = 90_000;
+/** Installs and test runs are minutes-scale by nature, so they get their own budget. */
+const LONG_REQUEST_TIMEOUT_MS = 10 * 60_000;
 
 export async function runExecSession(args: {
   projectId: string;
   mode: ExecMode;
   files: ProjectFile[];
   commands: ExecCommand[];
+  /** install mode only. */
+  packages?: string[];
+  dev?: boolean;
   signal?: AbortSignal;
 }): Promise<ExecSessionResult> {
   const builderUrl = process.env.BUILDER_URL;
@@ -65,12 +70,18 @@ export async function runExecSession(args: {
     mode: args.mode,
     files: args.files,
     commands: args.commands,
+    packages: args.packages,
+    dev: args.dev,
   });
   const { timestamp, signature } = signRequest(sharedSecret, body);
   const url = builderUrl.replace(/\/+$/, "") + "/exec";
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const budget =
+    args.mode === "install" || args.mode === "test"
+      ? LONG_REQUEST_TIMEOUT_MS
+      : REQUEST_TIMEOUT_MS;
+  const timer = setTimeout(() => controller.abort(), budget);
   const onAbort = () => controller.abort();
   args.signal?.addEventListener("abort", onAbort);
 
@@ -94,4 +105,42 @@ export async function runExecSession(args: {
     clearTimeout(timer);
     args.signal?.removeEventListener("abort", onAbort);
   }
+}
+
+/**
+ * Install npm packages into a real checkout and return the updated
+ * package.json / lockfile. The builder validates every spec; nothing here is
+ * shelled out, and no arbitrary flags can be passed.
+ */
+export async function runInstallSession(args: {
+  projectId: string;
+  files: ProjectFile[];
+  packages: string[];
+  dev?: boolean;
+  signal?: AbortSignal;
+}): Promise<ExecSessionResult> {
+  return runExecSession({
+    projectId: args.projectId,
+    mode: "install",
+    files: args.files,
+    commands: [],
+    packages: args.packages,
+    dev: args.dev,
+    signal: args.signal,
+  });
+}
+
+/** Run the project's own `npm test` on a real checkout. Returns no file diff. */
+export async function runTestSession(args: {
+  projectId: string;
+  files: ProjectFile[];
+  signal?: AbortSignal;
+}): Promise<ExecSessionResult> {
+  return runExecSession({
+    projectId: args.projectId,
+    mode: "test",
+    files: args.files,
+    commands: [],
+    signal: args.signal,
+  });
 }
