@@ -1,5 +1,6 @@
 import assert from "node:assert";
 import { fixJsxAttrLiterals } from "../jsx-attr-literal-fixer.server";
+import { healSyntax, repairJsxAttributeLiterals } from "../../../builder/src/syntax-heal";
 
 const broken = `export default function App() {
   const rows = [1, 2];
@@ -34,3 +35,41 @@ const again = fixJsxAttrLiterals(res.files);
 assert.equal(again.notes.length, 0, "second pass is a no-op");
 
 console.log("jsx-attr-literal-fixer: all assertions passed");
+
+// The independently deployed builder must repair the exact production failure
+// too. It receives queued/retried payloads that can predate the app-side pass.
+const productionFailure = `<FooterColumns
+  className="py-12 md:py-16 border-t"
+  columns=[
+    { title: "Product", links: [{ label: "One", href: "/one" }] },
+    { title: "Company", links: [] },
+  ]
+/>`;
+const builderRepair = repairJsxAttributeLiterals(productionFailure);
+assert.equal(builderRepair.count, 1, "builder repairs multiline array prop");
+assert.ok(builderRepair.out.includes("columns={["), "builder inserts opening expression brace");
+assert.ok(builderRepair.out.includes("]}"), "builder inserts closing expression brace");
+
+const preflight = healSyntax([{ path: "src/App.tsx", content: productionFailure }]);
+assert.equal(preflight.notes.length, 1, "materialization preflight reports the repair");
+assert.ok(preflight.files[0].content.includes("columns={["), "disk-bound source is healed");
+assert.equal(healSyntax(preflight.files).notes.length, 0, "builder repair is idempotent");
+
+// `>` inside an earlier arrow-function/string prop does not close the JSX tag.
+const arrowBeforeBrokenProp = `<Table
+  onRowClick={(row) => handle(row)}
+  label="Next >"
+  columns=[{ title: "Name" }]
+/>`;
+const appArrowRepair = fixJsxAttrLiterals([
+  { path: "src/App.tsx", content: arrowBeforeBrokenProp },
+]);
+assert.ok(appArrowRepair.files[0].content.includes("columns={["), "app repair ignores nested >");
+const builderArrowRepair = repairJsxAttributeLiterals(arrowBeforeBrokenProp);
+assert.ok(builderArrowRepair.out.includes("columns={["), "builder repair ignores nested >");
+
+// A genuinely closed prior tag must not cause a plain assignment to be edited.
+const outsideTag = `<Card onClick={() => true} />\nconst columns = [1, 2];`;
+assert.equal(repairJsxAttributeLiterals(outsideTag).count, 0, "plain arrays after JSX stay untouched");
+
+console.log("jsx-attr-literal-fixer: builder pre-flight assertions passed");

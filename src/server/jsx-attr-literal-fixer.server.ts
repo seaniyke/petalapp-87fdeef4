@@ -68,6 +68,52 @@ function matchBracket(src: string, open: number): number {
   return -1;
 }
 
+/**
+ * Whether `src` contains a real JSX opening-tag terminator. A plain
+ * `includes(">")` is incorrect because arrow functions and strings inside
+ * attribute expressions may legally contain `>`.
+ */
+function hasTopLevelTagClose(src: string): boolean {
+  let quote: '"' | "'" | "`" | null = null;
+  let escaped = false;
+  let braces = 0;
+  let lineComment = false;
+  let blockComment = false;
+
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    const next = src[i + 1];
+    if (lineComment) {
+      if (c === "\n") lineComment = false;
+      continue;
+    }
+    if (blockComment) {
+      if (c === "*" && next === "/") {
+        blockComment = false;
+        i++;
+      }
+      continue;
+    }
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (c === "\\") escaped = true;
+      else if (c === quote) quote = null;
+      continue;
+    }
+    if (c === "/" && next === "/" && braces > 0) {
+      lineComment = true;
+      i++;
+    } else if (c === "/" && next === "*" && braces > 0) {
+      blockComment = true;
+      i++;
+    } else if (c === '"' || c === "'" || c === "`") quote = c;
+    else if (c === "{") braces++;
+    else if (c === "}" && braces > 0) braces--;
+    else if (c === ">" && braces === 0) return true;
+  }
+  return false;
+}
+
 function fixOne(src: string): { content: string; count: number } {
   let out = src;
   let count = 0;
@@ -96,7 +142,7 @@ function fixOne(src: string): { content: string; count: number } {
       const head = out.lastIndexOf("<", m.index);
       if (head === -1) continue;
       const between = out.slice(head, m.index);
-      if (!/^<[A-Za-z][\w.$-]*[\s\S]*$/.test(between) || between.includes(">")) continue;
+      if (!/^<[A-Za-z][\w.$-]*[\s\S]*$/.test(between) || hasTopLevelTagClose(between)) continue;
       found = m;
       break;
     }
