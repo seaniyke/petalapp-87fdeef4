@@ -3261,6 +3261,11 @@ function Builder() {
       break;
     }
   }
+  // An error card is only ever shown when Petal has stopped working. While a
+  // turn is in flight (generating, deploying, awaiting a build) we never show
+  // a failure card — it may be about to be resolved by the very work running.
+  const shouldHideErrorCard = (err: { title?: string } | null | undefined) =>
+    !err || petalIsWorking || (isLive && isBuildFailureCardTitle(err.title));
   const renderErrorCard = (m: (typeof messages)[number], isTail: boolean, key: number) => (
     <div key={key} className="flex justify-start">
       <PetalErrorCard
