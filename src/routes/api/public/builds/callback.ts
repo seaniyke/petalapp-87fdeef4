@@ -12,6 +12,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { sanitizeVerificationDefects } from "@/lib/verification-report";
 import { verifySignature } from "@/server/builder.server";
 
 /**
@@ -97,6 +98,15 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
   }
 
   if (payload.status === "ready") {
+    const verification = payload.verification
+      ? {
+          ...payload.verification,
+          defects: sanitizeVerificationDefects(payload.verification.defects),
+          ok:
+            payload.verification.ok ||
+            sanitizeVerificationDefects(payload.verification.defects).length === 0,
+        }
+      : null;
     await supabaseAdmin
       .from("project_builds")
       .update({
@@ -105,7 +115,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         error_message: null,
         ready_at: new Date().toISOString(),
         // Null when the build predates verification or the plan was empty.
-        verification: (payload.verification ?? null) as never,
+        verification: verification as never,
       })
       .eq("id", payload.buildId);
 

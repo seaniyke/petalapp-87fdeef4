@@ -20,6 +20,7 @@
  */
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { sanitizeVerificationDefects } from "@/lib/verification-report";
 
 export type BuildSnapshot = {
   /** Includes 'building' (Railway picked up the job, not yet finished) so the
@@ -44,8 +45,11 @@ function readVerification(raw: unknown): BuildSnapshot["verification"] {
   const v = raw as { ok?: unknown; defects?: unknown; skipped?: unknown };
   if (typeof v.ok !== "boolean") return null;
   return {
-    ok: v.ok,
-    defects: Array.isArray(v.defects) ? v.defects.filter((d): d is string => typeof d === "string") : [],
+    // Recompute `ok` after sanitizing. Older builder deployments could label
+    // their own DOM-probe exception as an app defect; that must not launch an
+    // auto-fix loop or show an error card when no real defect remains.
+    ok: v.ok || sanitizeVerificationDefects(v.defects).length === 0,
+    defects: sanitizeVerificationDefects(v.defects),
     ...(typeof v.skipped === "string" ? { skipped: v.skipped } : {}),
   };
 }
