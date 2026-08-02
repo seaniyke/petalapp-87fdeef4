@@ -176,3 +176,41 @@ assert.match(
 );
 
 console.log("router-repairs: all assertions passed");
+// A provider living in an orphaned module never mounts at runtime — the fix
+// must still wrap the real entry (regression: "Cannot destructure 'basename'").
+const orphan = fixMissingRouterProvider([
+  {
+    path: "src/main.tsx",
+    content:
+      'import ReactDOM from "react-dom/client";\nimport App from "./App";\nReactDOM.createRoot(document.getElementById("root")!).render(<App />);',
+  },
+  {
+    path: "src/App.tsx",
+    content:
+      'import { Routes, Route } from "react-router-dom";\nexport default function App(){ return <Routes><Route path="/" element={<div/>} /></Routes>; }',
+  },
+  {
+    path: "src/legacy/OldShell.tsx",
+    content: 'import { BrowserRouter } from "react-router-dom";\nexport const Old = () => <BrowserRouter />;',
+  },
+]);
+assert.match(
+  orphan.files.find((f) => f.path === "src/main.tsx")?.content ?? "",
+  /<BrowserRouter>/,
+  "an unreachable provider must not suppress router injection",
+);
+
+// A provider that IS in the live graph must be left alone.
+const mounted = fixMissingRouterProvider([
+  {
+    path: "src/main.tsx",
+    content:
+      'import ReactDOM from "react-dom/client";\nimport App from "./App";\nReactDOM.createRoot(document.getElementById("root")!).render(<App />);',
+  },
+  {
+    path: "src/App.tsx",
+    content:
+      'import { BrowserRouter, Routes } from "react-router-dom";\nexport default function App(){ return <BrowserRouter><Routes /></BrowserRouter>; }',
+  },
+]);
+assert.equal(mounted.notes.length, 0, "a mounted provider must not be re-wrapped");
