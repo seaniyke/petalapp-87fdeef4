@@ -61,6 +61,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useBuildActivity } from "@/hooks/use-build-activity";
 import { useAuthReady } from "@/lib/auth";
 import { detectUnsupportedWebContainerBrowser } from "@/lib/browser-support";
+import { isVerifierInternalDefect } from "@/lib/verification-report";
 import {
   type Phase,
   type PhaseId,
@@ -3267,8 +3268,14 @@ function Builder() {
   // An error card is only ever shown when Petal has stopped working. While a
   // turn is in flight (generating, deploying, awaiting a build) we never show
   // a failure card — it may be about to be resolved by the very work running.
-  const shouldHideErrorCard = (err: { title?: string } | null | undefined) => {
+  const shouldHideErrorCard = (
+    err: { title?: string; message?: string } | null | undefined,
+  ) => {
     if (!err) return true;
+    // Reports created by an older browser-check worker may already be stored
+    // in chat history. A verifier implementation error is not an app failure,
+    // so suppress that stale card as well as preventing new ones at ingestion.
+    if (isVerifierInternalDefect(err.message ?? "")) return true;
     // "Publishing is taking longer than usual" is an advisory ABOUT the work in
     // flight — it is only meaningful while deploying, so it is exempt from the
     // working-state gate. Everything else waits until Petal has stopped.
