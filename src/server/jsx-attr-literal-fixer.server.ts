@@ -115,13 +115,18 @@ function fixOne(src: string): { content: string; count: number } {
   }
 
   // 2. prop=42 / prop=true / prop=false / prop=null inside a JSX tag.
-  out = out.replace(
-    /(<[A-Za-z][\w.$-]*(?:\s+[^<>]*?)?\s)([A-Za-z_$][\w$]*)=(-?\d+(?:\.\d+)?|true|false|null)(?=[\s/>])/g,
-    (_full, head: string, name: string, value: string) => {
+  //    The lazy tag-prefix can skip over an earlier unbraced attribute, so
+  //    re-run until the file stops changing.
+  const NUM_ATTR =
+    /(<[A-Za-z][\w.$-]*(?:\s+[^<>]*?)?\s)([A-Za-z_$][\w$]*)=(-?\d+(?:\.\d+)?|true|false|null)(?=[\s/>])/g;
+  for (let guard = 0; guard < 50; guard++) {
+    const before = out;
+    out = out.replace(NUM_ATTR, (_full, head: string, name: string, value: string) => {
       count++;
       return `${head}${name}={${value}}`;
-    },
-  );
+    });
+    if (out === before) break;
+  }
 
   return { content: out, count };
 }
