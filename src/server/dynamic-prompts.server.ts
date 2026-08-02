@@ -806,6 +806,39 @@ function messageText(content: unknown): string {
 }
 
 /**
+ * Unambiguous "this feature needs a server" asks. These mean the user wants
+ * real accounts or real persistence, not a marketing page that merely has a
+ * "Log in" link in its nav.
+ */
+const STRONG_BACKEND_RX =
+  /\b(authentication|auth flow|user accounts?|create an account|register users?|sign[- ]?in flow|sign[- ]?up flow|password reset|magic link|otp|protected routes?|role[- ]based|database|supabase|postgres|persist|store (the )?(data|users?|bookings?|orders?)|save (the )?(data|users?|posts?|comments?|orders?|bookings?)|crud|admin panel|dashboard for users|file upload|avatar upload|realtime|live (chat|update)|presence|webhook|payments?|checkout|stripe)\b/i;
+
+/** Weaker signals that also appear as ordinary nav labels / marketing copy. */
+const WEAK_BACKEND_RX =
+  /\b(auth|login|log ?in|sign ?up|sign ?in|password|account|profile|comments?|posts?|orders?|todo|notes?|messages?|chat|upload|attachment|storage)\b/i;
+
+/**
+ * A brief that is explicitly a static marketing/landing page. Words like
+ * "Log in" and "Sign up" in such a brief are BUTTON LABELS, not a request
+ * for real authentication.
+ */
+const STATIC_PAGE_RX =
+  /\b(landing page|marketing (page|site)|one[- ]page|single page (site|marketing)|static (page|site)|placeholder content|sample content|demo content|portfolio piece|investor demo|not a dashboard|do not build a dashboard)\b/i;
+
+/** True when the turn genuinely needs a backend (vs. just mentioning nav labels). */
+export function needsBackendCapability(text: string): boolean {
+  if (!text) return false;
+  if (STRONG_BACKEND_RX.test(text)) return true;
+  if (!WEAK_BACKEND_RX.test(text)) return false;
+  // Weak-only match inside an explicitly static/marketing brief → not a
+  // backend ask. This is the "Stayora landing page" false positive: the
+  // brief says "Log in / Sign up" nav items and Petal used to stall on it.
+  return !STATIC_PAGE_RX.test(text);
+}
+
+
+
+/**
  * Pick reinforcement snippets that match the latest user turn.
  *
  * Always includes the "kitCore" baseline. Match ONLY the latest user
