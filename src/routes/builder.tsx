@@ -3771,45 +3771,12 @@ function Builder() {
               // routes through the normal askPetalToFix flow.
               if (m.role === "assistant" && m.error) {
                 if ((petalIsWorking || isLive) && isBuildFailureCardTitle(m.error.title)) return null;
-                // The action buttons stay live on the MOST RECENT error card,
-                // even when status chips / system notes were appended after
-                // it — otherwise the card renders with no way to retry.
-                let lastErrorIdx = -1;
-                for (let k = messages.length - 1; k >= 0; k--) {
-                  if (messages[k].role === "assistant" && messages[k].error) {
-                    lastErrorIdx = k;
-                    break;
-                  }
-                }
-                const isTail = i === lastErrorIdx;
-                return (
-                  <div key={i} className="flex justify-start">
-                    <PetalErrorCard
-                      error={m.error}
-                      onRetry={
-                        isTail && m.error.actionKind === "retry"
-                          ? m.error.title?.startsWith("Build service")
-                            ? retryDeploy
-                            : lastUserPrompt
-                              ? retry
-                              : retryDeploy
-                          : undefined
-                      }
-                      onAskFix={
-                        isTail && m.error.actionKind === "ask-fix"
-                          ? askPetalToFix
-                          : undefined
-                      }
-
-                      onBuyCredits={
-                        m.error.actionKind === "buy-credits"
-                          ? () => setBillingOpen(true)
-                          : undefined
-                      }
-                    />
-                  </div>
-                );
+                // The newest error card is deferred and rendered after the
+                // build activity card so it always sits last in the thread.
+                if (i === lastErrorIdx) return null;
+                return renderErrorCard(m, false, i);
               }
+
               // System notes (e.g. "Petal is auto-fixing the build")
               // render as a small centered chip, not a chat bubble — they're
               // status updates, not part of the conversation.
