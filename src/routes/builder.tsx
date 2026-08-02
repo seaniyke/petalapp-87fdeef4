@@ -4601,7 +4601,10 @@ function Builder() {
               // optimistic "Shipping it / Still on it" progress banner above a
               // failure is dishonest UX, so suppress the activity card while a
               // failure is the tail of the thread.
-              const tailErr = lastErrorIdx >= 0 ? messages[lastErrorIdx]?.error : null;
+              const tailErr =
+                lastErrorIdx >= 0 && lastErrorIdx === messages.length - 1
+                  ? messages[lastErrorIdx]?.error
+                  : null;
               const errorCardVisible = !!tailErr && !((petalIsWorking || isLive) && isBuildFailureCardTitle(tailErr.title));
               return activityVisible && !errorCardVisible;
             })() && (
