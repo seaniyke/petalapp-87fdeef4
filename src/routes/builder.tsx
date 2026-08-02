@@ -4669,7 +4669,16 @@ function Builder() {
                 }
               />
             )}
+            {/* The newest error card always comes last — after the build
+                activity card — so the fix action is the final thing shown. */}
+            {(() => {
+              const m = lastErrorIdx >= 0 ? messages[lastErrorIdx] : null;
+              if (!m?.error) return null;
+              if ((petalIsWorking || isLive) && isBuildFailureCardTitle(m.error.title)) return null;
+              return renderErrorCard(m, true, lastErrorIdx);
+            })()}
             <div ref={chatEndRef} />
+
           </div>
           {proposedPlan && (
             <PlanProposalCard
