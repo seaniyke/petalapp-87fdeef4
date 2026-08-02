@@ -55,30 +55,66 @@ export interface RouterProviderFixResult {
   notes: string[];
 }
 
-function usesConsumer(content: string): boolean {
-  return CONSUMERS.some(
-    (name) => new RegExp(`<${name}[\\s/>]`).test(content) || new RegExp(`(?<![\\w.$])${name}\\s*\\(`).test(content),
+/** Module specifiers a symbol is imported from in this file. */
+function importSources(content: string, name: string): string[] {
+  const out: string[] = [];
+  const rx = /import\s+(?:type\s+)?([\s\S]*?)\s*from\s*["']([^"']+)["']/g;
+  let m: RegExpExecArray | null;
+  while ((m = rx.exec(content))) {
+    if (new RegExp(`(?<![\\w$])${name}(?![\\w$])`).test(m[1])) out.push(m[2]);
+  }
+  return out;
+}
+
+function isReactRouterSpec(spec: string): boolean {
+  return spec === "react-router-dom" || spec === "react-router" || spec.startsWith("@/components/ui/router");
+}
+
+function usedInFile(content: string, name: string): boolean {
+  return (
+    new RegExp(`<${name}[\\s/>]`).test(content) ||
+    new RegExp(`(?<![\\w.$])${name}\\s*\\(`).test(content)
   );
 }
 
-function hasProvider(content: string): boolean {
-  // Symbols coming from the TanStack compatibility shim are inert factories,
-  // not real router providers — they must not suppress <BrowserRouter>.
-  if (/from\s*["']@\/lib\/router-compat["']/.test(content)) return false;
-  return PROVIDERS.some((name) => {
-    const used =
-      new RegExp(`<${name}[\\s/>]`).test(content) ||
-      new RegExp(`(?<![\\w.$])${name}\\s*\\(`).test(content);
-    if (!used) return false;
-    // A JSX example, comment, or string containing `<RouterProvider>` is not
-    // a mounted provider. Require the provider identifier to be imported or
-    // locally declared in the same executable module.
-    return (
-      new RegExp(`import[^;]*\\b${name}\\b[^;]*from`).test(content) ||
-      new RegExp(`\\b(?:const|let|var|function|class)\\s+${name}\\b`).test(content)
-    );
+/**
+ * A file consumes the *react-router* context when it uses a router primitive
+ * that resolves to react-router-dom, the project's router re-export, or the
+ * TanStack compatibility shim (which is implemented on top of react-router).
+ *
+ * Symbols imported from `@tanstack/react-router` are a DIFFERENT context: a
+ * mounted TanStack `<RouterProvider>` does not satisfy them, and treating it
+ * as one is what left apps crashing with
+ * `Cannot destructure property 'basename' … as it is null`.
+ */
+function usesConsumer(content: string): boolean {
+  return CONSUMERS.some((name) => {
+    if (!usedInFile(content, name)) return false;
+    const sources = importSources(content, name);
+    if (sources.length === 0) {
+      // No import yet — the router-imports pass defaults these to
+      // react-router-dom, so treat it as a react-router consumer.
+      return true;
+    }
+    return sources.some((s) => isReactRouterSpec(s) || s === "@/lib/router-compat");
   });
 }
+
+function hasProvider(content: string): boolean {
+  return PROVIDERS.some((name) => {
+    if (!usedInFile(content, name)) return false;
+    const sources = importSources(content, name);
+    if (sources.length > 0) {
+      // Only a react-router provider mounts the context react-router
+      // consumers read. TanStack providers and the inert compat-shim
+      // factories must NOT suppress <BrowserRouter>.
+      return sources.some(isReactRouterSpec);
+    }
+    // Locally declared provider component (e.g. a wrapper defined in-file).
+    return new RegExp(`\\b(?:const|let|var|function|class)\\s+${name}\\b`).test(content);
+  });
+}
+
 
 
 function ensureBrowserRouterImport(content: string): string {

@@ -214,3 +214,23 @@ const mounted = fixMissingRouterProvider([
   },
 ]);
 assert.equal(mounted.notes.length, 0, "a mounted provider must not be re-wrapped");
+
+// Mixed families: a mounted TanStack <RouterProvider> must NOT satisfy
+// react-router consumers — the root render still needs <BrowserRouter>.
+const mixed = fixMissingRouterProvider([
+  {
+    path: "src/main.tsx",
+    content:
+      'import { RouterProvider } from "@tanstack/react-router";\nimport { router } from "./router";\nimport "./pages/Home";\ncreateRoot(document.getElementById("root")!).render(<RouterProvider router={router} />);\n',
+  },
+  {
+    path: "src/pages/Home.tsx",
+    content: 'import { Link } from "react-router-dom";\nexport default function Home() { return <Link to="/a">a</Link>; }\n',
+  },
+]);
+assert.ok(
+  /<BrowserRouter>/.test(mixed.files.find((f) => f.path === "src/main.tsx")?.content ?? ""),
+  "mixed tanstack/react-router graph should still get a BrowserRouter",
+);
+
+console.log("router-repairs: mixed-family assertion passed");
