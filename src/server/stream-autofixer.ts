@@ -22,6 +22,7 @@ import type { ProjectFile } from "@/server/generate.server";
 import { fixMissingShadcnImports } from "@/server/shadcn-imports.server";
 import { ensureBrandMarkWired } from "@/server/brand-identity.server";
 import { fixArraySafety } from "@/server/array-safety-fixer.server";
+import { fixJsxAttrLiterals } from "@/server/jsx-attr-literal-fixer.server";
 
 export interface AutofixReport {
   fixedCount: number;
@@ -402,7 +403,6 @@ export function autofixFiles(files: ProjectFile[]): { files: ProjectFile[]; repo
   // Deterministic array-safety hardener. See array-safety-fixer.server.ts
   // for the rule set. Runs after shadcn so it sees the final import shape.
   const arrFix = fixArraySafety(brandWire.files);
-  const out = arrFix.files;
   if (arrFix.fixes.length > 0) {
     const totalRewrites = arrFix.fixes.reduce((n, f) => n + f.rewrites, 0);
     report.fixedCount += totalRewrites;
@@ -410,5 +410,12 @@ export function autofixFiles(files: ProjectFile[]): { files: ProjectFile[]; repo
       `array-safety: hardened ${totalRewrites} access(es) across ${arrFix.fixes.length} file(s)`,
     );
   }
-  return { files: out, report };
+  // Syntax-critical JSX literals must be healed before the live preview sees
+  // streamed files, not only later when the production build starts.
+  const jsxFix = fixJsxAttrLiterals(arrFix.files);
+  if (jsxFix.notes.length > 0) {
+    report.fixedCount += jsxFix.notes.length;
+    report.notes.push(...jsxFix.notes);
+  }
+  return { files: jsxFix.files, report };
 }

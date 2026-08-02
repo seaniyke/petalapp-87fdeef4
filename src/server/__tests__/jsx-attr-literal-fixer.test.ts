@@ -55,4 +55,21 @@ assert.equal(preflight.notes.length, 1, "materialization preflight reports the r
 assert.ok(preflight.files[0].content.includes("columns={["), "disk-bound source is healed");
 assert.equal(healSyntax(preflight.files).notes.length, 0, "builder repair is idempotent");
 
+// `>` inside an earlier arrow-function/string prop does not close the JSX tag.
+const arrowBeforeBrokenProp = `<Table
+  onRowClick={(row) => handle(row)}
+  label="Next >"
+  columns=[{ title: "Name" }]
+/>`;
+const appArrowRepair = fixJsxAttrLiterals([
+  { path: "src/App.tsx", content: arrowBeforeBrokenProp },
+]);
+assert.ok(appArrowRepair.files[0].content.includes("columns={["), "app repair ignores nested >");
+const builderArrowRepair = repairJsxAttributeLiterals(arrowBeforeBrokenProp);
+assert.ok(builderArrowRepair.out.includes("columns={["), "builder repair ignores nested >");
+
+// A genuinely closed prior tag must not cause a plain assignment to be edited.
+const outsideTag = `<Card onClick={() => true} />\nconst columns = [1, 2];`;
+assert.equal(repairJsxAttributeLiterals(outsideTag).count, 0, "plain arrays after JSX stay untouched");
+
 console.log("jsx-attr-literal-fixer: builder pre-flight assertions passed");

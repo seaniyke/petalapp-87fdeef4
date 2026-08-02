@@ -156,6 +156,48 @@ function matchBracket(src: string, open: number): number {
   return -1;
 }
 
+/** Ignore `>` inside JSX expression containers, strings, and comments. */
+function hasTopLevelTagClose(src: string): boolean {
+  let quote: '"' | "'" | "`" | null = null;
+  let escaped = false;
+  let braces = 0;
+  let lineComment = false;
+  let blockComment = false;
+
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    const next = src[i + 1];
+    if (lineComment) {
+      if (ch === "\n") lineComment = false;
+      continue;
+    }
+    if (blockComment) {
+      if (ch === "*" && next === "/") {
+        blockComment = false;
+        i++;
+      }
+      continue;
+    }
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "/" && next === "/" && braces > 0) {
+      lineComment = true;
+      i++;
+    } else if (ch === "/" && next === "*" && braces > 0) {
+      blockComment = true;
+      i++;
+    } else if (ch === '"' || ch === "'" || ch === "`") quote = ch;
+    else if (ch === "{") braces++;
+    else if (ch === "}" && braces > 0) braces--;
+    else if (ch === ">" && braces === 0) return true;
+  }
+  return false;
+}
+
 /** Repair `prop=[…]`, `prop=3`, and `prop=true` inside JSX opening tags. */
 export function repairJsxAttributeLiterals(source: string): { out: string; count: number } {
   let out = source;
@@ -170,7 +212,7 @@ export function repairJsxAttributeLiterals(source: string): { out: string; count
       const tagStart = out.lastIndexOf("<", match.index);
       if (tagStart === -1) continue;
       const prefix = out.slice(tagStart, match.index);
-      if (/^<[A-Za-z][\w.$-]*[\s\S]*$/.test(prefix) && !prefix.includes(">")) {
+      if (/^<[A-Za-z][\w.$-]*[\s\S]*$/.test(prefix) && !hasTopLevelTagClose(prefix)) {
         found = match;
         break;
       }
