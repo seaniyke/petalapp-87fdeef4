@@ -210,34 +210,69 @@ async function ensurePagesProject(
     "Content-Type": "application/json",
   };
 
-  const getRes = await fetch(`${base}/${projectName}`, { headers });
-  if (getRes.ok) return; // already exists
-  if (getRes.status !== 404) {
-    // Some other failure (auth, rate limit, etc.) — surface it.
-    const body = await getRes.text().catch(() => "");
-    if (getRes.status !== 410) {
+  const projectUrl = `${base}/${projectName}`;
+  const projectExists = async (): Promise<boolean> => {
+    const response = await fetch(projectUrl, { headers });
+    if (response.ok) return true;
+    if (response.status === 404 || response.status === 410) return false;
+
+    const body = await response.text().catch(() => "");
+    throw new BuildError(
+      `Cloudflare Pages GET project failed (${response.status})`,
+      body
+    );
+  };
+
+  if (await projectExists()) return;
+
+  let lastStatus = 0;
+  let lastBody = "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      // A successful create is not always immediately visible through the GET
+      // endpoint. Re-check before issuing another POST so concurrent builds do
+      // not fight over the same deterministic project name.
+      await new Promise((resolve) => setTimeout(resolve, 750 * attempt));
+      if (await projectExists()) return;
+    }
+
+    const createRes = await fetch(base, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        name: projectName,
+        production_branch: "main",
+      }),
+    });
+    if (createRes.ok) return;
+
+    lastStatus = createRes.status;
+    lastBody = await createRes.text().catch(() => "");
+    // A concurrent request can create the project between our GET and POST.
+    if (/already exists|duplicate/i.test(lastBody)) return;
+
+    // Cloudflare sometimes accepts creation but responds with its opaque
+    // 8000000 error. Only that response, rate limits, and server failures are
+    // safe to retry; auth and validation failures remain immediately visible.
+    const retryable =
+      createRes.status === 429 ||
+      createRes.status >= 500 ||
+      /"code"\s*:\s*8000000/.test(lastBody);
+    if (!retryable) {
       throw new BuildError(
-        `Cloudflare Pages GET project failed (${getRes.status})`,
-        body
+        `Cloudflare Pages create project failed (${createRes.status})`,
+        lastBody
       );
     }
   }
 
-  const createRes = await fetch(base, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      name: projectName,
-      production_branch: "main",
-    }),
-  });
-  if (createRes.ok) return;
+  // One final eventual-consistency check handles a create accepted by the last
+  // POST even when its response was an opaque 500.
+  await new Promise((resolve) => setTimeout(resolve, 2_000));
+  if (await projectExists()) return;
 
-  const body = await createRes.text().catch(() => "");
-  // Treat "already exists" race as success regardless of how Cloudflare phrases it.
-  if (/already exists|duplicate/i.test(body)) return;
   throw new BuildError(
-    `Cloudflare Pages create project failed (${createRes.status})`,
-    body
+    `Cloudflare Pages create project failed after retries (${lastStatus})`,
+    lastBody
   );
 }
