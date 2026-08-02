@@ -247,8 +247,17 @@ function completionBudget(args: {
   hasVisionTurn: boolean;
   multiEditIntent: boolean;
   crossCuttingIntent?: boolean;
+  promptChars?: number;
 }): number {
-  if (args.isInitial) return 12_000;
+  // First builds must emit a complete project tool payload. Detailed briefs
+  // routinely need more than the old flat 12k ceiling; retrying at the exact
+  // same ceiling only reproduced the truncation. Scale conservatively with
+  // brief size while keeping small requests inexpensive.
+  if (args.isInitial) {
+    if ((args.promptChars ?? 0) >= 700) return 20_000;
+    if ((args.promptChars ?? 0) >= 350) return 16_000;
+    return 14_000;
+  }
   if (args.multiEditIntent || args.crossCuttingIntent) return 12_000;
   if (args.hasVisionTurn) return 8_000;
   if (args.phase === "implement" || args.phase === "docs") return 7_000;
@@ -868,7 +877,7 @@ function assistantTextFromCollected(collected: ParsedTool): string {
 
 function isMissingToolOutputError(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error);
-  return /AI did not return (?:a project|usable edits)|AI tried to (?:rewrite|patch)/i.test(msg);
+  return /AI did not return (?:a project|usable edits)|AI tried to (?:rewrite|patch)|response was cut off/i.test(msg);
 }
 
 async function structuredRetryCompletion(args: {
@@ -979,7 +988,7 @@ async function recoverMissingToolOutput(args: {
     problem: "previous response contained prose instead of the required tool call",
     hasBackend: Boolean(args.backend),
     tool: args.tool,
-    maxTokens: args.isInitial ? 12_000 : 10_000,
+    maxTokens: args.isInitial ? 22_000 : 10_000,
     crossCuttingIntent: args.crossCuttingIntent,
     signal: args.signal,
     meta: {
@@ -2321,6 +2330,7 @@ Forbidden defaults
     hasVisionTurn,
     multiEditIntent,
     crossCuttingIntent: isCrossCutting,
+    promptChars: lastUserContent.length,
   });
   if (hasVisionTurn) {
     model = MODEL_VISION;
@@ -2584,7 +2594,9 @@ Forbidden defaults
             problem: e instanceof Error ? e.message : "invalid structured response",
             hasBackend: Boolean(backend),
             tool,
-            maxTokens: Math.max(maxCompletionTokens, isInitial ? 12_000 : 8_000),
+            maxTokens: isInitial
+              ? Math.min(24_000, Math.max(18_000, Math.round(maxCompletionTokens * 1.35)))
+              : Math.max(maxCompletionTokens, 8_000),
             crossCuttingIntent: isCrossCutting,
             signal: request.signal,
             meta: {
