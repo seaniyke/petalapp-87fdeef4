@@ -170,10 +170,11 @@ type DomProbeResult = {
 // ambiguity that previously allowed a function value (and then `undefined`)
 // to come back instead of the probe result.
 function inspectDom(): DomProbeResult {
-  const root =
+  const root = (
     document.querySelector('#root') ||
     document.querySelector('#app') ||
-    document.body;
+    document.body
+  ) as HTMLElement;
   const text = (root.innerText || '').trim();
   const vw = window.innerWidth;
   const problems = [];
@@ -189,7 +190,9 @@ function inspectDom(): DomProbeResult {
     problems.push('page scrolls horizontally (' + document.documentElement.scrollWidth + 'px wide in a ' + vw + 'px viewport)');
   }
 
-  const sections = Array.from(root.querySelectorAll('section, main > div, [data-section]'));
+  const sections = Array.from(
+    root.querySelectorAll<HTMLElement>('section, main > div, [data-section]'),
+  );
   for (const el of sections.slice(0, 40)) {
     const r = el.getBoundingClientRect();
     if (r.width < 4) continue;
