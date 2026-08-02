@@ -158,7 +158,11 @@ function joinUrl(baseUrl: string, path: string): string {
  * Measure the rendered page for the defects that repeatedly ship past static
  * checks. Runs in the page, so it sees final computed layout — not JSX.
  */
-const DOM_PROBE = `() => {
+// NOTE: this is evaluated as an *expression* by page.evaluate(string), so it
+// must be a self-invoking function. Returning a bare arrow function makes
+// Playwright hand back `undefined` (functions aren't serializable), which used
+// to surface as "DOM probe failed: TypeError: ... reading 'blank'".
+const DOM_PROBE = `(() => {
   const root =
     document.querySelector('#root') ||
     document.querySelector('#app') ||
