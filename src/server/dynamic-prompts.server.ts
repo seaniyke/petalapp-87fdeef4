@@ -832,11 +832,10 @@ export function pickDynamicSnippets(args: {
   // backend but none is connected, inject explicit "scaffold UI-only and
   // tell the user to enable a backend" instructions. Without this the
   // model either bails to prose or imports modules that don't exist.
-  const NEEDS_BACKEND_RX =
-    /\b(auth|login|log ?in|sign ?up|sign ?in|password|otp|magic link|account|protected route|profile|database|persist|save (data|users?|posts?|comments?|orders?)|crud|comments?|posts?|orders?|todo|notes?|messages?|chat|upload|file upload|avatar upload|attachment|storage|realtime|live (chat|update)|presence)\b/i;
-  if (!args.hasBackend && NEEDS_BACKEND_RX.test(haystack)) {
+  if (!args.hasBackend && needsBackendCapability(haystack)) {
     matched.push("noBackendGate");
   }
+
 
   // Always enforce target-specific craft rules when the build target is
   // mobile, backend, or extension — even if the latest user turn doesn't
