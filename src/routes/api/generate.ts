@@ -907,6 +907,8 @@ async function structuredRetryCompletion(args: {
     feature: "generate",
     body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY },
     timeoutTier,
+    providerOverride: "lovable",
+    lockCallerModel: true,
     signal: args.signal,
     meta: args.meta,
   });
@@ -927,6 +929,8 @@ async function structuredRetryCompletion(args: {
     feature: "generate",
     body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY_BACKUP },
     timeoutTier,
+    providerOverride: "lovable",
+    lockCallerModel: true,
     signal: args.signal,
     meta: { ...args.meta, chosenBy: `${args.meta.chosenBy}_backup` },
   });
@@ -2647,12 +2651,10 @@ Forbidden defaults
               };
             } else {
 
-            // Generic case (the one users were hitting): the model didn't
-            // emit a usable patch after two passes. NOT a real error —
-            // the most likely causes are an ambiguous request or the
-            // model deciding the existing code already does what was
-            // asked. Reply conversationally instead of throwing a red
-            // error card.
+            // Generic case: the model didn't emit usable output after all
+            // recovery passes. On an initial build this is a generation
+            // failure, never evidence that a detailed brief is ambiguous.
+            // Do not ask the user to repeat or explain the same request.
             console.warn(
               "[generate] both attempts produced no usable output, falling back conversationally:",
               retryErr instanceof Error ? retryErr.message : String(retryErr),
@@ -2660,8 +2662,10 @@ Forbidden defaults
             emitConversationalFallback(controller, encoder, {
               files: currentFiles,
               summary: isInitial
-                ? "I had trouble turning that into a working starter app on this pass. Could you tell me a bit more about what kind of app you're picturing — even one sentence about the main thing it should do helps me get going."
+                ? "I couldn't complete the build because the app generator failed to return files after its recovery attempts. Your brief is clear — retry this build; you do not need to rewrite the prompt."
                 : "I took a careful look but couldn't pin down a safe change for this one. Could you point me at the specific element or behavior you want adjusted? A quick note like 'make the header sticky' or 'change the CTA color to teal' is usually enough.",
+              outcome: isInitial ? "blocked" : "answered",
+              reason: isInitial ? "initial_generation_no_files" : "no_safe_edit",
             });
             return;
             }

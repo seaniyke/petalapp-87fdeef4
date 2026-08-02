@@ -398,6 +398,8 @@ export async function runStagePlan(args: {
         stream: false,
       },
       timeoutTier: "default",
+      providerOverride: "lovable",
+      lockCallerModel: true,
       meta: { phase: "plan", promptChars: args.brief.length },
     });
 

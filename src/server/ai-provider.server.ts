@@ -549,6 +549,12 @@ export interface AiCallOptions {
   timeoutTier?: AiCallTimeoutTier;
   /** Force a specific provider regardless of the per-feature DB setting. */
   providerOverride?: Provider;
+  /**
+   * Keep the caller-supplied model for protocol-critical calls such as forced
+   * tool output. Operator feature overrides are useful for normal generation,
+   * but substituting a model that ignores `tool_choice` breaks the contract.
+   */
+  lockCallerModel?: boolean;
 }
 
 /**
@@ -598,10 +604,12 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   const provider = budgetProviderOverride ?? (await resolveProvider(opts.feature));
   const { model: dbModel, fallback } = await resolveModelOverride(opts.feature);
 
-  // DB model wins over caller-supplied model (operator overrides have priority).
-  // Budget model wins over DB model because it is a per-user cost preference.
+  // DB model normally wins over caller-supplied model (operator overrides have
+  // priority). Protocol-critical callers can lock a known tool-capable model;
+  // budget routing remains highest priority when explicitly enabled.
   const callerModel = (opts.body.model as string | undefined) ?? undefined;
-  let primaryModel = budgetModelOverride || dbModel || callerModel || null;
+  let primaryModel =
+    budgetModelOverride || (opts.lockCallerModel ? callerModel : dbModel || callerModel) || null;
 
   // Kill-switch: if the primary model is currently cooling off because of a
   // high `no_edit_emitted` rate, swap it for the configured fallback BEFORE
