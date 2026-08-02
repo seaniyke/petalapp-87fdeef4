@@ -2013,6 +2013,9 @@ function Builder() {
       if (!opts.isRetry) {
         setIntentBuild(false);
         setActivityVisible(false);
+        // A plan proposed for an earlier prompt is irrelevant once a new turn
+        // starts — otherwise it sits under the composer beside live progress.
+        setProposedPlan(null);
       }
 
       let resultFiles: ProjectFile[] | null = null;
@@ -3264,8 +3267,16 @@ function Builder() {
   // An error card is only ever shown when Petal has stopped working. While a
   // turn is in flight (generating, deploying, awaiting a build) we never show
   // a failure card — it may be about to be resolved by the very work running.
-  const shouldHideErrorCard = (err: { title?: string } | null | undefined) =>
-    !err || petalIsWorking || (isLive && isBuildFailureCardTitle(err.title));
+  const shouldHideErrorCard = (err: { title?: string } | null | undefined) => {
+    if (!err) return true;
+    // "Publishing is taking longer than usual" is an advisory ABOUT the work in
+    // flight — it is only meaningful while deploying, so it is exempt from the
+    // working-state gate. Everything else waits until Petal has stopped.
+    const isDeployAdvisory = err.title?.startsWith("Publishing is taking") ?? false;
+    if (isDeployAdvisory) return isLive;
+    if (petalIsWorking) return true;
+    return isLive && isBuildFailureCardTitle(err.title);
+  };
   const renderErrorCard = (m: (typeof messages)[number], isTail: boolean, key: number) => (
     <div key={key} className="flex justify-start">
       <PetalErrorCard
@@ -4616,7 +4627,10 @@ function Builder() {
               <BuildActivityCard
                 phases={phases}
                 isActive={busy || isDeploying || awaitingBuild}
-                isComplete={isLive}
+                // A project that shipped earlier keeps status "ready" while the
+                // NEXT turn is still thinking. Without this guard the card
+                // renders a spinning icon next to "Done" and a fully-green rail.
+                isComplete={isLive && !busy && !awaitingBuild && !isDeploying}
                 error={(() => {
                   // Avoid double-rendering: if the tail message already shows
                   // this same error (because persistFriendlyError appended it),
@@ -4696,7 +4710,7 @@ function Builder() {
             <div ref={chatEndRef} />
 
           </div>
-          {proposedPlan && (
+          {proposedPlan && !petalIsWorking && (
             <PlanProposalCard
               plan={proposedPlan}
               onToggle={(path, checked) =>
