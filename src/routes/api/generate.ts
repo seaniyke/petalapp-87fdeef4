@@ -79,7 +79,7 @@ import {
 import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design-director.server";
 import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/self-recovery.server";
 import { recordModelOutcome } from "@/server/model-kill-switch.server";
-import { needsBackendCapability, pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
+import { pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
 import { renderDesignTasteBlock, renderLandingChecklistBlock } from "@/server/design-taste.server";
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
 import { renderLearningBlock } from "@/server/learning-injector.server";
