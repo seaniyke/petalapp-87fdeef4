@@ -124,6 +124,51 @@ function wrapRootRender(content: string): string | null {
   return content.replace(rx, (_all, open: string, _body: string, close: string) => `${open}${wrapped}${close}`);
 }
 
+/** Resolve a relative/aliased import specifier to a file in the project. */
+function resolveImport(fromPath: string, spec: string, byPath: Map<string, ProjectFile>): string | null {
+  let base: string;
+  if (spec.startsWith("@/")) {
+    base = `src/${spec.slice(2)}`;
+  } else if (spec.startsWith(".")) {
+    const dir = fromPath.split("/").slice(0, -1);
+    const parts = spec.split("/");
+    for (const p of parts) {
+      if (p === "." || p === "") continue;
+      if (p === "..") dir.pop();
+      else dir.push(p);
+    }
+    base = dir.join("/");
+  } else {
+    return null;
+  }
+  const candidates = [base, `${base}.tsx`, `${base}.jsx`, `${base}.ts`, `${base}.js`, `${base}/index.tsx`, `${base}/index.jsx`];
+  for (const c of candidates) if (byPath.has(c)) return c;
+  return null;
+}
+
+/**
+ * Files actually reachable from the app entry. A provider imported by an
+ * orphaned/unused module does NOT mount the router at runtime, so provider
+ * detection must be restricted to the live render graph.
+ */
+function reachableFrom(entry: string, byPath: Map<string, ProjectFile>): Set<string> {
+  const seen = new Set<string>();
+  const queue = [entry];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    if (seen.has(cur)) continue;
+    seen.add(cur);
+    const content = byPath.get(cur)?.content ?? "";
+    const rx = /(?:from\s*|import\s*\(\s*)["']([^"']+)["']/g;
+    let m: RegExpExecArray | null;
+    while ((m = rx.exec(content))) {
+      const next = resolveImport(cur, m[1], byPath);
+      if (next && !seen.has(next)) queue.push(next);
+    }
+  }
+  return seen;
+}
+
 export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFixResult {
   const notes: string[] = [];
   const code = files.filter((f) => isExecutableSource(f.path));
@@ -134,8 +179,18 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
   );
   if (!anyConsumer) return { files, notes };
 
+  const byPath = new Map(files.map((f) => [f.path, f] as const));
+  const entryPath =
+    code.find((f) => /src\/main\.(tsx|jsx)$/i.test(f.path) && /\.render\(/.test(f.content))?.path ??
+    code.find((f) => /\.render\(/.test(f.content))?.path ??
+    null;
+  const live = entryPath ? reachableFrom(entryPath, byPath) : null;
+
   const anyProvider = code.some(
-    (f) => !f.path.includes("router-compat") && hasProvider(f.content),
+    (f) =>
+      !f.path.includes("router-compat") &&
+      (live ? live.has(f.path) : true) &&
+      hasProvider(f.content),
   );
   if (anyProvider) return { files, notes };
 
