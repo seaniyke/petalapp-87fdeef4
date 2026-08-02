@@ -103,7 +103,7 @@ export async function postBuildToRailway(args: {
   // no build pathway can ship it.
   const brandWired = ensureBrandMarkWired(attrHealed.files);
 
-  for (const n of [...escaped.notes, ...importHealed.notes, ...brandWired.notes]) {
+  for (const n of [...escaped.notes, ...importHealed.notes, ...attrHealed.notes, ...brandWired.notes]) {
     console.warn(`[builder-last-mile] project=${args.projectId}: ${n}`);
   }
 
