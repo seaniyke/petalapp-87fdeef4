@@ -270,6 +270,8 @@ async function scaffoldOne(
         stream: false,
       },
       timeoutTier: "default",
+      providerOverride: "lovable",
+      lockCallerModel: true,
       meta: { phase: "implement", promptChars: brief.length },
     });
 

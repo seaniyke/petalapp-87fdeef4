@@ -247,8 +247,17 @@ function completionBudget(args: {
   hasVisionTurn: boolean;
   multiEditIntent: boolean;
   crossCuttingIntent?: boolean;
+  promptChars?: number;
 }): number {
-  if (args.isInitial) return 12_000;
+  // First builds must emit a complete project tool payload. Detailed briefs
+  // routinely need more than the old flat 12k ceiling; retrying at the exact
+  // same ceiling only reproduced the truncation. Scale conservatively with
+  // brief size while keeping small requests inexpensive.
+  if (args.isInitial) {
+    if ((args.promptChars ?? 0) >= 700) return 20_000;
+    if ((args.promptChars ?? 0) >= 350) return 16_000;
+    return 14_000;
+  }
   if (args.multiEditIntent || args.crossCuttingIntent) return 12_000;
   if (args.hasVisionTurn) return 8_000;
   if (args.phase === "implement" || args.phase === "docs") return 7_000;
@@ -868,7 +877,7 @@ function assistantTextFromCollected(collected: ParsedTool): string {
 
 function isMissingToolOutputError(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error);
-  return /AI did not return (?:a project|usable edits)|AI tried to (?:rewrite|patch)/i.test(msg);
+  return /AI did not return (?:a project|usable edits)|AI tried to (?:rewrite|patch)|response was cut off/i.test(msg);
 }
 
 async function structuredRetryCompletion(args: {
@@ -907,6 +916,8 @@ async function structuredRetryCompletion(args: {
     feature: "generate",
     body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY },
     timeoutTier,
+    providerOverride: "lovable",
+    lockCallerModel: true,
     signal: args.signal,
     meta: args.meta,
   });
@@ -927,6 +938,8 @@ async function structuredRetryCompletion(args: {
     feature: "generate",
     body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY_BACKUP },
     timeoutTier,
+    providerOverride: "lovable",
+    lockCallerModel: true,
     signal: args.signal,
     meta: { ...args.meta, chosenBy: `${args.meta.chosenBy}_backup` },
   });
@@ -975,7 +988,7 @@ async function recoverMissingToolOutput(args: {
     problem: "previous response contained prose instead of the required tool call",
     hasBackend: Boolean(args.backend),
     tool: args.tool,
-    maxTokens: args.isInitial ? 12_000 : 10_000,
+    maxTokens: args.isInitial ? 22_000 : 10_000,
     crossCuttingIntent: args.crossCuttingIntent,
     signal: args.signal,
     meta: {
@@ -2317,6 +2330,7 @@ Forbidden defaults
     hasVisionTurn,
     multiEditIntent,
     crossCuttingIntent: isCrossCutting,
+    promptChars: lastUserContent.length,
   });
   if (hasVisionTurn) {
     model = MODEL_VISION;
@@ -2580,7 +2594,9 @@ Forbidden defaults
             problem: e instanceof Error ? e.message : "invalid structured response",
             hasBackend: Boolean(backend),
             tool,
-            maxTokens: Math.max(maxCompletionTokens, isInitial ? 12_000 : 8_000),
+            maxTokens: isInitial
+              ? Math.min(24_000, Math.max(18_000, Math.round(maxCompletionTokens * 1.35)))
+              : Math.max(maxCompletionTokens, 8_000),
             crossCuttingIntent: isCrossCutting,
             signal: request.signal,
             meta: {
@@ -2647,12 +2663,10 @@ Forbidden defaults
               };
             } else {
 
-            // Generic case (the one users were hitting): the model didn't
-            // emit a usable patch after two passes. NOT a real error —
-            // the most likely causes are an ambiguous request or the
-            // model deciding the existing code already does what was
-            // asked. Reply conversationally instead of throwing a red
-            // error card.
+            // Generic case: the model didn't emit usable output after all
+            // recovery passes. On an initial build this is a generation
+            // failure, never evidence that a detailed brief is ambiguous.
+            // Do not ask the user to repeat or explain the same request.
             console.warn(
               "[generate] both attempts produced no usable output, falling back conversationally:",
               retryErr instanceof Error ? retryErr.message : String(retryErr),
@@ -2660,8 +2674,10 @@ Forbidden defaults
             emitConversationalFallback(controller, encoder, {
               files: currentFiles,
               summary: isInitial
-                ? "I had trouble turning that into a working starter app on this pass. Could you tell me a bit more about what kind of app you're picturing — even one sentence about the main thing it should do helps me get going."
+                ? "I couldn't complete the build because the app generator failed to return files after its recovery attempts. Your brief is clear — retry this build; you do not need to rewrite the prompt."
                 : "I took a careful look but couldn't pin down a safe change for this one. Could you point me at the specific element or behavior you want adjusted? A quick note like 'make the header sticky' or 'change the CTA color to teal' is usually enough.",
+              outcome: isInitial ? "blocked" : "answered",
+              reason: isInitial ? "initial_generation_no_files" : "no_safe_edit",
             });
             return;
             }
