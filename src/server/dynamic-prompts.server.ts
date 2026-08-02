@@ -357,7 +357,8 @@ What to build:
 - DO NOT add any auth/data wiring. Leave a clear \`// TODO: connect backend\` comment where the wiring would go.
 
 What to say:
-- In "plan" and "summary", in plain friendly English, tell the user that you've built the UI and that to make it real (save data / let users sign in / etc.) they should tap the "Add backend" chip below the chat. Keep it warm, not technical.
+- Complete the frontend first. Only if the latest request explicitly asks for working auth or persistence, briefly note in the summary that this one capability still needs a backend. Do not turn that note into a refusal and do not ask the user to stop or retry.
+- Marketing navigation labels such as "Log in" and "Sign up" are valid presentation UI. Render them when requested; they are not evidence that the landing page itself needs a backend.
 - Do NOT mention Supabase, edge functions, or any infra names — just "a backend".`,
   },
   images: {
