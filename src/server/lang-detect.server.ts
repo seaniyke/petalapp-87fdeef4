@@ -107,6 +107,29 @@ const LABELS: Record<DetectedLang, string> = {
 
 const NO_HINT: LangHint = { lang: "unknown", confidence: 0, label: LABELS.unknown };
 
+/** Common English stopwords — used to veto false positives on long English briefs. */
+const EN_MARKERS = [
+  "the", "and", "with", "for", "should", "would", "make", "create", "build",
+  "page", "section", "button", "please", "want", "need", "use", "this", "that",
+  "add", "your", "have", "from", "into", "each", "when", "about", "there",
+];
+
+function markerHits(text: string, markers: string[], cap = 8): number {
+  let hits = 0;
+  for (const m of markers) {
+    // Real word-boundary match. The old `includes(m + " ")` form matched
+    // fragments inside English words ("see " → Igbo "ee"), which made long
+    // English briefs score as Igbo and flipped the whole reply language.
+    const escaped = m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}([^\\p{L}\\p{N}]|$)`, "u");
+    if (rx.test(text)) {
+      hits++;
+      if (hits >= cap) break;
+    }
+  }
+  return hits;
+}
+
 export function detectLanguage(rawInput: string): LangHint {
   const text = (rawInput ?? "").trim();
   if (!text || text.length < 3) return NO_HINT;
@@ -120,27 +143,22 @@ export function detectLanguage(rawInput: string): LangHint {
   }
 
   // 2. Stopword/marker scoring for Latin-script languages.
-  const lower = ` ${text.toLowerCase()} `;
+  const lower = text.toLowerCase();
   const scores = new Map<DetectedLang, number>();
 
   for (const [langKey, markers] of Object.entries(MARKERS)) {
     const lang = langKey as keyof typeof MARKERS;
-    let hits = 0;
-    for (const m of markers) {
-      // word-boundary-ish: pad with non-letter context
-      if (lower.includes(` ${m} `) || lower.includes(` ${m},`) || lower.includes(` ${m}.`) ||
-          lower.includes(`${m} `)) {
-        hits++;
-        if (hits >= 4) break;
-      }
-    }
+    const hits = markerHits(lower, markers, 4);
     if (hits > 0) scores.set(lang, hits);
   }
+
+  const englishHits = markerHits(lower, EN_MARKERS, 8);
 
   if (scores.size === 0) {
     // No markers matched → assume English (the LLM is fine with English anyway).
     return { lang: "en", confidence: 0.5, label: LABELS.en };
   }
+
 
   // Pick the top scorer. Tie-break by language priority: African > European.
   const priority: DetectedLang[] = ["pidgin", "yo", "ig", "ha", "sw", "zu", "xh", "fr", "pt", "es"];
@@ -154,9 +172,17 @@ export function detectLanguage(rawInput: string): LangHint {
     }
   }
 
+  // English veto: a long brief loaded with English stopwords is English,
+  // even if a couple of short markers happened to collide. Pidgin is exempt
+  // (it is English-adjacent by construction and its markers are unambiguous).
+  if (best !== "pidgin" && englishHits >= 4 && englishHits > bestScore * 2) {
+    return { lang: "en", confidence: 0.9, label: LABELS.en };
+  }
+
   // 1 hit = weak, 2 = medium, 3+ = strong.
   const confidence = Math.min(0.95, 0.45 + bestScore * 0.18);
   return { lang: best, confidence, label: LABELS[best] };
+
 }
 
 /**

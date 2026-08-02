@@ -79,7 +79,7 @@ import {
 import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design-director.server";
 import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/self-recovery.server";
 import { recordModelOutcome } from "@/server/model-kill-switch.server";
-import { pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
+import { needsBackendCapability, pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
 import { renderDesignTasteBlock, renderLandingChecklistBlock } from "@/server/design-taste.server";
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
 import { renderLearningBlock } from "@/server/learning-injector.server";
@@ -2599,10 +2599,19 @@ Forbidden defaults
           } catch (retryErr) {
             // Both attempts failed to produce usable tool output.
             //
-            // Special case: initial build with `noBackendGate` active —
-            // the model froze on the auth/RLS contradiction. Steer the
-            // user to "Add backend" with a friendly message.
-            if (isInitial && dynamic.snippets.includes("noBackendGate")) {
+            // Special case: initial build where the request is genuinely
+            // backend-centric (real accounts / persistence) and no backend
+            // is connected — the model froze on the auth/RLS contradiction.
+            // Steer the user to "Add backend".
+            //
+            // A static marketing/landing brief must NEVER land here just
+            // because its nav says "Log in" — it falls through to the normal
+            // recovery path and gets built.
+            if (
+              isInitial &&
+              dynamic.snippets.includes("noBackendGate") &&
+              needsBackendCapability(lastUserContent)
+            ) {
               emitConversationalFallback(controller, encoder, {
                 files: currentFiles,
                 summary:
@@ -2610,6 +2619,7 @@ Forbidden defaults
               });
               return;
             }
+
 
             const recovered = isMissingToolOutputError(retryErr)
               ? await recoverMissingToolOutput({
