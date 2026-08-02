@@ -4,13 +4,14 @@
  * The app server already heals these shapes before it posts a build, but the
  * builder must never depend on that: it is a separate deploy, it also serves
  * retried/queued payloads, and esbuild aborts the ENTIRE vite build on a
- * single malformed statement. So we re-run the two purely mechanical repairs
+ * single malformed statement. So we re-run the purely mechanical repairs
  * against the exact bytes we are about to write to disk.
  *
  * Kept self-contained on purpose — the builder cannot import from the app's
  * `src/server`. Mirrors:
  *   - src/server/source-escape-fixer.server.ts (literal `\n` in code position)
  *   - src/server/import-syntax-fixer.server.ts (missing `from` keyword)
+ *   - src/server/jsx-attr-literal-fixer.server.ts (unbraced JSX values)
  */
 
 export type HealFile = { path: string; content: string };
@@ -120,6 +121,83 @@ export function unescapeCodePositions(src: string): { out: string; count: number
   return { out, count };
 }
 
+/** Find a matching closing bracket while ignoring strings and comments. */
+function matchBracket(src: string, open: number): number {
+  const pairs: Record<string, string> = { "[": "]", "{": "}", "(": ")" };
+  const expected = pairs[src[open]];
+  if (!expected) return -1;
+
+  const stack = [expected];
+  for (let i = open + 1; i < src.length; i++) {
+    const ch = src[i];
+    if (ch === '"' || ch === "'" || ch === "`") {
+      const quote = ch;
+      for (i++; i < src.length; i++) {
+        if (src[i] === "\\") i++;
+        else if (src[i] === quote) break;
+      }
+      continue;
+    }
+    if (ch === "/" && src[i + 1] === "/") {
+      while (i < src.length && src[i] !== "\n") i++;
+      continue;
+    }
+    if (ch === "/" && src[i + 1] === "*") {
+      const end = src.indexOf("*/", i + 2);
+      i = end === -1 ? src.length : end + 1;
+      continue;
+    }
+    if (pairs[ch]) stack.push(pairs[ch]);
+    else if (ch === stack[stack.length - 1]) {
+      stack.pop();
+      if (stack.length === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/** Repair `prop=[…]`, `prop=3`, and `prop=true` inside JSX opening tags. */
+export function repairJsxAttributeLiterals(source: string): { out: string; count: number } {
+  let out = source;
+  let count = 0;
+  const arrayAttr = /(^|[\s{(,])([A-Za-z_$][\w$]*)\s*=\s*\[/gm;
+
+  for (let guard = 0; guard < 200; guard++) {
+    arrayAttr.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    let found: RegExpExecArray | null = null;
+    while ((match = arrayAttr.exec(out))) {
+      const tagStart = out.lastIndexOf("<", match.index);
+      if (tagStart === -1) continue;
+      const prefix = out.slice(tagStart, match.index);
+      if (/^<[A-Za-z][\w.$-]*[\s\S]*$/.test(prefix) && !prefix.includes(">")) {
+        found = match;
+        break;
+      }
+    }
+    if (!found) break;
+
+    const open = out.indexOf("[", found.index + found[1].length + found[2].length);
+    const close = matchBracket(out, open);
+    if (close === -1) break;
+    out = `${out.slice(0, open)}{${out.slice(open, close + 1)}}${out.slice(close + 1)}`;
+    count++;
+  }
+
+  const scalarAttr =
+    /(<[A-Za-z][\w.$-]*(?:\s+[^<>]*?)?\s)([A-Za-z_$][\w$]*)\s*=\s*(-?\d+(?:\.\d+)?|true|false|null)(?=[\s/>])/g;
+  for (let guard = 0; guard < 50; guard++) {
+    const before = out;
+    out = out.replace(scalarAttr, (_full, head: string, name: string, value: string) => {
+      count++;
+      return `${head}${name}={${value}}`;
+    });
+    if (out === before) break;
+  }
+
+  return { out, count };
+}
+
 export function healSyntax(files: HealFile[]): { files: HealFile[]; notes: string[] } {
   const notes: string[] = [];
   const out = files.map((f) => {
@@ -127,11 +205,15 @@ export function healSyntax(files: HealFile[]): { files: HealFile[]; notes: strin
 
     const esc = unescapeCodePositions(f.content);
     const imp = repairImportSyntax(esc.out);
-    if (esc.count === 0 && imp.count === 0) return f;
+    const jsx = /\.(tsx|jsx)$/i.test(f.path)
+      ? repairJsxAttributeLiterals(imp.out)
+      : { out: imp.out, count: 0 };
+    if (esc.count === 0 && imp.count === 0 && jsx.count === 0) return f;
 
     if (esc.count > 0) notes.push(`${f.path}: decoded ${esc.count} literal escape(s)`);
     if (imp.count > 0) notes.push(`${f.path}: restored \`from\` in ${imp.count} import(s)`);
-    return { ...f, content: imp.out };
+    if (jsx.count > 0) notes.push(`${f.path}: wrapped ${jsx.count} JSX attribute literal(s)`);
+    return { ...f, content: jsx.out };
   });
   return { files: out, notes };
 }
