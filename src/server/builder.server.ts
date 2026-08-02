@@ -94,10 +94,14 @@ export async function postBuildToRailway(args: {
   // idempotent, so running them again after runAllRepairs costs nothing.
   const escaped = fixSourceEscapes(args.files);
   const importHealed = fixImportSyntax(escaped.files);
+  // `prop=[…]` / `prop=42` — unbraced JSX attribute values also abort the
+  // esbuild transform ("Expected \"{\" but found \"[\"").
+  const attrHealed = fixJsxAttrLiterals(importHealed.files);
   // `<BrandMark/>` with no import compiles fine and then white-screens the
   // published app with `Can't find variable: BrandMark`. Heal it here too so
   // no build pathway can ship it.
-  const brandWired = ensureBrandMarkWired(importHealed.files);
+  const brandWired = ensureBrandMarkWired(attrHealed.files);
+
   for (const n of [...escaped.notes, ...importHealed.notes, ...brandWired.notes]) {
     console.warn(`[builder-last-mile] project=${args.projectId}: ${n}`);
   }
