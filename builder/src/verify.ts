@@ -158,15 +158,23 @@ function joinUrl(baseUrl: string, path: string): string {
  * Measure the rendered page for the defects that repeatedly ship past static
  * checks. Runs in the page, so it sees final computed layout — not JSX.
  */
-// NOTE: this is evaluated as an *expression* by page.evaluate(string), so it
-// must be a self-invoking function. Returning a bare arrow function makes
-// Playwright hand back `undefined` (functions aren't serializable), which used
-// to surface as "DOM probe failed: TypeError: ... reading 'blank'".
-const DOM_PROBE = `(() => {
-  const root =
+type DomProbeResult = {
+  blank: boolean;
+  errorScreen: boolean;
+  problems: string[];
+  textLength: number;
+};
+
+// Pass an executable function to Playwright rather than JavaScript source as a
+// string. Playwright serializes and invokes functions itself, which removes the
+// ambiguity that previously allowed a function value (and then `undefined`)
+// to come back instead of the probe result.
+function inspectDom(): DomProbeResult {
+  const root = (
     document.querySelector('#root') ||
     document.querySelector('#app') ||
-    document.body;
+    document.body
+  ) as HTMLElement;
   const text = (root.innerText || '').trim();
   const vw = window.innerWidth;
   const problems = [];
@@ -182,7 +190,9 @@ const DOM_PROBE = `(() => {
     problems.push('page scrolls horizontally (' + document.documentElement.scrollWidth + 'px wide in a ' + vw + 'px viewport)');
   }
 
-  const sections = Array.from(root.querySelectorAll('section, main > div, [data-section]'));
+  const sections = Array.from(
+    root.querySelectorAll<HTMLElement>('section, main > div, [data-section]'),
+  );
   for (const el of sections.slice(0, 40)) {
     const r = el.getBoundingClientRect();
     if (r.width < 4) continue;
@@ -205,7 +215,7 @@ const DOM_PROBE = `(() => {
   }
 
   return { blank, errorScreen, problems, textLength: text.length };
-})()`;
+}
 
 interface PageWatch {
   consoleErrors: string[];
@@ -291,10 +301,7 @@ async function visitRoute(
   await page.waitForTimeout(SETTLE_MS);
 
   try {
-    const probe = (await page.evaluate(DOM_PROBE)) as
-      | { blank: boolean; errorScreen: boolean; problems: string[] }
-      | undefined
-      | null;
+    const probe = await page.evaluate(inspectDom);
     // A probe that returns nothing is an instrumentation failure, not an app
     // defect — stay silent rather than reporting a phantom broken route.
     if (probe && typeof probe === "object") {
@@ -375,11 +382,15 @@ async function looksSignedIn(page: Page, authPaths: string[]): Promise<boolean> 
 /** Surface whatever the app is complaining about, so the model can fix the cause. */
 async function readAuthError(page: Page): Promise<string | undefined> {
   const text = await page
-    .evaluate(`() => {
-      const nodes = Array.from(document.querySelectorAll('[role="alert"], [data-sonner-toast], .text-destructive, [class*="error" i]'));
-      const msg = nodes.map((n) => (n.innerText || '').trim()).filter(Boolean)[0];
-      return msg ? msg.slice(0, 200) : '';
-    }`)
+    .evaluate(() => {
+      const nodes = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          '[role="alert"], [data-sonner-toast], .text-destructive, [class*="error" i]',
+        ),
+      );
+      const msg = nodes.map((node) => node.innerText.trim()).find(Boolean);
+      return msg ? msg.slice(0, 200) : "";
+    })
     .catch(() => "");
   return typeof text === "string" && text.trim() ? truncate(text) : undefined;
 }
