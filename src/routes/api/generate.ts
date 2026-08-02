@@ -1241,7 +1241,7 @@ function addStructuredRetryInstruction<T extends Array<{ role: string; content: 
   const requiredTool = args.isInitial ? "write_project" : "patch_files";
   const backendHint =
     args.hasBackend === false
-      ? ` This project has NO backend connected — DO NOT import from "@/integrations/backend/*" or "@supabase/supabase-js"; scaffold UI only with realistic placeholder data and tell the user in your "summary" to tap "Add backend" to wire it up.`
+      ? ` This project has no backend connected. Do not import from "@/integrations/backend/*" or "@supabase/supabase-js" and do not add real auth or persistence wiring. Still complete the requested frontend with realistic inline data. Marketing navigation labels such as "Log in" and "Sign up" are valid presentation UI and must not block the build. Do not mention backend setup unless the user's latest request explicitly asks for working accounts, authentication, or persistent data.`
       : "";
   const chunkHint = args.problem.startsWith("replace_too_large")
     ? " Split the change into MULTIPLE small \`replace\` ops, each with a \`search\` snippet under ~160 lines / 8 KB. Target one logical region per op."
@@ -2597,30 +2597,9 @@ Forbidden defaults
           try {
             payload = parseCollectedProject(collected, isInitial);
           } catch (retryErr) {
-            // Both attempts failed to produce usable tool output.
-            //
-            // Special case: initial build where the request is genuinely
-            // backend-centric (real accounts / persistence) and no backend
-            // is connected — the model froze on the auth/RLS contradiction.
-            // Steer the user to "Add backend".
-            //
-            // A static marketing/landing brief must NEVER land here just
-            // because its nav says "Log in" — it falls through to the normal
-            // recovery path and gets built.
-            if (
-              isInitial &&
-              dynamic.snippets.includes("noBackendGate") &&
-              needsBackendCapability(lastUserContent)
-            ) {
-              emitConversationalFallback(controller, encoder, {
-                files: currentFiles,
-                summary:
-                  "I'd love to build this, but it needs a backend to handle accounts, sign-in, and saving your data. Tap **Add backend** below this message to wire one up — it's a one-click step — and I'll pick up right where we left off and ship the full thing.",
-              });
-              return;
-            }
-
-
+            // Both attempts failed to produce usable tool output. Never turn
+            // that parser/model failure into a prerequisite refusal: recover
+            // the missing tool call and ship the safe frontend instead.
             const recovered = isMissingToolOutputError(retryErr)
               ? await recoverMissingToolOutput({
                   chatMessages: finalMessages,
