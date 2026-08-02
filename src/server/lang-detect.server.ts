@@ -172,9 +172,17 @@ export function detectLanguage(rawInput: string): LangHint {
     }
   }
 
+  // English veto: a long brief loaded with English stopwords is English,
+  // even if a couple of short markers happened to collide. Pidgin is exempt
+  // (it is English-adjacent by construction and its markers are unambiguous).
+  if (best !== "pidgin" && englishHits >= 4 && englishHits > bestScore * 2) {
+    return { lang: "en", confidence: 0.9, label: LABELS.en };
+  }
+
   // 1 hit = weak, 2 = medium, 3+ = strong.
   const confidence = Math.min(0.95, 0.45 + bestScore * 0.18);
   return { lang: best, confidence, label: LABELS[best] };
+
 }
 
 /**
