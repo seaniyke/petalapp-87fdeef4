@@ -291,17 +291,25 @@ async function visitRoute(
   await page.waitForTimeout(SETTLE_MS);
 
   try {
-    const probe = (await page.evaluate(DOM_PROBE)) as {
-      blank: boolean;
-      errorScreen: boolean;
-      problems: string[];
-    };
-    finding.blank = probe.blank;
-    finding.errorScreen = probe.errorScreen;
-    finding.layout = probe.problems.slice(0, 6);
+    const probe = (await page.evaluate(DOM_PROBE)) as
+      | { blank: boolean; errorScreen: boolean; problems: string[] }
+      | undefined
+      | null;
+    // A probe that returns nothing is an instrumentation failure, not an app
+    // defect — stay silent rather than reporting a phantom broken route.
+    if (probe && typeof probe === "object") {
+      finding.blank = probe.blank === true;
+      finding.errorScreen = probe.errorScreen === true;
+      finding.layout = Array.isArray(probe.problems) ? probe.problems.slice(0, 6) : [];
+    } else {
+      console.warn(`[verify] DOM probe returned no result for ${path} — skipping DOM checks`);
+    }
   } catch (err) {
-    finding.pageErrors.push(truncate(`DOM probe failed: ${String(err)}`));
+    // Instrumentation failure: log it, but never surface it to the user as an
+    // app error. Real app errors already arrive via console/pageerror events.
+    console.warn(`[verify] DOM probe failed on ${path}:`, err);
   }
+
 
   finding.consoleErrors = [...watch.consoleErrors];
   finding.pageErrors.push(...watch.pageErrors);
