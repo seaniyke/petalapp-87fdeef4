@@ -3272,6 +3272,11 @@ function Builder() {
     err: { title?: string; message?: string } | null | undefined,
   ) => {
     if (!err) return true;
+    // Never stack two "what now?" cards. When a plan proposal is on screen it
+    // is the specific, actionable next step — the generic failure card next to
+    // it is noise, so the plan wins.
+    if (proposedPlan && !petalIsWorking) return true;
+
     // Reports created by an older browser-check worker may already be stored
     // in chat history. A verifier implementation error is not an app failure,
     // so suppress that stale card as well as preventing new ones at ingestion.
