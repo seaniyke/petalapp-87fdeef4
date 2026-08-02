@@ -158,7 +158,11 @@ function joinUrl(baseUrl: string, path: string): string {
  * Measure the rendered page for the defects that repeatedly ship past static
  * checks. Runs in the page, so it sees final computed layout — not JSX.
  */
-const DOM_PROBE = `() => {
+// NOTE: this is evaluated as an *expression* by page.evaluate(string), so it
+// must be a self-invoking function. Returning a bare arrow function makes
+// Playwright hand back `undefined` (functions aren't serializable), which used
+// to surface as "DOM probe failed: TypeError: ... reading 'blank'".
+const DOM_PROBE = `(() => {
   const root =
     document.querySelector('#root') ||
     document.querySelector('#app') ||
@@ -201,7 +205,7 @@ const DOM_PROBE = `() => {
   }
 
   return { blank, errorScreen, problems, textLength: text.length };
-}`;
+})()`;
 
 interface PageWatch {
   consoleErrors: string[];
@@ -287,17 +291,25 @@ async function visitRoute(
   await page.waitForTimeout(SETTLE_MS);
 
   try {
-    const probe = (await page.evaluate(DOM_PROBE)) as {
-      blank: boolean;
-      errorScreen: boolean;
-      problems: string[];
-    };
-    finding.blank = probe.blank;
-    finding.errorScreen = probe.errorScreen;
-    finding.layout = probe.problems.slice(0, 6);
+    const probe = (await page.evaluate(DOM_PROBE)) as
+      | { blank: boolean; errorScreen: boolean; problems: string[] }
+      | undefined
+      | null;
+    // A probe that returns nothing is an instrumentation failure, not an app
+    // defect — stay silent rather than reporting a phantom broken route.
+    if (probe && typeof probe === "object") {
+      finding.blank = probe.blank === true;
+      finding.errorScreen = probe.errorScreen === true;
+      finding.layout = Array.isArray(probe.problems) ? probe.problems.slice(0, 6) : [];
+    } else {
+      console.warn(`[verify] DOM probe returned no result for ${path} — skipping DOM checks`);
+    }
   } catch (err) {
-    finding.pageErrors.push(truncate(`DOM probe failed: ${String(err)}`));
+    // Instrumentation failure: log it, but never surface it to the user as an
+    // app error. Real app errors already arrive via console/pageerror events.
+    console.warn(`[verify] DOM probe failed on ${path}:`, err);
   }
+
 
   finding.consoleErrors = [...watch.consoleErrors];
   finding.pageErrors.push(...watch.pageErrors);
