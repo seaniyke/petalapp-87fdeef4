@@ -382,11 +382,15 @@ async function looksSignedIn(page: Page, authPaths: string[]): Promise<boolean> 
 /** Surface whatever the app is complaining about, so the model can fix the cause. */
 async function readAuthError(page: Page): Promise<string | undefined> {
   const text = await page
-    .evaluate(`() => {
-      const nodes = Array.from(document.querySelectorAll('[role="alert"], [data-sonner-toast], .text-destructive, [class*="error" i]'));
-      const msg = nodes.map((n) => (n.innerText || '').trim()).filter(Boolean)[0];
-      return msg ? msg.slice(0, 200) : '';
-    }`)
+    .evaluate(() => {
+      const nodes = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          '[role="alert"], [data-sonner-toast], .text-destructive, [class*="error" i]',
+        ),
+      );
+      const msg = nodes.map((node) => node.innerText.trim()).find(Boolean);
+      return msg ? msg.slice(0, 200) : "";
+    })
     .catch(() => "");
   return typeof text === "string" && text.trim() ? truncate(text) : undefined;
 }
