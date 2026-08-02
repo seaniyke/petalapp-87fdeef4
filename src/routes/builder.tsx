@@ -3251,7 +3251,39 @@ function Builder() {
     return items;
   }, [files, lastUserPrompt, send]);
 
+  // Index of the most recent assistant error message. Its card is deferred so
+  // it always renders LAST — below the build activity card — because an error
+  // is the newest thing that happened and must be the user's next action.
+  let lastErrorIdx = -1;
+  for (let k = messages.length - 1; k >= 0; k--) {
+    if (messages[k].role === "assistant" && messages[k].error) {
+      lastErrorIdx = k;
+      break;
+    }
+  }
+  const renderErrorCard = (m: (typeof messages)[number], isTail: boolean, key: number) => (
+    <div key={key} className="flex justify-start">
+      <PetalErrorCard
+        error={m.error!}
+        onRetry={
+          isTail && m.error!.actionKind === "retry"
+            ? m.error!.title?.startsWith("Build service")
+              ? retryDeploy
+              : lastUserPrompt
+                ? retry
+                : retryDeploy
+            : undefined
+        }
+        onAskFix={isTail && m.error!.actionKind === "ask-fix" ? askPetalToFix : undefined}
+        onBuyCredits={
+          m.error!.actionKind === "buy-credits" ? () => setBillingOpen(true) : undefined
+        }
+      />
+    </div>
+  );
+
   return (
+
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
       {/* First-run product tour. Self-gates on localStorage so it shows once per browser. */}
       <Suspense fallback={null}>
@@ -3739,45 +3771,12 @@ function Builder() {
               // routes through the normal askPetalToFix flow.
               if (m.role === "assistant" && m.error) {
                 if ((petalIsWorking || isLive) && isBuildFailureCardTitle(m.error.title)) return null;
-                // The action buttons stay live on the MOST RECENT error card,
-                // even when status chips / system notes were appended after
-                // it — otherwise the card renders with no way to retry.
-                let lastErrorIdx = -1;
-                for (let k = messages.length - 1; k >= 0; k--) {
-                  if (messages[k].role === "assistant" && messages[k].error) {
-                    lastErrorIdx = k;
-                    break;
-                  }
-                }
-                const isTail = i === lastErrorIdx;
-                return (
-                  <div key={i} className="flex justify-start">
-                    <PetalErrorCard
-                      error={m.error}
-                      onRetry={
-                        isTail && m.error.actionKind === "retry"
-                          ? m.error.title?.startsWith("Build service")
-                            ? retryDeploy
-                            : lastUserPrompt
-                              ? retry
-                              : retryDeploy
-                          : undefined
-                      }
-                      onAskFix={
-                        isTail && m.error.actionKind === "ask-fix"
-                          ? askPetalToFix
-                          : undefined
-                      }
-
-                      onBuyCredits={
-                        m.error.actionKind === "buy-credits"
-                          ? () => setBillingOpen(true)
-                          : undefined
-                      }
-                    />
-                  </div>
-                );
+                // The newest error card is deferred and rendered after the
+                // build activity card so it always sits last in the thread.
+                if (i === lastErrorIdx) return null;
+                return renderErrorCard(m, false, i);
               }
+
               // System notes (e.g. "Petal is auto-fixing the build")
               // render as a small centered chip, not a chat bubble — they're
               // status updates, not part of the conversation.
@@ -4670,7 +4669,16 @@ function Builder() {
                 }
               />
             )}
+            {/* The newest error card always comes last — after the build
+                activity card — so the fix action is the final thing shown. */}
+            {(() => {
+              const m = lastErrorIdx >= 0 ? messages[lastErrorIdx] : null;
+              if (!m?.error) return null;
+              if ((petalIsWorking || isLive) && isBuildFailureCardTitle(m.error.title)) return null;
+              return renderErrorCard(m, true, lastErrorIdx);
+            })()}
             <div ref={chatEndRef} />
+
           </div>
           {proposedPlan && (
             <PlanProposalCard
