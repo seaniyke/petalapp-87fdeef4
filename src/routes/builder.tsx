@@ -3775,7 +3775,7 @@ function Builder() {
               // refresh. Retry replays the most recent user prompt; ask-fix
               // routes through the normal askPetalToFix flow.
               if (m.role === "assistant" && m.error) {
-                if ((petalIsWorking || isLive) && isBuildFailureCardTitle(m.error.title)) return null;
+                if (shouldHideErrorCard(m.error)) return null;
                 // The newest error card is deferred and rendered after the
                 // build activity card so it always sits last in the thread.
                 if (i === lastErrorIdx) return null;
@@ -4610,7 +4610,7 @@ function Builder() {
                 lastErrorIdx >= 0 && lastErrorIdx === messages.length - 1
                   ? messages[lastErrorIdx]?.error
                   : null;
-              const errorCardVisible = !!tailErr && !((petalIsWorking || isLive) && isBuildFailureCardTitle(tailErr.title));
+              const errorCardVisible = !!tailErr && !shouldHideErrorCard(tailErr);
               return activityVisible && !errorCardVisible;
             })() && (
               <BuildActivityCard
@@ -4623,7 +4623,7 @@ function Builder() {
                   // hide the BuildActivityCard's copy.
                   if (!friendlyError) return null;
                   const tail = messages[messages.length - 1];
-                  if ((petalIsWorking || isLive) && isBuildFailureCardTitle(friendlyError.title)) {
+                  if (shouldHideErrorCard(friendlyError)) {
                     return null;
                   }
                   if (
@@ -4690,7 +4690,7 @@ function Builder() {
             {(() => {
               const m = lastErrorIdx >= 0 ? messages[lastErrorIdx] : null;
               if (!m?.error) return null;
-              if ((petalIsWorking || isLive) && isBuildFailureCardTitle(m.error.title)) return null;
+              if (shouldHideErrorCard(m.error)) return null;
               return renderErrorCard(m, true, lastErrorIdx);
             })()}
             <div ref={chatEndRef} />
