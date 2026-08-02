@@ -3251,7 +3251,39 @@ function Builder() {
     return items;
   }, [files, lastUserPrompt, send]);
 
+  // Index of the most recent assistant error message. Its card is deferred so
+  // it always renders LAST — below the build activity card — because an error
+  // is the newest thing that happened and must be the user's next action.
+  let lastErrorIdx = -1;
+  for (let k = messages.length - 1; k >= 0; k--) {
+    if (messages[k].role === "assistant" && messages[k].error) {
+      lastErrorIdx = k;
+      break;
+    }
+  }
+  const renderErrorCard = (m: (typeof messages)[number], isTail: boolean, key: number) => (
+    <div key={key} className="flex justify-start">
+      <PetalErrorCard
+        error={m.error!}
+        onRetry={
+          isTail && m.error!.actionKind === "retry"
+            ? m.error!.title?.startsWith("Build service")
+              ? retryDeploy
+              : lastUserPrompt
+                ? retry
+                : retryDeploy
+            : undefined
+        }
+        onAskFix={isTail && m.error!.actionKind === "ask-fix" ? askPetalToFix : undefined}
+        onBuyCredits={
+          m.error!.actionKind === "buy-credits" ? () => setBillingOpen(true) : undefined
+        }
+      />
+    </div>
+  );
+
   return (
+
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
       {/* First-run product tour. Self-gates on localStorage so it shows once per browser. */}
       <Suspense fallback={null}>
