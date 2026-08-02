@@ -205,7 +205,7 @@ const DOM_PROBE = `(() => {
   }
 
   return { blank, errorScreen, problems, textLength: text.length };
-}`;
+})()`;
 
 interface PageWatch {
   consoleErrors: string[];
