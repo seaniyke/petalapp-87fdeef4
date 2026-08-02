@@ -40,6 +40,7 @@ import { ensureBrandIdentity, ensureBrandMarkWired } from "./brand-identity.serv
 import { repairBuildConfigImports } from "./build-config-repair.server";
 import { fixSourceEscapes } from "./source-escape-fixer.server";
 import { fixImportSyntax } from "./import-syntax-fixer.server";
+import { fixJsxAttrLiterals } from "./jsx-attr-literal-fixer.server";
 
 export interface RepairAllResult {
   files: ProjectFile[];
@@ -82,6 +83,12 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   const importSyntax = fixImportSyntax(files);
   files = importSyntax.files;
   notes.push(...importSyntax.notes);
+
+  // 0a-3. Unbraced JSX attribute values (`columns=[…]`, `count=3`) abort the
+  // esbuild transform too, so heal them alongside the other syntax passes.
+  const attrLiterals = fixJsxAttrLiterals(files);
+  files = attrLiterals.files;
+  notes.push(...attrLiterals.notes);
 
 
 
