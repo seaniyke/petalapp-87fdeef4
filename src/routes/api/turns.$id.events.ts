@@ -28,6 +28,7 @@ type TurnRow = {
   user_id: string;
   status: "running" | "succeeded" | "failed" | "aborted";
   last_seq: number;
+  started_at: string;
 };
 
 type EventRow = {
@@ -40,6 +41,10 @@ const POLL_INTERVAL_MS = 800;
 /** Hard ceiling on how long the resume stream stays open even if nothing
  *  arrives. Build pipeline timeout is ~4min; we allow 6 to be safe. */
 const MAX_STREAM_MS = 6 * 60_000;
+/** A turn older than the pipeline's absolute ceiling cannot still be doing
+ * useful work. Treat legacy rows left "running" by a dropped final write as
+ * aborted instead of reconnecting the UI to them for another six minutes. */
+const STALE_TURN_MS = 15 * 60_000;
 const SSE_HEADERS = {
   "Content-Type": "text/event-stream",
   "Cache-Control": "no-cache, no-transform",
@@ -87,7 +92,7 @@ export const Route = createFileRoute("/api/turns/$id/events")({
 
         const { data: turnRow, error: turnErr } = await admin
           .from("turns")
-          .select("id,user_id,status,last_seq")
+          .select("id,user_id,status,last_seq,started_at")
           .eq("id", turnId)
           .maybeSingle();
 
@@ -101,6 +106,22 @@ export const Route = createFileRoute("/api/turns/$id/events")({
         if (row.user_id !== userRes.user.id) {
           // Could also allow admin; for now keep strict.
           return new Response("Forbidden", { status: 403 });
+        }
+
+        if (
+          row.status === "running" &&
+          Date.now() - new Date(row.started_at).getTime() > STALE_TURN_MS
+        ) {
+          await admin
+            .from("turns")
+            .update({
+              status: "aborted",
+              ended_at: new Date().toISOString(),
+              error_message: "Turn expired before its terminal state was recorded.",
+            })
+            .eq("id", turnId)
+            .eq("status", "running");
+          row.status = "aborted";
         }
 
         const encoder = new TextEncoder();

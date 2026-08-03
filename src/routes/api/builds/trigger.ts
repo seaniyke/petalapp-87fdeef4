@@ -86,7 +86,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
         // 1) Ownership check — read-only, fast, gives a clean error.
         const { data: project, error: projectErr } = await supabaseAdmin
           .from("projects")
-          .select("id, owner_id, hide_petal_badge")
+          .select("id, owner_id, hide_petal_badge, latest_build_id")
           .eq("id", projectId)
           .maybeSingle();
         if (projectErr) {
@@ -105,7 +105,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
         // 2) Load files (admin client bypasses RLS — safe, we already authorized).
         const { data: rawFiles, error: filesErr } = await supabaseAdmin
           .from("project_files")
-          .select("path, content")
+          .select("path, content, updated_at")
           .eq("project_id", projectId);
         if (filesErr) {
           return Response.json(
@@ -116,6 +116,35 @@ export const Route = createFileRoute("/api/builds/trigger")({
         const files = (rawFiles ?? []).map((r) => ({ path: r.path, content: r.content }));
         if (files.length === 0) {
           return Response.json({ error: "Project has no files to build" }, { status: 400 });
+        }
+
+        // Idempotency boundary: one saved file revision gets one deployment.
+        // Multiple tabs, a reconnecting client, or duplicate result handlers
+        // can all call this endpoint for the same files. Reuse the latest
+        // active/successful build when it was created after the newest file
+        // write instead of creating another Railway job.
+        const newestFileWrite = Math.max(
+          0,
+          ...(rawFiles ?? []).map((row) => new Date(row.updated_at).getTime()),
+        );
+        if (project.latest_build_id) {
+          const { data: latest } = await supabaseAdmin
+            .from("project_builds")
+            .select("id, status, created_at")
+            .eq("id", project.latest_build_id)
+            .maybeSingle();
+          const latestCreatedAt = latest ? new Date(latest.created_at).getTime() : 0;
+          if (
+            latest &&
+            (latest.status === "pending" || latest.status === "building" || latest.status === "ready") &&
+            latestCreatedAt >= newestFileWrite
+          ) {
+            return Response.json({
+              buildId: latest.id,
+              status: latest.status === "ready" ? "ready" as const : "pending" as const,
+              reused: true,
+            });
+          }
         }
 
         // 2b) Re-apply the canonical scaffold kit so the build is self-healing.
@@ -272,10 +301,40 @@ export const Route = createFileRoute("/api/builds/trigger")({
           );
         }
 
-        await supabaseAdmin
+        // Compare-and-swap latest_build_id. If two identical requests raced,
+        // only the one that still sees the project state we authorized above
+        // may claim the project. The loser removes its orphan row and reuses
+        // the winner, so even simultaneous duplicate calls create one job.
+        let claimQuery = supabaseAdmin
           .from("projects")
           .update({ latest_build_id: build.id })
           .eq("id", projectId);
+        claimQuery = project.latest_build_id
+          ? claimQuery.eq("latest_build_id", project.latest_build_id)
+          : claimQuery.is("latest_build_id", null);
+        const { data: claimedProject } = await claimQuery
+          .select("latest_build_id")
+          .maybeSingle();
+
+        if (!claimedProject) {
+          await supabaseAdmin.from("project_builds").delete().eq("id", build.id);
+          const { data: winner } = await supabaseAdmin
+            .from("projects")
+            .select("latest_build_id")
+            .eq("id", projectId)
+            .single();
+          if (winner?.latest_build_id) {
+            return Response.json({
+              buildId: winner.latest_build_id,
+              status: "pending" as const,
+              reused: true,
+            });
+          }
+          return Response.json(
+            { error: "Could not claim this build. Please try again." },
+            { status: 409 },
+          );
+        }
 
         // 4) Fire the build. If the network call fails, mark the row as failed.
         try {

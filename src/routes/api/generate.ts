@@ -4272,7 +4272,7 @@ Forbidden defaults
           );
         }
         let finalCharged = 0;
-        {
+        if (!body.isAutoFix) {
           const tryCharge = async (amount: number) =>
             spendCredit({
               userId,
@@ -4286,6 +4286,7 @@ Forbidden defaults
                 usage_missing: priced.usageMissing,
                 clamped: priced.clamped,
                 model,
+                is_auto_fix: false,
                 priced_amount: priced.amount,
                 charged_amount: amount,
               },
@@ -4322,6 +4323,10 @@ Forbidden defaults
             console.warn("[credits] post-build charge failed", charge);
             await recordUnpaidBuild(userId, body.projectId ?? null, priced.amount, charge);
           }
+        } else {
+          console.info(
+            `[credits] internal recovery turn not billed project=${body.projectId ?? "none"} amount=${priced.amount}`,
+          );
         }
 
 
@@ -4760,9 +4765,10 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           /* controller may already be closed */
         }
         if (recorder) {
-          // Fire-and-forget the finalize: we don't want to delay closing the
-          // user-facing stream. The pipeline already ran to completion server-side.
-          void recorder.finish(terminalStatus, { errorMessage: terminalError });
+          // Persist the terminal state before the request ends. A fire-and-forget
+          // write is dropped by serverless runtimes once the response closes,
+          // leaving turns permanently "running" and inviting reconnect loops.
+          await recorder.finish(terminalStatus, { errorMessage: terminalError });
         }
         controller.close();
       }

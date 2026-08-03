@@ -9,7 +9,8 @@ import { getSupabaseAccessToken } from "@/lib/auth-token";
  */
 export async function triggerBuild(projectId: string): Promise<{
   buildId: string;
-  status: "pending" | "failed";
+  status: "pending" | "ready" | "failed";
+  reused?: boolean;
 }> {
   const token = await getSupabaseAccessToken();
   if (!token) throw new Error("Not signed in");
@@ -39,5 +40,9 @@ export async function triggerBuild(projectId: string): Promise<{
     throw new Error(message);
   }
 
-  return payload as { buildId: string; status: "pending" | "failed" };
+  return payload as {
+    buildId: string;
+    status: "pending" | "ready" | "failed";
+    reused?: boolean;
+  };
 }

@@ -113,8 +113,8 @@ export async function streamGenerate(
     model?: "fast" | "smart" | "best" | "deep";
     customInstructions?: string;
     projectId?: string;
-    /** When true, this is a silent internal auto-fix triggered by Petal after
-     *  a failed build. It remains credit-gated and charged like every AI turn. */
+    /** When true, this is a silent internal recovery triggered by Petal after
+     *  its own failure. It remains balance-gated but is not charged again. */
     isAutoFix?: boolean;
     /** Plan Mode — propose a plan first instead of generating immediately. */
     planFirst?: boolean;
