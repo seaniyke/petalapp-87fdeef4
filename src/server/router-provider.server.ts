@@ -251,7 +251,7 @@ function reachableFrom(entry: string, byPath: Map<string, ProjectFile>): Set<str
     if (seen.has(cur)) continue;
     seen.add(cur);
     const content = byPath.get(cur)?.content ?? "";
-    const rx = /(?:from\s*|import\s*\(\s*)["']([^"']+)["']/g;
+    const rx = /(?:from\s*|import\s*\(\s*|import\s+)["']([^"']+)["']/g;
     let m: RegExpExecArray | null;
     while ((m = rx.exec(content))) {
       const next = resolveImport(cur, m[1], byPath);
