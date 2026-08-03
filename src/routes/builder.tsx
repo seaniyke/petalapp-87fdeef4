@@ -1013,7 +1013,12 @@ function Builder() {
   // (the previous behavior, since it wasn't in the enum) was the bug that
   // froze the spinner whenever Railway flipped the row mid-build.
   const activeBuildId = project?.latest_build_id ?? null;
-  const isSupersededBuild = !!activeBuildId && supersededBuildIds.has(activeBuildId);
+  // The hook can discover a newer project build before the slower projects-row
+  // poll updates local project state. Judge the snapshot by the row it actually
+  // came from; otherwise a ready replacement build is incorrectly discarded
+  // because the previous build id was marked superseded during retry.
+  const observedBuildId = buildSnap?.buildId ?? activeBuildId;
+  const isSupersededBuild = !!observedBuildId && supersededBuildIds.has(observedBuildId);
   const effectiveBuildSnap = isSupersededBuild ? null : buildSnap;
   const isDeploying = effectiveBuildSnap?.status === "pending" || effectiveBuildSnap?.status === "building";
   const isLive = effectiveBuildSnap?.status === "ready";
@@ -1377,6 +1382,20 @@ function Builder() {
       setFriendlyError(null);
     }
   }, [isLive, friendlyError]);
+
+  // A deploy warning belongs to exactly one build attempt. Invalidate it as
+  // soon as either the project or activity subscription moves to another row,
+  // rather than waiting for a remount/visibility refresh to clear stale UI.
+  const lastWarningBuildIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const currentBuildId = buildSnap?.buildId ?? project?.latest_build_id ?? null;
+    const previousBuildId = lastWarningBuildIdRef.current;
+    lastWarningBuildIdRef.current = currentBuildId;
+    if (!previousBuildId || previousBuildId === currentBuildId) return;
+    setFriendlyError((current) =>
+      current?.title?.startsWith("Publishing is taking") ? null : current,
+    );
+  }, [buildSnap?.buildId, project?.latest_build_id]);
 
   // Cancel any in-flight generation on unmount or when switching projects.
   useEffect(() => {
