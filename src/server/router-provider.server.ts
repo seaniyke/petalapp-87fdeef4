@@ -70,10 +70,51 @@ function isReactRouterSpec(spec: string): boolean {
   return spec === "react-router-dom" || spec === "react-router" || spec.startsWith("@/components/ui/router");
 }
 
+/** Preserve code shape while hiding comments and string contents from the
+ * lightweight router detector. This prevents examples like
+ * `// <BrowserRouter>` from being mistaken for mounted JSX. */
+function maskCommentsAndStrings(content: string): string {
+  let out = "";
+  let state: "code" | "single" | "double" | "template" | "line" | "block" = "code";
+  let escaped = false;
+  for (let i = 0; i < content.length; i++) {
+    const ch = content[i];
+    const next = content[i + 1];
+    if (state === "code") {
+      if (ch === "/" && next === "/") { state = "line"; out += "  "; i++; continue; }
+      if (ch === "/" && next === "*") { state = "block"; out += "  "; i++; continue; }
+      if (ch === "'") state = "single";
+      else if (ch === '"') state = "double";
+      else if (ch === "`") state = "template";
+      out += ch;
+      continue;
+    }
+    if (state === "line") {
+      if (ch === "\n") { state = "code"; out += "\n"; } else out += " ";
+      continue;
+    }
+    if (state === "block") {
+      if (ch === "*" && next === "/") { state = "code"; out += "  "; i++; }
+      else out += ch === "\n" ? "\n" : " ";
+      continue;
+    }
+    if (escaped) { escaped = false; out += " "; continue; }
+    if (ch === "\\") { escaped = true; out += " "; continue; }
+    const closes =
+      (state === "single" && ch === "'") ||
+      (state === "double" && ch === '"') ||
+      (state === "template" && ch === "`");
+    out += closes ? ch : ch === "\n" ? "\n" : " ";
+    if (closes) state = "code";
+  }
+  return out;
+}
+
 function usedInFile(content: string, name: string): boolean {
+  const code = maskCommentsAndStrings(content);
   return (
-    new RegExp(`<${name}[\\s/>]`).test(content) ||
-    new RegExp(`(?<![\\w.$])${name}\\s*\\(`).test(content)
+    new RegExp(`<${name}[\\s/>]`).test(code) ||
+    new RegExp(`(?<![\\w.$])${name}\\s*\\(`).test(code)
   );
 }
 
@@ -115,6 +156,62 @@ function hasProvider(content: string): boolean {
   });
 }
 
+/**
+ * A provider only protects consumers rendered BELOW it. Merely finding a
+ * provider in a reachable sibling/descendant module is not enough: that was
+ * the root cause of persistent `basename` crashes after the earlier graph
+ * reachability fix.
+ *
+ * Follow the component mounted by `.render(...)` (normally App) and only
+ * accept a react-router provider when it is the root JSX wrapper. This is a
+ * conservative dominance check: when uncertain we wrap at the entry, where
+ * the provider is guaranteed to be an ancestor of every consumer.
+ */
+function providerDominatesRoot(entryPath: string, byPath: Map<string, ProjectFile>): boolean {
+  const visited = new Set<string>();
+
+  function inspect(path: string, jsx: string, depth: number): boolean {
+    if (depth > 6 || visited.has(path)) return false;
+    visited.add(path);
+    const file = byPath.get(path);
+    if (!file) return false;
+
+    // A fragment has multiple sibling roots; a provider in one branch cannot
+    // dominate the others. Always choose the safe entry-level wrapper.
+    if (/^\s*<>/.test(jsx)) return false;
+
+    const tags = Array.from(jsx.matchAll(/<([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?)(?=[\s/>])/g))
+      .map((m) => m[1])
+      .filter((name) => name !== "React.StrictMode" && name !== "StrictMode" && name !== "Fragment");
+    const root = tags[0];
+    if (!root) return false;
+
+    if (PROVIDERS.includes(root as (typeof PROVIDERS)[number])) {
+      return hasProvider(file.content);
+    }
+
+    const importRx = new RegExp(
+      `import\\s+(?:${root}|\\{[^}]*\\b${root}\\b[^}]*\\})\\s+from\\s*["']([^"']+)["']`,
+    );
+    const spec = importRx.exec(file.content)?.[1];
+    if (!spec) return false;
+    const target = resolveImport(path, spec, byPath);
+    if (!target) return false;
+    const targetContent = byPath.get(target)?.content ?? "";
+    const returned =
+      /return\s*\(\s*([\s\S]*?)\s*\)\s*;?/.exec(targetContent)?.[1] ??
+      /return\s+(<[^;]+>)\s*;?/.exec(targetContent)?.[1] ??
+      /=>\s*(<[^;]+>)/.exec(targetContent)?.[1] ??
+      "";
+    return returned ? inspect(target, returned, depth + 1) : false;
+  }
+
+  const entry = byPath.get(entryPath);
+  if (!entry) return false;
+  const rendered = /\.render\(\s*([\s\S]*?)\s*\)\s*;?/.exec(entry.content)?.[1] ?? "";
+  return rendered ? inspect(entryPath, rendered, 0) : false;
+}
+
 
 
 function ensureBrowserRouterImport(content: string): string {
@@ -140,12 +237,44 @@ function ensureBrowserRouterImport(content: string): string {
   return `import { BrowserRouter } from "${shim}";\n${content}`;
 }
 
+function renderArgumentBounds(content: string): { start: number; end: number } | null {
+  const marker = content.search(/\.render\s*\(/);
+  if (marker < 0) return null;
+  const open = content.indexOf("(", marker);
+  if (open < 0) return null;
+  let parens = 1;
+  let braces = 0;
+  let brackets = 0;
+  let quote: "'" | '"' | "`" | null = null;
+  let escaped = false;
+  for (let i = open + 1; i < content.length; i++) {
+    const ch = content[i];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === "`") { quote = ch; continue; }
+    if (ch === "{") braces++;
+    else if (ch === "}") braces--;
+    else if (ch === "[") brackets++;
+    else if (ch === "]") brackets--;
+    else if (ch === "(") parens++;
+    else if (ch === ")") {
+      parens--;
+      if (parens === 0 && braces === 0 && brackets === 0) return { start: open + 1, end: i };
+    }
+  }
+  return null;
+}
+
 /** Wrap `<App />` (or whatever root element) inside createRoot().render(...). */
 function wrapRootRender(content: string): string | null {
-  const rx = /(\.render\(\s*)([\s\S]*?)(\s*\)\s*;?)/;
-  const m = content.match(rx);
-  if (!m) return null;
-  const inner = m[2].trim();
+  const bounds = renderArgumentBounds(content);
+  if (!bounds) return null;
+  const rawInner = content.slice(bounds.start, bounds.end);
+  const inner = rawInner.trim();
   if (!inner.startsWith("<")) return null;
   if (/<BrowserRouter/.test(inner)) return null;
 
@@ -157,7 +286,30 @@ function wrapRootRender(content: string): string | null {
   } else {
     wrapped = `<BrowserRouter>\n    ${inner}\n  </BrowserRouter>`;
   }
-  return content.replace(rx, (_all, open: string, _body: string, close: string) => `${open}${wrapped}${close}`);
+  return `${content.slice(0, bounds.start)}${wrapped}${content.slice(bounds.end)}`;
+}
+
+function wrapDefaultAppReturn(content: string): string | null {
+  const declaration = /export\s+default\s+function\s+(?:App\s*)?\([^)]*\)\s*\{/.exec(content);
+  if (!declaration || declaration.index === undefined) return null;
+  const bodyStart = declaration.index + declaration[0].length;
+  let depth = 1;
+  let bodyEnd = -1;
+  for (let i = bodyStart; i < content.length; i++) {
+    if (content[i] === "{") depth++;
+    else if (content[i] === "}") {
+      depth--;
+      if (depth === 0) { bodyEnd = i; break; }
+    }
+  }
+  if (bodyEnd < 0) return null;
+  const body = content.slice(bodyStart, bodyEnd);
+  const returned = /return\s*\(\s*([\s\S]*?)\s*\)\s*;?/.exec(body);
+  if (!returned || returned.index === undefined) return null;
+  const replacement = `return (\n    <BrowserRouter>\n      ${returned[1]}\n    </BrowserRouter>\n  );`;
+  const start = bodyStart + returned.index;
+  const end = start + returned[0].length;
+  return `${content.slice(0, start)}${replacement}${content.slice(end)}`;
 }
 
 /** Resolve a relative/aliased import specifier to a file in the project. */
@@ -195,7 +347,7 @@ function reachableFrom(entry: string, byPath: Map<string, ProjectFile>): Set<str
     if (seen.has(cur)) continue;
     seen.add(cur);
     const content = byPath.get(cur)?.content ?? "";
-    const rx = /(?:from\s*|import\s*\(\s*)["']([^"']+)["']/g;
+    const rx = /(?:from\s*|import\s*\(\s*|import\s+)["']([^"']+)["']/g;
     let m: RegExpExecArray | null;
     while ((m = rx.exec(content))) {
       const next = resolveImport(cur, m[1], byPath);
@@ -210,11 +362,6 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
   const code = files.filter((f) => isExecutableSource(f.path));
   if (code.length === 0) return { files, notes };
 
-  const anyConsumer = code.some(
-    (f) => !f.path.includes("router-compat") && usesConsumer(f.content),
-  );
-  if (!anyConsumer) return { files, notes };
-
   const byPath = new Map(files.map((f) => [f.path, f] as const));
   const entryPath =
     code.find((f) => /src\/main\.(tsx|jsx)$/i.test(f.path) && /\.render\(/.test(f.content))?.path ??
@@ -222,13 +369,18 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
     null;
   const live = entryPath ? reachableFrom(entryPath, byPath) : null;
 
-  const anyProvider = code.some(
+  const anyConsumer = code.some(
     (f) =>
       !f.path.includes("router-compat") &&
       (live ? live.has(f.path) : true) &&
-      hasProvider(f.content),
+      usesConsumer(f.content),
   );
-  if (anyProvider) return { files, notes };
+  if (!anyConsumer) return { files, notes };
+
+  // Reachability is insufficient: a provider in a Header, modal, or sibling
+  // branch does not provide context to Routes/Link elsewhere. Only skip the
+  // repair when the provider dominates the root render.
+  if (entryPath && providerDominatesRoot(entryPath, byPath)) return { files, notes };
 
   // Preferred injection point: the entry file that calls .render(...)
   const entry =
@@ -250,12 +402,9 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
   // Fallback: wrap the default-exported App component's returned JSX.
   const app = code.find((f) => /src\/App\.(tsx|jsx)$/i.test(f.path));
   if (app) {
-    const rx = /return\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*\n\}/;
-    const m = app.content.match(rx);
-    if (m) {
-      const next = ensureBrowserRouterImport(
-        app.content.replace(rx, `return (\n    <BrowserRouter>\n      ${m[1]}\n    </BrowserRouter>\n  );\n}`),
-      );
+    const wrappedApp = wrapDefaultAppReturn(app.content);
+    if (wrappedApp) {
+      const next = ensureBrowserRouterImport(wrappedApp);
       notes.push(`router-provider: wrapped App() output in <BrowserRouter> (${app.path})`);
       return {
         files: files.map((f) => (f.path === app.path ? { ...f, content: next } : f)),

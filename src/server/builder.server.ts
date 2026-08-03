@@ -19,6 +19,7 @@ import { fixImportSyntax } from "@/server/import-syntax-fixer.server";
 import { fixJsxAttrLiterals } from "@/server/jsx-attr-literal-fixer.server";
 import { ensureBrandMarkWired } from "@/server/brand-identity.server";
 import type { VerifyPlan } from "@/server/verify-plan.server";
+import { runAllRepairs } from "@/server/repair-all.server";
 
 const MAX_AGE_SECONDS = 5 * 60;
 
@@ -93,7 +94,12 @@ export async function postBuildToRailway(args: {
   // esbuild refuses to parse (literal `\n` in code position, or an import
   // statement missing its `from` keyword). Both passes are pure and
   // idempotent, so running them again after runAllRepairs costs nothing.
-  const escaped = fixSourceEscapes(args.files);
+  // Absolute final boundary: callers normally run this earlier, but no build
+  // may depend on every current or future caller remembering that contract.
+  // In particular this guarantees router providers are repaired in the exact
+  // payload sent to the external builder, including retries and reships.
+  const canonical = runAllRepairs(args.files);
+  const escaped = fixSourceEscapes(canonical.files);
   const importHealed = fixImportSyntax(escaped.files);
   // `prop=[…]` / `prop=42` — unbraced JSX attribute values also abort the
   // esbuild transform ("Expected \"{\" but found \"[\"").
@@ -103,7 +109,7 @@ export async function postBuildToRailway(args: {
   // no build pathway can ship it.
   const brandWired = ensureBrandMarkWired(attrHealed.files);
 
-  for (const n of [...escaped.notes, ...importHealed.notes, ...attrHealed.notes, ...brandWired.notes]) {
+  for (const n of [...canonical.notes, ...escaped.notes, ...importHealed.notes, ...attrHealed.notes, ...brandWired.notes]) {
     console.warn(`[builder-last-mile] project=${args.projectId}: ${n}`);
   }
 
