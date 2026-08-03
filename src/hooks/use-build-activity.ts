@@ -205,13 +205,13 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       if (terminalSince != null && Date.now() - terminalSince > 30_000) return;
       void fetchOnce();
       if (elapsed > 15_000 && terminalSince == null) void fetchProjectLatestBuild();
-      // If the build has been pending for ~90s without ever moving to
-      // 'building', poke the watchdog. It will re-post to Railway if the
-      // first webhook was lost, or mark the row failed if retries are spent.
+      // If an active build has not completed after ~90s, poke the watchdog.
+      // This includes `building`: a successful deploy with a dropped callback
+      // otherwise remains stranded forever.
       if (
         elapsed > 90_000 &&
         terminalSince == null &&
-        latestStatus === "pending"
+        (latestStatus === "pending" || latestStatus === "building")
       ) {
         void pokeWatchdog();
       }
