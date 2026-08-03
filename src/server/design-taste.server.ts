@@ -42,6 +42,16 @@ Petal is being judged on whether the landing looks like it was made by a person 
 
 8. Density matches vision. Minimalist commitment = generous whitespace, few sections, single accent. Maximalist commitment = dense compositions, layered gradients, multiple accents, mixed media in bento tiles. Do not build a maximalist hero followed by a minimalist features section.
 
+9. Layout hygiene — NO empty bands, NO overlapping components. Every section must be sized by its content:
+   - NEVER put \`h-screen\` or \`min-h-screen\` on a section. Sections are sized with \`py-16 md:py-24\` (or \`py-20 md:py-28\` for the hero). \`min-h-screen\` belongs only on the page shell wrapper.
+   - Every band must contain real content edge to edge. If a section would render less than ~40% full at 390px wide, cut it or merge it — a tall empty rectangle is a bug, not whitespace.
+   - Display type is ALWAYS responsive: \`text-4xl sm:text-5xl md:text-6xl lg:text-7xl\`. A bare \`text-7xl\`/\`text-8xl\` clips the headline on a phone.
+   - Full-bleed decoration (\`absolute inset-0\` washes, gradients, patterns) must carry \`pointer-events-none\` and sit at \`z-0\`; foreground content sits in a \`relative z-10\` wrapper. Never let an overlay cover the copy.
+   - Headers use \`sticky top-0 z-50\`, never \`fixed\` — a fixed header leaves flow and lands on top of section one.
+   - Hero copy and hero form/search controls are siblings in one vertical stack with \`gap-6\`; never absolutely position the search card over the headline.
+   - Nothing may overflow horizontally: images \`w-full h-auto\`, grids collapse to one column below \`sm\`, long words use \`break-words\`.
+   - Check the 390px width mentally for every section before emitting.
+
 If your draft violates ANY of the above, REWRITE before emitting. The goal is that when the user pastes the URL into a designer channel, no one guesses it was AI-generated.`;
 
 /**
