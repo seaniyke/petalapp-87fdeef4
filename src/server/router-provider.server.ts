@@ -115,6 +115,57 @@ function hasProvider(content: string): boolean {
   });
 }
 
+/**
+ * A provider only protects consumers rendered BELOW it. Merely finding a
+ * provider in a reachable sibling/descendant module is not enough: that was
+ * the root cause of persistent `basename` crashes after the earlier graph
+ * reachability fix.
+ *
+ * Follow the component mounted by `.render(...)` (normally App) and only
+ * accept a react-router provider when it is the root JSX wrapper. This is a
+ * conservative dominance check: when uncertain we wrap at the entry, where
+ * the provider is guaranteed to be an ancestor of every consumer.
+ */
+function providerDominatesRoot(entryPath: string, byPath: Map<string, ProjectFile>): boolean {
+  const visited = new Set<string>();
+
+  function inspect(path: string, jsx: string, depth: number): boolean {
+    if (depth > 6 || visited.has(path)) return false;
+    visited.add(path);
+    const file = byPath.get(path);
+    if (!file) return false;
+
+    const tags = Array.from(jsx.matchAll(/<([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?)(?=[\s/>])/g))
+      .map((m) => m[1])
+      .filter((name) => name !== "React.StrictMode" && name !== "StrictMode" && name !== "Fragment");
+    const root = tags[0];
+    if (!root) return false;
+
+    if (PROVIDERS.includes(root as (typeof PROVIDERS)[number])) {
+      return hasProvider(file.content);
+    }
+
+    const importRx = new RegExp(
+      `import\\s+(?:${root}|\\{[^}]*\\b${root}\\b[^}]*\\})\\s+from\\s*["']([^"']+)["']`,
+    );
+    const spec = importRx.exec(file.content)?.[1];
+    if (!spec) return false;
+    const target = resolveImport(path, spec, byPath);
+    if (!target) return false;
+    const targetContent = byPath.get(target)?.content ?? "";
+    const returned =
+      /return\s*\(\s*([\s\S]*?)\s*\)\s*;?/.exec(targetContent)?.[1] ??
+      /=>\s*(<[^;]+>)/.exec(targetContent)?.[1] ??
+      "";
+    return returned ? inspect(target, returned, depth + 1) : false;
+  }
+
+  const entry = byPath.get(entryPath);
+  if (!entry) return false;
+  const rendered = /\.render\(\s*([\s\S]*?)\s*\)\s*;?/.exec(entry.content)?.[1] ?? "";
+  return rendered ? inspect(entryPath, rendered, 0) : false;
+}
+
 
 
 function ensureBrowserRouterImport(content: string): string {
@@ -210,11 +261,6 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
   const code = files.filter((f) => isExecutableSource(f.path));
   if (code.length === 0) return { files, notes };
 
-  const anyConsumer = code.some(
-    (f) => !f.path.includes("router-compat") && usesConsumer(f.content),
-  );
-  if (!anyConsumer) return { files, notes };
-
   const byPath = new Map(files.map((f) => [f.path, f] as const));
   const entryPath =
     code.find((f) => /src\/main\.(tsx|jsx)$/i.test(f.path) && /\.render\(/.test(f.content))?.path ??
@@ -222,13 +268,18 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
     null;
   const live = entryPath ? reachableFrom(entryPath, byPath) : null;
 
-  const anyProvider = code.some(
+  const anyConsumer = code.some(
     (f) =>
       !f.path.includes("router-compat") &&
       (live ? live.has(f.path) : true) &&
-      hasProvider(f.content),
+      usesConsumer(f.content),
   );
-  if (anyProvider) return { files, notes };
+  if (!anyConsumer) return { files, notes };
+
+  // Reachability is insufficient: a provider in a Header, modal, or sibling
+  // branch does not provide context to Routes/Link elsewhere. Only skip the
+  // repair when the provider dominates the root render.
+  if (entryPath && providerDominatesRoot(entryPath, byPath)) return { files, notes };
 
   // Preferred injection point: the entry file that calls .render(...)
   const entry =

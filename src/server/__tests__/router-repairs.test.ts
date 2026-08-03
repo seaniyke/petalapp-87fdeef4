@@ -215,6 +215,32 @@ const mounted = fixMissingRouterProvider([
 ]);
 assert.equal(mounted.notes.length, 0, "a mounted provider must not be re-wrapped");
 
+// A provider in a reachable descendant/sibling is not an ancestor of Routes.
+// Reachability alone previously suppressed the repair and shipped the exact
+// `basename`/useContext(null) crash seen in production.
+const nonDominating = fixMissingRouterProvider([
+  {
+    path: "src/main.tsx",
+    content:
+      'import ReactDOM from "react-dom/client";\nimport App from "./App";\nReactDOM.createRoot(document.getElementById("root")!).render(<App />);',
+  },
+  {
+    path: "src/App.tsx",
+    content:
+      'import { Routes, Route } from "react-router-dom";\nimport Header from "./Header";\nexport default function App(){ return <><Header/><Routes><Route path="/" element={<div/>}/></Routes></>; }',
+  },
+  {
+    path: "src/Header.tsx",
+    content:
+      'import { BrowserRouter, Link } from "react-router-dom";\nexport default function Header(){ return <BrowserRouter><Link to="/">Home</Link></BrowserRouter>; }',
+  },
+]);
+assert.match(
+  nonDominating.files.find((f) => f.path === "src/main.tsx")?.content ?? "",
+  /<BrowserRouter>/,
+  "a reachable but non-dominating provider must not suppress root injection",
+);
+
 // Mixed families: a mounted TanStack <RouterProvider> must NOT satisfy
 // react-router consumers — the root render still needs <BrowserRouter>.
 const mixed = fixMissingRouterProvider([
