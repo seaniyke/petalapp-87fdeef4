@@ -2053,6 +2053,7 @@ function Builder() {
       let resultSummary = "";
       let resultPlan: string | undefined;
       let resultRecap: string | undefined;
+      let planFallbackStarted = false;
       let resultNoFileChanges = false;
       // Iteration Standard — the server's byte-diffed verdict for this turn.
       let turnOutcome: {
@@ -2313,8 +2314,17 @@ function Builder() {
             },
             onPlanSkipped: () => {
               // Planning is a courtesy step. If it failed, run the turn the
-              // user actually asked for instead of surfacing a dead end.
-              void sendRef.current?.(text, { ...opts, autoPlan: false });
+              // user actually asked for instead of surfacing a dead end. This
+              // is the SAME logical turn: do not append the prompt again,
+              // refill recovery budgets, or create parallel fallbacks if a
+              // duplicated stream event is delivered after reconnecting.
+              if (planFallbackStarted) return;
+              planFallbackStarted = true;
+              void sendRef.current?.(text, {
+                ...opts,
+                isRetry: true,
+                autoPlan: false,
+              });
             },
             onPlanScopeViolation: (dropped) => {
               setLatestCycleProgress(
