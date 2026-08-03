@@ -61,7 +61,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useBuildActivity } from "@/hooks/use-build-activity";
 import { useAuthReady } from "@/lib/auth";
 import { detectUnsupportedWebContainerBrowser } from "@/lib/browser-support";
-import { isVerifierInternalDefect } from "@/lib/verification-report";
+import { isVerifierInternalDefect, sanitizeVerificationDefects } from "@/lib/verification-report";
 import {
   type Phase,
   type PhaseId,
