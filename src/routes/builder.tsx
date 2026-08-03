@@ -1863,8 +1863,8 @@ function Builder() {
         attachments?: ChatAttachment[];
         forceBuild?: boolean;
         /** Internal auto-fix run (Petal repairing its own failed build).
-         *  Suppresses the giant error-log prompt from the visible chat.
-         *  It is still a normal credit-gated AI turn. */
+         *  Suppresses the giant error-log prompt from the visible chat and is
+         *  paid by Petal rather than charging the user again. */
         isAutoFix?: boolean;
         /** Internal recovery run after the model produced no usable edits.
          *  Petal escalates automatically; the user should not have to pick a
@@ -2624,6 +2624,7 @@ function Builder() {
           setTimeout(() => {
             void sendRef.current?.(text, {
               isRetry: true,
+              isAutoFix: true,
               forceBuild: true,
               autoEscalate: true,
             });
@@ -2650,6 +2651,7 @@ function Builder() {
           setTimeout(() => {
             void sendRef.current?.(text, {
               isRetry: true,
+              isAutoFix: true,
               forceBuild: true,
               autoEscalate: true,
             });
