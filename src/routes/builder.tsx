@@ -3136,6 +3136,15 @@ function Builder() {
       // Budget spent for this user turn — stop repairing silently and hand
       // control back instead of looping.
       verificationCardBuildIdRef.current = buildId;
+      // Only ever ONE browser-check card. Each build produced its own card
+      // with different defect text, so the older ones survived the dedupe in
+      // persistFriendlyError and stacked up in the thread.
+      setMessages((prev) =>
+        prev.filter((m) => !(m.role === "assistant" && isVerificationCardTitle(m.error?.title))),
+      );
+      void deleteAssistantErrorMessages(projectIdRef.current!, (err) =>
+        isVerificationCardTitle(err.title),
+      ).catch(() => {});
       persistFriendlyError({
         title: VERIFICATION_CARD_TITLE,
         message: `Your app is live, but a browser check found: ${defects
@@ -3145,6 +3154,7 @@ function Builder() {
         actionKind: "retry",
       });
       return;
+
     }
 
     const prompt = [
