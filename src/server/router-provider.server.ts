@@ -159,6 +159,7 @@ function providerDominatesRoot(entryPath: string, byPath: Map<string, ProjectFil
     const targetContent = byPath.get(target)?.content ?? "";
     const returned =
       /return\s*\(\s*([\s\S]*?)\s*\)\s*;?/.exec(targetContent)?.[1] ??
+      /return\s+(<[^;]+>)\s*;?/.exec(targetContent)?.[1] ??
       /=>\s*(<[^;]+>)/.exec(targetContent)?.[1] ??
       "";
     return returned ? inspect(target, returned, depth + 1) : false;
