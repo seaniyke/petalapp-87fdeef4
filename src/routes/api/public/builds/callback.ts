@@ -107,7 +107,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
             sanitizeVerificationDefects(payload.verification.defects).length === 0,
         }
       : null;
-    await supabaseAdmin
+    const { error: buildUpdateError } = await supabaseAdmin
       .from("project_builds")
       .update({
         status: "ready",
@@ -118,18 +118,26 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         verification: verification as never,
       })
       .eq("id", payload.buildId);
+    if (buildUpdateError) {
+      console.error("Builder callback could not mark build ready", buildUpdateError.message);
+      return new Response("Could not save build status", { status: 503 });
+    }
 
     // Always point the project at its newest build so the UI shows it.
-    await supabaseAdmin
+    const { error: projectUpdateError } = await supabaseAdmin
       .from("projects")
       .update({ latest_build_id: payload.buildId })
       .eq("id", payload.projectId);
+    if (projectUpdateError) {
+      console.error("Builder callback could not update project build", projectUpdateError.message);
+      return new Response("Could not save project status", { status: 503 });
+    }
   } else {
     // status === "failed"
     const message = payload.logs
       ? `${payload.errorMessage}\n\n--- logs ---\n${payload.logs}`
       : payload.errorMessage;
-    await supabaseAdmin
+    const { error: buildUpdateError } = await supabaseAdmin
       .from("project_builds")
       .update({
         status: "failed",
@@ -137,6 +145,10 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         ready_at: new Date().toISOString(),
       })
       .eq("id", payload.buildId);
+    if (buildUpdateError) {
+      console.error("Builder callback could not mark build failed", buildUpdateError.message);
+      return new Response("Could not save build status", { status: 503 });
+    }
   }
 
   return new Response("ok", {

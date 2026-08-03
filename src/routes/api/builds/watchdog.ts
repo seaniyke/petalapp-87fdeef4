@@ -84,8 +84,8 @@ export const Route = createFileRoute("/api/builds/watchdog")({
           .eq("id", buildId)
           .maybeSingle();
         if (!build) return Response.json({ ok: false, reason: "not_found" }, { status: 404 });
-        if (build.status !== "pending") {
-          return Response.json({ ok: true, action: "noop", reason: "not_pending" });
+        if (build.status !== "pending" && build.status !== "building") {
+          return Response.json({ ok: true, action: "noop", reason: "not_active" });
         }
 
         const ageMs = Date.now() - new Date(build.created_at).getTime();
@@ -127,7 +127,7 @@ export const Route = createFileRoute("/api/builds/watchdog")({
           .from("project_builds")
           .update({ retry_count: nextRetry, last_retry_at: new Date().toISOString() })
           .eq("id", buildId)
-          .eq("status", "pending")
+          .in("status", ["pending", "building"])
           .eq("retry_count", currentRetry)
           .select("id")
           .maybeSingle();
