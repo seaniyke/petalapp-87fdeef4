@@ -61,7 +61,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useBuildActivity } from "@/hooks/use-build-activity";
 import { useAuthReady } from "@/lib/auth";
 import { detectUnsupportedWebContainerBrowser } from "@/lib/browser-support";
-import { isVerifierInternalDefect } from "@/lib/verification-report";
+import { isVerifierInternalDefect, sanitizeVerificationDefects } from "@/lib/verification-report";
 import {
   type Phase,
   type PhaseId,
@@ -256,6 +256,15 @@ function isBuildFailureCardTitle(title: string | undefined): boolean {
     title.startsWith("A styling rule") ||
     title.startsWith("Publishing is taking")
   );
+}
+
+/** Title of the post-deploy browser-check card. Tracked by name so a later
+ *  healthy build can retract it — a stale "still need a look" card sitting
+ *  above a working preview is the worst kind of false alarm. */
+const VERIFICATION_CARD_TITLE = "A couple of things still need a look";
+
+function isVerificationCardTitle(title: string | undefined): boolean {
+  return title === VERIFICATION_CARD_TITLE;
 }
 
 function isTransientFailureCardTitle(title: string | undefined): boolean {
@@ -487,6 +496,8 @@ function Builder() {
 
   const [activityVisible, setActivityVisible] = useState(false);
   const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
+  /** Build id the browser-check card was raised for, so it can be retracted. */
+  const verificationCardBuildIdRef = useRef<string | null>(null);
   // Tracks the current project id for callbacks that fire outside React's
   // render cycle (stream handlers, async catches) so we don't re-create them
   // every time the project state object swaps reference.
@@ -3110,7 +3121,10 @@ function Builder() {
     const snap = effectiveBuildSnap;
     const buildId = project.latest_build_id;
     if (!snap || !buildId || snap.status !== "ready") return;
-    const defects = snap.verification && !snap.verification.ok ? snap.verification.defects : [];
+    const defects =
+      snap.verification && snap.verification.ok === false
+        ? sanitizeVerificationDefects(snap.verification.defects)
+        : [];
     if (defects.length === 0) return;
     hydrateRecovery(project.id);
 
@@ -3121,8 +3135,9 @@ function Builder() {
     if (!claimAutoRecovery()) {
       // Budget spent for this user turn — stop repairing silently and hand
       // control back instead of looping.
+      verificationCardBuildIdRef.current = buildId;
       persistFriendlyError({
-        title: "A couple of things still need a look",
+        title: VERIFICATION_CARD_TITLE,
         message: `Your app is live, but a browser check found: ${defects
           .slice(0, 3)
           .join("; ")}. Petal paused automatic fixes for this request — tap below to keep going.`,
@@ -3141,6 +3156,31 @@ function Builder() {
     ].join("\n");
     void send(prompt, { isRetry: false, isAutoFix: true });
   }, [project?.id, project?.latest_build_id, effectiveBuildSnap, busy, send, claimAutoRecovery, hydrateRecovery, persistRecovery]);
+
+  // Retract the browser-check card as soon as a build ships clean. The card is
+  // persisted so it survives reloads, which means a defect found on build N
+  // used to keep nagging ("Ask Petal to fix it") long after build N+1 fixed it
+  // and the preview was visibly working. Anything the current build did not
+  // flag is not the user's problem.
+  useEffect(() => {
+    const snap = effectiveBuildSnap;
+    const buildId = project?.latest_build_id;
+    const projectId = project?.id;
+    if (!projectId || !snap || !buildId || snap.status !== "ready") return;
+    const stillBroken =
+      snap.verification && snap.verification.ok === false
+        ? sanitizeVerificationDefects(snap.verification.defects).length > 0
+        : false;
+    if (stillBroken) return;
+    verificationCardBuildIdRef.current = null;
+    setFriendlyError((prev) => (isVerificationCardTitle(prev?.title) ? null : prev));
+    setMessages((prev) =>
+      prev.filter((m) => !(m.role === "assistant" && isVerificationCardTitle(m.error?.title))),
+    );
+    void deleteAssistantErrorMessages(projectId, (err) =>
+      isVerificationCardTitle(err.title),
+    ).catch(() => {});
+  }, [project?.id, project?.latest_build_id, effectiveBuildSnap]);
 
 
 
