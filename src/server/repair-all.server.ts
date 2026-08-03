@@ -29,6 +29,7 @@ import { validateRouteGraph } from "./route-graph.server";
 import { sweepTailwindTokens } from "./tailwind-token-sweep.server";
 import { stubMissingAssets } from "./asset-stubber.server";
 import { enforceRuntimeContracts } from "./runtime-contract.server";
+import { enforceLayoutHygiene } from "./layout-hygiene.server";
 import { fixRouterImports } from "./router-imports.server";
 import { fixMissingRouterProvider } from "./router-provider.server";
 import { fixTanstackRouterWithoutProvider } from "./tanstack-router-fallback.server";
@@ -230,6 +231,13 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   const rt = enforceRuntimeContracts(files);
   files = rt.files;
   for (const n of rt.notes) notes.push(n);
+
+  // 11. Layout hygiene — kill viewport-locked empty bands, clipped display
+  //     type, tap-eating full-bleed overlays, and fixed headers that render
+  //     on top of the first section.
+  const layout = enforceLayoutHygiene(files);
+  files = layout.files;
+  for (const n of layout.notes) notes.push(n);
 
   return { files, notes, firedPasses: passIdsFromNotes(notes) };
 }
