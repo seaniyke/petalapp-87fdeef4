@@ -23,6 +23,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { sanitizeVerificationDefects } from "@/lib/verification-report";
 
 export type BuildSnapshot = {
+  /** The row this snapshot came from. Status/timers must never leak between
+   * retries, because every retry creates a new build row. */
+  buildId: string;
   /** Includes 'building' (Railway picked up the job, not yet finished) so the
    *  UI can advance the activity card past "deploying" without getting stuck.
    *  The DB-level status check constraint allows the same four values. */
@@ -68,6 +71,11 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
     const startedAt = Date.now();
     let watchdogPokedAt = 0;
 
+    // A previous build's terminal state and observedAt must not survive while
+    // this new row is loading. `awaitingBuild` bridges this brief null state in
+    // the builder UI, so resetting is both accurate and flicker-free.
+    setSnap(null);
+
     const pokeWatchdog = async () => {
       // Throttle: at most once every 60s per build to avoid hammering.
       if (Date.now() - watchdogPokedAt < 60_000) return;
@@ -93,17 +101,26 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       status: string | null;
       dist_path: string | null;
       error_message: string | null;
+      created_at?: string | null;
       verification?: unknown;
-    }) => {
+    }, buildId = latestBuildId) => {
       if (cancelled) return;
       setSnap((prev) => {
+        const sameBuild = prev?.buildId === buildId;
+        const createdAt = data.created_at ? new Date(data.created_at).getTime() : NaN;
         const next: BuildSnapshot = {
+          buildId,
           status: (data.status as BuildSnapshot["status"]) ?? "pending",
           distPath: data.dist_path ?? null,
           errorMessage: data.error_message ?? null,
           // Preserve the very first observation timestamp across updates so
           // the long-wait escalation timer is stable for the whole deploy.
-          observedAt: prev?.observedAt ?? Date.now(),
+          observedAt:
+            sameBuild && prev
+              ? prev.observedAt
+              : Number.isFinite(createdAt)
+                ? createdAt
+                : Date.now(),
           verification: readVerification(data.verification),
         };
         if (next.status === "ready" || next.status === "failed") {
@@ -112,7 +129,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
         latestStatus = next.status;
         // Avoid pointless re-renders when polling returns identical rows.
         if (
-          prev &&
+          sameBuild && prev &&
           prev.status === next.status &&
           prev.distPath === next.distPath &&
           prev.errorMessage === next.errorMessage &&
@@ -124,7 +141,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       });
     };
 
-    const BUILD_COLUMNS = "status, dist_path, error_message, verification";
+    const BUILD_COLUMNS = "status, dist_path, error_message, verification, created_at";
 
     const fetchOnce = async () => {
       const { data } = await supabase
@@ -154,7 +171,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
         .select(BUILD_COLUMNS)
         .eq("id", newestId)
         .maybeSingle();
-      if (latest) apply(latest);
+      if (latest) apply(latest, newestId);
     };
 
     void fetchOnce();

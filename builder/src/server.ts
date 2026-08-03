@@ -415,19 +415,39 @@ type Callback =
 
 async function postCallback(payload: Callback): Promise<void> {
   const body = JSON.stringify(payload);
-  const { timestamp, signature } = sign(SHARED_SECRET!, body);
-  const res = await fetch(CALLBACK_URL!, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-petal-timestamp": timestamp,
-      "x-petal-signature": signature,
-    },
-    body,
-  });
-  if (!res.ok) {
-    throw new Error(`Callback POST failed: ${res.status} ${await res.text().catch(() => "")}`);
+  const delays = [0, 1_000, 3_000, 8_000, 15_000];
+  let lastError = "Callback did not complete";
+
+  for (const delay of delays) {
+    if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+    // Sign each attempt with a fresh timestamp. Reusing the first signature
+    // can make a later retry fail the callback endpoint's five-minute window.
+    const { timestamp, signature } = sign(SHARED_SECRET!, body);
+    try {
+      const res = await fetch(CALLBACK_URL!, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-petal-timestamp": timestamp,
+          "x-petal-signature": signature,
+        },
+        body,
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (res.ok) return;
+      const responseBody = await res.text().catch(() => "");
+      lastError = `Callback POST failed: ${res.status} ${responseBody}`;
+      // Invalid payload/signature responses are deterministic; retries cannot
+      // repair them. Auth, rate-limit and server failures can be transient.
+      if (res.status >= 400 && res.status < 500 && res.status !== 401 && res.status !== 408 && res.status !== 429) {
+        break;
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
   }
+
+  throw new Error(lastError);
 }
 
 fastify.listen({ port: PORT, host: "0.0.0.0" }, (err, addr) => {
