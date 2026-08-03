@@ -70,10 +70,51 @@ function isReactRouterSpec(spec: string): boolean {
   return spec === "react-router-dom" || spec === "react-router" || spec.startsWith("@/components/ui/router");
 }
 
+/** Preserve code shape while hiding comments and string contents from the
+ * lightweight router detector. This prevents examples like
+ * `// <BrowserRouter>` from being mistaken for mounted JSX. */
+function maskCommentsAndStrings(content: string): string {
+  let out = "";
+  let state: "code" | "single" | "double" | "template" | "line" | "block" = "code";
+  let escaped = false;
+  for (let i = 0; i < content.length; i++) {
+    const ch = content[i];
+    const next = content[i + 1];
+    if (state === "code") {
+      if (ch === "/" && next === "/") { state = "line"; out += "  "; i++; continue; }
+      if (ch === "/" && next === "*") { state = "block"; out += "  "; i++; continue; }
+      if (ch === "'") state = "single";
+      else if (ch === '"') state = "double";
+      else if (ch === "`") state = "template";
+      out += ch;
+      continue;
+    }
+    if (state === "line") {
+      if (ch === "\n") { state = "code"; out += "\n"; } else out += " ";
+      continue;
+    }
+    if (state === "block") {
+      if (ch === "*" && next === "/") { state = "code"; out += "  "; i++; }
+      else out += ch === "\n" ? "\n" : " ";
+      continue;
+    }
+    if (escaped) { escaped = false; out += " "; continue; }
+    if (ch === "\\") { escaped = true; out += " "; continue; }
+    const closes =
+      (state === "single" && ch === "'") ||
+      (state === "double" && ch === '"') ||
+      (state === "template" && ch === "`");
+    out += closes ? ch : ch === "\n" ? "\n" : " ";
+    if (closes) state = "code";
+  }
+  return out;
+}
+
 function usedInFile(content: string, name: string): boolean {
+  const code = maskCommentsAndStrings(content);
   return (
-    new RegExp(`<${name}[\\s/>]`).test(content) ||
-    new RegExp(`(?<![\\w.$])${name}\\s*\\(`).test(content)
+    new RegExp(`<${name}[\\s/>]`).test(code) ||
+    new RegExp(`(?<![\\w.$])${name}\\s*\\(`).test(code)
   );
 }
 
@@ -196,12 +237,44 @@ function ensureBrowserRouterImport(content: string): string {
   return `import { BrowserRouter } from "${shim}";\n${content}`;
 }
 
+function renderArgumentBounds(content: string): { start: number; end: number } | null {
+  const marker = content.search(/\.render\s*\(/);
+  if (marker < 0) return null;
+  const open = content.indexOf("(", marker);
+  if (open < 0) return null;
+  let parens = 1;
+  let braces = 0;
+  let brackets = 0;
+  let quote: "'" | '"' | "`" | null = null;
+  let escaped = false;
+  for (let i = open + 1; i < content.length; i++) {
+    const ch = content[i];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === "`") { quote = ch; continue; }
+    if (ch === "{") braces++;
+    else if (ch === "}") braces--;
+    else if (ch === "[") brackets++;
+    else if (ch === "]") brackets--;
+    else if (ch === "(") parens++;
+    else if (ch === ")") {
+      parens--;
+      if (parens === 0 && braces === 0 && brackets === 0) return { start: open + 1, end: i };
+    }
+  }
+  return null;
+}
+
 /** Wrap `<App />` (or whatever root element) inside createRoot().render(...). */
 function wrapRootRender(content: string): string | null {
-  const rx = /(\.render\(\s*)([\s\S]*?)(\s*\)\s*;?)/;
-  const m = content.match(rx);
-  if (!m) return null;
-  const inner = m[2].trim();
+  const bounds = renderArgumentBounds(content);
+  if (!bounds) return null;
+  const rawInner = content.slice(bounds.start, bounds.end);
+  const inner = rawInner.trim();
   if (!inner.startsWith("<")) return null;
   if (/<BrowserRouter/.test(inner)) return null;
 
@@ -213,7 +286,30 @@ function wrapRootRender(content: string): string | null {
   } else {
     wrapped = `<BrowserRouter>\n    ${inner}\n  </BrowserRouter>`;
   }
-  return content.replace(rx, (_all, open: string, _body: string, close: string) => `${open}${wrapped}${close}`);
+  return `${content.slice(0, bounds.start)}${wrapped}${content.slice(bounds.end)}`;
+}
+
+function wrapDefaultAppReturn(content: string): string | null {
+  const declaration = /export\s+default\s+function\s+(?:App\s*)?\([^)]*\)\s*\{/.exec(content);
+  if (!declaration || declaration.index === undefined) return null;
+  const bodyStart = declaration.index + declaration[0].length;
+  let depth = 1;
+  let bodyEnd = -1;
+  for (let i = bodyStart; i < content.length; i++) {
+    if (content[i] === "{") depth++;
+    else if (content[i] === "}") {
+      depth--;
+      if (depth === 0) { bodyEnd = i; break; }
+    }
+  }
+  if (bodyEnd < 0) return null;
+  const body = content.slice(bodyStart, bodyEnd);
+  const returned = /return\s*\(\s*([\s\S]*?)\s*\)\s*;?/.exec(body);
+  if (!returned || returned.index === undefined) return null;
+  const replacement = `return (\n    <BrowserRouter>\n      ${returned[1]}\n    </BrowserRouter>\n  );`;
+  const start = bodyStart + returned.index;
+  const end = start + returned[0].length;
+  return `${content.slice(0, start)}${replacement}${content.slice(end)}`;
 }
 
 /** Resolve a relative/aliased import specifier to a file in the project. */
@@ -306,12 +402,9 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
   // Fallback: wrap the default-exported App component's returned JSX.
   const app = code.find((f) => /src\/App\.(tsx|jsx)$/i.test(f.path));
   if (app) {
-    const rx = /return\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*\n\}/;
-    const m = app.content.match(rx);
-    if (m) {
-      const next = ensureBrowserRouterImport(
-        app.content.replace(rx, `return (\n    <BrowserRouter>\n      ${m[1]}\n    </BrowserRouter>\n  );\n}`),
-      );
+    const wrappedApp = wrapDefaultAppReturn(app.content);
+    if (wrappedApp) {
+      const next = ensureBrowserRouterImport(wrappedApp);
       notes.push(`router-provider: wrapped App() output in <BrowserRouter> (${app.path})`);
       return {
         files: files.map((f) => (f.path === app.path ? { ...f, content: next } : f)),

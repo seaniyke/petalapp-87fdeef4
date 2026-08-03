@@ -241,6 +241,35 @@ assert.match(
   "a reachable but non-dominating provider must not suppress root injection",
 );
 
+const commentOnlyProvider = fixMissingRouterProvider([
+  { path: "src/main.tsx", content: 'import App from "./App";\nroot.render(<App />);' },
+  {
+    path: "src/App.tsx",
+    content: 'import { Routes } from "react-router-dom";\n// Example: <BrowserRouter><Routes /></BrowserRouter>\nexport default function App(){ return <Routes />; }',
+  },
+]);
+assert.match(commentOnlyProvider.files[0].content, /<BrowserRouter>/, "comments must not count as providers");
+
+const callbackRender = fixMissingRouterProvider([
+  {
+    path: "src/main.tsx",
+    content: 'import App from "./App";\nroot.render(<App onReady={() => console.log("ready")} />);',
+  },
+  { path: "src/App.tsx", content: 'import { Routes } from "react-router-dom";\nexport default function App(){ return <Routes />; }' },
+]);
+assert.match(callbackRender.files[0].content, /<BrowserRouter>[\s\S]*onReady=\{\(\) =>/, "callbacks inside render JSX must stay intact");
+
+const helperBeforeApp = fixMissingRouterProvider([
+  { path: "src/main.tsx", content: 'import App from "./App";\nconst node = <App />;\nroot.render(node);' },
+  {
+    path: "src/App.tsx",
+    content: 'import { Routes } from "react-router-dom";\nfunction helper(){ return ("hello"); }\nexport default function App(){ return (\n<Routes />\n); }',
+  },
+]);
+const helperApp = helperBeforeApp.files.find((f) => f.path === "src/App.tsx")?.content ?? "";
+assert.match(helperApp, /function helper\(\)\{ return \("hello"\); \}/, "helper return must remain unchanged");
+assert.match(helperApp, /function App\(\)[\s\S]*<BrowserRouter>[\s\S]*<Routes \/>/, "the default App return must be wrapped");
+
 // Mixed families: a mounted TanStack <RouterProvider> must NOT satisfy
 // react-router consumers — the root render still needs <BrowserRouter>.
 const mixed = fixMissingRouterProvider([
