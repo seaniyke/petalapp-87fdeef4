@@ -135,6 +135,10 @@ function providerDominatesRoot(entryPath: string, byPath: Map<string, ProjectFil
     const file = byPath.get(path);
     if (!file) return false;
 
+    // A fragment has multiple sibling roots; a provider in one branch cannot
+    // dominate the others. Always choose the safe entry-level wrapper.
+    if (/^\s*<>/.test(jsx)) return false;
+
     const tags = Array.from(jsx.matchAll(/<([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?)(?=[\s/>])/g))
       .map((m) => m[1])
       .filter((name) => name !== "React.StrictMode" && name !== "StrictMode" && name !== "Fragment");
