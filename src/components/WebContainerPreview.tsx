@@ -52,6 +52,7 @@ export function WebContainerPreview({
   onAskRepair,
   onBootFailed,
   lastNarration,
+  instantSrc,
 }: {
   files: ProjectFile[];
   /** Bump this number to force the iframe to reload (e.g. after restoring a version). */
@@ -68,7 +69,11 @@ export function WebContainerPreview({
   onBootFailed?: (reason: string) => void;
   /** Plan #3 — last build narration to surface on the crash fallback as context. */
   lastNarration?: string | null;
+  /** Last deployed build URL. Rendered instantly on open while the sandbox
+   *  boots, so the user never stares at "Getting things ready…". */
+  instantSrc?: string | null;
 }) {
+
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [serverUrl, setServerUrl] = useState<string | null>(null);
