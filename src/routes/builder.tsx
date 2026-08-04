@@ -827,6 +827,10 @@ function Builder() {
   // Android non-Chromium, no SharedArrayBuffer, etc.) OR an in-session
   // WebContainer boot failure.
   const useDeployedFallback = isMobile || !webContainerSupported || webContainerBootFailed;
+  // Instant preview: show the last deployed build the moment the project
+  // opens, while the sandbox boots behind it.
+  const instantPreviewUrl = useLatestReadyBuildUrl(project?.id ?? null);
+
 
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
