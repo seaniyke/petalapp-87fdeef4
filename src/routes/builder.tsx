@@ -3456,6 +3456,18 @@ function Builder() {
           >
             <Menu className="h-5 w-5" />
           </button>
+          {/* Desktop: collapse the chat pane so the preview fills the screen */}
+          <button
+            type="button"
+            onClick={() => setChatCollapsed((c) => !c)}
+            aria-label={chatCollapsed ? "Show chat" : "Hide chat"}
+            title={`${chatCollapsed ? "Show" : "Hide"} chat (⌘B)`}
+            aria-pressed={chatCollapsed}
+            className="hidden h-9 w-9 shrink-0 place-items-center rounded-lg text-foreground transition hover:bg-muted md:grid"
+          >
+            {chatCollapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+          </button>
+
           <Link
             to="/projects"
             className="hidden shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground hover:bg-muted md:inline-flex"
