@@ -52,6 +52,7 @@ export function WebContainerPreview({
   onAskRepair,
   onBootFailed,
   lastNarration,
+  instantSrc,
 }: {
   files: ProjectFile[];
   /** Bump this number to force the iframe to reload (e.g. after restoring a version). */
@@ -68,7 +69,11 @@ export function WebContainerPreview({
   onBootFailed?: (reason: string) => void;
   /** Plan #3 — last build narration to surface on the crash fallback as context. */
   lastNarration?: string | null;
+  /** Last deployed build URL. Rendered instantly on open while the sandbox
+   *  boots, so the user never stares at "Getting things ready…". */
+  instantSrc?: string | null;
 }) {
+
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [serverUrl, setServerUrl] = useState<string | null>(null);
@@ -306,7 +311,7 @@ export function WebContainerPreview({
   return (
     <div className="relative flex h-full w-full flex-col">
       {/* Status strip */}
-      {phase !== "ready" && phase !== "idle" && !serverUrl && (
+      {phase !== "ready" && phase !== "idle" && !serverUrl && !(instantSrc && phase !== "error") && (
         <div className="flex items-center justify-between gap-2 border-b border-border bg-card/80 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur">
           <div className="inline-flex items-center gap-2">
             {phase !== "error" && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -405,6 +410,24 @@ export function WebContainerPreview({
               );
             }}
           />
+        ) : instantSrc ? (
+          // Instant preview: the last deployed build renders immediately while
+          // the sandbox boots in the background. Swapped out the moment the
+          // live dev server is up.
+          <>
+            <iframe
+              title="App preview"
+              src={instantSrc}
+              className="h-full w-full border-0 bg-white"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            />
+            {phase !== "error" && (
+              <div className="pointer-events-none absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-2.5 py-1 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Live edits warming up…</span>
+              </div>
+            )}
+          </>
         ) : (
           <div className="grid h-full place-items-center bg-aurora text-sm text-muted-foreground">
             <div className="max-w-xs text-center">
@@ -419,6 +442,7 @@ export function WebContainerPreview({
             </div>
           </div>
         )}
+
       </div>
 
       {/* Log drawer */}

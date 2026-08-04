@@ -208,6 +208,8 @@ import { sanitizeNarrative } from "@/lib/sanitize-narrative";
 import { guardBackendClaims } from "@/lib/backend-claim-guard";
 import { runProjectMigrations } from "@/lib/managed-migrations.functions";
 import { loadRecoveryState, saveRecoveryState } from "@/lib/recovery-budget";
+import { useLatestReadyBuildUrl } from "@/hooks/use-latest-ready-build";
+
 const WebContainerPreview = lazy(() =>
   import("@/components/WebContainerPreview").then((m) => ({ default: m.WebContainerPreview })),
 );
@@ -827,6 +829,10 @@ function Builder() {
   // Android non-Chromium, no SharedArrayBuffer, etc.) OR an in-session
   // WebContainer boot failure.
   const useDeployedFallback = isMobile || !webContainerSupported || webContainerBootFailed;
+  // Instant preview: show the last deployed build the moment the project
+  // opens, while the sandbox boots behind it.
+  const instantPreviewUrl = useLatestReadyBuildUrl(project?.id ?? null);
+
 
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -5304,6 +5310,8 @@ function Builder() {
                             });
                           }}
                           lastNarration={latestNarration ?? null}
+                          instantSrc={instantPreviewUrl}
+
                           onBootFailed={(reason) => {
                             console.warn("[preview] WebContainer boot failed, switching to CDN fallback:", reason);
                             setWebContainerBootFailed(true);
