@@ -3866,12 +3866,16 @@ function Builder() {
         </>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[360px_1fr]">
+      <div
+        className={`grid min-h-0 flex-1 grid-cols-1 ${
+          chatCollapsed ? "md:grid-cols-[1fr]" : "md:grid-cols-[360px_1fr]"
+        }`}
+      >
         {/* Chat */}
         <aside
-          className={`min-h-0 flex-col border-b border-border/60 bg-sidebar md:flex md:border-b-0 md:border-r ${
-            mobileTab === "chat" ? "flex" : "hidden"
-          }`}
+          className={`min-h-0 flex-col border-b border-border/60 bg-sidebar md:border-b-0 md:border-r ${
+            chatCollapsed ? "md:hidden" : "md:flex"
+          } ${mobileTab === "chat" ? "flex" : "hidden"}`}
         >
           <div className="flex shrink-0 items-center justify-between border-b border-border/50 bg-sidebar/80 px-4 py-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-sidebar/60">
             <div className="flex items-center gap-2">
