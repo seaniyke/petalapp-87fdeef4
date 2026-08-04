@@ -208,6 +208,8 @@ import { sanitizeNarrative } from "@/lib/sanitize-narrative";
 import { guardBackendClaims } from "@/lib/backend-claim-guard";
 import { runProjectMigrations } from "@/lib/managed-migrations.functions";
 import { loadRecoveryState, saveRecoveryState } from "@/lib/recovery-budget";
+import { useLatestReadyBuildUrl } from "@/hooks/use-latest-ready-build";
+
 const WebContainerPreview = lazy(() =>
   import("@/components/WebContainerPreview").then((m) => ({ default: m.WebContainerPreview })),
 );
