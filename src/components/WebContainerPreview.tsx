@@ -311,7 +311,7 @@ export function WebContainerPreview({
   return (
     <div className="relative flex h-full w-full flex-col">
       {/* Status strip */}
-      {phase !== "ready" && phase !== "idle" && !serverUrl && (
+      {phase !== "ready" && phase !== "idle" && !serverUrl && !(instantSrc && phase !== "error") && (
         <div className="flex items-center justify-between gap-2 border-b border-border bg-card/80 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur">
           <div className="inline-flex items-center gap-2">
             {phase !== "error" && <Loader2 className="h-3 w-3 animate-spin" />}
