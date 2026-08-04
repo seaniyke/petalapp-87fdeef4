@@ -410,6 +410,24 @@ export function WebContainerPreview({
               );
             }}
           />
+        ) : instantSrc ? (
+          // Instant preview: the last deployed build renders immediately while
+          // the sandbox boots in the background. Swapped out the moment the
+          // live dev server is up.
+          <>
+            <iframe
+              title="App preview"
+              src={instantSrc}
+              className="h-full w-full border-0 bg-white"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            />
+            {phase !== "error" && (
+              <div className="pointer-events-none absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-2.5 py-1 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Live edits warming up…</span>
+              </div>
+            )}
+          </>
         ) : (
           <div className="grid h-full place-items-center bg-aurora text-sm text-muted-foreground">
             <div className="max-w-xs text-center">
@@ -424,6 +442,7 @@ export function WebContainerPreview({
             </div>
           </div>
         )}
+
       </div>
 
       {/* Log drawer */}
