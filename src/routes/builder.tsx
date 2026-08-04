@@ -5310,6 +5310,8 @@ function Builder() {
                             });
                           }}
                           lastNarration={latestNarration ?? null}
+                          instantSrc={instantPreviewUrl}
+
                           onBootFailed={(reason) => {
                             console.warn("[preview] WebContainer boot failed, switching to CDN fallback:", reason);
                             setWebContainerBootFailed(true);
