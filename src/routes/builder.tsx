@@ -3,6 +3,8 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import {
   ArrowLeft,
   Menu,
+  PanelLeft,
+  PanelLeftClose,
   Send,
   Loader2,
   FileCode2,
