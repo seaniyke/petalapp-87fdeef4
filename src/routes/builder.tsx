@@ -832,6 +832,33 @@ function Builder() {
   // Instant preview: show the last deployed build the moment the project
   // opens, while the sandbox boots behind it.
   const instantPreviewUrl = useLatestReadyBuildUrl(project?.id ?? null);
+  // Desktop chat pane collapse — gives the preview the full width, Lovable
+  // style. Persisted so the choice survives reloads. ⌘/Ctrl+B toggles.
+  const [chatCollapsed, setChatCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      setChatCollapsed(localStorage.getItem("petal:chat-collapsed") === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("petal:chat-collapsed", chatCollapsed ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [chatCollapsed]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setChatCollapsed((c) => !c);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
 
   const initialSent = useRef(false);
