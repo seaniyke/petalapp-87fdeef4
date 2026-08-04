@@ -3,6 +3,8 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import {
   ArrowLeft,
   Menu,
+  PanelLeft,
+  PanelLeftClose,
   Send,
   Loader2,
   FileCode2,
@@ -832,6 +834,33 @@ function Builder() {
   // Instant preview: show the last deployed build the moment the project
   // opens, while the sandbox boots behind it.
   const instantPreviewUrl = useLatestReadyBuildUrl(project?.id ?? null);
+  // Desktop chat pane collapse — gives the preview the full width, Lovable
+  // style. Persisted so the choice survives reloads. ⌘/Ctrl+B toggles.
+  const [chatCollapsed, setChatCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      setChatCollapsed(localStorage.getItem("petal:chat-collapsed") === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("petal:chat-collapsed", chatCollapsed ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [chatCollapsed]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setChatCollapsed((c) => !c);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
 
   const initialSent = useRef(false);
@@ -3427,6 +3456,18 @@ function Builder() {
           >
             <Menu className="h-5 w-5" />
           </button>
+          {/* Desktop: collapse the chat pane so the preview fills the screen */}
+          <button
+            type="button"
+            onClick={() => setChatCollapsed((c) => !c)}
+            aria-label={chatCollapsed ? "Show chat" : "Hide chat"}
+            title={`${chatCollapsed ? "Show" : "Hide"} chat (⌘B)`}
+            aria-pressed={chatCollapsed}
+            className="hidden h-9 w-9 shrink-0 place-items-center rounded-lg text-foreground transition hover:bg-muted md:grid"
+          >
+            {chatCollapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+          </button>
+
           <Link
             to="/projects"
             className="hidden shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground hover:bg-muted md:inline-flex"
@@ -3825,12 +3866,16 @@ function Builder() {
         </>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[360px_1fr]">
+      <div
+        className={`grid min-h-0 flex-1 grid-cols-1 ${
+          chatCollapsed ? "md:grid-cols-[1fr]" : "md:grid-cols-[360px_1fr]"
+        }`}
+      >
         {/* Chat */}
         <aside
-          className={`min-h-0 flex-col border-b border-border/60 bg-sidebar md:flex md:border-b-0 md:border-r ${
-            mobileTab === "chat" ? "flex" : "hidden"
-          }`}
+          className={`min-h-0 flex-col border-b border-border/60 bg-sidebar md:border-b-0 md:border-r ${
+            chatCollapsed ? "md:hidden" : "md:flex"
+          } ${mobileTab === "chat" ? "flex" : "hidden"}`}
         >
           <div className="flex shrink-0 items-center justify-between border-b border-border/50 bg-sidebar/80 px-4 py-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-sidebar/60">
             <div className="flex items-center gap-2">
