@@ -35,6 +35,20 @@ export function useLatestReadyBuildUrl(projectId: string | null | undefined): st
         setUrl(null);
         return;
       }
+      // Reachability probe — a deployment row can exist while the CDN host
+      // is gone/not yet propagated ("refused to connect" inside the iframe).
+      // Only hand back a URL we can actually reach, otherwise the instant
+      // preview shows a browser error page instead of the app.
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 4000);
+        await fetch(dist, { method: "GET", mode: "no-cors", signal: ctrl.signal, cache: "no-store" });
+        clearTimeout(t);
+      } catch {
+        if (!cancelled) setUrl(null);
+        return;
+      }
+      if (cancelled) return;
       setUrl(id ? `${dist}${dist.includes("?") ? "&" : "?"}v=${encodeURIComponent(id)}` : dist);
     })();
     return () => {
