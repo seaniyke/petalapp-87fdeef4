@@ -30,6 +30,8 @@ import { sweepTailwindTokens } from "./tailwind-token-sweep.server";
 import { stubMissingAssets } from "./asset-stubber.server";
 import { enforceRuntimeContracts } from "./runtime-contract.server";
 import { enforceLayoutHygiene } from "./layout-hygiene.server";
+import { enforceInteractionHygiene } from "./interaction-hygiene.server";
+
 import { fixRouterImports } from "./router-imports.server";
 import { fixMissingRouterProvider } from "./router-provider.server";
 import { fixTanstackRouterWithoutProvider } from "./tanstack-router-fallback.server";
