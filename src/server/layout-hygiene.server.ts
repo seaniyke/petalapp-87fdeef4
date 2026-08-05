@@ -70,10 +70,14 @@ function healClassList(raw: string, ctx: Ctx): string {
   tokens = tokens.map((t) => {
     // A / B — viewport-locked heights on anything that is not the page shell.
     if (!shell) {
-      if (t === "h-screen") return "min-h-[70svh]";
-      if (t === "min-h-screen") return "min-h-[70svh]";
+      if (t === "h-screen" || t === "h-dvh" || t === "h-svh") return "min-h-[70svh]";
+      if (t === "min-h-screen" || t === "min-h-dvh" || t === "min-h-svh") return "min-h-[70svh]";
       if (t === "h-[100vh]" || t === "h-screen!") return "min-h-[100svh]";
       if (t === "min-h-[100vh]") return "min-h-[100svh]";
+      // Any hard viewport height (h-[90vh], h-[100svh], h-[80dvh], …) clips
+      // its own content the moment the copy is one line longer than planned.
+      const vh = /^h-\[(\d{2,3})(vh|svh|dvh)\]$/.exec(t);
+      if (vh) return `min-h-[${vh[1]}${vh[2]}]`;
     }
     // Hard pixel heights on layout containers clip their own content.
     const px = /^h-\[(\d{3,4})px\]$/.exec(t);
@@ -99,19 +103,21 @@ function healClassList(raw: string, ctx: Ctx): string {
     if (!has(/^-?z-/)) tokens.push("z-0");
   }
 
-  // D — fixed header removes itself from flow and overlaps section one.
+  // D — a header taken out of flow (fixed OR absolute) overlaps section one,
+  // which is exactly the "hero headline sliced off at the top" bug.
   if (
-    tokens.includes("fixed") &&
+    (tokens.includes("fixed") || tokens.includes("absolute")) &&
     tokens.some((t) => t === "top-0" || t === "inset-x-0") &&
     (ctx.tag === "header" || ctx.tag === "nav")
   ) {
-    tokens = tokens.map((t) => (t === "fixed" ? "sticky" : t));
+    tokens = tokens.map((t) => (t === "fixed" || t === "absolute" ? "sticky" : t));
     if (!tokens.includes("top-0")) tokens.push("top-0");
+    if (!has(/^z-/)) tokens.push("z-40");
   }
 
   // E — tall container with zero vertical padding.
   if (
-    has(/^min-h-\[(?:\d+svh|\d+vh|\d{3,4}px)\]$/) &&
+    has(/^min-h-\[(?:\d+svh|\d+vh|\d+dvh|\d{3,4}px)\]$/) &&
     !has(/^(py-|pt-|pb-|p-)/) &&
     ctx.tag !== "html" &&
     !ctx.selfClosing &&
@@ -119,6 +125,19 @@ function healClassList(raw: string, ctx: Ctx): string {
   ) {
     tokens.push("py-16", "md:py-24");
   }
+
+  // F — a centered, viewport-tall band with `overflow-hidden` clips its own
+  // heading on small screens. Horizontal clipping is all these ever need.
+  if (
+    !ctx.selfClosing &&
+    !shell &&
+    tokens.includes("overflow-hidden") &&
+    has(/^min-h-/) &&
+    (tokens.includes("items-center") || tokens.includes("justify-center"))
+  ) {
+    tokens = tokens.map((t) => (t === "overflow-hidden" ? "overflow-x-hidden" : t));
+  }
+
 
   return Array.from(new Set(tokens)).join(" ");
 }
