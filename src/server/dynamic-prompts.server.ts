@@ -19,6 +19,8 @@ import { renderKitManifestBlock } from "./kit-manifest.server";
 
 export type DynamicSnippetKey =
   | "kitCore"
+  | "webStandards"
+
   | "verifyBeforeDone"
   | "fileBudget"
   | "charts"
@@ -598,7 +600,25 @@ These rules apply to EVERY visual file you write this turn. Violating any of the
   // Fires on any list-shaped surface. The default AI failure is "render an
   // array — no search, no filters, no sort, no pagination, no URL sync."
   // This snippet says: if a list has 8+ items, it MUST be interactive.
+  // Always-on: the baseline every real website meets. Fires on any page-ish
+  // build because "it looks finished but nothing works" is the top complaint.
+  webStandards: {
+    triggers:
+      /\b(site|website|page|landing|app|dashboard|portfolio|store|shop|blog|booking|saas|marketing|home ?page|nav|header|form|contact)\b/i,
+    body: `\n\n[Reinforcement — Non-negotiable web standards]
+Ship these on EVERY page you produce. A page missing any of them is unfinished:
+
+1. WORKING MOBILE NAV — the hamburger MUST open something. \`const [open, setOpen] = useState(false)\` + \`onClick={() => setOpen(o => !o)}\`, a real panel (or shadcn \`<Sheet>\`) containing the same links as desktop, closing on link click and on Escape. A \`<Menu />\` icon with no handler is a bug.
+2. WORKING FORMS — every \`<form>\` has \`onSubmit={(e) => { e.preventDefault(); ... }}\`, controlled inputs, required-field validation with inline error text, a disabled/loading submit state, and a visible success confirmation (toast via \`sonner\` or an inline success panel). Never let a form reload the page.
+3. NO DEAD CONTROLS — every button navigates, opens, submits, or changes state. Never \`href="#"\`. In-page targets use real anchors with matching \`id\` + \`scroll-mt-24\`.
+4. HEADER / HERO CLEARANCE — a sticky or overlaying header means the first section gets top padding at least equal to the header height (\`pt-24 md:pt-32\`). The hero headline must never sit under the nav.
+5. RESPONSIVE — verify 375px, 768px, 1280px mentally: no horizontal scroll, no clipped headings, type ramps (\`text-4xl sm:text-5xl lg:text-6xl\`), tap targets ≥ 44px.
+6. ACCESSIBILITY — \`aria-label\` on icon-only buttons, \`aria-expanded\` on the nav toggle, labels tied to inputs, visible \`focus-visible\` rings, alt text on every image.
+7. GUARD BROWSER APIS — \`window\`, \`localStorage\`, \`window.ethereum\`, geolocation and friends are checked before use (\`if (typeof window !== "undefined" && window.ethereum)\`). Never throw "Failed to connect to MetaMask" style errors at page load; wallet/3rd-party connects only run from an explicit user click and fail with a friendly message.
+8. REAL PAGE FURNITURE — every page has a header, meaningful sections, and a footer with links; no orphan sections floating on a blank shell.`,
+  },
   interactivity: {
+
     triggers:
       /\b(list|listing|catalog|directory|feed|inbox|browse|search|filter|sort|paginat|table|data ?grid|explore|gallery|library|store|marketplace|dashboard)\b/i,
     body: `\n\n[Reinforcement — Interactivity floor for list surfaces]

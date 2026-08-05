@@ -2,6 +2,8 @@ import type { ProjectFile } from "@/server/generate.server";
 import type { LocalIssue } from "@/server/local-verifier";
 import type { WebSubtype } from "@/lib/web-subtype";
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
+import { findDeadMobileNav, findDeadButtons } from "@/server/interaction-hygiene.server";
+
 
 function appEntrypoint(files: ProjectFile[]): ProjectFile | undefined {
   return files.find((f) => f.path === "src/App.tsx") ?? files.find((f) => f.path === "src/pages/Home.tsx");
@@ -55,6 +57,19 @@ export function findGenerationQualityIssues(
       /* never block on scan failure */
     }
   }
+
+  // Web standards scan: dead hamburger menus and buttons wired to nothing are
+  // the #1 "it looks finished but nothing works" complaint. Reported so the
+  // repair loop wires them up.
+  for (const f of files) {
+    if (!/\.(tsx|jsx)$/.test(f.path)) continue;
+    const nav = findDeadMobileNav(f.path, f.content);
+    if (nav) issues.push({ path: f.path, kind: "render-risk", detail: nav });
+    const btn = findDeadButtons(f.path, f.content);
+    if (btn) issues.push({ path: f.path, kind: "render-risk", detail: btn });
+  }
+
+
 
   return issues;
 }

@@ -86,7 +86,12 @@ export function WebContainerPreview({
   // errors within 5s we consider it a hard crash and swap the iframe for
   // PreviewCrashFallback. Reload clears the state and remounts.
   const [crashReason, setCrashReason] = useState<string | null>(null);
+  // Belt-and-braces for the instant (deployed) preview: if the iframe never
+  // fires `load` the host refused the connection — drop it instead of
+  // leaving the user staring at a browser error page.
+  const [instantDead, setInstantDead] = useState(false);
   const crashWindowRef = useRef<number[]>([]);
+
   // Set to a friendly message when the picker has been "armed" for >30s
   // without the iframe acknowledging readiness — usually means the picker
   // script failed to inject (custom index.html, very fast iframe reload, etc).
@@ -311,7 +316,7 @@ export function WebContainerPreview({
   return (
     <div className="relative flex h-full w-full flex-col">
       {/* Status strip */}
-      {phase !== "ready" && phase !== "idle" && !serverUrl && !(instantSrc && phase !== "error") && (
+      {phase !== "ready" && phase !== "idle" && !serverUrl && !(instantSrc && !instantDead && phase !== "error") && (
         <div className="flex items-center justify-between gap-2 border-b border-border bg-card/80 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur">
           <div className="inline-flex items-center gap-2">
             {phase !== "error" && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -410,7 +415,7 @@ export function WebContainerPreview({
               );
             }}
           />
-        ) : instantSrc ? (
+        ) : instantSrc && !instantDead ? (
           // Instant preview: the last deployed build renders immediately while
           // the sandbox boots in the background. Swapped out the moment the
           // live dev server is up.
@@ -420,6 +425,14 @@ export function WebContainerPreview({
               src={instantSrc}
               className="h-full w-full border-0 bg-white"
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              onLoad={(e) => {
+                // A host that refuses the connection paints Chrome's error
+                // page without firing a usable load in most cases; when it
+                // does, the document has no body content.
+                const doc = (e.currentTarget as HTMLIFrameElement).contentDocument;
+                if (doc && doc.body && doc.body.childElementCount === 0) setInstantDead(true);
+              }}
+              onError={() => setInstantDead(true)}
             />
             {phase !== "error" && (
               <div className="pointer-events-none absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-2.5 py-1 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur">
@@ -428,6 +441,7 @@ export function WebContainerPreview({
               </div>
             )}
           </>
+
         ) : (
           <div className="grid h-full place-items-center bg-aurora text-sm text-muted-foreground">
             <div className="max-w-xs text-center">

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { probePreviewUrl } from "@/lib/preview-probe.functions";
+
 
 /**
  * Returns the URL of the most recent *ready* deployed build for a project.
@@ -36,20 +38,23 @@ export function useLatestReadyBuildUrl(projectId: string | null | undefined): st
         return;
       }
       // Reachability probe — a deployment row can exist while the CDN host
-      // is gone/not yet propagated ("refused to connect" inside the iframe).
-      // Only hand back a URL we can actually reach, otherwise the instant
-      // preview shows a browser error page instead of the app.
+      // is gone/not yet propagated, or the host may refuse framing
+      // ("refused to connect" inside the iframe). A browser no-cors fetch
+      // can't tell those apart (opaque response), so we probe server-side
+      // where we can read the status code and the framing headers.
       try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 4000);
-        await fetch(dist, { method: "GET", mode: "no-cors", signal: ctrl.signal, cache: "no-store" });
-        clearTimeout(t);
+        const verdict = await probePreviewUrl({ data: { url: dist } });
+        if (!verdict.embeddable) {
+          if (!cancelled) setUrl(null);
+          return;
+        }
       } catch {
         if (!cancelled) setUrl(null);
         return;
       }
       if (cancelled) return;
       setUrl(id ? `${dist}${dist.includes("?") ? "&" : "?"}v=${encodeURIComponent(id)}` : dist);
+
     })();
     return () => {
       cancelled = true;
