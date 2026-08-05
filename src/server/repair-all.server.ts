@@ -239,5 +239,12 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   files = layout.files;
   for (const n of layout.notes) notes.push(n);
 
+  // 12. Interaction hygiene — forms that reload the page, dead hamburgers,
+  //     buttons wired to nothing.
+  const interaction = enforceInteractionHygiene(files);
+  files = interaction.files;
+  for (const n of interaction.notes) notes.push(n);
+
   return { files, notes, firedPasses: passIdsFromNotes(notes) };
 }
+
