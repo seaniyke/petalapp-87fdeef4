@@ -2,6 +2,8 @@ import type { ProjectFile } from "@/server/generate.server";
 import type { LocalIssue } from "@/server/local-verifier";
 import type { WebSubtype } from "@/lib/web-subtype";
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
+import { findDeadMobileNav, findDeadButtons } from "@/server/interaction-hygiene.server";
+
 
 function appEntrypoint(files: ProjectFile[]): ProjectFile | undefined {
   return files.find((f) => f.path === "src/App.tsx") ?? files.find((f) => f.path === "src/pages/Home.tsx");
