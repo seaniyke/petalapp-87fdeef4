@@ -86,7 +86,12 @@ export function WebContainerPreview({
   // errors within 5s we consider it a hard crash and swap the iframe for
   // PreviewCrashFallback. Reload clears the state and remounts.
   const [crashReason, setCrashReason] = useState<string | null>(null);
+  // Belt-and-braces for the instant (deployed) preview: if the iframe never
+  // fires `load` the host refused the connection — drop it instead of
+  // leaving the user staring at a browser error page.
+  const [instantDead, setInstantDead] = useState(false);
   const crashWindowRef = useRef<number[]>([]);
+
   // Set to a friendly message when the picker has been "armed" for >30s
   // without the iframe acknowledging readiness — usually means the picker
   // script failed to inject (custom index.html, very fast iframe reload, etc).
