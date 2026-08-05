@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { probePreviewUrl } from "@/lib/preview-probe.functions";
+
 
 /**
  * Returns the URL of the most recent *ready* deployed build for a project.
