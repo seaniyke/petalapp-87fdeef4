@@ -58,5 +58,18 @@ export function findGenerationQualityIssues(
     }
   }
 
+  // Web standards scan: dead hamburger menus and buttons wired to nothing are
+  // the #1 "it looks finished but nothing works" complaint. Reported so the
+  // repair loop wires them up.
+  for (const f of files) {
+    if (!/\.(tsx|jsx)$/.test(f.path)) continue;
+    const nav = findDeadMobileNav(f.path, f.content);
+    if (nav) issues.push({ path: f.path, kind: "render-risk", detail: nav });
+    const btn = findDeadButtons(f.path, f.content);
+    if (btn) issues.push({ path: f.path, kind: "render-risk", detail: btn });
+  }
+
+
+
   return issues;
 }
