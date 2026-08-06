@@ -1477,9 +1477,38 @@ function Builder() {
   }, [searchId]);
 
 
+  // C1 — bottom-proximity gate. Within 120px of the bottom we follow the
+  // stream; further up we leave the scroll position alone and surface a
+  // "jump to latest" pill instead of yanking the user down mid-read.
+  const NEAR_BOTTOM_PX = 120;
+
+  const isNearBottom = useCallback(() => {
+    const el = chatScrollRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
+  }, []);
+
+  const scrollChatToLatest = useCallback((behavior: ScrollBehavior = "smooth") => {
+    chatEndRef.current?.scrollIntoView({ behavior });
+    setShowJumpToLatest(false);
+  }, []);
+
   useEffect(() => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    const onScroll = () => setShowJumpToLatest(!isNearBottom());
+    el.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [isNearBottom]);
+
+  useEffect(() => {
+    if (!isNearBottom()) {
+      setShowJumpToLatest(true);
+      return;
+    }
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, busy]);
+  }, [messages, busy, isNearBottom]);
 
   // Show a "new" dot on the Preview tab when files change while Chat is active.
   useEffect(() => {
