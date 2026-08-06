@@ -3458,6 +3458,17 @@ Forbidden defaults
           if (repaired.notes.length > 0) {
             for (const n of repaired.notes) console.info("[repair-all]", n);
             nextFiles = repaired.files;
+            // Bible §7 — every repair records signature → fix → outcome.
+            // This is the training set for the next codemod, and the only way
+            // to see the same pass masking the same model defect week after
+            // week. Fire-and-forget: a ledger write never blocks a build.
+            void recordRepairs(
+              entriesFromRepairNotes(repaired.notes, {
+                projectId: body.projectId ?? null,
+                userId,
+                phase: "pre_build",
+              }),
+            );
           }
         }
 
