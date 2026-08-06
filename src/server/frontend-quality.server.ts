@@ -1,0 +1,258 @@
+/**
+ * Frontend quality pass — Phase 3, `docs/petal-frontend-quality-bible.md`.
+ *
+ * The layout and interaction passes already handle "the page is shaped wrong"
+ * and "the controls do nothing". This one enforces the parts of the bible that
+ * are about the accessibility floor (§14), controls (§8), imagery (§9), forms
+ * (§7), typography order (§2) and motion (§12) — the defects a screenshot
+ * never shows but every real user hits.
+ *
+ * Auto-fixed (safe, purely additive):
+ *   A. Icon-only buttons/links with no accessible name → `aria-label` derived
+ *      from the icon component name.
+ *   B. `<img>` with no `alt` → alt derived from the file name.
+ *   C. Inputs whose only label is a placeholder → `aria-label` from it.
+ *   D. More than one `<h1>` in a page/route file → extras demoted to `<h2>`.
+ *   E. Global stylesheet missing a `prefers-reduced-motion` escape hatch when
+ *      the app animates → appended.
+ *
+ * Reported as defects (need a model fix, never guessed):
+ *   F. Lorem ipsum / TODO placeholder copy.
+ *   G. Data surfaces with no empty state.
+ *
+ * Pure ProjectFile[] → ProjectFile[], regex-based like its siblings.
+ */
+
+import type { ProjectFile } from "./generate.server";
+
+const SCANNABLE = /\.(tsx|jsx)$/;
+
+export interface FrontendQualityResult {
+  files: ProjectFile[];
+  notes: string[];
+  defects: Array<{ path: string; detail: string }>;
+  fixes: number;
+}
+
+/* ------------------------------------------------------------------ A ---- */
+
+const ICON_HINT = /<([A-Z][A-Za-z0-9]*)\s*(?:\/>|[^>]*\/>)/;
+
+/** "ShoppingCart" → "shopping cart" */
+function humanizeIcon(name: string): string {
+  return name
+    .replace(/Icon$/, "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .trim();
+}
+
+const ELEMENT_RX = /<(button|Button|a|Link)\b([^>]*?)(\/?)>([\s\S]*?)<\/\1>/g;
+
+function labelIconOnlyControls(content: string): { content: string; fixes: number } {
+  let fixes = 0;
+  const next = content.replace(ELEMENT_RX, (whole, tag: string, attrs: string, _s, inner: string) => {
+    if (/aria-label\s*=/.test(attrs) || /aria-labelledby\s*=/.test(attrs)) return whole;
+    if (/title\s*=/.test(attrs)) return whole;
+    // Any human text between the tags means it already has a name.
+    const text = inner
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\{[^}]*\}/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (text.length > 0) return whole;
+    const icon = ICON_HINT.exec(inner);
+    if (!icon) return whole;
+    fixes++;
+    return `<${tag}${attrs} aria-label="${humanizeIcon(icon[1])}">${inner}</${tag}>`;
+  });
+  return { content: next, fixes };
+}
+
+/* ------------------------------------------------------------------ B ---- */
+
+const IMG_RX = /<img\b([^>]*?)(\/?)>/g;
+
+function altFromSrc(attrs: string): string {
+  const m = /src\s*=\s*["'`]([^"'`]+)["'`]/.exec(attrs);
+  if (!m) return "";
+  const base = m[1].split("/").pop() ?? "";
+  return base
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\d+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function addMissingAlt(content: string): { content: string; fixes: number } {
+  let fixes = 0;
+  const next = content.replace(IMG_RX, (whole, attrs: string, selfClose: string) => {
+    if (/\balt\s*=/.test(attrs)) return whole;
+    fixes++;
+    const alt = altFromSrc(attrs);
+    const attr = alt ? ` alt="${alt}"` : ` alt="" aria-hidden="true"`;
+    return `<img${attrs.replace(/\s+$/, "")}${attr}${selfClose ? " /" : ""}>`;
+  });
+  return { content: next, fixes };
+}
+
+/* ------------------------------------------------------------------ C ---- */
+
+const INPUT_RX = /<(input|textarea|Input|Textarea)\b([^>]*?)(\/?)>/g;
+
+function labelPlaceholderOnlyFields(content: string): { content: string; fixes: number } {
+  const hasLabels = /<(label|Label)\b/.test(content);
+  let fixes = 0;
+  const next = content.replace(INPUT_RX, (whole, tag: string, attrs: string, selfClose: string) => {
+    if (/aria-label\s*=|aria-labelledby\s*=/.test(attrs)) return whole;
+    if (hasLabels && /\bid\s*=/.test(attrs)) return whole; // likely paired with a <label htmlFor>
+    const ph = /placeholder\s*=\s*["'`]([^"'`]+)["'`]/.exec(attrs);
+    if (!ph) return whole;
+    fixes++;
+    return `<${tag}${attrs.replace(/\s+$/, "")} aria-label="${ph[1].replace(/"/g, "'")}"${selfClose ? " /" : ""}>`;
+  });
+  return { content: next, fixes };
+}
+
+/* ------------------------------------------------------------------ D ---- */
+
+function demoteExtraH1(content: string): { content: string; fixes: number } {
+  const opens = content.match(/<h1\b/g) ?? [];
+  if (opens.length < 2) return { content, fixes: 0 };
+  let seen = 0;
+  let fixes = 0;
+  const next = content.replace(/<(\/?)h1\b/g, (whole, slash: string) => {
+    if (!slash) {
+      seen++;
+      if (seen === 1) return whole;
+      fixes++;
+      return "<h2";
+    }
+    // Closing tags mirror the opening decision in document order.
+    return seen > 1 ? "</h2" : whole;
+  });
+  return { content: next, fixes: fixes > 0 ? fixes : 0 };
+}
+
+/* ------------------------------------------------------------------ E ---- */
+
+const REDUCED_MOTION_BLOCK = `
+
+/* Motion respects the user's system preference (Frontend Bible §12). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+`;
+
+function isGlobalStylesheet(path: string): boolean {
+  return /(^|\/)(index|globals?|styles|app)\.css$/i.test(path);
+}
+
+/* ------------------------------------------------------------------ F/G -- */
+
+const LOREM_RX = /\b(lorem ipsum|dolor sit amet|consectetur adipiscing)\b/i;
+const TODO_RX = /\b(TODO:|FIXME:|placeholder text|Your text here)\b/;
+
+function findPlaceholderCopy(path: string, content: string): string | null {
+  if (LOREM_RX.test(content)) {
+    return `${path}: contains lorem ipsum. Replace it with plausible copy written for this product's actual domain — never ship filler text.`;
+  }
+  if (TODO_RX.test(content)) {
+    return `${path}: ships TODO/placeholder copy. Write the real sentence or remove the block.`;
+  }
+  return null;
+}
+
+function findMissingEmptyState(path: string, content: string): string | null {
+  const rendersList = /\.map\(\s*\(?[A-Za-z_$]/.test(content);
+  if (!rendersList) return null;
+  const hasEmpty = /(length\s*===\s*0|length\s*<\s*1|!\w+\.length|isEmpty|EmptyState|No results|Nothing here|no items)/i.test(
+    content,
+  );
+  if (hasEmpty) return null;
+  return `${path}: renders a list with no empty state. Every data surface needs loading, empty and error states — add an empty branch with an icon, a heading, one explanatory line and a primary action.`;
+}
+
+/* ------------------------------------------------------------------------ */
+
+export function enforceFrontendQuality(input: ProjectFile[]): FrontendQualityResult {
+  const notes: string[] = [];
+  const defects: FrontendQualityResult["defects"] = [];
+  let ariaFixes = 0;
+  let altFixes = 0;
+  let fieldFixes = 0;
+  let headingFixes = 0;
+
+  const animates = input.some(
+    (f) => SCANNABLE.test(f.path) && /animate-|transition-|framer-motion|motion\./.test(f.content),
+  );
+
+  let stylesheetPatched = false;
+
+  const files = input.map((f) => {
+    if (isGlobalStylesheet(f.path)) {
+      if (!animates || /prefers-reduced-motion/.test(f.content) || stylesheetPatched) return f;
+      stylesheetPatched = true;
+      return { ...f, content: `${f.content.replace(/\s+$/, "")}\n${REDUCED_MOTION_BLOCK}` };
+    }
+    if (!SCANNABLE.test(f.path)) return f;
+
+    const copyDefect = findPlaceholderCopy(f.path, f.content);
+    if (copyDefect) defects.push({ path: f.path, detail: copyDefect });
+    const emptyDefect = findMissingEmptyState(f.path, f.content);
+    if (emptyDefect) defects.push({ path: f.path, detail: emptyDefect });
+
+    let content = f.content;
+    const a = labelIconOnlyControls(content);
+    content = a.content;
+    ariaFixes += a.fixes;
+
+    const b = addMissingAlt(content);
+    content = b.content;
+    altFixes += b.fixes;
+
+    const c = labelPlaceholderOnlyFields(content);
+    content = c.content;
+    fieldFixes += c.fixes;
+
+    const d = demoteExtraH1(content);
+    content = d.content;
+    headingFixes += d.fixes;
+
+    return content === f.content ? f : { ...f, content };
+  });
+
+  if (ariaFixes > 0) {
+    notes.push(`frontend-quality: named ${ariaFixes} icon-only control(s) with aria-label`);
+  }
+  if (altFixes > 0) {
+    notes.push(`frontend-quality: added alt text to ${altFixes} image(s)`);
+  }
+  if (fieldFixes > 0) {
+    notes.push(`frontend-quality: labelled ${fieldFixes} placeholder-only form field(s)`);
+  }
+  if (headingFixes > 0) {
+    notes.push(`frontend-quality: demoted ${headingFixes} duplicate <h1> so each page has one`);
+  }
+  if (stylesheetPatched) {
+    notes.push("frontend-quality: added a prefers-reduced-motion escape hatch to the global stylesheet");
+  }
+  if (defects.length > 0) {
+    notes.push(`frontend-quality: flagged ${defects.length} content/state defect(s)`);
+  }
+
+  return {
+    files,
+    notes,
+    defects,
+    fixes: ariaFixes + altFixes + fieldFixes + headingFixes + (stylesheetPatched ? 1 : 0),
+  };
+}
