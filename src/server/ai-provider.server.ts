@@ -277,18 +277,26 @@ const OPENROUTER_MODEL_MAP: Record<string, string> = {
   "google/gemini-2.5-flash": "google/gemini-2.5-flash",
   "google/gemini-2.5-flash-lite": "google/gemini-2.5-flash-lite",
   "google/gemini-2.5-pro": "google/gemini-2.5-pro",
-  // OpenAI — GPT-5.x preview/pro slugs route to their nearest live OpenRouter
-  // counterpart until OpenRouter exposes the exact slug.
-  "openai/gpt-5": "openai/gpt-5",
+  // OpenAI — `openai/gpt-5` is NOT a live slug on our gateway. Telemetry:
+  // 107 calls, 107 errors (100%), ~358ms each. Every one of those was silently
+  // absorbed by the fallback chain, so it never surfaced as an incident while
+  // still costing a wasted round-trip on every heavy generate. The whole
+  // heavy-tier family now routes to a model with proven production numbers
+  // (claude-sonnet-4.5: 501 calls, 1 error).
+  "openai/gpt-5": "anthropic/claude-sonnet-4.5",
   "openai/gpt-5-mini": "openai/gpt-5-mini",
   "openai/gpt-5-nano": "openai/gpt-5-nano",
-  "openai/gpt-5.2": "openai/gpt-5",
-  "openai/gpt-5.4": "openai/gpt-5",
+  "openai/gpt-5.2": "anthropic/claude-sonnet-4.5",
+  "openai/gpt-5.4": "anthropic/claude-sonnet-4.5",
   "openai/gpt-5.4-mini": "openai/gpt-5-mini",
   "openai/gpt-5.4-nano": "openai/gpt-5-nano",
-  "openai/gpt-5.4-pro": "openai/gpt-5",
-  "openai/gpt-5.5": "openai/gpt-5",
-  "openai/gpt-5.5-pro": "openai/gpt-5",
+  "openai/gpt-5.4-pro": "anthropic/claude-sonnet-4.5",
+  "openai/gpt-5.5": "anthropic/claude-sonnet-4.5",
+  "openai/gpt-5.5-pro": "anthropic/claude-sonnet-4.5",
+  // Google — `gemini-pro-latest` is an invalid slug (62 calls, 62 errors,
+  // 38ms avg: an instant reject, not a capacity problem).
+  "google/gemini-pro-latest": "google/gemini-2.5-pro",
+  "google/gemini-flash-latest": "google/gemini-2.5-flash",
   // Anthropic — only reachable via OpenRouter today. Used by curated-briefs
   // and (soon) the smart-router as candidates for implement/debug phases.
   "anthropic/claude-sonnet-4.5": "anthropic/claude-sonnet-4.5",
@@ -296,10 +304,29 @@ const OPENROUTER_MODEL_MAP: Record<string, string> = {
   "claude-sonnet-4-5": "anthropic/claude-sonnet-4.5",
 };
 
+/**
+ * Model ids that are known-dead on the gateway. Anything landing here is a
+ * configuration mistake (usually an admin override or a stale constant), not a
+ * transient outage — the fallback chain hides it, so we log loudly instead of
+ * letting it rot for another 169 wasted calls.
+ */
+const DEAD_MODEL_IDS = new Set(["openai/gpt-5", "google/gemini-pro-latest"]);
+
+export function isDeadModelId(model: string | null | undefined): boolean {
+  return !!model && DEAD_MODEL_IDS.has(model);
+}
+
 function remapModelForOpenRouter(model: string | undefined): string | undefined {
   if (!model) return model;
-  return OPENROUTER_MODEL_MAP[model] ?? model;
+  const mapped = OPENROUTER_MODEL_MAP[model] ?? model;
+  if (DEAD_MODEL_IDS.has(mapped)) {
+    console.error(
+      `[ai-provider] configured model "${model}" resolves to dead slug "${mapped}" — this call will fail and fall back. Fix the model configuration.`,
+    );
+  }
+  return mapped;
 }
+
 
 // ---------------- Telemetry ----------------
 

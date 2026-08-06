@@ -507,6 +507,7 @@ export type Database = {
           metadata: Json
           project_id: string | null
           reason: string
+          turn_id: string | null
           user_id: string
         }
         Insert: {
@@ -517,6 +518,7 @@ export type Database = {
           metadata?: Json
           project_id?: string | null
           reason: string
+          turn_id?: string | null
           user_id: string
         }
         Update: {
@@ -527,6 +529,7 @@ export type Database = {
           metadata?: Json
           project_id?: string | null
           reason?: string
+          turn_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -3154,6 +3157,7 @@ export type Database = {
       user_wallets: {
         Row: {
           created_at: string
+          credit_debt: number
           current_period_end: string | null
           daily_free_reset_at: string
           daily_free_used: number
@@ -3179,6 +3183,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          credit_debt?: number
           current_period_end?: string | null
           daily_free_reset_at?: string
           daily_free_used?: number
@@ -3204,6 +3209,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          credit_debt?: number
           current_period_end?: string | null
           daily_free_reset_at?: string
           daily_free_used?: number
@@ -3723,6 +3729,7 @@ export type Database = {
         }[]
       }
       reap_stalled_builds: { Args: never; Returns: undefined }
+      reap_stalled_turns: { Args: never; Returns: undefined }
       record_page_view: {
         Args: {
           _country: string
@@ -3758,6 +3765,22 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      settle_build_charge: {
+        Args: {
+          _amount: number
+          _metadata?: Json
+          _project_id?: string
+          _reason?: string
+          _turn_id?: string
+          _user_id: string
+        }
+        Returns: {
+          charged: number
+          idempotent: boolean
+          ledger_id: string
+          shortfall: number
+        }[]
       }
       spend_credit:
         | {

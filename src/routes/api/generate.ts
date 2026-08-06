@@ -37,6 +37,7 @@ import {
 
 import { applyScaffoldKit, applyScaffoldKitForPatch, STYLES_CSS } from "@/server/scaffold-kit";
 import { getBuildTarget } from "@/lib/build-targets";
+import { resolveBuildTarget } from "@/lib/target-inference";
 import { inferWebSubtype, getWebSubtypeAddendum } from "@/lib/web-subtype";
 
 import { lookupBackendForGenerate, lookupSharedBackendForGenerate } from "@/server/backend-connector.server";
@@ -1639,12 +1640,22 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   const isInitial = currentFiles.length === 0;
   const baseSystem = isInitial ? SYSTEM_PROMPT_INITIAL : SYSTEM_PROMPT_PATCH;
 
-  // Build-target chip (Google AI Studio-style: "Build an Android app", etc.).
-  // Selection is sent as `x-petal-target` header by the client. When present
-  // and not the default web target, prepend a hard constraint block so the
-  // model scaffolds the right stack.
-  const buildTargetId = request.headers.get("x-petal-target") ?? "web";
+  // Build target. The composer's chip rail was removed on the premise that the
+  // target would be inferred from what the user typed — but the inference was
+  // never built, so `x-petal-target` (default "web") decided everything and a
+  // plainly-worded "build me a Chrome extension" shipped a web app.
+  // Precedence: an explicit non-web header still wins; otherwise we read the
+  // prompt.
+  const headerTarget = request.headers.get("x-petal-target");
+  const resolvedTarget = resolveBuildTarget(headerTarget, lastContent);
+  const buildTargetId = resolvedTarget.target;
   const buildTarget = getBuildTarget(buildTargetId);
+  if (resolvedTarget.source === "inferred") {
+    console.log(
+      `[build-target] project=${body.projectId ?? "n/a"} inferred="${buildTargetId}" confidence=${resolvedTarget.confidence.toFixed(2)}`,
+    );
+  }
+
 
   // Sub-type routing for the catch-all `web` target. Without this a
   // "landing page for X" and a "CRM for Y" both get the same generic web
@@ -4273,60 +4284,58 @@ Forbidden defaults
         }
         let finalCharged = 0;
         if (!body.isAutoFix) {
-          const tryCharge = async (amount: number) =>
-            spendCredit({
-              userId,
-              amount,
-              reason: "ai_build_charge",
-              projectId: body.projectId ?? null,
-              metadata: {
-                route: "/api/generate",
-                prompt_tokens: priced.promptTokens,
-                completion_tokens: priced.completionTokens,
-                usage_missing: priced.usageMissing,
-                clamped: priced.clamped,
-                model,
-                is_auto_fix: false,
-                priced_amount: priced.amount,
-                charged_amount: amount,
-              },
-            });
-          let charge = await tryCharge(priced.amount);
-          if (!charge.ok && charge.reason === "insufficient_credits") {
-            // User passed the pre-flight floor but doesn't have enough for the
-            // full bill. Drain everything actually available — including the
-            // daily/monthly FREE buckets, which is all a brand-new free user
-            // has. Reading only the paid columns here meant a 5-credit build
-            // by a 5-free-credit user charged nothing and logged a settlement
-            // failure every single turn.
-            try {
-              const { data: avail } = await supabaseAdmin.rpc("available_credits", {
+          // Single atomic settlement. `settle_build_charge` is idempotent on
+          // the turn id (a retried request can never double-charge), drains
+          // whatever is actually available — including the daily/monthly FREE
+          // buckets a brand-new user has — and books any remainder as debt
+          // instead of failing the charge and silently losing the revenue.
+          const settleTurnId = request.headers.get("x-petal-turn-id");
+          try {
+            const { data: settled, error: settleErr } = await supabaseAdmin.rpc(
+              "settle_build_charge",
+              {
                 _user_id: userId,
+                _amount: priced.amount,
+                _reason: "ai_build_charge",
+                _project_id: body.projectId ?? undefined,
+                _turn_id: settleTurnId ?? undefined,
+                _metadata: {
+                  route: "/api/generate",
+                  prompt_tokens: priced.promptTokens,
+                  completion_tokens: priced.completionTokens,
+                  usage_missing: priced.usageMissing,
+                  clamped: priced.clamped,
+                  model,
+                  is_auto_fix: false,
+                } as never,
+              },
+            );
+            if (settleErr) throw new Error(settleErr.message);
+            const row = Array.isArray(settled) ? settled[0] : settled;
+            finalCharged = Number(row?.charged ?? 0);
+            const shortfall = Number(row?.shortfall ?? 0);
+            if (row?.idempotent) {
+              console.info(`[credits] settlement already recorded for turn ${settleTurnId}`);
+            } else if (shortfall > 0) {
+              // Not a failure any more — the balance was drained and the
+              // remainder is owed. Recorded so it can be reconciled.
+              console.warn(`[credits] partial settlement: charged=${finalCharged} debt=${shortfall}`);
+              await recordUnpaidBuild(userId, body.projectId ?? null, shortfall, {
+                reason: "shortfall_booked_as_debt",
               });
-              const remaining = Number(avail ?? 0);
-              const drainAmount = Math.max(0, Math.min(priced.amount, Math.floor(remaining * 100) / 100));
-              if (drainAmount > 0) {
-                charge = await tryCharge(drainAmount);
-                if (charge.ok) finalCharged = drainAmount;
-              }
-            } catch (e) {
-              console.warn("[credits] drain fallback failed", (e as Error).message);
             }
-            if (!charge.ok) {
-              console.warn("[credits] post-build charge failed", charge);
-              await recordUnpaidBuild(userId, body.projectId ?? null, priced.amount, charge);
-            }
-          } else if (charge.ok) {
-            finalCharged = priced.amount;
-          } else {
-            console.warn("[credits] post-build charge failed", charge);
-            await recordUnpaidBuild(userId, body.projectId ?? null, priced.amount, charge);
+          } catch (e) {
+            console.warn("[credits] post-build settlement threw", (e as Error).message);
+            await recordUnpaidBuild(userId, body.projectId ?? null, priced.amount, {
+              reason: (e as Error).message,
+            });
           }
         } else {
           console.info(
             `[credits] internal recovery turn not billed project=${body.projectId ?? "none"} amount=${priced.amount}`,
           );
         }
+
 
 
         // (Legacy `continuation_handoff` SSE emit removed along with the
@@ -4653,8 +4662,40 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
     // Recording is best-effort. Never block the build because of it.
   }
 
+  // The turn id has to reach the inner core so post-build settlement can be
+  // idempotent on it. Rebuild the request with the id as a header rather than
+  // threading it through every call signature.
+  const coreRequest = recorder
+    ? new Request(request, {
+        headers: (() => {
+          const h = new Headers(request.headers);
+          h.set("x-petal-turn-id", recorder.turnId);
+          return h;
+        })(),
+      })
+    : request;
+
+  // Exactly-once terminal write. `cancel()` (client closed the tab, the SSE
+  // socket dropped) and `start()`'s `finally` can both fire, and on Cloudflare
+  // only one of them may ever run. Without this guard the turn row stayed
+  // `running` forever — 400 of them, which made every derived metric useless.
+  let turnClosed = false;
+  const finishTurnOnce = async (
+    status: "succeeded" | "failed" | "aborted",
+    errorMessage: string | null,
+  ): Promise<void> => {
+    if (!recorder || turnClosed) return;
+    turnClosed = true;
+    try {
+      await recorder.finish(status, { errorMessage });
+    } catch {
+      /* best-effort; the reap_stalled_turns sweeper is the backstop */
+    }
+  };
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
+
     async start(controller) {
       let pingTimer: ReturnType<typeof setInterval> | null = null;
       let statusTimer: ReturnType<typeof setInterval> | null = null;
@@ -4721,7 +4762,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           statusIdx++;
         }, 14_000);
 
-        const response = await handleGenerateRequestCore(request);
+        const response = await handleGenerateRequestCore(coreRequest);
         if (!response.ok || !response.body) {
           const raw = await response.text().catch(() => `Request failed (${response.status})`);
           terminalStatus = "failed";
@@ -4763,16 +4804,21 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         } catch {
           /* controller may already be closed */
         }
-        if (recorder) {
-          // Persist the terminal state before the request ends. A fire-and-forget
-          // write is dropped by serverless runtimes once the response closes,
-          // leaving turns permanently "running" and inviting reconnect loops.
-          await recorder.finish(terminalStatus, { errorMessage: terminalError });
-        }
+        // Persist the terminal state before the request ends. A fire-and-forget
+        // write is dropped by serverless runtimes once the response closes,
+        // leaving turns permanently "running" and inviting reconnect loops.
+        await finishTurnOnce(terminalStatus, terminalError);
         controller.close();
       }
     },
+    // Fires when the consumer goes away mid-build (tab closed, socket
+    // dropped, proxy timeout). `start()`'s `finally` is NOT guaranteed to run
+    // in that case, so this is where most zombie turns were being created.
+    async cancel() {
+      await finishTurnOnce("aborted", "client disconnected");
+    },
   });
+
 
   return new Response(stream, {
     status: 200,
