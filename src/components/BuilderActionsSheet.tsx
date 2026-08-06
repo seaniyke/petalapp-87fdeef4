@@ -1,14 +1,12 @@
 /**
  * BuilderActionsSheet — iOS-style bottom sheet for the mobile builder.
  *
- * Modeled after Lovable's mobile menu: shows a Credits row with a usage
- * progress bar, then quick actions for Settings, Rename project, and
- * Appearance (light / dark / system).
- *
- * Opens from either the hamburger button (top-left) or by tapping the
- * centered project name in the header.
+ * Sprint 3 (H9/M3/M9): this sheet no longer defines any action. It renders
+ * the shared registry from `@/lib/builder-actions`, so desktop and mobile
+ * can never drift apart. It still owns two mobile-only affordances that
+ * have no desktop equivalent: the credits row and the appearance cycle.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   Drawer,
   DrawerContent,
@@ -16,84 +14,42 @@ import {
 } from "@/components/ui/drawer";
 import {
   ChevronDown,
-
-  Settings as SettingsIcon,
-  Pencil,
   Sun,
   Moon,
   Monitor as MonitorIcon,
   Sparkles,
-  Globe,
-  Share2,
-  Code2,
-  Files as FilesIcon,
-  History as HistoryIcon,
   MoreHorizontal,
-  BarChart3,
-  Cloud,
-  Bot,
-  CreditCard,
-  Plug,
-  ShieldCheck,
-  Search as SearchIcon,
-  RotateCw,
-  MessageSquare,
-  Download,
 } from "lucide-react";
 import { useWallet } from "@/hooks/use-wallet";
 import { useTheme, type Theme } from "@/hooks/use-theme";
 import { formatCredits } from "@/lib/format-credits";
+import { actionsForSurface, type BuilderAction } from "@/lib/builder-actions";
 import { cn } from "@/lib/utils";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onOpenSettings: () => void;
-  onOpenRename: () => void;
+  /** The single builder action registry (see `createBuilderActions`). */
+  actions: BuilderAction[];
   onOpenBilling: () => void;
-  onOpenPublish: () => void;
-  onOpenShare: () => void;
-  onOpenCode: () => void;
-  onOpenFiles: () => void;
-  onOpenHistory: () => void;
-  onOpenAnalytics: () => void;
-  onOpenCloud: () => void;
-  onOpenAgentIntegrations: () => void;
-  onOpenPayments: () => void;
-  onOpenConnectors: () => void;
-  onOpenSecurity: () => void;
-  onOpenSeo: () => void;
-  onReloadPreview: () => void;
-  onOpenComments: () => void;
-  onExportCode: () => void;
+  /** M3 — launch checklist, rendered as a full-width row on mobile. */
+  readinessSlot?: ReactNode;
 };
 
 export function BuilderActionsSheet({
   open,
   onOpenChange,
-  onOpenSettings,
-  onOpenRename,
+  actions,
   onOpenBilling,
-  onOpenPublish,
-  onOpenShare,
-  onOpenCode,
-  onOpenFiles,
-  onOpenHistory,
-  onOpenAnalytics,
-  onOpenCloud,
-  onOpenAgentIntegrations,
-  onOpenPayments,
-  onOpenConnectors,
-  onOpenSecurity,
-  onOpenSeo,
-  onReloadPreview,
-  onOpenComments,
-  onExportCode,
+  readinessSlot,
 }: Props) {
   const [moreOpen, setMoreOpen] = useState(false);
 
   const { wallet, plan, breakdown, loading } = useWallet();
   const { theme, setTheme } = useTheme();
+
+  const primary = actionsForSurface(actions, "mobile-primary");
+  const more = actionsForSurface(actions, "mobile-more");
 
   // Build a segmented "remaining vs capacity" view so the bar visibly
   // shrinks as the user spends. Capacity = the plan's monthly allotment
@@ -135,6 +91,12 @@ export function BuilderActionsSheet({
     const order: Theme[] = ["system", "light", "dark"];
     const next = order[(order.indexOf(theme) + 1) % order.length];
     setTheme(next);
+  }
+
+  function runAction(action: BuilderAction) {
+    if (action.disabled) return;
+    onOpenChange(false);
+    action.run();
   }
 
   // Color the count to telegraph state at a glance, while staying inside
@@ -204,59 +166,21 @@ export function BuilderActionsSheet({
           )}
         </button>
 
+        {readinessSlot && <div className="px-2 pb-1">{readinessSlot}</div>}
+
         <div className="mx-4 h-px bg-border/60" />
 
-
-        {/* Primary actions */}
-        <ul className="mt-1 py-1">
-          <ActionRow
-            icon={<Share2 className="h-5 w-5" />}
-            label="Share"
-            onClick={() => {
-              onOpenChange(false);
-              onOpenShare();
-            }}
-          />
-          <ActionRow
-            icon={<Globe className="h-5 w-5" />}
-            label="Publish"
-            onClick={() => {
-              onOpenChange(false);
-              onOpenPublish();
-            }}
-          />
-          <ActionRow
-            icon={<SettingsIcon className="h-5 w-5" />}
-            label="Settings"
-            onClick={() => {
-              onOpenChange(false);
-              onOpenSettings();
-            }}
-          />
-          <ActionRow
-            icon={<Code2 className="h-5 w-5" />}
-            label="Code"
-            onClick={() => {
-              onOpenChange(false);
-              onOpenCode();
-            }}
-          />
-          <ActionRow
-            icon={<FilesIcon className="h-5 w-5" />}
-            label="Files"
-            onClick={() => {
-              onOpenChange(false);
-              onOpenFiles();
-            }}
-          />
-          <ActionRow
-            icon={<HistoryIcon className="h-5 w-5" />}
-            label="History"
-            onClick={() => {
-              onOpenChange(false);
-              onOpenHistory();
-            }}
-          />
+        {/* Primary actions — registry-driven, so mobile can't drift from desktop. */}
+        <ul className="mt-1 max-h-[55vh] overflow-y-auto py-1">
+          {primary.map((action) => (
+            <ActionRow
+              key={action.id}
+              icon={<action.icon className="h-5 w-5" />}
+              label={action.label}
+              disabled={action.disabled}
+              onClick={() => runAction(action)}
+            />
+          ))}
 
           {/* More — expands in place, mirroring the reference menu. */}
           <ActionRow
@@ -272,109 +196,18 @@ export function BuilderActionsSheet({
             }
             onClick={() => setMoreOpen((v) => !v)}
           />
-          {moreOpen && (
-            <>
+          {moreOpen &&
+            more.map((action) => (
               <ActionRow
+                key={action.id}
                 nested
-                icon={<BarChart3 className="h-5 w-5" />}
-                label="Analytics"
-                onClick={() => {
-                  onOpenChange(false);
-                  onOpenAnalytics();
-                }}
+                icon={<action.icon className="h-5 w-5" />}
+                label={action.label}
+                disabled={action.disabled}
+                onClick={() => runAction(action)}
               />
-              <ActionRow
-                nested
-                icon={<Cloud className="h-5 w-5" />}
-                label="Cloud"
-                onClick={() => {
-                  onOpenChange(false);
-                  onOpenCloud();
-                }}
-              />
-              <ActionRow
-                nested
-                icon={<Bot className="h-5 w-5" />}
-                label="Agent integrations"
-                onClick={() => {
-                  onOpenChange(false);
-                  onOpenAgentIntegrations();
-                }}
-              />
-              <ActionRow
-                nested
-                icon={<CreditCard className="h-5 w-5" />}
-                label="Payments"
-                onClick={() => {
-                  onOpenChange(false);
-                  onOpenPayments();
-                }}
-              />
-              <ActionRow
-                nested
-                icon={<Plug className="h-5 w-5" />}
-                label="Connectors"
-                onClick={() => {
-                  onOpenChange(false);
-                  onOpenConnectors();
-                }}
-              />
-              <ActionRow
-                nested
-                icon={<ShieldCheck className="h-5 w-5" />}
-                label="Security"
-                onClick={() => {
-                  onOpenChange(false);
-                  onOpenSecurity();
-                }}
-              />
-              <ActionRow
-                nested
-                icon={<SearchIcon className="h-5 w-5" />}
-                label="SEO & AI search"
-                onClick={() => {
-                  onOpenChange(false);
-                  onOpenSeo();
-                }}
-              />
-              <ActionRow
-                nested
-                icon={<RotateCw className="h-5 w-5" />}
-                label="Reload preview"
-                onClick={() => {
-                  onOpenChange(false);
-                  onReloadPreview();
-                }}
-              />
-              <ActionRow
-                nested
-                icon={<MessageSquare className="h-5 w-5" />}
-                label="Visitor feedback"
-                onClick={() => {
-                  onOpenChange(false);
-                  onOpenComments();
-                }}
-              />
-              <ActionRow
-                nested
-                icon={<Download className="h-5 w-5" />}
-                label="Export code"
-                onClick={() => {
-                  onOpenChange(false);
-                  onExportCode();
-                }}
-              />
-            </>
-          )}
+            ))}
 
-          <ActionRow
-            icon={<Pencil className="h-5 w-5" />}
-            label="Rename project"
-            onClick={() => {
-              onOpenChange(false);
-              onOpenRename();
-            }}
-          />
           <ActionRow
             icon={
               theme === "dark" ? (
@@ -391,11 +224,9 @@ export function BuilderActionsSheet({
                 {themeLabel[theme]}
               </span>
             }
-
             onClick={cycleTheme}
           />
         </ul>
-
       </DrawerContent>
     </Drawer>
   );
@@ -406,6 +237,7 @@ function ActionRow({
   label,
   trailing,
   nested,
+  disabled,
   onClick,
 }: {
   icon: React.ReactNode;
@@ -413,6 +245,7 @@ function ActionRow({
   trailing?: React.ReactNode;
   /** Indented child row inside the expanded "More" group. */
   nested?: boolean;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -420,8 +253,9 @@ function ActionRow({
       <button
         type="button"
         onClick={onClick}
+        disabled={disabled}
         className={cn(
-          "flex w-full items-center gap-3.5 rounded-xl px-4 py-3 text-left transition active:bg-muted/60",
+          "flex w-full min-h-[44px] items-center gap-3.5 rounded-xl px-4 py-3 text-left transition active:bg-muted/60 disabled:opacity-40",
           nested && "py-2.5 pl-11",
         )}
       >
@@ -439,4 +273,3 @@ function ActionRow({
     </li>
   );
 }
-

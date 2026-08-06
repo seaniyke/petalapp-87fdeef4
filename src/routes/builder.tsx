@@ -13,11 +13,8 @@ import {
   Sparkles,
   RotateCw,
   MoreHorizontal,
-  Settings as SettingsIcon,
 
-  Download,
   FolderOpen,
-  Command as CommandIcon,
   RefreshCcw,
   MessageSquare,
   Hammer,
@@ -35,8 +32,6 @@ import {
   ImageIcon,
   Globe,
   FileText,
-  Shield,
-  Link2,
   Play,
   AlertTriangle,
   Mic,
@@ -120,7 +115,8 @@ import { createVersion, listVersions } from "@/lib/versions";
 import { triggerBuild } from "@/lib/builds";
 import { supabase } from "@/integrations/supabase/client";
 import { HistoryPanel } from "@/components/HistoryPanel";
-import { SharePopover } from "@/components/SharePopover";
+import { LazySheet } from "@/components/LazySheet";
+import { createBuilderActions, actionsForSurface } from "@/lib/builder-actions";
 import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
 import { RevertPreviewDialog } from "@/components/RevertPreviewDialog";
 import { PartialRevertDialog } from "@/components/PartialRevertDialog";
@@ -3348,6 +3344,47 @@ function Builder() {
       });
   }
 
+  // F5 — the single definition site for every builder action. Desktop
+  // toolbar, desktop overflow menu and the mobile sheet all render from
+  // this array, so a new action can never ship to one surface only.
+  const builderActions = useMemo(
+    () =>
+      createBuilderActions({
+        hasFiles: files.length > 0,
+        openShare: () => setSharePreviewOpen(true),
+        openPublish: () => setPublishOpen(true),
+        openSettings: () => setSettingsOpen(true),
+        openCode: () => {
+          setView("code");
+          setMobileTab("preview");
+        },
+        openHistory: () => setHistoryOpen(true),
+        openSecurity: () => setShieldOpen(true),
+        openComments: () => setCommentsOpen(true),
+        openSeo: () => setSeoOpen(true),
+        openAnalytics: () => setAnalyticsOpen(true),
+        openCloud: () => setCloudPanelOpen(true),
+        openAgentIntegrations: () => setAgentIntegrationsOpen(true),
+        openPayments: () => setPaymentsOpen(true),
+        openConnectors: () => setConnectorsOpen(true),
+        openRename: () => setRenameOpen(true),
+        openPalette: () => setPaletteOpen(true),
+        reloadPreview: () => {
+          setView("preview");
+          setMobileTab("preview");
+          setPreviewKey((k) => k + 1);
+        },
+        exportCode: () => {
+          void downloadProject();
+        },
+      }),
+    // `downloadProject` closes over `files`/`project`, both covered below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [files.length, project?.id],
+  );
+  const desktopToolbarActions = actionsForSurface(builderActions, "desktop-toolbar");
+  const desktopMenuActions = actionsForSurface(builderActions, "desktop-menu");
+
   const activeContent = files.find((f) => f.path === activeFile)?.content ?? "";
 
   // ⌘K / Ctrl+K to open command palette.
@@ -3606,60 +3643,22 @@ function Builder() {
               <Code2 className="h-3.5 w-3.5" /> <span>Code</span>
             </button>
           </div>
-          {/* Desktop toolbar — one joined utility cluster keeps the chrome calm
-              instead of a row of loose, equally-weighted buttons. */}
+          {/* Desktop toolbar — rendered from the shared action registry (F5),
+              so every affordance here also exists in the mobile sheet. */}
           <div className="hidden items-center gap-0.5 rounded-lg border border-border bg-background p-0.5 md:flex">
-            <button
-              onClick={() => setPreviewKey((k) => k + 1)}
-              disabled={!files.length}
-              className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
-              title="Reload preview"
-              aria-label="Reload preview"
-            >
-              <RotateCw className="h-3.5 w-3.5" />
-            </button>
-            {project && (
-              <HistoryPanel
-                projectId={project.id}
-                currentFiles={files}
-                onRestore={handleRestore}
-                refreshKey={historyKey}
-                iconOnly
-              />
-            )}
-            {project && (
+            {desktopToolbarActions.map((action) => (
               <button
+                key={action.id}
                 type="button"
-                onClick={() => setShieldOpen(true)}
-                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                title="Petal Shield — security audit"
-                aria-label="Open Petal Shield"
+                onClick={action.run}
+                disabled={action.disabled}
+                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+                title={action.title ?? action.label}
+                aria-label={action.title ?? action.label}
               >
-                <Shield className="h-3.5 w-3.5" />
+                <action.icon className="h-3.5 w-3.5" />
               </button>
-            )}
-            {project && (
-              <button
-                type="button"
-                onClick={() => setSharePreviewOpen(true)}
-                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                title="Share preview & gather feedback"
-                aria-label="Share preview"
-              >
-                <Link2 className="h-3.5 w-3.5" />
-              </button>
-            )}
-            {project && (
-              <button
-                type="button"
-                onClick={() => setCommentsOpen(true)}
-                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                title="Visitor feedback"
-                aria-label="Open visitor feedback"
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-              </button>
-            )}
+            ))}
             <span aria-hidden className="mx-0.5 h-4 w-px bg-border" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -3672,27 +3671,22 @@ function Builder() {
                   <MoreHorizontal className="h-4 w-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem onSelect={() => setPaletteOpen(true)}>
-                  <CommandIcon className="mr-2 h-3.5 w-3.5" />
-                  Command palette
-                  <span className="ml-auto font-mono text-[10px] text-muted-foreground">⌘K</span>
-                </DropdownMenuItem>
-                {project && (
-                  <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
-                    <SettingsIcon className="mr-2 h-3.5 w-3.5" />
-                    Project settings
+              <DropdownMenuContent align="end" className="w-56">
+                {desktopMenuActions.map((action) => (
+                  <DropdownMenuItem
+                    key={action.id}
+                    onSelect={action.run}
+                    disabled={action.disabled}
+                  >
+                    <action.icon className="mr-2 h-3.5 w-3.5" />
+                    {action.label}
+                    {action.shortcut && (
+                      <span className="ml-auto font-mono text-[10px] text-muted-foreground">
+                        {action.shortcut}
+                      </span>
+                    )}
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuItem
-                  onSelect={() => {
-                    if (files.length) downloadProject();
-                  }}
-                  disabled={!files.length}
-                >
-                  <Download className="mr-2 h-3.5 w-3.5" />
-                  Export code
-                </DropdownMenuItem>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -3706,19 +3700,6 @@ function Builder() {
                 setSettingsOpen(true);
               }}
             />
-          )}
-          {project && (
-            <div className="hidden md:block">
-              <SharePopover
-                project={project}
-                onChange={setProject}
-                onConnectDomain={() => {
-                  setSettingsScrollTo("domains");
-                  setSettingsOpen(true);
-                }}
-                onUpgrade={() => setBillingOpen(true)}
-              />
-            </div>
           )}
           {project && (
             <button
@@ -3762,78 +3743,78 @@ function Builder() {
           <BuilderActionsSheet
             open={actionsOpen}
             onOpenChange={setActionsOpen}
-            onOpenSettings={() => setSettingsOpen(true)}
-            onOpenRename={() => setRenameOpen(true)}
+            actions={builderActions}
             onOpenBilling={() => setBillingOpen(true)}
-            onOpenPublish={() => setPublishOpen(true)}
-            onOpenShare={() => setSharePreviewOpen(true)}
-            onOpenCode={() => {
-              setView("code");
-              setMobileTab("preview");
-            }}
-            onOpenFiles={() => {
-              setView("code");
-              setMobileTab("preview");
-            }}
-            onReloadPreview={() => {
-              setView("preview");
-              setMobileTab("preview");
-              setPreviewKey((k) => k + 1);
-            }}
-            onOpenComments={() => setCommentsOpen(true)}
-            onExportCode={() => {
-              if (files.length) downloadProject();
-            }}
-            onOpenHistory={() => setHistoryOpen(true)}
-            onOpenAnalytics={() => setAnalyticsOpen(true)}
-            onOpenCloud={() => setCloudPanelOpen(true)}
-            onOpenAgentIntegrations={() => setAgentIntegrationsOpen(true)}
-            onOpenPayments={() => setPaymentsOpen(true)}
-            onOpenConnectors={() => setConnectorsOpen(true)}
-            onOpenSecurity={() => setShieldOpen(true)}
-            onOpenSeo={() => setSeoOpen(true)}
+            readinessSlot={
+              <ReadinessBadge
+                variant="row"
+                files={files}
+                project={project}
+                onFix={(prompt) => {
+                  setActionsOpen(false);
+                  submitPrompt(prompt);
+                }}
+                onConnectDomain={() => {
+                  setActionsOpen(false);
+                  setSettingsScrollTo("domains");
+                  setSettingsOpen(true);
+                }}
+              />
+            }
           />
-          <AnalyticsSheet
-            open={analyticsOpen}
-            onOpenChange={setAnalyticsOpen}
-            projectId={project.id}
-            onPublish={() => setPublishOpen(true)}
-          />
-          <CloudPanelSheet
-            open={cloudPanelOpen}
-            onOpenChange={setCloudPanelOpen}
-            projectId={project.id}
-            onOpenBalance={() => {
-              setCloudPanelOpen(false);
-              setCloudBalanceOpen(true);
-            }}
-          />
-          <AgentIntegrationsSheet
-            open={agentIntegrationsOpen}
-            onOpenChange={setAgentIntegrationsOpen}
-            onSendPrompt={(prompt) => void send(prompt, { forceBuild: true })}
-          />
-          <PaymentsSheet
-            open={paymentsOpen}
-            onOpenChange={setPaymentsOpen}
-            hasBackend={hasBackend}
-            onSendPrompt={(prompt) => void send(prompt, { forceBuild: true })}
-            onSetupBackend={() => {
-              setSettingsScrollTo("backend");
-              setSettingsOpen(true);
-            }}
-          />
-          <ConnectorsSheet
-            open={connectorsOpen}
-            onOpenChange={setConnectorsOpen}
-            projectId={project.id}
-          />
-          <WebsiteInfoSheet
-            open={seoOpen}
-            onOpenChange={setSeoOpen}
-            project={project}
-            onChange={setProject}
-          />
+          <LazySheet open={analyticsOpen}>
+            <AnalyticsSheet
+              open={analyticsOpen}
+              onOpenChange={setAnalyticsOpen}
+              projectId={project.id}
+              onPublish={() => setPublishOpen(true)}
+            />
+          </LazySheet>
+          <LazySheet open={cloudPanelOpen}>
+            <CloudPanelSheet
+              open={cloudPanelOpen}
+              onOpenChange={setCloudPanelOpen}
+              projectId={project.id}
+              onOpenBalance={() => {
+                setCloudPanelOpen(false);
+                setCloudBalanceOpen(true);
+              }}
+            />
+          </LazySheet>
+          <LazySheet open={agentIntegrationsOpen}>
+            <AgentIntegrationsSheet
+              open={agentIntegrationsOpen}
+              onOpenChange={setAgentIntegrationsOpen}
+              onSendPrompt={(prompt) => void send(prompt, { forceBuild: true })}
+            />
+          </LazySheet>
+          <LazySheet open={paymentsOpen}>
+            <PaymentsSheet
+              open={paymentsOpen}
+              onOpenChange={setPaymentsOpen}
+              hasBackend={hasBackend}
+              onSendPrompt={(prompt) => void send(prompt, { forceBuild: true })}
+              onSetupBackend={() => {
+                setSettingsScrollTo("backend");
+                setSettingsOpen(true);
+              }}
+            />
+          </LazySheet>
+          <LazySheet open={connectorsOpen}>
+            <ConnectorsSheet
+              open={connectorsOpen}
+              onOpenChange={setConnectorsOpen}
+              projectId={project.id}
+            />
+          </LazySheet>
+          <LazySheet open={seoOpen}>
+            <WebsiteInfoSheet
+              open={seoOpen}
+              onOpenChange={setSeoOpen}
+              project={project}
+              onChange={setProject}
+            />
+          </LazySheet>
           <HistoryPanel
             projectId={project.id}
             currentFiles={files}
@@ -3844,61 +3825,80 @@ function Builder() {
             hideTrigger
           />
 
-          <RenameProjectDialog
-            project={project}
-            open={renameOpen}
-            onOpenChange={setRenameOpen}
-            onChange={setProject}
-          />
-          <BillingSheet
-            open={billingOpen}
-            onOpenChange={setBillingOpen}
-            onOpenCloudBalance={() => {
-              setBillingOpen(false);
-              setCloudBalanceOpen(true);
-            }}
-          />
-          <CloudBalanceSheet
-            open={cloudBalanceOpen}
-            onOpenChange={setCloudBalanceOpen}
-            onOpenBilling={() => {
-              setCloudBalanceOpen(false);
-              setBillingOpen(true);
-            }}
-          />
-          <PetalShieldSheet
-            open={shieldOpen}
-            onOpenChange={setShieldOpen}
-            files={files}
-            onSendFixPrompt={(p) => setInput(p)}
-          />
-          <SharePreviewDialog
-            open={sharePreviewOpen}
-            onOpenChange={setSharePreviewOpen}
-            projectId={project?.id ?? null}
-          />
-          <CommentsInboxSheet
-            open={commentsOpen}
-            onOpenChange={setCommentsOpen}
-            projectId={project?.id ?? null}
-            onSendFixPrompt={(p) => setInput(p)}
-          />
-          <ProjectsDrawer
-            open={projectsDrawerOpen}
-            onOpenChange={setProjectsDrawerOpen}
-            currentProjectId={project?.id ?? null}
-          />
-          <PublishSheet
-            open={publishOpen}
-            onOpenChange={setPublishOpen}
-            project={project}
-            onChange={setProject}
-            onManageDomains={() => {
-              setSettingsScrollTo("domains");
-              setSettingsOpen(true);
-            }}
-            onOpenSettings={() => setSettingsOpen(true)}
-          />
+          <LazySheet open={renameOpen}>
+            <RenameProjectDialog
+              project={project}
+              open={renameOpen}
+              onOpenChange={setRenameOpen}
+              onChange={setProject}
+            />
+          </LazySheet>
+          <LazySheet open={billingOpen}>
+            <BillingSheet
+              open={billingOpen}
+              onOpenChange={setBillingOpen}
+              onOpenCloudBalance={() => {
+                setBillingOpen(false);
+                setCloudBalanceOpen(true);
+              }}
+            />
+          </LazySheet>
+          <LazySheet open={cloudBalanceOpen}>
+            <CloudBalanceSheet
+              open={cloudBalanceOpen}
+              onOpenChange={setCloudBalanceOpen}
+              onOpenBilling={() => {
+                setCloudBalanceOpen(false);
+                setBillingOpen(true);
+              }}
+            />
+          </LazySheet>
+          <LazySheet open={shieldOpen}>
+            <PetalShieldSheet
+              open={shieldOpen}
+              onOpenChange={setShieldOpen}
+              files={files}
+              onSendFixPrompt={(p) => setInput(p)}
+            />
+          </LazySheet>
+          <LazySheet open={sharePreviewOpen}>
+            <SharePreviewDialog
+              open={sharePreviewOpen}
+              onOpenChange={setSharePreviewOpen}
+              projectId={project?.id ?? null}
+              project={project}
+              onProjectChange={setProject}
+              onUpgrade={() => setBillingOpen(true)}
+            />
+          </LazySheet>
+          <LazySheet open={commentsOpen}>
+            <CommentsInboxSheet
+              open={commentsOpen}
+              onOpenChange={setCommentsOpen}
+              projectId={project?.id ?? null}
+              onSendFixPrompt={(p) => setInput(p)}
+            />
+          </LazySheet>
+          <LazySheet open={projectsDrawerOpen}>
+            <ProjectsDrawer
+              open={projectsDrawerOpen}
+              onOpenChange={setProjectsDrawerOpen}
+              currentProjectId={project?.id ?? null}
+            />
+          </LazySheet>
+          <LazySheet open={publishOpen}>
+            <PublishSheet
+              open={publishOpen}
+              onOpenChange={setPublishOpen}
+              project={project}
+              onChange={setProject}
+              onManageDomains={() => {
+                setSettingsScrollTo("domains");
+                setSettingsOpen(true);
+              }}
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
+          </LazySheet>
         </>
       )}
 

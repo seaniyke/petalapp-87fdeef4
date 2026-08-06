@@ -3,7 +3,7 @@
  * with optional sticky-note commenting from visitors.
  */
 import { useEffect, useState } from "react";
-import { Link2, Copy, Check, MessageSquare, RotateCw, Trash2 } from "lucide-react";
+import { Link2, Copy, Check, MessageSquare, RotateCw, Trash2, Globe, Lock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,19 +23,35 @@ import {
   type PreviewShare,
 } from "@/lib/preview-share";
 import { useAuthReady } from "@/lib/auth";
+import { updateProject, type ProjectRow } from "@/lib/projects";
+import { hasFullAccess } from "@/lib/billing";
+import { useWallet } from "@/hooks/use-wallet";
 
 export type SharePreviewDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string | null;
+  /**
+   * M2 — the project-visibility popover used to be a second, separate share
+   * surface in the header. It now lives here so there is exactly one place
+   * to share anything about a project.
+   */
+  project?: ProjectRow | null;
+  onProjectChange?: (next: ProjectRow) => void;
+  onUpgrade?: () => void;
 };
 
 export function SharePreviewDialog({
   open,
   onOpenChange,
   projectId,
+  project,
+  onProjectChange,
+  onUpgrade,
 }: SharePreviewDialogProps) {
   const auth = useAuthReady();
+  const { wallet } = useWallet();
+  const [visibilityBusy, setVisibilityBusy] = useState(false);
   const [share, setShare] = useState<PreviewShare | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -103,6 +119,27 @@ export function SharePreviewDialog({
     }
   }
 
+  async function toggleVisibility(next: boolean) {
+    if (!project) return;
+    // Free users can go public freely, but making a project private again
+    // requires a paid plan or purchased credits (the DB enforces the same).
+    if (!next && !hasFullAccess(wallet)) {
+      toast.error("Buy credits or upgrade to a paid plan to make projects private.");
+      onUpgrade?.();
+      return;
+    }
+    setVisibilityBusy(true);
+    try {
+      const updated = await updateProject(project.id, { is_public: next });
+      onProjectChange?.(updated);
+      toast.success(next ? "Project is now public" : "Project is now private");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't update visibility");
+    } finally {
+      setVisibilityBusy(false);
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -129,6 +166,31 @@ export function SharePreviewDialog({
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
+
+          {project && (
+            <div className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
+              <div className="flex items-start gap-3">
+                {project.is_public ? (
+                  <Globe className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Lock className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                )}
+                <div>
+                  <div className="text-sm font-medium">Public project page</div>
+                  <div className="text-xs text-muted-foreground">
+                    {project.is_public
+                      ? "Listed at /p/" + project.slug + " — anyone with the link can view it."
+                      : "Only you can see this project."}
+                  </div>
+                </div>
+              </div>
+              <Switch
+                checked={project.is_public}
+                onCheckedChange={toggleVisibility}
+                disabled={visibilityBusy}
+              />
+            </div>
+          )}
 
           <div className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
             <div className="flex items-start gap-3">

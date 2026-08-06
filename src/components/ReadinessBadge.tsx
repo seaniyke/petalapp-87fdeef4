@@ -47,6 +47,12 @@ export type ReadinessBadgeProps = {
   onFix?: (prompt: string) => void;
   /** Opens the custom-domain flow. */
   onConnectDomain?: () => void;
+  /**
+   * M3 — "chip" is the desktop header pill (hidden below md); "row" is the
+   * full-width mobile row rendered inside the builder action sheet, so the
+   * launch checklist is finally reachable on a phone.
+   */
+  variant?: "chip" | "row";
 };
 
 export function ReadinessBadge({
@@ -54,6 +60,7 @@ export function ReadinessBadge({
   project,
   onFix,
   onConnectDomain,
+  variant = "chip",
 }: ReadinessBadgeProps) {
   const [open, setOpen] = useState(false);
 
@@ -90,7 +97,10 @@ export function ReadinessBadge({
         <button
           type="button"
           className={cn(
-            "hidden h-8 items-center gap-2 rounded-lg border px-2.5 text-xs font-medium transition hover:opacity-80 md:inline-flex",
+            "items-center gap-2 rounded-lg border font-medium transition hover:opacity-80",
+            variant === "row"
+              ? "flex min-h-[44px] w-full px-3 py-2 text-sm"
+              : "hidden h-8 px-2.5 text-xs md:inline-flex",
             LEVEL_STYLES[report.level],
           )}
           title="Launch checklist"
