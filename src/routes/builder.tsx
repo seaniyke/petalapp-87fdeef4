@@ -85,6 +85,7 @@ import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivit
 import { ComposerActionsMenu } from "@/components/ComposerActionsMenu";
 import { useVoiceDictation } from "@/hooks/use-voice-dictation";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
+import { CopyMessageButton } from "@/components/CopyMessageButton";
 import { NextStepsCard } from "@/components/NextStepsCard";
 import { SuggestionChecklist } from "@/components/SuggestionChecklist";
 import { PlanProposalCard } from "@/components/PlanProposalCard";
