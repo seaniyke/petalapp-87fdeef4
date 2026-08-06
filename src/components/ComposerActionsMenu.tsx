@@ -48,7 +48,7 @@ export function ComposerActionsMenu({
           aria-haspopup="menu"
           aria-label={`Mode: ${baseLabel}${modifiers.length ? ` (${modifiers.join(", ")})` : ""}`}
           className={cn(
-            "inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold transition",
+            "inline-flex h-11 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition sm:h-8 sm:px-2.5 sm:text-[11px]",
             "hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
             disabled && "cursor-not-allowed opacity-60",
             accent

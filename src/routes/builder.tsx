@@ -3520,7 +3520,7 @@ function Builder() {
             type="button"
             onClick={() => setProjectsDrawerOpen(true)}
             aria-label="Open projects menu"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-foreground transition hover:bg-muted md:hidden"
+            className="grid size-11 shrink-0 place-items-center rounded-xl text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -3529,7 +3529,7 @@ function Builder() {
             type="button"
             onClick={() => setProjectsDrawerOpen(true)}
             aria-label="Open projects menu"
-            className="hidden h-9 w-9 shrink-0 place-items-center rounded-lg text-foreground transition hover:bg-muted md:grid"
+            className="hidden size-9 shrink-0 place-items-center rounded-xl text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -3540,7 +3540,7 @@ function Builder() {
             aria-label={chatCollapsed ? "Show chat" : "Hide chat"}
             title={`${chatCollapsed ? "Show" : "Hide"} chat (⌘B)`}
             aria-pressed={chatCollapsed}
-            className="hidden h-9 w-9 shrink-0 place-items-center rounded-lg text-foreground transition hover:bg-muted md:grid"
+            className="hidden size-9 shrink-0 place-items-center rounded-xl text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid"
           >
             {chatCollapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
           </button>
@@ -3611,7 +3611,7 @@ function Builder() {
                   ? "Open preview"
                   : "Back to chat"
             }
-            className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-background text-foreground shadow-sm transition hover:bg-muted active:scale-95 md:hidden"
+            className="relative grid size-11 shrink-0 place-items-center rounded-full border border-border bg-background text-foreground shadow-[var(--shadow-soft)] transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 md:hidden"
           >
             {view === "code" ? (
               <Eye className="h-4 w-4" />
@@ -5210,7 +5210,7 @@ function Builder() {
                   <button
                     type="button"
                     onClick={() => composerFileInputRef.current?.click()}
-                    className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    className="grid size-11 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-8"
                     title="Attach a screenshot or photo"
                     aria-label="Attach an image"
                   >
@@ -5235,9 +5235,9 @@ function Builder() {
                         voice.toggle();
                       }}
                       aria-pressed={voice.listening}
-                      className={`grid h-9 w-9 place-items-center rounded-full transition ${
+                      className={`grid size-11 place-items-center rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-9 ${
                         voice.listening
-                          ? "bg-red-500/15 text-red-500 ring-2 ring-red-500/40 animate-pulse"
+                          ? "animate-pulse bg-destructive/15 text-destructive ring-2 ring-destructive/40"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                       title={
@@ -5254,7 +5254,7 @@ function Builder() {
                     <button
                       type="button"
                       onClick={stopGeneration}
-                      className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-background shadow-[0_2px_8px_-2px_oklch(0_0_0/0.4)] transition hover:brightness-110 active:scale-95"
+                      className="grid size-11 place-items-center rounded-full bg-foreground text-background shadow-[var(--shadow-soft)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 sm:size-9"
                       title="Stop"
                       aria-label="Stop generation"
                     >
@@ -5264,7 +5264,7 @@ function Builder() {
                     <button
                       type="submit"
                       disabled={bootstrapping || !input.trim()}
-                      className="grid h-9 w-9 place-items-center rounded-full bg-[oklch(0.62_0.19_255)] text-white shadow-[0_2px_8px_-2px_oklch(0.62_0.19_255/0.5)] transition hover:brightness-110 active:scale-95 disabled:bg-foreground/20 disabled:text-foreground/40 disabled:shadow-none"
+                      className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 disabled:bg-foreground/20 disabled:text-foreground/40 disabled:shadow-none sm:size-9"
                       title={
                         discussBusy
                           ? "Add to queue"
