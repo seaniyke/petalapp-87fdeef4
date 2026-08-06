@@ -123,6 +123,9 @@ import { loadLabsFlagsForRequest } from "@/server/labs-flags.server";
 import { runStagedPipelineStream } from "@/server/pipeline/staged-orchestrator.server";
 import { ensureRenderableShell } from "@/server/renderable-shell.server";
 import { runAllRepairs } from "@/server/repair-all.server";
+import { TurnCostMeter } from "@/server/turn-cost-ceiling.server";
+import { entriesFromRepairNotes, recordRepairs } from "@/server/repair-ledger.server";
+import { analyzeEditScope, scopeDisclosure } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
 import {
