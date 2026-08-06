@@ -25,7 +25,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectFile } from "@/server/generate.server";
-import { Loader2, QrCode, Smartphone } from "lucide-react";
+import { Loader2, QrCode, RotateCw, Smartphone } from "lucide-react";
 import QRCode from "qrcode";
 
 type Props = {
@@ -108,6 +108,21 @@ export function SnackPreview({ files, projectName }: Props) {
   const webPreviewRef = useRef<Window | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // M7 — bumping this re-runs the boot effect, so a failed or stuck Snack
+  // session can be retried in place instead of forcing a page reload.
+  const [bootKey, setBootKey] = useState(0);
+  // M7 — true once the session has been starting for a while with no player
+  // URL. Snack occasionally never resolves; we offer a retry rather than
+  // spinning forever.
+  const [bootSlow, setBootSlow] = useState(false);
+
+  // M7 — binary assets are swapped for a 1x1 transparent PNG before upload.
+  // That substitution used to be silent, so a missing logo looked like a
+  // generation bug. Count them so we can say it out loud.
+  const placeholderAssets = useMemo(
+    () => files.filter((f) => f.path && ASSET_EXTS.test(f.path)).length,
+    [files],
+  );
 
   const initialFiles = useMemo(() => toSnackFiles(files), []);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- initial only
@@ -185,8 +200,26 @@ export function SnackPreview({ files, projectName }: Props) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       cleanup?.();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- boot once
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- boot once per attempt
+  }, [bootKey]);
+
+  // M7 — watchdog for a session that never hands back a player URL.
+  useEffect(() => {
+    if (previewURL || error) {
+      setBootSlow(false);
+      return;
+    }
+    const id = window.setTimeout(() => setBootSlow(true), 20_000);
+    return () => window.clearTimeout(id);
+  }, [previewURL, error, bootKey]);
+
+  const retryBoot = () => {
+    setError(null);
+    setPreviewURL(null);
+    setSnackURL(null);
+    setBootSlow(false);
+    setBootKey((k) => k + 1);
+  };
 
   // Stream Petal's file writes into the live Snack session.
   useEffect(() => {
@@ -218,6 +251,13 @@ export function SnackPreview({ files, projectName }: Props) {
         <div className="max-w-xs text-xs text-muted-foreground">
           <Smartphone className="mx-auto mb-2 h-5 w-5 opacity-50" />
           {error}
+          <button
+            type="button"
+            onClick={retryBoot}
+            className="mx-auto mt-3 flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-[12px] font-semibold text-foreground transition hover:bg-muted"
+          >
+            <RotateCw className="h-3.5 w-3.5" /> Try again
+          </button>
         </div>
       </div>
     );
@@ -238,10 +278,33 @@ export function SnackPreview({ files, projectName }: Props) {
         />
       ) : (
         <div className="grid h-full place-items-center bg-background text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Starting Expo Snack…
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Starting Expo Snack…
+            </div>
+            {bootSlow && (
+              <>
+                <div className="max-w-[15rem] text-[11px] text-muted-foreground/80">
+                  This is slower than usual — the Snack service may be busy.
+                </div>
+                <button
+                  type="button"
+                  onClick={retryBoot}
+                  className="flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-[12px] font-semibold text-foreground transition hover:bg-muted"
+                >
+                  <RotateCw className="h-3.5 w-3.5" /> Restart preview
+                </button>
+              </>
+            )}
           </div>
+        </div>
+      )}
+
+      {/* M7 — say plainly that images are stand-ins in this preview. */}
+      {previewURL && placeholderAssets > 0 && (
+        <div className="pointer-events-none absolute bottom-2 left-2 z-30 max-w-[70%] rounded-full border border-border bg-background/95 px-2.5 py-1 text-[10.5px] font-medium text-muted-foreground shadow-sm backdrop-blur">
+          {placeholderAssets} image{placeholderAssets === 1 ? "" : "s"} shown as placeholders here — they ship correctly in the real build.
         </div>
       )}
 

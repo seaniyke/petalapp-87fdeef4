@@ -78,6 +78,7 @@ import {
 } from "@/lib/petal-subdomain";
 import { toast } from "sonner";
 import { friendlyBuildFailure } from "@/lib/friendly-errors";
+import { useBuildStatusLabel } from "@/hooks/use-build-status-label";
 
 
 type Props = {
@@ -444,33 +445,33 @@ export function PublishSheet({
     [slugDraft],
   );
 
-  // CTA state machine — keeps the button label/icon honest with the build.
+  // H1 — status wording comes from the shared hook; this block only maps that
+  // one state onto an icon and a tone. No local re-wording.
+  const status = useBuildStatusLabel({
+    buildStatus,
+    publishing,
+    hasPublishedBuild,
+    updateAvailable,
+  });
+
   const cta = (() => {
-    if (publishing || buildStatus === "pending") {
+    if (status.isBusy) {
       return {
-        label: hasPublishedBuild ? "Publishing update…" : "Publishing…",
+        label: status.ctaLabel,
         icon: <Loader2 className="h-4 w-4 animate-spin" />,
         disabled: true,
         tone: "primary" as const,
       };
     }
-    if (buildStatus === "failed") {
+    if (status.state === "failed") {
       return {
-        label: "Retry publish",
+        label: status.ctaLabel,
         icon: <AlertCircle className="h-4 w-4" />,
         disabled: false,
         tone: "destructive" as const,
       };
     }
-    if (updateAvailable) {
-      return {
-        label: "Update",
-        icon: <Globe className="h-4 w-4" />,
-        disabled: false,
-        tone: "primary" as const,
-      };
-    }
-    if (hasPublishedBuild && buildStatus === "ready") {
+    if (status.state === "live") {
       return {
         label: "Up to date",
         icon: <CheckCircle2 className="h-4 w-4" />,
@@ -479,7 +480,7 @@ export function PublishSheet({
       };
     }
     return {
-      label: "Publish",
+      label: status.ctaLabel,
       icon: <Globe className="h-4 w-4" />,
       disabled: false,
       tone: "primary" as const,
@@ -547,22 +548,24 @@ export function PublishSheet({
             )}
           </div>
           <div className="flex items-center gap-2">
-            {buildStatus === "pending" && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Publishing
-              </span>
-            )}
-            {buildStatus === "failed" && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
-                <AlertCircle className="h-3 w-3" />
-                Failed
-              </span>
-            )}
-            {!publishing && buildStatus !== "pending" && buildStatus !== "failed" && updateAvailable && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-                <AlertCircle className="h-3 w-3" />
-                Update available
+            {/* H1 — one pill, one wording, driven by the shared status hook.
+                Three hand-rolled pills previously disagreed with the CTA. */}
+            {status.state !== "unpublished" && status.state !== "live" && (
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                  status.tone === "danger"
+                    ? "bg-destructive/10 text-destructive"
+                    : status.tone === "warning"
+                      ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                      : "bg-primary/10 text-primary"
+                }`}
+              >
+                {status.isBusy ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <AlertCircle className="h-3 w-3" />
+                )}
+                {status.statusLabel}
               </span>
             )}
 

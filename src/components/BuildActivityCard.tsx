@@ -27,6 +27,7 @@ import { pathToNarration } from "@/lib/path-narration";
 import type { FriendlyError } from "@/lib/friendly-errors";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { BuildDetailsSheet, type FileChange } from "@/components/BuildDetailsSheet";
+import { ELAPSED_VISIBLE_AFTER_SEC, formatElapsed } from "@/hooks/use-build-status-label";
 
 /**
  * One entry in the real-time build pipeline timeline.
@@ -253,6 +254,16 @@ export function BuildActivityCard({
 
   const CurrentIcon = currentPhase ? PHASE_ICONS[currentPhase.id] : Sparkles;
 
+  // M8 — deploy-phase clock, shown only past the 30s threshold defined once in
+  // the status hook so every surface agrees on when "slow" starts.
+  const deployClock =
+    isActive &&
+    currentPhase?.id === "deploying" &&
+    typeof deployElapsedSec === "number" &&
+    deployElapsedSec >= ELAPSED_VISIBLE_AFTER_SEC
+      ? formatElapsed(deployElapsedSec)
+      : null;
+
   // Six-segment phase rail so progress is visible without opening anything.
   const phaseIndex = phases.findIndex((p) => p.id === currentPhase?.id);
 
@@ -305,10 +316,20 @@ export function BuildActivityCard({
                   {activeFile}
                 </code>
               )}
-              {elapsed > 0 && !isComplete && (
-                <span className="shrink-0 font-mono text-[10.5px] font-semibold text-muted-foreground/70 tabular-nums">
-                  {elapsed}s
+              {/* M8 — once the deploy phase passes 30s the clock switches to
+                  that phase, so a long publish reads as "still working for
+                  0:47" instead of a silent spinner. */}
+              {deployClock ? (
+                <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 font-mono text-[10.5px] font-semibold text-primary tabular-nums">
+                  {deployClock}
                 </span>
+              ) : (
+                elapsed > 0 &&
+                !isComplete && (
+                  <span className="shrink-0 font-mono text-[10.5px] font-semibold text-muted-foreground/70 tabular-nums">
+                    {elapsed < 60 ? `${elapsed}s` : formatElapsed(elapsed)}
+                  </span>
+                )
               )}
             </div>
             {subCaption && (
