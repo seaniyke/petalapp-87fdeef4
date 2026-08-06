@@ -31,6 +31,7 @@ import { stubMissingAssets } from "./asset-stubber.server";
 import { enforceRuntimeContracts } from "./runtime-contract.server";
 import { enforceLayoutHygiene } from "./layout-hygiene.server";
 import { enforceInteractionHygiene } from "./interaction-hygiene.server";
+import { enforceFrontendQuality } from "./frontend-quality.server";
 
 import { fixRouterImports } from "./router-imports.server";
 import { fixMissingRouterProvider } from "./router-provider.server";
@@ -246,6 +247,12 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   const interaction = enforceInteractionHygiene(files);
   files = interaction.files;
   for (const n of interaction.notes) notes.push(n);
+
+  // 13. Frontend quality — accessibility floor, image alt text, form labels,
+  //     one <h1> per page, reduced-motion escape hatch (Frontend Bible).
+  const fq = enforceFrontendQuality(files);
+  files = fq.files;
+  for (const n of fq.notes) notes.push(n);
 
   return { files, notes, firedPasses: passIdsFromNotes(notes) };
 }
