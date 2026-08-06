@@ -172,12 +172,7 @@ export function MarkdownMessage({ content, projectId }: { content: string; proje
                     </code>
                   );
                 },
-                pre: (props) => (
-                  <pre
-                    {...props}
-                    className="my-3 overflow-x-auto rounded-xl bg-muted p-3.5 font-mono text-[13px] leading-[1.55]"
-                  />
-                ),
+                pre: CopyablePre,
               }}
             >
               {seg.text}
