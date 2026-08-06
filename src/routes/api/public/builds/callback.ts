@@ -98,6 +98,27 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
   }
 
   if (payload.status === "ready") {
+    // AI Generation Bible §8 — the builder's own "ready" is a claim, not
+    // evidence. Fetch the URL we are about to advertise as live and confirm
+    // it serves a real app. A failed probe becomes an honest build failure;
+    // crucially we do NOT repoint `latest_build_id`, so the last known-good
+    // preview survives.
+    const probe = await probeDeployedUrl(payload.url);
+    if (!probe.ok) {
+      console.warn(
+        `[builds/callback] deploy verification failed for ${payload.buildId}: ${probe.reason} (${probe.status ?? "no status"})`,
+      );
+      await supabaseAdmin
+        .from("project_builds")
+        .update({
+          status: "failed",
+          dist_path: payload.url,
+          error_message: `${probe.message} Petal kept your previous preview live instead of shipping a broken one.`,
+        })
+        .eq("id", payload.buildId);
+      return new Response("ok", { status: 200 });
+    }
+
     const verification = payload.verification
       ? {
           ...payload.verification,
