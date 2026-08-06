@@ -262,16 +262,57 @@ By surface: `credit_settlement` 26, `generate` 32, `build` 19, `generate-edit` 4
 
 ---
 
+## 13b. Routing defects found in the classifier chain — **NEW, high impact**
+
+Full stage order for a build request (deterministic unless marked LLM):
+
+`/api/triage` **(LLM)** → mode collapse → `/api/generate` → build-target from header → `inferWebSubtype` (regex) → `classifyAppShape` (regex) → `detectArchetype`/high-stakes (regex) → `decideBackendGate` (regex) → Design Director **(LLM, `gemini-3-flash-preview`)** → `classifyPhase` (regex, **LLM** fallback `gemini-2.5-flash-lite`) → model tier + smart router → generation **(LLM)** → verify tiers (deterministic).
+
+Only 4 of ~11 stages are LLM calls. Target, backend inclusion, auth, and landing-page inclusion are all decided by regex before the writing model ever runs.
+
+### Defect A — build target is header-only, never inferred from the prompt
+
+`generate.ts:1646` — `request.headers.get("x-petal-target") ?? "web"`. Grep across `src/` finds **no** prompt-text inference anywhere.
+
+Consequence: a user who types **"build me a Chrome extension"** or **"mobile banking app"** with the picker on its default gets a **web app**. The staged orchestrator's brief sniff (`staged-orchestrator.server.ts:75-83`) only nudges the planner's archetype slot — it cannot change `BuildTargetId`.
+
+> This directly contradicts the recorded product decision that the target chip rail was removed *because* the target would be inferred from the prompt. The rail is gone; the inference was never built. Every non-web request typed in plain language currently mis-targets.
+
+### Defect B — `inferWebSubtype` short-circuits marketing
+
+`src/lib/web-subtype.ts:116-118`:
+```
+if (scores.fullstack >= 2) return "fullstack";
+if (scores.marketing > scores.app && scores.marketing >= 2) return "marketing";
+```
+Fullstack is checked first and unconditionally. **"landing page for a fintech"** scores marketing 3 *and* fullstack 2 → returns `fullstack`, and the FULLSTACK addendum then mandates a dashboard-first `/` with **no marketing home**. The user asked for a landing page and gets an app shell. Fix: compare scores instead of short-circuiting.
+
+### Defect C — the two classifiers disagree
+
+`inferWebSubtype` and `classifyAppShape` run independently with separate regex tables. "Build an Airbnb clone" hits web-subtype's celebrity-brand rule (weight 4 → `fullstack`) but misses app-shape's `marketplace` pattern → `category: "generic"`, no surfaces, no cloud features. Bare "Uber" or "Airbnb" (without the verb "build") matches neither.
+
+### Defect D — brittle keyword gaps
+
+- `"inventory API"` → `inventory` domain rule requires system/management/tracker/warehouse/stock, so it misses; falls to `ecommerce`.
+- `"AI chatbot"` → classified `ai-tool` with cloud `["auth","database","ai","storage"]`, but the backend gate likely does **not** fire, so turn 1 ships without the backend the shape says it needs.
+- `"mobile banking app"` → correctly flags high-stakes via `project-archetype.ts:679`, but `"fintech"` alone does not.
+
+---
+
 ## 14. Ranked fix list (evidence-derived)
 
 1. **Turn lifecycle** — 400 stuck `running`. Find the missing terminal write / non-running cleanup. Blocks all measurement.
 2. **`post_build_charge_failed`** — 26 hits, still firing 2026-08-05.
-3. **Remove or correct the two 100%-failing model IDs** — `openai/gpt-5` (generate), `google/gemini-pro-latest` (design). 169 wasted round-trips.
-4. **Add a TypeScript gate before deploy** — 85 of 112 build failures are Vite-stage. esbuild parse-checking is not enough.
-5. **Reconcile `MAX_PLANNED_FILES`** — 8 in `pipeline-budgets.ts` vs 28/10 in `stage-plan.server.ts:376`.
-6. **Deploy rollback** — currently impossible; every deploy overwrites the live alias.
-7. **Backend gaps** — realtime and cron are the two most commonly expected features that Petal cannot generate.
-8. **Durable deploy logs** — 4000 chars in one column is not diagnosable.
+3. **Build-target inference from prompt text** (Defect A) — plain-language mobile/extension/backend requests currently build web apps.
+4. **Remove or correct the two 100%-failing model IDs** — `openai/gpt-5` (generate), `google/gemini-pro-latest` (design). 169 wasted round-trips.
+5. **Add a TypeScript gate before deploy** — 85 of 112 build failures are Vite-stage. esbuild parse-checking is not enough.
+6. **Fix `inferWebSubtype` short-circuit** (Defect B) — "landing page for X" must not return `fullstack`.
+7. **Reconcile `MAX_PLANNED_FILES`** — 8 in `pipeline-budgets.ts` vs 28/10 in `stage-plan.server.ts:376`.
+8. **Unify the two classifiers** (Defect C) — one shared signal table feeding both.
+9. **Deploy rollback** — currently impossible; every deploy overwrites the live alias.
+10. **Backend gaps** — realtime and cron are the two most commonly expected features Petal cannot generate.
+11. **Durable deploy logs** — 4000 chars in one column is not diagnosable.
+
 
 ---
 
