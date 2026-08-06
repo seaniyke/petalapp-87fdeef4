@@ -3591,6 +3591,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      available_credits: { Args: { _user_id: string }; Returns: number }
       can_enable_managed_backend: {
         Args: { _user_id: string }
         Returns: boolean
