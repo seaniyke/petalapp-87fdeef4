@@ -2,7 +2,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github.css";
-import { Fragment } from "react";
+import { Fragment, useRef, useState, type ComponentPropsWithoutRef } from "react";
+import { Check, Copy } from "lucide-react";
 import { SecretRequestCard } from "./SecretRequestCard";
 // SuggestedIntegrationCard removed — third-party integrations are scaffolded
 // from prompts now, not suggested as one-click installs.
