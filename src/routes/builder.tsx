@@ -3534,7 +3534,7 @@ function Builder() {
         <FirstRunTour />
       </Suspense>
       {/* Top bar — iOS-style translucent material, never moves */}
-      <div className="safe-top sticky top-0 z-30 shrink-0 border-b border-border/60 bg-card/80 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65">
+      <div className="safe-top safe-x z-sticky sticky top-0 shrink-0 border-b border-border/60 bg-card/80 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65">
       <header className="grid h-12 grid-cols-[auto_1fr_auto] items-center gap-2 px-3 sm:h-14 sm:px-4">
         {/* Left: hamburger (mobile) + back/title (desktop) */}
         <div className="flex min-w-0 items-center gap-2">
@@ -4919,7 +4919,7 @@ function Builder() {
             {/* C1 — shown only when the user has scrolled away from the
                 bottom. Tapping it re-arms follow-the-stream behaviour. */}
             {showJumpToLatest && (
-              <div className="pointer-events-none sticky bottom-1 z-10 flex justify-center">
+              <div className="pointer-events-none z-base sticky bottom-1 flex justify-center">
                 <button
                   type="button"
                   onClick={() => scrollChatToLatest()}
@@ -5606,7 +5606,7 @@ function Builder() {
       />
       {pickedElement && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4 backdrop-blur-sm"
+          className="z-toast fixed inset-0 grid place-items-center bg-foreground/40 p-4 backdrop-blur-sm"
           onClick={() => setPickedElement(null)}
         >
           <div
