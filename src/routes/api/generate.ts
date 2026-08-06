@@ -3953,6 +3953,14 @@ Forbidden defaults
           const fixT0 = Date.now();
           try {
             const fixOut = await runPostStreamAutofix(nextFiles, combinedAutofixIssues);
+            // §7 cost ceiling — meter the polish pass so later rounds know
+            // how much of the turn's repair budget is already gone.
+            repairMeter.charge(
+              "autofix_cycle_2",
+              chosenModel,
+              (fixOut.result.usage?.total_tokens ?? 0) ||
+                Math.ceil(nextFiles.reduce((s, f) => s + f.content.length, 0) / 4) + 4_000,
+            );
             nextFiles = fixOut.files;
             if (fixOut.result.fixedFiles > 0) {
               console.log(
