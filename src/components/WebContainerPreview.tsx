@@ -4,6 +4,12 @@ import type { ProjectFile } from "@/server/generate.server";
 import { detectUnsupportedWebContainerBrowser } from "@/lib/browser-support";
 import { PreviewCrashFallback } from "@/components/PreviewCrashFallback";
 import {
+  resolvePreviewState,
+  classifyDevServerFailure,
+  type PreviewPhase,
+  type PreviewRefusalReason,
+} from "@/lib/preview-state";
+import {
   ensurePickerInstalled,
   getContainer,
   ensureDeps,
@@ -34,7 +40,7 @@ export type RuntimeError = {
   kind: "error" | "unhandledrejection" | "blank";
 };
 
-type Phase = "idle" | "booting" | "installing" | "starting" | "ready" | "error" | "unsupported";
+type Phase = PreviewPhase;
 
 export function detectUnsupportedBrowser(): string | null {
   return detectUnsupportedWebContainerBrowser();
@@ -53,6 +59,8 @@ export function WebContainerPreview({
   onBootFailed,
   lastNarration,
   instantSrc,
+  refusedUrl,
+  refusedReason,
 }: {
   files: ProjectFile[];
   /** Bump this number to force the iframe to reload (e.g. after restoring a version). */
@@ -72,6 +80,10 @@ export function WebContainerPreview({
   /** Last deployed build URL. Rendered instantly on open while the sandbox
    *  boots, so the user never stares at "Getting things ready…". */
   instantSrc?: string | null;
+  /** C3 — deployed URL the server probe found un-frameable, plus why. Lets us
+   *  explain the refusal and offer "Open in new tab" instead of a blank pane. */
+  refusedUrl?: string | null;
+  refusedReason?: PreviewRefusalReason | null;
 }) {
 
 
@@ -90,7 +102,21 @@ export function WebContainerPreview({
   // fires `load` the host refused the connection — drop it instead of
   // leaving the user staring at a browser error page.
   const [instantDead, setInstantDead] = useState(false);
+  // How long we've been in a non-ready phase. Feeds the FSM's "this is taking
+  // longer than usual" state so a slow boot reads as slow, not as broken.
+  const [elapsedSec, setElapsedSec] = useState(0);
   const crashWindowRef = useRef<number[]>([]);
+
+  useEffect(() => {
+    if (phase === "ready" || phase === "idle" || phase === "error" || phase === "unsupported") {
+      setElapsedSec(0);
+      return;
+    }
+    const started = Date.now();
+    const id = window.setInterval(() => setElapsedSec(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => window.clearInterval(id);
+  }, [phase]);
+
 
   // Set to a friendly message when the picker has been "armed" for >30s
   // without the iframe acknowledging readiness — usually means the picker
@@ -112,7 +138,14 @@ export function WebContainerPreview({
         // Cap memory usage.
         return next.length > 500 ? next.slice(-500) : next;
       });
-      if (line.stream === "stderr") setShowLogs(true);
+      if (line.stream === "stderr") {
+        setShowLogs(true);
+        // C4 — a dev server that dies used to leave the user staring at raw
+        // stack output in the log drawer. Promote known-fatal output to the
+        // FSM's crash state with plain-language wording instead.
+        const fatal = classifyDevServerFailure(line.text);
+        if (fatal) setCrashReason((prev) => prev ?? fatal);
+      }
     });
     const offServer = subscribeServer((url) => setServerUrl(url));
     return () => {
@@ -297,31 +330,46 @@ export function WebContainerPreview({
     return () => window.clearTimeout(timer);
   }, [pickActive, iframeKey]);
 
-  if (phase === "unsupported") {
+  // F1 — one resolved state drives the whole pane. No nested ternaries, no
+  // two states rendering at once.
+  const view = resolvePreviewState({
+    phase,
+    serverUrl,
+    instantSrc: instantSrc ?? null,
+    instantDead,
+    refusedReason: refusedReason ?? null,
+    refusedUrl: refusedUrl ?? null,
+    crashReason,
+    error,
+    elapsedSec,
+  });
+
+  if (view.kind === "unsupported") {
     return (
       <div className="grid h-full w-full place-items-center bg-aurora p-6">
         <div className="max-w-sm rounded-2xl border border-border bg-card/90 p-5 text-center shadow-sm backdrop-blur">
           <Smartphone className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-          <h3 className="mb-1 text-sm font-semibold text-foreground">Preview not available here</h3>
-          <p className="text-xs leading-relaxed text-muted-foreground">{error}</p>
-          <p className="mt-3 text-[11px] text-muted-foreground/80">
-            You can keep editing — your changes are saved and will run as soon as you open this project on a supported
-            desktop browser.
-          </p>
+          <h3 className="mb-1 text-sm font-semibold text-foreground">{view.title}</h3>
+          <p className="text-xs leading-relaxed text-muted-foreground">{view.detail}</p>
         </div>
       </div>
     );
   }
 
+  const externalUrl = view.src ?? refusedUrl ?? null;
+
   return (
     <div className="relative flex h-full w-full flex-col">
-      {/* Status strip */}
-      {phase !== "ready" && phase !== "idle" && !serverUrl && !(instantSrc && !instantDead && phase !== "error") && (
+      {/* Status strip — only when there's nothing to look at yet. */}
+      {!view.src && view.kind !== "crashed" && (
         <div className="flex items-center justify-between gap-2 border-b border-border bg-card/80 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur">
           <div className="inline-flex items-center gap-2">
-            {phase !== "error" && <Loader2 className="h-3 w-3 animate-spin" />}
-            {phase === "error" && <AlertCircle className="h-3 w-3 text-destructive" />}
-            <span>{phaseLabel(phase)}</span>
+            {view.warming ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <AlertCircle className="h-3 w-3 text-destructive" />
+            )}
+            <span>{view.title}</span>
           </div>
           <button
             onClick={() => setShowLogs((s) => !s)}
@@ -331,7 +379,7 @@ export function WebContainerPreview({
           </button>
         </div>
       )}
-      {phase === "ready" && (
+      {view.kind === "live" && (
         <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
           {onPick && (
             <button
@@ -382,76 +430,100 @@ export function WebContainerPreview({
         </div>
       )}
 
-      {/* Iframe (or crash fallback) */}
+      {/* Iframe (or the state's card) */}
       <div className="relative min-h-0 flex-1">
-        {crashReason ? (
+        {view.kind === "crashed" ? (
           <PreviewCrashFallback
-            reason={crashReason}
+            reason={view.detail ?? "Unknown runtime error"}
             lastPath={serverUrl}
             lastNarration={lastNarration}
             onRetry={() => setIframeKey((k) => k + 1)}
-            onAskRepair={onAskRepair ? () => onAskRepair(crashReason) : undefined}
+            onAskRepair={onAskRepair && crashReason ? () => onAskRepair(crashReason) : undefined}
           />
-        ) : serverUrl ? (
-          <iframe
-            ref={iframeRef}
-            key={iframeKey}
-            title="App preview"
-            src={serverUrl}
-            allow="cross-origin-isolated"
-            className="h-full w-full border-0 bg-white"
-            onLoad={() => {
-              // Each iframe load is either a hard reload, an HMR full-page
-              // refresh, or a client-side navigation that swapped the
-              // document. The picker script auto-attaches itself on the new
-              // document via its embedded <script> tag, but we also need to
-              // re-push the current pickActive state so an in-flight pick
-              // survives the navigation.
-              const win = iframeRef.current?.contentWindow;
-              if (!win) return;
-              win.postMessage(
-                { type: pickActive ? "petal:pick:enable" : "petal:pick:disable" },
-                "*",
-              );
-            }}
-          />
-        ) : instantSrc && !instantDead ? (
-          // Instant preview: the last deployed build renders immediately while
-          // the sandbox boots in the background. Swapped out the moment the
-          // live dev server is up.
+        ) : view.src ? (
           <>
             <iframe
+              ref={view.kind === "live" ? iframeRef : undefined}
+              key={view.kind === "live" ? iframeKey : "deployed"}
               title="App preview"
-              src={instantSrc}
+              src={view.src}
+              allow={view.kind === "live" ? "cross-origin-isolated" : undefined}
+              sandbox={
+                view.kind === "live"
+                  ? undefined
+                  : "allow-scripts allow-same-origin allow-forms allow-popups"
+              }
               className="h-full w-full border-0 bg-white"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
               onLoad={(e) => {
-                // A host that refuses the connection paints Chrome's error
-                // page without firing a usable load in most cases; when it
-                // does, the document has no body content.
-                const doc = (e.currentTarget as HTMLIFrameElement).contentDocument;
-                if (doc && doc.body && doc.body.childElementCount === 0) setInstantDead(true);
+                if (view.kind === "last_deployed") {
+                  // A host that refuses the connection paints the browser's
+                  // error page; when it fires load at all, the document has
+                  // no body content.
+                  const doc = (e.currentTarget as HTMLIFrameElement).contentDocument;
+                  if (doc && doc.body && doc.body.childElementCount === 0) setInstantDead(true);
+                  return;
+                }
+                // Live: re-push pick state so an in-flight pick survives
+                // HMR reloads and client-side navigations.
+                const win = iframeRef.current?.contentWindow;
+                win?.postMessage(
+                  { type: pickActive ? "petal:pick:enable" : "petal:pick:disable" },
+                  "*",
+                );
               }}
-              onError={() => setInstantDead(true)}
+              onError={() => {
+                if (view.kind === "last_deployed") setInstantDead(true);
+              }}
             />
-            {phase !== "error" && (
+            {view.warming && (
               <div className="pointer-events-none absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-2.5 py-1 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 <span>Live edits warming up…</span>
               </div>
             )}
+            {view.kind === "last_deployed" && !view.warming && view.detail && (
+              <div className="absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-card/95 px-2.5 py-1 text-[11px] font-medium text-amber-700 shadow-sm backdrop-blur dark:text-amber-400">
+                <AlertCircle className="h-3 w-3" />
+                <span>{view.detail}</span>
+              </div>
+            )}
           </>
-
         ) : (
-          <div className="grid h-full place-items-center bg-aurora text-sm text-muted-foreground">
-            <div className="max-w-xs text-center">
-              {error ? (
-                <span className="text-destructive">{error}</span>
-              ) : (
-                <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {phaseLabel(phase)}
-                </span>
+          <div className="grid h-full place-items-center bg-aurora p-6">
+            <div className="max-w-sm rounded-2xl border border-border bg-card/90 p-5 text-center shadow-sm backdrop-blur">
+              <div className="mb-2 grid place-items-center">
+                {view.warming ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-destructive" />
+                )}
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">{view.title}</h3>
+              {view.detail && (
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{view.detail}</p>
+              )}
+              {(view.canRetry || (view.canOpenExternally && externalUrl)) && (
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  {view.canRetry && (
+                    <button
+                      type="button"
+                      onClick={() => setIframeKey((k) => k + 1)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-[12px] font-semibold transition hover:bg-muted"
+                    >
+                      <RotateCw className="h-3.5 w-3.5" /> Retry
+                    </button>
+                  )}
+                  {view.canOpenExternally && externalUrl && (
+                    <a
+                      href={externalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-[12px] font-semibold text-primary-foreground transition hover:opacity-90"
+                    >
+                      Open in new tab
+                    </a>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -477,24 +549,6 @@ export function WebContainerPreview({
   );
 }
 
-function phaseLabel(p: Phase): string {
-  switch (p) {
-    case "booting":
-      return "Warming up your app…";
-    case "installing":
-      return "Getting things ready…";
-    case "starting":
-      return "Almost there…";
-    case "ready":
-      return "Ready";
-    case "error":
-      return "Failed";
-    case "unsupported":
-      return "Not supported";
-    default:
-      return "Preparing…";
-  }
-}
 
 function isCrossOriginIsolated(): boolean {
   return typeof window !== "undefined" && (window as Window).crossOriginIsolated === true;

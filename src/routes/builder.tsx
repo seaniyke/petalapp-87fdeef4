@@ -86,6 +86,7 @@ import { ComposerActionsMenu } from "@/components/ComposerActionsMenu";
 import { useVoiceDictation } from "@/hooks/use-voice-dictation";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { CopyMessageButton } from "@/components/CopyMessageButton";
+import { useBuildStatusLabel } from "@/hooks/use-build-status-label";
 import { NextStepsCard } from "@/components/NextStepsCard";
 import { SuggestionChecklist } from "@/components/SuggestionChecklist";
 import { PlanProposalCard } from "@/components/PlanProposalCard";
@@ -211,7 +212,7 @@ import { sanitizeNarrative } from "@/lib/sanitize-narrative";
 import { guardBackendClaims } from "@/lib/backend-claim-guard";
 import { runProjectMigrations } from "@/lib/managed-migrations.functions";
 import { loadRecoveryState, saveRecoveryState } from "@/lib/recovery-budget";
-import { useLatestReadyBuildUrl } from "@/hooks/use-latest-ready-build";
+import { useLatestReadyBuild } from "@/hooks/use-latest-ready-build";
 
 const WebContainerPreview = lazy(() =>
   import("@/components/WebContainerPreview").then((m) => ({ default: m.WebContainerPreview })),
@@ -834,7 +835,8 @@ function Builder() {
   const useDeployedFallback = isMobile || !webContainerSupported || webContainerBootFailed;
   // Instant preview: show the last deployed build the moment the project
   // opens, while the sandbox boots behind it.
-  const instantPreviewUrl = useLatestReadyBuildUrl(project?.id ?? null);
+  const latestReadyBuild = useLatestReadyBuild(project?.id ?? null);
+  const instantPreviewUrl = latestReadyBuild.url;
   // Desktop chat pane collapse — gives the preview the full width, Lovable
   // style. Persisted so the choice survives reloads. ⌘/Ctrl+B toggles.
   const [chatCollapsed, setChatCollapsed] = useState(false);
@@ -1062,6 +1064,13 @@ function Builder() {
   const effectiveBuildSnap = isSupersededBuild ? null : buildSnap;
   const isDeploying = effectiveBuildSnap?.status === "pending" || effectiveBuildSnap?.status === "building";
   const isLive = effectiveBuildSnap?.status === "ready";
+
+  // H1 — the header publish button reads its wording from the one hook that
+  // owns build-status language, so it can never drift from the PublishSheet.
+  const headerBuildStatus = useBuildStatusLabel({
+    buildStatus: effectiveBuildSnap?.status ?? null,
+    hasPublishedBuild: Boolean(project?.latest_build_id),
+  });
 
   // Bridge state for the brief gap between "generation finished" and the
   // moment a fresh build row first shows up in `useBuildActivity`. Without
@@ -3719,13 +3728,9 @@ function Builder() {
               title="Publish"
             >
               <Globe className="h-3.5 w-3.5" />
-              {effectiveBuildSnap?.status === "pending" || effectiveBuildSnap?.status === "building"
-                ? "Publishing…"
-                : effectiveBuildSnap?.status === "failed"
-                  ? "Retry publish"
-                  : project.latest_build_id && effectiveBuildSnap?.status === "ready"
-                    ? "Published"
-                    : "Publish"}
+              {/* H1 — wording comes from the shared status hook, never from a
+                  local ternary over raw build statuses. */}
+              {headerBuildStatus.ctaLabel}
             </button>
           )}
           {project && (
@@ -5417,6 +5422,8 @@ function Builder() {
                           }}
                           lastNarration={latestNarration ?? null}
                           instantSrc={instantPreviewUrl}
+                          refusedUrl={latestReadyBuild.refusedUrl}
+                          refusedReason={latestReadyBuild.refusedReason}
 
                           onBootFailed={(reason) => {
                             console.warn("[preview] WebContainer boot failed, switching to CDN fallback:", reason);
