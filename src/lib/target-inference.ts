@@ -37,6 +37,11 @@ const RULES: Rule[] = [
 
   // ---- Mobile (Expo / React Native, one codebase two stores) -----------
   { re: /\bmobile app\b/i, target: "mobile", weight: 5, label: "mobile app" },
+  // "mobile banking app", "mobile fitness tracker app" — the adjective and the
+  // noun are usually separated by the domain word, so a strict "mobile app"
+  // match misses the most natural phrasing there is.
+  { re: /\bmobile\b[\w\s-]{0,24}\bapp\b/i, target: "mobile", weight: 5, label: "mobile … app" },
+
   { re: /\b(ios|android) app\b/i, target: "mobile", weight: 5, label: "ios/android app" },
   { re: /\breact native\b|\bexpo\b/i, target: "mobile", weight: 6, label: "react native / expo" },
   { re: /\bapp store\b|\bplay store\b|\bgoogle play\b|\btestflight\b/i, target: "mobile", weight: 4, label: "store submission" },
