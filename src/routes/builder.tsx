@@ -5165,7 +5165,16 @@ function Builder() {
               <textarea
                 ref={composerTextareaRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  // M6 — real auto-grow. The `max-h` + `overflow-y-auto`
+                  // pair was documented as auto-growing but nothing ever
+                  // mutated the height, so long prompts scrolled inside a
+                  // one-line box.
+                  const el = e.currentTarget;
+                  el.style.height = "auto";
+                  el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+                }}
                 onKeyDown={(e) => {
                   // Enter inserts a newline (default). Cmd/Ctrl+Enter sends.
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -5183,6 +5192,9 @@ function Builder() {
                         : "Describe the app you want to build…"
                 }
                 rows={1}
+                // Enter inserts a newline here, so the soft keyboard must not
+                // advertise "send" — it would lie about what the key does.
+                enterKeyHint="enter"
                 className="max-h-[200px] min-h-[44px] w-full resize-none overflow-y-auto bg-transparent px-2 py-1.5 text-sm font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground disabled:opacity-50"
                 disabled={bootstrapping}
               />
