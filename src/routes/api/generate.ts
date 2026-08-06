@@ -38,7 +38,7 @@ import {
 import { applyScaffoldKit, applyScaffoldKitForPatch, STYLES_CSS } from "@/server/scaffold-kit";
 import { getBuildTarget } from "@/lib/build-targets";
 import { resolveBuildTarget } from "@/lib/target-inference";
-import { inferWebSubtype, getWebSubtypeAddendum } from "@/lib/web-subtype";
+import { getWebSubtypeAddendum } from "@/lib/web-subtype";
 
 import { lookupBackendForGenerate, lookupSharedBackendForGenerate } from "@/server/backend-connector.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
@@ -1665,10 +1665,18 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   let webSubtypeBlock = "";
   let detectedWebSubtype: "marketing" | "app" | "fullstack" | undefined;
   if (buildTarget.id === "web" && isInitial) {
-    detectedWebSubtype = inferWebSubtype(lastContent);
+    // Defect C: reconcile the keyword rules with the predicted app shape so
+    // the two classifiers can never hand the planner contradictory shapes.
+    const { classifyAppShape } = await import("@/lib/app-shape-classifier");
+    const { resolveWebSubtype } = await import("@/lib/web-subtype");
+    const resolved = resolveWebSubtype(lastContent, classifyAppShape(lastContent));
+    detectedWebSubtype = resolved.subtype;
     webSubtypeBlock = `\n\n${getWebSubtypeAddendum(detectedWebSubtype)}\n`;
-    console.log(`[web-subtype] project=${body.projectId ?? "n/a"} detected="${detectedWebSubtype}"`);
+    console.log(
+      `[web-subtype] project=${body.projectId ?? "n/a"} detected="${detectedWebSubtype}" keyword="${resolved.keywordSubtype}" reason="${resolved.reason}"`,
+    );
   }
+
 
   const buildTargetBlock = buildTarget.systemPromptAddendum
     ? `\n\n### Build target (HARD CONSTRAINT)\n${buildTarget.systemPromptAddendum}\n${webSubtypeBlock}`

@@ -316,6 +316,18 @@ export function isDeadModelId(model: string | null | undefined): boolean {
   return !!model && DEAD_MODEL_IDS.has(model);
 }
 
+/**
+ * Every model id we consider "known" — the remap table's keys and targets.
+ * `model-health.server.ts` also treats the budget catalog as known. An id
+ * outside both sets is a typo or a stale admin override and gets flagged.
+ */
+export const KNOWN_MODEL_IDS: ReadonlySet<string> = new Set<string>([
+  ...Object.keys(OPENROUTER_MODEL_MAP),
+  ...Object.values(OPENROUTER_MODEL_MAP),
+  "google/gemini-2.5-flash-image",
+]);
+
+
 function remapModelForOpenRouter(model: string | undefined): string | undefined {
   if (!model) return model;
   const mapped = OPENROUTER_MODEL_MAP[model] ?? model;
@@ -654,6 +666,23 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     );
     primaryModel = fallback;
   }
+
+  // Health guard (audit 3b): a model whose last ~50 logged calls are almost
+  // all errors is a configuration problem, not an outage. Skip it up front
+  // instead of paying a guaranteed-failed round-trip on every turn.
+  const { isModelUnhealthySync } = await import("@/server/model-health.server");
+  if (
+    primaryModel &&
+    isModelUnhealthySync(primaryModel) &&
+    fallback &&
+    !isModelUnhealthySync(fallback)
+  ) {
+    console.warn(
+      `[model-health] swapping primary ${primaryModel} → ${fallback} (rolling error rate too high)`,
+    );
+    primaryModel = fallback;
+  }
+
 
   const body =
     primaryModel && primaryModel !== callerModel

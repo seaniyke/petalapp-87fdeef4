@@ -314,6 +314,25 @@ Fullstack is checked first and unconditionally. **"landing page for a fintech"**
 11. **Durable deploy logs** — 4000 chars in one column is not diagnosable.
 
 
+### Progress against the fix list — as of 2026-08-06
+
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| 1 | Turn lifecycle | **Done** | `finishTurnOnce` + SSE `cancel()` in `api/generate.ts`; `public.reap_stalled_turns()` on pg_cron (15 min stale window); 400 zombie turns backfilled. |
+| 2 | `post_build_charge_failed` | **Done** | Atomic idempotent `settle_build_charge` RPC keyed on `turn_id`; shortfall booked as `user_wallets.credit_debt` instead of failing the build. |
+| 3 | Build-target inference (Defect A) | **Done** | `src/lib/target-inference.ts` wired into `api/generate.ts`; explicit header selection still wins. |
+| 4 | 100%-failing model IDs | **Done** | `openai/gpt-5` → `anthropic/claude-sonnet-4.5`, `google/gemini-pro-latest` → `google/gemini-2.5-pro` in `ai-provider.server.ts`; `ai_provider_settings` updated. |
+| 4b | Model health guard | **Done** | `src/server/model-health.server.ts`: rolling last-50-call error rate per model, ≥90% auto-skips to the fallback; unknown model ids flagged against `KNOWN_MODEL_IDS`; surfaced in Admin → AI Providers → Model health. |
+| 5 | TypeScript gate before deploy | **Done (needs builder redeploy)** | `runTypecheck` (`tsc --noEmit`) in `builder/src/build.ts`, diagnostics fed into the failure report. Activate via Admin → Builder → Redeploy. |
+| 6 | `inferWebSubtype` short-circuit (Defect B) | **Done** | Score comparison replaces the fullstack short-circuit; "landing page for a fintech" → `marketing`. |
+| 8 | Unify the classifiers (Defect C) | **Done** | `resolveWebSubtype(prompt, shape)` in `src/lib/web-subtype.ts` reconciles keyword rules with `classifyAppShape`; single call site in `api/generate.ts`. Explicit marketing wins; auth + transactional surface promotes to fullstack; admin-only surfaces stay `app`. |
+| — | Regression suite | **Done** | `src/lib/__tests__/target-inference.test.ts` — 38 assertions across target, sub-type, and reconciliation. Run: `bun src/lib/__tests__/target-inference.test.ts`. |
+| 7 | `MAX_PLANNED_FILES` reconciliation | Open | — |
+| 9 | Deploy rollback | Open | — |
+| 10 | Backend gaps (realtime, cron) | Open | — |
+| 11 | Durable deploy logs | Open | — |
+
+
 ---
 
 ## 15. Scope limits of this audit

@@ -192,3 +192,107 @@ export function getWebSubtypeAddendum(subtype: WebSubtype): string {
       return APP_ADDENDUM;
   }
 }
+
+/* ------------------- Defect C: shape reconciliation ------------------- */
+
+/**
+ * `inferWebSubtype` (keyword rules) and `classifyAppShape` (surface rules)
+ * used to run on two independent signal tables, so they could disagree —
+ * "Airbnb clone" scored `fullstack` in one and a landing-only generic
+ * shape in the other, and the planner got contradictory instructions.
+ *
+ * `resolveWebSubtype` is the single entry point: it runs both and
+ * reconciles them with explicit precedence.
+ *
+ *   1. An explicit marketing ask always wins ("landing page for a fintech"
+ *      is a landing page, full stop).
+ *   2. Otherwise, if the predicted shape needs auth plus an operator or
+ *      transactional surface, the brief is fullstack even when the prompt
+ *      never used a fullstack keyword. An admin surface alone is not
+ *      enough — internal tools stay app-shaped.
+ *   3. Otherwise, a landing-only shape in a brochure-ish category demotes
+ *      a weak `app` guess to `marketing`.
+ */
+const BROCHURE_CATEGORIES = new Set([
+  "content",
+  "creator",
+  "local-business",
+  "consultancy",
+  "restaurant",
+  "newsletter",
+  "fitness",
+]);
+
+const PLATFORM_CATEGORIES = new Set([
+  "marketplace",
+  "social",
+  "ecommerce",
+  "fintech",
+  "crypto",
+  "booking",
+  "messaging",
+  "real-estate",
+]);
+
+export type ResolvedWebSubtype = {
+  subtype: WebSubtype;
+  /** Raw keyword-rule guess, before reconciliation. */
+  keywordSubtype: WebSubtype;
+  /** Why the final value differs from the keyword guess (if it does). */
+  reason: string;
+};
+
+export function resolveWebSubtype(
+  prompt: string,
+  shape: {
+    category: string;
+    surfaces: string[];
+    confidence: number;
+  },
+): ResolvedWebSubtype {
+  const keywordSubtype = inferWebSubtype(prompt);
+  const trusted = shape.confidence >= 0.4;
+  const has = (s: string) => shape.surfaces.includes(s);
+
+  if (keywordSubtype === "marketing") {
+    return {
+      subtype: "marketing",
+      keywordSubtype,
+      reason: "explicit marketing ask wins over predicted shape",
+    };
+  }
+
+  if (
+    trusted &&
+    has("auth") &&
+    (PLATFORM_CATEGORIES.has(shape.category) ||
+      // an admin surface only implies "platform" when there is also a
+      // customer-side transactional surface — otherwise it is an internal tool
+      (has("admin") && (has("checkout") || has("public-detail") || has("messages"))))
+  ) {
+    return {
+      subtype: "fullstack",
+      keywordSubtype,
+      reason:
+        keywordSubtype === "fullstack"
+          ? "keyword and shape agree on a multi-actor platform"
+          : `shape predicts a multi-actor platform (${shape.category})`,
+    };
+  }
+
+  if (
+    keywordSubtype === "app" &&
+    trusted &&
+    BROCHURE_CATEGORIES.has(shape.category) &&
+    !has("dashboard") &&
+    !has("admin")
+  ) {
+    return {
+      subtype: "marketing",
+      keywordSubtype,
+      reason: `shape is a brochure surface (${shape.category}) with no dashboard`,
+    };
+  }
+
+  return { subtype: keywordSubtype, keywordSubtype, reason: "keyword rules only" };
+}

@@ -28,7 +28,7 @@ import {
 import { AdminTabs } from "@/components/AdminTabs";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -50,7 +50,15 @@ import budgetCatalog from "@/lib/openrouter-budget-models.json";
  * forward the Supabase bearer token — see `routes/api/admin/ai-providers.ts`.
  */
 async function callAdminApi<T>(
-  action: "list" | "set" | "costs" | "router-snapshot" | "router-config" | "budget-config" | "set-budget",
+  action:
+    | "list"
+    | "set"
+    | "costs"
+    | "router-snapshot"
+    | "router-config"
+    | "budget-config"
+    | "set-budget"
+    | "model-health",
   payload: Record<string, unknown> = {},
 ): Promise<T> {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -325,6 +333,10 @@ function AiProvidersPage() {
           onRefresh={refreshCost}
         />
 
+        {/* Model health guard */}
+        <ModelHealthCard />
+
+
         {/* Tier 4 — Smart router */}
         <SmartRouterCard />
 
@@ -426,6 +438,126 @@ function AiProvidersPage() {
     </div>
   );
 }
+
+type ModelHealthRow = {
+  model: string;
+  calls: number;
+  errors: number;
+  errorRate: number;
+  unhealthy: boolean;
+  known: boolean;
+  lastErrorMessage: string | null;
+};
+type ModelAuditRow = {
+  feature: string;
+  model: string | null;
+  fallback: string | null;
+  issues: string[];
+};
+
+/**
+ * Rolling model-health guard. A model whose recent calls are almost all
+ * errors is auto-skipped by the router; this surfaces why, plus any
+ * configured model id that isn't in the known catalog (typos).
+ */
+function ModelHealthCard() {
+  const [rows, setRows] = useState<ModelHealthRow[] | null>(null);
+  const [audit, setAudit] = useState<ModelAuditRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const load = async (force = false) => {
+    setLoading(true);
+    try {
+      const res = await callAdminApi<{ rows: ModelHealthRow[]; audit: ModelAuditRow[] }>(
+        "model-health",
+        { force },
+      );
+      setRows(res.rows);
+      setAudit(res.audit ?? []);
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Failed to load model health");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const flagged = audit.filter((a) => a.issues.length > 0);
+
+  return (
+    <Card className="mb-6">
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
+        <div>
+          <CardTitle className="text-base font-semibold">Model health</CardTitle>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Last ~50 calls per model. Anything at 90%+ errors is auto-skipped in favour of the
+            fallback model.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" disabled={loading} onClick={() => void load(true)}>
+          {loading ? "Checking…" : "Refresh"}
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {flagged.length > 0 && (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
+            <div className="font-semibold text-destructive">Configuration issues</div>
+            <ul className="mt-1 space-y-1 text-muted-foreground">
+              {flagged.map((a) => (
+                <li key={a.feature}>
+                  <span className="font-medium text-foreground">{a.feature}</span>:{" "}
+                  {a.issues.join("; ")}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {!rows ? (
+          <div className="text-sm text-muted-foreground">Loading…</div>
+        ) : rows.length === 0 ? (
+          <div className="text-sm text-muted-foreground">No recent calls logged.</div>
+        ) : (
+          <div className="divide-y rounded-lg border">
+            {rows.slice(0, 12).map((r) => (
+              <div key={r.model} className="flex items-center justify-between gap-3 px-3 py-2">
+                <div className="min-w-0">
+                  <div className="truncate font-mono text-xs font-semibold">{r.model}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {r.calls} calls · {r.errors} errors
+                    {r.lastErrorMessage ? ` · ${r.lastErrorMessage}` : ""}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {!r.known && (
+                    <span className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">
+                      unknown id
+                    </span>
+                  )}
+                  <span
+                    className={
+                      r.unhealthy
+                        ? "rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive"
+                        : "rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground"
+                    }
+                  >
+                    {Math.round(r.errorRate * 100)}% err
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 
 function CostDashboard({
   rows,
