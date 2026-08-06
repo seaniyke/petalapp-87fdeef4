@@ -406,6 +406,8 @@ export function autoFixingBuild(attempt: number): FriendlyError {
         : "The first attempt didn't fully resolve it. Petal is trying a different angle. Still free — no credits charged for auto-fixes.",
     actionLabel: "Working on it",
     actionKind: "dismiss",
+    // This one really is automatic — the card says so and renders no button.
+    autoRetrying: true,
   };
 }
 

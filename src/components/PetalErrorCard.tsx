@@ -67,10 +67,15 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
   const [copied, setCopied] = useState(false);
   const summary = summarizeTechnicalDetail(error.technicalDetail);
 
-  const isAskFix = error.actionKind === "ask-fix";
-  const isRetry = error.actionKind === "retry";
-  const isDismiss = error.actionKind === "dismiss";
-  const isBuyCredits = error.actionKind === "buy-credits";
+  // Design Bible §10 / C7 — when Petal retries on its own, the card states it
+  // and offers no button. Copy and behaviour never disagree.
+  const autoRetrying = error.autoRetrying === true;
+  const isAskFix = !autoRetrying && error.actionKind === "ask-fix";
+  const isRetry = !autoRetrying && error.actionKind === "retry";
+  const isDismiss = !autoRetrying && error.actionKind === "dismiss";
+  const isBuyCredits = !autoRetrying && error.actionKind === "buy-credits";
+
+
 
 
   return (
