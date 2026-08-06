@@ -20,6 +20,7 @@ import { renderKitManifestBlock } from "./kit-manifest.server";
 export type DynamicSnippetKey =
   | "kitCore"
   | "webStandards"
+  | "frontendQuality"
 
   | "verifyBeforeDone"
   | "fileBudget"
@@ -602,6 +603,22 @@ These rules apply to EVERY visual file you write this turn. Violating any of the
   // This snippet says: if a list has 8+ items, it MUST be interactive.
   // Always-on: the baseline every real website meets. Fires on any page-ish
   // build because "it looks finished but nothing works" is the top complaint.
+  // Always-on. The Frontend Quality Bible floor (docs/petal-frontend-quality-bible.md)
+  // — the rules that hold for every generated screen regardless of topic.
+  frontendQuality: {
+    triggers: "always",
+    body: `\n\n[Reinforcement — Petal frontend quality floor]
+Every screen you generate is held to this, no exceptions:
+
+1. TOKENS FIRST — semantic tokens (background, foreground, card, primary, secondary, muted, accent, destructive, border, ring) are defined in the global stylesheet before any component. Components NEVER hardcode colours (\`text-white\`, \`bg-black\`, \`bg-[#hex]\`). Every background has a declared foreground partner; body text ≥ 4.5:1 contrast.
+2. TYPE — two families max (one display, one body), never default Inter/Poppins unless asked. Six-step scale: hero → page title → section title → card title → body → caption. Exactly ONE \`<h1>\` per page, heading levels never skip, body never below 14px, prose 60–75ch.
+3. SPACING — 4-point scale only. Section rhythm \`py-16\` mobile → \`py-24\` desktop, consistent down the page. Content width capped ~1200–1280px with symmetric gutters. Grids collapse to one column below \`md\`. Use \`min-h-[100dvh]\`, never \`h-screen\` on a scrolling section.
+4. THREE STATES — every data surface ships loading (skeleton matching the final layout), empty (icon chip → heading → one line → one CTA), and error (plain-English headline + retry). Never a blank container, never a raw exception.
+5. FORMS — visible \`<label>\` on every input (placeholders are not labels), validate on blur and submit, error text adjacent to the field with \`aria-invalid\` + \`aria-describedby\`, correct \`type\`/\`inputMode\`/\`autoComplete\`, submit shows progress and confirms success while keeping input on failure.
+6. CONTROLS — one primary action per view, \`aria-label\` on every icon-only control, destructive actions confirm and name the consequence, disabled controls explain why, visible focus ring everywhere.
+7. MOTION — 120ms micro / 200ms component / 400ms page, one easing curve, every animation inside \`@media (prefers-reduced-motion: reduce)\` guards. No autoplay carousels, no parallax.
+8. CONTENT — sentence case, second person, present tense, no exclamation marks, no lorem ipsum and no TODO copy ever. Write plausible domain-specific words. Format numbers and write unambiguous dates.`,
+  },
   webStandards: {
     triggers:
       /\b(site|website|page|landing|app|dashboard|portfolio|store|shop|blog|booking|saas|marketing|home ?page|nav|header|form|contact)\b/i,
