@@ -14,6 +14,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sanitizeVerificationDefects } from "@/lib/verification-report";
 import { verifySignature } from "@/server/builder.server";
+import { probeDeployedUrl } from "@/server/deploy-verify.server";
 
 /**
  * Browser-verification report. Kept loose on purpose: the builder owns the
