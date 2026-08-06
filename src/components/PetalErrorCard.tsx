@@ -67,10 +67,15 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
   const [copied, setCopied] = useState(false);
   const summary = summarizeTechnicalDetail(error.technicalDetail);
 
-  const isAskFix = error.actionKind === "ask-fix";
-  const isRetry = error.actionKind === "retry";
-  const isDismiss = error.actionKind === "dismiss";
-  const isBuyCredits = error.actionKind === "buy-credits";
+  // Design Bible §10 / C7 — when Petal retries on its own, the card states it
+  // and offers no button. Copy and behaviour never disagree.
+  const autoRetrying = error.autoRetrying === true;
+  const isAskFix = !autoRetrying && error.actionKind === "ask-fix";
+  const isRetry = !autoRetrying && error.actionKind === "retry";
+  const isDismiss = !autoRetrying && error.actionKind === "dismiss";
+  const isBuyCredits = !autoRetrying && error.actionKind === "buy-credits";
+
+
 
 
   return (
@@ -124,6 +129,12 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
 
             {/* Action row — iOS pill buttons */}
             <div className="mt-3 flex flex-wrap items-center gap-2">
+              {autoRetrying && (
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-foreground/12 bg-background/60 px-3 text-[12.5px] font-medium text-muted-foreground">
+                  <RefreshCcw className="h-3.5 w-3.5 animate-spin [animation-duration:2.4s] motion-reduce:animate-none" />
+                  Petal is retrying automatically
+                </span>
+              )}
               {isRetry && onRetry && (
                 <button
                   type="button"

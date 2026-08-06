@@ -39,7 +39,31 @@ export type FriendlyError = {
   actionKind: "retry" | "ask-fix" | "dismiss" | "buy-credits";
   /** Original technical detail — hidden behind a "Show details" disclosure. */
   technicalDetail?: string;
+  /**
+   * Design Bible §10 — "If Petal retries automatically, the card says so and
+   * shows no retry button." Set this ONLY when the pipeline genuinely retries
+   * without the user tapping anything. Copy and behaviour must agree.
+   */
+  autoRetrying?: boolean;
 };
+
+/**
+ * F3 error contract — the single producer of user-facing failure copy.
+ * `toFriendlyError` is the only function allowed to turn an exception into
+ * something a person reads, and `PetalErrorCard` is the only component
+ * allowed to render it. Anything that shows `e.message` directly is a bug.
+ *
+ * Use this helper for the few surfaces that legitimately need a one-line
+ * string (a toast for a transient, non-persisted failure) instead of a card.
+ */
+export function friendlyErrorText(raw: unknown, fallback: string): string {
+  try {
+    const friendly = toFriendlyError(raw);
+    return friendly.title === "Petal hit a build issue" ? fallback : friendly.message;
+  } catch {
+    return fallback;
+  }
+}
 
 /**
  * Error subclass that carries the structured failure code from the server
@@ -88,10 +112,13 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
     actionKind: "retry",
     technicalDetail: raw,
   }),
+  // C7 — copy must match the button. These paths do NOT auto-retry, so the
+  // copy no longer promises that Petal will. It tells the user what tapping
+  // the button will do instead.
   generation_incomplete: (raw) => ({
     title: "Petal didn’t finish the update",
     message:
-      "Petal started the work but the generated files didn’t pass the final check. I’ll retry with a safer, smaller update.",
+      "Petal started the work but the generated files didn’t pass the final check, so nothing was changed. Tap below and Petal will redo it as a smaller, safer edit.",
     actionLabel: "Retry safely",
     actionKind: "retry",
     technicalDetail: raw,
@@ -99,7 +126,7 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
   truncated_response: (raw) => ({
     title: "Petal's reply got cut off",
     message:
-      "The model ran out of room mid-build before files were complete. Petal retries this with smaller chunks automatically.",
+      "The model ran out of room mid-build before the files were complete. Tap below and Petal will rebuild it in smaller chunks.",
     actionLabel: "Retry safely",
     actionKind: "retry",
     technicalDetail: raw,
@@ -130,7 +157,7 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
   upstream_timeout: (raw) => ({
     title: "Petal ran out of time before saving changes",
     message:
-      "Petal took too long on this turn, so nothing was charged and no files were changed. I’ll retry with a tighter, safer build path.",
+      "Petal took too long on this turn, so nothing was charged and no files were changed. Tap below to run it again on a tighter build path.",
     actionLabel: "Try again",
     actionKind: "retry",
     technicalDetail: raw,
@@ -379,6 +406,8 @@ export function autoFixingBuild(attempt: number): FriendlyError {
         : "The first attempt didn't fully resolve it. Petal is trying a different angle. Still free — no credits charged for auto-fixes.",
     actionLabel: "Working on it",
     actionKind: "dismiss",
+    // This one really is automatic — the card says so and renders no button.
+    autoRetrying: true,
   };
 }
 

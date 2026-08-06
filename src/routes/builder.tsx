@@ -85,6 +85,7 @@ import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivit
 import { ComposerActionsMenu } from "@/components/ComposerActionsMenu";
 import { useVoiceDictation } from "@/hooks/use-voice-dictation";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
+import { CopyMessageButton } from "@/components/CopyMessageButton";
 import { NextStepsCard } from "@/components/NextStepsCard";
 import { SuggestionChecklist } from "@/components/SuggestionChecklist";
 import { PlanProposalCard } from "@/components/PlanProposalCard";
@@ -865,6 +866,10 @@ function Builder() {
 
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  // C1 — auto-scroll is gated on the user actually being near the bottom.
+  // Scrolling up to re-read something must never be undone by a stream tick.
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   // Phase 2 (auto-fix): only failures from builds this browser session
   // explicitly started are eligible. Old failed builds loaded from the DB must
@@ -1473,9 +1478,38 @@ function Builder() {
   }, [searchId]);
 
 
+  // C1 — bottom-proximity gate. Within 120px of the bottom we follow the
+  // stream; further up we leave the scroll position alone and surface a
+  // "jump to latest" pill instead of yanking the user down mid-read.
+  const NEAR_BOTTOM_PX = 120;
+
+  const isNearBottom = useCallback(() => {
+    const el = chatScrollRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
+  }, []);
+
+  const scrollChatToLatest = useCallback((behavior: ScrollBehavior = "smooth") => {
+    chatEndRef.current?.scrollIntoView({ behavior });
+    setShowJumpToLatest(false);
+  }, []);
+
   useEffect(() => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    const onScroll = () => setShowJumpToLatest(!isNearBottom());
+    el.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [isNearBottom]);
+
+  useEffect(() => {
+    if (!isNearBottom()) {
+      setShowJumpToLatest(true);
+      return;
+    }
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, busy]);
+  }, [messages, busy, isNearBottom]);
 
   // Show a "new" dot on the Preview tab when files change while Chat is active.
   useEffect(() => {
@@ -2625,7 +2659,8 @@ function Builder() {
           // friendly card so the user has a clear recovery path instead
           // of a stuck spinner.
           console.error(persistErr);
-          toast.error("Generated, but couldn't save changes.");
+          // M4 — one channel per event. The persisted error card below owns
+          // this failure; a toast alongside it was a duplicate notification.
           setPhases((p) => markFailed(p, "deploying"));
           persistFriendlyError(
             toFriendlyError(persistErr, { surface: "build", projectId: proj.id }),
@@ -2871,14 +2906,10 @@ function Builder() {
           console.error(persistErr);
         }
       } catch (e) {
-        // Out-of-credits surfaces as a dedicated "Buy credits" card, not a
-        // truncated JSON toast that the user can't act on.
-        if (e instanceof PipelineError && e.kind === "credits_exhausted") {
-          persistFriendlyError(toFriendlyError(e, { surface: "generate", projectId: proj.id }));
-        } else {
-          const msg = e instanceof Error ? e.message : "Discussion failed.";
-          toast.error(msg);
-        }
+        // C6 — discuss failures are the same class of failure as build
+        // failures and get the same care: one friendly card, never a raw
+        // `e.message` toast.
+        persistFriendlyError(toFriendlyError(e, { surface: "generate", projectId: proj.id }));
         // Roll back the unanswered user message so the chat doesn't look stuck.
         setMessages((prev) => prev.slice(0, -1));
         // Also drop the prompt from the DB so the next reload doesn't
@@ -3892,7 +3923,10 @@ function Builder() {
               </span>
             )}
           </div>
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-5 sm:px-5">
+          <div
+            ref={chatScrollRef}
+            className="relative min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-5 sm:px-5"
+          >
             {bootstrapping && (
               <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-3.5 py-1.5 text-[12px] text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading project…
@@ -4003,6 +4037,7 @@ function Builder() {
                         <Suspense fallback={<div className="whitespace-pre-wrap">{sanitizeNarrative(m.content)}</div>}>
                           <MarkdownMessage content={sanitizeNarrative(m.content)} projectId={project?.id ?? null} />
                         </Suspense>
+                        <CopyMessageButton text={sanitizeNarrative(m.content)} />
                         {/* Required clarifying-question answer card. Renders
                             whenever the latest assistant turn carries
                             `suggestions`, before AND after a build. The
@@ -4851,6 +4886,20 @@ function Builder() {
               if (shouldHideErrorCard(m.error)) return null;
               return renderErrorCard(m, true, lastErrorIdx);
             })()}
+            {/* C1 — shown only when the user has scrolled away from the
+                bottom. Tapping it re-arms follow-the-stream behaviour. */}
+            {showJumpToLatest && (
+              <div className="pointer-events-none sticky bottom-1 z-10 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => scrollChatToLatest()}
+                  className="pointer-events-auto inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-foreground shadow-[var(--shadow-editorial)] transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                  Jump to latest
+                </button>
+              </div>
+            )}
             <div ref={chatEndRef} />
 
           </div>
@@ -5118,7 +5167,16 @@ function Builder() {
               <textarea
                 ref={composerTextareaRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  // M6 — real auto-grow. The `max-h` + `overflow-y-auto`
+                  // pair was documented as auto-growing but nothing ever
+                  // mutated the height, so long prompts scrolled inside a
+                  // one-line box.
+                  const el = e.currentTarget;
+                  el.style.height = "auto";
+                  el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+                }}
                 onKeyDown={(e) => {
                   // Enter inserts a newline (default). Cmd/Ctrl+Enter sends.
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -5136,6 +5194,9 @@ function Builder() {
                         : "Describe the app you want to build…"
                 }
                 rows={1}
+                // Enter inserts a newline here, so the soft keyboard must not
+                // advertise "send" — it would lie about what the key does.
+                enterKeyHint="enter"
                 className="max-h-[200px] min-h-[44px] w-full resize-none overflow-y-auto bg-transparent px-2 py-1.5 text-sm font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground disabled:opacity-50"
                 disabled={bootstrapping}
               />

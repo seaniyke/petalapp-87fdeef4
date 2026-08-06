@@ -77,6 +77,7 @@ import {
   type CheckResult,
 } from "@/lib/petal-subdomain";
 import { toast } from "sonner";
+import { friendlyBuildFailure } from "@/lib/friendly-errors";
 
 
 type Props = {
@@ -856,15 +857,19 @@ export function PublishSheet({
           <Pencil className="h-4 w-4 text-muted-foreground" />
         </button>
 
-        {/* Build error (only when relevant) */}
-        {buildStatus === "failed" && buildError && (
-          <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-            <span className="font-medium">Last publish failed.</span>{" "}
-            <span className="opacity-80">
-              {buildError.split("\n").slice(-1)[0]?.slice(0, 200) ?? "Unknown error"}
-            </span>
-          </div>
-        )}
+        {/* Build error (only when relevant). C5 — the raw last log line used
+            to land here verbatim. Every failure now goes through the single
+            error producer so users read the same plain-English copy the
+            builder thread shows. */}
+        {buildStatus === "failed" && buildError && (() => {
+          const friendly = friendlyBuildFailure(buildError);
+          return (
+            <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+              <span className="font-medium">{friendly.title}</span>{" "}
+              <span className="opacity-80">{friendly.message}</span>
+            </div>
+          );
+        })()}
 
         {/* Actions */}
         <div className="mt-5 grid grid-cols-1 gap-2">
