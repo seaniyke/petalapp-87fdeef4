@@ -129,6 +129,12 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
 
             {/* Action row — iOS pill buttons */}
             <div className="mt-3 flex flex-wrap items-center gap-2">
+              {autoRetrying && (
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-foreground/12 bg-background/60 px-3 text-[12.5px] font-medium text-muted-foreground">
+                  <RefreshCcw className="h-3.5 w-3.5 animate-spin [animation-duration:2.4s] motion-reduce:animate-none" />
+                  Petal is retrying automatically
+                </span>
+              )}
               {isRetry && onRetry && (
                 <button
                   type="button"
