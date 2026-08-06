@@ -865,6 +865,10 @@ function Builder() {
 
   const initialSent = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  // C1 — auto-scroll is gated on the user actually being near the bottom.
+  // Scrolling up to re-read something must never be undone by a stream tick.
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   // Phase 2 (auto-fix): only failures from builds this browser session
   // explicitly started are eligible. Old failed builds loaded from the DB must
