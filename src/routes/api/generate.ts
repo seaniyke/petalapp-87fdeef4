@@ -123,6 +123,9 @@ import { loadLabsFlagsForRequest } from "@/server/labs-flags.server";
 import { runStagedPipelineStream } from "@/server/pipeline/staged-orchestrator.server";
 import { ensureRenderableShell } from "@/server/renderable-shell.server";
 import { runAllRepairs } from "@/server/repair-all.server";
+import { TurnCostMeter } from "@/server/turn-cost-ceiling.server";
+import { entriesFromRepairNotes, recordRepairs } from "@/server/repair-ledger.server";
+import { analyzeEditScope, scopeDisclosure } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
 import {
@@ -1450,6 +1453,15 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
    * the final files against THIS, never by trusting the model's prose.
    */
   const turnBaselineFiles = currentFiles;
+
+  /**
+   * AI Generation Bible §7 — the repair phase is bounded by rounds AND by a
+   * hard cost ceiling. Rounds alone don't bound spend: one repair pass over a
+   * 40-file project costs more than ten over a small one. Repair is Petal's
+   * cost, never the user's, so this ceiling protects margin and kills
+   * pathological loops; it is never surfaced as "you ran out".
+   */
+  const repairMeter = new TurnCostMeter();
   if (messages.length === 0) {
     return new Response("messages must not be empty", { status: 400 });
   }
@@ -3446,6 +3458,17 @@ Forbidden defaults
           if (repaired.notes.length > 0) {
             for (const n of repaired.notes) console.info("[repair-all]", n);
             nextFiles = repaired.files;
+            // Bible §7 — every repair records signature → fix → outcome.
+            // This is the training set for the next codemod, and the only way
+            // to see the same pass masking the same model defect week after
+            // week. Fire-and-forget: a ledger write never blocks a build.
+            void recordRepairs(
+              entriesFromRepairNotes(repaired.notes, {
+                projectId: body.projectId ?? null,
+                userId,
+                phase: "pre_build",
+              }),
+            );
           }
         }
 
@@ -3930,6 +3953,14 @@ Forbidden defaults
           const fixT0 = Date.now();
           try {
             const fixOut = await runPostStreamAutofix(nextFiles, combinedAutofixIssues);
+            // §7 cost ceiling — meter the polish pass so later rounds know
+            // how much of the turn's repair budget is already gone.
+            repairMeter.charge(
+              "autofix_cycle_2",
+              "google/gemini-2.5-flash-lite",
+              (fixOut.result.usage?.total_tokens ?? 0) ||
+                Math.ceil(nextFiles.reduce((s, f) => s + f.content.length, 0) / 4) + 4_000,
+            );
             nextFiles = fixOut.files;
             if (fixOut.result.fixedFiles > 0) {
               console.log(
@@ -4094,6 +4125,18 @@ Forbidden defaults
               break;
             }
             const cycleNum = 3 + cyc;
+            // §7 hard cost ceiling. Rounds are bounded above; this bounds the
+            // money. Crossing it ends the repair phase honestly rather than
+            // spending another round on a loop that isn't converging.
+            if (repairMeter.status().exhausted) {
+              console.warn(
+                `[agent-loop] cycle ${cycleNum} skipped — repair cost ceiling reached (${repairMeter.summary()})`,
+              );
+              controller.enqueue(
+                encoder.encode(sse({ type: "cycle_end", cycle: cycleNum, outcome: "hard-stop" })),
+              );
+              break;
+            }
             controller.enqueue(
               encoder.encode(sse({ type: "cycle_start", cycle: cycleNum, intent: "fixing" })),
             );
@@ -4111,6 +4154,12 @@ Forbidden defaults
               const fixOut = await runPostStreamAutofix(nextFiles, stillBad);
               nextFiles = fixOut.files;
               if (fixOut.result.usage) agentLoopUsages.push(fixOut.result.usage);
+              repairMeter.charge(
+                `autofix_cycle_${cycleNum}`,
+                "google/gemini-2.5-flash-lite",
+                (fixOut.result.usage?.total_tokens ?? 0) ||
+                  Math.ceil(nextFiles.reduce((s, f) => s + f.content.length, 0) / 4) + 4_000,
+              );
               const afterHash = nextFiles.map((f) => f.path + ":" + f.content.length).join("|");
               const madeProgress = afterHash !== beforeHash;
               controller.enqueue(
@@ -4413,6 +4462,22 @@ Forbidden defaults
           summary = `${summary}${note}`;
           controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
           console.warn(`[generate] unapplied paths disclosed to user: ${unappliedPaths.join(", ")}`);
+        }
+
+        // Bible §9 scope guard — a one-line request that rewrites half the
+        // project is how features silently disappear. We don't block it (the
+        // rewrite is sometimes right), we disclose it and offer the undo, so
+        // the user finds out from Petal rather than from a missing page.
+        {
+          const scope = analyzeEditScope(turnBaselineFiles, nextFiles, lastUserContent);
+          if (scope.flagged) {
+            const note = scopeDisclosure(scope);
+            summary = `${summary}${note}`;
+            controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+            console.warn(
+              `[edit-scope-guard] ${scope.reason} (changed=${scope.changedCount}, delta=${scope.totalDeltaBytes}B)`,
+            );
+          }
         }
 
 

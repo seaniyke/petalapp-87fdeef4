@@ -149,7 +149,26 @@ export function applyContextBudget(
     }
   }
 
-  // Truncate oldest non-system messages, keep last user turn.
+  // ────────────────────────────────────────────────────────────────────
+  // Priority-ordered compression (AI Generation Bible §10).
+  //
+  // Recency is the WRONG axis to drop on: the oldest messages are where the
+  // user stated their brand, their constraints and their rejections, and
+  // dropping those makes Petal re-propose ideas the user already refused.
+  // The bible fixes the order — keep, in this priority:
+  //
+  //   1. the system prompt                       (rules, tokens, contracts)
+  //   2. the user's current message              (the actual instruction)
+  //   3. constraint / memory carriers            (any message that states a
+  //      preference, rejection, brand or hard rule — at any age)
+  //   4. the most recent assistant turn          (what we just did)
+  //   5. recent history, newest first
+  //   6. everything else                         (dropped first)
+  //
+  // "If context still doesn't fit, narrow the task, don't truncate the
+  // constraints" — so constraint carriers are only dropped once every
+  // ordinary message is already gone.
+  // ────────────────────────────────────────────────────────────────────
   const lastUserIdx = (() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "user") return i;
@@ -157,21 +176,44 @@ export function applyContextBudget(
     return messages.length - 1;
   })();
 
-  const pinned = new Set<number>([0, lastUserIdx]);
-  const kept: BudgetMessage[] = messages.map((m) => m);
-  const droppedIdx: number[] = [];
-  // Walk from oldest (1) toward last, dropping until we fit.
-  let runningEstimate = estimated;
-  const targetSafe = upgrade
-    ? safeInputTokensFor(upgrade)
-    : safe;
-  for (let i = 1; i < kept.length && runningEstimate > targetSafe; i++) {
-    if (pinned.has(i)) continue;
-    runningEstimate -= estimateMessageTokens(kept[i]);
-    droppedIdx.push(i);
+  const lastAssistantIdx = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") return i;
+    }
+    return -1;
+  })();
+
+  const targetSafe = upgrade ? safeInputTokensFor(upgrade) : safe;
+
+  const priorityOf = (m: BudgetMessage, i: number): number => {
+    if (i === 0 || m.role === "system") return 0;
+    if (i === lastUserIdx) return 1;
+    if (m.role === "user" && carriesConstraint(m)) return 2;
+    if (i === lastAssistantIdx) return 3;
+    return 4;
+  };
+
+  // Rank: lower priority number = keep harder. Within the same priority,
+  // newer wins. Then fill the budget greedily in rank order.
+  const ranked = messages
+    .map((m, i) => ({ m, i, p: priorityOf(m, i), t: estimateMessageTokens(m) }))
+    .sort((a, b) => (a.p === b.p ? b.i - a.i : a.p - b.p));
+
+  const keep = new Set<number>();
+  let running = 0;
+  for (const r of ranked) {
+    // The system prompt and the current instruction are never negotiable,
+    // even if they alone blow the window — a caller that hits that has a
+    // task-narrowing problem, not a truncation problem.
+    const mandatory = r.p <= 1;
+    if (mandatory || running + r.t <= targetSafe) {
+      keep.add(r.i);
+      running += r.t;
+    }
   }
-  const droppedSet = new Set(droppedIdx);
-  const filtered = kept.filter((_, i) => !droppedSet.has(i));
+
+  const filtered = messages.filter((_, i) => keep.has(i));
+  const droppedCount = messages.length - filtered.length;
   const finalEstimate = estimateMessagesTokens(filtered);
 
   return {
@@ -180,7 +222,28 @@ export function applyContextBudget(
     overBudget: true,
     messages: filtered,
     modelOverride: upgrade ?? null,
-    droppedCount: droppedIdx.length,
+    droppedCount,
     action: upgrade ? "model_upgrade+truncate" : "truncate",
   };
+}
+
+/**
+ * Does this message state something Petal must keep obeying for the rest of
+ * the project? Constraints outrank recency (§10) — a brand colour stated in
+ * message 2 governs message 40.
+ */
+const CONSTRAINT_RE =
+  /\b(always|never|don'?t|do not|must|make sure|remember|from now on|instead of|stop|i hate|i don'?t (like|want)|prefer|keep|use only|brand|our colou?rs?|font|logo|no (dark|light) mode)\b/i;
+
+export function carriesConstraint(m: BudgetMessage): boolean {
+  const text =
+    typeof m.content === "string"
+      ? m.content
+      : m.content
+          .filter((p) => p.type === "text" && p.text)
+          .map((p) => p.text as string)
+          .join(" ");
+  // Very long messages are usually pasted code/errors, not stated rules.
+  if (text.length > 2_000) return false;
+  return CONSTRAINT_RE.test(text);
 }
