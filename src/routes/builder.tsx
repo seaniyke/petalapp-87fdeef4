@@ -120,6 +120,8 @@ import { createVersion, listVersions } from "@/lib/versions";
 import { triggerBuild } from "@/lib/builds";
 import { supabase } from "@/integrations/supabase/client";
 import { HistoryPanel } from "@/components/HistoryPanel";
+import { LazySheet } from "@/components/LazySheet";
+import { createBuilderActions, actionsForSurface } from "@/lib/builder-actions";
 import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
 import { RevertPreviewDialog } from "@/components/RevertPreviewDialog";
 import { PartialRevertDialog } from "@/components/PartialRevertDialog";
@@ -3346,6 +3348,47 @@ function Builder() {
         console.error("triggerBuild failed", err);
       });
   }
+
+  // F5 — the single definition site for every builder action. Desktop
+  // toolbar, desktop overflow menu and the mobile sheet all render from
+  // this array, so a new action can never ship to one surface only.
+  const builderActions = useMemo(
+    () =>
+      createBuilderActions({
+        hasFiles: files.length > 0,
+        openShare: () => setSharePreviewOpen(true),
+        openPublish: () => setPublishOpen(true),
+        openSettings: () => setSettingsOpen(true),
+        openCode: () => {
+          setView("code");
+          setMobileTab("preview");
+        },
+        openHistory: () => setHistoryOpen(true),
+        openSecurity: () => setShieldOpen(true),
+        openComments: () => setCommentsOpen(true),
+        openSeo: () => setSeoOpen(true),
+        openAnalytics: () => setAnalyticsOpen(true),
+        openCloud: () => setCloudPanelOpen(true),
+        openAgentIntegrations: () => setAgentIntegrationsOpen(true),
+        openPayments: () => setPaymentsOpen(true),
+        openConnectors: () => setConnectorsOpen(true),
+        openRename: () => setRenameOpen(true),
+        openPalette: () => setPaletteOpen(true),
+        reloadPreview: () => {
+          setView("preview");
+          setMobileTab("preview");
+          setPreviewKey((k) => k + 1);
+        },
+        exportCode: () => {
+          void downloadProject();
+        },
+      }),
+    // `downloadProject` closes over `files`/`project`, both covered below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [files.length, project?.id],
+  );
+  const desktopToolbarActions = actionsForSurface(builderActions, "desktop-toolbar");
+  const desktopMenuActions = actionsForSurface(builderActions, "desktop-menu");
 
   const activeContent = files.find((f) => f.path === activeFile)?.content ?? "";
 
