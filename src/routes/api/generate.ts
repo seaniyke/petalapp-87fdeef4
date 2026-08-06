@@ -4464,6 +4464,22 @@ Forbidden defaults
           console.warn(`[generate] unapplied paths disclosed to user: ${unappliedPaths.join(", ")}`);
         }
 
+        // Bible §9 scope guard — a one-line request that rewrites half the
+        // project is how features silently disappear. We don't block it (the
+        // rewrite is sometimes right), we disclose it and offer the undo, so
+        // the user finds out from Petal rather than from a missing page.
+        {
+          const scope = analyzeEditScope(turnBaselineFiles, nextFiles, lastUserContent);
+          if (scope.flagged) {
+            const note = scopeDisclosure(scope);
+            summary = `${summary}${note}`;
+            controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+            console.warn(
+              `[edit-scope-guard] ${scope.reason} (changed=${scope.changedCount}, delta=${scope.totalDeltaBytes}B)`,
+            );
+          }
+        }
+
 
         // Iteration Standard #1 — one turn, one terminal state, decided by a
         // byte diff against the snapshot taken when the turn began.
