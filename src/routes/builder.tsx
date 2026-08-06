@@ -3925,7 +3925,10 @@ function Builder() {
               </span>
             )}
           </div>
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-5 sm:px-5">
+          <div
+            ref={chatScrollRef}
+            className="relative min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-5 sm:px-5"
+          >
             {bootstrapping && (
               <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-3.5 py-1.5 text-[12px] text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading project…
