@@ -4887,6 +4887,20 @@ function Builder() {
               if (shouldHideErrorCard(m.error)) return null;
               return renderErrorCard(m, true, lastErrorIdx);
             })()}
+            {/* C1 — shown only when the user has scrolled away from the
+                bottom. Tapping it re-arms follow-the-stream behaviour. */}
+            {showJumpToLatest && (
+              <div className="pointer-events-none sticky bottom-1 z-10 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => scrollChatToLatest()}
+                  className="pointer-events-auto inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-foreground shadow-[var(--shadow-editorial)] transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                  Jump to latest
+                </button>
+              </div>
+            )}
             <div ref={chatEndRef} />
 
           </div>
