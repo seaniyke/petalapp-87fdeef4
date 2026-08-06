@@ -1450,6 +1450,15 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
    * the final files against THIS, never by trusting the model's prose.
    */
   const turnBaselineFiles = currentFiles;
+
+  /**
+   * AI Generation Bible §7 — the repair phase is bounded by rounds AND by a
+   * hard cost ceiling. Rounds alone don't bound spend: one repair pass over a
+   * 40-file project costs more than ten over a small one. Repair is Petal's
+   * cost, never the user's, so this ceiling protects margin and kills
+   * pathological loops; it is never surfaced as "you ran out".
+   */
+  const repairMeter = new TurnCostMeter();
   if (messages.length === 0) {
     return new Response("messages must not be empty", { status: 400 });
   }
