@@ -105,12 +105,12 @@ function AdminPipelinePage() {
               Per-tier outcomes for every build turn · last {labelFor(hours)}
             </p>
           </div>
-          <div className="flex gap-1 rounded-lg border border-border/60 p-1">
+          <div className="flex gap-1 rounded-xl border border-border/60 p-1">
             {WINDOWS.map((w) => (
               <button
                 key={w.hours}
                 onClick={() => setHours(w.hours)}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                className={`rounded-xl px-3 py-1 text-xs font-medium transition ${
                   hours === w.hours
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"

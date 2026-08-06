@@ -357,7 +357,7 @@ function AdminUsersPage() {
               setDetail(null);
             }}
           />
-          <aside className="flex h-full w-full max-w-xl flex-col overflow-y-auto border-l border-border/60 bg-background shadow-2xl">
+          <aside className="flex h-full w-full max-w-xl flex-col overflow-y-auto border-l border-border/60 bg-background shadow-[var(--shadow-editorial)]">
             <div className="flex items-center justify-between border-b border-border/60 px-5 py-3">
               <h2 className="text-sm font-medium tracking-tight">User detail</h2>
               <button
@@ -534,15 +534,15 @@ function DetailHeader({
         </div>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-lg border border-border/60 px-3 py-2">
+        <div className="rounded-xl border border-border/60 px-3 py-2">
           <div className="text-[10px] uppercase text-muted-foreground">Plan</div>
           <div className="text-sm font-medium">{plan}</div>
         </div>
-        <div className="rounded-lg border border-border/60 px-3 py-2">
+        <div className="rounded-xl border border-border/60 px-3 py-2">
           <div className="text-[10px] uppercase text-muted-foreground">Top-up</div>
           <div className="text-sm font-medium tabular-nums">{topup.toFixed(0)}</div>
         </div>
-        <div className="rounded-lg border border-border/60 px-3 py-2">
+        <div className="rounded-xl border border-border/60 px-3 py-2">
           <div className="text-[10px] uppercase text-muted-foreground">Monthly</div>
           <div className="text-sm font-medium tabular-nums">{monthly.toFixed(0)}</div>
         </div>
@@ -610,7 +610,7 @@ function SectionList({ title, items, empty }: { title: string; items: React.Reac
       {items.length === 0 ? (
         <p className="text-xs text-muted-foreground">{empty}</p>
       ) : (
-        <ul className="divide-y divide-border/60 rounded-lg border border-border/60 px-3">{items}</ul>
+        <ul className="divide-y divide-border/60 rounded-xl border border-border/60 px-3">{items}</ul>
       )}
     </div>
   );

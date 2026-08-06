@@ -157,7 +157,7 @@ function TemplatesPage() {
 
         {/* Grid */}
         {filtered.length === 0 ? (
-          <div className="mt-16 rounded-3xl border border-dashed border-border bg-card/60 p-12 text-center">
+          <div className="mt-16 rounded-2xl border border-dashed border-border bg-card/60 p-12 text-center">
             <h3 className="font-display text-2xl">No templates match</h3>
             <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
               Try a different category or clear the search. Or describe what

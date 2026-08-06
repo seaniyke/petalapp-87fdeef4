@@ -3344,6 +3344,29 @@ function Builder() {
       });
   }
 
+  // H6 — the device presets (390 / 820px) are a promise about width. Measure
+  // the real column and say so when it can't keep that promise, instead of
+  // silently rendering a "tablet" at 400px.
+  const previewColRef = useRef<HTMLDivElement | null>(null);
+  const [previewColWidth, setPreviewColWidth] = useState(0);
+  useEffect(() => {
+    const el = previewColRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width ?? 0;
+      setPreviewColWidth(Math.round(w));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [view, mobileTab]);
+  const previewTooNarrow =
+    !isMobile &&
+    view === "preview" &&
+    files.length > 0 &&
+    previewColWidth > 0 &&
+    previewColWidth <
+      (previewDevice === "phone" ? 390 : previewDevice === "tablet" ? 820 : 1024) - 24;
+
   // F5 — the single definition site for every builder action. Desktop
   // toolbar, desktop overflow menu and the mobile sheet all render from
   // this array, so a new action can never ship to one surface only.
@@ -3511,7 +3534,7 @@ function Builder() {
         <FirstRunTour />
       </Suspense>
       {/* Top bar — iOS-style translucent material, never moves */}
-      <div className="safe-top sticky top-0 z-30 shrink-0 border-b border-border/60 bg-card/80 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65">
+      <div className="safe-top safe-x z-sticky sticky top-0 shrink-0 border-b border-border/60 bg-card/80 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65">
       <header className="grid h-12 grid-cols-[auto_1fr_auto] items-center gap-2 px-3 sm:h-14 sm:px-4">
         {/* Left: hamburger (mobile) + back/title (desktop) */}
         <div className="flex min-w-0 items-center gap-2">
@@ -3520,7 +3543,7 @@ function Builder() {
             type="button"
             onClick={() => setProjectsDrawerOpen(true)}
             aria-label="Open projects menu"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-foreground transition hover:bg-muted md:hidden"
+            className="grid size-11 shrink-0 place-items-center rounded-xl text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -3529,7 +3552,7 @@ function Builder() {
             type="button"
             onClick={() => setProjectsDrawerOpen(true)}
             aria-label="Open projects menu"
-            className="hidden h-9 w-9 shrink-0 place-items-center rounded-lg text-foreground transition hover:bg-muted md:grid"
+            className="hidden size-9 shrink-0 place-items-center rounded-xl text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -3540,21 +3563,21 @@ function Builder() {
             aria-label={chatCollapsed ? "Show chat" : "Hide chat"}
             title={`${chatCollapsed ? "Show" : "Hide"} chat (⌘B)`}
             aria-pressed={chatCollapsed}
-            className="hidden h-9 w-9 shrink-0 place-items-center rounded-lg text-foreground transition hover:bg-muted md:grid"
+            className="hidden size-9 shrink-0 place-items-center rounded-xl text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid"
           >
             {chatCollapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
           </button>
 
           <Link
             to="/projects"
-            className="hidden shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground hover:bg-muted md:inline-flex"
+            className="hidden shrink-0 items-center gap-1.5 rounded-xl px-2 py-1 text-sm text-muted-foreground hover:bg-muted md:inline-flex"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Projects</span>
           </Link>
           <div className="hidden h-5 w-px bg-border md:block" />
           <div className="hidden min-w-0 items-center gap-2 md:flex">
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
               <Sparkles className="h-3.5 w-3.5" />
             </span>
             <div className="flex min-w-0 flex-col leading-tight">
@@ -3574,7 +3597,7 @@ function Builder() {
         <button
           type="button"
           onClick={() => setActionsOpen(true)}
-          className="mx-auto inline-flex max-w-[60vw] items-center gap-1 rounded-lg px-2 py-1 text-foreground transition hover:bg-muted md:hidden"
+          className="mx-auto inline-flex max-w-[60vw] items-center gap-1 rounded-xl px-2 py-1 text-foreground transition hover:bg-muted md:hidden"
           aria-label="Project menu"
         >
           <span className="truncate font-display text-base font-semibold">
@@ -3611,7 +3634,7 @@ function Builder() {
                   ? "Open preview"
                   : "Back to chat"
             }
-            className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-background text-foreground shadow-sm transition hover:bg-muted active:scale-95 md:hidden"
+            className="relative grid size-11 shrink-0 place-items-center rounded-full border border-border bg-background text-foreground shadow-[var(--shadow-soft)] transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 md:hidden"
           >
             {view === "code" ? (
               <Eye className="h-4 w-4" />
@@ -3625,10 +3648,10 @@ function Builder() {
             )}
           </button>
           {/* Desktop: Preview / Code segmented toggle */}
-          <div className="hidden items-center rounded-lg border border-border bg-background p-0.5 text-sm md:flex">
+          <div className="hidden items-center rounded-xl border border-border bg-background p-0.5 text-sm md:flex">
             <button
               onClick={() => setView("preview")}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition ${
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 transition ${
                 view === "preview" ? "bg-foreground text-background" : "text-muted-foreground"
               }`}
             >
@@ -3636,7 +3659,7 @@ function Builder() {
             </button>
             <button
               onClick={() => setView("code")}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition ${
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 transition ${
                 view === "code" ? "bg-foreground text-background" : "text-muted-foreground"
               }`}
             >
@@ -3645,14 +3668,14 @@ function Builder() {
           </div>
           {/* Desktop toolbar — rendered from the shared action registry (F5),
               so every affordance here also exists in the mobile sheet. */}
-          <div className="hidden items-center gap-0.5 rounded-lg border border-border bg-background p-0.5 md:flex">
+          <div className="hidden items-center gap-0.5 rounded-xl border border-border bg-background p-0.5 md:flex">
             {desktopToolbarActions.map((action) => (
               <button
                 key={action.id}
                 type="button"
                 onClick={action.run}
                 disabled={action.disabled}
-                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+                className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
                 title={action.title ?? action.label}
                 aria-label={action.title ?? action.label}
               >
@@ -3664,7 +3687,7 @@ function Builder() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
                   title="More"
                   aria-label="More actions"
                 >
@@ -3705,7 +3728,7 @@ function Builder() {
             <button
               type="button"
               onClick={() => setPublishOpen(true)}
-              className="hidden h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 md:inline-flex"
+              className="hidden h-8 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 md:inline-flex"
               title="Publish"
             >
               <Globe className="h-3.5 w-3.5" />
@@ -3904,7 +3927,9 @@ function Builder() {
 
       <div
         className={`grid min-h-0 flex-1 grid-cols-1 ${
-          chatCollapsed ? "md:grid-cols-[1fr]" : "md:grid-cols-[360px_1fr]"
+          chatCollapsed
+            ? "md:grid-cols-[1fr]"
+            : "md:grid-cols-[300px_1fr] lg:grid-cols-[360px_1fr] xl:grid-cols-[400px_1fr]"
         }`}
       >
         {/* Chat */}
@@ -3915,7 +3940,7 @@ function Builder() {
         >
           <div className="flex shrink-0 items-center justify-between border-b border-border/50 bg-sidebar/80 px-4 py-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-sidebar/60">
             <div className="flex items-center gap-2">
-              <span className="grid h-5 w-5 place-items-center rounded-md bg-foreground text-background">
+              <span className="grid h-5 w-5 place-items-center rounded-xl bg-foreground text-background">
                 <MessageSquare className="h-3 w-3" />
               </span>
               <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground/80">
@@ -3998,7 +4023,7 @@ function Builder() {
                   <div
                     className={`relative min-w-0 wrap-anywhere ${
                       isUser
-                        ? "max-w-[85%] overflow-hidden rounded-2xl rounded-br-md bg-primary/12 px-3.5 py-2.5 text-[14px] font-medium leading-relaxed text-foreground ring-1 ring-primary/20"
+                        ? "max-w-[85%] overflow-hidden rounded-2xl rounded-br-xl bg-primary/12 px-3.5 py-2.5 text-[14px] font-medium leading-relaxed text-foreground ring-1 ring-primary/20"
                         : "text-[14.5px] leading-[1.65] text-foreground"
                     }`}
                   >
@@ -4628,7 +4653,7 @@ function Builder() {
                             key={ai}
                             src={a.dataUrl}
                             alt={a.name ?? `attachment ${ai + 1}`}
-                            className="h-16 w-16 rounded-md border border-border object-cover"
+                            className="h-16 w-16 rounded-xl border border-border object-cover"
                           />
                         ))}
                       </div>
@@ -4637,7 +4662,7 @@ function Builder() {
                       <button
                         onClick={() => void prepareRevertToMessage(i)}
                         disabled={revertingIndex !== null || revertPreparing !== null}
-                        className="absolute -top-2 right-2 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground opacity-0 shadow-sm transition group-hover:opacity-100 hover:text-foreground disabled:opacity-40"
+                        className="absolute -top-2 right-2 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground opacity-0 shadow-[var(--shadow-soft)] transition group-hover:opacity-100 hover:text-foreground disabled:opacity-40"
                         title="Preview & revert the project to right after Petal's reply to this message"
                       >
                         {revertingIndex === i || revertPreparing === i ? (
@@ -4653,7 +4678,7 @@ function Builder() {
                     <div className="mr-3 mt-3 flex flex-col items-stretch gap-1.5 sm:mr-6">
                       <button
                         onClick={applyDiscussedPlan}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:brightness-105 active:scale-[0.99]"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 active:scale-[0.99]"
                       >
                         <Wand2 className="h-4 w-4" /> Apply this plan
                       </button>
@@ -4894,7 +4919,7 @@ function Builder() {
             {/* C1 — shown only when the user has scrolled away from the
                 bottom. Tapping it re-arms follow-the-stream behaviour. */}
             {showJumpToLatest && (
-              <div className="pointer-events-none sticky bottom-1 z-10 flex justify-center">
+              <div className="pointer-events-none z-base sticky bottom-1 flex justify-center">
                 <button
                   type="button"
                   onClick={() => scrollChatToLatest()}
@@ -4953,7 +4978,7 @@ function Builder() {
               e.preventDefault();
               submitPrompt(input);
             }}
-            className="safe-bottom shrink-0 border-t border-border/50 bg-card/80 px-3 pb-3 pt-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65"
+            className="safe-bottom safe-x shrink-0 border-t border-border/50 bg-card/80 px-3 pb-3 pt-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65"
           >
             {/* Queued messages — shown when the user typed while Petal was busy. */}
             {pendingQueue.length > 0 && (
@@ -4979,7 +5004,7 @@ function Builder() {
                         const fromId = e.dataTransfer.getData("text/plain");
                         if (fromId) reorderQueueByDrag(fromId, q.id);
                       }}
-                      className="group flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-background/60 px-2 py-1 text-xs transition hover:border-border/80"
+                      className="group flex items-center gap-1.5 rounded-xl border border-dashed border-border bg-background/60 px-2 py-1 text-xs transition hover:border-border/80"
                     >
                       <span
                         className="grid h-5 w-3 shrink-0 cursor-grab place-items-center text-muted-foreground/60 transition hover:text-foreground active:cursor-grabbing"
@@ -5148,14 +5173,14 @@ function Builder() {
                       setRuntimeError({ ...err, fixed: true });
                       void send(lines.join("\n"), { isAutoFix: true });
                     }}
-                    className="rounded-md bg-destructive px-2.5 py-1 text-[11px] font-semibold text-destructive-foreground hover:brightness-110"
+                    className="rounded-xl bg-destructive px-2.5 py-1 text-[11px] font-semibold text-destructive-foreground hover:brightness-110"
                   >
                     Fix this
                   </button>
                   <button
                     type="button"
                     onClick={() => setRuntimeError(null)}
-                    className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="grid h-6 w-6 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
                     title="Dismiss"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -5210,7 +5235,7 @@ function Builder() {
                   <button
                     type="button"
                     onClick={() => composerFileInputRef.current?.click()}
-                    className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    className="grid size-11 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-8"
                     title="Attach a screenshot or photo"
                     aria-label="Attach an image"
                   >
@@ -5235,9 +5260,9 @@ function Builder() {
                         voice.toggle();
                       }}
                       aria-pressed={voice.listening}
-                      className={`grid h-9 w-9 place-items-center rounded-full transition ${
+                      className={`grid size-11 place-items-center rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-9 ${
                         voice.listening
-                          ? "bg-red-500/15 text-red-500 ring-2 ring-red-500/40 animate-pulse"
+                          ? "animate-pulse bg-destructive/15 text-destructive ring-2 ring-destructive/40"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                       title={
@@ -5254,7 +5279,7 @@ function Builder() {
                     <button
                       type="button"
                       onClick={stopGeneration}
-                      className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-background shadow-[0_2px_8px_-2px_oklch(0_0_0/0.4)] transition hover:brightness-110 active:scale-95"
+                      className="grid size-11 place-items-center rounded-full bg-foreground text-background shadow-[var(--shadow-soft)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 sm:size-9"
                       title="Stop"
                       aria-label="Stop generation"
                     >
@@ -5264,7 +5289,7 @@ function Builder() {
                     <button
                       type="submit"
                       disabled={bootstrapping || !input.trim()}
-                      className="grid h-9 w-9 place-items-center rounded-full bg-[oklch(0.62_0.19_255)] text-white shadow-[0_2px_8px_-2px_oklch(0.62_0.19_255/0.5)] transition hover:brightness-110 active:scale-95 disabled:bg-foreground/20 disabled:text-foreground/40 disabled:shadow-none"
+                      className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 disabled:bg-foreground/20 disabled:text-foreground/40 disabled:shadow-none sm:size-9"
                       title={
                         discussBusy
                           ? "Add to queue"
@@ -5347,7 +5372,27 @@ function Builder() {
                   </div>
                 </div>
               )}
-              <div className="flex min-h-0 flex-1 items-stretch justify-center overflow-auto">
+              {previewTooNarrow && (
+                <div className="mb-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <span>
+                    This column is narrower than a real {previewDevice}, so the preview is
+                    squeezed.
+                  </span>
+                  {!chatCollapsed && (
+                    <button
+                      type="button"
+                      onClick={() => setChatCollapsed(true)}
+                      className="rounded-full border border-border px-2 py-0.5 font-semibold text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      Collapse chat
+                    </button>
+                  )}
+                </div>
+              )}
+              <div
+                ref={previewColRef}
+                className="flex min-h-0 flex-1 items-stretch justify-center overflow-auto"
+              >
                 <div
                   className={`flex min-h-0 w-full overflow-hidden rounded-2xl border border-border bg-white transition-[max-width] duration-200 ${
                     isMobile
@@ -5561,11 +5606,11 @@ function Builder() {
       />
       {pickedElement && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4 backdrop-blur-sm"
+          className="z-toast fixed inset-0 grid place-items-center bg-foreground/40 p-4 backdrop-blur-sm"
           onClick={() => setPickedElement(null)}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-xl"
+            className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-editorial)]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
@@ -5577,13 +5622,13 @@ function Builder() {
               </div>
               <button
                 onClick={() => setPickedElement(null)}
-                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
                 title="Close"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="mt-3 rounded-lg bg-muted/60 px-3 py-2 text-[11px] text-muted-foreground">
+            <div className="mt-3 rounded-xl bg-muted/60 px-3 py-2 text-[11px] text-muted-foreground">
               <code className="text-foreground">&lt;{pickedElement.tag}&gt;</code>
               {pickedElement.text && (
                 <> · "<span className="text-foreground">{pickedElement.text.slice(0, 60)}</span>"</>
@@ -5608,7 +5653,7 @@ function Builder() {
               const preview = pickInstruction.trim() ? tryParseQuickEdit(pickInstruction) : null;
               if (!preview) return null;
               return (
-                <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-[10px] text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
+                <div className="mt-2 flex items-center gap-1.5 rounded-xl bg-emerald-500/10 px-2.5 py-1.5 text-[10px] text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
                   <Wand2 className="h-3 w-3" />
                   <span className="font-medium">Instant edit</span>
                   <span className="opacity-75">· {preview.summary} · no AI used</span>
@@ -5620,14 +5665,14 @@ function Builder() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setPickedElement(null)}
-                  className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="rounded-xl px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   Cancel
                 </button>
                 <button
                   disabled={!pickInstruction.trim()}
                   onClick={() => void runPickerSubmit()}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-40"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-40"
                 >
                   <Wand2 className="h-3.5 w-3.5" /> Send to Petal
                 </button>

@@ -86,7 +86,7 @@ function CardShell({
 }) {
   return (
     <div className="group flex w-full items-start gap-3 rounded-xl border border-border/60 bg-card/40 p-5 text-left transition hover:border-primary/40 hover:bg-card">
-      <div className="rounded-lg bg-primary/10 p-2 text-primary">{icon}</div>
+      <div className="rounded-xl bg-primary/10 p-2 text-primary">{icon}</div>
       <div className="flex-1">
         <div className="flex items-center justify-between">
           <h3 className="font-medium tracking-tight">{title}</h3>

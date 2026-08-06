@@ -168,7 +168,7 @@ export function RevertPreviewDialog({
             type="button"
             onClick={() => onOpenChange(false)}
             disabled={busy}
-            className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-background px-4 text-sm transition hover:bg-muted disabled:opacity-40"
+            className="inline-flex h-9 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm transition hover:bg-muted disabled:opacity-40"
           >
             Cancel
           </button>
@@ -176,7 +176,7 @@ export function RevertPreviewDialog({
             type="button"
             onClick={() => void onConfirm()}
             disabled={busy || changes.length === 0}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-foreground px-4 text-sm text-background transition hover:brightness-105 disabled:opacity-40"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-foreground px-4 text-sm text-background transition hover:brightness-105 disabled:opacity-40"
           >
             {busy ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

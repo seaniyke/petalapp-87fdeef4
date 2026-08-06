@@ -145,7 +145,7 @@ function Fallback({ projectId, title }: { projectId: string; title?: string }) {
       <div className="absolute inset-0 bg-grain opacity-25" />
       <div className="absolute inset-0 grid place-items-center">
         <div
-          className="grid h-14 w-14 place-items-center rounded-2xl bg-white/85 text-lg font-display text-foreground shadow-md backdrop-blur"
+          className="grid h-14 w-14 place-items-center rounded-2xl bg-white/85 text-lg font-display text-foreground shadow-[var(--shadow-soft)] backdrop-blur"
           style={{ color: palette.ink }}
         >
           {initials}

@@ -225,7 +225,7 @@ function ProjectCard({ project, onDelete }: { project: ProjectRow; onDelete: () 
       </Link>
       <button
         onClick={onDelete}
-        className="absolute right-3 bottom-3 grid h-7 w-7 place-items-center rounded-full bg-card text-muted-foreground shadow-sm transition hover:text-destructive md:bg-card/0 md:opacity-0 md:shadow-none md:group-hover:bg-card md:group-hover:opacity-100"
+        className="absolute right-3 bottom-3 grid h-7 w-7 place-items-center rounded-full bg-card text-muted-foreground shadow-[var(--shadow-soft)] transition hover:text-destructive md:bg-card/0 md:opacity-0 md:shadow-none md:group-hover:bg-card md:group-hover:opacity-100"
         aria-label="Delete project"
       >
         <Trash2 className="h-3.5 w-3.5" />
@@ -236,7 +236,7 @@ function ProjectCard({ project, onDelete }: { project: ProjectRow; onDelete: () 
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="rounded-3xl border border-dashed border-border bg-card/60 p-12 text-center">
+    <div className="rounded-2xl border border-dashed border-border bg-card/60 p-12 text-center">
       <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-butter">
         <Sparkles className="h-6 w-6 text-foreground/70" />
       </div>

@@ -168,7 +168,7 @@ function CoffeePage() {
           ) : (
           <form
             onSubmit={submit}
-            className="mt-6 rounded-3xl border border-border bg-card/90 p-6 shadow-[var(--shadow-soft)] backdrop-blur sm:p-8"
+            className="mt-6 rounded-2xl border border-border bg-card/90 p-6 shadow-[var(--shadow-soft)] backdrop-blur sm:p-8"
           >
 
             {/* Currency */}
@@ -277,7 +277,7 @@ function CoffeePage() {
             </div>
 
             {error && (
-              <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <div className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {error}
               </div>
             )}
@@ -285,7 +285,7 @@ function CoffeePage() {
             <button
               type="submit"
               disabled={submitting}
-              className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-medium text-primary-foreground shadow-sm transition hover:brightness-105 disabled:opacity-60"
+              className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 disabled:opacity-60"
             >
               {submitting ? (
                 <>

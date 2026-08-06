@@ -36,7 +36,7 @@ export function PreviewCrashFallback({
 
   return (
     <div className="grid h-full w-full place-items-center bg-aurora p-6">
-      <div className="w-full max-w-sm rounded-2xl border border-destructive/30 bg-card/95 p-5 shadow-sm backdrop-blur">
+      <div className="w-full max-w-sm rounded-2xl border border-destructive/30 bg-card/95 p-5 shadow-[var(--shadow-soft)] backdrop-blur">
         <div className="mb-3 flex items-center gap-2">
           <span className="grid h-7 w-7 place-items-center rounded-full bg-destructive/10 text-destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -49,7 +49,7 @@ export function PreviewCrashFallback({
         </p>
 
 
-        <div className="mt-3 rounded-lg border border-border/60 bg-muted/40 p-2.5 text-[11px] leading-relaxed">
+        <div className="mt-3 rounded-xl border border-border/60 bg-muted/40 p-2.5 text-[11px] leading-relaxed">
           <div className="font-mono text-destructive break-words line-clamp-3">{reason}</div>
           {(lastPath || lastNarration) && (
             <div className="mt-2 space-y-0.5 text-muted-foreground">
@@ -71,7 +71,7 @@ export function PreviewCrashFallback({
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-bold text-foreground transition hover:bg-muted"
+            className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-border bg-background px-3 text-xs font-bold text-foreground transition hover:bg-muted"
           >
             <RotateCw className="h-3.5 w-3.5" />
             Reload preview
@@ -80,7 +80,7 @@ export function PreviewCrashFallback({
             <button
               type="button"
               onClick={onAskRepair}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:opacity-90"
+              className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:opacity-90"
             >
               <Wrench className="h-3.5 w-3.5" />
               Ask Petal to fix it
@@ -90,7 +90,7 @@ export function PreviewCrashFallback({
             <button
               type="button"
               onClick={() => onOpenFile(culprit)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-bold text-foreground transition hover:bg-muted"
+              className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-border bg-background px-3 text-xs font-bold text-foreground transition hover:bg-muted"
             >
               <FileCode2 className="h-3.5 w-3.5" />
               Open {culprit.split("/").pop()}

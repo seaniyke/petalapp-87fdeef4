@@ -128,7 +128,7 @@ function ProfilePage() {
 
       <div className="mx-auto max-w-2xl px-5 pb-20 sm:px-6">
         {/* Avatar preview card, overlapping the hero */}
-        <div className="-mt-14 flex items-end gap-4 rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-editorial)] sm:p-6">
+        <div className="-mt-14 flex items-end gap-4 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-editorial)] sm:p-6">
           <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-foreground text-2xl font-semibold text-background ring-4 ring-background">
             {avatarUrl ? (
               <img
@@ -152,7 +152,7 @@ function ProfilePage() {
 
         <form
           onSubmit={handleSave}
-          className="mt-6 space-y-6 rounded-3xl border border-border bg-card/70 p-6 shadow-[var(--shadow-soft)] backdrop-blur-sm sm:p-8"
+          className="mt-6 space-y-6 rounded-2xl border border-border bg-card/70 p-6 shadow-[var(--shadow-soft)] backdrop-blur-sm sm:p-8"
         >
           <div className="space-y-2">
             <Label htmlFor="display_name">Display name</Label>

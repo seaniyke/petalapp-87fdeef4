@@ -35,7 +35,7 @@ export function NextStepsCard({
   const hasSuggestions = (suggestions?.length ?? 0) > 0;
 
   return (
-    <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-background to-muted/40 p-3 shadow-sm">
+    <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-background to-muted/40 p-3 shadow-[var(--shadow-soft)]">
       <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
         Ready — what's next?
@@ -45,9 +45,9 @@ export function NextStepsCard({
           <button
             type="button"
             onClick={onPreview}
-            className="group flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-left transition hover:border-foreground/30 hover:shadow-sm"
+            className="group flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-left transition hover:border-foreground/30 hover:shadow-[var(--shadow-soft)]"
           >
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-foreground text-background">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-foreground text-background">
               <Eye className="h-3.5 w-3.5" />
             </span>
             <span className="min-w-0 flex-1">
@@ -59,9 +59,9 @@ export function NextStepsCard({
         <button
           type="button"
           onClick={onPublish}
-          className="group flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-left transition hover:border-foreground/30 hover:shadow-sm"
+          className="group flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-left transition hover:border-foreground/30 hover:shadow-[var(--shadow-soft)]"
         >
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-foreground text-background">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-foreground text-background">
             <Rocket className="h-3.5 w-3.5" />
           </span>
           <span className="min-w-0 flex-1">
@@ -82,9 +82,9 @@ export function NextStepsCard({
             }
           }}
           aria-expanded={hasSuggestions ? expanded : undefined}
-          className="group flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-left transition hover:border-foreground/30 hover:shadow-sm"
+          className="group flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-left transition hover:border-foreground/30 hover:shadow-[var(--shadow-soft)]"
         >
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-foreground text-background">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-foreground text-background">
             <Wand2 className="h-3.5 w-3.5" />
           </span>
           <span className="min-w-0 flex-1">

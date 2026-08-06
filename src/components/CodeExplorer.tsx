@@ -271,7 +271,7 @@ export function CodeExplorer({
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[12.5px] font-bold text-foreground transition active:bg-muted"
+            className="inline-flex items-center gap-1 rounded-xl px-2 py-1.5 text-[12.5px] font-bold text-foreground transition active:bg-muted"
           >
             <ArrowLeft className="h-4 w-4" />
             Preview
@@ -281,7 +281,7 @@ export function CodeExplorer({
           type="button"
           onClick={() => setTreeOpen((v) => !v)}
           aria-pressed={treeOpen}
-          className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[12.5px] font-bold transition ${
+          className={`inline-flex items-center gap-1 rounded-xl px-2 py-1.5 text-[12.5px] font-bold transition ${
             treeOpen ? "bg-muted text-foreground" : "text-muted-foreground active:bg-muted"
           }`}
         >
@@ -298,12 +298,12 @@ export function CodeExplorer({
         <div
           className={`flex min-h-0 min-w-0 flex-col border-r border-border/70 bg-sidebar sm:flex ${
             treeOpen
-              ? "absolute inset-y-0 left-0 z-20 w-[80%] max-w-[300px] shadow-xl sm:static sm:w-auto sm:max-w-none sm:shadow-none"
+              ? "absolute inset-y-0 left-0 z-20 w-[80%] max-w-[300px] shadow-[var(--shadow-editorial)] sm:static sm:w-auto sm:max-w-none sm:shadow-none"
               : "hidden"
           }`}
         >
         <div className="border-b border-border/70 p-2">
-          <div className="flex items-center gap-1.5 rounded-lg border border-border bg-background px-2">
+          <div className="flex items-center gap-1.5 rounded-xl border border-border bg-background px-2">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input
               ref={searchRef}
@@ -341,7 +341,7 @@ export function CodeExplorer({
             type="button"
             onClick={downloadZip}
             disabled={zipping || files.length === 0}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2 py-2 text-[11px] font-bold transition hover:bg-muted disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-2 py-2 text-[11px] font-bold transition hover:bg-muted disabled:opacity-50"
           >
             <Download className="h-3.5 w-3.5" />
             {zipping ? "Zipping…" : "Download codebase"}
@@ -367,7 +367,7 @@ export function CodeExplorer({
             {tabs.map((t) => (
               <span
                 key={t}
-                className={`group inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11.5px] font-bold transition ${
+                className={`group inline-flex shrink-0 items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11.5px] font-bold transition ${
                   t === activeFile
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:bg-muted/60"
@@ -391,7 +391,7 @@ export function CodeExplorer({
                 disabled={!active || activeIsImage}
                 aria-label="Copy file"
                 title="Copy file"
-                className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+                className="rounded-xl p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
               >
                 <Copy className="h-3.5 w-3.5" />
               </button>
@@ -406,7 +406,7 @@ export function CodeExplorer({
                 disabled={!active}
                 aria-label="Download file"
                 title="Download file"
-                className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+                className="rounded-xl p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
               >
                 <Download className="h-3.5 w-3.5" />
               </button>
@@ -429,7 +429,7 @@ export function CodeExplorer({
                     `${e.currentTarget.naturalWidth} × ${e.currentTarget.naturalHeight}px`,
                   )
                 }
-                className="max-h-[70%] max-w-full rounded-lg border border-border object-contain"
+                className="max-h-[70%] max-w-full rounded-xl border border-border object-contain"
               />
               <p className="text-[11.5px] font-bold text-muted-foreground">
                 {dims ?? active.path.split("/").pop()}

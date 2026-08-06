@@ -247,14 +247,14 @@ export function CryptoCheckoutPanel({
         ))}
       </div>
 
-      <div className="mt-3 flex flex-col items-center gap-3 rounded-lg border border-border bg-background/60 p-3 sm:flex-row">
+      <div className="mt-3 flex flex-col items-center gap-3 rounded-xl border border-border bg-background/60 p-3 sm:flex-row">
         <img
           src={qrUrl(wallet.address)}
           alt={`QR code for Petal's ${wallet.asset} address`}
           width={104}
           height={104}
           loading="lazy"
-          className="h-[104px] w-[104px] shrink-0 rounded-lg bg-white p-1"
+          className="h-[104px] w-[104px] shrink-0 rounded-xl bg-white p-1"
         />
         <div className="min-w-0 flex-1 text-center sm:text-left">
           <p className="wrap-anywhere font-mono text-xs font-semibold">
@@ -286,7 +286,7 @@ export function CryptoCheckoutPanel({
           value={txHash}
           onChange={(e) => setTxHash(e.target.value)}
           placeholder="Transaction hash (0x… / T…)"
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs outline-none focus:border-primary"
+          className="w-full rounded-xl border border-border bg-background px-3 py-2 font-mono text-xs outline-none focus:border-primary"
         />
         <input
           type="number"
@@ -296,10 +296,10 @@ export function CryptoCheckoutPanel({
           value={amountSent}
           onChange={(e) => setAmountSent(e.target.value)}
           placeholder={`Amount sent in ${wallet.asset} (optional)`}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
+          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
         />
         {error && (
-          <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+          <p className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
             {error}
           </p>
         )}

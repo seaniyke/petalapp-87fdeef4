@@ -83,7 +83,7 @@ export function ThemeToggle({
             onClick={() => setTheme(value)}
             className={`grid h-8 w-8 place-items-center rounded-full transition-colors ${
               active
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-background text-foreground shadow-[var(--shadow-soft)]"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >

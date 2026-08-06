@@ -231,7 +231,7 @@ export function MobilePreviewFallback({
     if (pendingTooLong) {
       return (
         <div className="flex h-full w-full items-center justify-center bg-aurora p-6">
-          <div className="max-w-md rounded-2xl border border-amber-500/40 bg-card/90 p-5 text-left shadow-sm backdrop-blur">
+          <div className="max-w-md rounded-2xl border border-amber-500/40 bg-card/90 p-5 text-left shadow-[var(--shadow-soft)] backdrop-blur">
             <div className="flex items-start gap-3">
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500/10 text-amber-600">
                 <AlertCircle className="h-5 w-5" />
@@ -277,7 +277,7 @@ export function MobilePreviewFallback({
 
     return (
       <div className="flex h-full w-full items-center justify-center bg-aurora p-6">
-        <div className="max-w-md rounded-2xl border border-destructive/40 bg-card/90 p-5 text-left shadow-sm backdrop-blur">
+        <div className="max-w-md rounded-2xl border border-destructive/40 bg-card/90 p-5 text-left shadow-[var(--shadow-soft)] backdrop-blur">
           <div className="flex items-start gap-3">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-destructive/10 text-destructive">
               <AlertCircle className="h-5 w-5" />
@@ -291,7 +291,7 @@ export function MobilePreviewFallback({
             </div>
           </div>
           {build?.error_message && (
-            <pre className="mt-3 max-h-56 overflow-auto rounded-md border border-border bg-muted/40 p-3 text-[10px] leading-snug text-muted-foreground">
+            <pre className="mt-3 max-h-56 overflow-auto rounded-xl border border-border bg-muted/40 p-3 text-[10px] leading-snug text-muted-foreground">
               {build.error_message.slice(-2000)}
             </pre>
           )}
@@ -373,7 +373,7 @@ function PreviewFrame({
   return (
     <div className="relative flex h-full w-full flex-col">
       {badge && (
-        <div className="absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded-md border border-border bg-card/90 px-2 py-1 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur">
+        <div className="absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded-xl border border-border bg-card/90 px-2 py-1 text-[11px] font-medium text-muted-foreground shadow-[var(--shadow-soft)] backdrop-blur">
           <Loader2 className="h-3 w-3 animate-spin" />
           <span>{badge}</span>
         </div>
@@ -384,14 +384,14 @@ function PreviewFrame({
           href={src}
           target="_blank"
           rel="noreferrer"
-          className="grid h-7 w-7 place-items-center rounded-md border border-border bg-card/90 text-muted-foreground backdrop-blur transition hover:text-foreground"
+          className="grid h-7 w-7 place-items-center rounded-xl border border-border bg-card/90 text-muted-foreground backdrop-blur transition hover:text-foreground"
           title="Open in new tab"
         >
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
         <button
           onClick={onReload}
-          className="grid h-7 w-7 place-items-center rounded-md border border-border bg-card/90 text-muted-foreground backdrop-blur transition hover:text-foreground"
+          className="grid h-7 w-7 place-items-center rounded-xl border border-border bg-card/90 text-muted-foreground backdrop-blur transition hover:text-foreground"
           title="Reload preview"
         >
           <RotateCw className="h-3.5 w-3.5" />
@@ -422,7 +422,7 @@ function EmptyState({
 }) {
   return (
     <div className="flex h-full w-full items-center justify-center bg-aurora p-6">
-      <div className="max-w-xs rounded-2xl border border-border bg-card/90 p-6 text-center shadow-sm backdrop-blur">
+      <div className="max-w-xs rounded-2xl border border-border bg-card/90 p-6 text-center shadow-[var(--shadow-soft)] backdrop-blur">
         <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-butter">
           {spinning ? (
             <Loader2 className="h-5 w-5 animate-spin text-foreground/70" />

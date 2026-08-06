@@ -108,14 +108,14 @@ function AdminFailuresPage() {
               Grouped by signature so the top rows are the highest-impact bugs to pattern-match next.
             </p>
           </div>
-          <div className="flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 p-1">
+          <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
             {WINDOWS.map((w) => (
               <button
                 key={w.hours}
                 onClick={() => setWindowH(w.hours)}
                 className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
                   windowH === w.hours
-                    ? "bg-background text-foreground shadow-sm"
+                    ? "bg-background text-foreground shadow-[var(--shadow-soft)]"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >

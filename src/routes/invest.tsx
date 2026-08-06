@@ -82,7 +82,7 @@ function InvestPage() {
 
           <div className="mt-10 grid gap-6 md:grid-cols-[1.1fr_1fr]">
             {/* Highlights */}
-            <div className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-8">
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-8">
               <h2 className="font-display text-xl font-semibold">Why now</h2>
               <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
                 <li className="flex items-start gap-3">
@@ -117,7 +117,7 @@ function InvestPage() {
             </div>
 
             {/* Form */}
-            <div className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-8">
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-8">
               {done ? (
                 <div className="flex h-full flex-col items-center justify-center text-center">
                   <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-mint">
@@ -211,7 +211,7 @@ function InvestPage() {
                   </div>
 
                   {error && (
-                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                       {error}
                     </div>
                   )}

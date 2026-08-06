@@ -19,7 +19,7 @@ const META: Record<string, { name: string; tagline: string }> = {
 export function SuggestedIntegrationCard({ code }: { code: string }) {
   const m = META[code] ?? { name: code, tagline: "Install via the marketplace." };
   return (
-    <div className="my-2 flex items-start gap-3 rounded-lg border bg-card p-3 text-sm">
+    <div className="my-2 flex items-start gap-3 rounded-xl border bg-card p-3 text-sm">
       <Sparkles className="mt-0.5 h-4 w-4 text-amber-500" />
       <div className="flex-1">
         <div className="font-medium">Suggested: install {m.name}</div>

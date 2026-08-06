@@ -162,7 +162,7 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
                 Custom domains are included with paid plans.
               </DialogDescription>
             </DialogHeader>
-            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
               <p className="font-medium text-foreground">
                 Upgrade to buy a domain.
               </p>
@@ -277,7 +277,7 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
                     onClick={() => canBuy && setSelected(r)}
                     disabled={!canBuy}
                     className={[
-                      "flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm transition",
+                      "flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-sm transition",
                       isSelected
                         ? "border-primary bg-primary/10"
                         : "border-border bg-muted/20",

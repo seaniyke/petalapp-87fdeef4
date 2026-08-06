@@ -108,7 +108,7 @@ export function ComposerModePicker({
                 >
                   <span
                     className={cn(
-                      "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg",
+                      "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-xl",
                       opt.tint,
                     )}
                   >

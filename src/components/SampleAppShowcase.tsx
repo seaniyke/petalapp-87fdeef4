@@ -36,7 +36,7 @@ const SAMPLES: SampleApp[] = [
   </body>
 </html>`,
     preview: (
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
         <div className="mb-3 font-display text-2xl">Today's habits</div>
         <ul className="space-y-2 text-sm">
           {[
@@ -85,7 +85,7 @@ const tick = () => {
 };
 setInterval(tick, 1000);`,
     preview: (
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
         <div className="mb-3 font-display text-2xl">Focus</div>
         <div className="mx-auto grid h-32 w-32 place-items-center rounded-full border-4 border-lilac/60 bg-lilac/10">
           <span className="font-display text-3xl tabular-nums">24:51</span>
@@ -130,7 +130,7 @@ setInterval(tick, 1000);`,
   }
 ]`,
     preview: (
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
         <div className="mb-3 flex items-center justify-between">
           <div className="font-display text-xl">Tonight</div>
           <span className="rounded-full bg-sky/40 px-2 py-0.5 text-[10px]">vegan</span>
@@ -171,7 +171,7 @@ setInterval(tick, 1000);`,
   <a href="#menu">See menu</a>
 </section>`,
     preview: (
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-soft)]">
         <div className="bg-gradient-to-br from-coral/30 via-butter to-mint/30 p-5">
           <div className="font-display text-2xl leading-tight">Bean & Leaf</div>
           <p className="mt-1 text-xs text-muted-foreground">Slow coffee. Quiet mornings.</p>
@@ -220,7 +220,7 @@ export function SampleAppShowcase() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl border border-border bg-card shadow-[var(--shadow-soft)]">
+      <div className="mx-auto max-w-6xl overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-soft)]">
         {/* Window chrome */}
         <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-3">
           <span className="h-3 w-3 rounded-full bg-coral" />

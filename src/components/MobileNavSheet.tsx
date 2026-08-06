@@ -220,7 +220,7 @@ function RowLink({
     <Link
       to={to}
       onClick={onClick}
-      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-muted/60"
+      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-muted/60"
     >
       <span className="text-muted-foreground">{icon}</span>
       <span>{label}</span>
@@ -241,7 +241,7 @@ function RowButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/60"
+      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/60"
     >
       <span className="text-muted-foreground">{icon}</span>
       <span>{label}</span>
@@ -255,7 +255,7 @@ function RowExternal({ href, icon, label }: { href: string; icon: React.ReactNod
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-muted/60"
+      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-muted/60"
     >
       <span className="text-muted-foreground">{icon}</span>
       <span>{label}</span>

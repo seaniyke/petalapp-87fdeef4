@@ -492,7 +492,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                     key={code}
                     type="button"
                     onClick={() => setCurrency(code)}
-                    className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    className={`rounded-xl border px-2.5 py-1 text-xs font-medium transition-colors ${
                       isActive
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border/60 hover:bg-muted"
@@ -577,9 +577,9 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                       key={p.code}
                       type="button"
                       onClick={() => setSelectedPlanCode(p.code)}
-                      className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                      className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
                         active
-                          ? "bg-background text-foreground shadow-sm"
+                          ? "bg-background text-foreground shadow-[var(--shadow-soft)]"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >

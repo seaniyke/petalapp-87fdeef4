@@ -245,7 +245,7 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
       </div>
 
       {!hasPublishedBuild && (
-        <div className="mb-3 flex items-start gap-2 rounded-lg border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+        <div className="mb-3 flex items-start gap-2 rounded-xl border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <p>
             Publish your project first. Once it's live on the Petal subdomain,
@@ -255,7 +255,7 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
       )}
 
       {hasPublishedBuild && !loading && hasAvailableSlot && (
-        <div className="mb-3 rounded-lg border border-border bg-muted/20 p-2.5 text-[11px]">
+        <div className="mb-3 rounded-xl border border-border bg-muted/20 p-2.5 text-[11px]">
           <p className="text-muted-foreground">
             <span className="font-medium text-foreground">
               {availableSlots.length} purchased domain{availableSlots.length === 1 ? "" : "s"} available
@@ -272,7 +272,7 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
         </div>
       ) : domains.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-3">
+        <div className="rounded-xl border border-dashed border-border p-3">
           <p className="text-xs text-muted-foreground">
             Use your own domain like{" "}
             <code className="rounded bg-background px-1 py-0.5 text-[11px]">
@@ -410,7 +410,7 @@ function DomainRow({
   onRemove: () => void;
 }) {
   return (
-    <li className="rounded-lg border border-border bg-muted/20 p-3">
+    <li className="rounded-xl border border-border bg-muted/20 p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -463,7 +463,7 @@ function DomainRow({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
               aria-label="Domain actions"
             >
               <MoreHorizontal className="h-4 w-4" />
@@ -769,7 +769,7 @@ function DnsRecordsDialog({
           })()}
 
           {txtRecords.length === 0 && (
-            <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-[11px] leading-relaxed text-green-700 dark:text-green-300">
+            <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-3 text-[11px] leading-relaxed text-green-700 dark:text-green-300">
               <p className="font-medium">SSL validation is automatic.</p>
               <p className="mt-1 text-muted-foreground">
                 For this domain, only the routing record above is required. Once it points to Petal, SSL validates automatically.
@@ -777,7 +777,7 @@ function DnsRecordsDialog({
             </div>
           )}
 
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-[11px] leading-relaxed text-amber-900 dark:text-amber-200">
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-[11px] leading-relaxed text-amber-900 dark:text-amber-200">
             <p className="font-medium">Stuck on “Verifying” for more than 10 minutes?</p>
             <ul className="mt-1.5 list-disc space-y-1 pl-4">
               <li>
@@ -882,10 +882,10 @@ function RecordCard({
   const primaryHostLabel = shortHost ? "Host (short)" : "Host";
 
   return (
-    <div className="rounded-lg border border-border bg-muted/30 p-3">
+    <div className="rounded-xl border border-border bg-muted/30 p-3">
       {/* Header: type pill on its own row, note below — avoids awkward wrap */}
       <div className="flex items-center gap-2">
-        <span className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+        <span className="rounded-xl border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
           {type}
         </span>
         <span className="text-[11px] leading-snug text-muted-foreground">{note}</span>
@@ -934,7 +934,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
         }
       }}
       aria-label={`Copy ${label}`}
-      className="grid h-7 w-7 place-items-center rounded-md border border-border text-muted-foreground transition hover:bg-muted"
+      className="grid h-7 w-7 place-items-center rounded-xl border border-border text-muted-foreground transition hover:bg-muted"
     >
       <span className="sr-only" aria-live="polite">
         {copied ? "Copied" : ""}
@@ -950,7 +950,7 @@ function DiagnosisPanel({ result }: { result: DnsCheckResult }) {
   const all: DnsCheckRecord[] = [result.routing, ...result.txts];
   const okCount = all.filter((r) => r.status === "ok").length;
   return (
-    <div className="rounded-lg border border-border bg-background p-3">
+    <div className="rounded-xl border border-border bg-background p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-xs font-medium">
           Live DNS lookup — {okCount} of {all.length} ready
@@ -986,7 +986,7 @@ function DiagnosisRow({ record }: { record: DnsCheckRecord }) {
     ? "text-green-600 dark:text-green-400"
     : "text-destructive";
   return (
-    <li className="rounded-md border border-border/60 bg-muted/20 p-2">
+    <li className="rounded-xl border border-border/60 bg-muted/20 p-2">
       <div className="flex items-start gap-2">
         <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${tone}`} />
         <div className="min-w-0 flex-1">

@@ -38,7 +38,7 @@ export function EnableMobileSuggestionChip({ reason, onOpenMobile, onDismiss }: 
           <button
             type="button"
             onClick={() => setBillingOpen(true)}
-            className="inline-flex h-7 items-center gap-1 rounded-full bg-primary px-2.5 text-[11px] font-medium text-primary-foreground shadow-sm transition hover:brightness-110"
+            className="inline-flex h-7 items-center gap-1 rounded-full bg-primary px-2.5 text-[11px] font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-110"
           >
             <Sparkles className="h-3 w-3" /> Upgrade
           </button>
@@ -65,7 +65,7 @@ export function EnableMobileSuggestionChip({ reason, onOpenMobile, onDismiss }: 
       <button
         type="button"
         onClick={onOpenMobile}
-        className="inline-flex h-7 items-center gap-1 rounded-full bg-primary px-2.5 text-[11px] font-medium text-primary-foreground shadow-sm transition hover:brightness-110"
+        className="inline-flex h-7 items-center gap-1 rounded-full bg-primary px-2.5 text-[11px] font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-110"
       >
         Set it up
       </button>

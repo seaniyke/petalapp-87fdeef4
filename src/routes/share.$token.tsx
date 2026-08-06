@@ -218,10 +218,10 @@ function SharePage() {
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="grid h-6 w-6 -translate-x-3 -translate-y-3 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-lg ring-4 ring-primary/20">
+                <div className="grid h-6 w-6 -translate-x-3 -translate-y-3 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-[var(--shadow-editorial)] ring-4 ring-primary/20">
                   ✚
                 </div>
-                <div className="mt-2 w-72 -translate-x-1/2 rounded-xl border border-border bg-card p-3 shadow-xl">
+                <div className="mt-2 w-72 -translate-x-1/2 rounded-xl border border-border bg-card p-3 shadow-[var(--shadow-editorial)]">
                   <div className="mb-2 flex items-center justify-between text-xs font-medium">
                     <span>New comment</span>
                     <button

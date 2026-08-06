@@ -1,7 +1,7 @@
 # Petal Phase 1 — Builder UX & Design Foundation Roadmap
 
 Source of truth: `docs/petal-builder-ux-audit-v1.md` (25 issues, 25 quick wins, 10 blockers) and `docs/petal-design-bible.md` (20 sections).
-Date: 2026-08-06. Status: **planned, not started.** No code changes until this roadmap is approved.
+Date: 2026-08-06. Status: **Sprints 1–4 shipped. Sprint 5 (H4, L1, L2, L3, L6) remains.**
 
 Definition of done for Phase 1: one builder UI · one design language · one interaction language · one loading system · one notification system · one error system.
 

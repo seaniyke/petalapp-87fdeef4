@@ -97,7 +97,7 @@ export function ReadinessBadge({
         <button
           type="button"
           className={cn(
-            "items-center gap-2 rounded-lg border font-medium transition hover:opacity-80",
+            "items-center gap-2 rounded-xl border font-medium transition hover:opacity-80",
             variant === "row"
               ? "flex min-h-[44px] w-full px-3 py-2 text-sm"
               : "hidden h-8 px-2.5 text-xs md:inline-flex",
@@ -171,7 +171,7 @@ export function ReadinessBadge({
                     <li key={c.id}>
                       <div
                         className={cn(
-                          "flex items-start gap-2 rounded-md px-2 py-1.5 text-xs",
+                          "flex items-start gap-2 rounded-xl px-2 py-1.5 text-xs",
                           c.passed ? "opacity-70" : "hover:bg-muted/50",
                         )}
                       >

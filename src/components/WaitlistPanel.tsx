@@ -122,7 +122,7 @@ export function WaitlistPanel({ onHaveAccess, onSignIn }: Props) {
         </Link>
 
         {done ? (
-          <div className="rounded-3xl border border-border bg-card p-8 shadow-[var(--shadow-soft)]">
+          <div className="rounded-2xl border border-border bg-card p-8 shadow-[var(--shadow-soft)]">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-mint">
               <CheckCircle2 className="h-6 w-6 text-foreground" />
             </div>
@@ -142,7 +142,7 @@ export function WaitlistPanel({ onHaveAccess, onSignIn }: Props) {
             </Link>
           </div>
         ) : (
-          <div className="rounded-3xl border border-border bg-card p-7 shadow-[var(--shadow-soft)] sm:p-8">
+          <div className="rounded-2xl border border-border bg-card p-7 shadow-[var(--shadow-soft)] sm:p-8">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               <Sparkles className="h-3 w-3" /> Early access
             </span>
@@ -174,7 +174,7 @@ export function WaitlistPanel({ onHaveAccess, onSignIn }: Props) {
                 className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary"
               />
               {error && (
-                <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <p className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {error}
                 </p>
               )}

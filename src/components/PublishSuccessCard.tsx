@@ -115,7 +115,7 @@ export function PublishSuccessCard({
 
   return (
     <div className="px-1 pb-1 pt-6 text-center">
-      <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[radial-gradient(circle_at_30%_20%,oklch(0.72_0.19_320),oklch(0.68_0.22_20)_70%)] text-white shadow-lg animate-fade-in motion-reduce:animate-none">
+      <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[radial-gradient(circle_at_30%_20%,oklch(0.72_0.19_320),oklch(0.68_0.22_20)_70%)] text-white shadow-[var(--shadow-editorial)] animate-fade-in motion-reduce:animate-none">
         <Check className="h-8 w-8" strokeWidth={3} aria-hidden />
       </span>
 
@@ -149,9 +149,9 @@ export function PublishSuccessCard({
         <div className="p-4">
           <div className="flex items-center gap-2">
             {iconUrl ? (
-              <img src={iconUrl} alt="" className="h-4 w-4 rounded-sm object-cover" />
+              <img src={iconUrl} alt="" className="h-4 w-4 rounded-xl object-cover" />
             ) : (
-              <span className="h-4 w-4 rounded-sm bg-primary/25" aria-hidden />
+              <span className="h-4 w-4 rounded-xl bg-primary/25" aria-hidden />
             )}
             <span className="truncate text-[15px] font-bold text-primary">{title}</span>
           </div>

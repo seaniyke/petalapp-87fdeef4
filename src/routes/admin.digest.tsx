@@ -185,7 +185,7 @@ function AdminDigestPage() {
                       <li key={d.id}>
                         <button
                           onClick={() => loadDetail(d.id)}
-                          className={`w-full rounded-md px-2 py-2 text-left text-sm transition ${
+                          className={`w-full rounded-xl px-2 py-2 text-left text-sm transition ${
                             active ? "bg-primary/10 text-foreground" : "hover:bg-muted/60"
                           }`}
                         >

@@ -128,7 +128,7 @@ export function CloudAiUsageView() {
           <div className="space-y-4 rounded-2xl bg-muted/40 p-5">
             <div className="flex items-center gap-2">
               <h3 className="text-base font-semibold">AI connection</h3>
-              <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+              <span className="rounded-xl bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                 Active
               </span>
             </div>
@@ -203,7 +203,7 @@ export function CloudAiUsageView() {
                 >
                   <div className="flex items-center gap-2 truncate">
                     <span
-                      className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-background text-[11px] font-semibold text-muted-foreground"
+                      className="grid h-6 w-6 shrink-0 place-items-center rounded-xl bg-background text-[11px] font-semibold text-muted-foreground"
                       aria-hidden
                     >
                       {providerLetter(m.provider)}

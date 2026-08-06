@@ -90,7 +90,7 @@ function PackDetail() {
         </Link>
 
         {/* Hero */}
-        <header className="mt-6 grid gap-6 rounded-3xl border border-border bg-card p-8 md:grid-cols-[1fr,auto] md:items-end">
+        <header className="mt-6 grid gap-6 rounded-2xl border border-border bg-card p-8 md:grid-cols-[1fr,auto] md:items-end">
           <div>
             <div className="flex items-center gap-3">
               <span className="grid h-12 w-12 place-items-center rounded-2xl bg-muted">
@@ -194,7 +194,7 @@ function PackDetail() {
         </section>
 
         {/* Bottom CTA */}
-        <div className="mt-10 rounded-3xl border border-border bg-gradient-to-br from-primary/10 to-transparent p-8 text-center">
+        <div className="mt-10 rounded-2xl border border-border bg-gradient-to-br from-primary/10 to-transparent p-8 text-center">
           <h3 className="font-display text-2xl">Ship the {pack.name.toLowerCase()} site today</h3>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
             Petal builds all {pack.pages.length} pages, the palette, the

@@ -61,7 +61,7 @@ export function SharePopover({ project, onChange, onConnectDomain, onUpgrade }: 
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-sm transition ${
+          className={`inline-flex h-8 items-center gap-1.5 rounded-xl border px-3 text-sm transition ${
             project.is_public
               ? "border-primary/40 bg-primary/10 text-foreground"
               : "border-border text-muted-foreground hover:bg-muted"
@@ -123,14 +123,14 @@ export function SharePopover({ project, onChange, onConnectDomain, onUpgrade }: 
               readOnly
               value={shareUrl}
               onFocus={(e) => e.currentTarget.select()}
-              className={`flex-1 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-xs ${
+              className={`flex-1 rounded-xl border border-border bg-muted/40 px-2.5 py-1.5 text-xs ${
                 project.is_public ? "" : "opacity-50"
               }`}
             />
             <button
               onClick={copy}
               disabled={!project.is_public}
-              className="grid h-8 w-8 place-items-center rounded-md border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+              className="grid h-8 w-8 place-items-center rounded-xl border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"
               title="Copy link"
             >
               {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}

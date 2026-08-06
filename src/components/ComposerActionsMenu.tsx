@@ -48,7 +48,7 @@ export function ComposerActionsMenu({
           aria-haspopup="menu"
           aria-label={`Mode: ${baseLabel}${modifiers.length ? ` (${modifiers.join(", ")})` : ""}`}
           className={cn(
-            "inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold transition",
+            "inline-flex h-11 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition sm:h-8 sm:px-2.5 sm:text-[11px]",
             "hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
             disabled && "cursor-not-allowed opacity-60",
             accent
@@ -146,7 +146,7 @@ function ModeRow({
           active && "bg-muted/60",
         )}
       >
-        <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-foreground/10 text-foreground/80">
+        <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-foreground/10 text-foreground/80">
           <Icon className="h-3.5 w-3.5" />
         </span>
         <span className="min-w-0 flex-1">
@@ -187,7 +187,7 @@ function ToggleRow({
       >
         <span
           className={cn(
-            "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg",
+            "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-xl",
             active ? "bg-primary/15 text-primary" : "bg-foreground/10 text-foreground/70",
           )}
         >
