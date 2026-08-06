@@ -3957,7 +3957,7 @@ Forbidden defaults
             // how much of the turn's repair budget is already gone.
             repairMeter.charge(
               "autofix_cycle_2",
-              chosenModel,
+              "google/gemini-2.5-flash-lite",
               (fixOut.result.usage?.total_tokens ?? 0) ||
                 Math.ceil(nextFiles.reduce((s, f) => s + f.content.length, 0) / 4) + 4_000,
             );
