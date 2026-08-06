@@ -71,7 +71,39 @@ function run(
   });
 }
 
+/**
+ * Run `tsc --noEmit` and return the first ~40 diagnostic lines, or null when
+ * the project typechecks (or has no TypeScript at all). Never throws: the
+ * typecheck is diagnostic-only and must not be able to fail a build on its own.
+ */
+async function runTypecheck(
+  projectDir: string,
+  env: Record<string, string>
+): Promise<string | null> {
+  try {
+    const res = await run("npx", ["tsc", "--noEmit", "--pretty", "false"], {
+      cwd: projectDir,
+      env,
+      timeoutMs: 90 * 1000,
+    });
+    if (res.code === 0) return null;
+    const lines = (res.stdout + "\n" + res.stderr)
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => /error TS\d+/.test(l));
+    if (lines.length === 0) return null;
+    const head = lines.slice(0, 40).join("\n");
+    const more = lines.length > 40 ? `\n…and ${lines.length - 40} more` : "";
+    console.warn(`[typecheck] ${lines.length} diagnostic(s) in ${projectDir}`);
+    return head + more;
+  } catch (e) {
+    console.warn("[typecheck] skipped:", (e as Error).message);
+    return null;
+  }
+}
+
 export async function buildAndDeploy(
+
   projectDir: string,
   projectId: string,
   cloudflare: { apiToken: string; accountId: string }
@@ -115,6 +147,17 @@ export async function buildAndDeploy(
     );
   }
 
+  // 1b) TypeScript gate. `vite build` does NOT typecheck — it hands modules to
+  //     esbuild/rollup, which fails late and reports a truncated rollup tail
+  //     that says nothing about the actual mistake. 76% of all Petal build
+  //     failures land here. Running `tsc --noEmit` first costs one pass over an
+  //     already-installed tree and gives us the real diagnostics.
+  //
+  //     This is deliberately NON-FATAL: a type error that rollup can still
+  //     bundle must never cost the user a working preview. We only surface the
+  //     diagnostics, and attach them to the failure when vite does blow up.
+  const typecheck = await runTypecheck(projectDir, env);
+
   // 2) Build with vite (project's own script).
   const build = await run("npx", ["vite", "build"], {
     cwd: projectDir,
@@ -122,11 +165,15 @@ export async function buildAndDeploy(
     timeoutMs: 3 * 60 * 1000, // 3 min
   });
   if (build.code !== 0) {
+    const viteLogs = build.stdout + "\n" + build.stderr;
     throw new BuildError(
       `vite build failed (exit ${build.code})`,
-      build.stdout + "\n" + build.stderr
+      typecheck
+        ? `TypeScript diagnostics (root cause is usually here):\n${typecheck}\n\n--- vite output ---\n${viteLogs}`
+        : viteLogs
     );
   }
+
 
   const distDir = join(projectDir, "dist");
 

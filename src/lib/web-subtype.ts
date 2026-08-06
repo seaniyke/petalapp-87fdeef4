@@ -112,13 +112,23 @@ export function inferWebSubtype(prompt: string): WebSubtype {
       if (re.test(text)) scores[rule.subtype] += rule.weight;
     }
   }
-  // Fullstack signals dominate if present at all (marketplace beats dashboard
-  // even if both fire, because fullstack IS a superset of dashboard).
+  // Compare scores rather than short-circuiting on fullstack. The old rule was
+  // `if (scores.fullstack >= 2) return "fullstack"` checked FIRST, so "landing
+  // page for a fintech" (marketing 3, fullstack 2) returned fullstack — and the
+  // fullstack addendum mandates a dashboard-first "/" with no marketing home.
+  // The user asked for a landing page and got an app shell.
+  //
+  // Fullstack still wins ties against app (it is a superset of dashboard), but
+  // an explicitly stronger marketing signal now wins outright.
+  if (scores.marketing >= 2 && scores.marketing > scores.fullstack && scores.marketing > scores.app) {
+    return "marketing";
+  }
   if (scores.fullstack >= 2) return "fullstack";
   if (scores.marketing > scores.app && scores.marketing >= 2) return "marketing";
   if (scores.app > 0) return "app";
   if (scores.marketing > 0) return "marketing";
   return "app";
+
 }
 
 const MARKETING_ADDENDUM = [
