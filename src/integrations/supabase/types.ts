@@ -1618,6 +1618,45 @@ export type Database = {
         }
         Relationships: []
       }
+      petal_repair_ledger: {
+        Row: {
+          build_id: string | null
+          created_at: string
+          detail: string | null
+          id: string
+          outcome: string
+          pass_id: string
+          phase: string
+          project_id: string | null
+          signature: string
+          user_id: string | null
+        }
+        Insert: {
+          build_id?: string | null
+          created_at?: string
+          detail?: string | null
+          id?: string
+          outcome: string
+          pass_id: string
+          phase: string
+          project_id?: string | null
+          signature: string
+          user_id?: string | null
+        }
+        Update: {
+          build_id?: string | null
+          created_at?: string
+          detail?: string | null
+          id?: string
+          outcome?: string
+          pass_id?: string
+          phase?: string
+          project_id?: string | null
+          signature?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       petal_runtime_errors: {
         Row: {
           build_id: string | null
