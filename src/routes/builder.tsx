@@ -4036,6 +4036,7 @@ function Builder() {
                         <Suspense fallback={<div className="whitespace-pre-wrap">{sanitizeNarrative(m.content)}</div>}>
                           <MarkdownMessage content={sanitizeNarrative(m.content)} projectId={project?.id ?? null} />
                         </Suspense>
+                        <CopyMessageButton text={sanitizeNarrative(m.content)} />
                         {/* Required clarifying-question answer card. Renders
                             whenever the latest assistant turn carries
                             `suggestions`, before AND after a build. The
