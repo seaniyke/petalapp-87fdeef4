@@ -1,0 +1,168 @@
+/**
+ * Edit scope guard — AI Generation Bible §9.
+ *
+ * "Every edit is diffed and the byte-delta recorded. Suspiciously large deltas
+ *  on small requests are flagged before commit." And §13.1: "Never overwrite
+ *  working code to satisfy an unrelated request."
+ *
+ * `diffChangedPaths()` answers *whether* anything changed. This answers whether
+ * what changed is proportionate to what was asked. The classic defect it
+ * catches: the user says "make the heading bigger" and the model returns a
+ * from-scratch rewrite of six files, silently deleting working features.
+ *
+ * Pure and synchronous — no model call, no I/O. Flags are advisory to the
+ * caller: disclose on a small overshoot, revert unrelated files on a large one.
+ */
+
+import type { ProjectFile } from "./generate.server";
+
+export interface FileDelta {
+  path: string;
+  beforeBytes: number;
+  afterBytes: number;
+  /** afterBytes - beforeBytes. Negative means the file shrank. */
+  deltaBytes: number;
+  kind: "added" | "removed" | "modified";
+  /** Fraction of the original file that changed in size, 0..1+ for modified. */
+  churn: number;
+}
+
+export interface ScopeReport {
+  deltas: FileDelta[];
+  totalDeltaBytes: number;
+  changedCount: number;
+  /** True when the request read as a small, targeted edit. */
+  wasSmallRequest: boolean;
+  /** Paths that shrank by more than half without being asked to. */
+  shrunkPaths: string[];
+  /** Paths rewritten wholesale (>70% churn) on a small request. */
+  oversizedPaths: string[];
+  /** True when the caller should disclose the overshoot to the user. */
+  flagged: boolean;
+  /** One-sentence, user-legible reason. Empty when not flagged. */
+  reason: string;
+}
+
+/** Requests that read as "change this one visible thing". */
+const SMALL_EDIT_HINTS =
+  /\b(change|rename|tweak|adjust|fix|update|make|set|move|swap|replace|colou?r|font|size|bigger|smaller|bolder|padding|margin|spacing|wording|copy|text|label|title|heading|button|typo)\b/i;
+
+const BIG_ASK_HINTS =
+  /\b(rebuild|redesign|from scratch|start over|overhaul|revamp|new (app|site|page|design)|add (a )?(dashboard|auth|payments|backend)|migrate|refactor everything)\b/i;
+
+/** A short prompt with edit verbs and no rebuild language is a small request. */
+export function isSmallEditRequest(prompt: string): boolean {
+  const p = prompt.trim();
+  if (p.length > 400) return false;
+  if (BIG_ASK_HINTS.test(p)) return false;
+  return SMALL_EDIT_HINTS.test(p);
+}
+
+const bytes = (s: string) => new TextEncoder().encode(s).length;
+
+/** Files whose size legitimately swings on tiny asks (generated/config). */
+function isVolatilePath(path: string): boolean {
+  return (
+    path === "package.json" ||
+    path === "index.html" ||
+    path.endsWith(".lock") ||
+    path.endsWith(".json") ||
+    path.includes("vite.config") ||
+    path.includes("tailwind.config")
+  );
+}
+
+export function analyzeEditScope(
+  before: ProjectFile[],
+  after: ProjectFile[],
+  prompt: string,
+): ScopeReport {
+  const prev = new Map(before.map((f) => [f.path, f.content]));
+  const next = new Map(after.map((f) => [f.path, f.content]));
+
+  const deltas: FileDelta[] = [];
+  for (const [path, content] of next) {
+    const old = prev.get(path);
+    if (old === content) continue;
+    const b = old === undefined ? 0 : bytes(old);
+    const a = bytes(content);
+    deltas.push({
+      path,
+      beforeBytes: b,
+      afterBytes: a,
+      deltaBytes: a - b,
+      kind: old === undefined ? "added" : "modified",
+      churn: b === 0 ? 1 : Math.abs(a - b) / b,
+    });
+  }
+  for (const [path, content] of prev) {
+    if (next.has(path)) continue;
+    const b = bytes(content);
+    deltas.push({
+      path,
+      beforeBytes: b,
+      afterBytes: 0,
+      deltaBytes: -b,
+      kind: "removed",
+      churn: 1,
+    });
+  }
+
+  const wasSmallRequest = isSmallEditRequest(prompt);
+  const isNewProject = before.length === 0;
+
+  const shrunkPaths = deltas
+    .filter(
+      (d) =>
+        d.kind !== "added" &&
+        !isVolatilePath(d.path) &&
+        d.beforeBytes > 600 &&
+        d.afterBytes < d.beforeBytes * 0.5,
+    )
+    .map((d) => d.path);
+
+  const oversizedPaths =
+    wasSmallRequest && !isNewProject
+      ? deltas
+          .filter((d) => d.kind === "modified" && !isVolatilePath(d.path) && d.churn > 0.7)
+          .map((d) => d.path)
+      : [];
+
+  const removedPaths = deltas.filter((d) => d.kind === "removed").map((d) => d.path);
+
+  const totalDeltaBytes = deltas.reduce((s, d) => s + d.deltaBytes, 0);
+  const tooManyFiles = wasSmallRequest && !isNewProject && deltas.length > 4;
+
+  let reason = "";
+  if (!isNewProject) {
+    if (shrunkPaths.length > 0) {
+      reason = `${shrunkPaths.length === 1 ? "A file" : `${shrunkPaths.length} files`} shrank by more than half on this edit (${shrunkPaths.slice(0, 3).join(", ")}), which usually means working code was dropped rather than changed.`;
+    } else if (oversizedPaths.length > 0) {
+      reason = `That was a small ask, but ${oversizedPaths.slice(0, 3).join(", ")} ${oversizedPaths.length === 1 ? "was" : "were"} rewritten almost end to end.`;
+    } else if (removedPaths.length > 0 && wasSmallRequest) {
+      reason = `A small edit removed ${removedPaths.slice(0, 3).join(", ")}.`;
+    } else if (tooManyFiles) {
+      reason = `That edit touched ${deltas.length} files for what read as a one-thing change.`;
+    }
+  }
+
+  return {
+    deltas,
+    totalDeltaBytes,
+    changedCount: deltas.length,
+    wasSmallRequest,
+    shrunkPaths,
+    oversizedPaths,
+    flagged: reason.length > 0,
+    reason,
+  };
+}
+
+/** Chat disclosure text for a flagged turn. Bible §9: tell the user, always. */
+export function scopeDisclosure(report: ScopeReport): string {
+  if (!report.flagged) return "";
+  return (
+    `\n\nScope check — ${report.reason} ` +
+    `If anything you had before is missing, say "undo that" and I'll roll this turn back.`
+  );
+}
