@@ -4978,7 +4978,7 @@ function Builder() {
               e.preventDefault();
               submitPrompt(input);
             }}
-            className="safe-bottom shrink-0 border-t border-border/50 bg-card/80 px-3 pb-3 pt-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65"
+            className="safe-bottom safe-x shrink-0 border-t border-border/50 bg-card/80 px-3 pb-3 pt-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65"
           >
             {/* Queued messages — shown when the user typed while Petal was busy. */}
             {pendingQueue.length > 0 && (
