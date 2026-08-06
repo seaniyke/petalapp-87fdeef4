@@ -3767,47 +3767,59 @@ function Builder() {
               />
             }
           />
-          <AnalyticsSheet
-            open={analyticsOpen}
-            onOpenChange={setAnalyticsOpen}
-            projectId={project.id}
-            onPublish={() => setPublishOpen(true)}
-          />
-          <CloudPanelSheet
-            open={cloudPanelOpen}
-            onOpenChange={setCloudPanelOpen}
-            projectId={project.id}
-            onOpenBalance={() => {
-              setCloudPanelOpen(false);
-              setCloudBalanceOpen(true);
-            }}
-          />
-          <AgentIntegrationsSheet
-            open={agentIntegrationsOpen}
-            onOpenChange={setAgentIntegrationsOpen}
-            onSendPrompt={(prompt) => void send(prompt, { forceBuild: true })}
-          />
-          <PaymentsSheet
-            open={paymentsOpen}
-            onOpenChange={setPaymentsOpen}
-            hasBackend={hasBackend}
-            onSendPrompt={(prompt) => void send(prompt, { forceBuild: true })}
-            onSetupBackend={() => {
-              setSettingsScrollTo("backend");
-              setSettingsOpen(true);
-            }}
-          />
-          <ConnectorsSheet
-            open={connectorsOpen}
-            onOpenChange={setConnectorsOpen}
-            projectId={project.id}
-          />
-          <WebsiteInfoSheet
-            open={seoOpen}
-            onOpenChange={setSeoOpen}
-            project={project}
-            onChange={setProject}
-          />
+          <LazySheet open={analyticsOpen}>
+            <AnalyticsSheet
+              open={analyticsOpen}
+              onOpenChange={setAnalyticsOpen}
+              projectId={project.id}
+              onPublish={() => setPublishOpen(true)}
+            />
+          </LazySheet>
+          <LazySheet open={cloudPanelOpen}>
+            <CloudPanelSheet
+              open={cloudPanelOpen}
+              onOpenChange={setCloudPanelOpen}
+              projectId={project.id}
+              onOpenBalance={() => {
+                setCloudPanelOpen(false);
+                setCloudBalanceOpen(true);
+              }}
+            />
+          </LazySheet>
+          <LazySheet open={agentIntegrationsOpen}>
+            <AgentIntegrationsSheet
+              open={agentIntegrationsOpen}
+              onOpenChange={setAgentIntegrationsOpen}
+              onSendPrompt={(prompt) => void send(prompt, { forceBuild: true })}
+            />
+          </LazySheet>
+          <LazySheet open={paymentsOpen}>
+            <PaymentsSheet
+              open={paymentsOpen}
+              onOpenChange={setPaymentsOpen}
+              hasBackend={hasBackend}
+              onSendPrompt={(prompt) => void send(prompt, { forceBuild: true })}
+              onSetupBackend={() => {
+                setSettingsScrollTo("backend");
+                setSettingsOpen(true);
+              }}
+            />
+          </LazySheet>
+          <LazySheet open={connectorsOpen}>
+            <ConnectorsSheet
+              open={connectorsOpen}
+              onOpenChange={setConnectorsOpen}
+              projectId={project.id}
+            />
+          </LazySheet>
+          <LazySheet open={seoOpen}>
+            <WebsiteInfoSheet
+              open={seoOpen}
+              onOpenChange={setSeoOpen}
+              project={project}
+              onChange={setProject}
+            />
+          </LazySheet>
           <HistoryPanel
             projectId={project.id}
             currentFiles={files}
@@ -3818,64 +3830,80 @@ function Builder() {
             hideTrigger
           />
 
-          <RenameProjectDialog
-            project={project}
-            open={renameOpen}
-            onOpenChange={setRenameOpen}
-            onChange={setProject}
-          />
-          <BillingSheet
-            open={billingOpen}
-            onOpenChange={setBillingOpen}
-            onOpenCloudBalance={() => {
-              setBillingOpen(false);
-              setCloudBalanceOpen(true);
-            }}
-          />
-          <CloudBalanceSheet
-            open={cloudBalanceOpen}
-            onOpenChange={setCloudBalanceOpen}
-            onOpenBilling={() => {
-              setCloudBalanceOpen(false);
-              setBillingOpen(true);
-            }}
-          />
-          <PetalShieldSheet
-            open={shieldOpen}
-            onOpenChange={setShieldOpen}
-            files={files}
-            onSendFixPrompt={(p) => setInput(p)}
-          />
-          <SharePreviewDialog
-            open={sharePreviewOpen}
-            onOpenChange={setSharePreviewOpen}
-            projectId={project?.id ?? null}
-            project={project}
-            onProjectChange={setProject}
-            onUpgrade={() => setBillingOpen(true)}
-          />
-          <CommentsInboxSheet
-            open={commentsOpen}
-            onOpenChange={setCommentsOpen}
-            projectId={project?.id ?? null}
-            onSendFixPrompt={(p) => setInput(p)}
-          />
-          <ProjectsDrawer
-            open={projectsDrawerOpen}
-            onOpenChange={setProjectsDrawerOpen}
-            currentProjectId={project?.id ?? null}
-          />
-          <PublishSheet
-            open={publishOpen}
-            onOpenChange={setPublishOpen}
-            project={project}
-            onChange={setProject}
-            onManageDomains={() => {
-              setSettingsScrollTo("domains");
-              setSettingsOpen(true);
-            }}
-            onOpenSettings={() => setSettingsOpen(true)}
-          />
+          <LazySheet open={renameOpen}>
+            <RenameProjectDialog
+              project={project}
+              open={renameOpen}
+              onOpenChange={setRenameOpen}
+              onChange={setProject}
+            />
+          </LazySheet>
+          <LazySheet open={billingOpen}>
+            <BillingSheet
+              open={billingOpen}
+              onOpenChange={setBillingOpen}
+              onOpenCloudBalance={() => {
+                setBillingOpen(false);
+                setCloudBalanceOpen(true);
+              }}
+            />
+          </LazySheet>
+          <LazySheet open={cloudBalanceOpen}>
+            <CloudBalanceSheet
+              open={cloudBalanceOpen}
+              onOpenChange={setCloudBalanceOpen}
+              onOpenBilling={() => {
+                setCloudBalanceOpen(false);
+                setBillingOpen(true);
+              }}
+            />
+          </LazySheet>
+          <LazySheet open={shieldOpen}>
+            <PetalShieldSheet
+              open={shieldOpen}
+              onOpenChange={setShieldOpen}
+              files={files}
+              onSendFixPrompt={(p) => setInput(p)}
+            />
+          </LazySheet>
+          <LazySheet open={sharePreviewOpen}>
+            <SharePreviewDialog
+              open={sharePreviewOpen}
+              onOpenChange={setSharePreviewOpen}
+              projectId={project?.id ?? null}
+              project={project}
+              onProjectChange={setProject}
+              onUpgrade={() => setBillingOpen(true)}
+            />
+          </LazySheet>
+          <LazySheet open={commentsOpen}>
+            <CommentsInboxSheet
+              open={commentsOpen}
+              onOpenChange={setCommentsOpen}
+              projectId={project?.id ?? null}
+              onSendFixPrompt={(p) => setInput(p)}
+            />
+          </LazySheet>
+          <LazySheet open={projectsDrawerOpen}>
+            <ProjectsDrawer
+              open={projectsDrawerOpen}
+              onOpenChange={setProjectsDrawerOpen}
+              currentProjectId={project?.id ?? null}
+            />
+          </LazySheet>
+          <LazySheet open={publishOpen}>
+            <PublishSheet
+              open={publishOpen}
+              onOpenChange={setPublishOpen}
+              project={project}
+              onChange={setProject}
+              onManageDomains={() => {
+                setSettingsScrollTo("domains");
+                setSettingsOpen(true);
+              }}
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
+          </LazySheet>
         </>
       )}
 
