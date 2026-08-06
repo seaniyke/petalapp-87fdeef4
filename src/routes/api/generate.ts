@@ -4294,17 +4294,16 @@ Forbidden defaults
           let charge = await tryCharge(priced.amount);
           if (!charge.ok && charge.reason === "insufficient_credits") {
             // User passed the pre-flight floor but doesn't have enough for the
-            // full bill. Drain the remaining wallet instead of letting the
-            // build go through for free.
+            // full bill. Drain everything actually available — including the
+            // daily/monthly FREE buckets, which is all a brand-new free user
+            // has. Reading only the paid columns here meant a 5-credit build
+            // by a 5-free-credit user charged nothing and logged a settlement
+            // failure every single turn.
             try {
-              const { data: wallet } = await supabaseAdmin
-                .from("user_wallets")
-                .select("monthly_credits_remaining, topup_credits_remaining")
-                .eq("user_id", userId)
-                .maybeSingle();
-              const remaining =
-                Number(wallet?.monthly_credits_remaining ?? 0) +
-                Number(wallet?.topup_credits_remaining ?? 0);
+              const { data: avail } = await supabaseAdmin.rpc("available_credits", {
+                _user_id: userId,
+              });
+              const remaining = Number(avail ?? 0);
               const drainAmount = Math.max(0, Math.min(priced.amount, Math.floor(remaining * 100) / 100));
               if (drainAmount > 0) {
                 charge = await tryCharge(drainAmount);
