@@ -86,6 +86,42 @@ function splitSegments(content: string): Segment[] {
   return segs;
 }
 
+/**
+ * H2 — every code block gets a copy button. The button is always in the DOM
+ * (not hover-only) so it is reachable by keyboard and on touch, but it fades
+ * to a low-contrast state until the block is hovered or the button focused.
+ */
+function CopyablePre(props: ComponentPropsWithoutRef<"pre">) {
+  const preRef = useRef<HTMLPreElement>(null);
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    const text = preRef.current?.innerText ?? "";
+    void navigator.clipboard?.writeText(text).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    });
+  };
+
+  return (
+    <div className="group relative my-3">
+      <pre
+        {...props}
+        ref={preRef}
+        className="overflow-x-auto rounded-xl bg-muted p-3.5 pr-12 font-mono text-[13px] leading-[1.55]"
+      />
+      <button
+        type="button"
+        onClick={copy}
+        aria-label={copied ? "Copied" : "Copy code"}
+        className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-xl border border-border/70 bg-background/80 text-muted-foreground opacity-60 backdrop-blur transition hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+      >
+        {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+      </button>
+    </div>
+  );
+}
+
 export function MarkdownMessage({ content, projectId }: { content: string; projectId?: string | null }) {
   const segments = splitSegments(content);
   return (
