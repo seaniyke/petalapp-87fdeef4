@@ -323,6 +323,8 @@ Fullstack is checked first and unconditionally. **"landing page for a fintech"**
 - `context-budget.server.ts` chat-history compression (distinct from project memory) was not traced.
 - `templates.server.ts` (731 lines) and `industry-packs.ts` (461 lines) were read partially.
 - Cost columns in `ai_call_log` are largely NULL, so per-turn cost could not be computed from telemetry.
+- `AppShape.confidence >= 0.4` injection threshold is asserted in a doc comment (`app-shape-classifier.ts:91-92`); the enforcing call site was not located.
+- Admin-configurable runtime model overrides (`ai-provider.server.ts:605`) may silently replace any hardcoded model id listed here.
 
 ---
 
