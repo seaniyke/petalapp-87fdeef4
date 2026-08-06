@@ -179,8 +179,8 @@ export function HistoryPanel({
           <button
             className={
               iconOnly
-                ? "grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                : "inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted"
+                ? "grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                : "inline-flex h-8 items-center gap-1.5 rounded-xl border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted"
             }
             title="Version history"
             aria-label="Version history"
@@ -204,7 +204,7 @@ export function HistoryPanel({
           <button
             onClick={handleSaveCurrent}
             disabled={loading || currentFiles.length === 0}
-            className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-foreground px-3 text-sm text-background transition hover:brightness-105 disabled:opacity-40"
+            className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-xl bg-foreground px-3 text-sm text-background transition hover:brightness-105 disabled:opacity-40"
           >
             <Pin className="h-3.5 w-3.5" /> Save current as version
           </button>
@@ -224,7 +224,7 @@ export function HistoryPanel({
               {versions.map((v, i) => (
                 <li
                   key={v.id}
-                  className="rounded-2xl border border-border bg-card p-3 text-sm shadow-sm"
+                  className="rounded-2xl border border-border bg-card p-3 text-sm shadow-[var(--shadow-soft)]"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -234,17 +234,17 @@ export function HistoryPanel({
                             value={editValue}
                             onChange={(e) => setEditValue(e.target.value)}
                             autoFocus
-                            className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary"
+                            className="flex-1 rounded-xl border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary"
                           />
                           <button
                             onClick={() => void commitRename(v)}
-                            className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+                            className="grid h-6 w-6 place-items-center rounded-xl text-muted-foreground hover:bg-muted"
                           >
                             <Check className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => setEditingId(null)}
-                            className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+                            className="grid h-6 w-6 place-items-center rounded-xl text-muted-foreground hover:bg-muted"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
@@ -283,7 +283,7 @@ export function HistoryPanel({
                             setEditValue(v.label ?? "");
                           }}
                           disabled={busyId === v.id}
-                          className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted"
+                          className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition hover:bg-muted"
                           title="Rename"
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -291,7 +291,7 @@ export function HistoryPanel({
                         <button
                           onClick={() => requestRestore(v)}
                           disabled={busyId === v.id}
-                          className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted"
+                          className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition hover:bg-muted"
                           title="Restore this version"
                         >
                           {busyId === v.id ? (
@@ -303,7 +303,7 @@ export function HistoryPanel({
                         <button
                           onClick={() => setPartialVersion(v)}
                           disabled={busyId === v.id}
-                          className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted"
+                          className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition hover:bg-muted"
                           title="Pick specific files to revert"
                         >
                           <FileStack className="h-3.5 w-3.5" />
@@ -311,7 +311,7 @@ export function HistoryPanel({
                         <button
                           onClick={() => void handleDelete(v)}
                           disabled={busyId === v.id}
-                          className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                          className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
                           title="Delete"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

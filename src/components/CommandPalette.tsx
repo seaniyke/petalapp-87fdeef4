@@ -66,7 +66,7 @@ export function CommandPalette({
                   onOpenChange(false);
                   it.onSelect();
                 }}
-                className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm aria-selected:bg-muted"
+                className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-sm aria-selected:bg-muted"
               >
                 <span className="text-muted-foreground">{it.icon}</span>
                 <span className="flex-1 truncate">{it.label}</span>

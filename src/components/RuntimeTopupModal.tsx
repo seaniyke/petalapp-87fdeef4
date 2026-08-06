@@ -182,7 +182,7 @@ export function RuntimeTopupModal({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
+            <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm">
               <p className="font-medium text-foreground">You're on the Free plan.</p>
               <p className="mt-1 text-muted-foreground">
                 Buy a credit pack once or subscribe — either unlocks Cloud + AI
@@ -241,7 +241,7 @@ export function RuntimeTopupModal({
         ) : (
           <div className="space-y-4 py-2">
             {minUsdCents ? (
-              <div className="flex items-start gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3 text-xs">
+              <div className="flex items-start gap-2 rounded-xl border border-primary/40 bg-primary/5 p-3 text-xs">
                 <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                 <p className="text-foreground">
                   You need at least{" "}
@@ -257,7 +257,7 @@ export function RuntimeTopupModal({
                 type="button"
                 onClick={() => setMode("pack")}
                 className={`flex-1 rounded-full px-3 py-1.5 font-medium transition ${
-                  mode === "pack" ? "bg-background shadow-sm" : "text-muted-foreground"
+                  mode === "pack" ? "bg-background shadow-[var(--shadow-soft)]" : "text-muted-foreground"
                 }`}
               >
                 Quick packs
@@ -266,7 +266,7 @@ export function RuntimeTopupModal({
                 type="button"
                 onClick={() => setMode("custom")}
                 className={`flex-1 rounded-full px-3 py-1.5 font-medium transition ${
-                  mode === "custom" ? "bg-background shadow-sm" : "text-muted-foreground"
+                  mode === "custom" ? "bg-background shadow-[var(--shadow-soft)]" : "text-muted-foreground"
                 }`}
               >
                 Custom amount

@@ -22,7 +22,7 @@ export function EnableAiFeatureSuggestionChip({ reason, onUseGateway, onDismiss 
       <button
         type="button"
         onClick={onUseGateway}
-        className="inline-flex h-7 items-center gap-1 rounded-full bg-primary px-2.5 text-[11px] font-medium text-primary-foreground shadow-sm transition hover:brightness-110"
+        className="inline-flex h-7 items-center gap-1 rounded-full bg-primary px-2.5 text-[11px] font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-110"
       >
         Use Petal AI
       </button>

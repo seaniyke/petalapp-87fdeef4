@@ -135,7 +135,7 @@ export function EnableBackendFromCloudDialog({
             </div>
           ) : !isPaidPlan ? (
             <div className="space-y-3">
-              <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
                 <p className="font-medium text-foreground">
                   Free shared backend — no card, no waiting.
                 </p>
@@ -145,7 +145,7 @@ export function EnableBackendFromCloudDialog({
                   collections.
                 </p>
               </div>
-              <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
+              <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm">
                 <p className="font-medium text-foreground">Want a dedicated backend?</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Upgrade for your own isolated database project with unlimited
@@ -157,7 +157,7 @@ export function EnableBackendFromCloudDialog({
 
           ) : (
             <div className="space-y-3">
-              <div className="rounded-lg border border-border bg-muted/30 p-4">
+              <div className="rounded-xl border border-border bg-muted/30 p-4">
                 <div className="flex items-baseline justify-between">
                   <span className="text-xs uppercase tracking-wide text-muted-foreground">
                     Cloud balance
@@ -177,7 +177,7 @@ export function EnableBackendFromCloudDialog({
               </div>
 
               {!hasBalance && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+                <div className="flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <p className="font-medium text-foreground">
                     Your Cloud balance is $0. Top up to enable Cloud on this project.

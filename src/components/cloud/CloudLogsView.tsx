@@ -119,7 +119,7 @@ export function CloudLogsView({ projectId }: { projectId: string }) {
             <button
               type="button"
               onClick={() => void load()}
-              className="grid h-7 w-7 place-items-center rounded-md border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              className="grid h-7 w-7 place-items-center rounded-xl border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
               title="Refresh"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -165,7 +165,7 @@ export function CloudLogsView({ projectId }: { projectId: string }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter logs…"
-            className="w-full rounded-lg border border-border bg-background py-1.5 pl-8 pr-3 text-sm outline-none focus:border-primary/50"
+            className="w-full rounded-xl border border-border bg-background py-1.5 pl-8 pr-3 text-sm outline-none focus:border-primary/50"
           />
         </div>
       </div>
@@ -188,7 +188,7 @@ export function CloudLogsView({ projectId }: { projectId: string }) {
             {result!.entries.map((e) => (
               <li
                 key={e.id}
-                className="rounded-lg px-2.5 py-2 font-mono text-xs leading-relaxed hover:bg-muted/50"
+                className="rounded-xl px-2.5 py-2 font-mono text-xs leading-relaxed hover:bg-muted/50"
               >
                 <div className="flex items-center gap-2">
                   <span

@@ -178,7 +178,7 @@ export function MobilePublishSheet({ open, onOpenChange, projectId }: Props) {
             <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold">
               <Apple className="h-4 w-4" /> iOS (App Store / TestFlight)
             </div>
-            <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-[11.5px] text-amber-700 dark:text-amber-300">
+            <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-2.5 text-[11.5px] text-amber-700 dark:text-amber-300">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <div>
                 <div className="font-medium">
@@ -224,7 +224,7 @@ export function MobilePublishSheet({ open, onOpenChange, projectId }: Props) {
           )}
 
           {error && (
-            <p className="rounded-lg border border-destructive/40 bg-destructive/10 p-2.5 text-[11.5px] text-destructive">
+            <p className="rounded-xl border border-destructive/40 bg-destructive/10 p-2.5 text-[11.5px] text-destructive">
               {error}
             </p>
           )}

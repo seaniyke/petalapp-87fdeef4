@@ -88,7 +88,7 @@ function ResetPasswordPage() {
           <span className="font-display text-xl font-semibold tracking-tight text-foreground">Petal</span>
         </Link>
 
-        <div className="rounded-3xl border border-border bg-card/95 p-8 shadow-[var(--shadow-soft)] backdrop-blur">
+        <div className="rounded-2xl border border-border bg-card/95 p-8 shadow-[var(--shadow-soft)] backdrop-blur">
           {phase === "checking" && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Verifying your reset link…

@@ -342,7 +342,7 @@ function FeaturePage() {
           {feature.bullets.map((b: { title: string; body: string }) => (
             <div
               key={b.title}
-              className="rounded-3xl border border-border bg-card p-8 shadow-[var(--shadow-soft)] transition hover:-translate-y-1 hover:shadow-[var(--shadow-editorial)]"
+              className="rounded-2xl border border-border bg-card p-8 shadow-[var(--shadow-soft)] transition hover:-translate-y-1 hover:shadow-[var(--shadow-editorial)]"
             >
               <span className="grid h-10 w-10 place-items-center rounded-2xl bg-primary/15 text-primary">
                 <Check className="h-4 w-4" />
@@ -367,7 +367,7 @@ function FeaturePage() {
               extend, and export at any time. Here's a taste of what lands in your project.
             </p>
           </div>
-          <div className="overflow-hidden rounded-3xl border border-border bg-foreground shadow-[var(--shadow-editorial)]">
+          <div className="overflow-hidden rounded-2xl border border-border bg-foreground shadow-[var(--shadow-editorial)]">
             <div className="flex items-center gap-2 border-b border-background/10 px-4 py-3">
               <span className="h-2.5 w-2.5 rounded-full bg-background/40" />
               <span className="h-2.5 w-2.5 rounded-full bg-background/25" />

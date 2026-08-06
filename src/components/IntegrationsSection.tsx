@@ -142,7 +142,7 @@ export function IntegrationsSection({ projectId }: { projectId: string }) {
             return (
               <li
                 key={entry.code}
-                className="rounded-lg border border-border/60 bg-muted/20 p-3"
+                className="rounded-xl border border-border/60 bg-muted/20 p-3"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">

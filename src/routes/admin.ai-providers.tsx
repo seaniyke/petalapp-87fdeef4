@@ -379,7 +379,7 @@ function AiProvidersPage() {
               href="https://openrouter.ai/activity"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+              className="inline-flex items-center gap-1 rounded-xl border border-border/60 bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
             >
               OpenRouter usage <ExternalLink className="h-3 w-3" />
             </a>
@@ -505,7 +505,7 @@ function ModelHealthCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         {flagged.length > 0 && (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
+          <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm">
             <div className="font-semibold text-destructive">Configuration issues</div>
             <ul className="mt-1 space-y-1 text-muted-foreground">
               {flagged.map((a) => (
@@ -523,7 +523,7 @@ function ModelHealthCard() {
         ) : rows.length === 0 ? (
           <div className="text-sm text-muted-foreground">No recent calls logged.</div>
         ) : (
-          <div className="divide-y rounded-lg border">
+          <div className="divide-y rounded-xl border">
             {rows.slice(0, 12).map((r) => (
               <div key={r.model} className="flex items-center justify-between gap-3 px-3 py-2">
                 <div className="min-w-0">
@@ -615,7 +615,7 @@ function CostDashboard({
             No AI calls logged yet. Telemetry starts after this update ships.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-md border border-border/60">
+          <div className="overflow-x-auto rounded-xl border border-border/60">
             <table className="w-full text-left text-xs">
               <thead className="bg-muted/40">
                 <tr className="text-muted-foreground">
@@ -725,7 +725,7 @@ function FeatureRow({
             )}
           </div>
 
-          <div className="flex shrink-0 items-center gap-1 rounded-lg border border-border/60 bg-background p-1">
+          <div className="flex shrink-0 items-center gap-1 rounded-xl border border-border/60 bg-background p-1">
             <SegBtn
               active={current === "auto"}
               disabled={row.locked || saving}
@@ -753,7 +753,7 @@ function FeatureRow({
         </div>
 
         {!row.locked && (
-          <div className="grid gap-2 rounded-md border border-border/60 bg-muted/20 p-3 sm:grid-cols-2">
+          <div className="grid gap-2 rounded-xl border border-border/60 bg-muted/20 p-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                 Primary model
@@ -831,9 +831,9 @@ function SegBtn({
       title={title}
       disabled={disabled}
       onClick={onClick}
-      className={`rounded-md px-3 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
+      className={`rounded-xl px-3 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
         active
-          ? "bg-primary text-primary-foreground shadow-sm"
+          ? "bg-primary text-primary-foreground shadow-[var(--shadow-soft)]"
           : "text-muted-foreground hover:bg-muted hover:text-foreground"
       }`}
     >
@@ -963,7 +963,7 @@ function SmartRouterCard() {
         ) : (
           <div className="space-y-3">
             {snap.perFeaturePhase.map((row) => (
-              <div key={`${row.feature}|${row.phase}`} className="rounded-md border border-border/60 p-3">
+              <div key={`${row.feature}|${row.phase}`} className="rounded-xl border border-border/60 p-3">
                 <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {row.feature}
                   {row.phase && row.phase !== "unknown" ? ` · ${row.phase}` : ""}
@@ -1055,7 +1055,7 @@ function BudgetModelsCard({
             href="https://openrouter.ai/models"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1 rounded-xl border border-border/60 bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
           >
             OpenRouter models <ExternalLink className="h-3 w-3" />
           </a>
@@ -1079,7 +1079,7 @@ function BudgetModelsCard({
               const hasOpenRouter = featureRow?.effective === "openrouter";
 
               return (
-                <div key={feature} className="rounded-md border border-border/60 p-3">
+                <div key={feature} className="rounded-xl border border-border/60 p-3">
                   <div className="mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -1159,7 +1159,7 @@ function BudgetModelsCard({
                                     return { ...prev, [feature]: next };
                                   });
                                 }}
-                                className={`flex items-center justify-between rounded-md border p-2 text-left text-xs transition ${
+                                className={`flex items-center justify-between rounded-xl border p-2 text-left text-xs transition ${
                                   active
                                     ? "border-primary bg-primary/5"
                                     : "border-border/60 hover:bg-muted/30"

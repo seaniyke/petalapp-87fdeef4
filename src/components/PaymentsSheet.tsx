@@ -100,7 +100,7 @@ export function PaymentsSheet({
               }}
               className="flex w-full items-start gap-3 rounded-2xl border border-border/60 bg-card p-4 text-left transition hover:border-primary/40 hover:bg-muted/40 disabled:opacity-50"
             >
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted text-primary">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-muted text-primary">
                 <opt.icon className="h-4 w-4" />
               </span>
               <span className="flex-1">

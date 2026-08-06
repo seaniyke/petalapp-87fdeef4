@@ -82,7 +82,7 @@ export function StartIdeasPanel({
               className="group flex h-full w-full flex-col items-start gap-1.5 rounded-2xl border border-border bg-card/80 p-3 text-left transition hover:border-primary/40 hover:bg-card hover:shadow-[var(--shadow-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               <span
-                className={`grid h-7 w-7 place-items-center rounded-lg ${ACCENT_BG[idea.accent]}`}
+                className={`grid h-7 w-7 place-items-center rounded-xl ${ACCENT_BG[idea.accent]}`}
               >
                 <idea.Icon className="h-3.5 w-3.5" />
               </span>

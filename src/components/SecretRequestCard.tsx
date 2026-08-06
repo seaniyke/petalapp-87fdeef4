@@ -74,7 +74,7 @@ export function SecretRequestCard(props: {
 
   if (done) {
     return (
-      <div className="my-2 flex items-center gap-2 rounded-lg border border-emerald-300/40 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-950/30 dark:text-emerald-100">
+      <div className="my-2 flex items-center gap-2 rounded-xl border border-emerald-300/40 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-950/30 dark:text-emerald-100">
         <CheckCircle2 className="h-4 w-4" />
         <span>
           Saved <code className="rounded bg-emerald-100 px-1 dark:bg-emerald-900/50">{props.name}</code> securely.
@@ -84,7 +84,7 @@ export function SecretRequestCard(props: {
   }
 
   return (
-    <div className="my-2 rounded-lg border bg-card p-3 text-sm">
+    <div className="my-2 rounded-xl border bg-card p-3 text-sm">
       <div className="flex items-center gap-2 font-medium">
         <Lock className="h-4 w-4 text-muted-foreground" />
         Petal needs <code className="rounded bg-muted px-1">{props.name}</code>

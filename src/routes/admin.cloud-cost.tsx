@@ -156,7 +156,7 @@ function AdminCloudCostPage() {
           <Card className="border-border/60">
             <CardContent className="p-5">
               <div className="flex items-start gap-3">
-                <div className="rounded-lg bg-amber-500/10 p-2 text-amber-600">
+                <div className="rounded-xl bg-amber-500/10 p-2 text-amber-600">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
@@ -241,7 +241,7 @@ function SectionCard({
       className="group rounded-xl border border-border/60 bg-card/40 p-5 transition hover:border-primary/40 hover:bg-card"
     >
       <div className="flex items-start gap-3">
-        <div className="rounded-lg bg-primary/10 p-2 text-primary">{icon}</div>
+        <div className="rounded-xl bg-primary/10 p-2 text-primary">{icon}</div>
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <h3 className="font-medium tracking-tight">{title}</h3>

@@ -45,7 +45,7 @@ export function EnableEmailSuggestionChip({
           <button
             type="button"
             onClick={() => setBillingOpen(true)}
-            className="inline-flex h-7 items-center gap-1 rounded-full bg-primary px-2.5 text-[11px] font-medium text-primary-foreground shadow-sm transition hover:brightness-110"
+            className="inline-flex h-7 items-center gap-1 rounded-full bg-primary px-2.5 text-[11px] font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-110"
           >
             <Sparkles className="h-3 w-3" /> Upgrade
           </button>
@@ -74,7 +74,7 @@ export function EnableEmailSuggestionChip({
         <button
           type="button"
           onClick={onSetupBackend ?? onOpenEmail}
-          className="inline-flex h-7 items-center gap-1 rounded-full bg-primary px-2.5 text-[11px] font-medium text-primary-foreground shadow-sm transition hover:brightness-110"
+          className="inline-flex h-7 items-center gap-1 rounded-full bg-primary px-2.5 text-[11px] font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-110"
         >
           Set it up
         </button>
@@ -99,7 +99,7 @@ export function EnableEmailSuggestionChip({
       <button
         type="button"
         onClick={onOpenEmail}
-        className="inline-flex h-7 items-center gap-1 rounded-full bg-primary px-2.5 text-[11px] font-medium text-primary-foreground shadow-sm transition hover:brightness-110"
+        className="inline-flex h-7 items-center gap-1 rounded-full bg-primary px-2.5 text-[11px] font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-110"
       >
         Enable
       </button>

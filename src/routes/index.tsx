@@ -492,7 +492,7 @@ function Landing() {
           className={`relative mx-auto max-w-5xl px-5 text-center sm:px-6 ${!isReady || isAuthed ? "pt-40 pb-16 sm:pt-44 sm:pb-20 md:pt-48 md:pb-24" : "pt-32 pb-20 sm:pt-36 sm:pb-28 md:pt-40 md:pb-36"}`}
         >
           {!isReady ? (
-            <div className="mx-auto h-[7.5rem] max-w-2xl animate-pulse rounded-3xl bg-card/50" aria-hidden="true" />
+            <div className="mx-auto h-[7.5rem] max-w-2xl animate-pulse rounded-2xl bg-card/50" aria-hidden="true" />
           ) : isAuthed ? (
             <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
               {firstName ? (
@@ -546,7 +546,7 @@ function Landing() {
             }}
             className="mx-auto mt-10 max-w-2xl"
           >
-            <div className="group relative rounded-3xl border border-border bg-card/90 p-4 text-left shadow-[var(--shadow-glow)] backdrop-blur transition focus-within:border-primary focus-within:shadow-[var(--shadow-soft)]">
+            <div className="group relative rounded-2xl border border-border bg-card/90 p-4 text-left shadow-[var(--shadow-glow)] backdrop-blur transition focus-within:border-primary focus-within:shadow-[var(--shadow-soft)]">
               {mode === "coach" ? (
                 <IdeaCoach
                   isAuthed={!!user}
@@ -657,7 +657,7 @@ function Landing() {
                         }}
                         className={`grid h-9 w-9 place-items-center rounded-full transition ${
                           voice.listening
-                            ? "bg-primary text-primary-foreground shadow-sm animate-pulse"
+                            ? "bg-primary text-primary-foreground shadow-[var(--shadow-soft)] animate-pulse"
                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                         }`}
                         aria-label={voice.listening ? "Stop dictation" : "Dictate with voice"}
@@ -678,7 +678,7 @@ function Landing() {
                   <button
                     type="submit"
                     aria-label={mode === "discuss" ? "Ask Petal" : "Build it"}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:brightness-105 disabled:opacity-50"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 disabled:opacity-50"
                     disabled={!prompt.trim()}
                   >
                     <ArrowUp className="h-4 w-4" />
@@ -781,11 +781,11 @@ function Landing() {
                 communityLoading || communityPublic === null ? (
                   <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="h-64 animate-pulse rounded-3xl border border-border bg-card/60" />
+                      <div key={i} className="h-64 animate-pulse rounded-2xl border border-border bg-card/60" />
                     ))}
                   </div>
                 ) : communityPublic.length === 0 ? (
-                  <div className="rounded-3xl border border-dashed border-border bg-card/40 p-10 text-center text-sm text-muted-foreground">
+                  <div className="rounded-2xl border border-dashed border-border bg-card/40 p-10 text-center text-sm text-muted-foreground">
                     No public projects yet — be the first to share one.
                   </div>
                 ) : (
@@ -795,7 +795,7 @@ function Landing() {
                         key={p.id}
                         to="/p/$slug"
                         params={{ slug: p.slug }}
-                        className="group relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card/80 transition hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-[var(--shadow-soft)]"
+                        className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/80 transition hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-[var(--shadow-soft)]"
                       >
                         <div className="relative">
                           <ProjectThumbnail
@@ -830,11 +830,11 @@ function Landing() {
               ) : projectsLoading || projects === null ? (
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="h-64 animate-pulse rounded-3xl border border-border bg-card/60" />
+                    <div key={i} className="h-64 animate-pulse rounded-2xl border border-border bg-card/60" />
                   ))}
                 </div>
               ) : projects.length === 0 ? (
-                <div className="relative overflow-hidden rounded-3xl border border-dashed border-border bg-card/40 p-12 text-center">
+                <div className="relative overflow-hidden rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
                   <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-border bg-card">
                     <Sparkles className="h-5 w-5 text-muted-foreground" />
                   </div>
@@ -858,7 +858,7 @@ function Landing() {
                             el.scrollIntoView({ behavior: "smooth", block: "center" });
                           }
                         }}
-                        className="group flex h-full min-h-[16rem] flex-col items-start justify-between rounded-3xl border border-dashed border-border bg-card/30 p-5 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:bg-card"
+                        className="group flex h-full min-h-[16rem] flex-col items-start justify-between rounded-2xl border border-dashed border-border bg-card/30 p-5 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:bg-card"
                       >
                         <span className="grid h-10 w-10 place-items-center rounded-full border border-border bg-background text-muted-foreground transition group-hover:border-primary/60 group-hover:text-foreground">
                           <Plus className="h-4 w-4" />
@@ -879,7 +879,7 @@ function Landing() {
                             mode: undefined,
                             attachKey: undefined,
                           }}
-                          className="group relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card/80 transition hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-[var(--shadow-soft)]"
+                          className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/80 transition hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-[var(--shadow-soft)]"
                         >
                           <div className="relative">
                             <ProjectThumbnail

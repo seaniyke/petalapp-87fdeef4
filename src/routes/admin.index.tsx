@@ -125,12 +125,12 @@ function AdminIndexPage() {
               Live business overview · last {windowDays} days
             </p>
           </div>
-          <div className="flex gap-1 rounded-lg border border-border/60 p-1">
+          <div className="flex gap-1 rounded-xl border border-border/60 p-1">
             {[7, 30, 90].map((d) => (
               <button
                 key={d}
                 onClick={() => setWindowDays(d)}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                className={`rounded-xl px-3 py-1 text-xs font-medium transition ${
                   windowDays === d ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -424,7 +424,7 @@ function SectionCard({
       className="group rounded-xl border border-border/60 bg-card/40 p-5 transition hover:border-primary/40 hover:bg-card"
     >
       <div className="flex items-start gap-3">
-        <div className="rounded-lg bg-primary/10 p-2 text-primary">{icon}</div>
+        <div className="rounded-xl bg-primary/10 p-2 text-primary">{icon}</div>
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <h3 className="font-medium tracking-tight">{title}</h3>

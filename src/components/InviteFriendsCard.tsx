@@ -65,7 +65,7 @@ export function InviteFriendsCard() {
       </h2>
       <div className="mt-3 rounded-xl border border-border/60 bg-card/40 p-5">
         <div className="flex items-start gap-3">
-          <div className="rounded-lg bg-primary/10 p-2 text-primary">
+          <div className="rounded-xl bg-primary/10 p-2 text-primary">
             <Gift className="h-5 w-5" />
           </div>
           <div className="flex-1">
@@ -78,14 +78,14 @@ export function InviteFriendsCard() {
         </div>
 
         <div className="mt-4 flex items-center gap-2">
-          <code className="flex-1 truncate rounded-lg border border-border bg-background px-3 py-2.5 text-sm">
+          <code className="flex-1 truncate rounded-xl border border-border bg-background px-3 py-2.5 text-sm">
             {link}
           </code>
           <button
             type="button"
             onClick={copy}
             aria-label="Copy invite link"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border hover:bg-muted"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border hover:bg-muted"
           >
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           </button>
@@ -93,7 +93,7 @@ export function InviteFriendsCard() {
             type="button"
             onClick={share}
             aria-label="Share invite link"
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:brightness-105"
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground hover:brightness-105"
           >
             <Share2 className="h-4 w-4" /> Share
           </button>
@@ -111,7 +111,7 @@ export function InviteFriendsCard() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-background/50 px-3 py-2.5">
+    <div className="rounded-xl border border-border/60 bg-background/50 px-3 py-2.5">
       <div className="font-display text-xl font-black tracking-[-0.02em]">{value}</div>
       <div className="mt-0.5 text-[11px] text-muted-foreground">{label}</div>
     </div>

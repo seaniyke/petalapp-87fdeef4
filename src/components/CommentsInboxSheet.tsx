@@ -163,7 +163,7 @@ export function CommentsInboxSheet({
             <div className="text-center text-sm text-muted-foreground">Loading…</div>
           )}
           {!loading && visible.length === 0 && (
-            <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               No {filter === "open" ? "open " : ""}comments yet.
               <br />
               <span className="text-xs">
@@ -175,7 +175,7 @@ export function CommentsInboxSheet({
             <div
               key={c.id}
               className={cn(
-                "rounded-lg border p-3 text-sm",
+                "rounded-xl border p-3 text-sm",
                 c.status === "resolved"
                   ? "border-border bg-muted/30 opacity-60"
                   : "border-border bg-card",

@@ -303,7 +303,7 @@ export function IdeaCoach({
             type="button"
             onClick={handleBuild}
             disabled={!state.assembledPrompt.trim()}
-            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition hover:brightness-105 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 disabled:opacity-50"
           >
             Build this
             <ArrowUp className="h-3 w-3" />

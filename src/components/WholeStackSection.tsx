@@ -81,10 +81,10 @@ export function WholeStackSection() {
           <div className="rounded-[2rem] border border-border bg-card/60 p-6 sm:p-8">
             <h3 className="text-center text-lg font-black tracking-tight sm:text-xl">What you think it takes</h3>
             <div className="mt-6 space-y-3">
-              <div className="flex h-40 items-center justify-center rounded-3xl bg-lilac/60 text-2xl font-black tracking-tight text-foreground sm:h-48 sm:text-3xl">
+              <div className="flex h-40 items-center justify-center rounded-2xl bg-lilac/60 text-2xl font-black tracking-tight text-foreground sm:h-48 sm:text-3xl">
                 Frontend
               </div>
-              <div className="flex h-32 items-center justify-center rounded-3xl bg-sky/60 text-2xl font-black tracking-tight text-foreground sm:h-40 sm:text-3xl">
+              <div className="flex h-32 items-center justify-center rounded-2xl bg-sky/60 text-2xl font-black tracking-tight text-foreground sm:h-40 sm:text-3xl">
                 Backend
               </div>
             </div>

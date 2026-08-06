@@ -208,7 +208,7 @@ export function SiteHeader() {
                 <Link
                   to="/auth"
                   search={{ mode: "signup", redirect: undefined }}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-full bg-foreground px-4 text-sm font-medium text-background shadow-sm ring-1 ring-foreground/10 transition hover:-translate-y-0.5 hover:ring-foreground/20"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-full bg-foreground px-4 text-sm font-medium text-background shadow-[var(--shadow-soft)] ring-1 ring-foreground/10 transition hover:-translate-y-0.5 hover:ring-foreground/20"
                 >
                   <UserIcon className="h-3.5 w-3.5" />
                   Get started

@@ -24,7 +24,7 @@ export function CryptoTipPanel() {
 
   if (!wallet) {
     return (
-      <div className="rounded-3xl border border-border bg-card/90 p-8 text-center shadow-[var(--shadow-soft)]">
+      <div className="rounded-2xl border border-border bg-card/90 p-8 text-center shadow-[var(--shadow-soft)]">
         <Wallet className="mx-auto h-6 w-6 text-primary" />
         <p className="mt-3 text-sm font-semibold">Crypto tips are being set up.</p>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -80,7 +80,7 @@ export function CryptoTipPanel() {
 
   if (done) {
     return (
-      <div className="rounded-3xl border border-border bg-card/90 p-8 text-center shadow-[var(--shadow-soft)]">
+      <div className="rounded-2xl border border-border bg-card/90 p-8 text-center shadow-[var(--shadow-soft)]">
         <Heart className="mx-auto h-7 w-7 text-primary" />
         <h2 className="mt-3 text-xl font-bold">Got it — thank you! 🙏</h2>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -91,7 +91,7 @@ export function CryptoTipPanel() {
   }
 
   return (
-    <div className="rounded-3xl border border-border bg-card/90 p-6 shadow-[var(--shadow-soft)] backdrop-blur sm:p-8">
+    <div className="rounded-2xl border border-border bg-card/90 p-6 shadow-[var(--shadow-soft)] backdrop-blur sm:p-8">
       {/* Wallet picker */}
       <label className="mb-2 block text-sm font-semibold">Choose a network</label>
       <div className="flex flex-wrap gap-2">
@@ -211,7 +211,7 @@ export function CryptoTipPanel() {
         </div>
 
         {error && (
-          <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive">
+          <div className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive">
             {error}
           </div>
         )}
@@ -219,7 +219,7 @@ export function CryptoTipPanel() {
         <button
           type="submit"
           disabled={submitting}
-          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-semibold text-primary-foreground shadow-sm transition hover:brightness-105 disabled:opacity-60"
+          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-semibold text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 disabled:opacity-60"
         >
           {submitting ? (
             <>

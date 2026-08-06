@@ -148,7 +148,7 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
               onClick={() => go("/")}
               className="flex w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-muted"
             >
-              <span className="grid h-12 w-16 shrink-0 place-items-center rounded-lg border border-dashed border-border bg-muted/40">
+              <span className="grid h-12 w-16 shrink-0 place-items-center rounded-xl border border-dashed border-border bg-muted/40">
                 <Plus className="h-4 w-4 text-muted-foreground" />
               </span>
               <span className="text-sm font-semibold">Create new project</span>
@@ -157,7 +157,7 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
             {loading && projects === null
               ? Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="flex items-center gap-3 rounded-xl p-2">
-                    <div className="h-12 w-16 shrink-0 animate-pulse rounded-lg bg-muted" />
+                    <div className="h-12 w-16 shrink-0 animate-pulse rounded-xl bg-muted" />
                     <div className="h-3 w-32 animate-pulse rounded bg-muted" />
                   </div>
                 ))
@@ -174,7 +174,7 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
                       title={p.title}
                       subdomain={p.subdomain}
                       buildId={p.published_build_id ?? p.latest_build_id}
-                      className="h-12 w-16 shrink-0 overflow-hidden rounded-lg"
+                      className="h-12 w-16 shrink-0 overflow-hidden rounded-xl"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-semibold">{p.title}</div>
@@ -227,7 +227,7 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
         {user && (
           <div className="safe-bottom border-t border-border bg-card/60 px-3 py-3">
             <div className="flex items-center gap-3 rounded-xl px-2 py-1.5">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-foreground text-sm font-medium text-background">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-foreground text-sm font-medium text-background">
                 {initial}
               </span>
               <div className="min-w-0 flex-1">
@@ -247,7 +247,7 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
                   navigate({ to: "/" });
                 }}
                 aria-label="Sign out"
-                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                className="grid h-8 w-8 place-items-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
               >
                 <LogOut className="h-4 w-4" />
               </button>

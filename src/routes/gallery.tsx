@@ -119,7 +119,7 @@ function GalleryPage() {
 
 function EmptyState() {
   return (
-    <div className="mt-10 rounded-3xl border border-dashed border-border bg-card/60 p-12 text-center">
+    <div className="mt-10 rounded-2xl border border-dashed border-border bg-card/60 p-12 text-center">
       <PetalLoader size={56} />
       <h3 className="mt-6 font-display text-2xl">Nothing public yet</h3>
       <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
@@ -160,7 +160,7 @@ function GalleryCard({
     <Link
       to="/p/$slug"
       params={{ slug: project.slug }}
-      className="group relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card transition duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-editorial)]"
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-editorial)]"
     >
       <div className="relative overflow-hidden">
         <ProjectThumbnail

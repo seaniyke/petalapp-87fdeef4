@@ -5,7 +5,7 @@
  *  1. Live in the BuildActivityCard while a generation is in flight.
  *  2. Persisted inline in the chat thread so the card survives a refresh.
  *
- * Visual language: rounded-3xl, soft layered surfaces, hairline border,
+ * Visual language: rounded-2xl, soft layered surfaces, hairline border,
  * SF-style icon glyph in a tinted circle, primary "filled" pill button
  * and secondary glass button — matches iOS 17 system alerts / banners.
  */
@@ -83,7 +83,7 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
       {/* Outer surface — soft elevated card, hairline border, iOS radius. */}
       <div
         className={[
-          "relative overflow-hidden rounded-3xl",
+          "relative overflow-hidden rounded-2xl",
           "border border-foreground/8 dark:border-white/8",
           "bg-[color-mix(in_oklab,var(--card)_92%,transparent)]",
           "shadow-[0_1px_0_0_rgba(255,255,255,0.6)_inset,0_8px_30px_-12px_rgba(0,0,0,0.18)]",

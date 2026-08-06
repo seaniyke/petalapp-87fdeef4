@@ -162,7 +162,7 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
       <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
         <Smartphone className="h-4 w-4" /> Mobile app
       </h3>
-      <div className="mb-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs">
+      <div className="mb-3 rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-xs">
         <div className="font-medium text-foreground">{status?.bundleId}</div>
         <div className="text-muted-foreground">
           {status?.provisioned
@@ -213,7 +213,7 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
             {builds.map((b) => (
               <li
                 key={b.id}
-                className="flex items-center justify-between rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs"
+                className="flex items-center justify-between rounded-xl border border-border/60 bg-background px-2.5 py-1.5 text-xs"
               >
                 <div className="flex items-center gap-2">
                   {b.platform === "ios" ? (

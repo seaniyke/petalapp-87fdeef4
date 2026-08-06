@@ -38,7 +38,7 @@ export function AdminTabs() {
               <Link
                 key={t.to}
                 to={t.to}
-                className={`whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-medium transition-colors ${
                   active
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"

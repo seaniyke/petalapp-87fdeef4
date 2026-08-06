@@ -159,7 +159,7 @@ export function SharePreviewDialog({
             <input
               readOnly
               value={loading ? "Generating link…" : url}
-              className="flex-1 rounded-lg border border-border bg-muted px-3 py-2 font-mono text-xs"
+              className="flex-1 rounded-xl border border-border bg-muted px-3 py-2 font-mono text-xs"
               onFocus={(e) => e.currentTarget.select()}
             />
             <Button type="button" size="sm" onClick={copy} disabled={!url}>
@@ -168,7 +168,7 @@ export function SharePreviewDialog({
           </div>
 
           {project && (
-            <div className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
+            <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
               <div className="flex items-start gap-3">
                 {project.is_public ? (
                   <Globe className="mt-0.5 h-4 w-4 text-muted-foreground" />
@@ -192,7 +192,7 @@ export function SharePreviewDialog({
             </div>
           )}
 
-          <div className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
+          <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
             <div className="flex items-start gap-3">
               <MessageSquare className="mt-0.5 h-4 w-4 text-muted-foreground" />
               <div>

@@ -32,7 +32,7 @@ export function CollapsibleSegment({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "group/seg -ml-0.5 inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-[12px] font-medium leading-snug transition-colors",
+          "group/seg -ml-0.5 inline-flex items-center gap-1.5 rounded-xl px-1 py-0.5 text-[12px] font-medium leading-snug transition-colors",
           isPrimary
             ? "text-primary/85 hover:text-primary"
             : "text-muted-foreground hover:text-foreground",

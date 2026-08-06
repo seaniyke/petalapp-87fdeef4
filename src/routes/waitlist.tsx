@@ -112,7 +112,7 @@ function WaitlistStatusPage() {
             <Loader2 className="h-4 w-4 animate-spin" /> Finding your spot…
           </div>
         ) : !status ? (
-          <div className="rounded-3xl border border-border bg-card p-8 shadow-[var(--shadow-soft)]">
+          <div className="rounded-2xl border border-border bg-card p-8 shadow-[var(--shadow-soft)]">
             <h1 className="font-display text-3xl font-black tracking-[-0.03em]">
               We couldn't find that spot
             </h1>
@@ -130,7 +130,7 @@ function WaitlistStatusPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-3xl border border-border bg-card p-7 shadow-[var(--shadow-soft)] sm:p-8">
+            <div className="rounded-2xl border border-border bg-card p-7 shadow-[var(--shadow-soft)] sm:p-8">
               {status.approved ? (
                 <>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-mint px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-foreground">
@@ -180,7 +180,7 @@ function WaitlistStatusPage() {
               )}
             </div>
 
-            <div className="rounded-3xl border border-border bg-card p-7 shadow-[var(--shadow-soft)] sm:p-8">
+            <div className="rounded-2xl border border-border bg-card p-7 shadow-[var(--shadow-soft)] sm:p-8">
               <h2 className="font-display text-xl font-black tracking-[-0.02em]">
                 Your invite link
               </h2>

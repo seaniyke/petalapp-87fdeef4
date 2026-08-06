@@ -160,12 +160,12 @@ function AdminLedgersPage() {
 
         <Card className="mb-4 border-border/60">
           <CardContent className="flex flex-wrap items-center gap-2 p-3">
-            <div className="flex gap-1 rounded-lg border border-border/60 p-1">
+            <div className="flex gap-1 rounded-xl border border-border/60 p-1">
               {(["transactions", "ledger"] as Tab[]).map((t) => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className={`rounded-md px-3 py-1 text-xs font-medium capitalize transition ${
+                  className={`rounded-xl px-3 py-1 text-xs font-medium capitalize transition ${
                     tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -175,12 +175,12 @@ function AdminLedgersPage() {
             </div>
 
             {tab === "transactions" && (
-              <div className="flex gap-1 rounded-lg border border-border/60 p-1">
+              <div className="flex gap-1 rounded-xl border border-border/60 p-1">
                 {["", "success", "failed", "pending"].map((s) => (
                   <button
                     key={s || "all"}
                     onClick={() => setStatusFilter(s)}
-                    className={`rounded-md px-3 py-1 text-xs font-medium capitalize transition ${
+                    className={`rounded-xl px-3 py-1 text-xs font-medium capitalize transition ${
                       statusFilter === s
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:text-foreground"
@@ -192,7 +192,7 @@ function AdminLedgersPage() {
               </div>
             )}
 
-            <div className="flex gap-1 rounded-lg border border-border/60 p-1">
+            <div className="flex gap-1 rounded-xl border border-border/60 p-1">
               {[
                 { v: 0, l: "All" },
                 { v: 7, l: "7d" },
@@ -202,7 +202,7 @@ function AdminLedgersPage() {
                 <button
                   key={v}
                   onClick={() => setSinceDays(v)}
-                  className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                  className={`rounded-xl px-3 py-1 text-xs font-medium transition ${
                     sinceDays === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >

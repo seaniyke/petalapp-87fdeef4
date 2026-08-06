@@ -254,7 +254,7 @@ export function SnackPreview({ files, projectName }: Props) {
           <button
             type="button"
             onClick={retryBoot}
-            className="mx-auto mt-3 flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-[12px] font-semibold text-foreground transition hover:bg-muted"
+            className="mx-auto mt-3 flex items-center gap-1.5 rounded-xl border border-border bg-background px-2.5 py-1.5 text-[12px] font-semibold text-foreground transition hover:bg-muted"
           >
             <RotateCw className="h-3.5 w-3.5" /> Try again
           </button>
@@ -291,7 +291,7 @@ export function SnackPreview({ files, projectName }: Props) {
                 <button
                   type="button"
                   onClick={retryBoot}
-                  className="flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-[12px] font-semibold text-foreground transition hover:bg-muted"
+                  className="flex items-center gap-1.5 rounded-xl border border-border bg-background px-2.5 py-1.5 text-[12px] font-semibold text-foreground transition hover:bg-muted"
                 >
                   <RotateCw className="h-3.5 w-3.5" /> Restart preview
                 </button>
@@ -303,7 +303,7 @@ export function SnackPreview({ files, projectName }: Props) {
 
       {/* M7 — say plainly that images are stand-ins in this preview. */}
       {previewURL && placeholderAssets > 0 && (
-        <div className="pointer-events-none absolute bottom-2 left-2 z-30 max-w-[70%] rounded-full border border-border bg-background/95 px-2.5 py-1 text-[10.5px] font-medium text-muted-foreground shadow-sm backdrop-blur">
+        <div className="pointer-events-none absolute bottom-2 left-2 z-30 max-w-[70%] rounded-full border border-border bg-background/95 px-2.5 py-1 text-[10.5px] font-medium text-muted-foreground shadow-[var(--shadow-soft)] backdrop-blur">
           {placeholderAssets} image{placeholderAssets === 1 ? "" : "s"} shown as placeholders here — they ship correctly in the real build.
         </div>
       )}
@@ -313,7 +313,7 @@ export function SnackPreview({ files, projectName }: Props) {
         <button
           type="button"
           onClick={() => setShowQR((v) => !v)}
-          className="absolute bottom-2 right-2 z-30 grid h-9 w-9 place-items-center rounded-full border border-border bg-background/95 text-foreground shadow-lg backdrop-blur transition hover:scale-105"
+          className="absolute bottom-2 right-2 z-30 grid h-9 w-9 place-items-center rounded-full border border-border bg-background/95 text-foreground shadow-[var(--shadow-editorial)] backdrop-blur transition hover:scale-105"
           aria-label="Show QR for Expo Go"
           title="Test on phone (Expo Go)"
         >
@@ -328,7 +328,7 @@ export function SnackPreview({ files, projectName }: Props) {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-[260px] rounded-2xl border border-border bg-background p-4 text-center shadow-xl"
+            className="w-full max-w-[260px] rounded-2xl border border-border bg-background p-4 text-center shadow-[var(--shadow-editorial)]"
           >
             <div className="mb-1 text-[12px] font-medium">Open on your phone</div>
             <div className="mb-3 text-[11px] text-muted-foreground">
@@ -338,10 +338,10 @@ export function SnackPreview({ files, projectName }: Props) {
               <img
                 src={qrDataURL}
                 alt="Expo Go QR code"
-                className="mx-auto h-[200px] w-[200px] rounded-md bg-white p-2"
+                className="mx-auto h-[200px] w-[200px] rounded-xl bg-white p-2"
               />
             ) : (
-              <div className="mx-auto grid h-[200px] w-[200px] place-items-center rounded-md border border-dashed text-xs text-muted-foreground">
+              <div className="mx-auto grid h-[200px] w-[200px] place-items-center rounded-xl border border-dashed text-xs text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
               </div>
             )}

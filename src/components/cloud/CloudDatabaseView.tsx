@@ -113,7 +113,7 @@ export function CloudDatabaseView({ projectId }: Props) {
             onClick={() => setActive(t.name)}
             className="group flex w-full items-center gap-3 rounded-xl bg-muted/40 px-4 py-3 text-left transition hover:bg-muted/60"
           >
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-background text-foreground">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-background text-foreground">
               <Table2 className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">

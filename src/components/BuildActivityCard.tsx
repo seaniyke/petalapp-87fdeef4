@@ -269,7 +269,7 @@ export function BuildActivityCard({
 
   return (
     <>
-      <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-sm backdrop-blur-sm transition-all">
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-[var(--shadow-soft)] backdrop-blur-sm transition-all">
         <div className="flex gap-px" aria-hidden>
           {phases.map((p, i) => (
             <span

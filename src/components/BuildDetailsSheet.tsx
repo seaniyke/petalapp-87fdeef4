@@ -184,7 +184,7 @@ export function BuildDetailsSheet({
                     return (
                       <li
                         key={p}
-                        className={`flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2.5 py-2 ${
+                        className={`flex items-center justify-between gap-2 rounded-xl bg-muted/40 px-2.5 py-2 ${
                           change?.kind === "deleted" ? "opacity-70" : ""
                         }`}
                       >
@@ -449,7 +449,7 @@ function TraceRow({
       </div>
       {open && detail && (
         <p
-          className={`mt-1 whitespace-pre-line rounded-md bg-muted/50 px-2 py-1.5 text-[11.5px] font-medium leading-relaxed text-muted-foreground ${
+          className={`mt-1 whitespace-pre-line rounded-xl bg-muted/50 px-2 py-1.5 text-[11.5px] font-medium leading-relaxed text-muted-foreground ${
             entry.kind === "thought" ? "" : "break-all font-mono text-[10.5px]"
           }`}
         >
@@ -471,7 +471,7 @@ export function ChangeBadge({ kind }: { kind: FileChange["kind"] }) {
         : "bg-amber-500/15 text-amber-600";
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-sm px-1 py-px text-[9px] font-bold uppercase tracking-wider ${tone}`}
+      className={`inline-flex shrink-0 items-center rounded-xl px-1 py-px text-[9px] font-bold uppercase tracking-wider ${tone}`}
     >
       {label}
     </span>

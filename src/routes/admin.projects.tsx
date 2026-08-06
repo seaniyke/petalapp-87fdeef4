@@ -167,7 +167,7 @@ function AdminProjectsPage() {
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Filter"}
               </Button>
             </form>
-            <div className="flex gap-1 rounded-lg border border-border/60 p-1">
+            <div className="flex gap-1 rounded-xl border border-border/60 p-1">
               {(["all", "published", "featured", "private"] as Filter[]).map((f) => (
                 <button
                   key={f}
@@ -176,7 +176,7 @@ function AdminProjectsPage() {
                     setPage(1);
                     void load(1, query, f);
                   }}
-                  className={`rounded-md px-3 py-1 text-xs font-medium capitalize transition ${
+                  className={`rounded-xl px-3 py-1 text-xs font-medium capitalize transition ${
                     filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -258,7 +258,7 @@ function AdminProjectsPage() {
                               href={`/p/${p.slug}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
                               title="Open"
                             >
                               <ExternalLink className="h-4 w-4" />

@@ -347,7 +347,7 @@ export function WebContainerPreview({
   if (view.kind === "unsupported") {
     return (
       <div className="grid h-full w-full place-items-center bg-aurora p-6">
-        <div className="max-w-sm rounded-2xl border border-border bg-card/90 p-5 text-center shadow-sm backdrop-blur">
+        <div className="max-w-sm rounded-2xl border border-border bg-card/90 p-5 text-center shadow-[var(--shadow-soft)] backdrop-blur">
           <Smartphone className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
           <h3 className="mb-1 text-sm font-semibold text-foreground">{view.title}</h3>
           <p className="text-xs leading-relaxed text-muted-foreground">{view.detail}</p>
@@ -373,7 +373,7 @@ export function WebContainerPreview({
           </div>
           <button
             onClick={() => setShowLogs((s) => !s)}
-            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-muted hover:text-foreground"
+            className="inline-flex items-center gap-1 rounded-xl px-1.5 py-0.5 hover:bg-muted hover:text-foreground"
           >
             <Terminal className="h-3 w-3" /> {showLogs ? "Hide" : "Show"} logs
           </button>
@@ -384,7 +384,7 @@ export function WebContainerPreview({
           {onPick && (
             <button
               onClick={() => setPickActive((p) => !p)}
-              className={`grid h-7 w-7 place-items-center rounded-md border backdrop-blur transition ${
+              className={`grid h-7 w-7 place-items-center rounded-xl border backdrop-blur transition ${
                 pickActive
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-card/90 text-muted-foreground hover:text-foreground"
@@ -396,14 +396,14 @@ export function WebContainerPreview({
           )}
           <button
             onClick={() => setIframeKey((k) => k + 1)}
-            className="grid h-7 w-7 place-items-center rounded-md border border-border bg-card/90 text-muted-foreground backdrop-blur transition hover:text-foreground"
+            className="grid h-7 w-7 place-items-center rounded-xl border border-border bg-card/90 text-muted-foreground backdrop-blur transition hover:text-foreground"
             title="Reload preview"
           >
             <RotateCw className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={() => setShowLogs((s) => !s)}
-            className="grid h-7 w-7 place-items-center rounded-md border border-border bg-card/90 text-muted-foreground backdrop-blur transition hover:text-foreground"
+            className="grid h-7 w-7 place-items-center rounded-xl border border-border bg-card/90 text-muted-foreground backdrop-blur transition hover:text-foreground"
             title="Toggle logs"
           >
             <Terminal className="h-3.5 w-3.5" />
@@ -416,7 +416,7 @@ export function WebContainerPreview({
         </div>
       )}
       {pickerWarning && (
-        <div className="pointer-events-auto absolute left-1/2 top-12 z-10 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-destructive/40 bg-card/95 px-3 py-1.5 text-[11px] font-medium text-destructive shadow-sm backdrop-blur">
+        <div className="pointer-events-auto absolute left-1/2 top-12 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-destructive/40 bg-card/95 px-3 py-1.5 text-[11px] font-medium text-destructive shadow-[var(--shadow-soft)] backdrop-blur">
           <AlertCircle className="h-3 w-3 shrink-0" />
           <span>{pickerWarning}</span>
           <button
@@ -476,13 +476,13 @@ export function WebContainerPreview({
               }}
             />
             {view.warming && (
-              <div className="pointer-events-none absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-2.5 py-1 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur">
+              <div className="pointer-events-none absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-2.5 py-1 text-[11px] font-medium text-muted-foreground shadow-[var(--shadow-soft)] backdrop-blur">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 <span>Live edits warming up…</span>
               </div>
             )}
             {view.kind === "last_deployed" && !view.warming && view.detail && (
-              <div className="absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-card/95 px-2.5 py-1 text-[11px] font-medium text-amber-700 shadow-sm backdrop-blur dark:text-amber-400">
+              <div className="absolute bottom-2 left-2 z-10 inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-card/95 px-2.5 py-1 text-[11px] font-medium text-amber-700 shadow-[var(--shadow-soft)] backdrop-blur dark:text-amber-400">
                 <AlertCircle className="h-3 w-3" />
                 <span>{view.detail}</span>
               </div>
@@ -490,7 +490,7 @@ export function WebContainerPreview({
           </>
         ) : (
           <div className="grid h-full place-items-center bg-aurora p-6">
-            <div className="max-w-sm rounded-2xl border border-border bg-card/90 p-5 text-center shadow-sm backdrop-blur">
+            <div className="max-w-sm rounded-2xl border border-border bg-card/90 p-5 text-center shadow-[var(--shadow-soft)] backdrop-blur">
               <div className="mb-2 grid place-items-center">
                 {view.warming ? (
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -508,7 +508,7 @@ export function WebContainerPreview({
                     <button
                       type="button"
                       onClick={() => setIframeKey((k) => k + 1)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-[12px] font-semibold transition hover:bg-muted"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-2.5 py-1.5 text-[12px] font-semibold transition hover:bg-muted"
                     >
                       <RotateCw className="h-3.5 w-3.5" /> Retry
                     </button>
@@ -518,7 +518,7 @@ export function WebContainerPreview({
                       href={externalUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-[12px] font-semibold text-primary-foreground transition hover:opacity-90"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-2.5 py-1.5 text-[12px] font-semibold text-primary-foreground transition hover:opacity-90"
                     >
                       Open in new tab
                     </a>

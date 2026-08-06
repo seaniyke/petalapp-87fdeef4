@@ -165,7 +165,7 @@ export function MarkdownMessage({ content, projectId }: { content: string; proje
                   }
                   return (
                     <code
-                      className="wrap-anywhere rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.88em] text-foreground"
+                      className="wrap-anywhere rounded-xl bg-muted px-1.5 py-0.5 font-mono text-[0.88em] text-foreground"
                       {...rest}
                     >
                       {children}

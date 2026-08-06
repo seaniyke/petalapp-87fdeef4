@@ -288,7 +288,7 @@ function CreateBucketDialog({
               onChange={(e) => setName(e.target.value.toLowerCase())}
             />
           </div>
-          <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
+          <div className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2">
             <div>
               <div className="text-sm font-medium">Public bucket</div>
               <div className="text-xs text-muted-foreground">

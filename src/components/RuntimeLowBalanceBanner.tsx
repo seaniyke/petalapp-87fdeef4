@@ -108,7 +108,7 @@ export function RuntimeLowBalanceBanner({ projectId }: Props) {
       <div className="pointer-events-none fixed bottom-3 right-3 z-40 sm:bottom-4 sm:right-4">
         <div
           role="status"
-          className={`pointer-events-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] shadow-sm backdrop-blur ${tone}`}
+          className={`pointer-events-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] shadow-[var(--shadow-soft)] backdrop-blur ${tone}`}
         >
           <AlertTriangle className="h-3 w-3 shrink-0 opacity-70" />
           <span className="max-w-[60vw] truncate sm:max-w-xs">{message}</span>

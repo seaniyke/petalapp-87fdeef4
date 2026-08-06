@@ -53,7 +53,7 @@ export const Route = createFileRoute("/p/$slug")({
         </p>
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
         >
           Go home
         </Link>
@@ -178,7 +178,7 @@ function PublicPreview() {
             href={published.url ?? undefined}
             target={published.url ? "_blank" : undefined}
             rel="noopener noreferrer"
-            className="group relative block overflow-hidden rounded-3xl border border-border bg-card aspect-[4/3] shadow-[var(--shadow-editorial)]"
+            className="group relative block overflow-hidden rounded-2xl border border-border bg-card aspect-[4/3] shadow-[var(--shadow-editorial)]"
             aria-label={published.url ? `Open ${project.title} in a new tab` : project.title}
           >
             <ProjectThumbnail
@@ -215,14 +215,14 @@ function PublicPreview() {
             <button
               onClick={() => setConfirmOpen(false)}
               disabled={remixing}
-              className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
+              className="rounded-xl border border-border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={() => void doRemix()}
               disabled={remixing}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-50"
             >
               {remixing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

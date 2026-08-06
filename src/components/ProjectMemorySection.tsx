@@ -86,7 +86,7 @@ export function ProjectMemorySection({ projectId }: { projectId: string }) {
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
         </div>
       ) : entries && entries.length === 0 ? (
-        <div className="rounded-md border border-dashed border-border px-3 py-4 text-xs text-muted-foreground">
+        <div className="rounded-xl border border-dashed border-border px-3 py-4 text-xs text-muted-foreground">
           Nothing remembered yet. Petal will start saving stable choices
           (audience, tone, palette, must-haves) as you build.
         </div>
@@ -95,7 +95,7 @@ export function ProjectMemorySection({ projectId }: { projectId: string }) {
           {entries?.map((e) => (
             <li
               key={e.id}
-              className="flex items-start justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs"
+              className="flex items-start justify-between gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs"
             >
               <div className="min-w-0">
                 <div className="font-medium text-foreground">{e.key}</div>

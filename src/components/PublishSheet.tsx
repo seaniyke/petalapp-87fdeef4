@@ -720,7 +720,7 @@ export function PublishSheet({
 
                   {editingSlug && (
                     <div className="space-y-2 p-2">
-                      <div className="flex items-stretch overflow-hidden rounded-lg border border-border bg-background focus-within:border-primary/60">
+                      <div className="flex items-stretch overflow-hidden rounded-xl border border-border bg-background focus-within:border-primary/60">
                         <input
                           type="text"
                           inputMode="url"
@@ -783,7 +783,7 @@ export function PublishSheet({
                           slugClaiming ||
                           slugDraft === currentSlug
                         }
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {slugClaiming ? (
                           <>
@@ -848,7 +848,7 @@ export function PublishSheet({
           onClick={() => setWebsiteInfoOpen(true)}
           className="mt-5 flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left transition hover:bg-muted"
         >
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
             <Search className="h-4 w-4" />
           </span>
           <span className="min-w-0 flex-1">
@@ -920,7 +920,7 @@ export function PublishSheet({
         // Lovable's popover — never a full-height drawer.
         <Dialog open={open} onOpenChange={onOpenChange}>
           <DialogContent
-            className="left-auto right-4 top-16 max-h-[min(78vh,640px)] w-[380px] max-w-[calc(100vw-2rem)] translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-2xl p-4 text-[13px] shadow-xl data-[state=closed]:slide-out-to-left-0 data-[state=closed]:slide-out-to-top-0 data-[state=open]:slide-in-from-left-0 data-[state=open]:slide-in-from-top-2 sm:max-w-[380px] sm:rounded-2xl"
+            className="left-auto right-4 top-16 max-h-[min(78vh,640px)] w-[380px] max-w-[calc(100vw-2rem)] translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-2xl p-4 text-[13px] shadow-[var(--shadow-editorial)] data-[state=closed]:slide-out-to-left-0 data-[state=closed]:slide-out-to-top-0 data-[state=open]:slide-in-from-left-0 data-[state=open]:slide-in-from-top-2 sm:max-w-[380px] sm:rounded-2xl"
           >
             <DialogTitle className="sr-only">Publish</DialogTitle>
             {content}
@@ -972,7 +972,7 @@ function VisibilityChoice({
       } disabled:cursor-default`}
     >
       <span
-        className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg ${
+        className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-xl ${
           active ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/70"
         }`}
       >

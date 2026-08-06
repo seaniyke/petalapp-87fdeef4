@@ -109,7 +109,7 @@ export function FirstRunTour() {
           <button
             type="button"
             onClick={() => close(true)}
-            className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
             aria-label="Skip tour"
           >
             <X className="h-3.5 w-3.5" />
@@ -135,14 +135,14 @@ export function FirstRunTour() {
             <button
               type="button"
               onClick={() => close(true)}
-              className="rounded-md px-2 py-1 text-[11px] text-muted-foreground transition hover:text-foreground"
+              className="rounded-xl px-2 py-1 text-[11px] text-muted-foreground transition hover:text-foreground"
             >
               Skip
             </button>
             <button
               type="button"
               onClick={() => (isLast ? close(true) : setStep((s) => s + 1))}
-              className="rounded-md bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground transition hover:brightness-105"
+              className="rounded-xl bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground transition hover:brightness-105"
             >
               {isLast ? "Got it" : "Next"}
             </button>

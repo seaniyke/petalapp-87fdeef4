@@ -101,7 +101,7 @@ export function PlanProposalCard({
   return (
     <div className="border-t border-border bg-gradient-to-b from-muted/40 to-background animate-in fade-in slide-in-from-bottom-2 duration-200">
       <div className="p-3">
-        <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="rounded-xl border border-border bg-card shadow-[var(--shadow-soft)]">
           {/* Header */}
           <div className="flex items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
             <div className="flex items-center gap-2 min-w-0">
@@ -180,7 +180,7 @@ export function PlanProposalCard({
                     />
                     <span
                       className={cn(
-                        "mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ring-1 ring-inset",
+                        "mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-xl px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ring-1 ring-inset",
                         cfg.className,
                       )}
                     >
@@ -227,7 +227,7 @@ export function PlanProposalCard({
               disabled={selected === 0}
               onClick={onApprove}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-1.5 text-[11px] font-semibold text-background shadow-sm transition",
+                "inline-flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-1.5 text-[11px] font-semibold text-background shadow-[var(--shadow-soft)] transition",
                 "hover:scale-[1.02] active:scale-[0.98]",
                 "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100",
               )}

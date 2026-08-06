@@ -136,9 +136,9 @@ export function EmailSection({ projectId }: { projectId: string }) {
       </p>
 
       {loading ? (
-        <Skeleton className="h-24 w-full rounded-lg" />
+        <Skeleton className="h-24 w-full rounded-xl" />
       ) : !status?.enabled ? (
-        <div className="rounded-lg border border-border bg-muted/30 p-4">
+        <div className="rounded-xl border border-border bg-muted/30 p-4">
           <p className="mb-3 text-xs text-muted-foreground">
             Sends from a Petal-owned address — fully verified, deliverability handled for you.
           </p>
@@ -161,7 +161,7 @@ export function EmailSection({ projectId }: { projectId: string }) {
           </div>
 
           {/* Sender */}
-          <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs">
+          <div className="rounded-xl border border-border bg-muted/30 p-3 text-xs">
             <div className="mb-1 text-muted-foreground">From</div>
             <code className="block break-all rounded bg-background px-2 py-1 font-mono">
               {status.subscription.custom_domain_verified && status.subscription.custom_domain
@@ -171,7 +171,7 @@ export function EmailSection({ projectId }: { projectId: string }) {
           </div>
 
           {/* Token */}
-          <div className="rounded-lg border border-border bg-muted/30 p-3">
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
             <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
               <span>API Token</span>
               <Button size="sm" variant="ghost" className="h-6 gap-1 px-2" onClick={handleRotate} disabled={busy}>
@@ -200,7 +200,7 @@ export function EmailSection({ projectId }: { projectId: string }) {
           </div>
 
           {/* Snippet */}
-          <details className="rounded-lg border border-border bg-muted/30 p-3 text-xs">
+          <details className="rounded-xl border border-border bg-muted/30 p-3 text-xs">
             <summary className="cursor-pointer font-medium">How to use in your app</summary>
             <pre className="mt-2 overflow-x-auto rounded bg-background p-2 text-[11px] leading-relaxed">
 {`await fetch("https://buildwithpetal.com/api/public/email/send", {
@@ -222,7 +222,7 @@ export function EmailSection({ projectId }: { projectId: string }) {
           {outbound.length > 0 && (
             <div>
               <div className="mb-2 text-xs font-medium text-muted-foreground">Recent</div>
-              <div className="max-h-48 overflow-y-auto rounded-lg border border-border">
+              <div className="max-h-48 overflow-y-auto rounded-xl border border-border">
                 <table className="w-full text-xs">
                   <tbody>
                     {outbound.slice(0, 10).map((row) => (
@@ -244,7 +244,7 @@ export function EmailSection({ projectId }: { projectId: string }) {
 
           {/* Upgrade hint */}
           {status.subscription.plan === "free" && (
-            <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs">
+            <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs">
               <div>
                 <div className="font-medium">Need more?</div>
                 <div className="text-muted-foreground">$25/mo for 50,000 emails + custom domain.</div>
@@ -262,7 +262,7 @@ export function EmailSection({ projectId }: { projectId: string }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+    <div className="rounded-xl border border-border bg-muted/30 px-3 py-2">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-0.5 text-sm font-medium">{value}</div>
     </div>

@@ -183,7 +183,7 @@ export function ProjectSettingsSheet({
       <SheetTrigger asChild>
         {trigger ?? (
           <button
-            className="hidden h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted md:inline-flex"
+            className="hidden h-8 items-center gap-1.5 rounded-xl border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted md:inline-flex"
             title="Project settings"
           >
             <BookOpen className="h-3.5 w-3.5" />
@@ -215,7 +215,7 @@ export function ProjectSettingsSheet({
           onClick={() => setCloudOpen(true)}
           className="mt-4 flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-left transition hover:border-primary/40 hover:bg-muted/60"
         >
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background text-primary">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-background text-primary">
             <Cloud className="h-4 w-4" />
           </div>
           <div className="flex-1">
@@ -235,7 +235,7 @@ export function ProjectSettingsSheet({
           id="settings-domains"
           className="mt-3 flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-left transition hover:border-primary/40 hover:bg-muted/60"
         >
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background text-primary">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-background text-primary">
             <Globe className="h-4 w-4" />
           </div>
           <div className="flex-1">
@@ -254,7 +254,7 @@ export function ProjectSettingsSheet({
           id="settings-seo"
           className="mt-3 flex w-full scroll-mt-4 items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-left transition hover:border-primary/40 hover:bg-muted/60"
         >
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background text-primary">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-background text-primary">
             <Search className="h-4 w-4" />
           </div>
           <div className="flex-1">
@@ -444,7 +444,7 @@ function BackendSection({ projectId }: { projectId: string }) {
         </div>
       ) : isByo ? (
         // BYO connected — show only this card
-        <div className="rounded-lg border border-border bg-muted/30 p-3">
+        <div className="rounded-xl border border-border bg-muted/30 p-3">
           <div className="flex items-start gap-2">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
             <div className="flex-1 text-sm">
@@ -531,7 +531,7 @@ function PetalBadgeSection({
           : " Upgrade to a paid plan to hide it on your deployed app."}
       </p>
 
-      <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-3">
+      <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-3">
         <div className="flex items-start gap-2">
           {!isPaidPlan && (
             <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />

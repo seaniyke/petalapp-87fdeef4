@@ -146,7 +146,7 @@ function ModeRow({
           active && "bg-muted/60",
         )}
       >
-        <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-foreground/10 text-foreground/80">
+        <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-foreground/10 text-foreground/80">
           <Icon className="h-3.5 w-3.5" />
         </span>
         <span className="min-w-0 flex-1">
@@ -187,7 +187,7 @@ function ToggleRow({
       >
         <span
           className={cn(
-            "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg",
+            "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-xl",
             active ? "bg-primary/15 text-primary" : "bg-foreground/10 text-foreground/70",
           )}
         >

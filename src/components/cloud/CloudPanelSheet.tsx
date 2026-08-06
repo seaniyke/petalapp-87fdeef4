@@ -275,7 +275,7 @@ function Row({
       onClick={onClick}
       className="group flex w-full items-center gap-3 rounded-2xl bg-muted/40 px-4 py-4 text-left transition hover:bg-muted/60"
     >
-      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background text-foreground">
+      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-background text-foreground">
         {icon}
       </div>
       <div className="min-w-0 flex-1">

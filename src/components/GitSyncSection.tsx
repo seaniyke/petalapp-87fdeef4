@@ -166,7 +166,7 @@ export function GitSyncSection({ projectId }: { projectId: string }) {
           </div>
 
           {link.lastError && (
-            <p className="rounded-lg bg-destructive/10 p-2 text-xs font-medium text-destructive">
+            <p className="rounded-xl bg-destructive/10 p-2 text-xs font-medium text-destructive">
               Last push failed: {link.lastError}
             </p>
           )}

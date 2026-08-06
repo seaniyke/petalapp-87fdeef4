@@ -66,7 +66,7 @@ function UnsubscribePage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-sm">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-[var(--shadow-soft)]">
         <h1 className="text-2xl font-semibold tracking-tight">Email preferences</h1>
 
         {phase === "loading" && (
@@ -81,7 +81,7 @@ function UnsubscribePage() {
             </p>
             <button
               onClick={handleConfirm}
-              className="mt-6 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+              className="mt-6 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90"
             >
               Confirm unsubscribe
             </button>
@@ -115,7 +115,7 @@ function UnsubscribePage() {
             <p className="mt-4 text-sm text-destructive">{errMsg}</p>
             <button
               onClick={handleConfirm}
-              className="mt-4 w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium transition hover:bg-muted"
+              className="mt-4 w-full rounded-xl border border-border px-4 py-2.5 text-sm font-medium transition hover:bg-muted"
             >
               Try again
             </button>

@@ -67,7 +67,7 @@ export function SuggestionChecklist({
 
   return (
     <div
-      className="mt-3 overflow-hidden rounded-2xl border border-border bg-card shadow-sm animate-in fade-in slide-in-from-bottom-1 duration-300"
+      className="mt-3 overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-soft)] animate-in fade-in slide-in-from-bottom-1 duration-300"
       role="group"
       aria-label="Pick an answer"
     >
@@ -87,7 +87,7 @@ export function SuggestionChecklist({
                 onClick={() => setSelectedIndex(i)}
                 disabled={disabled}
                 aria-pressed={on}
-                className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-[13px] leading-snug transition ${
+                className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-[13px] leading-snug transition ${
                   on ? "bg-muted/60 text-foreground" : "text-foreground/85 hover:bg-muted/40"
                 } disabled:cursor-default disabled:opacity-70`}
               >
@@ -101,7 +101,7 @@ export function SuggestionChecklist({
         {/* Write your own… row */}
         <li>
           <div
-            className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 transition ${
+            className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 transition ${
               selectedIndex === customIndex ? "bg-muted/60" : "hover:bg-muted/40"
             }`}
           >

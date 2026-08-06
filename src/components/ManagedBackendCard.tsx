@@ -155,7 +155,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
   if (!isManaged) {
     return (
       <>
-        <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
+        <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 p-3">
           <p className="text-sm font-medium">Add Petal Cloud backend</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Dedicated auth, database and file storage — fully managed by Petal.
@@ -189,7 +189,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
     const stuckMs = 3 * 60 * 1000;
     const looksStuck = startedAt > 0 && Date.now() - startedAt > stuckMs;
     return (
-      <div className="rounded-lg border border-border bg-muted/30 p-3">
+      <div className="rounded-xl border border-border bg-muted/30 p-3">
         <div className="flex items-start gap-2">
           <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-primary" />
           <div className="flex-1 text-sm">
@@ -237,7 +237,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
   /* ---------------- Failed ---------------- */
   if (phase === "failed") {
     return (
-      <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+      <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-3">
         <div className="flex items-start gap-2">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
           <div className="flex-1 text-sm">
@@ -273,7 +273,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
   if (phase === "paused") {
     return (
       <>
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
           <div className="flex items-start gap-2">
             <PauseCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
             <div className="flex-1 text-sm">
@@ -319,7 +319,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
 
   return (
     <>
-      <div className="rounded-lg border border-border bg-muted/30 p-3">
+      <div className="rounded-xl border border-border bg-muted/30 p-3">
         <div className="flex items-start gap-2">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
           <div className="flex-1 text-sm">
@@ -336,7 +336,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
         </div>
 
         {inGrace && (
-          <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 px-2.5 py-2">
+          <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 px-2.5 py-2">
             <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
             <div className="flex-1 text-[11px] leading-snug">
               <span className="font-medium text-foreground">
@@ -359,7 +359,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
         )}
 
         {looksIdle && !inGrace && (
-          <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 px-2.5 py-2">
+          <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 px-2.5 py-2">
             <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
             <div className="flex-1 text-[11px] leading-snug">
               <span className="font-medium text-foreground">Low activity</span>{" "}
