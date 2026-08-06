@@ -4125,6 +4125,18 @@ Forbidden defaults
               break;
             }
             const cycleNum = 3 + cyc;
+            // §7 hard cost ceiling. Rounds are bounded above; this bounds the
+            // money. Crossing it ends the repair phase honestly rather than
+            // spending another round on a loop that isn't converging.
+            if (repairMeter.status().exhausted) {
+              console.warn(
+                `[agent-loop] cycle ${cycleNum} skipped — repair cost ceiling reached (${repairMeter.summary()})`,
+              );
+              controller.enqueue(
+                encoder.encode(sse({ type: "cycle_end", cycle: cycleNum, outcome: "hard-stop" })),
+              );
+              break;
+            }
             controller.enqueue(
               encoder.encode(sse({ type: "cycle_start", cycle: cycleNum, intent: "fixing" })),
             );
@@ -4142,6 +4154,12 @@ Forbidden defaults
               const fixOut = await runPostStreamAutofix(nextFiles, stillBad);
               nextFiles = fixOut.files;
               if (fixOut.result.usage) agentLoopUsages.push(fixOut.result.usage);
+              repairMeter.charge(
+                `autofix_cycle_${cycleNum}`,
+                "google/gemini-2.5-flash-lite",
+                (fixOut.result.usage?.total_tokens ?? 0) ||
+                  Math.ceil(nextFiles.reduce((s, f) => s + f.content.length, 0) / 4) + 4_000,
+              );
               const afterHash = nextFiles.map((f) => f.path + ":" + f.content.length).join("|");
               const madeProgress = afterHash !== beforeHash;
               controller.enqueue(
