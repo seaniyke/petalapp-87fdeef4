@@ -2658,7 +2658,8 @@ function Builder() {
           // friendly card so the user has a clear recovery path instead
           // of a stuck spinner.
           console.error(persistErr);
-          toast.error("Generated, but couldn't save changes.");
+          // M4 — one channel per event. The persisted error card below owns
+          // this failure; a toast alongside it was a duplicate notification.
           setPhases((p) => markFailed(p, "deploying"));
           persistFriendlyError(
             toFriendlyError(persistErr, { surface: "build", projectId: proj.id }),
