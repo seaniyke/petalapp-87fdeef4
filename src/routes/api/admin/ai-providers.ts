@@ -116,6 +116,17 @@ export const Route = createFileRoute("/api/admin/ai-providers")({
               await setBudgetConfig(userId, input.input);
               return Response.json({ ok: true });
             }
+            case "model-health": {
+              const { getModelHealth, auditConfiguredModels } = await import(
+                "@/server/model-health.server"
+              );
+              const [rows, audit] = await Promise.all([
+                getModelHealth(body.force === true),
+                auditConfiguredModels(),
+              ]);
+              return Response.json({ rows, audit });
+            }
+
             default:
               return Response.json({ error: "Unknown action" }, { status: 400 });
           }
