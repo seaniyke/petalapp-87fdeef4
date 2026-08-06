@@ -3344,6 +3344,29 @@ function Builder() {
       });
   }
 
+  // H6 — the device presets (390 / 820px) are a promise about width. Measure
+  // the real column and say so when it can't keep that promise, instead of
+  // silently rendering a "tablet" at 400px.
+  const previewColRef = useRef<HTMLDivElement | null>(null);
+  const [previewColWidth, setPreviewColWidth] = useState(0);
+  useEffect(() => {
+    const el = previewColRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width ?? 0;
+      setPreviewColWidth(Math.round(w));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [view, mobileTab]);
+  const previewTooNarrow =
+    !isMobile &&
+    view === "preview" &&
+    files.length > 0 &&
+    previewColWidth > 0 &&
+    previewColWidth <
+      (previewDevice === "phone" ? 390 : previewDevice === "tablet" ? 820 : 1024) - 24;
+
   // F5 — the single definition site for every builder action. Desktop
   // toolbar, desktop overflow menu and the mobile sheet all render from
   // this array, so a new action can never ship to one surface only.
@@ -3904,7 +3927,9 @@ function Builder() {
 
       <div
         className={`grid min-h-0 flex-1 grid-cols-1 ${
-          chatCollapsed ? "md:grid-cols-[1fr]" : "md:grid-cols-[360px_1fr]"
+          chatCollapsed
+            ? "md:grid-cols-[1fr]"
+            : "md:grid-cols-[300px_1fr] lg:grid-cols-[360px_1fr] xl:grid-cols-[400px_1fr]"
         }`}
       >
         {/* Chat */}
@@ -5347,7 +5372,27 @@ function Builder() {
                   </div>
                 </div>
               )}
-              <div className="flex min-h-0 flex-1 items-stretch justify-center overflow-auto">
+              {previewTooNarrow && (
+                <div className="mb-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <span>
+                    This column is narrower than a real {previewDevice}, so the preview is
+                    squeezed.
+                  </span>
+                  {!chatCollapsed && (
+                    <button
+                      type="button"
+                      onClick={() => setChatCollapsed(true)}
+                      className="rounded-full border border-border px-2 py-0.5 font-semibold text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      Collapse chat
+                    </button>
+                  )}
+                </div>
+              )}
+              <div
+                ref={previewColRef}
+                className="flex min-h-0 flex-1 items-stretch justify-center overflow-auto"
+              >
                 <div
                   className={`flex min-h-0 w-full overflow-hidden rounded-2xl border border-border bg-white transition-[max-width] duration-200 ${
                     isMobile
