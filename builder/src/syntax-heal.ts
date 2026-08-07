@@ -276,10 +276,61 @@ export function repairJsxAttributeLiterals(source: string): { out: string; count
  * Strip leaked markdown code fences that sit in real code position.
  * A ``` inside a string/template/comment is left alone.
  */
+/**
+ * Markdown content inside a template literal whose fence backticks were never
+ * escaped accidentally terminates the literal. The block is real content, so
+ * escape it instead of deleting it. Mirrors
+ * src/server/markdown-fence-fixer.server.ts.
+ */
+export function escapeFencesInTemplates(source: string): { out: string; count: number } {
+  if (!source.includes("```") && !source.includes("~~~")) return { out: source, count: 0 };
+  const lines = source.split("\n");
+  let inBlockComment = false;
+  let inTemplate = false;
+  let quote: string | null = null;
+  let count = 0;
+
+  for (let n = 0; n < lines.length; n++) {
+    const line = lines[n];
+    if (inTemplate && !inBlockComment && quote === null && /^\s*`{3,}[^`]*$/.test(line)) {
+      lines[n] = line.replace(/`/g, "\\`");
+      count++;
+      continue;
+    }
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      const next = line[i + 1];
+      if (inBlockComment) {
+        if (ch === "*" && next === "/") { inBlockComment = false; i++; }
+        continue;
+      }
+      if (quote) {
+        if (ch === "\\") i++;
+        else if (ch === quote) quote = null;
+        continue;
+      }
+      if (inTemplate) {
+        if (ch === "\\") i++;
+        else if (ch === "`") inTemplate = false;
+        continue;
+      }
+      if (ch === "/" && next === "/") break;
+      if (ch === "/" && next === "*") { inBlockComment = true; i++; continue; }
+      if (ch === '"' || ch === "'") { quote = ch; continue; }
+      if (ch === "`") { inTemplate = true; continue; }
+    }
+    quote = null;
+  }
+
+  if (count === 0) return { out: source, count: 0 };
+  return { out: lines.join("\n"), count };
+}
+
 export function stripMarkdownFences(source: string): { out: string; count: number } {
   if (!source.includes("```") && !source.includes("~~~")) return { out: source, count: 0 };
   const FENCE = /^\s*(`{3,}|~{3,})/;
   const lines = source.split("\n");
+
 
   // Determine which lines start in plain code position.
   const codeStart: boolean[] = [];
