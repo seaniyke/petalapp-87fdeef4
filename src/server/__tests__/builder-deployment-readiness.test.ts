@@ -3,6 +3,7 @@ import {
   deploymentUrlFromWranglerOutput,
   isTransientDeploymentStatus,
 } from "../../../builder/src/build";
+import { isTransientEdgeStatus } from "../../../builder/src/verify";
 
 describe("builder deployment readiness", () => {
   it("selects the immutable deployment URL rather than mutable aliases", () => {
@@ -28,5 +29,13 @@ describe("builder deployment readiness", () => {
       expect(isTransientDeploymentStatus(status)).toBe(true);
     }
     expect(isTransientDeploymentStatus(401)).toBe(false);
+  });
+
+  it("retries transient gateway failures during individual browser routes", () => {
+    for (const status of [502, 503, 504, 520, 521, 522, 523, 524, 530]) {
+      expect(isTransientEdgeStatus(status)).toBe(true);
+    }
+    expect(isTransientEdgeStatus(404)).toBe(false);
+    expect(isTransientEdgeStatus(500)).toBe(false);
   });
 });
