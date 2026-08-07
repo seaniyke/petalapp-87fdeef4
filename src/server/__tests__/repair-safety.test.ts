@@ -70,6 +70,51 @@ describe("builder boundary source escape fixer", () => {
   });
 });
 
+describe("leaked markdown fence repair", () => {
+  const productionFailure = `export function PostPage() {
+  const title = "A post";
+
+\`\`\`typescript
+function greet(name: string) {
+  return \`Hello, \${name}!\`;
+}
+\`\`\`
+
+  return <article>{title}</article>;
+}
+`;
+
+  it("removes the exact PostPage fence failure before app-side shipping", () => {
+    const result = runAllRepairs([
+      { path: "src/pages/PostPage.tsx", content: productionFailure },
+    ]);
+    const output = result.files.find((file) => file.path === "src/pages/PostPage.tsx")?.content;
+    expect(output).toBeDefined();
+    expect(output).not.toContain("```typescript");
+    expect(output).not.toContain("function greet");
+    expect(result.firedPasses).toContain("markdown-fence");
+  });
+
+  it("removes the same failure at the builder boundary and is idempotent", async () => {
+    const { healSyntax } = await import("../../../builder/src/syntax-heal");
+    const once = healSyntax([
+      { path: "src/pages/PostPage.tsx", content: productionFailure },
+    ]);
+    expect(once.notes).toHaveLength(1);
+    expect(once.files[0]?.content).not.toContain("```typescript");
+    expect(once.files[0]?.content).not.toContain("function greet");
+    expect(healSyntax(once.files).notes).toHaveLength(0);
+  });
+
+  it("preserves fences used as display text inside strings and comments", async () => {
+    const { healSyntax } = await import("../../../builder/src/syntax-heal");
+    const valid = `const sample = "\\`\\`\\`typescript";\n// \\`\\`\\`tsx\nexport default sample;`;
+    const result = healSyntax([{ path: "src/sample.ts", content: valid }]);
+    expect(result.notes).toHaveLength(0);
+    expect(result.files[0]?.content).toBe(valid);
+  });
+});
+
 describe("repair pipeline does not corrupt valid JSX", () => {
   const cases: Array<{ name: string; content: string; mustKeep: string }> = [
     {

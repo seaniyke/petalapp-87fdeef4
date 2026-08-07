@@ -16,6 +16,7 @@
 import { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { healMaterializedProject } from "./fs-helpers.js";
 
 export type BuildResult = {
   url: string;            // e.g. https://petal-abc123.pages.dev
@@ -145,6 +146,15 @@ export async function buildAndDeploy(
       `npm install failed (exit ${install.code})`,
       install.stdout + "\n" + install.stderr
     );
+  }
+
+  // Compile-time last line of defense. Vite reads bytes from disk, so re-run
+  // the deterministic healer against those exact bytes after dependency
+  // installation and immediately before tsc/Vite. This closes every payload,
+  // retry, and materialization bypass by construction.
+  const preCompileNotes = await healMaterializedProject(projectDir);
+  if (preCompileNotes.length > 0) {
+    console.warn(`[pre-compile-heal] ${preCompileNotes.join("; ")}`);
   }
 
   // 1b) TypeScript gate. `vite build` does NOT typecheck — it hands modules to
