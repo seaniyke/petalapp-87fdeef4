@@ -219,14 +219,17 @@ export function injectPreviewGuard(
 
   // Strip every previously injected guard — external tags from older builds
   // and inline tags from this one alike — so re-running is idempotent and a
-  // stale external reference can never survive into the bundle.
-  let stripped = index
+  // stale external reference can never survive into the bundle. Trailing
+  // whitespace is consumed rather than leading: the injector re-adds the
+  // separator itself, so eating it on the way out is what makes a second
+  // pass byte-identical to the first.
+  const stripped = index
     .replace(
-      /\s*<script\s+[^>]*src=["'][^"']*__petal_guard\.js(?:\?[^"']*)?["'][^>]*>\s*<\/script>/gi,
+      /<script\s+[^>]*src=["'][^"']*__petal_guard\.js(?:\?[^"']*)?["'][^>]*>\s*<\/script>\s*/gi,
       "",
     )
     .replace(
-      /\s*<script\s+[^>]*data-petal-preview-guard-version=["'][^"']*["'][^>]*>[\s\S]*?<\/script>/gi,
+      /<script\s+[^>]*data-petal-preview-guard-version=["'][^"']*["'][^>]*>[\s\S]*?<\/script>\s*/gi,
       "",
     );
 
@@ -240,8 +243,9 @@ export function injectPreviewGuard(
   const next = moduleMatch
     ? stripped.replace(moduleMatch, `${guardTag}\n    ${moduleMatch}`)
     : stripped.includes("</body>")
-      ? stripped.replace("</body>", `  ${guardTag}\n</body>`)
+      ? stripped.replace("</body>", `${guardTag}\n</body>`)
       : `${stripped}\n${guardTag}\n`;
+
   byPath.set("index.html", next);
 
   return {
