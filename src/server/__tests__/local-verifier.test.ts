@@ -143,6 +143,47 @@ export const Route = createFileRoute("/")({ component: () => <div /> });
 });
 
 // ---------------------------------------------------------------------------
+// Bug #4 — a real scaffold re-export barrel must not be called hallucinated.
+// The router module uses `export { ... } from "react-router-dom"`, so the
+// declaration-oriented prompt manifest does not list it even though the file
+// is injected into every fresh project.
+// ---------------------------------------------------------------------------
+run("Bug #4 — concrete kit files beat the prompt manifest", () => {
+  const app = `
+import { Router, Routes, Route } from "@/components/ui/router";
+export default function App() {
+  return <Router><Routes><Route path="/" element={<main>Calculator</main>} /></Routes></Router>;
+}
+`;
+  const router = `
+export { BrowserRouter, BrowserRouter as Router, Routes, Route } from "react-router-dom";
+`;
+  const pkg = JSON.stringify({
+    dependencies: {
+      react: "^18.3.1",
+      "react-dom": "^18.3.1",
+      "react-router-dom": "^6.28.0",
+    },
+  });
+  const v = verifyFilesLocal(
+    [
+      { path: "src/App.tsx", content: app },
+      { path: "src/components/ui/router.tsx", content: router },
+      { path: "package.json", content: pkg },
+    ],
+    ["src/App.tsx"],
+  );
+  const missingRouter = v.issues.filter(
+    (i) => i.kind === "missing-sibling" && i.detail.includes("@/components/ui/router"),
+  );
+  assert(
+    "real @/components/ui/router import is accepted",
+    missingRouter.length === 0,
+    JSON.stringify(missingRouter),
+  );
+});
+
+// ---------------------------------------------------------------------------
 // Sanity — a genuinely unbalanced JSX file MUST still fail. We don't want
 // the new tokenizer to swallow real bugs.
 // ---------------------------------------------------------------------------

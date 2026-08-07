@@ -712,6 +712,23 @@ function findUnresolvedImports(
   }
 
   function isKnownKitAlias(spec: string): boolean {
+    // The concrete file graph is the source of truth. Some valid scaffold
+    // modules are pure re-export barrels (`export { ... } from ...`) and the
+    // prompt-oriented kit manifest only indexes declaration-style exports.
+    // Treating that incomplete manifest as an existence registry caused valid
+    // imports such as `@/components/ui/router` to be labelled hallucinations,
+    // which made the final gate roll back otherwise healthy fresh projects.
+    const concreteBase = spec.startsWith("@/") ? `src/${spec.slice(2)}` : spec;
+    if (resolveImportPath("src/App.tsx", spec, byPath)) return true;
+    if (
+      byPath.has(concreteBase) ||
+      byPath.has(`${concreteBase}.tsx`) ||
+      byPath.has(`${concreteBase}.ts`) ||
+      byPath.has(`${concreteBase}.jsx`) ||
+      byPath.has(`${concreteBase}.js`)
+    ) {
+      return true;
+    }
     if (kitUiPaths.size === 0) return true; // fail open
     if (!spec.startsWith("@/components/ui/") && !spec.startsWith("@/components/blocks/")) {
       return true;
