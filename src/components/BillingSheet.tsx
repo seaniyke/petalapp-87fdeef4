@@ -513,9 +513,9 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               <h3 className="text-sm font-semibold">Top up credits</h3>
               <p className="text-xs text-muted-foreground">
                 Pay as you go — buy credits once, no subscription needed. Your paid
-                features stay unlocked while you have credits. Credits expire 12
-                months after purchase.
-              </p>
+                features stay unlocked while you have credits. Purchased credits
+                never expire.
+
             </div>
 
             <TopupPicker
