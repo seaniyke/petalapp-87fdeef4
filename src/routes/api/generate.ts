@@ -4112,14 +4112,25 @@ Forbidden defaults
         // flag was the kill switch during early testing). All safety limits
         // below remain — 3 cycles max, 90s wall budget, converges the
         // moment local+esbuild verifiers pass, hard-stops on zero progress.
-        // Still suppressed for user-initiated "try to fix" turns
-        // (`isAutoFix`) so we never recurse into another loop.
-        if (!body.isAutoFix) {
+        //
+        // v3 Phase A: this loop now also runs on user-initiated "try to fix"
+        // turns. It used to be suppressed there to avoid "recursing into
+        // another loop", but that was backwards — the repair turn is exactly
+        // where convergence matters most, and the loop is already bounded by
+        // cycles, wall clock, and the repair cost ceiling. Suppressing it
+        // meant the user's explicit fix request got a single unverified pass.
+        {
 
           const AGENT_LOOP_MAX_CYCLES = 3;
           const AGENT_LOOP_WALL_MS = 90_000;
           const loopT0 = Date.now();
           const { verifyFilesLocal: lvFn } = await import("@/server/local-verifier");
+          // Shared with the pre-emit gate so "what blocks a turn" has exactly
+          // one definition. Two copies of this list is how a kind silently
+          // becomes blocking in one place and advisory in the other.
+          const { BLOCKING_KINDS, isScaffoldOwned } = await import(
+            "@/server/preemit-gate.server"
+          );
           for (let cyc = 0; cyc < AGENT_LOOP_MAX_CYCLES; cyc++) {
             if (Date.now() - loopT0 > AGENT_LOOP_WALL_MS) {
               console.log("[agent-loop] wall-time exhausted, stopping");
@@ -4140,34 +4151,15 @@ Forbidden defaults
             // to act on. Soft warnings and protected scaffold paths get
             // filtered out — otherwise the model returns an empty fix
             // list and we hard-stop on cycle 3 for nothing useful.
-            const FIXABLE_KINDS = new Set([
-              "truncation",
-              "unterminated-string",
-              "braces",
-              "jsx",
-              "parse",
-              "undefined",
-              "missing-dep",
-              "missing-export",
-              "missing-sibling",
-              "lazy-export",
-            ]);
-            const PROTECTED_PREFIXES = [
-              "src/components/ui/",
-              "src/components/examples/",
-              "src/integrations/backend/",
-            ];
-            const PROTECTED_PATHS = new Set([
-              "vite.config.ts",
-              "tsconfig.json",
-              "src/lib/utils.ts",
-            ]);
-            const isProtected = (p: string) =>
-              PROTECTED_PATHS.has(p) ||
-              PROTECTED_PREFIXES.some((pre) => p.startsWith(pre));
+            // `missing-dep` is fixable here (the model can add the import or
+            // drop the usage) even though the gate treats it as advisory,
+            // because npm pre-flight may still resolve it.
             const stillBad = rawStillBad.filter(
-              (i) => FIXABLE_KINDS.has(i.kind) && !isProtected(i.path),
+              (i) =>
+                (BLOCKING_KINDS.has(i.kind) || i.kind === "missing-dep") &&
+                !isScaffoldOwned(i.path),
             );
+
             if (stillBad.length === 0) {
               console.log(
                 `[agent-loop] converged after ${cyc} extra cycle(s) (raw=${rawStillBad.length}, fixable=0)`,
