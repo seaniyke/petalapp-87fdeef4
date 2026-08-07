@@ -278,7 +278,67 @@ function resetWatch(watch: PageWatch) {
   watch.failedRequests.length = 0;
 }
 
+/** Visual QA caps — the callback body is signed and parsed whole. */
+const VISUAL_MAX_SHOTS = 6;
+const VISUAL_MAX_BYTES = 1_400_000;
+const VISUAL_DEFAULT_WIDTHS = [390, 1440];
+
+/**
+ * Capture a handful of compressed screenshots at mobile and desktop widths.
+ * These are scored by a vision model on the Petal side against the frontend
+ * craft rules; any defects it finds join the repair loop.
+ */
+async function captureVisual(browser: Browser, plan: VerifyPlan): Promise<VisualShot[]> {
+  const widths = (plan.visual?.widths?.length ? plan.visual.widths : VISUAL_DEFAULT_WIDTHS)
+    .filter((w) => Number.isFinite(w) && w >= 320 && w <= 2000)
+    .slice(0, 3);
+  const routes = (plan.visual?.routes?.length ? plan.visual.routes : plan.routes.slice(0, 2))
+    .filter((p) => typeof p === "string" && p.startsWith("/"))
+    .slice(0, 3);
+  if (!widths.length || !routes.length) return [];
+
+  const shots: VisualShot[] = [];
+  let bytes = 0;
+
+  for (const width of widths) {
+    const context = await browser.newContext({
+      viewport: { width, height: width < 700 ? 844 : 900 },
+      deviceScaleFactor: 1,
+      isMobile: width < 700,
+      hasTouch: width < 700,
+      userAgent:
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 PetalVerifier",
+    });
+    context.setDefaultTimeout(STEP_TIMEOUT_MS);
+    const page = await context.newPage();
+    try {
+      for (const path of routes) {
+        if (shots.length >= VISUAL_MAX_SHOTS || bytes >= VISUAL_MAX_BYTES) break;
+        try {
+          await page.goto(new URL(path, plan.baseUrl).toString(), {
+            waitUntil: "domcontentloaded",
+            timeout: NAV_TIMEOUT_MS,
+          });
+          await page.waitForTimeout(SETTLE_MS);
+          const buf = await page.screenshot({ type: "jpeg", quality: 45 });
+          const image = `data:image/jpeg;base64,${buf.toString("base64")}`;
+          if (bytes + image.length > VISUAL_MAX_BYTES) continue;
+          bytes += image.length;
+          shots.push({ path, width, image });
+        } catch {
+          /* one missing shot never blocks the rest */
+        }
+      }
+    } finally {
+      await context.close().catch(() => {});
+    }
+  }
+
+  return shots;
+}
+
 async function shot(page: Page, enabled: boolean): Promise<string | undefined> {
+
   if (!enabled) return undefined;
   try {
     const buf = await page.screenshot({ type: "jpeg", quality: 55 });
