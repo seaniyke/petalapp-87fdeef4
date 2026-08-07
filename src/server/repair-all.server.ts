@@ -343,6 +343,12 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   // ── end of STAGE 3: POLISH ────────────────────────────────────────────
   // Layout, interaction and accessibility. Never load-bearing for the build.
 
+  // Restore Petal-owned files byte-for-byte: no heuristic pass may alter them.
+  files = files.map((f) => {
+    const original = pristine.get(f.path);
+    return original !== undefined && original !== f.content ? { ...f, content: original } : f;
+  });
+
   return {
     files,
     notes,
