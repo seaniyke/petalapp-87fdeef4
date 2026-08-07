@@ -398,7 +398,9 @@ export function healSyntax(files: HealFile[]): { files: HealFile[]; notes: strin
   const out = files.map((f) => {
     if (!SOURCE_RX.test(f.path) || typeof f.content !== "string") return f;
 
-    const fence = stripMarkdownFences(f.content);
+    const templateSafe = escapeFencesInTemplates(f.content);
+    const fence = stripMarkdownFences(templateSafe.out);
+
     const esc = unescapeCodePositions(fence.out);
     // Literal `\n` decoding above may have put a previously invisible fence
     // on its own line. Re-run the idempotent stripper before parsing imports.
