@@ -28,7 +28,7 @@ const ENTITY_WORDS: Array<[RegExp, string]> = [
   [/\b(customer|client)s?\b/i, "Customer"],
   [/\b(user|member|account)s?\b/i, "User"],
   [/\b(order|purchase)s?\b/i, "Order"],
-  [/\b(invoice|bill)s?\b/i, "Invoice"],
+  [/\b(invoic(e|es|ing)|bill(s|ing)?)\b/i, "Invoice"],
   [/\b(payment|transaction)s?\b/i, "Payment"],
   [/\b(product|item|sku)s?\b/i, "Product"],
   [/\b(inventory|stock)\b/i, "InventoryItem"],
@@ -108,7 +108,7 @@ export function extractAppSpec(brief: string): AppSpec {
  */
 export function renderAppSpecBlock(brief: string): string {
   const spec = extractAppSpec(brief);
-  if (spec.entities.length === 0 && spec.workflows.length === 0) return "";
+  if (spec.entities.length === 0 && spec.workflows.length === 0 && !spec.monetary && !spec.reporting) return "";
 
   const lines: string[] = [];
   if (spec.entities.length) lines.push(`  Candidate entities: ${spec.entities.join(", ")}`);
