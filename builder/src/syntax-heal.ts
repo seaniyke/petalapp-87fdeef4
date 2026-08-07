@@ -273,15 +273,18 @@ export function repairJsxAttributeLiterals(source: string): { out: string; count
 }
 
 /**
- * Strip leaked markdown code fences that sit in real code position.
- * A ``` inside a string/template/comment is left alone.
- */
-/**
- * Markdown content inside a template literal whose fence backticks were never
+ * Markdown content inside a template literal whose backticks were never
  * escaped accidentally terminates the literal. The block is real content, so
  * escape it instead of deleting it. Mirrors
  * src/server/markdown-fence-fixer.server.ts.
  */
+const CONTENT_FENCE = /^\s*(`{3,}|~{3,})/;
+const TEMPLATE_CLOSE = /^\s*`\s*[;,)\]]*\s*$/;
+
+function escapeRegionLine(line: string): string {
+  return line.replace(/\\?`/g, "\\`").replace(/\\?\$\{/g, "\\${");
+}
+
 export function escapeFencesInTemplates(source: string): { out: string; count: number } {
   if (!source.includes("```") && !source.includes("~~~")) return { out: source, count: 0 };
   const lines = source.split("\n");
@@ -292,11 +295,28 @@ export function escapeFencesInTemplates(source: string): { out: string; count: n
 
   for (let n = 0; n < lines.length; n++) {
     const line = lines[n];
-    if (inTemplate && !inBlockComment && quote === null && /^\s*`{3,}[^`]*$/.test(line)) {
-      lines[n] = line.replace(/`/g, "\\`");
-      count++;
+
+    if (inTemplate) {
+      let end = -1;
+      let hasFence = false;
+      for (let j = n; j < lines.length; j++) {
+        if (TEMPLATE_CLOSE.test(lines[j])) { end = j; break; }
+        if (CONTENT_FENCE.test(lines[j])) hasFence = true;
+      }
+      if (end === -1 || !hasFence) {
+        inTemplate = false;
+        n = n - 1;
+        continue;
+      }
+      for (let j = n; j < end; j++) {
+        const next = escapeRegionLine(lines[j]);
+        if (next !== lines[j]) { lines[j] = next; count++; }
+      }
+      inTemplate = false;
+      n = end;
       continue;
     }
+
     for (let i = 0; i < line.length; i++) {
       const ch = line[i];
       const next = line[i + 1];
@@ -307,11 +327,6 @@ export function escapeFencesInTemplates(source: string): { out: string; count: n
       if (quote) {
         if (ch === "\\") i++;
         else if (ch === quote) quote = null;
-        continue;
-      }
-      if (inTemplate) {
-        if (ch === "\\") i++;
-        else if (ch === "`") inTemplate = false;
         continue;
       }
       if (ch === "/" && next === "/") break;
@@ -325,6 +340,12 @@ export function escapeFencesInTemplates(source: string): { out: string; count: n
   if (count === 0) return { out: source, count: 0 };
   return { out: lines.join("\n"), count };
 }
+
+/**
+ * Strip leaked markdown code fences that sit in real code position.
+ * A ``` inside a string/template/comment is left alone.
+ */
+
 
 export function stripMarkdownFences(source: string): { out: string; count: number } {
   if (!source.includes("```") && !source.includes("~~~")) return { out: source, count: 0 };
