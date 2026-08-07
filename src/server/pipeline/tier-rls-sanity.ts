@@ -9,6 +9,7 @@
  */
 
 import { lintRlsSanity } from "@/server/rls-sanity-linter";
+import { lintBackendQuality } from "@/server/backend-quality.server";
 import type { LocalIssue } from "@/server/local-verifier";
 import type { ProjectFile, StreamEvent } from "@/server/generate.server";
 
@@ -24,7 +25,19 @@ export interface RlsSanityTierOutput {
 
 export function runRlsSanityTier(args: RunArgs): RlsSanityTierOutput {
   const { files, earlyChangedPaths } = args;
-  const issues = lintRlsSanity(files, earlyChangedPaths);
+  const issues = [
+    ...lintRlsSanity(files, earlyChangedPaths),
+    // Phase 4 — Backend Quality Bible §8/§9 checks (grants, role storage,
+    // destructive DDL, over-permissive policies, leaked secrets, unvalidated
+    // server functions). Same SOFT-warn contract.
+    ...(() => {
+      try {
+        return lintBackendQuality(files);
+      } catch {
+        return [];
+      }
+    })(),
+  ];
 
   if (issues.length > 0) {
     console.warn(
