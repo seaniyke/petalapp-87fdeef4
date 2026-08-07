@@ -49,7 +49,11 @@ const PETAL_BADGE_HTML = `
     dot.setAttribute('aria-hidden','true');
     dot.style.cssText = 'display:inline-block;width:14px;height:14px;border-radius:999px;background:linear-gradient(135deg,#ff6ea8,#ffb86c);box-shadow:0 0 0 2px rgba(255,255,255,0.12) inset;';
     var label = document.createElement('span');
-    label.innerHTML = 'Built with <strong style="font-weight:600">Petal</strong>';
+    label.appendChild(document.createTextNode('Built with '));
+    var strong = document.createElement('strong');
+    strong.style.fontWeight = '600';
+    strong.textContent = 'Petal';
+    label.appendChild(strong);
     a.appendChild(dot); a.appendChild(label);
     a.addEventListener('mouseenter', function(){ a.style.opacity='1'; a.style.transform='translateY(-1px)'; });
     a.addEventListener('mouseleave', function(){ a.style.opacity='0.92'; a.style.transform='none'; });
