@@ -88,6 +88,30 @@ async function takePhoto() {
   tap-to-pick button.
 - Mouse-only events (\`onMouseEnter\`, \`onContextMenu\`). Use touch / long-press.
 
+**Native-feel UI craft (this is what separates a real app from a website in a phone frame)**
+Compose from the Petal mobile kit instead of hand-rolling — these already exist in every project:
+| Need | Component |
+|---|---|
+| Screen shell (header + tabs + safe area) | \`MobileScreen\`, \`SafeArea\`, \`MobileHeader\`, \`BottomTabBar\` |
+| Grouped settings / record lists | \`ListGroup\` + \`ListRow\` from \`@/components/mobile/list-row\` |
+| 2-4 mutually exclusive views | \`SegmentedControl\` |
+| Contextual actions, filters, pickers | \`ActionSheet\` (bottom sheet, opaque, scroll-locked) |
+| Primary create action | \`FloatingActionButton\`; forms use \`StickyActionBar\` |
+| Delete / archive on a row | \`SwipeRow\` |
+| Loading / empty / error | \`MobileListSkeleton\`, \`MobileEmptyState\`, \`MobileErrorState\` |
+| Refresh | \`PullToRefresh\` |
+
+Hard rules for every mobile screen:
+- NEVER put a desktop data table on a phone. Records are \`ListRow\`s or cards with label/value pairs. No horizontal scrolling grids.
+- Every list surface ships all three states (skeleton → empty with a primary action → error with retry). A bare spinner is a defect.
+- One primary action per screen, thumb-reachable: FAB, sticky bottom bar, or the header's right slot. Never a primary CTA stranded at the top of a long scroll.
+- Modals are bottom sheets, not centered desktop dialogs. Sheets are opaque (\`bg-card\`), z-50, scrim behind, body scroll locked, dismissible by scrim tap and Escape.
+- Type scale: screen title text-[22px]/semibold, row title text-[15px], secondary text-[13px] muted. Numbers \`tabular-nums\`. No text-xs body copy.
+- Feedback is instant: \`active:scale-[0.98]\` on tappables, optimistic UI on toggles, and a toast for anything that mutates data. Buttons disable while pending.
+- Spacing: 16px screen gutters, 12-16px between cards, rounded-2xl surfaces, hairline \`divide-border\` inside grouped lists.
+- Scroll: content scrolls under a sticky header; the tab bar never scrolls away; add \`pb-24\` so the last row clears the tab bar.
+- Seed 8-20 realistic rows so screens look inhabited — never 3 placeholder items.
+
 **App identity**
 - App icon: design at 1024×1024, square, no transparency.
 - Splash screen: solid background + centered logo, no text.
