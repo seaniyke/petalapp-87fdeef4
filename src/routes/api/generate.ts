@@ -114,6 +114,12 @@ import {
 } from "@/server/build-blueprint.server";
 import { findGenerationQualityIssues } from "@/server/generation-quality-gate.server";
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
+import { isScaffoldOwnedPath } from "@/server/scaffold-ownership.server";
+import {
+  runWriteGate,
+  writeGateDisclosure,
+  type WriteRejection,
+} from "@/server/write-gate.server";
 import { injectPreviewGuard } from "@/server/preview-guard.server";
 import {
   checkFileBudgets,
@@ -129,7 +135,7 @@ import { runStagedPipelineStream } from "@/server/pipeline/staged-orchestrator.s
 import { ensureRenderableShell } from "@/server/renderable-shell.server";
 import { runAllRepairs } from "@/server/repair-all.server";
 import { TurnCostMeter } from "@/server/turn-cost-ceiling.server";
-import { entriesFromRepairNotes, recordRepairs } from "@/server/repair-ledger.server";
+import { entriesFromRepairNotes, recordRepairs, signatureOf } from "@/server/repair-ledger.server";
 import { analyzeEditScope, scopeDisclosure } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
@@ -2757,6 +2763,8 @@ Forbidden defaults
         const unappliedPaths: string[] = [];
         // Ops the critic refused to apply this turn (disclosed in the summary).
         const criticRejections: CriticRejection[] = [];
+        // v3 Phase B — writes refused at the parse gate, disclosed at end of turn.
+        const writeGateRejections: WriteRejection[] = [];
 
 
         // (Question-first guard removed — see comment near the top of this
@@ -2848,30 +2856,19 @@ Forbidden defaults
           // Defense-in-depth: reject patches that touch the canonical UI kit
           // or scaffold config files. The AI should never need to.
           //
-          // v3 Phase C — the scaffold owns structure. `package.json` joins the
-          // list on iteration turns: dependency changes are owned by the bare
-          // import resolver, which reads the real registry and writes a real
-          // resolved version. A hand-patched package.json is guesswork, and a
-          // wrong version string is an `npm install` failure that no amount of
-          // source repair can recover from.
-          const PROTECTED = [
-            "vite.config.ts",
-            "tsconfig.json",
-            "src/lib/utils.ts",
-            "package.json",
-          ];
+          // v3 Phase C — the ownership list lives in one module
+          // (`scaffold-ownership.server.ts`) shared with the pre-emit gate, so
+          // "the model may not write this" and "a verifier may not block on
+          // this" can never drift apart. `package.json` is in it: dependency
+          // changes are owned by the bare import resolver, which writes a real
+          // resolved version instead of a guessed one.
           const isProtectedPath = (p: string) =>
-            p.startsWith("src/components/ui/") ||
-            p.startsWith("src/components/examples/") ||
-            p.startsWith("src/components/blocks/") ||
-            p.startsWith("src/components/mobile/") ||
-            p.startsWith("src/integrations/backend/") ||
-            PROTECTED.includes(p) ||
-
+            isScaffoldOwnedPath(p) ||
             matchesUserProtectedGlob(p) ||
             // Plan Mode v1 — when a plan was approved, ANY file outside its
             // allow-list is treated as protected and dropped.
             (allowedPathSet !== null && !allowedPathSet.has(p));
+
           // Honesty ledger — every path the model asked to change that did
           // NOT end up byte-different after apply + recovery. Surfaced to the
           // user at the end of the turn so Petal can never claim "done" for a
@@ -3510,6 +3507,53 @@ Forbidden defaults
         if (!nextFiles.some((f) => f.path === "index.html")) {
           throw new Error("Project is missing index.html.");
         }
+
+        // v3 Phase B — WRITE-TIME VALIDATION.
+        //
+        // Before this gate, an unparseable file was written and then chased by
+        // ~30 repair passes and, failing those, a remote build error minutes
+        // later. Now every file this turn touched is esbuild-parsed here. One
+        // deterministic per-file heal is attempted; if it still doesn't parse
+        // the write is refused and the path reverts to its previous bytes. The
+        // project therefore cannot enter a state where a source file is
+        // syntactically broken, which is the whole point of Phase B.
+        {
+          const prevByPath = new Map(currentFiles.map((f) => [f.path, f.content]));
+          const touched = nextFiles
+            .filter((f) => prevByPath.get(f.path) !== f.content)
+            .map((f) => f.path);
+          if (touched.length > 0) {
+            const gate = await runWriteGate({
+              before: currentFiles,
+              after: nextFiles,
+              changedPaths: touched,
+            });
+            nextFiles = gate.files;
+            if (gate.healedPaths.length > 0) {
+              console.info("[write-gate] healed at write time:", gate.healedPaths.join(", "));
+            }
+            if (gate.rejected.length > 0) {
+              writeGateRejections.push(...gate.rejected);
+              console.warn(
+                "[write-gate] refused unparseable write(s):",
+                gate.rejected.map((r) => `${r.path}: ${r.detail}`).join(" | "),
+              );
+              void recordRepairs(
+                gate.rejected.map((r) => ({
+                  projectId: body.projectId ?? null,
+                  userId,
+                  phase: "pre_build" as const,
+                  passId: "write-gate",
+                  signature: signatureOf(r.detail),
+                  outcome: "failed" as const,
+                  detail: `${r.path}: ${r.detail}${r.reverted ? " (reverted)" : " (not written)"}`,
+                })),
+              );
+
+            }
+          }
+        }
+
 
         // Single composition point for all deterministic file-graph
         // repairs (extension normalizer → shadcn imports → array safety →
@@ -4495,6 +4539,15 @@ Forbidden defaults
               (e as Error).message,
             );
           }
+        }
+
+        // v3 Phase F — write-gate disclosure. A refused write is the one
+        // failure the user MUST hear about: their app is intact, but the part
+        // they asked for isn't there. Silence here reads as a silent no-op.
+        if (writeGateRejections.length > 0) {
+          const note = writeGateDisclosure(writeGateRejections);
+          summary = `${summary}${note}`;
+          controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
         }
 
         // Critic gate disclosure: name every op that was refused before apply.

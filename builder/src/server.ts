@@ -20,7 +20,14 @@
 import Fastify from "fastify";
 import { z } from "zod";
 import { verify, sign } from "./signing.js";
-import { materializeProject, cleanupProject, type ProjectFile } from "./fs-helpers.js";
+import {
+  materializeProject,
+  cleanupProject,
+  materializeWorkspace,
+  releaseWorkspace,
+  withProjectLock,
+  type ProjectFile,
+} from "./fs-helpers.js";
 import { buildAndDeploy, BuildError } from "./build.js";
 import { runExecSession, ExecError, MAX_COMMANDS_PER_SESSION } from "./exec.js";
 import {
@@ -322,12 +329,50 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   });
 }
 
+/**
+ * Petal v3 — Phase D. Warm workspaces are opt-out (`WARM_WORKSPACES=0`) so a
+ * bad disk state on one host can be turned off without a redeploy.
+ */
+const WARM_WORKSPACES = process.env.WARM_WORKSPACES !== "0";
+
 async function runBuild(body: BuildBody): Promise<void> {
+  if (WARM_WORKSPACES) {
+    // One build per project at a time. Two turns sharing a warm directory
+    // would interleave writes into the same source tree, which is the one way
+    // a reused workspace can produce a wrong build rather than a slow one.
+    return withProjectLock(body.projectId, () => runBuildInner(body));
+  }
+  return runBuildInner(body);
+}
+
+async function runBuildInner(body: BuildBody): Promise<void> {
   const log = fastify.log.child({ projectId: body.projectId, buildId: body.buildId });
   log.info("Build started");
   let dir: string | null = null;
+  let warmed = false;
   try {
-    dir = await materializeProject(body.buildId, body.files);
+    if (WARM_WORKSPACES) {
+      try {
+        const ws = await materializeWorkspace(body.projectId, body.files);
+        dir = ws.dir;
+        warmed = true;
+        log.info(
+          { warm: ws.warm, pruned: ws.pruned.length },
+          ws.warm
+            ? "Reusing warm workspace (node_modules retained)"
+            : "Cold workspace created",
+        );
+      } catch (err) {
+        // Warmth is an optimization, never a correctness dependency.
+        log.warn(
+          { err: err instanceof Error ? err.message : String(err) },
+          "Warm workspace unavailable, falling back to a scratch build",
+        );
+        dir = null;
+        warmed = false;
+      }
+    }
+    if (!dir) dir = await materializeProject(body.buildId, body.files);
     const result = await withTimeout(
       buildAndDeploy(dir, body.projectId, {
         apiToken: CF_API_TOKEN!,
@@ -386,7 +431,12 @@ async function runBuild(body: BuildBody): Promise<void> {
       logs,
     }).catch((e) => log.error({ err: String(e) }, "Callback also failed"));
   } finally {
-    if (dir) await cleanupProject(body.buildId);
+    if (warmed) {
+      // Keep node_modules for the next turn; drop only the build output.
+      await releaseWorkspace(body.projectId);
+    } else if (dir) {
+      await cleanupProject(body.buildId);
+    }
   }
 }
 

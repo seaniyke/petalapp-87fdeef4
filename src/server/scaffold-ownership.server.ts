@@ -1,0 +1,104 @@
+/**
+ * Petal v3 — Phase C: the scaffold owns structure.
+ *
+ * WHY THIS FILE EXISTS
+ * --------------------
+ * Before v3, "which files may the model write?" was answered in three
+ * different places with three slightly different lists: an inline predicate in
+ * the generate route, a `PROTECTED_PREFIXES` constant inside the pre-emit
+ * gate, and an implicit assumption in half a dozen repair passes. Drift
+ * between those lists is how a model-authored `vite.config.ts` reaches disk
+ * and how a verifier blocks a turn on a file the model was never allowed to
+ * fix.
+ *
+ * This module is the single source of truth. Two questions, two answers:
+ *
+ *   isScaffoldOwnedPath(p)  — may the MODEL write this file? (write allowlist)
+ *   isVerifierExempt(p)     — may a verifier BLOCK a turn on this file?
+ *
+ * The second is a superset of the first: everything Petal owns is also
+ * something the model cannot be asked to repair, plus generated integration
+ * code that is correct-by-construction and occasionally trips a heuristic.
+ *
+ * Adding a path here retires repair passes. That is the point: `main.tsx`,
+ * `index.html` and the router bootstrap are Petal's, so a model mistake in
+ * them is impossible rather than repairable.
+ */
+
+/** Directory prefixes Petal owns outright. The model may not write into them. */
+export const SCAFFOLD_OWNED_PREFIXES = [
+  "src/components/ui/",
+  "src/components/examples/",
+  "src/components/blocks/",
+  "src/components/mobile/",
+  "src/integrations/backend/",
+] as const;
+
+/**
+ * Exact files Petal owns.
+ *
+ * `package.json` is here deliberately: dependency changes belong to the bare
+ * import resolver, which reads the real registry and writes a real resolved
+ * version. A hand-patched version string is an `npm install` failure no amount
+ * of source repair can recover from.
+ */
+export const SCAFFOLD_OWNED_PATHS = new Set([
+  "vite.config.ts",
+  "tsconfig.json",
+  "src/lib/utils.ts",
+  "package.json",
+]);
+
+/**
+ * Structural files Petal writes deterministically but that still arrive on
+ * some legacy paths as model ops. These are absorbed rather than refused:
+ * `index.html` goes through the document-head merge, `src/main.tsx` through
+ * the renderable-shell restorer. Listed separately so callers can tell
+ * "absorb this" apart from "refuse this".
+ */
+export const SCAFFOLD_ABSORBED_PATHS = new Set(["index.html", "src/main.tsx"]);
+
+/** Extra prefixes that are exempt from verifier blocking but not from writes. */
+const VERIFIER_EXEMPT_PREFIXES = ["src/integrations/"] as const;
+
+/** May the model write this path? `false` means the op is refused/reworked. */
+export function isScaffoldOwnedPath(path: string): boolean {
+  if (SCAFFOLD_OWNED_PATHS.has(path)) return true;
+  return SCAFFOLD_OWNED_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+/** Is this path absorbed by a deterministic writer instead of refused? */
+export function isScaffoldAbsorbedPath(path: string): boolean {
+  return SCAFFOLD_ABSORBED_PATHS.has(path);
+}
+
+/**
+ * May a verifier hold the turn hostage over this path? A diagnostic on a
+ * Petal-owned file is either our bug or a false positive — never something a
+ * model repair round can resolve, so blocking on it just burns budget.
+ */
+export function isVerifierExempt(path: string): boolean {
+  if (isScaffoldOwnedPath(path)) return true;
+  if (isScaffoldAbsorbedPath(path)) return true;
+  return VERIFIER_EXEMPT_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+/** One plain sentence explaining an ownership refusal, for the model/user. */
+export function scaffoldOwnershipReason(path: string): string {
+  if (path === "package.json") {
+    return "package.json is managed by Petal's dependency resolver — add the import and the package is installed with a real resolved version";
+  }
+  if (path === "vite.config.ts" || path === "tsconfig.json") {
+    return `${path} is build configuration owned by the Petal scaffold`;
+  }
+  if (path === "src/lib/utils.ts") {
+    return "src/lib/utils.ts is part of the UI kit contract";
+  }
+  if (path.startsWith("src/components/ui/")) {
+    return "src/components/ui/* is the pre-installed UI kit — compose with it from app code instead of editing it";
+  }
+  if (path.startsWith("src/integrations/backend/")) {
+    return "src/integrations/backend/* is generated backend client code";
+  }
+  return `${path} is owned by the Petal scaffold`;
+}
