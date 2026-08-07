@@ -116,8 +116,34 @@ export function isBlocking(issue: GateIssue): boolean {
 export async function collectGateIssues(
   files: ProjectFile[],
   changedPaths: string[],
+  prd?: Prd | null,
 ): Promise<GateIssue[]> {
   const issues: GateIssue[] = [];
+
+  // Product contract first. It is the cheapest check and the one whose failure
+  // matters most — everything else verifies HOW the code is written, this
+  // verifies WHETHER it is the product the user asked for.
+  if (prd) {
+    try {
+      const { checkPrdStatically } = await import("@/server/prd/prd-acceptance.server");
+      const result = checkPrdStatically(
+        prd,
+        files.map((f) => ({ path: f.path, content: f.content })),
+      );
+      for (const f of result.findings) {
+        if (f.severity !== "blocking") continue;
+        issues.push({
+          path: "src/routes/index.tsx",
+          kind: "prd-contract",
+          detail: `${f.message} → ${f.repairHint}`,
+          source: "prd",
+        });
+      }
+    } catch (e) {
+      console.warn("[preemit-gate] PRD check errored, skipping:", e);
+    }
+  }
+
 
   try {
     const verdict = await verifyFilesEsbuild(files, changedPaths);
