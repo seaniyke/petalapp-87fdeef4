@@ -31,6 +31,7 @@ export interface LocalIssue {
     | "blank-render"
     | "rls-sanity"
     | "backend-quality"
+    | "product-principle"
     | "server-fn-contract"
     | "auth-loader-trap"
     | "scope";
