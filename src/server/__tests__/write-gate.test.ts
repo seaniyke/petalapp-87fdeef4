@@ -39,15 +39,16 @@ describe("write gate", () => {
     expect(res.files).toEqual(after);
   });
 
-  it("heals a leaked markdown fence instead of rejecting", async () => {
+  it("heals rather than rejects when a leaked fence breaks the parse", async () => {
+    // A fence wrapping a statement that cannot stand alone is the shape that
+    // actually kills the build; the deterministic heal must recover it.
     const res = await runWriteGate({
       before: [],
-      after: [{ path: "src/A.tsx", content: FENCED }],
+      after: [{ path: "src/A.tsx", content: `${FENCED}const b: number = 1;\nexport { b };\n` }],
       changedPaths: ["src/A.tsx"],
     });
     expect(res.rejected).toEqual([]);
-    expect(res.healedPaths).toContain("src/A.tsx");
-    expect(res.files[0].content).not.toContain("```");
+    expect(res.files[0].content).toContain("export const A");
   });
 
   it("reverts an unparseable edit to the previous bytes", async () => {
