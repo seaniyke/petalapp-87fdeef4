@@ -188,7 +188,17 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
     notes.push(`bare-imports: ${parts.join("; ")}`);
   }
 
+  // 5b. Sibling resolution (Quality Push A3) — the file the import meant IS
+  //     in this pass, the specifier just has the wrong case/folder/extension.
+  //     Deterministic rename beats spending a repair round on it.
+  const siblings = resolveSiblingImports(files);
+  files = siblings.files;
+  if (siblings.fixes > 0) {
+    notes.push(`sibling-resolver: repointed ${siblings.fixes} import(s) at the file that actually exists`);
+  }
+
   // 6. Route-graph validator — wildcard 404, layout Outlet, dedupe "/", react-router→-dom.
+
   const route = validateRouteGraph(files);
   files = route.files;
   for (const n of route.notes) notes.push(n);
