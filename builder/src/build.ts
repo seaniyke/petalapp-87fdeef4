@@ -19,7 +19,7 @@ import { join } from "node:path";
 import { healMaterializedProject } from "./fs-helpers.js";
 
 export type BuildResult = {
-  url: string;            // e.g. https://petal-abc123.pages.dev
+  url: string;            // immutable deployment URL when Wrangler provides one
   deploymentId?: string;  // optional, parsed from wrangler output if available
   durationMs: number;
 };
@@ -29,6 +29,77 @@ export class BuildError extends Error {
     super(message);
     this.name = "BuildError";
   }
+}
+
+const DEPLOY_READY_TIMEOUT_MS = 75_000;
+const DEPLOY_READY_DELAYS_MS = [0, 1_000, 2_000, 4_000, 7_000, 10_000, 15_000];
+const TRANSIENT_DEPLOY_STATUSES = new Set([404, 408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524]);
+
+/**
+ * Wrangler prints the immutable deployment URL first and may print branch and
+ * stable aliases afterwards. Verification must use the immutable URL: the
+ * stable project hostname can still point at the previous deployment while
+ * the new upload is propagating, and concurrent builds can move it underneath
+ * a browser check.
+ */
+export function deploymentUrlFromWranglerOutput(output: string, projectName: string): string {
+  const urls = Array.from(output.matchAll(/https:\/\/[a-z0-9.-]+\.pages\.dev\b/gi), (match) =>
+    match[0].replace(/[),.;]+$/, ""),
+  );
+  const immutable = urls.find((candidate) => {
+    try {
+      const host = new URL(candidate).hostname.toLowerCase();
+      return host.endsWith(`.${projectName}.pages.dev`) && !host.startsWith("main.");
+    } catch {
+      return false;
+    }
+  });
+  return immutable ?? `https://${projectName}.pages.dev`;
+}
+
+export function isTransientDeploymentStatus(status: number): boolean {
+  return TRANSIENT_DEPLOY_STATUSES.has(status);
+}
+
+/** Wait until the freshly uploaded deployment is actually available to HTTP. */
+async function waitForDeploymentReady(url: string): Promise<void> {
+  const startedAt = Date.now();
+  let lastStatus: number | null = null;
+  let lastError = "deployment did not respond";
+
+  for (const delay of DEPLOY_READY_DELAYS_MS) {
+    if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+    if (Date.now() - startedAt >= DEPLOY_READY_TIMEOUT_MS) break;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const response = await fetch(url, {
+        redirect: "follow",
+        headers: { "User-Agent": "PetalDeployReadiness/1.0" },
+        signal: controller.signal,
+      });
+      lastStatus = response.status;
+      if (response.ok) return;
+      lastError = `HTTP ${response.status}`;
+      if (!isTransientDeploymentStatus(response.status)) {
+        throw new BuildError(
+          `Deployed app returned a non-retryable response (${response.status})`,
+          `${url} returned HTTP ${response.status}`,
+        );
+      }
+    } catch (error) {
+      if (error instanceof BuildError) throw error;
+      lastError = error instanceof Error ? error.message : String(error);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  throw new BuildError(
+    "Deployment did not become ready before verification",
+    `${url} was still unavailable after ${Date.now() - startedAt}ms (${lastStatus ? `HTTP ${lastStatus}` : lastError})`,
+  );
 }
 
 /** Cloudflare Pages project names: lowercase, alphanumeric + hyphens, max 58. */
@@ -233,18 +304,22 @@ export async function buildAndDeploy(
     );
   }
 
-  // Parse deployment URL from wrangler stdout.
+  // Parse the immutable deployment URL from wrangler stdout.
   // Wrangler prints lines like:
   //   "✨ Deployment complete! Take a peek over at https://abc123.petal-xyz.pages.dev"
   //   "✨ Deployment alias URL: https://main.petal-xyz.pages.dev"
-  // We prefer the stable per-project URL `https://<project>.pages.dev`.
-  const stableUrl = `https://${projectName}.pages.dev`;
-  const aliasMatch = deploy.stdout.match(/https:\/\/[a-z0-9-]+\.pages\.dev/g);
-  const url = aliasMatch?.find((u) => u.includes(projectName)) ?? stableUrl;
+  // Browser verification must not start until the host has finished publishing
+  // the upload. A transient 522 here is deployment propagation, not broken app
+  // code, and must never be sent into the user's repair loop.
+  const url = deploymentUrlFromWranglerOutput(`${deploy.stdout}\n${deploy.stderr}`, projectName);
+  await waitForDeploymentReady(url);
 
   return {
-    url: stableUrl, // always the stable URL — every deploy overwrites it
-    deploymentId: aliasMatch?.[0]?.split("//")[1]?.split(".")[0],
+    url,
+    deploymentId:
+      new URL(url).hostname.endsWith(`.${projectName}.pages.dev`)
+        ? new URL(url).hostname.split(".")[0]
+        : undefined,
     durationMs: Date.now() - startedAt,
   };
 }
