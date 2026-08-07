@@ -132,32 +132,66 @@ function stripFences(source: string): { content: string; removed: number } {
 
 /**
  * The other half of the fence problem: markdown content stored INSIDE a
- * template literal, where the model forgot to escape the fence backticks.
+ * template literal, where the model forgot to escape the backticks.
  *
  *   const POST = `
- *   ```typescript          <- closes the template literal by accident
- *   function greet() {}
+ *   ```typescript          <- accidentally closes the template literal
+ *   const greeting = `hi`; <- and so does this
  *   ```
  *   `;
  *
- * The block is legitimate content, so it must be escaped, not deleted. A
- * fence-only line encountered while inside a template literal is rewritten to
- * \`\`\` and does not toggle template state.
+ * That block is legitimate content, so it must be escaped, not deleted. We
+ * find each template literal that opens at the end of a line and closes on a
+ * line of its own; when the region between them contains a markdown fence, we
+ * escape every backtick and `${` inside it.
  */
+const CONTENT_FENCE = /^\s*(`{3,}|~{3,})/;
+const TEMPLATE_CLOSE = /^\s*`\s*[;,)\]]*\s*$/;
+
+function escapeRegionLine(line: string): string {
+  return line.replace(/\\?`/g, "\\`").replace(/\\?\$\{/g, "\\${");
+}
+
 export function escapeFencesInTemplates(source: string): { content: string; escaped: number } {
   const lines = source.split("\n");
+  let escaped = 0;
   let inBlockComment = false;
   let inTemplate = false;
+  let templateStart = -1;
   let quote: '"' | "'" | null = null;
-  let escaped = 0;
 
   for (let n = 0; n < lines.length; n++) {
-    let line = lines[n];
+    const line = lines[n];
 
-    if (inTemplate && !inBlockComment && quote === null && /^\s*`{3,}[^`]*$/.test(line)) {
-      lines[n] = line.replace(/`/g, "\\`");
-      escaped++;
-      continue; // fence line is pure content; template stays open
+    if (inTemplate && templateStart >= 0) {
+      // Look for the end of this template literal, then decide in one shot.
+      let end = -1;
+      let hasFence = false;
+      for (let j = n; j < lines.length; j++) {
+        if (TEMPLATE_CLOSE.test(lines[j])) {
+          end = j;
+          break;
+        }
+        if (CONTENT_FENCE.test(lines[j])) hasFence = true;
+      }
+      if (end === -1 || !hasFence) {
+        // Not the markdown-content shape — hand control back to the lexer.
+        inTemplate = false;
+        templateStart = -1;
+        n = n - 1;
+        continue;
+      }
+      for (let j = n; j < end; j++) {
+        const next = escapeRegionLine(lines[j]);
+        if (next !== lines[j]) {
+          lines[j] = next;
+          escaped++;
+        }
+      }
+      inTemplate = false;
+      templateStart = -1;
+      n = end;
+      continue;
     }
 
     for (let i = 0; i < line.length; i++) {
@@ -177,7 +211,10 @@ export function escapeFencesInTemplates(source: string): { content: string; esca
       }
       if (inTemplate) {
         if (ch === "\\") i++;
-        else if (ch === "`") inTemplate = false;
+        else if (ch === "`") {
+          inTemplate = false;
+          templateStart = -1;
+        }
         continue;
       }
       if (ch === "/" && next === "/") break;
@@ -192,6 +229,7 @@ export function escapeFencesInTemplates(source: string): { content: string; esca
       }
       if (ch === "`") {
         inTemplate = true;
+        templateStart = n;
         continue;
       }
     }
@@ -201,6 +239,7 @@ export function escapeFencesInTemplates(source: string): { content: string; esca
   if (escaped === 0) return { content: source, escaped: 0 };
   return { content: lines.join("\n"), escaped };
 }
+
 
 export function fixMarkdownFences(files: ProjectFile[]): FenceFixResult {
   const notes: string[] = [];
