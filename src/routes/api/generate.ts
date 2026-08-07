@@ -1728,6 +1728,11 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
       prdBlock = resolvedPrd.promptBlock;
       prdScenarioBlock = resolvedPrd.scenarioBlock;
       prdNote = resolvedPrd.note;
+      // When the contract itself changed, Petal must say so in one sentence
+      // rather than silently reshaping the product.
+      if (prdNote) {
+        prdBlock += `\n\n### Contract change (state this to the user in one sentence before you build)\n${prdNote}\n`;
+      }
       console.log(
         `[prd] project=${body.projectId ?? "n/a"} product="${resolvedPrd.prd.productName}" type=${resolvedPrd.prd.productType} authored=${resolvedPrd.authored} amendment=${resolvedPrd.amendment} surfaces=[${resolvedPrd.prd.requiredSurfaces.join(",")}]`,
       );
