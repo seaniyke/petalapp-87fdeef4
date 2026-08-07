@@ -329,7 +329,13 @@ export function escapeFencesInTemplates(source: string): { out: string; count: n
         else if (ch === quote) quote = null;
         continue;
       }
+      if (inTemplate) {
+        if (ch === "\\") i++;
+        else if (ch === "`") inTemplate = false;
+        continue;
+      }
       if (ch === "/" && next === "/") break;
+
       if (ch === "/" && next === "*") { inBlockComment = true; i++; continue; }
       if (ch === '"' || ch === "'") { quote = ch; continue; }
       if (ch === "`") { inTemplate = true; continue; }
