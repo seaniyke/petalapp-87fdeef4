@@ -3264,6 +3264,40 @@ function Builder() {
     askPetalToFixManualRef.current = () => askPetalToFix({ isAuto: false });
   }, [askPetalToFix]);
 
+  const askPetalToFixVerification = useCallback(
+    (manual = true) => {
+      const snap = effectiveBuildSnap;
+      const defects =
+        snap?.verification && snap.verification.ok === false
+          ? sanitizeVerificationDefects(snap.verification.defects)
+          : [];
+      if (!project?.id || defects.length === 0 || busy) return;
+
+      // The automatic repair budget prevents loops. A deliberate user tap is
+      // different: it authorizes one fresh recovery chain, but the repair is
+      // still an internal Petal fix and must not charge for the same request.
+      if (manual) beginUserTurn(project.id);
+      setFriendlyError(null);
+      setMessages((prev) =>
+        prev.filter((m) => !(m.role === "assistant" && isVerificationCardTitle(m.error?.title))),
+      );
+      void deleteAssistantErrorMessages(project.id, (err) =>
+        isVerificationCardTitle(err.title),
+      ).catch(() => {});
+      setActivityVisible(true);
+
+      const prompt = [
+        "I opened the deployed app in a real browser and it does not work correctly. Findings:",
+        "",
+        ...defects.slice(0, 15).map((d) => `- ${d}`),
+        "",
+        "Fix the root cause of every finding in the project files. Every declared route must render useful visible content after hydration; no route may return null, an empty fragment, or a blank placeholder. Make forms and navigation controls functional. Keep the changes focused and do not redesign anything that already works.",
+      ].join("\n");
+      void send(prompt, { isRetry: false, isAutoFix: true });
+    },
+    [beginUserTurn, busy, effectiveBuildSnap, project?.id, send],
+  );
+
   // Post-deploy browser verification. The build is "ready" — it compiled and
   // shipped — but a real browser found the app broken in use (blank route,
   // console error, sign-in that never lands, a create flow whose item never
@@ -3305,21 +3339,13 @@ function Builder() {
           .slice(0, 3)
           .join("; ")}. Petal paused automatic fixes for this request — tap below to keep going.`,
         actionLabel: "Ask Petal to fix it",
-        actionKind: "retry",
+        actionKind: "ask-fix",
       });
       return;
 
     }
-
-    const prompt = [
-      "I opened the deployed app in a real browser and it does not work correctly. Findings:",
-      "",
-      ...defects.slice(0, 15).map((d) => `- ${d}`),
-      "",
-      "Fix the root cause of each finding in the project files. Do not add placeholder content or comments describing the fix — make the app actually work. Keep the changes minimal and do not redesign anything that already works.",
-    ].join("\n");
-    void send(prompt, { isRetry: false, isAutoFix: true });
-  }, [project?.id, project?.latest_build_id, effectiveBuildSnap, busy, send, claimAutoRecovery, hydrateRecovery, persistRecovery]);
+    askPetalToFixVerification(false);
+  }, [project?.id, project?.latest_build_id, effectiveBuildSnap, busy, claimAutoRecovery, hydrateRecovery, persistRecovery, askPetalToFixVerification]);
 
   // Retract the browser-check card as soon as a build ships clean. The card is
   // persisted so it survives reloads, which means a defect found on build N
@@ -3563,14 +3589,22 @@ function Builder() {
         error={m.error!}
         onRetry={
           isTail && m.error!.actionKind === "retry"
-            ? m.error!.title?.startsWith("Build service")
+            ? isVerificationCardTitle(m.error!.title)
+              ? () => askPetalToFixVerification(true)
+              : m.error!.title?.startsWith("Build service")
               ? retryDeploy
               : lastUserPrompt
                 ? retry
                 : retryDeploy
             : undefined
         }
-        onAskFix={isTail && m.error!.actionKind === "ask-fix" ? askPetalToFix : undefined}
+        onAskFix={
+          isTail && m.error!.actionKind === "ask-fix"
+            ? isVerificationCardTitle(m.error!.title)
+              ? () => askPetalToFixVerification(true)
+              : askPetalToFix
+            : undefined
+        }
         onBuyCredits={
           m.error!.actionKind === "buy-credits" ? () => setBillingOpen(true) : undefined
         }
