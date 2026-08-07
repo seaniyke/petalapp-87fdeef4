@@ -6,7 +6,7 @@ const GUARD_PATH = "public/__petal_guard.js";
 // copy, (b) the tag's data attribute, (c) a window global, and (d) every
 // error report — so a crash coming from an out-of-date cached guard is
 // immediately identifiable instead of looking like a live-code bug.
-const GUARD_VERSION = 5;
+const GUARD_VERSION = 6;
 const DEFAULT_INGEST_URL =
   "https://buildwithpetal.com/api/public/track-runtime-error";
 
