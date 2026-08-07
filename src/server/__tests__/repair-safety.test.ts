@@ -59,6 +59,16 @@ describe("source escape fixer", () => {
   });
 });
 
+describe("builder boundary source escape fixer", () => {
+  it("preserves regex escapes before materializing a build", async () => {
+    const { unescapeCodePositions: healBuilderSource } = await import(
+      "../../../builder/src/syntax-heal"
+    );
+    const src = `const text = String(children).replace(/\\n$/, "");\nconst m = /language-(\\w+)/.exec(name);`;
+    expect(healBuilderSource(src).out).toBe(src);
+  });
+});
+
 describe("repair pipeline does not corrupt valid JSX", () => {
   const cases: Array<{ name: string; content: string; mustKeep: string }> = [
     {
@@ -116,6 +126,18 @@ describe("repair pipeline does not corrupt valid JSX", () => {
       expect(open).toBe(close);
     });
   }
+});
+
+describe("route graph scaffold isolation", () => {
+  it("never edits reference examples while deduplicating app routes", () => {
+    const app = `export default function App(){return <Routes><Route path="/" element={<main />} /></Routes>}`;
+    const example = `export function Example(){return <Routes><Route element={<Layout />}><Route path="/" element={<HomePage />} /></Route></Routes>}`;
+    const out = runAllRepairs([
+      { path: "src/App.tsx", content: app },
+      { path: "src/components/examples/kit-multi-page-app.tsx", content: example },
+    ]).files;
+    expect(out.find((file) => file.path.includes("kit-multi-page"))?.content).toBe(example);
+  });
 });
 
 describe("preview guard", () => {

@@ -55,8 +55,14 @@ export function unescapeCodePositions(src: string): { out: string; count: number
   let out = "";
   let count = 0;
   let quote: '"' | "'" | "`" | null = null;
+  let regex = false;
+  let regexClass = false;
+  let lastSignificant = "";
   let lineComment = false;
   let blockComment = false;
+
+  const regexCanStartHere = () =>
+    lastSignificant === "" || !/[A-Za-z0-9_$)\]}'"`]/.test(lastSignificant);
 
   for (let i = 0; i < src.length; i++) {
     const ch = src[i];
@@ -73,6 +79,25 @@ export function unescapeCodePositions(src: string): { out: string; count: number
         out += next;
         i++;
         blockComment = false;
+      }
+      continue;
+    }
+    if (regex) {
+      out += ch;
+      if (ch === "\\" && next !== undefined) {
+        out += next;
+        i++;
+      } else if (ch === "[" && !regexClass) {
+        regexClass = true;
+      } else if (ch === "]" && regexClass) {
+        regexClass = false;
+      } else if (ch === "/" && !regexClass) {
+        regex = false;
+        lastSignificant = "/";
+      } else if (ch === "\n") {
+        regex = false;
+        regexClass = false;
+        lastSignificant = "";
       }
       continue;
     }
@@ -104,6 +129,12 @@ export function unescapeCodePositions(src: string): { out: string; count: number
       out += ch;
       continue;
     }
+    if (ch === "/" && regexCanStartHere()) {
+      regex = true;
+      regexClass = false;
+      out += ch;
+      continue;
+    }
     if (ch === '"' || ch === "'" || ch === "`") {
       quote = ch;
       out += ch;
@@ -116,6 +147,7 @@ export function unescapeCodePositions(src: string): { out: string; count: number
       continue;
     }
     out += ch;
+    if (!/\s/.test(ch)) lastSignificant = ch;
   }
 
   return { out, count };
