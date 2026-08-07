@@ -307,8 +307,9 @@ function BillingDashboard() {
             </div>
             <div className="mt-2 text-2xl font-bold tabular-nums">{credits}</div>
             <p className="mt-1 text-xs font-medium text-muted-foreground">
-              {Number(w?.topup_credits_remaining ?? 0)} from top-ups · expire 12 months
-              after purchase
+              {Number(w?.topup_credits_remaining ?? 0)} from top-ups · purchased
+              credits never expire
+
             </p>
             <Button
               size="sm"
