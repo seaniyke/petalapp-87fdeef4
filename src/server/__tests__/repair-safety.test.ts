@@ -119,7 +119,17 @@ function greet(name: string) {
   });
 
   it("removes a fence revealed only after literal newline decoding", () => {
-    const escaped = String.raw`export function PostPage() {\n  const title = "A post";\n\n\`\`\`typescript\nfunction leaked() { return 1; }\n\`\`\`\n\n  return <article>{title}</article>;\n}`;
+    const escaped = [
+      "export function PostPage() {",
+      '  const title = "A post";',
+      "",
+      "```typescript",
+      "function leaked() { return 1; }",
+      "```",
+      "",
+      "  return <article>{title}</article>;",
+      "}",
+    ].join("\\n");
     const result = runAllRepairs([{ path: "src/pages/PostPage.tsx", content: escaped }]);
     const output = result.files[0]?.content ?? "";
     expect(output).not.toContain("```typescript");
