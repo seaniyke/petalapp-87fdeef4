@@ -2425,7 +2425,21 @@ function Builder() {
           // failures land in pipeline_failures with the real exception text.
           throw new PipelineError(streamError, streamErrorKind ?? "unknown", streamErrorRaw);
         }
-        if (!resultFiles) throw new Error("No result returned.");
+        if (!resultFiles) {
+          // The stream closed cleanly but never delivered a result: the model
+          // hung or the connection dropped mid-turn. This was the top failure
+          // signature in the daily digest ("No result returned.") precisely
+          // because it threw a bare Error — no `kind`, so no friendly card, no
+          // retry affordance, and telemetry couldn't tell it apart from a
+          // genuine crash. Classify it as what it is so the user gets the
+          // timeout card with a retry button.
+          throw new PipelineError(
+            "The model stopped responding before it finished this turn.",
+            "upstream_timeout",
+            "stream closed with no result payload (no error event received)",
+          );
+        }
+
 
         if (resultNoFileChanges) {
           const outcomeNow = turnOutcome as {
