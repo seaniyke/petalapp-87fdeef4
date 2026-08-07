@@ -136,7 +136,10 @@ export interface VerifyReport {
   flows: FlowFinding[];
   /** Ranked, human-readable defects. This is what gets fed back to the model. */
   defects: string[];
+  /** Visual QA screenshots, scored downstream by a vision model. */
+  visual?: VisualShot[];
 }
+
 
 export const MAX_ROUTES = 12;
 export const MAX_FLOWS = 4;
