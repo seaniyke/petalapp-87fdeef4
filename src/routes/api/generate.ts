@@ -1385,45 +1385,67 @@ function isRetryablePatchApplyError(message: string): boolean {
   );
 }
 
+/**
+ * Petal v3 Phase A — the closed-loop pre-emit gate.
+ *
+ * Was: a single-round, parse-only check. A file could parse perfectly and
+ * still ship a white screen because it imported a sibling that didn't exist
+ * or referenced an undeclared identifier — neither of which esbuild's parser
+ * has any opinion about. Those defects only surfaced later, in the remote
+ * `vite build`, long after the turn was reported complete.
+ *
+ * Now: every deterministic verifier we own (esbuild parse + local structural
+ * verifier + render-risk linter) runs here, and blocking diagnostics are fed
+ * back to the repair model for a bounded number of rounds before anything is
+ * emitted. The gate keeps the best state it saw and stops the moment a round
+ * stops making progress, so it can neither regress the files nor spin.
+ */
 async function runFinalParseGuard(
   files: ProjectFile[],
   changedPaths: string[],
   controller: ReadableStreamDefaultController<Uint8Array>,
   encoder: TextEncoder,
 ): Promise<{ ok: true; files: ProjectFile[] } | { ok: false; detail: string }> {
-  const finalVerdict = await verifyFilesEsbuild(files, changedPaths);
-  if (finalVerdict.ok) return { ok: true, files };
+  const { runPreEmitGate, formatGateIssues } = await import("@/server/preemit-gate.server");
 
-  console.warn(
-    `[final-parse-guard] ${finalVerdict.issues.length} issue(s) after autofix:`,
-    finalVerdict.issues.map((i) => `${i.path}:${i.line}:${i.column} ${i.message}`).join("; "),
-  );
-  controller.enqueue(
-    encoder.encode(sse({ type: "status", message: "Repairing one last syntax issue…" })),
-  );
+  const { files: gated, report } = await runPreEmitGate(files, changedPaths, {
+    maxRounds: 2,
+    onRound: (round, issues) => {
+      console.warn(
+        `[preemit-gate] round ${round}: ${issues.length} blocking issue(s):`,
+        formatGateIssues(issues),
+      );
+      controller.enqueue(
+        encoder.encode(
+          sse({
+            type: "status",
+            message:
+              round === 1
+                ? "Repairing one last syntax issue…"
+                : "Still tidying up a couple of issues…",
+          }),
+        ),
+      );
+    },
+    // Deterministic repairs must re-run over the model's output: a repair
+    // round can reintroduce an unresolved import that the resolver already
+    // knows how to pin, and re-running is cheaper than another model round.
+    afterRepair: (candidate) => runAllRepairs(candidate).files,
+  });
 
-  const fixOut = await runPostStreamAutofix(
-    files,
-    finalVerdict.issues.map((i) => ({
-      path: i.path,
-      kind: "parse",
-      detail: `${i.message} (line ${i.line}:${i.column})`,
-    })),
-  );
-  const repaired = fixOut.files;
-  const repairedVerdict = await verifyFilesEsbuild(repaired, changedPaths);
-  if (!repairedVerdict.ok) {
-    const detail = repairedVerdict.issues
-      .slice(0, 3)
-      .map((i) => `${i.path}:${i.line}:${i.column} ${i.message}`)
-      .join("; ");
-    // Don't throw — let the caller revert to the prior good files
-    // and reply conversationally. A failed final-parse is NOT an
-    // infra error; it just means this turn's edits weren't safe.
-    return { ok: false, detail };
+  if (report.rounds > 0) {
+    console.log(`[preemit-gate] ${report.trace.join(" | ")}`);
   }
-  return { ok: true, files: repaired };
+
+  if (!report.ok) {
+    // Don't throw — let the caller revert to the prior good files and reply
+    // conversationally. A failed gate is NOT an infra error; it just means
+    // this turn's edits weren't safe to ship.
+    return { ok: false, detail: formatGateIssues(report.issues, 3) };
+  }
+  return { ok: true, files: gated };
 }
+
 
 async function handleGenerateRequestCore(request: Request): Promise<Response> {
   const authResult = await authorize(request);
