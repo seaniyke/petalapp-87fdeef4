@@ -688,7 +688,17 @@ export async function runVerification(plan: VerifyPlan): Promise<VerifyReport> {
       report.flows.push(await runFlow(page, watch, plan.baseUrl, flow, screenshots));
     }
 
+    // Pass 4 — visual QA capture (mobile + desktop). Never fails the build.
+    if (plan.visual) {
+      try {
+        report.visual = await captureVisual(browser, plan);
+      } catch {
+        /* visual QA is advisory */
+      }
+    }
+
     await context.close();
+
   } finally {
     await browser?.close().catch(() => {});
   }
