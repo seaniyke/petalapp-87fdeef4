@@ -4,6 +4,7 @@ import {
   isTransientDeploymentStatus,
 } from "../../../builder/src/build";
 import { isTransientEdgeStatus } from "../../../builder/src/deploy-status";
+import { allBlockingDefectsAreTransientEdge } from "@/lib/verification-report";
 
 describe("builder deployment readiness", () => {
   it("selects the immutable deployment URL rather than mutable aliases", () => {
@@ -37,5 +38,22 @@ describe("builder deployment readiness", () => {
     }
     expect(isTransientEdgeStatus(404)).toBe(false);
     expect(isTransientEdgeStatus(500)).toBe(false);
+  });
+});
+describe("edge-noise verification findings", () => {
+  it("treats an all-52x browser report as inconclusive, not a build failure", () => {
+    expect(
+      allBlockingDefectsAreTransientEdge([
+        "/ returned HTTP 522.",
+        "/about console error: Failed to load resource: the server responded with a status of 522 ()",
+      ]),
+    ).toBe(true);
+  });
+
+  it("still blocks when a real runtime defect is present", () => {
+    expect(
+      allBlockingDefectsAreTransientEdge(["/ returned HTTP 522.", "/posts rendered a blank page"]),
+    ).toBe(false);
+    expect(allBlockingDefectsAreTransientEdge([])).toBe(false);
   });
 });

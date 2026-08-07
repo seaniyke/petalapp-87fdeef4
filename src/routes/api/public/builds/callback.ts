@@ -13,6 +13,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
+  allBlockingDefectsAreTransientEdge,
   partitionVerificationDefects,
   sanitizeVerificationDefects,
 } from "@/lib/verification-report";
@@ -172,7 +173,23 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     // craft findings remain attached for a later polish pass without taking a
     // functioning app offline.
     const partitioned = partitionVerificationDefects(verification?.defects);
-    if (partitioned.blocking.length > 0) {
+    // The browser check can run while the hosting edge is still propagating,
+    // producing 52x on every route. Petal's own probe above already fetched
+    // this exact URL and got a real app, so an all-edge-transient report is
+    // inconclusive, not a build failure — never fail a healthy deploy on it.
+    const edgeNoiseOnly = allBlockingDefectsAreTransientEdge(partitioned.blocking);
+    if (edgeNoiseOnly) {
+      console.warn(
+        `[builds/callback] ignoring ${partitioned.blocking.length} transient edge finding(s) for ${payload.buildId}; server probe succeeded`,
+      );
+      if (verification) {
+        verification.defects = verification.defects.filter(
+          (defect) => !partitioned.blocking.includes(defect),
+        );
+        verification.ok = verification.defects.length === 0;
+      }
+    }
+    if (!edgeNoiseOnly && partitioned.blocking.length > 0) {
       const message = [
         "The deployment completed, but Petal's browser check found a runtime failure.",
         ...partitioned.blocking.slice(0, 8).map((defect) => `- ${defect}`),
