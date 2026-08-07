@@ -3,6 +3,7 @@ import type { LocalIssue } from "@/server/local-verifier";
 import type { WebSubtype } from "@/lib/web-subtype";
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
 import { findDeadMobileNav, findDeadButtons } from "@/server/interaction-hygiene.server";
+import { lintProductPrinciples } from "@/server/product-principles.server";
 
 
 function appEntrypoint(files: ProjectFile[]): ProjectFile | undefined {
@@ -70,6 +71,14 @@ export function findGenerationQualityIssues(
   }
 
 
+
+  // Phase 5 — Product Principles (docs/petal-product-principles.md). Soft
+  // warnings for placeholders, demo disclaimers, brand leaks, and hype copy.
+  try {
+    issues.push(...lintProductPrinciples(files));
+  } catch {
+    /* never block on scan failure */
+  }
 
   return issues;
 }
