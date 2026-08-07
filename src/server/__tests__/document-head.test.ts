@@ -105,15 +105,16 @@ describe("document head reconciliation (A1)", () => {
 });
 
 describe("replace-op ambiguity ladder (A2)", () => {
-  const src = `const a = "Book now";\nconst b = "Book now";\n`;
+  const src = `const a = "Book now, pay later";\nconst b = "Book now, pay later";\n`;
 
   it("applies a repeated snippet to every occurrence instead of failing", () => {
     const out = applyOpsPartial([{ path: "src/a.ts", content: src }], [
-      { op: "replace", path: "src/a.ts", search: '"Book now"', replace: '"Reserve"' },
+      { op: "replace", path: "src/a.ts", search: '"Book now, pay later"', replace: '"Reserve"' },
     ]);
     expect(out.failed).toHaveLength(0);
     expect(out.files[0].content).toBe(`const a = "Reserve";\nconst b = "Reserve";\n`);
   });
+
 
   it("still refuses a tiny ambiguous snippet", () => {
     const out = applyOpsPartial([{ path: "src/a.ts", content: "a;\na;\n" }], [
