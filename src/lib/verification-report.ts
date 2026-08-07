@@ -44,6 +44,25 @@ export function isVerifierInternalDefect(value: string): boolean {
   );
 }
 
+/**
+ * Hosting-edge propagation noise. A freshly uploaded deployment can answer
+ * 502/503/504/52x for a few seconds while the CDN edge catches up. Those are
+ * statements about the edge at that instant, not about the generated app —
+ * especially when Petal's own independent probe fetched the same URL
+ * successfully moments later.
+ */
+const TRANSIENT_EDGE_DEFECT_PATTERN =
+  /\b(?:HTTP|status of)\s*(?:502|503|504|520|521|522|523|524|530)\b/i;
+
+export function isTransientEdgeDefect(value: string): boolean {
+  return TRANSIENT_EDGE_DEFECT_PATTERN.test(value);
+}
+
+/** True when every blocking finding is edge-propagation noise. */
+export function allBlockingDefectsAreTransientEdge(blocking: string[]): boolean {
+  return blocking.length > 0 && blocking.every(isTransientEdgeDefect);
+}
+
 
 export function sanitizeVerificationDefects(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
