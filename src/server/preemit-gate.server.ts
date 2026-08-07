@@ -220,6 +220,8 @@ export async function runPreEmitGate(
     maxRounds?: number;
     onRound?: (round: number, issues: GateIssue[]) => void;
     afterRepair?: (files: ProjectFile[]) => ProjectFile[];
+    /** Product contract for this turn. When present, it is verified too. */
+    prd?: Prd | null;
   } = {},
 ): Promise<PreEmitGateResult> {
   const maxRounds = Math.max(0, opts.maxRounds ?? 2);
@@ -227,7 +229,7 @@ export async function runPreEmitGate(
   let current = files;
   const trace: string[] = [];
 
-  let issues = await collectGateIssues(current, changedPaths);
+  let issues = await collectGateIssues(current, changedPaths, opts.prd);
   let blocking = issues.filter(isBlocking);
   const initialIssueCount = blocking.length;
 
