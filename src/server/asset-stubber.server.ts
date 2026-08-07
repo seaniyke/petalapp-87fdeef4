@@ -22,6 +22,8 @@
  */
 
 import type { ProjectFile } from "./generate.server";
+import { rewriteOpeningTags } from "./jsx-tag-scan.server";
+
 
 const SCANNABLE = /\.(tsx|jsx)$/;
 const CSS_SCANNABLE = /\.(css|scss)$/;
