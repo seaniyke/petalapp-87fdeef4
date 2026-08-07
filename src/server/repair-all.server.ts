@@ -46,6 +46,8 @@ import { fixComponentChildren } from "./component-child.server";
 import { ensureBrandIdentity, ensureBrandMarkWired } from "./brand-identity.server";
 import { repairBuildConfigImports } from "./build-config-repair.server";
 import { fixSourceEscapes } from "./source-escape-fixer.server";
+import { fixMarkdownFences } from "./markdown-fence-fixer.server";
+
 import { fixImportSyntax } from "./import-syntax-fixer.server";
 import { fixJsxAttrLiterals } from "./jsx-attr-literal-fixer.server";
 
