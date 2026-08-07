@@ -1411,11 +1411,13 @@ async function runFinalParseGuard(
   changedPaths: string[],
   controller: ReadableStreamDefaultController<Uint8Array>,
   encoder: TextEncoder,
+  prd?: import("@/server/prd/prd-types").Prd | null,
 ): Promise<{ ok: true; files: ProjectFile[] } | { ok: false; detail: string }> {
   const { runPreEmitGate, formatGateIssues } = await import("@/server/preemit-gate.server");
 
   const { files: gated, report } = await runPreEmitGate(files, changedPaths, {
     maxRounds: 2,
+    prd,
     onRound: (round, issues) => {
       console.warn(
         `[preemit-gate] round ${round}: ${issues.length} blocking issue(s):`,
@@ -1705,6 +1707,40 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   }
 
 
+  // PRD Engine. Before anything else decides what to build, we resolve the
+  // product contract for this turn: authored on the first build, amended (only
+  // when the request actually changes the product's shape) on later turns.
+  // The PRD is the authority — the keyword sub-type router now follows it
+  // rather than guessing independently.
+  let prdBlock = "";
+  let prdScenarioBlock = "";
+  let prdNote = "";
+  let resolvedPrd: Awaited<ReturnType<typeof import("@/server/prd/prd-engine.server").resolvePrdForTurn>> | null =
+    null;
+  if (buildTarget.id === "web") {
+    try {
+      const { resolvePrdForTurn } = await import("@/server/prd/prd-engine.server");
+      resolvedPrd = await resolvePrdForTurn({
+        brief: lastContent,
+        projectId: body.projectId,
+        userId,
+      });
+      prdBlock = resolvedPrd.promptBlock;
+      prdScenarioBlock = resolvedPrd.scenarioBlock;
+      prdNote = resolvedPrd.note;
+      // When the contract itself changed, Petal must say so in one sentence
+      // rather than silently reshaping the product.
+      if (prdNote) {
+        prdBlock += `\n\n### Contract change (state this to the user in one sentence before you build)\n${prdNote}\n`;
+      }
+      console.log(
+        `[prd] project=${body.projectId ?? "n/a"} product="${resolvedPrd.prd.productName}" type=${resolvedPrd.prd.productType} authored=${resolvedPrd.authored} amendment=${resolvedPrd.amendment} surfaces=[${resolvedPrd.prd.requiredSurfaces.join(",")}]`,
+      );
+    } catch (e) {
+      console.warn("[prd] resolution skipped:", e instanceof Error ? e.message : String(e));
+    }
+  }
+
   // Sub-type routing for the catch-all `web` target. Without this a
   // "landing page for X" and a "CRM for Y" both get the same generic web
   // prompt and the model picks an app-shell vs marketing layout at random.
@@ -1718,10 +1754,13 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
     const { classifyAppShape } = await import("@/lib/app-shape-classifier");
     const { resolveWebSubtype } = await import("@/lib/web-subtype");
     const resolved = resolveWebSubtype(lastContent, classifyAppShape(lastContent));
-    detectedWebSubtype = resolved.subtype;
+    // The PRD wins. A single-purpose tool must not be routed to the app-shell
+    // prompt just because a keyword matched — that is what shipped a dashboard
+    // instead of a calculator.
+    detectedWebSubtype = resolvedPrd?.subtype ?? resolved.subtype;
     webSubtypeBlock = `\n\n${getWebSubtypeAddendum(detectedWebSubtype)}\n`;
     console.log(
-      `[web-subtype] project=${body.projectId ?? "n/a"} detected="${detectedWebSubtype}" keyword="${resolved.keywordSubtype}" reason="${resolved.reason}"`,
+      `[web-subtype] project=${body.projectId ?? "n/a"} detected="${detectedWebSubtype}" keyword="${resolved.keywordSubtype}" prd="${resolvedPrd?.subtype ?? "n/a"}" reason="${resolved.reason}"`,
     );
   }
 
@@ -2307,7 +2346,10 @@ Forbidden defaults
     }
     if (detectedWebSubtype === "app" || detectedWebSubtype === "fullstack") {
       const appUi = renderAppUiBlock(lastUserText || "");
-      designTasteBlock += appUi.text + renderAppScreenChecklistBlock() + renderAppSpecBlock(lastUserText || "");
+      designTasteBlock += appUi.text + renderAppScreenChecklistBlock();
+      // The PRD supersedes the keyword-scraped app spec. Only fall back to the
+      // old extractor when the PRD engine produced nothing this turn.
+      if (!prdBlock) designTasteBlock += renderAppSpecBlock(lastUserText || "");
     }
   } catch {
     /* never block a build on taste-block failure */
@@ -2321,6 +2363,10 @@ Forbidden defaults
     groundingBlock +
     (approvedPlan ? renderApprovedPlanBlock(approvedPlan) : "") +
     dynamic.text +
+    // The product contract goes ahead of the taste blocks: what to build first,
+    // how it should look second.
+    prdBlock +
+    prdScenarioBlock +
     designTasteBlock +
     learningBlock +
     highStakesBlock +
@@ -4367,6 +4413,10 @@ Forbidden defaults
           earlyChangedPaths,
           controller,
           encoder,
+          // Only enforce the product contract on the turn that authored it.
+          // Later turns edit an existing product; the contract is enforced by
+          // amendment, not by re-checking the whole app on a copy tweak.
+          resolvedPrd?.authored ? resolvedPrd.prd : null,
         );
         if (!guardOut.ok) {
           // Final-parse-guard couldn't repair this turn's edits. Revert

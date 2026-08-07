@@ -32,6 +32,7 @@ import { lintRenderRisks } from "@/server/render-risk-linter";
 import { runPostStreamAutofix } from "@/server/post-stream-autofix.server";
 import { isVerifierExempt } from "@/server/scaffold-ownership.server";
 import type { ProjectFile } from "@/server/generate.server";
+import type { Prd } from "@/server/prd/prd-types";
 
 /** A diagnostic in the one shape every producer is normalized into. */
 export interface GateIssue {
@@ -39,7 +40,7 @@ export interface GateIssue {
   kind: string;
   detail: string;
   /** Which verifier produced it — used for reporting and for severity. */
-  source: "esbuild" | "local" | "render-risk";
+  source: "esbuild" | "local" | "render-risk" | "prd";
 }
 
 export interface PreEmitGateReport {
@@ -82,6 +83,9 @@ export const BLOCKING_KINDS = new Set([
   "missing-sibling",
   "missing-export",
   "lazy-export",
+  // The product contract. A build that compiles perfectly but does not contain
+  // the product the user asked for is still a failed build.
+  "prd-contract",
 ]);
 
 /**
@@ -113,8 +117,34 @@ export function isBlocking(issue: GateIssue): boolean {
 export async function collectGateIssues(
   files: ProjectFile[],
   changedPaths: string[],
+  prd?: Prd | null,
 ): Promise<GateIssue[]> {
   const issues: GateIssue[] = [];
+
+  // Product contract first. It is the cheapest check and the one whose failure
+  // matters most — everything else verifies HOW the code is written, this
+  // verifies WHETHER it is the product the user asked for.
+  if (prd) {
+    try {
+      const { checkPrdStatically } = await import("@/server/prd/prd-acceptance.server");
+      const result = checkPrdStatically(
+        prd,
+        files.map((f) => ({ path: f.path, content: f.content })),
+      );
+      for (const f of result.findings) {
+        if (f.severity !== "blocking") continue;
+        issues.push({
+          path: "src/routes/index.tsx",
+          kind: "prd-contract",
+          detail: `${f.message} → ${f.repairHint}`,
+          source: "prd",
+        });
+      }
+    } catch (e) {
+      console.warn("[preemit-gate] PRD check errored, skipping:", e);
+    }
+  }
+
 
   try {
     const verdict = await verifyFilesEsbuild(files, changedPaths);
@@ -190,6 +220,8 @@ export async function runPreEmitGate(
     maxRounds?: number;
     onRound?: (round: number, issues: GateIssue[]) => void;
     afterRepair?: (files: ProjectFile[]) => ProjectFile[];
+    /** Product contract for this turn. When present, it is verified too. */
+    prd?: Prd | null;
   } = {},
 ): Promise<PreEmitGateResult> {
   const maxRounds = Math.max(0, opts.maxRounds ?? 2);
@@ -197,7 +229,7 @@ export async function runPreEmitGate(
   let current = files;
   const trace: string[] = [];
 
-  let issues = await collectGateIssues(current, changedPaths);
+  let issues = await collectGateIssues(current, changedPaths, opts.prd);
   let blocking = issues.filter(isBlocking);
   const initialIssueCount = blocking.length;
 
@@ -229,13 +261,13 @@ export async function runPreEmitGate(
     // global repair pass must never be allowed to undo a fix that already
     // cleared the gate; that previously created an endless retry/rollback
     // cycle where every user retry reproduced the same failure.
-    let nextIssues = await collectGateIssues(candidate, changedPaths);
+    let nextIssues = await collectGateIssues(candidate, changedPaths, opts.prd);
     let nextBlocking = nextIssues.filter(isBlocking);
 
     if (opts.afterRepair) {
       try {
         const normalized = opts.afterRepair(candidate);
-        const normalizedIssues = await collectGateIssues(normalized, changedPaths);
+        const normalizedIssues = await collectGateIssues(normalized, changedPaths, opts.prd);
         const normalizedBlocking = normalizedIssues.filter(isBlocking);
         if (normalizedBlocking.length <= nextBlocking.length) {
           candidate = normalized;
