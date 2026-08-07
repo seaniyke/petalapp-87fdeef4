@@ -108,7 +108,11 @@ function greet(name: string) {
 
   it("preserves fences used as display text inside strings and comments", async () => {
     const { healSyntax } = await import("../../../builder/src/syntax-heal");
-    const valid = `const sample = "\\`\\`\\`typescript";\n// \\`\\`\\`tsx\nexport default sample;`;
+    const valid = [
+      'const sample = "```typescript";',
+      "// ```tsx",
+      "export default sample;",
+    ].join("\n");
     const result = healSyntax([{ path: "src/sample.ts", content: valid }]);
     expect(result.notes).toHaveLength(0);
     expect(result.files[0]?.content).toBe(valid);
