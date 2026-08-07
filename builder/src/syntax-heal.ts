@@ -272,18 +272,89 @@ export function repairJsxAttributeLiterals(source: string): { out: string; count
   return { out, count };
 }
 
+/**
+ * Strip leaked markdown code fences that sit in real code position.
+ * A ``` inside a string/template/comment is left alone.
+ */
+export function stripMarkdownFences(source: string): { out: string; count: number } {
+  if (!source.includes("```") && !source.includes("~~~")) return { out: source, count: 0 };
+  const FENCE = /^\s*(`{3,}|~{3,})/;
+  const lines = source.split("\n");
+
+  // Determine which lines start in plain code position.
+  const codeStart: boolean[] = [];
+  let inBlockComment = false;
+  let inTemplate = false;
+  let quote: string | null = null;
+  for (const line of lines) {
+    codeStart.push(!inBlockComment && !inTemplate && quote === null);
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      const next = line[i + 1];
+      if (inBlockComment) {
+        if (ch === "*" && next === "/") { inBlockComment = false; i++; }
+        continue;
+      }
+      if (quote) {
+        if (ch === "\\") i++;
+        else if (ch === quote) quote = null;
+        continue;
+      }
+      if (inTemplate) {
+        if (ch === "\\") i++;
+        else if (ch === "`") inTemplate = false;
+        continue;
+      }
+      if (ch === "/" && next === "/") break;
+      if (ch === "/" && next === "*") { inBlockComment = true; i++; continue; }
+      if (ch === '"' || ch === "'") { quote = ch; continue; }
+      if (ch === "`") { inTemplate = true; continue; }
+    }
+    quote = null;
+  }
+
+  const drop = new Set<number>();
+  let count = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (drop.has(i) || !codeStart[i] || !FENCE.test(lines[i])) continue;
+    let close = -1;
+    for (let j = i + 1; j < lines.length; j++) {
+      if (FENCE.test(lines[j])) { close = j; break; }
+    }
+    if (close === -1) {
+      for (let j = i; j < lines.length; j++) drop.add(j);
+      count++;
+      break;
+    }
+    const wrapsFile = i === 0 && lines.slice(close + 1).every((l) => l.trim() === "");
+    if (wrapsFile) {
+      drop.add(i);
+      drop.add(close);
+    } else {
+      for (let j = i; j <= close; j++) drop.add(j);
+    }
+    count++;
+    i = close;
+  }
+
+  if (count === 0) return { out: source, count: 0 };
+  return { out: lines.filter((_, i) => !drop.has(i)).join("\n"), count };
+}
+
 export function healSyntax(files: HealFile[]): { files: HealFile[]; notes: string[] } {
   const notes: string[] = [];
   const out = files.map((f) => {
     if (!SOURCE_RX.test(f.path) || typeof f.content !== "string") return f;
 
-    const esc = unescapeCodePositions(f.content);
+    const fence = stripMarkdownFences(f.content);
+    const esc = unescapeCodePositions(fence.out);
     const imp = repairImportSyntax(esc.out);
     const jsx = /\.(tsx|jsx)$/i.test(f.path)
       ? repairJsxAttributeLiterals(imp.out)
       : { out: imp.out, count: 0 };
-    if (esc.count === 0 && imp.count === 0 && jsx.count === 0) return f;
+    if (fence.count === 0 && esc.count === 0 && imp.count === 0 && jsx.count === 0) return f;
 
+    if (fence.count > 0) notes.push(`${f.path}: removed ${fence.count} leaked code fence(s)`);
     if (esc.count > 0) notes.push(`${f.path}: decoded ${esc.count} literal escape(s)`);
     if (imp.count > 0) notes.push(`${f.path}: restored \`from\` in ${imp.count} import(s)`);
     if (jsx.count > 0) notes.push(`${f.path}: wrapped ${jsx.count} JSX attribute literal(s)`);
@@ -291,3 +362,4 @@ export function healSyntax(files: HealFile[]): { files: HealFile[]; notes: strin
   });
   return { files: out, notes };
 }
+

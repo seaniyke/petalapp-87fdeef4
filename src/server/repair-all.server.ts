@@ -46,6 +46,8 @@ import { fixComponentChildren } from "./component-child.server";
 import { ensureBrandIdentity, ensureBrandMarkWired } from "./brand-identity.server";
 import { repairBuildConfigImports } from "./build-config-repair.server";
 import { fixSourceEscapes } from "./source-escape-fixer.server";
+import { fixMarkdownFences } from "./markdown-fence-fixer.server";
+
 import { fixImportSyntax } from "./import-syntax-fixer.server";
 import { fixJsxAttrLiterals } from "./jsx-attr-literal-fixer.server";
 
@@ -77,12 +79,20 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   let files = input;
   const notes: string[] = [];
 
+  // 0. Leaked markdown fences. A stray ```lang line in code position aborts
+  // the esbuild transform before ANY other pass can inspect the file, so
+  // this must be the very first thing that runs.
+  const fences = fixMarkdownFences(files);
+  files = fences.files;
+  notes.push(...fences.notes);
+
   // 0a. Literal escape repair for source files. A stray `\n` in code
   // position ("Syntax error \"n\"") kills the esbuild transform before any
   // other pass gets a chance, so this must run first.
   const srcEsc = fixSourceEscapes(files);
   files = srcEsc.files;
   notes.push(...srcEsc.notes);
+
 
   // 0a-2. Malformed import statements (`import { X } '…'` — no `from`) abort
   // the esbuild transform exactly like the escape bug, so heal them here too,
