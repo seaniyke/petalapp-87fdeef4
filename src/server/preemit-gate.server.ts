@@ -30,6 +30,7 @@ import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import { verifyFilesLocal } from "@/server/local-verifier";
 import { lintRenderRisks } from "@/server/render-risk-linter";
 import { runPostStreamAutofix } from "@/server/post-stream-autofix.server";
+import { isVerifierExempt } from "@/server/scaffold-ownership.server";
 import type { ProjectFile } from "@/server/generate.server";
 
 /** A diagnostic in the one shape every producer is normalized into. */
@@ -87,18 +88,14 @@ export const BLOCKING_KINDS = new Set([
  * Scaffold-owned paths. Petal writes these, the model does not, so a
  * diagnostic here is either our bug or a false positive — never something a
  * repair round can resolve. Excluded from blocking for that reason.
+ *
+ * v3 Phase C — the list itself lives in `scaffold-ownership.server.ts` so the
+ * write allowlist and the verifier exemptions can never drift apart.
  */
-const PROTECTED_PREFIXES = [
-  "src/components/ui/",
-  "src/components/examples/",
-  "src/integrations/",
-];
-const PROTECTED_PATHS = new Set(["vite.config.ts", "tsconfig.json", "src/lib/utils.ts"]);
-
 export function isScaffoldOwned(path: string): boolean {
-  if (PROTECTED_PATHS.has(path)) return true;
-  return PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));
+  return isVerifierExempt(path);
 }
+
 
 export function isBlocking(issue: GateIssue): boolean {
   if (isScaffoldOwned(issue.path)) return false;

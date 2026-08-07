@@ -63,6 +63,25 @@ export interface RepairAllResult {
    * shape and the repair is masking it, not fixing it.
    */
   firedPasses: string[];
+  /**
+   * v3 Phase E — the same notes, grouped by the three stages this pipeline
+   * actually has. Before v3 there were ~30 undifferentiated passes and no way
+   * to answer "did we fix a build error or restyle a button?" from a log line.
+   *
+   *   resolve — parse + import/route graph. Load-bearing: a miss here is a
+   *             failed build.
+   *   hygiene — runtime correctness: theme tokens, assets, prop contracts,
+   *             brand mark, React contracts. A miss here is a broken render.
+   *   polish  — layout, interaction and accessibility. Never load-bearing.
+   *
+   * Order of execution is unchanged and still enforced in one place; this is
+   * the reporting contract on top of it.
+   */
+  stages: {
+    resolve: string[];
+    hygiene: string[];
+    polish: string[];
+  };
 }
 
 /** Note lines are `"<pass-id>: human text"`. Everything else is unlabeled. */
@@ -234,6 +253,13 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   files = route.files;
   for (const n of route.notes) notes.push(n);
 
+  // ── end of STAGE 1: RESOLVE ───────────────────────────────────────────
+  // Everything above answers "does this code parse and does every import
+  // resolve?". Nothing above is cosmetic; every pass here is the difference
+  // between a build and a stack trace.
+  const resolveEnd = notes.length;
+
+
   // 6b. CSS escape/theme sanitizer — literal `\n` inside styles.css aborts
   //     the Tailwind v4 build ("@theme blocks must only contain…").
   const cssEsc = fixCssEscapes(files);
@@ -276,6 +302,13 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   files = rt.files;
   for (const n of rt.notes) notes.push(n);
 
+  // ── end of STAGE 2: HYGIENE ───────────────────────────────────────────
+  // Everything between the two markers answers "will this render correctly
+  // at runtime?" — theme tokens, missing assets, prop contracts, brand mark,
+  // React runtime contracts.
+  const hygieneEnd = notes.length;
+
+
   // 11. Layout hygiene — kill viewport-locked empty bands, clipped display
   //     type, tap-eating full-bleed overlays, and fixed headers that render
   //     on top of the first section.
@@ -295,6 +328,19 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   files = fq.files;
   for (const n of fq.notes) notes.push(n);
 
-  return { files, notes, firedPasses: passIdsFromNotes(notes) };
+  // ── end of STAGE 3: POLISH ────────────────────────────────────────────
+  // Layout, interaction and accessibility. Never load-bearing for the build.
+
+  return {
+    files,
+    notes,
+    firedPasses: passIdsFromNotes(notes),
+    stages: {
+      resolve: notes.slice(0, resolveEnd),
+      hygiene: notes.slice(resolveEnd, hygieneEnd),
+      polish: notes.slice(hygieneEnd),
+    },
+  };
+
 }
 
