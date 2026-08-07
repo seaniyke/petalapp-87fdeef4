@@ -20,6 +20,7 @@
  */
 
 import type { ProjectFile } from "./generate.server";
+import { isScaffoldOwnedPath } from "./scaffold-ownership.server";
 import { fixMissingShadcnImports } from "./shadcn-imports.server";
 import { fixArraySafety } from "./array-safety-fixer.server";
 import { repairUnresolvedImports } from "./import-resolver.server";
