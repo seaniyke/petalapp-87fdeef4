@@ -14,6 +14,8 @@
  * isn't here, the import-resolver strips it instead of guessing.
  */
 
+import LUCIDE_MANIFEST from "lucide-react/dynamicIconImports.mjs";
+
 export const KNOWN_PACKAGES: Record<string, string> = {
   // React + ecosystem
   react: "^18.3.1",
