@@ -1069,11 +1069,14 @@ function emitConversationalFallback(
     outcome?: "answered" | "blocked";
     blockedPaths?: string[];
     reason?: string;
+    streamSummary?: boolean;
   },
 ): void {
-  controller.enqueue(
-    encoder.encode(sse({ type: "summary_delta", delta: args.summary })),
-  );
+  if (args.streamSummary !== false) {
+    controller.enqueue(
+      encoder.encode(sse({ type: "summary_delta", delta: args.summary })),
+    );
+  }
   emitTurnOutcome(controller, encoder, {
     outcome: args.outcome ?? "answered",
     changedPaths: [],
@@ -3326,9 +3329,12 @@ Forbidden defaults
                 });
                 emitConversationalFallback(controller, encoder, {
                   files: currentFiles,
+                  outcome: "blocked",
+                  reason: "all_ops_failed",
+                  streamSummary: false,
                   summary: body.isAutoFix
                     ? "Reverted to the last working version — the automatic repair couldn't be applied safely."
-                    : "I wasn't able to apply that change on this pass. Could you rephrase what you'd like adjusted, or point me at the specific section?",
+                    : "No safe file change was applied on this pass.",
                 });
                 return;
               }

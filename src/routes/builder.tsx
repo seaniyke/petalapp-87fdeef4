@@ -2449,6 +2449,7 @@ function Builder() {
             reason?: string;
           } | null;
           const wasBlocked = outcomeNow?.outcome === "blocked";
+          const suppressMechanicalFailure = outcomeNow?.reason === "all_ops_failed";
           const fallbackText = guardBackendClaims(resultSummary || "I couldn't find a safe file change for that turn.", resultFiles, "I couldn't find a safe file change for that turn.");
           const preambleText = partialPreamble.trim();
           const assistantMsg: ChatMessage = {
@@ -2463,7 +2464,9 @@ function Builder() {
           };
           noEditRecoveryRef.current.attempts = 0;
           transientGenerateRecoveryRef.current.attempts = 0; persistRecovery(projectIdRef.current);
-          setMessages((prev) => [...prev, assistantMsg]);
+          if (!suppressMechanicalFailure) {
+            setMessages((prev) => [...prev, assistantMsg]);
+          }
           setStreamingAssistant("");
           setStreamingPlan("");
           setStreamingRecap("");
@@ -2474,9 +2477,11 @@ function Builder() {
           if (!wasBlocked) setLastUserPrompt(null);
           setPhases((p) => completeThrough(p, "polishing"));
           setActivityVisible(false);
-          await appendMessages(proj.id, [assistantMsg]).catch((persistErr) => {
-            console.warn("Could not persist no-change assistant reply:", persistErr);
-          });
+          if (!suppressMechanicalFailure) {
+            await appendMessages(proj.id, [assistantMsg]).catch((persistErr) => {
+              console.warn("Could not persist no-change assistant reply:", persistErr);
+            });
+          }
           return;
         }
 
