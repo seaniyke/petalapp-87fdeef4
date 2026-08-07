@@ -6,7 +6,7 @@ const GUARD_PATH = "public/__petal_guard.js";
 // copy, (b) the tag's data attribute, (c) a window global, and (d) every
 // error report — so a crash coming from an out-of-date cached guard is
 // immediately identifiable instead of looking like a live-code bug.
-const GUARD_VERSION = 7;
+const GUARD_VERSION = 8;
 const DEFAULT_INGEST_URL =
   "https://buildwithpetal.com/api/public/track-runtime-error";
 
@@ -87,14 +87,27 @@ function buildGuardScript(opts: GuardOptions): string {
     var panel = document.createElement("div");
     panel.setAttribute("data-petal-preview-guard", "true");
     panel.style.cssText = "position:fixed;inset:0;z-index:2147483647;box-sizing:border-box;display:grid;place-items:center;padding:24px;background:#09090bcc;color:#f7f7fb;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
-    var safeDetail = String(detail || "No extra detail was available.").replace(/[\\u003c\\u003e&]/g, function (c) { return ({ "\\u003c": "&lt;", "\\u003e": "&gt;", "&": "&amp;" })[c]; });
-    var safeStack = String(stack || "").replace(/[\\u003c\\u003e&]/g, function (c) { return ({ "\\u003c": "&lt;", "\\u003e": "&gt;", "&": "&amp;" })[c]; });
-    panel.innerHTML = '\\u003cmain style="width:min(720px,100%);border:1px solid #34343d;border-radius:14px;background:#111118;box-shadow:0 24px 80px rgba(0,0,0,.45);padding:22px"\\u003e' +
-      '\\u003cp style="margin:0 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#a1a1aa"\\u003ePreview issue\\u003c/p\\u003e' +
-      '\\u003ch1 style="margin:0 0 12px;font-size:24px;line-height:1.15;color:#fff"\\u003e' + title + '\\u003c/h1\\u003e' +
-      '\\u003cp style="margin:0;color:#d4d4dd;line-height:1.5;font-size:14px"\\u003e' + safeDetail + '\\u003c/p\\u003e' +
-      (safeStack ? '\\u003cpre style="margin:16px 0 0;max-height:280px;overflow:auto;border:1px solid #2f2f38;border-radius:10px;background:#09090b;padding:12px;color:#c7c7d1;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap"\\u003e' + safeStack + '\\u003c/pre\\u003e' : '') +
-      '\\u003c/main\\u003e';
+    var main = document.createElement("main");
+    main.style.cssText = "width:min(720px,100%);border:1px solid #34343d;border-radius:14px;background:#111118;box-shadow:0 24px 80px rgba(0,0,0,.45);padding:22px";
+    var label = document.createElement("p");
+    label.style.cssText = "margin:0 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#a1a1aa";
+    label.textContent = "Preview issue";
+    var heading = document.createElement("h1");
+    heading.style.cssText = "margin:0 0 12px;font-size:24px;line-height:1.15;color:#fff";
+    heading.textContent = String(title || "Preview issue");
+    var message = document.createElement("p");
+    message.style.cssText = "margin:0;color:#d4d4dd;line-height:1.5;font-size:14px";
+    message.textContent = String(detail || "No extra detail was available.");
+    main.appendChild(label);
+    main.appendChild(heading);
+    main.appendChild(message);
+    if (stack) {
+      var trace = document.createElement("pre");
+      trace.style.cssText = "margin:16px 0 0;max-height:280px;overflow:auto;border:1px solid #2f2f38;border-radius:10px;background:#09090b;padding:12px;color:#c7c7d1;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap";
+      trace.textContent = String(stack);
+      main.appendChild(trace);
+    }
+    panel.appendChild(main);
     (document.body || document.documentElement).appendChild(panel);
   }
 
@@ -106,12 +119,22 @@ function buildGuardScript(opts: GuardOptions): string {
       var b = document.createElement("div");
       b.setAttribute("data-petal-runtime-badge", "true");
       b.style.cssText = "position:fixed;bottom:12px;right:12px;z-index:2147483646;max-width:320px;padding:10px 12px;border-radius:10px;background:#1f1f25;border:1px solid #3a3a44;color:#f5f5f7;font:12px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35);";
-      var safe = String(message || "Runtime error").replace(/[\\u003c\\u003e&]/g, function (c) { return ({ "\\u003c": "&lt;", "\\u003e": "&gt;", "&": "&amp;" })[c]; });
-      b.innerHTML = '\\u003cdiv style="font-weight:600;margin-bottom:2px;color:#fff"\\u003eRuntime error\\u003c/div\\u003e' +
-        '\\u003cdiv style="color:#c7c7d1;word-break:break-word"\\u003e' + safe + '\\u003c/div\\u003e' +
-        '\\u003cbutton type="button" style="position:absolute;top:4px;right:6px;background:none;border:0;color:#9a9aa3;font-size:14px;cursor:pointer;line-height:1" aria-label="Dismiss"\\u003e×\\u003c/button\\u003e';
+      var badgeTitle = document.createElement("div");
+      badgeTitle.style.cssText = "font-weight:600;margin-bottom:2px;color:#fff";
+      badgeTitle.textContent = "Runtime error";
+      var badgeMessage = document.createElement("div");
+      badgeMessage.style.cssText = "color:#c7c7d1;word-break:break-word";
+      badgeMessage.textContent = String(message || "Runtime error");
+      var dismiss = document.createElement("button");
+      dismiss.type = "button";
+      dismiss.style.cssText = "position:absolute;top:4px;right:6px;background:none;border:0;color:#9a9aa3;font-size:14px;cursor:pointer;line-height:1";
+      dismiss.setAttribute("aria-label", "Dismiss");
+      dismiss.textContent = "×";
+      b.appendChild(badgeTitle);
+      b.appendChild(badgeMessage);
+      b.appendChild(dismiss);
       b.style.position = "fixed";
-      b.querySelector("button").addEventListener("click", function () { try { b.remove(); } catch (_) {} });
+      dismiss.addEventListener("click", function () { try { b.remove(); } catch (_) {} });
       (document.body || document.documentElement).appendChild(b);
     } catch (_) {}
   }
@@ -229,15 +252,13 @@ export function injectPreviewGuard(
   // whitespace is consumed rather than leading: the injector re-adds the
   // separator itself, so eating it on the way out is what makes a second
   // pass byte-identical to the first.
-  const stripped = index
-    .replace(
-      /<script\s+[^>]*src=["'][^"']*__petal_guard\.js(?:\?[^"']*)?["'][^>]*>\s*<\/script>\s*/gi,
-      "",
-    )
-    .replace(
-      /<script\s+[^>]*data-petal-preview-guard-version=["'][^"']*["'][^>]*>[\s\S]*?<\/script>\s*/gi,
-      "",
-    );
+  const stripped = index.replace(/<script\b[^>]*>[\s\S]*?<\/script>\s*/gi, (tag) => {
+    const isGuard =
+      /__petal_guard\.js/i.test(tag) ||
+      /data-petal-preview-guard-version/i.test(tag) ||
+      /__petalPreviewGuardVersion/.test(tag);
+    return isGuard ? "" : tag;
+  });
 
   // The guard file itself is no longer emitted; drop any copy left behind by
   // an earlier build so the public dir doesn't ship dead code.
