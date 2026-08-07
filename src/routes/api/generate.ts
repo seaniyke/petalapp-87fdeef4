@@ -2847,7 +2847,19 @@ Forbidden defaults
           }
           // Defense-in-depth: reject patches that touch the canonical UI kit
           // or scaffold config files. The AI should never need to.
-          const PROTECTED = ["vite.config.ts", "tsconfig.json", "src/lib/utils.ts"];
+          //
+          // v3 Phase C — the scaffold owns structure. `package.json` joins the
+          // list on iteration turns: dependency changes are owned by the bare
+          // import resolver, which reads the real registry and writes a real
+          // resolved version. A hand-patched package.json is guesswork, and a
+          // wrong version string is an `npm install` failure that no amount of
+          // source repair can recover from.
+          const PROTECTED = [
+            "vite.config.ts",
+            "tsconfig.json",
+            "src/lib/utils.ts",
+            "package.json",
+          ];
           const isProtectedPath = (p: string) =>
             p.startsWith("src/components/ui/") ||
             p.startsWith("src/components/examples/") ||
@@ -2855,6 +2867,7 @@ Forbidden defaults
             p.startsWith("src/components/mobile/") ||
             p.startsWith("src/integrations/backend/") ||
             PROTECTED.includes(p) ||
+
             matchesUserProtectedGlob(p) ||
             // Plan Mode v1 — when a plan was approved, ANY file outside its
             // allow-list is treated as protected and dropped.
