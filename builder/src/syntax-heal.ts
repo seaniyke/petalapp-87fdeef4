@@ -409,10 +409,13 @@ export function healSyntax(files: HealFile[]): { files: HealFile[]; notes: strin
     const jsx = /\.(tsx|jsx)$/i.test(f.path)
       ? repairJsxAttributeLiterals(imp.out)
       : { out: imp.out, count: 0 };
-    if (fence.count === 0 && revealedFence.count === 0 && esc.count === 0 && imp.count === 0 && jsx.count === 0) return f;
+    if (templateSafe.count === 0 && fence.count === 0 && revealedFence.count === 0 && esc.count === 0 && imp.count === 0 && jsx.count === 0) return f;
 
+    if (templateSafe.count > 0)
+      notes.push(`${f.path}: escaped ${templateSafe.count} content fence(s) inside a template literal`);
     const fenceCount = fence.count + revealedFence.count;
     if (fenceCount > 0) notes.push(`${f.path}: removed ${fenceCount} leaked code fence(s)`);
+
     if (esc.count > 0) notes.push(`${f.path}: decoded ${esc.count} literal escape(s)`);
     if (imp.count > 0) notes.push(`${f.path}: restored \`from\` in ${imp.count} import(s)`);
     if (jsx.count > 0) notes.push(`${f.path}: wrapped ${jsx.count} JSX attribute literal(s)`);
