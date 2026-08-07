@@ -471,7 +471,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                 label="Extra credits"
                 sub={
                   breakdown.topup > 0
-                    ? `${breakdown.topup} top-up credits expire in 1 year`
+                    ? `${breakdown.topup} purchased credits — yours forever, they never expire`
                     : "Top up to add extra credits"
                 }
                 value={breakdown.topup}
@@ -513,9 +513,11 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               <h3 className="text-sm font-semibold">Top up credits</h3>
               <p className="text-xs text-muted-foreground">
                 Pay as you go — buy credits once, no subscription needed. Your paid
-                features stay unlocked while you have credits. Credits expire 12
-                months after purchase.
+                features stay unlocked while you have credits. Purchased credits
+                never expire.
               </p>
+
+
             </div>
 
             <TopupPicker

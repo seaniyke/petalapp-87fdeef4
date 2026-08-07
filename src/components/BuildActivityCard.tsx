@@ -27,6 +27,8 @@ import { pathToNarration } from "@/lib/path-narration";
 import type { FriendlyError } from "@/lib/friendly-errors";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { BuildDetailsSheet, type FileChange } from "@/components/BuildDetailsSheet";
+import { BuildCostSummary } from "@/components/BuildCostSummary";
+
 import { ELAPSED_VISIBLE_AFTER_SEC, formatElapsed } from "@/hooks/use-build-status-label";
 
 /**
@@ -342,6 +344,16 @@ export function BuildActivityCard({
             )}
           </div>
         </div>
+        {isComplete && typeof creditsCharged === "number" && (
+          <div className="border-t border-border/60 p-2">
+            <BuildCostSummary
+              credits={creditsCharged}
+              fileCount={fileCount}
+              paths={writtenPaths}
+            />
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-2 border-t border-border/60 p-2">
           <button
             type="button"

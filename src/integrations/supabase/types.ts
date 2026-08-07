@@ -3065,7 +3065,7 @@ export type Database = {
           credits_granted: number
           credits_remaining: number
           environment: string
-          expires_at: string
+          expires_at: string | null
           id: string
           pack_code: string
           stripe_session_id: string | null
@@ -3077,7 +3077,7 @@ export type Database = {
           credits_granted: number
           credits_remaining: number
           environment?: string
-          expires_at: string
+          expires_at?: string | null
           id?: string
           pack_code: string
           stripe_session_id?: string | null
@@ -3089,7 +3089,7 @@ export type Database = {
           credits_granted?: number
           credits_remaining?: number
           environment?: string
-          expires_at?: string
+          expires_at?: string | null
           id?: string
           pack_code?: string
           stripe_session_id?: string | null
