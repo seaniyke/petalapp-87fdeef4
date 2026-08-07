@@ -4,6 +4,7 @@ import { injectPreviewGuard } from "@/server/preview-guard.server";
 import { unescapeCodePositions } from "@/server/source-escape-fixer.server";
 import { scanOpeningTag, rewriteOpeningTags } from "@/server/jsx-tag-scan.server";
 import { COMMON_LUCIDE_ICONS } from "@/server/known-packages";
+import { validateRouteGraph } from "@/server/route-graph.server";
 
 /**
  * Every case here is a real build failure taken from a Petal digest, not a
@@ -132,7 +133,7 @@ describe("route graph scaffold isolation", () => {
   it("never edits reference examples while deduplicating app routes", () => {
     const app = `export default function App(){return <Routes><Route path="/" element={<main />} /></Routes>}`;
     const example = `export function Example(){return <Routes><Route element={<Layout />}><Route path="/" element={<HomePage />} /></Route></Routes>}`;
-    const out = runAllRepairs([
+    const out = validateRouteGraph([
       { path: "src/App.tsx", content: app },
       { path: "src/components/examples/kit-multi-page-app.tsx", content: example },
     ]).files;
