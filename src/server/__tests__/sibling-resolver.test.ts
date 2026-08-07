@@ -69,9 +69,9 @@ describe("sibling resolver (A3)", () => {
       f("src/App.tsx", `import Hero from "./hero";\nconst label = "./hero is the section";`),
       f("src/Hero.tsx", `export default () => null;`),
     ]);
-    expect(out.files[0].content).toContain(`const label = "./Hero is the section"`);
-    // ^ same-quote replacement is global by design; the import is what matters:
+    expect(out.files[0].content).toContain(`const label = "./hero is the section"`);
     expect(out.files[0].content).toContain(`import Hero from "./Hero"`);
+
   });
 
   it("clears the missing-sibling verifier failure it was built for", () => {
