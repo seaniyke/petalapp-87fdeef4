@@ -85,6 +85,7 @@ import { recordModelOutcome } from "@/server/model-kill-switch.server";
 import { pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
 import { renderDesignTasteBlock, renderLandingChecklistBlock } from "@/server/design-taste.server";
 import { renderAppUiBlock, renderAppScreenChecklistBlock } from "@/server/app-ui-library.server";
+import { renderAppSpecBlock } from "@/server/app-spec.server";
 
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
 import { renderLearningBlock } from "@/server/learning-injector.server";
@@ -2278,7 +2279,7 @@ Forbidden defaults
     }
     if (detectedWebSubtype === "app" || detectedWebSubtype === "fullstack") {
       const appUi = renderAppUiBlock(lastUserText || "");
-      designTasteBlock += appUi.text + renderAppScreenChecklistBlock();
+      designTasteBlock += appUi.text + renderAppScreenChecklistBlock() + renderAppSpecBlock(lastUserText || "");
     }
   } catch {
     /* never block a build on taste-block failure */
