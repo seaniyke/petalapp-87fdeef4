@@ -306,6 +306,7 @@ export function enforceFrontendQuality(input: ProjectFile[]): FrontendQualityRes
   let altFixes = 0;
   let fieldFixes = 0;
   let headingFixes = 0;
+  let layerFixes = 0;
 
   const animates = input.some(
     (f) => SCANNABLE.test(f.path) && /animate-|transition-|framer-motion|motion\./.test(f.content),
@@ -367,6 +368,9 @@ export function enforceFrontendQuality(input: ProjectFile[]): FrontendQualityRes
   if (headingFixes > 0) {
     notes.push(`frontend-quality: demoted ${headingFixes} duplicate <h1> so each page has one`);
   }
+  if (layerFixes > 0) {
+    notes.push(`frontend-quality: gave ${layerFixes} floating panel(s) an explicit stacking order`);
+  }
   if (stylesheetPatched) {
     notes.push("frontend-quality: added a prefers-reduced-motion escape hatch to the global stylesheet");
   }
@@ -378,6 +382,6 @@ export function enforceFrontendQuality(input: ProjectFile[]): FrontendQualityRes
     files,
     notes,
     defects,
-    fixes: ariaFixes + altFixes + fieldFixes + headingFixes + (stylesheetPatched ? 1 : 0),
+    fixes: ariaFixes + altFixes + fieldFixes + headingFixes + layerFixes + (stylesheetPatched ? 1 : 0),
   };
 }
