@@ -22,6 +22,8 @@
  */
 
 import type { ProjectFile } from "./generate.server";
+import { rewriteOpeningTags } from "./jsx-tag-scan.server";
+
 
 const SCANNABLE = /\.(tsx|jsx)$/;
 const CSS_SCANNABLE = /\.(css|scss)$/;
@@ -137,32 +139,28 @@ export function stubMissingAssets(input: ProjectFile[]): AssetStubResult {
       }
 
       // 3. inject onError fallback on <img> tags that reference external URLs
-      //    and don't already have onError.
-      const reTag = new RegExp(IMG_TAG_RE.source, "g");
-      const rebuilt: { start: number; end: number; tag: string }[] = [];
-      while ((m = reTag.exec(f.content))) {
-        const tag = m[0];
-        if (/\bonError\s*=/.test(tag)) continue;
-        const srcMatch = /\bsrc\s*=\s*["']([^"']+)["']/.exec(tag);
-        if (!srcMatch) continue;
-        if (!isExternal(srcMatch[1])) continue;
-        // Insert onError before the closing `/>` or `>`.
-        const closeMatch = /\/?>$/.exec(tag);
-        if (!closeMatch) continue;
-        const closeIdx = closeMatch.index;
-        const inject = ` onError={(e) => { const t = e.currentTarget as HTMLImageElement; if (t.dataset.fallback) return; t.dataset.fallback = "1"; t.src = "${INLINE_FALLBACK}"; }}`;
-        const newTag = tag.slice(0, closeIdx) + inject + tag.slice(closeIdx);
-        rebuilt.push({ start: m.index, end: m.index + tag.length, tag: newTag });
-      }
-      if (rebuilt.length) {
-        // Apply rewrites in reverse to keep offsets valid.
-        for (let i = rebuilt.length - 1; i >= 0; i--) {
-          const r = rebuilt[i];
-          content = content.slice(0, r.start) + r.tag + content.slice(r.end);
-        }
-        onErrorInjected += rebuilt.length;
+      //    and don't already have onError. Tag ends are located with the
+      //    shared scanner: a `[^>]*` regex ends the tag at the first `>` it
+      //    sees, which inside `onClick={() => …}` is the arrow — injecting
+      //    there splices an attribute into the middle of an expression and
+      //    the build dies with TS1382.
+      const injected = rewriteOpeningTags(
+        content,
+        (name) => name === "img" || name === "Image",
+        (tag) => {
+          if (/\bonError\s*=/.test(tag.attrs)) return null;
+          const srcMatch = /\bsrc\s*=\s*["']([^"']+)["']/.exec(tag.attrs);
+          if (!srcMatch || !isExternal(srcMatch[1])) return null;
+          const inject = ` onError={(e) => { const t = e.currentTarget as HTMLImageElement; if (t.dataset.fallback) return; t.dataset.fallback = "1"; t.src = "${INLINE_FALLBACK}"; }}`;
+          return `<${tag.name}${tag.attrs.replace(/\s+$/, "")}${inject}${tag.selfClosing ? " />" : ">"}`;
+        },
+      );
+      if (injected.fixes > 0) {
+        content = injected.content;
+        onErrorInjected += injected.fixes;
         changed = true;
       }
+
 
       if (changed) return { path: f.path, content };
       return f;

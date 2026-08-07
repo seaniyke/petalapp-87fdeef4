@@ -24,6 +24,7 @@
  */
 
 import type { ProjectFile } from "./generate.server";
+import { rewriteOpeningTags, scanOpeningTag, findClosingTag } from "./jsx-tag-scan.server";
 
 const SCANNABLE = /\.(tsx|jsx)$/;
 
@@ -47,31 +48,55 @@ function humanizeIcon(name: string): string {
     .trim();
 }
 
-const ELEMENT_RX = /<(button|Button|a|Link)\b([^>]*?)(\/?)>([\s\S]*?)<\/\1>/g;
+const CONTROL_TAGS = new Set(["button", "Button", "a", "Link"]);
 
 function labelIconOnlyControls(content: string): { content: string; fixes: number } {
   let fixes = 0;
-  const next = content.replace(ELEMENT_RX, (whole, tag: string, attrs: string, _s, inner: string) => {
-    if (/aria-label\s*=/.test(attrs) || /aria-labelledby\s*=/.test(attrs)) return whole;
-    if (/title\s*=/.test(attrs)) return whole;
-    // Any human text between the tags means it already has a name.
+  let src = content;
+  // We walk manually because the accessible-name decision needs the tag's
+  // children, which requires a real matching-close lookup (nested tags with
+  // the same name would break a lazy `([\s\S]*?)</\1>` regex).
+  const re = /<(button|Button|a|Link)\b/g;
+  let m: RegExpExecArray | null;
+  let guard = 0;
+  while ((m = re.exec(src)) !== null && guard++ < 2000) {
+    const tag = scanOpeningTag(src, m.index);
+    if (!tag || tag.selfClosing) continue;
+    if (!CONTROL_TAGS.has(tag.name)) continue;
+    const attrs = tag.attrs;
+    if (/aria-label\s*=|aria-labelledby\s*=|\btitle\s*=/.test(attrs)) {
+      re.lastIndex = tag.end;
+      continue;
+    }
+    const closeAt = findClosingTag(src, tag.name, tag.end);
+    if (closeAt === -1) {
+      re.lastIndex = tag.end;
+      continue;
+    }
+    const inner = src.slice(tag.end, closeAt);
     const text = inner
       .replace(/<[^>]*>/g, " ")
       .replace(/\{[^}]*\}/g, " ")
       .replace(/\s+/g, " ")
       .trim();
-    if (text.length > 0) return whole;
+    if (text.length > 0) {
+      re.lastIndex = tag.end;
+      continue;
+    }
     const icon = ICON_HINT.exec(inner);
-    if (!icon) return whole;
+    if (!icon) {
+      re.lastIndex = tag.end;
+      continue;
+    }
+    const opening = `<${tag.name}${attrs.replace(/\s+$/, "")} aria-label="${humanizeIcon(icon[1])}">`;
+    src = src.slice(0, tag.start) + opening + src.slice(tag.end);
     fixes++;
-    return `<${tag}${attrs} aria-label="${humanizeIcon(icon[1])}">${inner}</${tag}>`;
-  });
-  return { content: next, fixes };
+    re.lastIndex = tag.start + opening.length;
+  }
+  return { content: src, fixes };
 }
 
 /* ------------------------------------------------------------------ B ---- */
-
-const IMG_RX = /<img\b([^>]*?)(\/?)>/g;
 
 function altFromSrc(attrs: string): string {
   const m = /src\s*=\s*["'`]([^"'`]+)["'`]/.exec(attrs);
@@ -86,40 +111,58 @@ function altFromSrc(attrs: string): string {
 }
 
 function addMissingAlt(content: string): { content: string; fixes: number } {
-  let fixes = 0;
-  const next = content.replace(IMG_RX, (whole, attrs: string, selfClose: string) => {
-    if (/\balt\s*=/.test(attrs)) return whole;
-    fixes++;
-    const alt = altFromSrc(attrs);
-    const attr = alt ? ` alt="${alt}"` : ` alt="" aria-hidden="true"`;
-    return `<img${attrs.replace(/\s+$/, "")}${attr}${selfClose ? " /" : ""}>`;
-  });
-  return { content: next, fixes };
+  return rewriteOpeningTags(
+    content,
+    (name) => name === "img",
+    (tag) => {
+      if (/\balt\s*=/.test(tag.attrs)) return null;
+      const alt = altFromSrc(tag.attrs);
+      const attr = alt ? ` alt="${alt}"` : ` alt="" aria-hidden="true"`;
+      return `<img${tag.attrs.replace(/\s+$/, "")}${attr}${tag.selfClosing ? " />" : ">"}`;
+    },
+  );
 }
 
 /* ------------------------------------------------------------------ C ---- */
 
-const INPUT_RX = /<(input|textarea|Input|Textarea)\b([^>]*?)(\/?)>/g;
+const FIELD_TAGS = new Set(["input", "textarea", "Input", "Textarea"]);
 
 function labelPlaceholderOnlyFields(content: string): { content: string; fixes: number } {
   const hasLabels = /<(label|Label)\b/.test(content);
-  let fixes = 0;
-  const next = content.replace(INPUT_RX, (whole, tag: string, attrs: string, selfClose: string) => {
-    if (/aria-label\s*=|aria-labelledby\s*=/.test(attrs)) return whole;
-    if (hasLabels && /\bid\s*=/.test(attrs)) return whole; // likely paired with a <label htmlFor>
-    const ph = /placeholder\s*=\s*["'`]([^"'`]+)["'`]/.exec(attrs);
-    if (!ph) return whole;
-    fixes++;
-    return `<${tag}${attrs.replace(/\s+$/, "")} aria-label="${ph[1].replace(/"/g, "'")}"${selfClose ? " /" : ""}>`;
-  });
-  return { content: next, fixes };
+  return rewriteOpeningTags(
+    content,
+    (name) => FIELD_TAGS.has(name),
+    (tag) => {
+      const attrs = tag.attrs;
+      if (/aria-label\s*=|aria-labelledby\s*=/.test(attrs)) return null;
+      if (hasLabels && /\bid\s*=/.test(attrs)) return null; // paired with <label htmlFor>
+      const ph = /placeholder\s*=\s*["'`]([^"'`]+)["'`]/.exec(attrs);
+      if (!ph) return null;
+      return `<${tag.name}${attrs.replace(/\s+$/, "")} aria-label="${ph[1].replace(/"/g, "'")}"${
+        tag.selfClosing ? " />" : ">"
+      }`;
+    },
+  );
 }
 
 /* ------------------------------------------------------------------ D ---- */
 
+/**
+ * Demote duplicate `<h1>`s — but ONLY in files that render a single page.
+ * A file holding several route components (the multi-page App.tsx shape)
+ * legitimately has one `<h1>` per page; demoting them all leaves the app
+ * with zero top-level headings, which is worse than the thing we're fixing.
+ */
+function definesMultiplePageComponents(content: string): boolean {
+  const comps = content.match(/\bfunction\s+[A-Z][A-Za-z0-9_]*\s*\(/g) ?? [];
+  const arrows = content.match(/\bconst\s+[A-Z][A-Za-z0-9_]*\s*[:=]\s*(?:\([^)]*\)|[A-Za-z_$]+)\s*=>/g) ?? [];
+  return comps.length + arrows.length > 1;
+}
+
 function demoteExtraH1(content: string): { content: string; fixes: number } {
   const opens = content.match(/<h1\b/g) ?? [];
   if (opens.length < 2) return { content, fixes: 0 };
+  if (definesMultiplePageComponents(content)) return { content, fixes: 0 };
   let seen = 0;
   let fixes = 0;
   const next = content.replace(/<(\/?)h1\b/g, (whole, slash: string) => {
@@ -134,6 +177,7 @@ function demoteExtraH1(content: string): { content: string; fixes: number } {
   });
   return { content: next, fixes: fixes > 0 ? fixes : 0 };
 }
+
 
 /* ------------------------------------------------------------------ E ---- */
 

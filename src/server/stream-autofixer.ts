@@ -16,7 +16,6 @@
  * issues" status in the chat.
  */
 
-// @ts-expect-error — lucide-react ships this manifest without a .d.ts entry.
 import dynamicIconImports from "lucide-react/dynamicIconImports.mjs";
 import type { ProjectFile } from "@/server/generate.server";
 import { fixMissingShadcnImports } from "@/server/shadcn-imports.server";

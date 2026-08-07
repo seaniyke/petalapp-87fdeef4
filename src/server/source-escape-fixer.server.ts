@@ -36,11 +36,20 @@ export function unescapeCodePositions(src: string): { out: string; count: number
   let i = 0;
   const n = src.length;
 
-  type State = "code" | "sq" | "dq" | "tpl" | "line" | "block";
+  type State = "code" | "sq" | "dq" | "tpl" | "line" | "block" | "regex" | "class";
   let state: State = "code";
   // Template literals can nest `${ … }` back into code position.
   const tplStack: number[] = [];
   let braceDepth = 0;
+  // Last significant (non-whitespace) code character — decides whether a `/`
+  // starts a regex literal or is a division operator.
+  let lastSignificant = "";
+
+  /** `/` starts a regex when the previous token cannot end an expression. */
+  function regexCanStartHere(): boolean {
+    if (lastSignificant === "") return true;
+    return !/[A-Za-z0-9_$)\]}'"`]/.test(lastSignificant);
+  }
 
   while (i < n) {
     const ch = src[i];
@@ -65,6 +74,15 @@ export function unescapeCodePositions(src: string): { out: string; count: number
         i++;
         continue;
       }
+      // Regex literal: `/\n$/`, `/language-(\w+)/g`. Escapes inside are REAL
+      // regex escapes — unescaping them corrupts the file (this is the
+      // `const text = String(children).replace(/\n$/, "")` crash).
+      if (ch === "/" && regexCanStartHere()) {
+        state = "regex";
+        out += ch;
+        i++;
+        continue;
+      }
       if (ch === "'") state = "sq";
       else if (ch === '"') state = "dq";
       else if (ch === "`") {
@@ -79,10 +97,47 @@ export function unescapeCodePositions(src: string): { out: string; count: number
           state = "tpl";
         }
       }
+      if (!/\s/.test(ch)) lastSignificant = ch;
       out += ch;
       i++;
       continue;
     }
+
+    if (state === "regex" || state === "class") {
+      // An unterminated regex can never span a line in valid source — if we
+      // hit a newline the `/` was division after all, so snap back to code.
+      if (ch === "\n") {
+        state = "code";
+        lastSignificant = "";
+        out += ch;
+        i++;
+        continue;
+      }
+      if (ch === "\\" && i + 1 < n) {
+        out += ch + next;
+        i += 2;
+        continue;
+      }
+      if (state === "regex" && ch === "[") state = "class";
+      else if (state === "class" && ch === "]") state = "regex";
+      else if (state === "regex" && ch === "/") {
+        state = "code";
+        lastSignificant = "/";
+        out += ch;
+        i++;
+        // Consume flags so `g`/`i` don't look like an identifier boundary.
+        while (i < n && /[a-z]/.test(src[i])) {
+          out += src[i];
+          lastSignificant = src[i];
+          i++;
+        }
+        continue;
+      }
+      out += ch;
+      i++;
+      continue;
+    }
+
 
     if (state === "line") {
       out += ch;

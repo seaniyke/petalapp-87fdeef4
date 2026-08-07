@@ -14,6 +14,8 @@
  * isn't here, the import-resolver strips it instead of guessing.
  */
 
+import LUCIDE_MANIFEST from "lucide-react/dynamicIconImports.mjs";
+
 export const KNOWN_PACKAGES: Record<string, string> = {
   // React + ecosystem
   react: "^18.3.1",
@@ -264,8 +266,30 @@ export const COMMON_LUCIDE_ICONS = new Set<string>([
   "Slack", "Chrome", "Figma", "Dribbble",
 ]);
 
+/**
+ * The curated list above is a floor, not the truth. lucide-react ships ~1500
+ * icons and the hand list holds a few hundred — every valid-but-unlisted icon
+ * (`CalendarRange`, `SlidersHorizontal`, …) used to get "corrected" to
+ * `Square`, silently vandalising working code. Union the manifest in so only
+ * genuinely non-existent names are ever rewritten.
+ */
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const manifest = LUCIDE_MANIFEST as Record<string, unknown> | undefined;
+  for (const kebab of Object.keys(manifest ?? {})) {
+    const pascal = kebab
+      .split("-")
+      .map((p) => (p ? p[0].toUpperCase() + p.slice(1) : p))
+      .join("");
+    if (pascal) COMMON_LUCIDE_ICONS.add(pascal);
+  }
+} catch {
+  /* manifest unavailable — curated list still applies */
+}
+
 /** When an icon name can't be matched, swap to this so the build still ships. */
 export const SAFE_ICON_FALLBACK = "Square";
+
 
 /**
  * react-icons → lucide-react name map for the most common offenders. The

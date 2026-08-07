@@ -6,7 +6,7 @@ const GUARD_PATH = "public/__petal_guard.js";
 // copy, (b) the tag's data attribute, (c) a window global, and (d) every
 // error report — so a crash coming from an out-of-date cached guard is
 // immediately identifiable instead of looking like a live-code bug.
-const GUARD_VERSION = 5;
+const GUARD_VERSION = 6;
 const DEFAULT_INGEST_URL =
   "https://buildwithpetal.com/api/public/track-runtime-error";
 
@@ -201,30 +201,56 @@ export function injectPreviewGuard(
 ): { files: ProjectFile[]; injected: boolean } {
   const script = buildGuardScript(opts);
   const byPath = new Map(files.map((file) => [file.path, file.content]));
-  byPath.set(GUARD_PATH, script);
 
   const index = byPath.get("index.html");
   if (!index) {
     return { files: Array.from(byPath, ([path, content]) => ({ path, content })), injected: false };
   }
 
+  // The guard MUST be inlined, never `<script src="/__petal_guard.js">`.
+  // Vite/Rollup treats every non-module script tag in index.html as a build
+  // input and tries to resolve it from the project graph, so a public-dir
+  // reference (especially with a `?v=` query) fails the production build with
+  //   [vite]: Rollup failed to resolve import "/__petal_guard.js?v=5"
+  // An inline classic script has no import to resolve and still runs before
+  // the app module, which is all the guard needs.
   const versionAttr = `data-petal-preview-guard-version="${GUARD_VERSION}"`;
-  const guardTag = `<script src="/__petal_guard.js?v=${GUARD_VERSION}" ${versionAttr}></script>`;
-  // Strip ANY previously injected guard tag, including older `?v=` URLs.
-  const stripped = index.replace(
-    /\s*<script\s+src=["']\/__petal_guard\.js(?:\?[^"']*)?["'][^>]*><\/script>/gi,
-    "",
-  );
-  const moduleScript = /<script\b(?=[^>]*\btype=["']module["'])(?=[^>]*\bsrc=["']\/src\/main\.tsx["'])[^>]*><\/script>/i;
+  const guardTag = `<script ${versionAttr}>${script}</script>`;
+
+  // Strip every previously injected guard — external tags from older builds
+  // and inline tags from this one alike — so re-running is idempotent and a
+  // stale external reference can never survive into the bundle. Trailing
+  // whitespace is consumed rather than leading: the injector re-adds the
+  // separator itself, so eating it on the way out is what makes a second
+  // pass byte-identical to the first.
+  const stripped = index
+    .replace(
+      /<script\s+[^>]*src=["'][^"']*__petal_guard\.js(?:\?[^"']*)?["'][^>]*>\s*<\/script>\s*/gi,
+      "",
+    )
+    .replace(
+      /<script\s+[^>]*data-petal-preview-guard-version=["'][^"']*["'][^>]*>[\s\S]*?<\/script>\s*/gi,
+      "",
+    );
+
+  // The guard file itself is no longer emitted; drop any copy left behind by
+  // an earlier build so the public dir doesn't ship dead code.
+  byPath.delete(GUARD_PATH);
+
+  const moduleScript =
+    /<script\b(?=[^>]*\btype=["']module["'])(?=[^>]*\bsrc=["']\/src\/main\.tsx["'])[^>]*><\/script>/i;
   const moduleMatch = stripped.match(moduleScript)?.[0];
-  const next = stripped.includes(guardTag)
-    ? stripped
-    : moduleMatch
-      ? stripped.replace(moduleMatch, `${guardTag}\n    ${moduleMatch}`)
-      : stripped.includes("</body>")
-        ? stripped.replace("</body>", `  ${guardTag}\n</body>`)
-        : `${stripped}\n${guardTag}\n`;
+  const next = moduleMatch
+    ? stripped.replace(moduleMatch, `${guardTag}\n    ${moduleMatch}`)
+    : stripped.includes("</body>")
+      ? stripped.replace("</body>", `${guardTag}\n</body>`)
+      : `${stripped}\n${guardTag}\n`;
+
   byPath.set("index.html", next);
 
-  return { files: Array.from(byPath, ([path, content]) => ({ path, content })), injected: next !== index || !files.some((file) => file.path === GUARD_PATH) };
+  return {
+    files: Array.from(byPath, ([path, content]) => ({ path, content })),
+    injected: next !== index,
+  };
 }
+

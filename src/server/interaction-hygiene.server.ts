@@ -17,6 +17,8 @@
  */
 
 import type { ProjectFile } from "./generate.server";
+import { rewriteOpeningTags } from "./jsx-tag-scan.server";
+
 
 const SCANNABLE = /\.(tsx|jsx)$/;
 
@@ -28,21 +30,23 @@ export interface InteractionHygieneResult {
   fixes: number;
 }
 
-const FORM_OPEN_RX = /<form\b([^>]*)>/g;
-
 /** A. give every uncontrolled form a real submit handler. */
 function healForms(content: string): { content: string; fixes: number } {
-  let fixes = 0;
-  const next = content.replace(FORM_OPEN_RX, (whole, attrs: string) => {
-    if (/onSubmit\s*=/.test(attrs)) return whole;
-    if (/\baction\s*=/.test(attrs)) return whole; // deliberate native POST
-    fixes++;
-    const selfClosing = /\/$/.test(attrs.trim());
-    const cleaned = selfClosing ? attrs.replace(/\s*\/\s*$/, "") : attrs;
-    return `<form${cleaned} onSubmit={(e) => e.preventDefault()}${selfClosing ? " /" : ""}>`;
-  });
-  return { content: next, fixes };
+  // Tag ends come from the shared scanner, never `<form\b([^>]*)>`: that
+  // regex ends the tag at the first `>` in the attributes, which is the arrow
+  // of any `onChange={(e) => …}`, and the injected handler lands mid-expression.
+  return rewriteOpeningTags(
+    content,
+    (name) => name === "form",
+    (tag) => {
+      if (/onSubmit\s*=/.test(tag.attrs)) return null;
+      if (/\baction\s*=/.test(tag.attrs)) return null; // deliberate native POST
+      const cleaned = tag.attrs.replace(/\s+$/, "");
+      return `<form${cleaned} onSubmit={(e) => e.preventDefault()}${tag.selfClosing ? " />" : ">"}`;
+    },
+  );
 }
+
 
 /** B. hamburger that can never open anything. */
 export function findDeadMobileNav(path: string, content: string): string | null {
