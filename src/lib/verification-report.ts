@@ -3,6 +3,8 @@ const VERIFIER_INTERNAL_ERROR_PATTERNS = [
   /DOM probe returned no result/i,
   /Cannot read properties of (?:undefined|null) \(reading ['"]blank['"]\)/i,
   /(?:undefined|null) is not an object \(evaluating ['"].*\.blank['"]\)/i,
+  /track-runtime-error/i,
+  /console error: Failed to load resource: net::ERR_FAILED/i,
 ];
 
 /**
