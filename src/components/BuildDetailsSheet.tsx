@@ -257,6 +257,17 @@ export function BuildDetailsSheet({
               />
             </div>
 
+            {!isActive && typeof creditsCharged === "number" && (
+              <BuildCostSummary
+                className="mt-3"
+                credits={creditsCharged}
+                fileCount={stats.filesTouched}
+                paths={writtenPaths}
+              />
+            )}
+
+
+
             {(stats.checksFixed > 0 || stats.checksFailed > 0) && (
               <div className="mt-3 space-y-1.5 rounded-xl border border-border/60 bg-muted/40 p-3 text-xs font-medium">
                 {stats.checksFixed > 0 && (
