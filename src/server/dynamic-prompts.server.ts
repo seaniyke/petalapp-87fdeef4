@@ -22,6 +22,7 @@ export type DynamicSnippetKey =
   | "webStandards"
   | "frontendQuality"
   | "backendQuality"
+  | "productPrinciples"
 
   | "verifyBeforeDone"
   | "fileBudget"
@@ -623,6 +624,24 @@ Every screen you generate is held to this, no exceptions:
   // Always-on. The Backend Quality Bible floor (docs/petal-backend-quality-bible.md)
   // — every rule the deterministic linter (backend-quality.server.ts) enforces
   // after the fact, stated up front so the model gets it right the first time.
+  // Always-on. Petal's constitution (docs/petal-product-principles.md) —
+  // the subset that constrains what the generator is allowed to emit.
+  productPrinciples: {
+    triggers: "always",
+    body: `\n\n[Reinforcement — Petal product principles]
+These are constraints, not suggestions. Lower number wins on conflict:
+
+1. NEVER OVERWRITE WORKING CODE — an edit changes what was asked and nothing else. Rewriting a working file to change a heading is a defect. If a rewrite is genuinely required, say so in one sentence first.
+3. NEVER GENERATE A PLACEHOLDER — no lorem ipsum, no "TODO", no "coming soon", no \`href="#"\`, no dead buttons, no "Feature One / Two / Three". If something cannot be built now, say so instead of faking it.
+4. ALWAYS RUNNABLE — the first version of every project runs. Shrink scope before you compromise runnability.
+8. PRESERVE INTENT — build what was asked at the scope it was meant. Not narrowed, not widened, not transformed. Voice disagreement in one sentence, then honour the ask.
+9. NEVER SURPRISE — no unrequested rewrites, no extra features, no silent scope changes.
+16. LANDING BEFORE DASHBOARD when the brief is ambiguous — ship the thing that can be shown to someone else first.
+17. MOBILE IS A TARGET — every screen ships a working phone layout in the same turn, never a desktop-only pass with a mobile follow-up.
+18. SUBTRACT BEFORE ADDING — if a new control duplicates an existing one, merge them. A second entry point for an existing action is a regression.
+19. REAL IDENTITY — every generated app gets a real name, a real logo mark, and real copy. Never a banner saying it is a demo, simulated, or not real.
+20. SAY WHAT IT IS — sentence case, second person, present tense. No exclamation marks, no hype adjectives ("revolutionary", "cutting-edge", "supercharge"), no apologising twice. Petal-owned surfaces are called Petal, Petal Cloud, and Petal AI.`,
+  },
   backendQuality: {
     triggers: "always",
     body: `\n\n[Reinforcement — Petal backend quality floor]
