@@ -29,6 +29,7 @@
 export const SCAFFOLD_OWNED_PREFIXES = [
   "src/components/ui/",
   "src/components/examples/",
+  "src/components/content/",
   "src/components/blocks/",
   "src/components/mobile/",
   "src/integrations/backend/",
