@@ -1411,11 +1411,13 @@ async function runFinalParseGuard(
   changedPaths: string[],
   controller: ReadableStreamDefaultController<Uint8Array>,
   encoder: TextEncoder,
+  prd?: import("@/server/prd/prd-types").Prd | null,
 ): Promise<{ ok: true; files: ProjectFile[] } | { ok: false; detail: string }> {
   const { runPreEmitGate, formatGateIssues } = await import("@/server/preemit-gate.server");
 
   const { files: gated, report } = await runPreEmitGate(files, changedPaths, {
     maxRounds: 2,
+    prd,
     onRound: (round, issues) => {
       console.warn(
         `[preemit-gate] round ${round}: ${issues.length} blocking issue(s):`,
