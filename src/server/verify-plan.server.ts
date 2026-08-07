@@ -52,6 +52,8 @@ export interface VerifyPlan {
   };
   flows?: VerifyFlow[];
   screenshots?: boolean;
+  /** Visual QA capture request (mobile + desktop screenshots for vision scoring). */
+  visual?: { widths?: number[]; routes?: string[] };
 }
 
 /** Mirrors the builder's caps so we never send a plan it will reject. */
@@ -306,6 +308,10 @@ export async function buildVerifyPlan(args: {
   }
 
   const plan: VerifyPlan = { routes, screenshots: false };
+
+  // Visual QA: home plus the most substantial secondary route, captured at a
+  // phone and a desktop width. Scored by a vision model in the callback.
+  plan.visual = { widths: [390, 1440], routes: routes.slice(0, 2) };
 
   try {
     const auth = detectAuth(args.files, routes);
