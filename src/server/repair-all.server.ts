@@ -199,6 +199,17 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
     notes.push(`sibling-resolver: repointed ${siblings.fixes} import(s) at the file that actually exists`);
   }
 
+  // 5c. Scope repair (Quality Push A4) — an identifier with an unambiguous
+  //     home (react hooks, lucide icons, cn, the project's router, sonner,
+  //     framer-motion) is a forgotten import, not a defect worth a round.
+  const scope = repairScopeLeaks(files);
+  files = scope.files;
+  if (scope.fixes > 0) {
+    notes.push(`scope-repair: auto-imported ${scope.fixes} undeclared identifier(s)`);
+  }
+
+
+
   // 6. Route-graph validator — wildcard 404, layout Outlet, dedupe "/", react-router→-dom.
 
   const route = validateRouteGraph(files);
