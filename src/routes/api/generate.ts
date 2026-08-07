@@ -3187,8 +3187,20 @@ Forbidden defaults
           const rewrittenPaths: string[] = [];
           const applyStartedAt = Date.now();
           {
+            // Quality Push A1 — index.html is machine-owned (preview guard,
+            // badge, favicon/brand injector, shell restorer all rewrite it),
+            // so a model-authored snippet against it can never be trusted to
+            // match. Absorb those ops into a deterministic head merge before
+            // anything reaches the text-patch path.
+            const head = reconcileDocumentHeadOps(currentFiles, safeOps);
+            if (head.handled > 0) {
+              currentFiles = head.files;
+              safeOps = head.ops;
+              for (const note of head.notes) console.info("[document-head]", note);
+            }
             const partial = applyOpsPartial(currentFiles, safeOps);
             patched = partial.files;
+
             initiallyAppliedOps = partial.applied.map(opDigest);
             initiallyFailedOps = partial.failed.map((f) => ({ ...opDigest(f.op), error: f.error.slice(0, 300) }));
             if (partial.failed.length > 0) {
