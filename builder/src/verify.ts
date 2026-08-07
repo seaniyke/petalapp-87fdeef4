@@ -71,7 +71,27 @@ export interface VerifyPlan {
   flows?: VerifyFlow[];
   /** Attach a JPEG screenshot per route. Off keeps the report small. */
   screenshots?: boolean;
+  /**
+   * Visual QA pass — capture a small set of compressed screenshots at mobile
+   * and desktop widths so Petal can score them with a vision model. Separate
+   * from `screenshots` (which is per-route debug output and gets stripped
+   * before the callback).
+   */
+  visual?: {
+    /** Viewport widths to capture. Defaults to [390, 1440]. */
+    widths?: number[];
+    /** Routes to capture. Defaults to the first two planned routes. */
+    routes?: string[];
+  };
 }
+
+export interface VisualShot {
+  path: string;
+  width: number;
+  /** data:image/jpeg;base64,… */
+  image: string;
+}
+
 
 export interface RouteFinding {
   path: string;
