@@ -325,6 +325,10 @@ export function enforceFrontendQuality(input: ProjectFile[]): FrontendQualityRes
     if (copyDefect) defects.push({ path: f.path, detail: copyDefect });
     const emptyDefect = findMissingEmptyState(f.path, f.content);
     if (emptyDefect) defects.push({ path: f.path, detail: emptyDefect });
+    const overlayDefect = findTransparentOverlay(f.path, f.content);
+    if (overlayDefect) defects.push({ path: f.path, detail: overlayDefect });
+    const layerDefect = findLayeringCollision(f.path, f.content);
+    if (layerDefect) defects.push({ path: f.path, detail: layerDefect });
 
     let content = f.content;
     const a = labelIconOnlyControls(content);
@@ -342,6 +346,11 @@ export function enforceFrontendQuality(input: ProjectFile[]): FrontendQualityRes
     const d = demoteExtraH1(content);
     content = d.content;
     headingFixes += d.fixes;
+
+    const e = orderFloatingPanels(content);
+    content = e.content;
+    layerFixes += e.fixes;
+
 
     return content === f.content ? f : { ...f, content };
   });
