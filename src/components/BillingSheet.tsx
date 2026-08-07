@@ -471,7 +471,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                 label="Extra credits"
                 sub={
                   breakdown.topup > 0
-                    ? `${breakdown.topup} top-up credits expire in 1 year`
+                    ? `${breakdown.topup} purchased credits — yours forever, they never expire`
                     : "Top up to add extra credits"
                 }
                 value={breakdown.topup}
