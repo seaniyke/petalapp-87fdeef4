@@ -5,6 +5,7 @@ import { unescapeCodePositions } from "@/server/source-escape-fixer.server";
 import { scanOpeningTag, rewriteOpeningTags } from "@/server/jsx-tag-scan.server";
 import { COMMON_LUCIDE_ICONS } from "@/server/known-packages";
 import { validateRouteGraph } from "@/server/route-graph.server";
+import { partitionVerificationDefects } from "@/lib/verification-report";
 
 /**
  * Every case here is a real build failure taken from a Petal digest, not a
@@ -221,6 +222,51 @@ describe("route graph scaffold isolation", () => {
       { path: "src/components/examples/kit-multi-page-app.tsx", content: example },
     ]).files;
     expect(out.find((file) => file.path.includes("kit-multi-page"))?.content).toBe(example);
+  });
+});
+
+describe("router provider canonicalization", () => {
+  it("keeps one entry provider and removes a nested App provider", () => {
+    const result = runAllRepairs([
+      {
+        path: "src/main.tsx",
+        content: `import { BrowserRouter } from "react-router-dom";\nimport App from "./App";\ncreateRoot(root).render(<BrowserRouter><App /></BrowserRouter>);`,
+      },
+      {
+        path: "src/App.tsx",
+        content: `import { BrowserRouter, Routes, Route } from "react-router-dom";\nexport default function App(){return <BrowserRouter><Routes><Route path="/" element={<main>Home</main>} /></Routes></BrowserRouter>}`,
+      },
+    ]);
+    const main = result.files.find((file) => file.path === "src/main.tsx")?.content ?? "";
+    const app = result.files.find((file) => file.path === "src/App.tsx")?.content ?? "";
+    expect((main.match(/<BrowserRouter/g) ?? []).length).toBe(1);
+    expect(app).not.toContain("<BrowserRouter>");
+    expect(app).toContain("<Routes>");
+    expect(result.notes.some((note) => note.includes("nested <BrowserRouter>"))).toBe(true);
+  });
+});
+
+describe("build promotion defect classification", () => {
+  it("blocks runtime failures but keeps visual craft findings advisory", () => {
+    const result = partitionVerificationDefects([
+      "/ rendered a blank page — nothing visible after hydration.",
+      "/ threw an uncaught error: Error",
+      "Visual QA (desktop /): cramped spacing in the hero",
+    ]);
+    expect(result.blocking).toHaveLength(2);
+    expect(result.visual).toEqual([
+      "Visual QA (desktop /): cramped spacing in the hero",
+    ]);
+  });
+
+  it("removes verifier telemetry noise before classification", () => {
+    const result = partitionVerificationDefects([
+      "console error: Access to resource at 'https://buildwithpetal.com/api/public/track-runtime-error' has been blocked by CORS policy",
+      "console error: Failed to load resource: net::ERR_FAILED",
+    ]);
+    expect(result.blocking).toEqual([]);
+    expect(result.visual).toEqual([]);
+    expect(result.advisory).toEqual([]);
   });
 });
 

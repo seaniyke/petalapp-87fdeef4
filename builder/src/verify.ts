@@ -159,6 +159,9 @@ const IGNORED_CONSOLE = [
   /was preloaded using link preload but not used/i,
   /third-party cookie/i,
   /googletagmanager|analytics|hotjar|sentry/i,
+  /track-runtime-error/i,
+  /petal:runtime/i,
+  /blocked by CORS policy.*buildwithpetal\.com\/api\/public\/track-runtime-error/i,
   /^\s*$/,
 ];
 
@@ -264,7 +267,7 @@ function watchPage(page: Page): PageWatch {
     if (status < 400) return;
     const url = res.url();
     // Favicons and analytics beacons are not product defects.
-    if (/favicon|analytics|gtag|hotjar|sentry|\.map$/i.test(url)) return;
+    if (/favicon|analytics|gtag|hotjar|sentry|track-runtime-error|\.map$/i.test(url)) return;
     const entry = `${status} ${truncate(url, 140)}`;
     if (watch.failedRequests.includes(entry)) return;
     if (watch.failedRequests.length < 12) watch.failedRequests.push(entry);
