@@ -30,6 +30,23 @@ export interface RenderableShellResult {
 export const ROOT_PLACEHOLDER_RE =
   /(is being prepared|first generation didn't ship a root view|first generation didn't ship a homepage)/i;
 
+/**
+ * Decide whether App.tsx truly has no usable root view.
+ *
+ * This deliberately considers the whole file: a nested component may contain
+ * a normal `return null` guard while the default App still renders substantial
+ * JSX. The old unanchored `return null` regex classified those healthy apps as
+ * blank and caused fresh projects to be rolled back wholesale.
+ */
+export function isMissingRootView(source: string): boolean {
+  if (!source.trim()) return true;
+  if (ROOT_PLACEHOLDER_RE.test(source)) return true;
+  if (/PlaceholderIndex|data-lovable-blank-page-placeholder/i.test(source)) return true;
+
+  const rendersJsx = /<[A-Za-z][\w.:-]*(?:\s|>|\/)/.test(source);
+  return !rendersJsx;
+}
+
 export function ensureRenderableShell(
   files: ProjectFile[],
   subtypeHint?: "marketing" | "app" | "fullstack",
@@ -56,11 +73,7 @@ export function ensureRenderableShell(
   }
 
   const app = byPath.get("src/App.tsx") ?? "";
-  if (
-    !app.trim() ||
-    /PlaceholderIndex|data-lovable-blank-page-placeholder|REPLACE this/i.test(app) ||
-    /return\s+(?:null|<><\/>)\s*;/.test(app)
-  ) {
+  if (isMissingRootView(app)) {
     const eyebrow =
       subtypeHint === "marketing" ? "Landing page" :
       subtypeHint === "fullstack" ? "Platform" :

@@ -11,6 +11,7 @@
  * the brace count is off, the file will not compile.
  */
 import { getKitManifest } from "./kit-manifest.server";
+import { isMissingRootView } from "./renderable-shell.server";
 
 
 export interface LocalIssue {
@@ -848,17 +849,7 @@ function findBlankRenderIssues(
   if (!app.trim()) {
     issues.push({ path: "src/App.tsx", kind: "blank-render", detail: "missing src/App.tsx leaves the preview blank" });
   } else {
-    const rendersJsx = /<[A-Za-z][\w.:-]*(?:\s|>|\/)/.test(app);
-    // `return null;` is only a blank page when it is the app's ONLY exit.
-    // Guard clauses (`if (!items) return null;`) sit above a perfectly good
-    // JSX return, and flagging them sent the pipeline into pointless repair
-    // loops on healthy code.
-    const returnsNothingAtAll = /return\s+(?:null|<><\/>)\s*;/.test(app) && !rendersJsx;
-    if (
-      /PlaceholderIndex|data-lovable-blank-page-placeholder|REPLACE this/i.test(app) ||
-      returnsNothingAtAll ||
-      !rendersJsx
-    ) {
+    if (isMissingRootView(app)) {
       issues.push({
         path: "src/App.tsx",
         kind: "blank-render",
