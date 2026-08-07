@@ -30,6 +30,7 @@ export interface LocalIssue {
     | "render-risk"
     | "blank-render"
     | "rls-sanity"
+    | "backend-quality"
     | "server-fn-contract"
     | "auth-loader-trap"
     | "scope";
