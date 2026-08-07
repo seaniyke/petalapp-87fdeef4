@@ -117,6 +117,30 @@ function greet(name: string) {
     expect(result.notes).toHaveLength(0);
     expect(result.files[0]?.content).toBe(valid);
   });
+
+  it("removes a fence revealed only after literal newline decoding", () => {
+    const escaped = String.raw`export function PostPage() {\n  const title = "A post";\n\n\`\`\`typescript\nfunction leaked() { return 1; }\n\`\`\`\n\n  return <article>{title}</article>;\n}`;
+    const result = runAllRepairs([{ path: "src/pages/PostPage.tsx", content: escaped }]);
+    const output = result.files[0]?.content ?? "";
+    expect(output).not.toContain("```typescript");
+    expect(output).not.toContain("function leaked");
+  });
+
+  it("removes a leaked fence after an unrelated unterminated template", async () => {
+    const { healSyntax } = await import("../../../builder/src/syntax-heal");
+    const malformed = [
+      "export function PostPage() {",
+      "  const bad = `unterminated template",
+      "```typescript",
+      "function leaked() { return 1; }",
+      "```",
+      "  return <article />;",
+      "}",
+    ].join("\n");
+    const result = healSyntax([{ path: "src/pages/PostPage.tsx", content: malformed }]);
+    expect(result.files[0]?.content).not.toContain("```typescript");
+    expect(result.files[0]?.content).not.toContain("function leaked");
+  });
 });
 
 describe("repair pipeline does not corrupt valid JSX", () => {

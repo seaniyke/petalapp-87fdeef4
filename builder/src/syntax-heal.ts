@@ -312,11 +312,12 @@ export function stripMarkdownFences(source: string): { out: string; count: numbe
     }
     quote = null;
   }
+  const unterminated = inBlockComment || inTemplate || quote !== null;
 
   const drop = new Set<number>();
   let count = 0;
   for (let i = 0; i < lines.length; i++) {
-    if (drop.has(i) || !codeStart[i] || !FENCE.test(lines[i])) continue;
+    if (drop.has(i) || (!codeStart[i] && !unterminated) || !FENCE.test(lines[i])) continue;
     let close = -1;
     for (let j = i + 1; j < lines.length; j++) {
       if (FENCE.test(lines[j])) { close = j; break; }
@@ -348,13 +349,17 @@ export function healSyntax(files: HealFile[]): { files: HealFile[]; notes: strin
 
     const fence = stripMarkdownFences(f.content);
     const esc = unescapeCodePositions(fence.out);
-    const imp = repairImportSyntax(esc.out);
+    // Literal `\n` decoding above may have put a previously invisible fence
+    // on its own line. Re-run the idempotent stripper before parsing imports.
+    const revealedFence = stripMarkdownFences(esc.out);
+    const imp = repairImportSyntax(revealedFence.out);
     const jsx = /\.(tsx|jsx)$/i.test(f.path)
       ? repairJsxAttributeLiterals(imp.out)
       : { out: imp.out, count: 0 };
-    if (fence.count === 0 && esc.count === 0 && imp.count === 0 && jsx.count === 0) return f;
+    if (fence.count === 0 && revealedFence.count === 0 && esc.count === 0 && imp.count === 0 && jsx.count === 0) return f;
 
-    if (fence.count > 0) notes.push(`${f.path}: removed ${fence.count} leaked code fence(s)`);
+    const fenceCount = fence.count + revealedFence.count;
+    if (fenceCount > 0) notes.push(`${f.path}: removed ${fenceCount} leaked code fence(s)`);
     if (esc.count > 0) notes.push(`${f.path}: decoded ${esc.count} literal escape(s)`);
     if (imp.count > 0) notes.push(`${f.path}: restored \`from\` in ${imp.count} import(s)`);
     if (jsx.count > 0) notes.push(`${f.path}: wrapped ${jsx.count} JSX attribute literal(s)`);

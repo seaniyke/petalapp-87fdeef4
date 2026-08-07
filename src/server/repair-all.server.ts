@@ -107,6 +107,13 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   files = attrLiterals.files;
   notes.push(...attrLiterals.notes);
 
+  // Escape decoding can reveal a fence that arrived as literal `\n` bytes.
+  // Run the idempotent fence pass again on the decoded source so that shape
+  // cannot bypass every later repair and reach esbuild.
+  const revealedFences = fixMarkdownFences(files);
+  files = revealedFences.files;
+  notes.push(...revealedFences.notes);
+
 
 
   // 0. Build-config import repair. Config files are deliberately excluded
