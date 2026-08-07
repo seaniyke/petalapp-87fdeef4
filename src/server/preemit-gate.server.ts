@@ -82,6 +82,9 @@ export const BLOCKING_KINDS = new Set([
   "missing-sibling",
   "missing-export",
   "lazy-export",
+  // The product contract. A build that compiles perfectly but does not contain
+  // the product the user asked for is still a failed build.
+  "prd-contract",
 ]);
 
 /**
