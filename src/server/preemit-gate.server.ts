@@ -39,7 +39,7 @@ export interface GateIssue {
   kind: string;
   detail: string;
   /** Which verifier produced it — used for reporting and for severity. */
-  source: "esbuild" | "local" | "render-risk";
+  source: "esbuild" | "local" | "render-risk" | "prd";
 }
 
 export interface PreEmitGateReport {
