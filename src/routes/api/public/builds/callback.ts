@@ -15,6 +15,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sanitizeVerificationDefects } from "@/lib/verification-report";
 import { verifySignature } from "@/server/builder.server";
 import { probeDeployedUrl } from "@/server/deploy-verify.server";
+import { scoreVisualQA } from "@/server/visual-qa.server";
 
 /**
  * Browser-verification report. Kept loose on purpose: the builder owns the
@@ -29,6 +30,16 @@ const VerificationSchema = z
     auth: z.record(z.string(), z.unknown()).optional(),
     flows: z.array(z.record(z.string(), z.unknown())).max(20).optional(),
     defects: z.array(z.string().max(1000)).max(60).optional(),
+    visual: z
+      .array(
+        z.object({
+          path: z.string().max(200),
+          width: z.number(),
+          image: z.string().max(2_000_000),
+        }),
+      )
+      .max(6)
+      .optional(),
     skipped: z.string().max(500).optional(),
   })
   .passthrough();
@@ -120,14 +131,36 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       return new Response("ok", { status: 200 });
     }
 
+    // Visual QA — score the deployed screenshots with a vision model and fold
+    // what it sees into the same defect list the repair loop already reads.
+    // The images themselves are never persisted (they are megabytes of base64).
+    let visualDefects: string[] = [];
+    if (payload.verification?.visual?.length) {
+      visualDefects = await scoreVisualQA({
+        shots: payload.verification.visual,
+        projectId: payload.projectId,
+      }).catch(() => []);
+      if (visualDefects.length) {
+        console.warn(
+          `[builds/callback] visual QA found ${visualDefects.length} defect(s) for ${payload.buildId}`,
+        );
+      }
+    }
+
     const verification = payload.verification
-      ? {
-          ...payload.verification,
-          defects: sanitizeVerificationDefects(payload.verification.defects),
-          ok:
-            payload.verification.ok ||
-            sanitizeVerificationDefects(payload.verification.defects).length === 0,
-        }
+      ? (() => {
+          const { visual: _shots, ...rest } = payload.verification;
+          const defects = sanitizeVerificationDefects([
+            ...(payload.verification.defects ?? []),
+            ...visualDefects,
+          ]);
+          return {
+            ...rest,
+            visualChecked: Boolean(payload.verification.visual?.length),
+            defects,
+            ok: defects.length === 0,
+          };
+        })()
       : null;
     const { error: buildUpdateError } = await supabaseAdmin
       .from("project_builds")
