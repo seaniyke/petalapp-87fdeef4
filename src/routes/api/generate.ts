@@ -84,6 +84,8 @@ import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/sel
 import { recordModelOutcome } from "@/server/model-kill-switch.server";
 import { pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
 import { renderDesignTasteBlock, renderLandingChecklistBlock } from "@/server/design-taste.server";
+import { renderAppUiBlock, renderAppScreenChecklistBlock } from "@/server/app-ui-library.server";
+
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
 import { renderLearningBlock } from "@/server/learning-injector.server";
 import { detectHighStakesIntent } from "@/lib/high-stakes-intent";
