@@ -114,7 +114,7 @@ import {
 } from "@/server/build-blueprint.server";
 import { findGenerationQualityIssues } from "@/server/generation-quality-gate.server";
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
-import { isScaffoldOwnedPath } from "@/server/scaffold-ownership.server";
+import { isScaffoldAbsorbedPath, isScaffoldOwnedPath } from "@/server/scaffold-ownership.server";
 import {
   runWriteGate,
   writeGateDisclosure,
@@ -2773,16 +2773,38 @@ Forbidden defaults
 
 
         let nextFiles: ProjectFile[];
+        // The model-authored boundary must be captured BEFORE scaffold
+        // injection. A fresh app may emit six files while applyScaffoldKit
+        // expands that into 300+ files; those kit files are dependencies, not
+        // edits, and must never consume repair rounds or block this turn.
+        const authoredPaths = collected.name === "write_project"
+          ? Array.from(new Set(
+              (parsed.files ?? [])
+                .map((file) => file.path)
+                .filter((path) => !isScaffoldOwnedPath(path) && !isScaffoldAbsorbedPath(path)),
+            ))
+          : undefined;
         if (collected.name === "write_project") {
           if (!parsed.files?.length) throw new Error("AI returned no files.");
           // Inject the canonical scaffold (Tailwind v4 + shadcn-style UI kit)
           // so the AI never has to emit boilerplate it can't reliably reproduce.
           // Also inject the backend kit when a backend is attached.
-          nextFiles = applyScaffoldKit(parsed.files, {
+          const appFiles = parsed.files.filter(
+            (file) =>
+              // package.json is accepted only as dependency intent; the
+              // scaffold merger rewrites it into Petal's canonical manifest.
+              file.path === "package.json" ||
+              (!isScaffoldOwnedPath(file.path) && !isScaffoldAbsorbedPath(file.path)),
+          );
+          nextFiles = applyScaffoldKit(appFiles, {
             backend: backend ?? undefined,
             sharedBackend: sharedBackend ?? undefined,
             target: buildTarget.id,
           });
+          // index.html and src/main.tsx are deterministic Petal shell files.
+          // Inject them before write-time validation so streamed path/content
+          // drift can never corrupt the mount point or move CSS into TSX.
+          nextFiles = ensureRenderableShell(nextFiles, detectedWebSubtype).files;
           // NOTE: Previously we called scaffoldRouteStubs() here to emit
           // TanStack `src/routes/*.tsx` files for routes the model didn't
           // ship. That was wrong for this scaffold: the generated app
@@ -3519,9 +3541,11 @@ Forbidden defaults
         // syntactically broken, which is the whole point of Phase B.
         {
           const prevByPath = new Map(currentFiles.map((f) => [f.path, f.content]));
-          const touched = nextFiles
-            .filter((f) => prevByPath.get(f.path) !== f.content)
-            .map((f) => f.path);
+          const touched = collected.name === "write_project" && authoredPaths
+            ? authoredPaths
+            : nextFiles
+                .filter((f) => prevByPath.get(f.path) !== f.content)
+                .map((f) => f.path);
           if (touched.length > 0) {
             const gate = await runWriteGate({
               before: currentFiles,
@@ -3778,6 +3802,7 @@ Forbidden defaults
           currentFiles,
           toolName: collected.name,
           parsedOps: parsed.ops,
+          authoredPaths,
         });
         const localVerdict = localOut.verdict;
         const earlyChangedPaths = localOut.earlyChangedPaths;

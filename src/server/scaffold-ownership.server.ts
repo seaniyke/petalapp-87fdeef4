@@ -32,6 +32,12 @@ export const SCAFFOLD_OWNED_PREFIXES = [
   "src/components/content/",
   "src/components/blocks/",
   "src/components/mobile/",
+  "src/components/fx/",
+  "src/components/image/",
+  "src/components/motion/",
+  "src/components/providers/",
+  "src/components/scroll/",
+  "src/components/three/",
   "src/integrations/backend/",
 ] as const;
 
@@ -46,7 +52,17 @@ export const SCAFFOLD_OWNED_PREFIXES = [
 export const SCAFFOLD_OWNED_PATHS = new Set([
   "vite.config.ts",
   "tsconfig.json",
+  "petal-source-plugin.mjs",
   "src/lib/utils.ts",
+  "src/lib/a11y.ts",
+  "src/lib/confetti.ts",
+  "src/lib/query-client.ts",
+  "src/lib/stores/example-store.ts",
+  "src/lib/view-transitions.ts",
+  "src/hooks/use-axe.ts",
+  "src/hooks/use-horizontal-scroll.ts",
+  "src/hooks/use-query-state.ts",
+  "src/hooks/use-scroll-scene.ts",
   "package.json",
 ]);
 

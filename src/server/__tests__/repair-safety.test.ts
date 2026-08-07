@@ -6,6 +6,8 @@ import { scanOpeningTag, rewriteOpeningTags } from "@/server/jsx-tag-scan.server
 import { COMMON_LUCIDE_ICONS } from "@/server/known-packages";
 import { validateRouteGraph } from "@/server/route-graph.server";
 import { partitionVerificationDefects } from "@/lib/verification-report";
+import { applyScaffoldKit } from "@/server/scaffold-kit";
+import { isScaffoldOwnedPath } from "@/server/scaffold-ownership.server";
 
 /**
  * Every case here is a real build failure taken from a Petal digest, not a
@@ -222,6 +224,18 @@ describe("route graph scaffold isolation", () => {
       { path: "src/components/examples/kit-multi-page-app.tsx", content: example },
     ]).files;
     expect(out.find((file) => file.path.includes("kit-multi-page"))?.content).toBe(example);
+  });
+});
+
+describe("scaffold ownership contract", () => {
+  it("classifies every injected code helper as Petal-owned", () => {
+    const injected = applyScaffoldKit([]);
+    const structuralShell = new Set(["src/styles.css"]);
+    const unowned = injected
+      .map((file) => file.path)
+      .filter((path) => !isScaffoldOwnedPath(path) && !structuralShell.has(path));
+
+    expect(unowned).toEqual([]);
   });
 });
 

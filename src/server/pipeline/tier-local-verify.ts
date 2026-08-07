@@ -30,15 +30,25 @@ interface RunArgs {
   toolName: string | null;
   /** Parsed ops (only populated for `patch_files` turns). */
   parsedOps: FileOp[] | undefined;
+  /**
+   * Explicit model-authored paths for a fresh project. `nextFiles` already
+   * contains Petal's injected kit by the time this tier runs, so diffing the
+   * whole graph would incorrectly classify hundreds of immutable scaffold
+   * files as user changes and make their advisory diagnostics block the app.
+   */
+  authoredPaths?: string[];
 }
 
 export async function runLocalVerifyTier(args: RunArgs): Promise<LocalVerifyTierOutput> {
-  const { nextFiles, currentFiles, toolName, parsedOps } = args;
+  const { nextFiles, currentFiles, toolName, parsedOps, authoredPaths } = args;
 
   const priorByPath = new Map(currentFiles.map((f) => [f.path, f.content]));
   const earlyChangedPaths =
     toolName === "write_project"
-      ? nextFiles.filter((f) => priorByPath.get(f.path) !== f.content).map((f) => f.path)
+      ? Array.from(new Set(
+          authoredPaths ??
+            nextFiles.filter((f) => priorByPath.get(f.path) !== f.content).map((f) => f.path),
+        ))
       : (parsedOps ?? []).map((o) => o.path);
 
   const verdict = verifyFilesLocal(nextFiles, earlyChangedPaths);
