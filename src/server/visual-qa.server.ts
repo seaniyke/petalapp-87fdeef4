@@ -65,7 +65,7 @@ function str(v: unknown, max: number): string {
   return typeof v === "string" ? v.trim().slice(0, max) : "";
 }
 
-function parseDefects(content: string, shots: VisualShot[]): string[] {
+export function parseVisualDefects(content: string, shots: VisualShot[]): string[] {
   const start = content.indexOf("{");
   const end = content.lastIndexOf("}");
   if (start === -1 || end <= start) return [];
@@ -149,7 +149,7 @@ export async function scoreVisualQA(args: {
       choices?: { message?: { content?: string } }[];
     };
     const text = json.choices?.[0]?.message?.content ?? "";
-    return parseDefects(text, shots);
+    return parseVisualDefects(text, shots);
   } catch {
     return [];
   }
