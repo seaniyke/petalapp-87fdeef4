@@ -761,6 +761,10 @@ export type ErrorKind =
 const REPLACE_GATE_MIN_LINES = 80;
 const REPLACE_GATE_OVERLAP_RATIO = 0.92;
 const REPLACE_MAX_SEARCH_LINES = 160;
+/** How many identical occurrences a `replace` snippet may cover before we
+ *  refuse to guess. See the ambiguity ladder in `applyOneOp`. */
+const REPLACE_MAX_AMBIGUOUS_HITS = 8;
+
 const REPLACE_MAX_SEARCH_BYTES = 8192;
 /** Destructive-shrink gate. If an `update` op produces a file that is more
  *  than this fraction smaller than the original (and the original was
