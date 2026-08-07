@@ -20,6 +20,7 @@
  */
 
 import type { ProjectFile } from "./generate.server";
+import { isScaffoldOwnedPath } from "./scaffold-ownership.server";
 import { fixMissingShadcnImports } from "./shadcn-imports.server";
 import { fixArraySafety } from "./array-safety-fixer.server";
 import { repairUnresolvedImports } from "./import-resolver.server";
@@ -97,6 +98,17 @@ function passIdsFromNotes(notes: string[]): string[] {
 export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   let files = input;
   const notes: string[] = [];
+
+  // Scaffold-owned files (UI kit, examples pack, content kit, generated
+  // integrations) are authored by Petal and already parse. Heuristic repair
+  // passes have no business rewriting them — when they do, the "fix" is what
+  // breaks the build (e.g. an aria-label spliced into the middle of a JSX
+  // opening tag). They stay in `files` so import-graph passes can still see
+  // them, but their original bytes are restored before we return.
+  const pristine = new Map(
+    input.filter((f) => isScaffoldOwnedPath(f.path)).map((f) => [f.path, f.content]),
+  );
+
 
   // 0. Leaked markdown fences. A stray ```lang line in code position aborts
   // the esbuild transform before ANY other pass can inspect the file, so
@@ -330,6 +342,12 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
 
   // ── end of STAGE 3: POLISH ────────────────────────────────────────────
   // Layout, interaction and accessibility. Never load-bearing for the build.
+
+  // Restore Petal-owned files byte-for-byte: no heuristic pass may alter them.
+  files = files.map((f) => {
+    const original = pristine.get(f.path);
+    return original !== undefined && original !== f.content ? { ...f, content: original } : f;
+  });
 
   return {
     files,

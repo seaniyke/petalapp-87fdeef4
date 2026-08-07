@@ -87,8 +87,25 @@ export async function healMaterializedProject(root: string): Promise<string[]> {
     }),
   );
 
+  // index.html: an external `<script src="/__petal_guard.js?v=N">` left behind
+  // by an older turn is a Rollup build input, and Rollup cannot resolve it
+  // ("failed to resolve import /__petal_guard.js?v=5"). The guard is inlined
+  // now, so any external reference is dead weight — drop it before compiling.
+  const indexPath = safeJoin(root, "index.html");
+  const indexHtml = await readFile(indexPath, "utf8").catch(() => null);
+  if (indexHtml && /__petal_guard\.js/i.test(indexHtml)) {
+    const cleaned = indexHtml
+      .replace(/<script\b[^>]*__petal_guard\.js[^>]*>\s*<\/script>\s*/gi, "")
+      .replace(/<script\b[^>]*__petal_guard\.js[^>]*\/>\s*/gi, "");
+    if (cleaned !== indexHtml) {
+      await writeFile(indexPath, cleaned, "utf8");
+      healed.notes.push("index.html: removed stale external preview-guard script tag");
+    }
+  }
+
   return healed.notes;
 }
+
 
 export async function cleanupProject(buildId: string): Promise<void> {
   const dir = join(BUILDS_ROOT, buildId);

@@ -249,13 +249,18 @@ export function injectPreviewGuard(
   // whitespace is consumed rather than leading: the injector re-adds the
   // separator itself, so eating it on the way out is what makes a second
   // pass byte-identical to the first.
-  const stripped = index.replace(/<script\b[^>]*>[\s\S]*?<\/script>\s*/gi, (tag) => {
-    const isGuard =
-      /__petal_guard\.js/i.test(tag) ||
-      /data-petal-preview-guard-version/i.test(tag) ||
-      /__petalPreviewGuardVersion/.test(tag);
-    return isGuard ? "" : tag;
-  });
+  const stripped = index
+    // Self-closing form (`<script src="/__petal_guard.js" />`) never matches
+    // the paired pattern below, and a survivor fails the Rollup build.
+    .replace(/<script\b[^>]*__petal_guard\.js[^>]*\/>\s*/gi, "")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>\s*/gi, (tag) => {
+      const isGuard =
+        /__petal_guard\.js/i.test(tag) ||
+        /data-petal-preview-guard-version/i.test(tag) ||
+        /__petalPreviewGuardVersion/.test(tag);
+      return isGuard ? "" : tag;
+    });
+
 
   // The guard file itself is no longer emitted; drop any copy left behind by
   // an earlier build so the public dir doesn't ship dead code.
