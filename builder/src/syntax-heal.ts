@@ -273,13 +273,91 @@ export function repairJsxAttributeLiterals(source: string): { out: string; count
 }
 
 /**
+ * Markdown content inside a template literal whose backticks were never
+ * escaped accidentally terminates the literal. The block is real content, so
+ * escape it instead of deleting it. Mirrors
+ * src/server/markdown-fence-fixer.server.ts.
+ */
+const CONTENT_FENCE = /^\s*(`{3,}|~{3,})/;
+const TEMPLATE_CLOSE = /^\s*`\s*[;,)\]]*\s*$/;
+
+function escapeRegionLine(line: string): string {
+  return line.replace(/\\?`/g, "\\`").replace(/\\?\$\{/g, "\\${");
+}
+
+export function escapeFencesInTemplates(source: string): { out: string; count: number } {
+  if (!source.includes("```") && !source.includes("~~~")) return { out: source, count: 0 };
+  const lines = source.split("\n");
+  let inBlockComment = false;
+  let inTemplate = false;
+  let quote: string | null = null;
+  let count = 0;
+
+  for (let n = 0; n < lines.length; n++) {
+    const line = lines[n];
+
+    if (inTemplate) {
+      let end = -1;
+      let hasFence = false;
+      for (let j = n; j < lines.length; j++) {
+        if (TEMPLATE_CLOSE.test(lines[j])) { end = j; break; }
+        if (CONTENT_FENCE.test(lines[j])) hasFence = true;
+      }
+      if (end === -1 || !hasFence) {
+        inTemplate = false;
+        n = n - 1;
+        continue;
+      }
+      for (let j = n; j < end; j++) {
+        const next = escapeRegionLine(lines[j]);
+        if (next !== lines[j]) { lines[j] = next; count++; }
+      }
+      inTemplate = false;
+      n = end;
+      continue;
+    }
+
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      const next = line[i + 1];
+      if (inBlockComment) {
+        if (ch === "*" && next === "/") { inBlockComment = false; i++; }
+        continue;
+      }
+      if (quote) {
+        if (ch === "\\") i++;
+        else if (ch === quote) quote = null;
+        continue;
+      }
+      if (inTemplate) {
+        if (ch === "\\") i++;
+        else if (ch === "`") inTemplate = false;
+        continue;
+      }
+      if (ch === "/" && next === "/") break;
+
+      if (ch === "/" && next === "*") { inBlockComment = true; i++; continue; }
+      if (ch === '"' || ch === "'") { quote = ch; continue; }
+      if (ch === "`") { inTemplate = true; continue; }
+    }
+    quote = null;
+  }
+
+  if (count === 0) return { out: source, count: 0 };
+  return { out: lines.join("\n"), count };
+}
+
+/**
  * Strip leaked markdown code fences that sit in real code position.
  * A ``` inside a string/template/comment is left alone.
  */
+
+
 export function stripMarkdownFences(source: string): { out: string; count: number } {
   if (!source.includes("```") && !source.includes("~~~")) return { out: source, count: 0 };
   const FENCE = /^\s*(`{3,}|~{3,})/;
   const lines = source.split("\n");
+
 
   // Determine which lines start in plain code position.
   const codeStart: boolean[] = [];
@@ -347,7 +425,9 @@ export function healSyntax(files: HealFile[]): { files: HealFile[]; notes: strin
   const out = files.map((f) => {
     if (!SOURCE_RX.test(f.path) || typeof f.content !== "string") return f;
 
-    const fence = stripMarkdownFences(f.content);
+    const templateSafe = escapeFencesInTemplates(f.content);
+    const fence = stripMarkdownFences(templateSafe.out);
+
     const esc = unescapeCodePositions(fence.out);
     // Literal `\n` decoding above may have put a previously invisible fence
     // on its own line. Re-run the idempotent stripper before parsing imports.
@@ -356,10 +436,13 @@ export function healSyntax(files: HealFile[]): { files: HealFile[]; notes: strin
     const jsx = /\.(tsx|jsx)$/i.test(f.path)
       ? repairJsxAttributeLiterals(imp.out)
       : { out: imp.out, count: 0 };
-    if (fence.count === 0 && revealedFence.count === 0 && esc.count === 0 && imp.count === 0 && jsx.count === 0) return f;
+    if (templateSafe.count === 0 && fence.count === 0 && revealedFence.count === 0 && esc.count === 0 && imp.count === 0 && jsx.count === 0) return f;
 
+    if (templateSafe.count > 0)
+      notes.push(`${f.path}: escaped ${templateSafe.count} content fence(s) inside a template literal`);
     const fenceCount = fence.count + revealedFence.count;
     if (fenceCount > 0) notes.push(`${f.path}: removed ${fenceCount} leaked code fence(s)`);
+
     if (esc.count > 0) notes.push(`${f.path}: decoded ${esc.count} literal escape(s)`);
     if (imp.count > 0) notes.push(`${f.path}: restored \`from\` in ${imp.count} import(s)`);
     if (jsx.count > 0) notes.push(`${f.path}: wrapped ${jsx.count} JSX attribute literal(s)`);

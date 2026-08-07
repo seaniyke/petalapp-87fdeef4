@@ -130,15 +130,134 @@ function stripFences(source: string): { content: string; removed: number } {
   return { content: lines.filter((_, i) => !drop.has(i)).join("\n"), removed };
 }
 
+/**
+ * The other half of the fence problem: markdown content stored INSIDE a
+ * template literal, where the model forgot to escape the backticks.
+ *
+ *   const POST = `
+ *   ```typescript          <- accidentally closes the template literal
+ *   const greeting = `hi`; <- and so does this
+ *   ```
+ *   `;
+ *
+ * That block is legitimate content, so it must be escaped, not deleted. We
+ * find each template literal that opens at the end of a line and closes on a
+ * line of its own; when the region between them contains a markdown fence, we
+ * escape every backtick and `${` inside it.
+ */
+const CONTENT_FENCE = /^\s*(`{3,}|~{3,})/;
+const TEMPLATE_CLOSE = /^\s*`\s*[;,)\]]*\s*$/;
+
+function escapeRegionLine(line: string): string {
+  return line.replace(/\\?`/g, "\\`").replace(/\\?\$\{/g, "\\${");
+}
+
+export function escapeFencesInTemplates(source: string): { content: string; escaped: number } {
+  const lines = source.split("\n");
+  let escaped = 0;
+  let inBlockComment = false;
+  let inTemplate = false;
+  let templateStart = -1;
+  let quote: '"' | "'" | null = null;
+
+  for (let n = 0; n < lines.length; n++) {
+    const line = lines[n];
+
+    if (inTemplate && templateStart >= 0) {
+      // Look for the end of this template literal, then decide in one shot.
+      let end = -1;
+      let hasFence = false;
+      for (let j = n; j < lines.length; j++) {
+        if (TEMPLATE_CLOSE.test(lines[j])) {
+          end = j;
+          break;
+        }
+        if (CONTENT_FENCE.test(lines[j])) hasFence = true;
+      }
+      if (end === -1 || !hasFence) {
+        // Not the markdown-content shape — hand control back to the lexer.
+        inTemplate = false;
+        templateStart = -1;
+        n = n - 1;
+        continue;
+      }
+      for (let j = n; j < end; j++) {
+        const next = escapeRegionLine(lines[j]);
+        if (next !== lines[j]) {
+          lines[j] = next;
+          escaped++;
+        }
+      }
+      inTemplate = false;
+      templateStart = -1;
+      n = end;
+      continue;
+    }
+
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      const next = line[i + 1];
+      if (inBlockComment) {
+        if (ch === "*" && next === "/") {
+          inBlockComment = false;
+          i++;
+        }
+        continue;
+      }
+      if (quote) {
+        if (ch === "\\") i++;
+        else if (ch === quote) quote = null;
+        continue;
+      }
+      if (inTemplate) {
+        if (ch === "\\") i++;
+        else if (ch === "`") {
+          inTemplate = false;
+          templateStart = -1;
+        }
+        continue;
+      }
+      if (ch === "/" && next === "/") break;
+      if (ch === "/" && next === "*") {
+        inBlockComment = true;
+        i++;
+        continue;
+      }
+      if (ch === '"' || ch === "'") {
+        quote = ch;
+        continue;
+      }
+      if (ch === "`") {
+        inTemplate = true;
+        templateStart = n;
+        continue;
+      }
+    }
+    quote = null;
+  }
+
+  if (escaped === 0) return { content: source, escaped: 0 };
+  return { content: lines.join("\n"), escaped };
+}
+
+
 export function fixMarkdownFences(files: ProjectFile[]): FenceFixResult {
   const notes: string[] = [];
   const out = files.map((file) => {
     if (!CODE_FILE.test(file.path)) return file;
     if (!file.content.includes("```") && !file.content.includes("~~~")) return file;
-    const { content, removed } = stripFences(file.content);
-    if (removed === 0) return file;
-    notes.push(`markdown-fence: removed ${removed} leaked code fence(s) in ${file.path}`);
+
+    // Escape content fences first so the stripper only ever sees fences that
+    // really are leaked chat formatting in code position.
+    const { content: pre, escaped } = escapeFencesInTemplates(file.content);
+    const { content, removed } = stripFences(pre);
+    if (removed === 0 && escaped === 0) return file;
+    if (escaped > 0)
+      notes.push(`markdown-fence: escaped ${escaped} content fence(s) inside a template literal in ${file.path}`);
+    if (removed > 0)
+      notes.push(`markdown-fence: removed ${removed} leaked code fence(s) in ${file.path}`);
     return { ...file, content };
   });
   return { files: out, notes };
 }
+
