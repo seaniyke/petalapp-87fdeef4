@@ -17,6 +17,19 @@ const SPECULATIVE_FLOW_PATTERNS = [
   /Flow ".*" failed at step[\s\S]*waiting for locator\(/i,
 ];
 
+const VISUAL_DEFECT_PREFIX = /^Visual QA \(/i;
+const BLOCKING_RUNTIME_PATTERNS = [
+  /rendered a blank page/i,
+  /threw an uncaught error/i,
+  /framework\/error screen/i,
+  /\bpage error\b/i,
+  /\bconsole error\b/i,
+  /HTTP (?:4\d\d|5\d\d)/i,
+  /failed request/i,
+  /sign[- ]?up.*failed|sign[- ]?in.*failed/i,
+  /flow ".*" failed/i,
+];
+
 /**
  * Browser-check instrumentation failures describe Petal's verifier, not the
  * generated app. They must stay in service logs and never trigger repairs or
@@ -40,4 +53,23 @@ export function sanitizeVerificationDefects(value: unknown): string[] {
       ),
     ),
   );
+}
+
+/** Screenshot craft findings should drive a later polish pass, but they must
+ * not replace a functioning preview. Runtime failures are promotion blockers. */
+export function partitionVerificationDefects(value: unknown): {
+  blocking: string[];
+  visual: string[];
+  advisory: string[];
+} {
+  const defects = sanitizeVerificationDefects(value);
+  const blocking: string[] = [];
+  const visual: string[] = [];
+  const advisory: string[] = [];
+  for (const defect of defects) {
+    if (VISUAL_DEFECT_PREFIX.test(defect)) visual.push(defect);
+    else if (BLOCKING_RUNTIME_PATTERNS.some((pattern) => pattern.test(defect))) blocking.push(defect);
+    else advisory.push(defect);
+  }
+  return { blocking, visual, advisory };
 }

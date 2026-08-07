@@ -6,7 +6,7 @@ const GUARD_PATH = "public/__petal_guard.js";
 // copy, (b) the tag's data attribute, (c) a window global, and (d) every
 // error report — so a crash coming from an out-of-date cached guard is
 // immediately identifiable instead of looking like a live-code bug.
-const GUARD_VERSION = 8;
+const GUARD_VERSION = 9;
 const DEFAULT_INGEST_URL =
   "https://buildwithpetal.com/api/public/track-runtime-error";
 
@@ -65,17 +65,14 @@ function buildGuardScript(opts: GuardOptions): string {
         pageUrl: (location && location.href) ? String(location.href).slice(0, 1000) : null,
         guardVersion: VERSION,
       });
-      if (navigator && typeof navigator.sendBeacon === "function") {
-        try {
-          var blob = new Blob([body], { type: "application/json" });
-          if (navigator.sendBeacon(INGEST_URL, blob)) return;
-        } catch (_) {}
-      }
+      // Use a CORS-safelisted content type so cross-origin runtime telemetry
+      // never triggers a preflight. A failed analytics request must not become
+      // a console error that the verifier mistakes for an app defect.
       fetch(INGEST_URL, {
         method: "POST",
         mode: "cors",
         keepalive: true,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
         body: body,
       }).catch(function () {});
     } catch (_) {}

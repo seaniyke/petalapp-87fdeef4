@@ -34,16 +34,28 @@ export function useLatestReadyBuild(projectId: string | null | undefined): Lates
     (async () => {
       const { data } = await supabase
         .from("project_builds")
-        .select("id, dist_path, ready_at")
+        .select("id, dist_path, ready_at, verification")
         .eq("project_id", projectId)
         .eq("status", "ready")
         .not("dist_path", "is", null)
         .order("ready_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(25);
       if (cancelled) return;
-      const dist = (data as { dist_path?: string | null } | null)?.dist_path ?? null;
-      const id = (data as { id?: string } | null)?.id;
+      const candidates = (data ?? []) as Array<{
+        id: string;
+        dist_path: string | null;
+        verification: unknown;
+      }>;
+      // Legacy rows with no verification predate browser checks and remain
+      // eligible. Once a row has a verification result, only an explicitly
+      // healthy one may become the instant/last-known-good preview.
+      const healthy = candidates.find((candidate) => {
+        if (!candidate.dist_path) return false;
+        if (!candidate.verification || typeof candidate.verification !== "object") return true;
+        return (candidate.verification as { ok?: unknown }).ok === true;
+      });
+      const dist = healthy?.dist_path ?? null;
+      const id = healthy?.id;
       if (!dist) {
         setState(EMPTY);
         return;

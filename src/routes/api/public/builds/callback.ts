@@ -12,7 +12,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sanitizeVerificationDefects } from "@/lib/verification-report";
+import {
+  partitionVerificationDefects,
+  sanitizeVerificationDefects,
+} from "@/lib/verification-report";
 import { verifySignature } from "@/server/builder.server";
 import { probeDeployedUrl } from "@/server/deploy-verify.server";
 import { scoreVisualQA } from "@/server/visual-qa.server";
@@ -162,6 +165,42 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
           };
         })()
       : null;
+
+    // A successful upload is only a candidate. Blank routes, uncaught errors,
+    // and failed required flows fail closed so consumers that ask for the last
+    // healthy build keep showing the previous working preview. Visual-only
+    // craft findings remain attached for a later polish pass without taking a
+    // functioning app offline.
+    const partitioned = partitionVerificationDefects(verification?.defects);
+    if (partitioned.blocking.length > 0) {
+      const message = [
+        "The deployment completed, but Petal's browser check found a runtime failure.",
+        ...partitioned.blocking.slice(0, 8).map((defect) => `- ${defect}`),
+        "Petal kept the previous healthy preview live.",
+      ].join("\n");
+      const { error: rejectedCandidateError } = await supabaseAdmin
+        .from("project_builds")
+        .update({
+          status: "failed",
+          dist_path: payload.url,
+          error_message: message.slice(0, 8000),
+          ready_at: new Date().toISOString(),
+          verification: verification as never,
+        })
+        .eq("id", payload.buildId);
+      if (rejectedCandidateError) {
+        console.error(
+          "Builder callback could not reject browser-broken build",
+          rejectedCandidateError.message,
+        );
+        return new Response("Could not save build status", { status: 503 });
+      }
+      return new Response("ok", {
+        status: 200,
+        headers: { "Content-Type": "text/plain" },
+      });
+    }
+
     const { error: buildUpdateError } = await supabaseAdmin
       .from("project_builds")
       .update({
@@ -170,7 +209,9 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         error_message: null,
         ready_at: new Date().toISOString(),
         // Null when the build predates verification or the plan was empty.
-        verification: verification as never,
+        verification: verification
+          ? ({ ...verification, ok: true } as never)
+          : null,
       })
       .eq("id", payload.buildId);
     if (buildUpdateError) {

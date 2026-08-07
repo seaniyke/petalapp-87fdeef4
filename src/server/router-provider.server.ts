@@ -312,6 +312,43 @@ function wrapDefaultAppReturn(content: string): string | null {
   return `${content.slice(0, start)}${replacement}${content.slice(end)}`;
 }
 
+function removeUnusedBrowserRouterImport(content: string): string {
+  if (/<BrowserRouter[\s>]/.test(content)) return content;
+  const named = /import\s*\{([^}]*)\}\s*from\s*["']([^"']+)["'];?/g;
+  return content.replace(named, (full, inner: string, spec: string) => {
+    if (!isReactRouterSpec(spec)) return full;
+    const names = inner.split(",").map((name) => name.trim()).filter(Boolean);
+    const kept = names.filter((name) => name !== "BrowserRouter");
+    if (kept.length === names.length) return full;
+    return kept.length ? `import { ${kept.join(", ")} } from "${spec}";` : "";
+  });
+}
+
+/** Once the entry provider dominates the render tree, any BrowserRouter in a
+ * reachable descendant is invalid nesting. Remove only the provider wrapper;
+ * preserve its children byte-for-byte. */
+function removeNestedBrowserRouters(
+  files: ProjectFile[],
+  entryPath: string,
+  live: Set<string>,
+): { files: ProjectFile[]; removed: number } {
+  let removed = 0;
+  const next = files.map((file) => {
+    if (file.path === entryPath || !live.has(file.path) || !isExecutableSource(file.path)) return file;
+    let content = file.content;
+    let changed = false;
+    const wrapper = /<BrowserRouter(?:\s[^>]*)?>([\s\S]*?)<\/BrowserRouter>/g;
+    content = content.replace(wrapper, (_full, children: string) => {
+      removed++;
+      changed = true;
+      return children;
+    });
+    if (!changed) return file;
+    return { ...file, content: removeUnusedBrowserRouterImport(content) };
+  });
+  return { files: next, removed };
+}
+
 /** Resolve a relative/aliased import specifier to a file in the project. */
 function resolveImport(fromPath: string, spec: string, byPath: Map<string, ProjectFile>): string | null {
   let base: string;
@@ -380,7 +417,15 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
   // Reachability is insufficient: a provider in a Header, modal, or sibling
   // branch does not provide context to Routes/Link elsewhere. Only skip the
   // repair when the provider dominates the root render.
-  if (entryPath && providerDominatesRoot(entryPath, byPath)) return { files, notes };
+  if (entryPath && live && providerDominatesRoot(entryPath, byPath)) {
+    const normalized = removeNestedBrowserRouters(files, entryPath, live);
+    if (normalized.removed > 0) {
+      notes.push(
+        `router-provider: removed ${normalized.removed} nested <BrowserRouter> wrapper(s) below the entry provider`,
+      );
+    }
+    return { files: normalized.files, notes };
+  }
 
   // Preferred injection point: the entry file that calls .render(...)
   const entry =

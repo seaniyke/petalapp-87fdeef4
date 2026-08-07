@@ -224,6 +224,27 @@ describe("route graph scaffold isolation", () => {
   });
 });
 
+describe("router provider canonicalization", () => {
+  it("keeps one entry provider and removes a nested App provider", () => {
+    const result = runAllRepairs([
+      {
+        path: "src/main.tsx",
+        content: `import { BrowserRouter } from "react-router-dom";\nimport App from "./App";\ncreateRoot(root).render(<BrowserRouter><App /></BrowserRouter>);`,
+      },
+      {
+        path: "src/App.tsx",
+        content: `import { BrowserRouter, Routes, Route } from "react-router-dom";\nexport default function App(){return <BrowserRouter><Routes><Route path="/" element={<main>Home</main>} /></Routes></BrowserRouter>}`,
+      },
+    ]);
+    const main = result.files.find((file) => file.path === "src/main.tsx")?.content ?? "";
+    const app = result.files.find((file) => file.path === "src/App.tsx")?.content ?? "";
+    expect((main.match(/<BrowserRouter/g) ?? []).length).toBe(1);
+    expect(app).not.toContain("<BrowserRouter>");
+    expect(app).toContain("<Routes>");
+    expect(result.notes.some((note) => note.includes("nested <BrowserRouter>"))).toBe(true);
+  });
+});
+
 describe("preview guard", () => {
   const html = `<!doctype html><html><body><div id="root"></div>
     <script type="module" src="/src/main.tsx"></script></body></html>`;
