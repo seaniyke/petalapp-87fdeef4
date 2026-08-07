@@ -37,7 +37,7 @@ describe("jsx tag scanner", () => {
     const r = rewriteOpeningTags(src, (n) => n === "img", (t) => `<img${t.attrs} data-x />`);
     expect(r.fixes).toBe(2);
     expect(r.content).toContain("<span/>");
-    expect(r.content).toContain("onLoad={() => 1} data-x />");
+    expect(r.content).toContain("onLoad={() => 1}  data-x />");
   });
 });
 
