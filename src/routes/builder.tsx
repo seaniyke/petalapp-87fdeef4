@@ -1494,6 +1494,8 @@ function Builder() {
     return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
   }, []);
 
+  const didInitialChatScrollRef = useRef(false);
+
   const scrollChatToLatest = useCallback((behavior: ScrollBehavior = "smooth") => {
     chatEndRef.current?.scrollIntoView({ behavior });
     setShowJumpToLatest(false);
