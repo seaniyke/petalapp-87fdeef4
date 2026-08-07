@@ -515,6 +515,8 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                 Pay as you go — buy credits once, no subscription needed. Your paid
                 features stay unlocked while you have credits. Purchased credits
                 never expire.
+              </p>
+
 
             </div>
 
