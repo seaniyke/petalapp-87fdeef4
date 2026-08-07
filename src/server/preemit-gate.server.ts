@@ -261,13 +261,13 @@ export async function runPreEmitGate(
     // global repair pass must never be allowed to undo a fix that already
     // cleared the gate; that previously created an endless retry/rollback
     // cycle where every user retry reproduced the same failure.
-    let nextIssues = await collectGateIssues(candidate, changedPaths);
+    let nextIssues = await collectGateIssues(candidate, changedPaths, opts.prd);
     let nextBlocking = nextIssues.filter(isBlocking);
 
     if (opts.afterRepair) {
       try {
         const normalized = opts.afterRepair(candidate);
-        const normalizedIssues = await collectGateIssues(normalized, changedPaths);
+        const normalizedIssues = await collectGateIssues(normalized, changedPaths, opts.prd);
         const normalizedBlocking = normalizedIssues.filter(isBlocking);
         if (normalizedBlocking.length <= nextBlocking.length) {
           candidate = normalized;
