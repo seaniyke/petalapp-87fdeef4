@@ -4904,14 +4904,11 @@ function Builder() {
                 );
               })()}
             {(() => {
-              // A blocking error card is about to render below. Showing an
-              // optimistic "Shipping it / Still on it" progress banner above a
-              // failure is dishonest UX, so suppress the activity card while a
-              // failure is the tail of the thread.
-              const tailErr =
-                lastErrorIdx >= 0 && lastErrorIdx === messages.length - 1
-                  ? messages[lastErrorIdx]?.error
-                  : null;
+              // A blocking error card may render below. Showing an optimistic
+              // "Shipping it / Still on it" progress banner above a failure is
+              // dishonest UX, so suppress the activity card whenever the single
+              // error banner is visible.
+              const tailErr = lastErrorIdx >= 0 ? messages[lastErrorIdx]?.error : null;
               const errorCardVisible = !!tailErr && !shouldHideErrorCard(tailErr);
               return activityVisible && !errorCardVisible;
             })() && (
@@ -4923,22 +4920,16 @@ function Builder() {
                 // renders a spinning icon next to "Done" and a fully-green rail.
                 isComplete={isLive && !busy && !awaitingBuild && !isDeploying}
                 error={(() => {
-                  // Avoid double-rendering: if the tail message already shows
-                  // this same error (because persistFriendlyError appended it),
-                  // hide the BuildActivityCard's copy.
+                  // Only one banner, ever. If the thread's own error card is
+                  // (or could be) on screen, the activity card never shows one.
                   if (!friendlyError) return null;
-                  const tail = messages[messages.length - 1];
-                  if (shouldHideErrorCard(friendlyError)) {
-                    return null;
-                  }
-                  if (
-                    tail?.error?.title === friendlyError.title &&
-                    tail?.error?.message === friendlyError.message
-                  ) {
-                    return null;
-                  }
+                  if (shouldHideErrorCard(friendlyError)) return null;
+                  const threadErr =
+                    lastErrorIdx >= 0 ? messages[lastErrorIdx]?.error : null;
+                  if (threadErr && !shouldHideErrorCard(threadErr)) return null;
                   return friendlyError;
                 })()}
+
                 designCaption={designCaption}
                 latestPath={latestPath}
                 latestNarration={latestNarration}
