@@ -848,6 +848,13 @@ function applyOneOp(map: Map<string, string>, op: FileOp): void {
     }
     const first = prev.indexOf(op.search);
     if (first === -1) {
+      // Already-applied edit. Re-running the same op (a retry, a resumed
+      // stream, a repair round) must be a no-op, not a hard failure that
+      // fails the whole turn.
+      if (op.replace && op.replace.length >= 8 && prev.includes(op.replace)) {
+        console.log(`[replace] ${op.path}: snippet already applied — treating as a no-op`);
+        return;
+      }
       const fuzzy = fuzzyReplace(prev, op.search, op.replace);
       if (fuzzy) {
         console.log(`[fuzzy-replace] ${op.path}: matched via ${fuzzy.strategy}`);
@@ -857,10 +864,30 @@ function applyOneOp(map: Map<string, string>, op: FileOp): void {
       throw new Error(`AI replace snippet did not match ${op.path}.`);
     }
     if (prev.indexOf(op.search, first + op.search.length) !== -1) {
-      throw new Error(`AI replace snippet matched more than once in ${op.path}.`);
+      // Ambiguous snippet. Failing the op fails the turn and the user sees
+      // "one thing is blocking the build" for what is usually a repeated
+      // label or class name. When the snippet is substantial and repeats a
+      // small number of times, every occurrence is byte-identical, so the
+      // faithful reading of the edit is "change this text wherever it is".
+      const occurrences: number[] = [];
+      for (let at = first; at !== -1; at = prev.indexOf(op.search, at + op.search.length)) {
+        occurrences.push(at);
+        if (occurrences.length > REPLACE_MAX_AMBIGUOUS_HITS) break;
+      }
+      if (op.search.length >= 12 && occurrences.length <= REPLACE_MAX_AMBIGUOUS_HITS) {
+        console.log(
+          `[replace] ${op.path}: snippet matched ${occurrences.length}× — applying to every occurrence`,
+        );
+        map.set(op.path, prev.split(op.search).join(op.replace));
+        return;
+      }
+      throw new Error(
+        `AI replace snippet matched more than once in ${op.path}. Extend the snippet with surrounding lines so it identifies exactly one place.`,
+      );
     }
     map.set(op.path, prev.slice(0, first) + op.replace + prev.slice(first + op.search.length));
     return;
+
   }
   if (op.op === "ast-patch") {
     const prev = map.get(op.path);
