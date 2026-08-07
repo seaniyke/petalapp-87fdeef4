@@ -25,6 +25,7 @@
  * PETAL_TEST_TAG below so it can be identified and cleaned up later.
  */
 import { chromium, type Browser, type Page, type ConsoleMessage } from "playwright";
+import { isTransientEdgeStatus } from "./deploy-status.js";
 
 export class VerifyError extends Error {}
 
@@ -149,6 +150,7 @@ const SETTLE_MS = 1_200;
 const STEP_TIMEOUT_MS = 8_000;
 const MAX_WAIT_MS = 5_000;
 export const VERIFY_TIMEOUT_MS = Number(process.env.VERIFY_TIMEOUT_MS ?? 4 * 60 * 1000);
+const ROUTE_RETRY_DELAYS_MS = [2_000, 4_000];
 
 /** Console noise that says nothing about whether the app works. */
 const IGNORED_CONSOLE = [
@@ -372,11 +374,23 @@ async function visitRoute(
   };
 
   try {
-    const res = await page.goto(joinUrl(baseUrl, path), {
-      waitUntil: "domcontentloaded",
-      timeout: NAV_TIMEOUT_MS,
-    });
-    finding.httpStatus = res?.status() ?? null;
+    for (let attempt = 0; attempt <= ROUTE_RETRY_DELAYS_MS.length; attempt++) {
+      const res = await page.goto(joinUrl(baseUrl, path), {
+        waitUntil: "domcontentloaded",
+        timeout: NAV_TIMEOUT_MS,
+      });
+      finding.httpStatus = res?.status() ?? null;
+      if (!isTransientEdgeStatus(finding.httpStatus) || attempt === ROUTE_RETRY_DELAYS_MS.length) {
+        break;
+      }
+
+      // A gateway response while a deployment is propagating belongs to the
+      // hosting layer, not the generated app. Clear the console/network events
+      // emitted by that failed navigation so a successful retry is judged on
+      // its own evidence rather than being poisoned by the transient attempt.
+      resetWatch(watch);
+      await page.waitForTimeout(ROUTE_RETRY_DELAYS_MS[attempt]);
+    }
   } catch (err) {
     finding.pageErrors.push(truncate(err instanceof Error ? err.message : String(err)));
     return finding;
