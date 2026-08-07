@@ -21,6 +21,7 @@ export type DynamicSnippetKey =
   | "kitCore"
   | "webStandards"
   | "frontendQuality"
+  | "backendQuality"
 
   | "verifyBeforeDone"
   | "fileBudget"
