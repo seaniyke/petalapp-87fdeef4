@@ -200,6 +200,77 @@ function isGlobalStylesheet(path: string): boolean {
   return /(^|\/)(index|globals?|styles|app)\.css$/i.test(path);
 }
 
+/* ------------------------------------------------------------------ H/I -- */
+
+/**
+ * Overlay hygiene. Two defects show up constantly in generated apps and both
+ * are visible in one screenshot: a mobile menu that renders with no background
+ * (the page text reads straight through it), and two floating panels — a date
+ * picker over a search form, a dropdown over an input — that land on top of
+ * each other because neither declares a stacking order.
+ */
+const OPAQUE_BG =
+  /\bbg-(background|card|popover|muted|secondary|primary|accent|sidebar|white|black|neutral-\d{2,3}|zinc-\d{2,3}|slate-\d{2,3}|gray-\d{2,3})\b/;
+const HAS_Z = /\bz-(\[|\d|base|sticky|overlay|sheet|toast|auto)/;
+const FLOATING = /\b(fixed|absolute)\b/;
+/** Panel shapes that are chrome, not a decorative image/gradient layer. */
+const PANEL_SHAPE = /\b(inset-0|inset-x-0|top-full|left-0\s|right-0\s|mt-1|mt-2|min-h-screen|h-screen|h-dvh|w-full)\b/;
+const DECORATIVE = /\b(bg-gradient|pointer-events-none|object-cover|-z-10|opacity-0)\b/;
+
+function classNameOf(attrs: string): string {
+  const m = /class(?:Name)?\s*=\s*(?:["'`]([^"'`]*)["'`]|\{([\s\S]*?)\})/.exec(attrs);
+  return m ? (m[1] ?? m[2] ?? "") : "";
+}
+
+/** H — an opaque floating panel with no stacking order gets one. */
+function orderFloatingPanels(content: string): { content: string; fixes: number } {
+  return rewriteOpeningTags(
+    content,
+    () => true,
+    (tag) => {
+      const cls = classNameOf(tag.attrs);
+      if (!cls || !FLOATING.test(cls) || HAS_Z.test(cls)) return null;
+      if (DECORATIVE.test(cls) || !OPAQUE_BG.test(cls) || !PANEL_SHAPE.test(cls)) return null;
+      const attrs = tag.attrs.replace(
+        /(class(?:Name)?\s*=\s*)(["'`])([^"'`]*)(\2)/,
+        (_w, head: string, q: string, body: string) => `${head}${q}${body} z-50${q}`,
+      );
+      if (attrs === tag.attrs) return null;
+      return `<${tag.name}${attrs.replace(/\s+$/, "")}${tag.selfClosing ? " />" : ">"}`;
+    },
+  );
+}
+
+const MENU_STATE = /\b(isMenuOpen|menuOpen|mobileOpen|isOpen|drawerOpen|navOpen|showMenu|isMobileMenuOpen)\b/;
+
+/** I — a see-through menu/drawer panel. Never guessed; the model must fix it. */
+function findTransparentOverlay(path: string, content: string): string | null {
+  if (!MENU_STATE.test(content)) return null;
+  const tags = content.match(/<[A-Za-z][^>]*class(?:Name)?\s*=[^>]*>/g) ?? [];
+  for (const t of tags) {
+    const cls = classNameOf(t);
+    if (!FLOATING.test(cls) || DECORATIVE.test(cls)) continue;
+    if (!/\b(inset-0|inset-x-0|top-full|h-screen|h-dvh|min-h-screen)\b/.test(cls)) continue;
+    if (OPAQUE_BG.test(cls)) continue;
+    return `${path}: a floating menu/drawer panel has no opaque background, so the page underneath reads through it and the menu is unusable. Give the panel a solid surface token (\`bg-background\` or \`bg-card\`), a stacking order (\`z-50\`), and — if it covers the page — a dimmed backdrop behind it. A blurred or transparent panel is never acceptable for navigation.`;
+  }
+  return null;
+}
+
+/** J — several floating panels with no stacking order will collide. */
+function findLayeringCollision(path: string, content: string): string | null {
+  const tags = content.match(/<[A-Za-z][^>]*class(?:Name)?\s*=[^>]*>/g) ?? [];
+  let unordered = 0;
+  for (const t of tags) {
+    const cls = classNameOf(t);
+    if (!FLOATING.test(cls) || DECORATIVE.test(cls) || HAS_Z.test(cls)) continue;
+    if (!PANEL_SHAPE.test(cls)) continue;
+    unordered++;
+  }
+  if (unordered < 2) return null;
+  return `${path}: ${unordered} floating panels are positioned with no stacking order, so popovers, calendars and dropdowns render on top of each other instead of above the form. Anchor each panel to a \`relative\` parent, give it an explicit \`z-\` layer, close the others when one opens, and on small screens present the picker as a full-width sheet rather than a floating card.`;
+}
+
 /* ------------------------------------------------------------------ F/G -- */
 
 const LOREM_RX = /\b(lorem ipsum|dolor sit amet|consectetur adipiscing)\b/i;
@@ -225,6 +296,7 @@ function findMissingEmptyState(path: string, content: string): string | null {
   return `${path}: renders a list with no empty state. Every data surface needs loading, empty and error states — add an empty branch with an icon, a heading, one explanatory line and a primary action.`;
 }
 
+
 /* ------------------------------------------------------------------------ */
 
 export function enforceFrontendQuality(input: ProjectFile[]): FrontendQualityResult {
@@ -234,6 +306,7 @@ export function enforceFrontendQuality(input: ProjectFile[]): FrontendQualityRes
   let altFixes = 0;
   let fieldFixes = 0;
   let headingFixes = 0;
+  let layerFixes = 0;
 
   const animates = input.some(
     (f) => SCANNABLE.test(f.path) && /animate-|transition-|framer-motion|motion\./.test(f.content),
@@ -253,6 +326,10 @@ export function enforceFrontendQuality(input: ProjectFile[]): FrontendQualityRes
     if (copyDefect) defects.push({ path: f.path, detail: copyDefect });
     const emptyDefect = findMissingEmptyState(f.path, f.content);
     if (emptyDefect) defects.push({ path: f.path, detail: emptyDefect });
+    const overlayDefect = findTransparentOverlay(f.path, f.content);
+    if (overlayDefect) defects.push({ path: f.path, detail: overlayDefect });
+    const layerDefect = findLayeringCollision(f.path, f.content);
+    if (layerDefect) defects.push({ path: f.path, detail: layerDefect });
 
     let content = f.content;
     const a = labelIconOnlyControls(content);
@@ -271,6 +348,11 @@ export function enforceFrontendQuality(input: ProjectFile[]): FrontendQualityRes
     content = d.content;
     headingFixes += d.fixes;
 
+    const e = orderFloatingPanels(content);
+    content = e.content;
+    layerFixes += e.fixes;
+
+
     return content === f.content ? f : { ...f, content };
   });
 
@@ -286,6 +368,9 @@ export function enforceFrontendQuality(input: ProjectFile[]): FrontendQualityRes
   if (headingFixes > 0) {
     notes.push(`frontend-quality: demoted ${headingFixes} duplicate <h1> so each page has one`);
   }
+  if (layerFixes > 0) {
+    notes.push(`frontend-quality: gave ${layerFixes} floating panel(s) an explicit stacking order`);
+  }
   if (stylesheetPatched) {
     notes.push("frontend-quality: added a prefers-reduced-motion escape hatch to the global stylesheet");
   }
@@ -297,6 +382,6 @@ export function enforceFrontendQuality(input: ProjectFile[]): FrontendQualityRes
     files,
     notes,
     defects,
-    fixes: ariaFixes + altFixes + fieldFixes + headingFixes + (stylesheetPatched ? 1 : 0),
+    fixes: ariaFixes + altFixes + fieldFixes + headingFixes + layerFixes + (stylesheetPatched ? 1 : 0),
   };
 }

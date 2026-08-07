@@ -144,6 +144,23 @@ Semantic landmarks (`header/nav/main/footer`) · logical heading order · keyboa
 
 ---
 
+## 18. Overlays and layering
+
+Every menu, drawer, dropdown, popover, calendar, dialog and sheet is an *overlay*, and overlays fail in two ways that a screenshot exposes immediately.
+
+**Opacity.** An overlay renders on a solid surface token — `bg-background`, `bg-card` or `bg-popover`. Never transparent, never blur-only. If the page text can be read through the panel, the panel is broken.
+
+**Order.** Every overlay declares an explicit `z-` layer (page < sticky < overlay < sheet < toast), is anchored to a `relative` parent, and closes its siblings when it opens. Two floating panels must never stack on top of each other.
+
+Rules:
+
+- A full-screen mobile menu covers the viewport completely, dims the page behind it, and locks body scroll.
+- On phones a date picker, guest picker or filter panel is a full-width sheet, not a floating card anchored to an input.
+- Only one overlay is open at a time; opening one closes the rest.
+- Decorative layers (gradients, image scrims) are exempt — they are `pointer-events-none` and sit behind content.
+
+Enforced deterministically by `src/server/frontend-quality.server.ts`: opaque floating panels missing a stacking order are auto-fixed to `z-50`; see-through menu panels and multiple unordered floating panels are reported as defects for repair.
+
 ## 17. Generation checklist
 
 A generated frontend is not done until:

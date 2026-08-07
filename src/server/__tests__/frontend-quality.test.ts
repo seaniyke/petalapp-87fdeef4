@@ -45,3 +45,43 @@ describe("frontend quality pass", () => {
     expect(out.files[1].content).toContain("prefers-reduced-motion");
   });
 });
+
+describe("overlay hygiene", () => {
+  it("flags a see-through mobile menu panel", () => {
+    const out = enforceFrontendQuality([
+      {
+        path: "src/components/Nav.tsx",
+        content: `export function Nav(){const [isMenuOpen,setMenuOpen]=useState(false);return isMenuOpen? <div className="fixed inset-0 flex flex-col gap-4 p-6">menu</div> : null}`,
+      },
+    ]);
+    expect(out.defects.some((d) => /no opaque background/.test(d.detail))).toBe(true);
+  });
+
+  it("accepts an opaque menu panel and gives it a stacking order", () => {
+    const out = enforceFrontendQuality([
+      {
+        path: "src/components/Nav.tsx",
+        content: `export function Nav(){const [isMenuOpen,setMenuOpen]=useState(false);return isMenuOpen? <div className="fixed inset-0 bg-background p-6">menu</div> : null}`,
+      },
+    ]);
+    expect(out.defects.some((d) => /no opaque background/.test(d.detail))).toBe(false);
+    expect(out.files[0].content).toContain("z-50");
+  });
+
+  it("flags two unordered floating panels that would collide", () => {
+    const out = enforceFrontendQuality([
+      {
+        path: "src/components/Search.tsx",
+        content: `export function Search(){return <form><div className="absolute top-full w-full">calendar</div><div className="absolute top-full w-full">guests</div></form>}`,
+      },
+    ]);
+    expect(out.defects.some((d) => /floating panels are positioned with no stacking order/.test(d.detail))).toBe(true);
+  });
+
+  it("leaves decorative gradient overlays alone", () => {
+    const src = `export function Hero(){return <section className="relative"><div className="absolute inset-0 bg-gradient-to-t from-black/60 pointer-events-none" /></section>}`;
+    const out = enforceFrontendQuality([{ path: "src/components/Hero.tsx", content: src }]);
+    expect(out.files[0].content).toBe(src);
+    expect(out.defects).toHaveLength(0);
+  });
+});
