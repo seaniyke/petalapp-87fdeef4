@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BuildCostSummary } from "@/components/BuildCostSummary";
+
 import type { Phase } from "@/lib/build-phases";
 import {
   buildTrace,
