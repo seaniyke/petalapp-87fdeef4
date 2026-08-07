@@ -66,8 +66,12 @@ export interface PreEmitGateResult {
  * The split matters. A parse error guarantees a white screen; an optional-prop
  * render risk is a probability. Blocking on advisories would trade one bad
  * experience (broken preview) for another (turns that never finish).
+ *
+ * This is also, deliberately, the set of kinds the repair model is actually
+ * able to act on. Blocking on a kind we cannot ask anyone to fix would just
+ * burn every round and hard-stop for nothing.
  */
-const BLOCKING_KINDS = new Set([
+export const BLOCKING_KINDS = new Set([
   "parse",
   "truncation",
   "jsx",
@@ -79,10 +83,29 @@ const BLOCKING_KINDS = new Set([
   "lazy-export",
 ]);
 
-function isBlocking(issue: GateIssue): boolean {
+/**
+ * Scaffold-owned paths. Petal writes these, the model does not, so a
+ * diagnostic here is either our bug or a false positive — never something a
+ * repair round can resolve. Excluded from blocking for that reason.
+ */
+const PROTECTED_PREFIXES = [
+  "src/components/ui/",
+  "src/components/examples/",
+  "src/integrations/",
+];
+const PROTECTED_PATHS = new Set(["vite.config.ts", "tsconfig.json", "src/lib/utils.ts"]);
+
+export function isScaffoldOwned(path: string): boolean {
+  if (PROTECTED_PATHS.has(path)) return true;
+  return PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+export function isBlocking(issue: GateIssue): boolean {
+  if (isScaffoldOwned(issue.path)) return false;
   if (issue.source === "esbuild") return true;
   return BLOCKING_KINDS.has(issue.kind);
 }
+
 
 /**
  * Run every deterministic verifier and normalize the results.
