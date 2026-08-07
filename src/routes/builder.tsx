@@ -1508,12 +1508,43 @@ function Builder() {
     return () => el.removeEventListener("scroll", onScroll);
   }, [isNearBottom]);
 
+  // On first load of a project's history, land the user at the END of the
+  // conversation (the latest reply), not at the top of their original prompt.
+  // Instant jump, no smooth animation, and it runs after layout settles so
+  // long messages/images don't leave us stranded mid-thread.
   useEffect(() => {
+    if (didInitialChatScrollRef.current) return;
+    if (messages.length === 0) return;
+    didInitialChatScrollRef.current = true;
+    const jump = () => {
+      const el = chatScrollRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+      setShowJumpToLatest(false);
+    };
+    jump();
+    const r1 = requestAnimationFrame(jump);
+    const t1 = setTimeout(jump, 120);
+    const t2 = setTimeout(jump, 400);
+    return () => {
+      cancelAnimationFrame(r1);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [messages.length]);
+
+  // Reset the one-shot when switching projects.
+  useEffect(() => {
+    didInitialChatScrollRef.current = false;
+  }, [searchId]);
+
+  useEffect(() => {
+    if (!didInitialChatScrollRef.current) return;
     if (!isNearBottom()) {
       setShowJumpToLatest(true);
       return;
     }
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+
   }, [messages, busy, isNearBottom]);
 
   // Show a "new" dot on the Preview tab when files change while Chat is active.
