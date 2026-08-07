@@ -32,6 +32,8 @@ import { enforceRuntimeContracts } from "./runtime-contract.server";
 import { enforceLayoutHygiene } from "./layout-hygiene.server";
 import { enforceInteractionHygiene } from "./interaction-hygiene.server";
 import { enforceFrontendQuality } from "./frontend-quality.server";
+import { resolveSiblingImports } from "./sibling-resolver.server";
+
 
 import { fixRouterImports } from "./router-imports.server";
 import { fixMissingRouterProvider } from "./router-provider.server";
