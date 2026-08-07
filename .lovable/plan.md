@@ -1,144 +1,105 @@
-# Petal Product Intelligence and Usefulness Engine
+# Petal PRD Engine: Understand the Product Before Building It
 
-## Goal
+## Your observation is correct, and it is the root cause
 
-Make Petal translate a plain-language idea into the right complete product, with a real primary workflow, appropriate supporting surfaces, excellent frontend quality, and proof that it works before Petal says it is complete.
+Petal does **not** write an internal PRD today. What looks like one is a regex keyword scrape:
 
-The governing rule is **not** “always add a landing page and dashboard.” It is:
+- `app-spec.server.ts` matches words like "customer", "invoice", "approval" and emits candidate CRUD entities.
+- It returns an **empty string** when nothing CRUD-shaped is found, so "build a female pregnancy calculator" produces no spec at all.
+- It is CRUD-biased by construction: entities, roles, relations. A calculator, a converter, a quiz, a landing page, and a game all fall through it.
+- Its output is a prompt suggestion only. It is never persisted, never reconciled with the classifier or archetype, never enforced, and never checked after the build.
 
-> Build the smallest complete product that fulfills the user’s actual outcome. Add marketing, account, dashboard, history, admin, or backend surfaces only when that product genuinely needs them.
-
-For “build a female pregnancy calculator,” a successful first build means a branded public experience with an immediately usable pregnancy calculator, validated date inputs, accurate gestational age and estimated due date calculations, useful result presentation, relevant timeline/education, responsive navigation, and working interactions. A generic analytics dashboard is a failed build even if it compiles.
-
-## Verified failure chain
-
-The current pipeline interprets the exact pregnancy-calculator prompt as:
+So Petal jumps from raw text straight to templates and file generation. Everything downstream is guessing. Confirmed for the exact failing prompt:
 
 ```text
 category: generic
 surfaces: landing
-web subtype: app
+web subtype: app          → dashboard shell instructions
 product blueprint: none
+app spec: empty
 ```
 
-That combination is contradictory and loses the product’s central workflow:
+Four independent stages disagreeing, no authority to settle them, and no artifact stating what the product is supposed to do. That is why a pregnancy calculator became a dashboard, and why no gate objected.
 
-- `web-subtype.ts` defaults ambiguous web products to an app shell whose instructions forbid a marketing hero and emphasize sidebar/dashboard structure.
-- `app-shape-classifier.ts` has no health/wellness or calculator/tool category, so it cannot infer the right surfaces.
-- `system-catalog.server.ts` contains adjacent health trackers and finance calculators, but no pregnancy/due-date calculator; the App Composer consequently returns no blueprint.
-- `app-spec.server.ts` extracts data entities but not a first-class workflow or product outcome, so a calculator can produce an empty spec.
-- The staged planner only guarantees marketing + product surfaces for selected archetypes; unknown products do not receive a complete-product fallback.
-- Existing quality gates check compilation, placeholders, accessibility, interaction defects, and visual defects, but do not prove that the requested primary workflow exists and works.
+## The fix: one PRD, authored once, obeyed everywhere
 
-## Phase 1 — Correct the product model
+Introduce a real internal PRD as the pipeline's single source of truth. Every later stage reads it. Nothing downstream may contradict it. The build is accepted or rejected against it.
 
-1. Add first-class product families for **calculator/utility** and **health & wellness**, including pregnancy/due-date intent.
-2. Add a pregnancy-calculator archetype to the catalog with:
-   - public landing/navigation surface;
-   - calculator as the dominant first-screen action;
-   - results/timeline surface;
-   - optional saved history only when persistence or accounts are requested;
-   - health-safe copy that informs without diagnosing.
-3. Replace the ambiguous `app` default with an intent-aware **complete product** fallback. Unknown product requests must not silently become sidebar dashboards.
-4. Reconcile subtype, shape, archetype, and blueprint into one authoritative `ProductContract` so downstream stages cannot receive contradictory instructions.
-
-## Phase 2 — Plan outcomes and workflows before files
-
-Extend the app spec from entity-only extraction to a structured product contract:
+The PRD is not a document for the user to read. It is a machine-checkable contract.
 
 ```text
-user outcome
-primary workflow: input → action → result → next step
-required surfaces
-optional surfaces and why they are needed
-functional rules and formulas
-empty/loading/error/success states
-responsive navigation model
-acceptance scenarios
+PRD
+  product name and identity
+  one-sentence purpose
+  target user
+  primary outcome the user came for
+  product type (utility, content site, workflow app, marketplace, social, game, ai tool, storefront)
+  primary workflow: entry → input → action → result → next step
+  secondary workflows
+  domain logic and formulas, stated explicitly
+  data model (only if the product needs persistence)
+  required surfaces
+  explicitly excluded surfaces
+  states: empty, loading, error, success, edge cases
+  navigation and responsive model
+  content and tone requirements
+  acceptance criteria, written as testable scenarios
+  out of scope
 ```
 
-The planner must produce this contract before choosing components or files. Route and scaffold selection will be derived from the contract, not from generic dashboard templates.
+Two rules make it trustworthy:
 
-For calculators and utilities, require deterministic domain logic in testable functions rather than simulated values or decorative charts.
+1. **Nothing is optional by omission.** If the PRD does not name a surface, the builder may not invent it. A calculator does not acquire auth, billing, or an admin panel.
+2. **Nothing ships unproven.** Every acceptance criterion becomes an executable browser check. No criterion, no completion.
 
-## Phase 3 — Make generation execute the contract
+## How the PRD is authored
 
-1. Feed one canonical contract into the staged orchestrator, App Composer, model prompt, critic, and verifier.
-2. Generate in dependency order:
-   - domain logic and data model;
-   - primary workflow;
-   - supporting product surfaces;
-   - marketing/education surfaces when appropriate;
-   - responsive and accessibility polish.
-3. Prevent templates from overriding intent: dashboard components may only appear when the contract contains dashboard jobs.
-4. Require every first build to have a real brand identity, working navigation, working forms, meaningful states, and no dead controls.
-5. Keep scope bounded: a calculator should not acquire authentication, billing, admin, or a database unless the workflow requires them.
+A hybrid, in this order, so it is fast, cheap, and never blank:
 
-## Phase 4 — Add usefulness and workflow acceptance gates
+1. **Deterministic pass** — product family, domain signals, obvious surfaces, known formulas from the archetype catalog.
+2. **Model pass** — one structured call that fills the PRD schema from the user's actual words, using the deterministic pass as a prior. Strict schema, no free-form prose.
+3. **Reconciliation** — the PRD overrides classifier, subtype, archetype, and template whenever they conflict. Contradictions are resolved here, once, instead of leaking into the prompt.
+4. **Persistence** — stored with the project, versioned per turn, and shown to the user as a short plain-English summary before or alongside the build.
 
-Add a mandatory **Product Acceptance Gate** before deployment success:
+For "a female pregnancy calculator" the PRD would state: purpose is estimating due date and gestational age; product type utility; primary workflow LMP or conception date in, validated, calculate, show due date, current week, trimester and milestones; formulas Naegele's rule and gestational age arithmetic; surfaces public landing with the calculator above the fold, results, week-by-week timeline, informational content; excluded surfaces auth, dashboard, admin; acceptance includes a worked example with a known input and expected output.
 
-- Confirm every required surface from the contract exists.
-- Confirm the primary action is visible and operable on desktop and mobile.
-- Execute contract-derived browser scenarios, not only generic route checks.
-- Assert input validation, action completion, expected result, and next-step behavior.
-- Reject dashboard-only output when the contract calls for a public utility or landing + tool.
-- Reject decorative or fabricated results when deterministic logic is required.
-- Run visual QA only after workflow acceptance; visual polish cannot compensate for a missing product.
+## Edits vs first builds
 
-If acceptance fails, Petal performs one bounded, free repair against the exact failed contract item. It never charges another user turn, loops indefinitely, or reports completion while a required workflow is missing.
+The PRD is not only a turn-one artifact. On every follow-up turn, Petal diffs the request against the stored PRD:
 
-## Phase 5 — Regression corpus and release gate
+- Additive request → amend the PRD, then build the amendment.
+- Contradiction → surface it in one sentence, apply the user's newer intent, record the change.
+- Cosmetic request → no PRD change, no re-architecture, no scope creep.
 
-Add golden prompts that cover structurally different products:
+This is what stops later edits from quietly drifting the product away from what it was meant to be.
 
-- female pregnancy calculator;
-- mortgage calculator;
-- restaurant landing page with booking;
-- task manager;
-- two-sided marketplace;
-- AI chat tool;
-- portfolio;
-- internal admin tool;
-- mobile habit tracker;
-- SaaS product needing landing + authenticated app.
+## Phases
 
-Each golden case asserts classification, contract, routes, forbidden surfaces, primary workflow behavior, responsive rendering, and no console/runtime errors. The pregnancy case must fail if it produces a generic dashboard or lacks a functioning calculation.
+**Phase 0 — PRD engine.** Schema, deterministic pass, structured model pass, reconciliation, persistence, versioning, and the user-facing summary. This lands before anything else.
 
-Run the deterministic classifier/contract suite on every change and the full golden build matrix before builder deployment. A production quality defect is not closed without a regression case.
+**Phase 1 — Product model corrections.** Add calculator/utility and health/wellness families, a pregnancy-calculator archetype, and replace the ambiguous dashboard default with an intent-preserving complete-product fallback. These now feed the PRD rather than competing with it.
 
-## Phase 6 — Measure real product quality
+**Phase 2 — PRD-driven planning.** Routes, surfaces, components, scaffolds, and backend decisions are derived from the PRD. Templates may satisfy the PRD; they may never override it.
 
-Record per build:
+**Phase 3 — PRD-driven generation.** One canonical PRD is injected into the orchestrator, composer, model prompt, and critic. Generation order is domain logic, primary workflow, supporting surfaces, marketing and educational content, then polish. The critic reviews the diff against the PRD, not against generic taste.
 
-- detected product family and confidence;
-- final Product Contract;
-- required versus delivered workflows;
-- acceptance failures and repairs;
-- first-pass useful-build rate;
-- user follow-up prompts that indicate wrong architecture, such as “this is useless,” “where is the calculator,” or “I asked for X.”
+**Phase 4 — Acceptance gate.** Before any build is reported complete: every required surface exists, the primary action is operable on desktop and mobile, PRD acceptance scenarios pass in a real browser, domain formulas are verified against worked examples, forbidden surfaces are absent, and no fabricated results stand in for real logic. Failure triggers one bounded, free repair against the exact failed criterion. Visual QA runs only after this passes.
 
-Use those failures to expand deterministic archetypes, rules, and tests. Do not solve recurring categories with increasingly long generic prompts.
+**Phase 5 — Regression corpus.** Golden prompts spanning structurally different products: pregnancy calculator, mortgage calculator, restaurant site with booking, task manager, marketplace, AI chat tool, portfolio, internal admin tool, mobile habit tracker, and a SaaS product needing landing plus authenticated app. Each asserts PRD shape, delivered surfaces, forbidden surfaces, workflow behavior, responsiveness, and a clean console. The pregnancy case fails if it yields a dashboard or a non-functioning calculation.
 
-## Implementation order
-
-1. ProductContract types and reconciliation logic.
-2. Calculator + health classifiers and pregnancy archetype.
-3. Contract-driven staged planning and prompt assembly.
-4. Contract-aware critic and Product Acceptance Gate.
-5. Browser scenarios and pregnancy regression test.
-6. Golden prompt matrix and release gate.
-7. Build telemetry and quality scorecard.
+**Phase 6 — Telemetry.** Record PRD, confidence, required versus delivered workflows, acceptance failures, repairs, first-pass useful-build rate, and user follow-ups signalling wrong architecture. Recurring failures become new archetypes, rules, and tests, not longer prompts.
 
 ## Definition of done
 
-- The exact pregnancy-calculator prompt produces the correct product contract and never resolves to a generic dashboard shell.
-- The generated calculator performs correct date calculations and passes desktop/mobile browser scenarios.
-- Petal cannot mark a build complete unless its primary requested workflow passes.
-- Unknown product prompts receive an intent-preserving complete-product plan rather than an arbitrary dashboard default.
-- Repairs are bounded and free; one user request still causes one charged turn.
-- The full golden matrix passes before deployment, with evidence stored per build.
+- Every build has a persisted, versioned PRD authored before generation.
+- The PRD is the single authority; no stage may contradict it.
+- The pregnancy prompt yields a correct PRD, a working calculator, and never a generic dashboard.
+- Petal cannot report completion unless the PRD's primary workflow passes in a browser.
+- Unknown prompts get an intent-preserving PRD rather than a dashboard default.
+- Follow-up turns amend the PRD instead of drifting the product.
+- Repairs stay bounded and free: one user request, one charge.
+- The full golden matrix passes before builder deployment.
 
 ## Technical scope
 
-Primary areas: app-shape classification, web subtype inference, project archetypes, system catalog, app spec, staged orchestration, App Composer, generation-quality gate, critic, verification planning, browser verification, golden prompts, and build telemetry. Existing compile, security, accessibility, and visual gates remain; the usefulness gate is added ahead of final success.
+New PRD module plus its schema, reconciliation layer, persistence, and prompt renderer. Rework of app spec, app-shape classification, web subtype inference, project archetypes, system catalog, staged orchestration, App Composer, critic, verification planning, and browser verification. Existing compile, security, accessibility, and visual gates remain; the PRD acceptance gate is added ahead of final success.
