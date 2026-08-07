@@ -13,6 +13,8 @@ import {
   type FileOp,
   type StreamEvent,
 } from "@/server/generate.server";
+import { reconcileDocumentHeadOps } from "@/server/document-head.server";
+
 import { detectCrossCuttingIntent, pickPinnedPaths } from "@/server/intent-targets.server";
 import { resolveEditIntent } from "@/server/edit-intent.server";
 import { buildSectionExpansionPatch } from "@/server/section-expansion.server";
