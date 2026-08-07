@@ -191,21 +191,48 @@ describe("the loop", () => {
   });
 
   it("re-runs deterministic repairs on the model's output via afterRepair", async () => {
-    let call = 0;
     vi.mocked(verifyFilesEsbuild).mockResolvedValue({ ok: true, issues: [] });
     vi.mocked(lintRenderRisks).mockReturnValue([]);
-    vi.mocked(verifyFilesLocal).mockImplementation(() => {
-      call += 1;
-      return call === 1
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ({ ok: false, issues: [{ path: "src/App.tsx", kind: "jsx", detail: "bad" }] } as any)
-        : { ok: true, issues: [] };
-    });
+    vi.mocked(verifyFilesLocal).mockReturnValue({ ok: true, issues: [] });
+    vi.mocked(verifyFilesLocal).mockReturnValueOnce(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { ok: false, issues: [{ path: "src/App.tsx", kind: "jsx", detail: "bad" }] } as any,
+    );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(runPostStreamAutofix).mockResolvedValue({ files, result: {} } as any);
     const afterRepair = vi.fn((f) => f);
     await runPreEmitGate(files, changed, { maxRounds: 1, afterRepair });
     expect(afterRepair).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a successful model repair when deterministic repair regresses it", async () => {
+    vi.mocked(verifyFilesEsbuild).mockResolvedValue({ ok: true, issues: [] });
+    vi.mocked(lintRenderRisks).mockReturnValue([]);
+    vi.mocked(verifyFilesLocal).mockImplementation((candidate) => {
+      const content = candidate.find((file) => file.path === "src/App.tsx")?.content;
+      if (content === "model-fixed") return { ok: true, issues: [] };
+      return {
+        ok: false,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        issues: [{ path: "src/App.tsx", kind: "jsx", detail: "broken" }] as any,
+      };
+    });
+    const modelFixed = [{ path: "src/App.tsx", content: "model-fixed" }];
+    const deterministicallyRegressed = [{ path: "src/App.tsx", content: "regressed" }];
+    vi.mocked(runPostStreamAutofix).mockResolvedValue({
+      files: modelFixed,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      result: {} as any,
+    });
+
+    const out = await runPreEmitGate(files, changed, {
+      maxRounds: 2,
+      afterRepair: () => deterministicallyRegressed,
+    });
+
+    expect(out.report.ok).toBe(true);
+    expect(out.files).toEqual(modelFixed);
+    expect(out.report.trace.some((line) => line.includes("deterministic repair regressed"))).toBe(true);
   });
 
   it("degrades to green when the repair pass itself throws", async () => {

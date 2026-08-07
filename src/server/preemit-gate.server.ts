@@ -225,16 +225,31 @@ export async function runPreEmitGate(
       break;
     }
 
+    // Verify the model's candidate before deterministic normalization. A
+    // global repair pass must never be allowed to undo a fix that already
+    // cleared the gate; that previously created an endless retry/rollback
+    // cycle where every user retry reproduced the same failure.
+    let nextIssues = await collectGateIssues(candidate, changedPaths);
+    let nextBlocking = nextIssues.filter(isBlocking);
+
     if (opts.afterRepair) {
       try {
-        candidate = opts.afterRepair(candidate);
+        const normalized = opts.afterRepair(candidate);
+        const normalizedIssues = await collectGateIssues(normalized, changedPaths);
+        const normalizedBlocking = normalizedIssues.filter(isBlocking);
+        if (normalizedBlocking.length <= nextBlocking.length) {
+          candidate = normalized;
+          nextIssues = normalizedIssues;
+          nextBlocking = normalizedBlocking;
+        } else {
+          trace.push(
+            `round ${round}: deterministic repair regressed ${nextBlocking.length} -> ${normalizedBlocking.length}; kept model repair`,
+          );
+        }
       } catch (e) {
         console.warn("[preemit-gate] afterRepair hook errored, using unrepaired output:", e);
       }
     }
-
-    const nextIssues = await collectGateIssues(candidate, changedPaths);
-    const nextBlocking = nextIssues.filter(isBlocking);
 
     if (nextBlocking.length < bestBlocking.length) {
       bestFiles = candidate;

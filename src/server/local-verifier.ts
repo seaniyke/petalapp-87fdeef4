@@ -11,6 +11,7 @@
  * the brace count is off, the file will not compile.
  */
 import { getKitManifest } from "./kit-manifest.server";
+import { isMissingRootView } from "./renderable-shell.server";
 
 
 export interface LocalIssue {
@@ -712,6 +713,23 @@ function findUnresolvedImports(
   }
 
   function isKnownKitAlias(spec: string): boolean {
+    // The concrete file graph is the source of truth. Some valid scaffold
+    // modules are pure re-export barrels (`export { ... } from ...`) and the
+    // prompt-oriented kit manifest only indexes declaration-style exports.
+    // Treating that incomplete manifest as an existence registry caused valid
+    // imports such as `@/components/ui/router` to be labelled hallucinations,
+    // which made the final gate roll back otherwise healthy fresh projects.
+    const concreteBase = spec.startsWith("@/") ? `src/${spec.slice(2)}` : spec;
+    if (resolveImportPath("src/App.tsx", spec, byPath)) return true;
+    if (
+      byPath.has(concreteBase) ||
+      byPath.has(`${concreteBase}.tsx`) ||
+      byPath.has(`${concreteBase}.ts`) ||
+      byPath.has(`${concreteBase}.jsx`) ||
+      byPath.has(`${concreteBase}.js`)
+    ) {
+      return true;
+    }
     if (kitUiPaths.size === 0) return true; // fail open
     if (!spec.startsWith("@/components/ui/") && !spec.startsWith("@/components/blocks/")) {
       return true;
@@ -831,17 +849,7 @@ function findBlankRenderIssues(
   if (!app.trim()) {
     issues.push({ path: "src/App.tsx", kind: "blank-render", detail: "missing src/App.tsx leaves the preview blank" });
   } else {
-    const rendersJsx = /<[A-Za-z][\w.:-]*(?:\s|>|\/)/.test(app);
-    // `return null;` is only a blank page when it is the app's ONLY exit.
-    // Guard clauses (`if (!items) return null;`) sit above a perfectly good
-    // JSX return, and flagging them sent the pipeline into pointless repair
-    // loops on healthy code.
-    const returnsNothingAtAll = /return\s+(?:null|<><\/>)\s*;/.test(app) && !rendersJsx;
-    if (
-      /PlaceholderIndex|data-lovable-blank-page-placeholder|REPLACE this/i.test(app) ||
-      returnsNothingAtAll ||
-      !rendersJsx
-    ) {
+    if (isMissingRootView(app)) {
       issues.push({
         path: "src/App.tsx",
         kind: "blank-render",
