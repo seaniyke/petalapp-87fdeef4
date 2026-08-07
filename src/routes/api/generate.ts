@@ -1385,45 +1385,67 @@ function isRetryablePatchApplyError(message: string): boolean {
   );
 }
 
+/**
+ * Petal v3 Phase A — the closed-loop pre-emit gate.
+ *
+ * Was: a single-round, parse-only check. A file could parse perfectly and
+ * still ship a white screen because it imported a sibling that didn't exist
+ * or referenced an undeclared identifier — neither of which esbuild's parser
+ * has any opinion about. Those defects only surfaced later, in the remote
+ * `vite build`, long after the turn was reported complete.
+ *
+ * Now: every deterministic verifier we own (esbuild parse + local structural
+ * verifier + render-risk linter) runs here, and blocking diagnostics are fed
+ * back to the repair model for a bounded number of rounds before anything is
+ * emitted. The gate keeps the best state it saw and stops the moment a round
+ * stops making progress, so it can neither regress the files nor spin.
+ */
 async function runFinalParseGuard(
   files: ProjectFile[],
   changedPaths: string[],
   controller: ReadableStreamDefaultController<Uint8Array>,
   encoder: TextEncoder,
 ): Promise<{ ok: true; files: ProjectFile[] } | { ok: false; detail: string }> {
-  const finalVerdict = await verifyFilesEsbuild(files, changedPaths);
-  if (finalVerdict.ok) return { ok: true, files };
+  const { runPreEmitGate, formatGateIssues } = await import("@/server/preemit-gate.server");
 
-  console.warn(
-    `[final-parse-guard] ${finalVerdict.issues.length} issue(s) after autofix:`,
-    finalVerdict.issues.map((i) => `${i.path}:${i.line}:${i.column} ${i.message}`).join("; "),
-  );
-  controller.enqueue(
-    encoder.encode(sse({ type: "status", message: "Repairing one last syntax issue…" })),
-  );
+  const { files: gated, report } = await runPreEmitGate(files, changedPaths, {
+    maxRounds: 2,
+    onRound: (round, issues) => {
+      console.warn(
+        `[preemit-gate] round ${round}: ${issues.length} blocking issue(s):`,
+        formatGateIssues(issues),
+      );
+      controller.enqueue(
+        encoder.encode(
+          sse({
+            type: "status",
+            message:
+              round === 1
+                ? "Repairing one last syntax issue…"
+                : "Still tidying up a couple of issues…",
+          }),
+        ),
+      );
+    },
+    // Deterministic repairs must re-run over the model's output: a repair
+    // round can reintroduce an unresolved import that the resolver already
+    // knows how to pin, and re-running is cheaper than another model round.
+    afterRepair: (candidate) => runAllRepairs(candidate).files,
+  });
 
-  const fixOut = await runPostStreamAutofix(
-    files,
-    finalVerdict.issues.map((i) => ({
-      path: i.path,
-      kind: "parse",
-      detail: `${i.message} (line ${i.line}:${i.column})`,
-    })),
-  );
-  const repaired = fixOut.files;
-  const repairedVerdict = await verifyFilesEsbuild(repaired, changedPaths);
-  if (!repairedVerdict.ok) {
-    const detail = repairedVerdict.issues
-      .slice(0, 3)
-      .map((i) => `${i.path}:${i.line}:${i.column} ${i.message}`)
-      .join("; ");
-    // Don't throw — let the caller revert to the prior good files
-    // and reply conversationally. A failed final-parse is NOT an
-    // infra error; it just means this turn's edits weren't safe.
-    return { ok: false, detail };
+  if (report.rounds > 0) {
+    console.log(`[preemit-gate] ${report.trace.join(" | ")}`);
   }
-  return { ok: true, files: repaired };
+
+  if (!report.ok) {
+    // Don't throw — let the caller revert to the prior good files and reply
+    // conversationally. A failed gate is NOT an infra error; it just means
+    // this turn's edits weren't safe to ship.
+    return { ok: false, detail: formatGateIssues(report.issues, 3) };
+  }
+  return { ok: true, files: gated };
 }
+
 
 async function handleGenerateRequestCore(request: Request): Promise<Response> {
   const authResult = await authorize(request);
@@ -2825,7 +2847,19 @@ Forbidden defaults
           }
           // Defense-in-depth: reject patches that touch the canonical UI kit
           // or scaffold config files. The AI should never need to.
-          const PROTECTED = ["vite.config.ts", "tsconfig.json", "src/lib/utils.ts"];
+          //
+          // v3 Phase C — the scaffold owns structure. `package.json` joins the
+          // list on iteration turns: dependency changes are owned by the bare
+          // import resolver, which reads the real registry and writes a real
+          // resolved version. A hand-patched package.json is guesswork, and a
+          // wrong version string is an `npm install` failure that no amount of
+          // source repair can recover from.
+          const PROTECTED = [
+            "vite.config.ts",
+            "tsconfig.json",
+            "src/lib/utils.ts",
+            "package.json",
+          ];
           const isProtectedPath = (p: string) =>
             p.startsWith("src/components/ui/") ||
             p.startsWith("src/components/examples/") ||
@@ -2833,6 +2867,7 @@ Forbidden defaults
             p.startsWith("src/components/mobile/") ||
             p.startsWith("src/integrations/backend/") ||
             PROTECTED.includes(p) ||
+
             matchesUserProtectedGlob(p) ||
             // Plan Mode v1 — when a plan was approved, ANY file outside its
             // allow-list is treated as protected and dropped.
@@ -4090,14 +4125,25 @@ Forbidden defaults
         // flag was the kill switch during early testing). All safety limits
         // below remain — 3 cycles max, 90s wall budget, converges the
         // moment local+esbuild verifiers pass, hard-stops on zero progress.
-        // Still suppressed for user-initiated "try to fix" turns
-        // (`isAutoFix`) so we never recurse into another loop.
-        if (!body.isAutoFix) {
+        //
+        // v3 Phase A: this loop now also runs on user-initiated "try to fix"
+        // turns. It used to be suppressed there to avoid "recursing into
+        // another loop", but that was backwards — the repair turn is exactly
+        // where convergence matters most, and the loop is already bounded by
+        // cycles, wall clock, and the repair cost ceiling. Suppressing it
+        // meant the user's explicit fix request got a single unverified pass.
+        {
 
           const AGENT_LOOP_MAX_CYCLES = 3;
           const AGENT_LOOP_WALL_MS = 90_000;
           const loopT0 = Date.now();
           const { verifyFilesLocal: lvFn } = await import("@/server/local-verifier");
+          // Shared with the pre-emit gate so "what blocks a turn" has exactly
+          // one definition. Two copies of this list is how a kind silently
+          // becomes blocking in one place and advisory in the other.
+          const { BLOCKING_KINDS, isScaffoldOwned } = await import(
+            "@/server/preemit-gate.server"
+          );
           for (let cyc = 0; cyc < AGENT_LOOP_MAX_CYCLES; cyc++) {
             if (Date.now() - loopT0 > AGENT_LOOP_WALL_MS) {
               console.log("[agent-loop] wall-time exhausted, stopping");
@@ -4118,34 +4164,15 @@ Forbidden defaults
             // to act on. Soft warnings and protected scaffold paths get
             // filtered out — otherwise the model returns an empty fix
             // list and we hard-stop on cycle 3 for nothing useful.
-            const FIXABLE_KINDS = new Set([
-              "truncation",
-              "unterminated-string",
-              "braces",
-              "jsx",
-              "parse",
-              "undefined",
-              "missing-dep",
-              "missing-export",
-              "missing-sibling",
-              "lazy-export",
-            ]);
-            const PROTECTED_PREFIXES = [
-              "src/components/ui/",
-              "src/components/examples/",
-              "src/integrations/backend/",
-            ];
-            const PROTECTED_PATHS = new Set([
-              "vite.config.ts",
-              "tsconfig.json",
-              "src/lib/utils.ts",
-            ]);
-            const isProtected = (p: string) =>
-              PROTECTED_PATHS.has(p) ||
-              PROTECTED_PREFIXES.some((pre) => p.startsWith(pre));
+            // `missing-dep` is fixable here (the model can add the import or
+            // drop the usage) even though the gate treats it as advisory,
+            // because npm pre-flight may still resolve it.
             const stillBad = rawStillBad.filter(
-              (i) => FIXABLE_KINDS.has(i.kind) && !isProtected(i.path),
+              (i) =>
+                (BLOCKING_KINDS.has(i.kind) || i.kind === "missing-dep") &&
+                !isScaffoldOwned(i.path),
             );
+
             if (stillBad.length === 0) {
               console.log(
                 `[agent-loop] converged after ${cyc} extra cycle(s) (raw=${rawStillBad.length}, fixable=0)`,
