@@ -20,6 +20,7 @@ import { fixJsxAttrLiterals } from "@/server/jsx-attr-literal-fixer.server";
 import { ensureBrandMarkWired } from "@/server/brand-identity.server";
 import type { VerifyPlan } from "@/server/verify-plan.server";
 import { runAllRepairs } from "@/server/repair-all.server";
+import { injectPreviewGuard } from "@/server/preview-guard.server";
 
 const MAX_AGE_SECONDS = 5 * 60;
 
@@ -122,7 +123,13 @@ export async function postBuildToRailway(args: {
   if (yearReplacements > 0) {
     console.log(`[builder] freshened ${yearReplacements} stale year reference(s)`);
   }
-  const filesToShip = args.hideBadge ? yearFreshened : injectPetalBadge(yearFreshened);
+  // Infrastructure injection belongs at the final shipping boundary. Older
+  // projects can still have a stale inline guard persisted in project_files,
+  // and some callers may not have passed through the current trigger route.
+  // Replacing it here guarantees the exact payload sent to the builder always
+  // contains one current, parse-safe guard.
+  const guarded = injectPreviewGuard(yearFreshened, { projectId: args.projectId }).files;
+  const filesToShip = args.hideBadge ? guarded : injectPetalBadge(guarded);
 
   const body = JSON.stringify({
     projectId: args.projectId,

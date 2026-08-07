@@ -27,6 +27,8 @@
 import type { ProjectFile } from "./generate.server";
 
 const SCANNABLE = /\.(tsx|jsx)$/;
+const isAppSource = (path: string) =>
+  SCANNABLE.test(path) && !path.startsWith("src/components/examples/");
 // `<Route path="/foo" ...>`  (also handles `path={"/foo"}`)
 const ROUTE_PATH_RE = /<Route\b[^>]*\bpath\s*=\s*(?:["']([^"']+)["']|\{\s*["']([^"']+)["']\s*\})/g;
 // `<Link to="/foo">` / `<Navigate to="/foo">` — string literal only.
@@ -99,7 +101,7 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
     /(?:export\s+default\s+function\s+|function\s+|const\s+|export\s+const\s+|export\s+function\s+)([A-Z][A-Za-z0-9_]*)\b/g;
 
   for (const f of files) {
-    if (!SCANNABLE.test(f.path)) continue;
+    if (!isAppSource(f.path)) continue;
     let m: RegExpExecArray | null;
 
     // declared paths
@@ -124,7 +126,7 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
   const ROUTE_LAYOUT_RE =
     /<Route\b[^/>]*\belement\s*=\s*\{\s*<\s*([A-Z][A-Za-z0-9_]*)\s*\/?\s*>?\s*\/?\s*\}[^/>]*>\s*<Route\b/g;
   for (const f of files) {
-    if (!SCANNABLE.test(f.path)) continue;
+    if (!isAppSource(f.path)) continue;
     let m: RegExpExecArray | null;
     const re = new RegExp(ROUTE_LAYOUT_RE.source, "g");
     while ((m = re.exec(f.content))) layoutComponents.add(m[1]);
@@ -133,7 +135,7 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
   // ----- Pass B: collect navigation targets.
   const navTargets = new Set<string>();
   for (const f of files) {
-    if (!SCANNABLE.test(f.path)) continue;
+    if (!isAppSource(f.path)) continue;
     let m: RegExpExecArray | null;
     const re1 = new RegExp(LINK_TO_RE.source, "g");
     while ((m = re1.exec(f.content))) {
@@ -169,7 +171,7 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
 
   // R1. Rewrite `react-router` → `react-router-dom`.
   out = out.map((f) => {
-    if (!SCANNABLE.test(f.path) && !/\.(ts|js)$/.test(f.path)) return f;
+    if ((!SCANNABLE.test(f.path) && !/\.(ts|js)$/.test(f.path)) || f.path.startsWith("src/components/examples/")) return f;
     if (!RR_BARE_IMPORT_RE.test(f.content)) return f;
     bareRouterImportsRewritten.push(f.path);
     return { path: f.path, content: f.content.replace(/from\s+["']react-router["']/g, 'from "react-router-dom"') };
