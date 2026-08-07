@@ -31,7 +31,7 @@ type LineState = { code: boolean };
  * Returns, for each line, whether that line STARTS in plain code position
  * (not inside a string, template literal, or block comment).
  */
-function lineStates(lines: string[]): LineState[] {
+function lineStates(lines: string[]): { states: LineState[]; unterminated: boolean } {
   const states: LineState[] = [];
   let inBlockComment = false;
   let inTemplate = false;
@@ -79,18 +79,21 @@ function lineStates(lines: string[]): LineState[] {
     // Unterminated single-quoted strings never span lines in valid JS.
     quote = null;
   }
-  return states;
+  return { states, unterminated: inBlockComment || inTemplate || quote !== null };
 }
 
 function stripFences(source: string): { content: string; removed: number } {
   const lines = source.split("\n");
-  const states = lineStates(lines);
+  const { states, unterminated } = lineStates(lines);
   const drop = new Set<number>();
   let removed = 0;
 
   for (let i = 0; i < lines.length; i++) {
     if (drop.has(i)) continue;
-    if (!states[i]?.code) continue;
+    // A preceding malformed, unterminated literal can desynchronise the tiny
+    // lexer. In that already-invalid case, a standalone fence pair is still
+    // unambiguously leaked chat formatting and must not be allowed through.
+    if (!states[i]?.code && !unterminated) continue;
     if (!FENCE.test(lines[i])) continue;
 
     // Find the matching closing fence in code position.

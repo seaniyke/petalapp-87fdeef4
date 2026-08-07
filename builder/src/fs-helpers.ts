@@ -3,7 +3,7 @@
  * so npm/vite can work with it. Each build gets its own /tmp/builds/<buildId>
  * scratch dir; we clean it up after the deploy completes (success or fail).
  */
-import { mkdir, writeFile, rm } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { healSyntax } from "./syntax-heal.js";
 
@@ -44,6 +44,50 @@ export async function materializeProject(
     await writeFile(full, f.content, "utf8");
   }
   return dir;
+}
+
+/**
+ * Re-heal source files from disk immediately before the compiler runs.
+ *
+ * This deliberately duplicates the incoming-payload pre-flight above: later
+ * builder steps may write or modify files, and Vite compiles the filesystem —
+ * not the original ProjectFile array. Keeping this boundary in the builder
+ * means malformed markdown/import/JSX syntax cannot bypass healing through a
+ * retry, queued payload, or future materialization change.
+ */
+export async function healMaterializedProject(root: string): Promise<string[]> {
+  const sourcePaths: string[] = [];
+
+  const walk = async (dir: string): Promise<void> => {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name === "node_modules" || entry.name === "dist" || entry.name === ".git") continue;
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(full);
+      } else if (/\.(tsx?|jsx?|mts|cts)$/i.test(entry.name)) {
+        sourcePaths.push(full);
+      }
+    }
+  };
+
+  await walk(root);
+  const files = await Promise.all(
+    sourcePaths.map(async (full) => ({
+      path: full.slice(resolve(root).length + 1).replace(/\\/g, "/"),
+      content: await readFile(full, "utf8"),
+    })),
+  );
+  const healed = healSyntax(files);
+
+  await Promise.all(
+    healed.files.map(async (file, index) => {
+      if (file.content === files[index]?.content) return;
+      await writeFile(safeJoin(root, file.path), file.content, "utf8");
+    }),
+  );
+
+  return healed.notes;
 }
 
 export async function cleanupProject(buildId: string): Promise<void> {

@@ -17,6 +17,7 @@ import { freshenStaleYears } from "@/server/freshen-stale-years.server";
 import { fixSourceEscapes } from "@/server/source-escape-fixer.server";
 import { fixImportSyntax } from "@/server/import-syntax-fixer.server";
 import { fixJsxAttrLiterals } from "@/server/jsx-attr-literal-fixer.server";
+import { fixMarkdownFences } from "@/server/markdown-fence-fixer.server";
 import { ensureBrandMarkWired } from "@/server/brand-identity.server";
 import type { VerifyPlan } from "@/server/verify-plan.server";
 import { runAllRepairs } from "@/server/repair-all.server";
@@ -105,12 +106,13 @@ export async function postBuildToRailway(args: {
   // `prop=[…]` / `prop=42` — unbraced JSX attribute values also abort the
   // esbuild transform ("Expected \"{\" but found \"[\"").
   const attrHealed = fixJsxAttrLiterals(importHealed.files);
+  const fenceHealed = fixMarkdownFences(attrHealed.files);
   // `<BrandMark/>` with no import compiles fine and then white-screens the
   // published app with `Can't find variable: BrandMark`. Heal it here too so
   // no build pathway can ship it.
-  const brandWired = ensureBrandMarkWired(attrHealed.files);
+  const brandWired = ensureBrandMarkWired(fenceHealed.files);
 
-  for (const n of [...canonical.notes, ...escaped.notes, ...importHealed.notes, ...attrHealed.notes, ...brandWired.notes]) {
+  for (const n of [...canonical.notes, ...escaped.notes, ...importHealed.notes, ...attrHealed.notes, ...fenceHealed.notes, ...brandWired.notes]) {
     console.warn(`[builder-last-mile] project=${args.projectId}: ${n}`);
   }
 
