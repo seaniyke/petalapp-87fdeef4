@@ -2266,17 +2266,22 @@ Forbidden defaults
     heroContractBlock;
 
   // Design taste + section library + locked palette/type.
-  // Only fires for marketing/landing archetypes so dashboards/tools stay
-  // unaffected. Additive, cache-safe (lives in the dynamic suffix).
+  // Marketing/fullstack get the landing taste; app/fullstack get the
+  // product-UI taste. Additive, cache-safe (lives in the dynamic suffix).
   let designTasteBlock = "";
   try {
     if (detectedWebSubtype === "marketing" || detectedWebSubtype === "fullstack") {
       const taste = renderDesignTasteBlock(lastUserText || "");
       designTasteBlock = taste.text + renderLandingChecklistBlock();
     }
+    if (detectedWebSubtype === "app" || detectedWebSubtype === "fullstack") {
+      const appUi = renderAppUiBlock(lastUserText || "");
+      designTasteBlock += appUi.text + renderAppScreenChecklistBlock();
+    }
   } catch {
     /* never block a build on taste-block failure */
   }
+
 
   const dynamicSuffixText =
     dateBlock +
