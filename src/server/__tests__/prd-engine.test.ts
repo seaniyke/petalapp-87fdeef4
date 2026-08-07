@@ -117,6 +117,8 @@ describe("PRD acceptance gate", () => {
         path: "src/routes/index.tsx",
         content: "export default function I(){ return <main><form>calculator</form><section>result</section></main> }",
       },
+      { path: "src/routes/guides.tsx", content: "export default function G(){ return <article>guide</article> }" },
+      { path: "src/routes/about.tsx", content: "export default function A(){ return <main>about</main> }" },
     ];
     expect(checkPrdStatically(prd, files).passed).toBe(true);
   });
