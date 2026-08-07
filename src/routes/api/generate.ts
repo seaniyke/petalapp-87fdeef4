@@ -84,6 +84,9 @@ import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/sel
 import { recordModelOutcome } from "@/server/model-kill-switch.server";
 import { pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
 import { renderDesignTasteBlock, renderLandingChecklistBlock } from "@/server/design-taste.server";
+import { renderAppUiBlock, renderAppScreenChecklistBlock } from "@/server/app-ui-library.server";
+import { renderAppSpecBlock } from "@/server/app-spec.server";
+
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
 import { renderLearningBlock } from "@/server/learning-injector.server";
 import { detectHighStakesIntent } from "@/lib/high-stakes-intent";
@@ -2266,17 +2269,22 @@ Forbidden defaults
     heroContractBlock;
 
   // Design taste + section library + locked palette/type.
-  // Only fires for marketing/landing archetypes so dashboards/tools stay
-  // unaffected. Additive, cache-safe (lives in the dynamic suffix).
+  // Marketing/fullstack get the landing taste; app/fullstack get the
+  // product-UI taste. Additive, cache-safe (lives in the dynamic suffix).
   let designTasteBlock = "";
   try {
     if (detectedWebSubtype === "marketing" || detectedWebSubtype === "fullstack") {
       const taste = renderDesignTasteBlock(lastUserText || "");
       designTasteBlock = taste.text + renderLandingChecklistBlock();
     }
+    if (detectedWebSubtype === "app" || detectedWebSubtype === "fullstack") {
+      const appUi = renderAppUiBlock(lastUserText || "");
+      designTasteBlock += appUi.text + renderAppScreenChecklistBlock() + renderAppSpecBlock(lastUserText || "");
+    }
   } catch {
     /* never block a build on taste-block failure */
   }
+
 
   const dynamicSuffixText =
     dateBlock +
