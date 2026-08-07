@@ -32,6 +32,7 @@ import { lintRenderRisks } from "@/server/render-risk-linter";
 import { runPostStreamAutofix } from "@/server/post-stream-autofix.server";
 import { isVerifierExempt } from "@/server/scaffold-ownership.server";
 import type { ProjectFile } from "@/server/generate.server";
+import type { Prd } from "@/server/prd/prd-types";
 
 /** A diagnostic in the one shape every producer is normalized into. */
 export interface GateIssue {
