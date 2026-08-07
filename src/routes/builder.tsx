@@ -4075,17 +4075,13 @@ function Builder() {
               </div>
             )}
             {messages.map((m, i) => {
-              // Persisted "Petal got confused" cards: render as the iOS-style
-              // PetalErrorCard inline in the thread so the failure survives a
-              // refresh. Retry replays the most recent user prompt; ask-fix
-              // routes through the normal askPetalToFix flow.
+              // Only ONE error banner may ever be on screen. Historical error
+              // messages are swallowed here; the single newest one is rendered
+              // after the build activity card (see lastErrorIdx below).
               if (m.role === "assistant" && m.error) {
-                if (shouldHideErrorCard(m.error)) return null;
-                // The newest error card is deferred and rendered after the
-                // build activity card so it always sits last in the thread.
-                if (i === lastErrorIdx) return null;
-                return renderErrorCard(m, false, i);
+                return null;
               }
+
 
               // System notes (e.g. "Petal is auto-fixing the build")
               // render as a small centered chip, not a chat bubble — they're
