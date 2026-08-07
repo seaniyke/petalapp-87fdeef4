@@ -3,7 +3,7 @@ import {
   deploymentUrlFromWranglerOutput,
   isTransientDeploymentStatus,
 } from "../../../builder/src/build";
-import { isTransientEdgeStatus } from "../../../builder/src/verify";
+import { isTransientEdgeStatus } from "../../../builder/src/deploy-status";
 
 describe("builder deployment readiness", () => {
   it("selects the immutable deployment URL rather than mutable aliases", () => {

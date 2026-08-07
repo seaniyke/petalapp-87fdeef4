@@ -25,6 +25,7 @@
  * PETAL_TEST_TAG below so it can be identified and cleaned up later.
  */
 import { chromium, type Browser, type Page, type ConsoleMessage } from "playwright";
+import { isTransientEdgeStatus } from "./deploy-status.js";
 
 export class VerifyError extends Error {}
 
@@ -149,12 +150,7 @@ const SETTLE_MS = 1_200;
 const STEP_TIMEOUT_MS = 8_000;
 const MAX_WAIT_MS = 5_000;
 export const VERIFY_TIMEOUT_MS = Number(process.env.VERIFY_TIMEOUT_MS ?? 4 * 60 * 1000);
-const TRANSIENT_EDGE_STATUSES = new Set([502, 503, 504, 520, 521, 522, 523, 524, 530]);
 const ROUTE_RETRY_DELAYS_MS = [2_000, 4_000];
-
-export function isTransientEdgeStatus(status: number | null | undefined): boolean {
-  return typeof status === "number" && TRANSIENT_EDGE_STATUSES.has(status);
-}
 
 /** Console noise that says nothing about whether the app works. */
 const IGNORED_CONSOLE = [
