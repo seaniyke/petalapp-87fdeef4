@@ -619,6 +619,23 @@ Every screen you generate is held to this, no exceptions:
 7. MOTION — 120ms micro / 200ms component / 400ms page, one easing curve, every animation inside \`@media (prefers-reduced-motion: reduce)\` guards. No autoplay carousels, no parallax.
 8. CONTENT — sentence case, second person, present tense, no exclamation marks, no lorem ipsum and no TODO copy ever. Write plausible domain-specific words. Format numbers and write unambiguous dates.`,
   },
+  // Always-on. The Backend Quality Bible floor (docs/petal-backend-quality-bible.md)
+  // — every rule the deterministic linter (backend-quality.server.ts) enforces
+  // after the fact, stated up front so the model gets it right the first time.
+  backendQuality: {
+    triggers: "always",
+    body: `\n\n[Reinforcement — Petal backend quality floor]
+Whenever a turn touches the database, auth, storage, or a server function:
+
+1. MIGRATIONS ARE COMPLETE — every \`CREATE TABLE public.x\` is followed, in the SAME migration, by \`GRANT\` statements (\`authenticated\` for user tables, \`service_role\` always, \`anon\` only when a policy allows anon reads), then \`ENABLE ROW LEVEL SECURITY\`, then the policies. A table without grants is unreachable; a table without policies 403s.
+2. POLICIES ARE SCOPED — read policies filter by owner (\`auth.uid() = user_id\`) or a role check; write policies (INSERT/UPDATE/ALL) ALWAYS carry \`WITH CHECK\`. Never \`USING (true)\` or \`TO anon\` on anything holding personal, financial, or message data.
+3. ROLES LIVE IN THEIR OWN TABLE — a \`user_roles\` table plus an \`app_role\` enum and a SECURITY DEFINER \`has_role()\` function. Never a \`role\`/\`is_admin\` column on profiles, and never a client-side admin check.
+4. NEVER DESTRUCTIVE BY DEFAULT — no DROP TABLE, DROP COLUMN, TRUNCATE, or unbounded DELETE unless the user explicitly asked for that removal. Schema changes are additive and forward-only.
+5. SECRETS STAY SERVER-SIDE — service-role keys and API secrets are read with \`process.env\` INSIDE a handler in \`*.server.ts\` / \`src/server/**\` / an API route. Client modules use \`import.meta.env.VITE_*\` only. Never log, return, or echo a secret.
+6. VALIDATE EVERY INPUT — mutating server functions chain \`.inputValidator(...)\` with a zod schema before \`.handler(...)\`. Webhooks verify their signature before reading the body. Unauthenticated and mutating endpoints are rate-limited.
+7. ERRORS AND LOGS ARE CLEAN — responses return plain-English messages with no stack traces, SQL, or table internals; logs carry a correlation id and no PII.
+8. FIRST SCREEN HAS DATA — when the requested first screen must show rows, the migration itself contains the INSERT statements. Never seed on page load or from a server function.`,
+  },
   webStandards: {
     triggers:
       /\b(site|website|page|landing|app|dashboard|portfolio|store|shop|blog|booking|saas|marketing|home ?page|nav|header|form|contact)\b/i,
