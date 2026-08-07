@@ -5,6 +5,7 @@ import { unescapeCodePositions } from "@/server/source-escape-fixer.server";
 import { scanOpeningTag, rewriteOpeningTags } from "@/server/jsx-tag-scan.server";
 import { COMMON_LUCIDE_ICONS } from "@/server/known-packages";
 import { validateRouteGraph } from "@/server/route-graph.server";
+import { partitionVerificationDefects } from "@/lib/verification-report";
 
 /**
  * Every case here is a real build failure taken from a Petal digest, not a
@@ -242,6 +243,30 @@ describe("router provider canonicalization", () => {
     expect(app).not.toContain("<BrowserRouter>");
     expect(app).toContain("<Routes>");
     expect(result.notes.some((note) => note.includes("nested <BrowserRouter>"))).toBe(true);
+  });
+});
+
+describe("build promotion defect classification", () => {
+  it("blocks runtime failures but keeps visual craft findings advisory", () => {
+    const result = partitionVerificationDefects([
+      "/ rendered a blank page — nothing visible after hydration.",
+      "/ threw an uncaught error: Error",
+      "Visual QA (desktop /): cramped spacing in the hero",
+    ]);
+    expect(result.blocking).toHaveLength(2);
+    expect(result.visual).toEqual([
+      "Visual QA (desktop /): cramped spacing in the hero",
+    ]);
+  });
+
+  it("removes verifier telemetry noise before classification", () => {
+    const result = partitionVerificationDefects([
+      "console error: Access to resource at 'https://buildwithpetal.com/api/public/track-runtime-error' has been blocked by CORS policy",
+      "console error: Failed to load resource: net::ERR_FAILED",
+    ]);
+    expect(result.blocking).toEqual([]);
+    expect(result.visual).toEqual([]);
+    expect(result.advisory).toEqual([]);
   });
 });
 
