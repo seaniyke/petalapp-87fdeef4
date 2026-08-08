@@ -215,6 +215,32 @@ const mounted = fixMissingRouterProvider([
 ]);
 assert.equal(mounted.notes.length, 0, "a mounted provider must not be re-wrapped");
 
+// Petal's deterministic entry shell mounts App below a local error boundary.
+// App already owns the router, so wrapping the entry again creates React
+// Router's fatal "You cannot render a <Router> inside another <Router>" error.
+const providerBelowErrorBoundary = fixMissingRouterProvider([
+  {
+    path: "src/main.tsx",
+    content:
+      'import ReactDOM from "react-dom/client";\nimport App from "./App";\nclass __PetalErrorBoundary extends React.Component { render(){ return this.props.children; } }\nReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><__PetalErrorBoundary><App /></__PetalErrorBoundary></React.StrictMode>);',
+  },
+  {
+    path: "src/App.tsx",
+    content:
+      'import { BrowserRouter as Router, Routes } from "@/components/ui/router";\nexport default function App(){ return <Router><Routes /></Router>; }',
+  },
+]);
+assert.equal(
+  providerBelowErrorBoundary.notes.length,
+  0,
+  "a provider at App root must dominate through Petal's local error boundary",
+);
+assert.doesNotMatch(
+  providerBelowErrorBoundary.files.find((f) => f.path === "src/main.tsx")?.content ?? "",
+  /<BrowserRouter>/,
+  "the entry must not receive a second router",
+);
+
 // A provider in a reachable descendant/sibling is not an ancestor of Routes.
 // Reachability alone previously suppressed the repair and shipped the exact
 // `basename`/useContext(null) crash seen in production.

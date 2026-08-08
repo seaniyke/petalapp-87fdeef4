@@ -3329,7 +3329,12 @@ function Builder() {
     if (!project?.id || busy) return;
     const snap = effectiveBuildSnap;
     const buildId = project.latest_build_id;
-    if (!snap || !buildId || snap.status !== "ready") return;
+    // Browser-broken candidates are deliberately stored as `failed` so the
+    // previous healthy preview stays live. They still carry a verification
+    // report and MUST enter the free repair loop; requiring `ready` here made
+    // the automatic repair path unreachable for the exact failures it exists
+    // to fix.
+    if (!snap || !buildId || (snap.status !== "ready" && snap.status !== "failed")) return;
     const defects =
       snap.verification && snap.verification.ok === false
         ? sanitizeVerificationDefects(snap.verification.defects)
