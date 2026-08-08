@@ -20,7 +20,7 @@
  * in build-targets.ts and skip this step.
  */
 
-export type WebSubtype = "marketing" | "app" | "fullstack";
+export type WebSubtype = "marketing" | "app" | "fullstack" | "tool";
 
 type Rule = { subtype: WebSubtype; patterns: RegExp[]; weight: number };
 
@@ -106,7 +106,13 @@ const RULES: Rule[] = [
 export function inferWebSubtype(prompt: string): WebSubtype {
   if (!prompt) return "app";
   const text = prompt.slice(0, 4000); // bound work
-  const scores: Record<WebSubtype, number> = { marketing: 0, app: 0, fullstack: 0 };
+  // Single-purpose utilities are their own shape. They used to score 0 on
+  // every rule and fall through to `app`, which forbids a public home page —
+  // that is exactly how "a pregnancy calculator" shipped as a dashboard.
+  if (TOOL_PATTERNS.some((re) => re.test(text)) && !/\bdashboard\b|\badmin\b|\bCRM\b/i.test(text)) {
+    return "tool";
+  }
+  const scores: Record<WebSubtype, number> = { marketing: 0, app: 0, fullstack: 0, tool: 0 };
   for (const rule of RULES) {
     for (const re of rule.patterns) {
       if (re.test(text)) scores[rule.subtype] += rule.weight;
