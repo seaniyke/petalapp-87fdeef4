@@ -21,6 +21,8 @@
  */
 import type { FileOp, ProjectFile } from "@/server/generate.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
+import type { Prd } from "@/server/prd/prd-types";
+import { excludedSurfaceForPath } from "@/server/prd/prd-reconcile";
 
 export interface CriticRejection {
   path: string;
@@ -118,6 +120,21 @@ export function findDeterministicDefects(
           op: op.op,
           deterministic: true,
           reason: "search snippet is empty, so the match point is undefined",
+        });
+        continue;
+      }
+    }
+
+    // PRD contract: the product's own requirements document says this surface
+    // is out of scope. A template habit must not bolt auth onto a calculator.
+    if (prd && (op.op === "create" || op.op === "update")) {
+      const surface = excludedSurfaceForPath(prd, op.path);
+      if (surface && !new RegExp(`\\b${surface}\\b`, "i").test(prompt)) {
+        out.push({
+          path: op.path,
+          op: op.op,
+          deterministic: true,
+          reason: `adds a \`${surface}\` surface that the product contract for ${prd.productName} explicitly excludes, and the request never asked for it`,
         });
         continue;
       }
@@ -262,6 +279,8 @@ export async function runCritic(args: {
   signal?: AbortSignal;
   /** Skip the model layer (deterministic rules still run). */
   deterministicOnly?: boolean;
+  /** The product contract for this turn, when one exists. */
+  prd?: Prd | null;
 }): Promise<CriticVerdict> {
   const rejections: CriticRejection[] = [];
 
@@ -269,7 +288,7 @@ export async function runCritic(args: {
     return { ops: args.ops, rejections, blockedEverything: false, modelReviewed: false };
   }
 
-  for (const r of findDeterministicDefects(args.ops, args.files, args.userPrompt)) {
+  for (const r of findDeterministicDefects(args.ops, args.files, args.userPrompt, args.prd)) {
     rejections.push(r);
   }
 
@@ -293,6 +312,19 @@ export async function runCritic(args: {
             {
               role: "user",
               content: [
+                ...(args.prd
+                  ? [
+                      "## Product contract (authoritative)",
+                      `${args.prd.productName} — ${args.prd.purpose}`,
+                      `Product type: ${args.prd.productType}`,
+                      `Required surfaces: ${args.prd.requiredSurfaces.join(", ")}`,
+                      args.prd.excludedSurfaces.length
+                        ? `Surfaces that must NOT exist: ${args.prd.excludedSurfaces.join(", ")}`
+                        : "",
+                      "Reject any op that contradicts this contract.",
+                      "",
+                    ]
+                  : []),
                 "## The user asked for",
                 args.userPrompt.slice(0, 4000) || "(no message)",
                 "",
