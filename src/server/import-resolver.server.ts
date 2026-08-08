@@ -194,6 +194,10 @@ function namedImportNames(line: string): string[] {
 }
 
 
+/** Paths the scaffold kit owns and always writes — never stub these. */
+const KIT_OWNED_PATH =
+  /^src\/(components\/ui\/|components\/blocks\/|components\/examples\/|integrations\/|hooks\/|lib\/)/;
+
 export interface ImportRepairResult {
   files: ProjectFile[];
   /** Spec rewrites: per-file list of (original spec → new spec). */
