@@ -371,7 +371,7 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
             type="button"
             onClick={() => onOpenChange(false)}
             disabled={saving}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-60"
           >
             Cancel
           </button>
@@ -379,12 +379,13 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
             type="button"
             onClick={save}
             disabled={saving || iconUploading || ogUploading}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             Save
           </button>
         </div>
+
       </DrawerContent>
     </Drawer>
   );
