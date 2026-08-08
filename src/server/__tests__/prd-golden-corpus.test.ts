@@ -22,7 +22,7 @@ interface Golden {
   mustHave: string[];
   /** Surfaces that must never be built. */
   mustNotHave?: string[];
-  subtype?: "marketing" | "app" | "fullstack";
+  subtype?: "marketing" | "app" | "fullstack" | "tool";
   computation?: boolean;
 }
 
@@ -32,7 +32,7 @@ const CORPUS: Golden[] = [
     prompt: "build a female pregnancy calculator",
     mustHave: ["landing", "tool", "results"],
     mustNotHave: ["dashboard", "admin", "auth"],
-    subtype: "marketing",
+    subtype: "tool",
     computation: true,
   },
   {

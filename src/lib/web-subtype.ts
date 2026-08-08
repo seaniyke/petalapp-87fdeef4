@@ -20,9 +20,27 @@
  * in build-targets.ts and skip this step.
  */
 
-export type WebSubtype = "marketing" | "app" | "fullstack";
+export type WebSubtype = "marketing" | "app" | "fullstack" | "tool";
 
 type Rule = { subtype: WebSubtype; patterns: RegExp[]; weight: number };
+
+/**
+ * Single-purpose utilities: one focused interactive thing on a public page.
+ * A calculator, converter, generator, timer, quiz or checker is not a
+ * dashboard and must never be routed to the app-shell prompt.
+ */
+const TOOL_PATTERNS: RegExp[] = [
+  /\bcalculator\b/i,
+  /\bcalculate[sr]?\b/i,
+  /\bconverter\b/i,
+  /\bconvert\s+\w+\s+to\b/i,
+  /\bgenerator\b/i,
+  /\b(countdown|pomodoro)?\s*timer\b/i,
+  /\bstopwatch\b/i,
+  /\bquiz\b/i,
+  /\b(checker|validator|analyzer|estimator|planner\s+tool)\b/i,
+  /\b(bmi|mortgage|loan|tax|tip|pregnancy|ovulation|due[-\s]?date|currency|unit)\s+(calculator|converter|tool)\b/i,
+];
 
 // Word-boundary phrase matchers. Order matters only for tie-breaking via
 // `weight` — the highest score wins. Defaults to "app" because it's the
@@ -106,7 +124,13 @@ const RULES: Rule[] = [
 export function inferWebSubtype(prompt: string): WebSubtype {
   if (!prompt) return "app";
   const text = prompt.slice(0, 4000); // bound work
-  const scores: Record<WebSubtype, number> = { marketing: 0, app: 0, fullstack: 0 };
+  // Single-purpose utilities are their own shape. They used to score 0 on
+  // every rule and fall through to `app`, which forbids a public home page —
+  // that is exactly how "a pregnancy calculator" shipped as a dashboard.
+  if (TOOL_PATTERNS.some((re) => re.test(text)) && !/\bdashboard\b|\badmin\b|\bCRM\b/i.test(text)) {
+    return "tool";
+  }
+  const scores: Record<WebSubtype, number> = { marketing: 0, app: 0, fullstack: 0, tool: 0 };
   for (const rule of RULES) {
     for (const re of rule.patterns) {
       if (re.test(text)) scores[rule.subtype] += rule.weight;
@@ -181,12 +205,31 @@ const FULLSTACK_ADDENDUM = [
   "When the prompt names payments, end your summary with a fenced `INTEGRATION:` block recommending Stripe — don't try to wire it inline.",
 ].join("\n");
 
+
+const TOOL_ADDENDUM = [
+  "### Web sub-type (HARD CONSTRAINT): Public single-purpose tool",
+  "The user wants ONE thing that works, on a page anyone can open. Not a dashboard, not a brochure.",
+  "",
+  "MUST include:",
+  "  - The working tool itself, above the fold on `/`: real inputs, real validation, real computed output rendered the moment the inputs are valid. No fake numbers, no `TODO`, no 'coming soon'.",
+  "  - The domain logic in its own typed module under `src/lib/` (e.g. `src/lib/<domain>.ts`) with pure exported functions — never inline arithmetic buried in JSX.",
+  "  - A results surface that explains the answer, not just prints it (the number, the unit, what it means, and how it was derived).",
+  "  - Supporting content BELOW the tool: a short explainer, an example, an FAQ, and a footer. This is what makes the page shareable and indexable.",
+  "  - Sensible defaults so the page is useful on first paint, before the user types anything.",
+  "",
+  "MUST NOT include: a sidebar app shell, sign-in / sign-up routes, an `_authenticated` folder, an admin area, a dashboard route, or a fake user account. Persistence, if any, is `localStorage`.",
+  "",
+  "Craft: one focused column or a centered card on a considered background. Editorial typography, generous spacing, mobile-first (the majority of these pages are opened on a phone). Keyboard accessible, labelled inputs, inline error text.",
+].join("\n");
+
 export function getWebSubtypeAddendum(subtype: WebSubtype): string {
   switch (subtype) {
     case "marketing":
       return MARKETING_ADDENDUM;
     case "fullstack":
       return FULLSTACK_ADDENDUM;
+    case "tool":
+      return TOOL_ADDENDUM;
     case "app":
     default:
       return APP_ADDENDUM;

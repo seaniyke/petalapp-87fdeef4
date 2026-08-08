@@ -49,7 +49,7 @@ export function isMissingRootView(source: string): boolean {
 
 export function ensureRenderableShell(
   files: ProjectFile[],
-  subtypeHint?: "marketing" | "app" | "fullstack",
+  subtypeHint?: import("@/lib/web-subtype").WebSubtype,
 ): RenderableShellResult {
   const byPath = new Map(files.map((f) => [f.path, f.content]));
   const fixed: string[] = [];
