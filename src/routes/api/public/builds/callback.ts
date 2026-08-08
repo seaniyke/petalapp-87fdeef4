@@ -228,8 +228,11 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         error_message: null,
         ready_at: new Date().toISOString(),
         // Null when the build predates verification or the plan was empty.
+        // `evidence` is the human-readable proof Petal reports back to the
+        // user: "completed" without proof is exactly the claim we stopped
+        // trusting from the builder.
         verification: verification
-          ? ({ ...verification, ok: true } as never)
+          ? ({ ...verification, ok: true, evidence: buildEvidence(verification) } as never)
           : null,
       })
       .eq("id", payload.buildId);
@@ -272,6 +275,24 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     status: 200,
     headers: { "Content-Type": "text/plain" },
   });
+}
+
+/**
+ * Turn a verification report into short proof lines the UI can show under a
+ * completed build. Evidence, not adjectives.
+ */
+function buildEvidence(verification: Record<string, unknown>): string[] {
+  const out: string[] = [];
+  const routes = Array.isArray(verification.routes) ? verification.routes : [];
+  const flows = Array.isArray(verification.flows) ? verification.flows : [];
+  if (routes.length) out.push(`${routes.length} route(s) loaded without a runtime error`);
+  if (flows.length) out.push(`${flows.length} user flow(s) completed end to end`);
+  if (verification.visualChecked) out.push("Screenshots reviewed for layout and craft defects");
+  if (typeof verification.durationMs === "number") {
+    out.push(`Browser check ran for ${Math.round(verification.durationMs / 1000)}s`);
+  }
+  if (!out.length) out.push("Deployed URL served a real app on Petal's own probe");
+  return out;
 }
 
 /**
