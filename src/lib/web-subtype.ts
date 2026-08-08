@@ -24,6 +24,24 @@ export type WebSubtype = "marketing" | "app" | "fullstack" | "tool";
 
 type Rule = { subtype: WebSubtype; patterns: RegExp[]; weight: number };
 
+/**
+ * Single-purpose utilities: one focused interactive thing on a public page.
+ * A calculator, converter, generator, timer, quiz or checker is not a
+ * dashboard and must never be routed to the app-shell prompt.
+ */
+const TOOL_PATTERNS: RegExp[] = [
+  /\bcalculator\b/i,
+  /\bcalculate[sr]?\b/i,
+  /\bconverter\b/i,
+  /\bconvert\s+\w+\s+to\b/i,
+  /\bgenerator\b/i,
+  /\b(countdown|pomodoro)?\s*timer\b/i,
+  /\bstopwatch\b/i,
+  /\bquiz\b/i,
+  /\b(checker|validator|analyzer|estimator|planner\s+tool)\b/i,
+  /\b(bmi|mortgage|loan|tax|tip|pregnancy|ovulation|due[-\s]?date|currency|unit)\s+(calculator|converter|tool)\b/i,
+];
+
 // Word-boundary phrase matchers. Order matters only for tie-breaking via
 // `weight` — the highest score wins. Defaults to "app" because it's the
 // safer fallback (you can always strip a sidebar; you can't conjure one).
