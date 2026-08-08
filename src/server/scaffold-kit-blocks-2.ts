@@ -991,7 +991,7 @@ export function NavBar({
         </div>
         {open && (
           <nav className="grid gap-1 border-t border-border py-3 md:hidden">
-            {links.map((l, i) => (
+            {navItems.map((l, i) => (
               <a
                 key={i}
                 href={l.href}
@@ -1001,7 +1001,9 @@ export function NavBar({
                 {l.label}
               </a>
             ))}
+            {cta && <div className="px-2 pt-2">{cta}</div>}
           </nav>
+
         )}
       </Container>
     </header>
