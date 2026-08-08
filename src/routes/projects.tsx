@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import {
   listProjects,
   deleteProject,
+  isProjectPublic,
   type ProjectRow,
 } from "@/lib/projects";
 import { toast } from "sonner";
