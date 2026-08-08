@@ -1754,7 +1754,7 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
   // Only consulted on initial generation — subsequent turns inherit the
   // shape already in `currentFiles`.
   let webSubtypeBlock = "";
-  let detectedWebSubtype: "marketing" | "app" | "fullstack" | undefined;
+  let detectedWebSubtype: import("@/lib/web-subtype").WebSubtype | undefined;
   if (buildTarget.id === "web" && isInitial) {
     // Defect C: reconcile the keyword rules with the predicted app shape so
     // the two classifiers can never hand the planner contradictory shapes.

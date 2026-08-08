@@ -22,6 +22,8 @@ import type { Prd, PrdSurface, ProductType } from "./prd-types";
 export function subtypeFromPrd(prd: Prd): WebSubtype {
   const hasDashboard = prd.requiredSurfaces.includes("dashboard");
   const hasAuth = prd.requiredSurfaces.includes("auth");
+  const isPublicTool =
+    !hasDashboard && !hasAuth && prd.requiredSurfaces.includes("tool");
 
   switch (prd.productType) {
     case "marketplace":
@@ -34,11 +36,12 @@ export function subtypeFromPrd(prd: Prd): WebSubtype {
     case "utility":
     case "game":
     case "ai-tool":
+      // A public single-purpose product is a working tool on a public page.
+      // It is emphatically not a sidebar app shell — and not a brochure either.
+      return hasDashboard ? "app" : isPublicTool ? "tool" : "marketing";
     case "content-site":
     default:
-      // A public single-purpose product is a public page with a working tool
-      // on it. It is emphatically not a sidebar app shell.
-      return hasDashboard ? "app" : "marketing";
+      return hasDashboard ? "app" : isPublicTool ? "tool" : "marketing";
   }
 }
 
