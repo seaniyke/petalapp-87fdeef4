@@ -341,10 +341,17 @@ export const Route = createFileRoute("/api/builds/trigger")({
           // Blocking post-deploy browser verification: the build isn't "ready"
           // until a real browser has loaded it, signed a throwaway user in, and
           // run the app's core write flows.
+          // The persisted product contract drives what the browser checks:
+          // the verifier proves the PRD's primary workflow, not just that the
+          // page rendered.
+          const storedPrd = await import("@/server/prd/prd-store.server")
+            .then((m) => m.loadProjectPrd(projectId))
+            .catch(() => null);
           const verify = await buildVerifyPlan({
             files: withEnv,
             projectId,
             userId: userId ?? null,
+            prd: storedPrd?.prd ?? null,
           }).catch(() => undefined);
           await postBuildToRailway({ projectId, buildId: build.id, files: withEnv, hideBadge, verify });
         } catch (e) {

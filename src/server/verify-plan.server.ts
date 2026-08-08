@@ -22,6 +22,8 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { ProjectFile } from "@/server/generate.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
+import type { Prd } from "@/server/prd/prd-types";
+import { prdBrowserScenarios } from "@/server/prd/prd-acceptance.server";
 
 const MODEL = "google/gemini-2.5-flash-lite";
 
@@ -255,6 +257,7 @@ async function draftFlows(args: {
   projectId: string;
   userId?: string | null;
   signal?: AbortSignal;
+  prd?: Prd | null;
 }): Promise<VerifyFlow[]> {
   try {
     const res = await aiChatCompletions({
@@ -266,7 +269,12 @@ async function draftFlows(args: {
         model: MODEL,
         messages: [
           { role: "system", content: FLOW_SYSTEM_PROMPT },
-          { role: "user", content: flowContext(args.files, args.routes) },
+          {
+            role: "user",
+            content: args.prd
+              ? `${prdScenarioContext(args.prd)}\n\n${flowContext(args.files, args.routes)}`
+              : flowContext(args.files, args.routes),
+          },
         ],
         temperature: 0,
         response_format: { type: "json_object" },
@@ -292,12 +300,33 @@ async function draftFlows(args: {
  * Build the verification plan for a build. Never throws — the worst case is a
  * plan that only loads "/".
  */
+/**
+ * The PRD's acceptance scenarios, rendered as the flows the verifier MUST
+ * cover. This is what turns "it compiled" into "the product works".
+ */
+function prdScenarioContext(prd: Prd): string {
+  const scenarios = prdBrowserScenarios(prd);
+  const lines = [
+    "## Product contract — these acceptance scenarios take priority over anything you infer",
+    `${prd.productName}: ${prd.purpose}`,
+    `Primary workflow: ${prd.primaryWorkflow.name}`,
+    "",
+    "Required scenarios (translate each into a flow with real selectors from the source below):",
+  ];
+  for (const s of scenarios) {
+    lines.push(`- [${s.criterionId}] on ${s.route}: ${s.steps.join(" → ")} ⇒ ${s.expect}`);
+  }
+  return lines.join("\n");
+}
+
 export async function buildVerifyPlan(args: {
   files: ProjectFile[];
   projectId: string;
   userId?: string | null;
   /** Skip the model call (used when the turn is already over budget on time). */
   skipFlows?: boolean;
+  /** The persisted product contract, when the project has one. */
+  prd?: Prd | null;
   signal?: AbortSignal;
 }): Promise<VerifyPlan> {
   let routes: string[];
@@ -333,6 +362,7 @@ export async function buildVerifyPlan(args: {
       projectId: args.projectId,
       userId: args.userId,
       signal: args.signal,
+      prd: args.prd,
     });
     if (flows.length) plan.flows = flows;
   }

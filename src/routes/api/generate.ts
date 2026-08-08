@@ -1733,6 +1733,13 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
       if (prdNote) {
         prdBlock += `\n\n### Contract change (state this to the user in one sentence before you build)\n${prdNote}\n`;
       }
+      const { recordPrdEvent } = await import("@/server/prd/prd-telemetry.server");
+      recordPrdEvent({
+        event: resolvedPrd.authored ? "authored" : "amended",
+        projectId: body.projectId ?? null,
+        prd: resolvedPrd.prd,
+        amendment: resolvedPrd.amendment,
+      });
       console.log(
         `[prd] project=${body.projectId ?? "n/a"} product="${resolvedPrd.prd.productName}" type=${resolvedPrd.prd.productType} authored=${resolvedPrd.authored} amendment=${resolvedPrd.amendment} surfaces=[${resolvedPrd.prd.requiredSurfaces.join(",")}]`,
       );
@@ -2249,14 +2256,24 @@ Forbidden defaults
       // contradictory instructions — the subtype addendum says "no auth
       // shells" while the blueprint lists `/auth/sign-in` as a route to
       // scaffold, and it either ships auth on a landing page or freezes.
+      // The PRD is the authority: a template may satisfy the contract, it may
+      // never widen it. Excluded surfaces are stripped before the prompt.
+      let narrowed = false;
+      if (resolvedPrd) {
+        const { filterTemplateRoutes } = await import("@/server/prd/prd-reconcile");
+        const kept = filterTemplateRoutes(resolvedPrd.prd, composed.blueprint.routes);
+        if (kept.length !== composed.blueprint.routes.length) {
+          composed.blueprint.routes = kept;
+          narrowed = true;
+        }
+      }
       if (detectedWebSubtype === "marketing") {
         composed.blueprint.routes = composed.blueprint.routes.filter(
           (r) => !r.startsWith("/auth") && r !== "/account" && r !== "/dashboard",
         );
-        archetypeBlock = renderBlueprintBlock(composed.blueprint);
-      } else {
-        archetypeBlock = composed.promptBlock;
+        narrowed = true;
       }
+      archetypeBlock = narrowed ? renderBlueprintBlock(composed.blueprint) : composed.promptBlock;
     }
   } catch {
     // Never block a build on composer failure.
@@ -2270,7 +2287,12 @@ Forbidden defaults
     const { classifyAppShape, renderShapeBlock } = await import(
       "@/lib/app-shape-classifier"
     );
-    appShapeBlock = renderShapeBlock(classifyAppShape(lastUserText));
+    const shape = classifyAppShape(lastUserText);
+    if (resolvedPrd) {
+      const { reconcileSurfaces } = await import("@/server/prd/prd-reconcile");
+      shape.surfaces = reconcileSurfaces(resolvedPrd.prd, shape.surfaces) as typeof shape.surfaces;
+    }
+    appShapeBlock = renderShapeBlock(shape);
   } catch {
     // Never block a build on classifier failure.
   }
@@ -3179,6 +3201,7 @@ Forbidden defaults
               projectId: body.projectId ?? "unknown",
               userId,
               signal: request.signal,
+              prd: resolvedPrd?.prd ?? null,
             });
             if (verdict.rejections.length > 0) {
               criticRejections.push(...verdict.rejections);
@@ -4413,10 +4436,17 @@ Forbidden defaults
           earlyChangedPaths,
           controller,
           encoder,
-          // Only enforce the product contract on the turn that authored it.
-          // Later turns edit an existing product; the contract is enforced by
-          // amendment, not by re-checking the whole app on a copy tweak.
-          resolvedPrd?.authored ? resolvedPrd.prd : null,
+          // Enforce the product contract on the turn that authored it and on
+          // any turn that changed its shape. Cosmetic edits are exempt — the
+          // contract is unchanged, so re-checking the whole app is noise.
+          resolvedPrd &&
+          (resolvedPrd.authored ||
+            resolvedPrd.amendment === "additive" ||
+            resolvedPrd.amendment === "contradiction")
+            ? resolvedPrd.prd
+            : null,
+
+
         );
         if (!guardOut.ok) {
           // Final-parse-guard couldn't repair this turn's edits. Revert
