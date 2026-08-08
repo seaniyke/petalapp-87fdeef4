@@ -197,8 +197,17 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
         const blockOpen = /<Route\b[^>]*\bpath\s*=\s*["']\/["'][^>]*>[\s\S]*?<\/Route>\s*/;
         let next = f.content;
         if (selfClose.test(next)) next = next.replace(selfClose, "");
-        else if (blockOpen.test(next)) next = next.replace(blockOpen, "");
-        else return f;
+        else {
+          const m = next.match(blockOpen);
+          // A non-greedy match stops at the FIRST `</Route>`, so a layout
+          // route with children would be truncated mid-JSX and leave a
+          // dangling open tag. Only remove a block that contains exactly
+          // one `<Route` — otherwise skip; a duplicate route is a warning,
+          // unbalanced JSX is a build failure.
+          if (!m || (m[0].match(/<Route\b/g) ?? []).length !== 1) return f;
+          next = next.replace(blockOpen, "");
+        }
+
         duplicateRootsRepaired.push(dropFile);
         return { path: f.path, content: next };
       });
