@@ -3790,6 +3790,10 @@ export const KIT_FILES: KitFile[] = [
   { path: "src/components/ui/table.tsx", content: TABLE, overwrite: true },
   { path: "src/components/ui/sheet.tsx", content: SHEET, overwrite: true },
   { path: "src/components/ui/toast.tsx", content: TOAST, overwrite: true },
+  // shadcn ships the toaster at `ui/sonner`; models import that path constantly.
+  // Without a real module the import-resolver used to stub it into a visible
+  // "Coming together" block that rendered as a bogus footer.
+  { path: "src/components/ui/sonner.tsx", content: TOAST, overwrite: true },
   { path: "src/components/ui/theme-provider.tsx", content: THEME_PROVIDER, overwrite: true },
   { path: "src/components/ui/theme-toggle.tsx", content: THEME_TOGGLE, overwrite: true },
   { path: "src/components/ui/container.tsx", content: CONTAINER, overwrite: true },
