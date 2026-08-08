@@ -3441,15 +3441,15 @@ import { cn } from "@/lib/utils";
  *
  * For richer needs (async validation, arrays), graduate to react-hook-form.
  */
-export type FormErrors<T> = { [K in keyof T]?: string };
+export type FormErrorMap<T> = { [K in keyof T]?: string };
 
 export function useForm<T extends Record<string, unknown>>(opts: {
   defaults: T;
-  validate?: (values: T) => FormErrors<T>;
+  validate?: (values: T) => FormErrorMap<T>;
   onSubmit: (values: T) => void | Promise<void>;
 }) {
   const [values, setValues] = React.useState<T>(opts.defaults);
-  const [errors, setErrors] = React.useState<FormErrors<T>>({});
+  const [errors, setErrors] = React.useState<FormErrorMap<T>>({});
   const [touched, setTouched] = React.useState<Partial<Record<keyof T, boolean>>>({});
   const [submitting, setSubmitting] = React.useState(false);
 
