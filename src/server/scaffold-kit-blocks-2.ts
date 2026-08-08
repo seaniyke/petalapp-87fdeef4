@@ -926,33 +926,65 @@ export interface NavLink {
 }
 
 /**
- * Minimal sticky top nav with mobile sheet. No CTA — for content sites,
- * docs, blogs, portfolios. Use NavWithCta for marketing pages.
+ * Minimal sticky top nav with mobile sheet.
+ * Prop aliases are accepted so a caller can pass \`brandMark\` + \`appName\`
+ * instead of \`brand\`, and \`navLinks\`/\`items\` instead of \`links\`. Without
+ * these, an unknown prop is silently dropped and the nav renders empty.
  */
 export function NavBar({
   brand,
+  brandMark,
+  logo,
+  appName,
   links,
+  navLinks,
+  items,
+  cta,
   brandHref = "/",
   className,
 }: {
-  brand: React.ReactNode;
-  links: NavLink[];
+  brand?: React.ReactNode;
+  brandMark?: React.ReactNode;
+  logo?: React.ReactNode;
+  appName?: React.ReactNode;
+  links?: NavLink[];
+  navLinks?: NavLink[];
+  items?: NavLink[];
+  cta?: React.ReactNode;
   brandHref?: string;
   className?: string;
 }) {
   const [open, setOpen] = React.useState(false);
+  const mark = brandMark ?? logo;
+  const brandNode =
+    brand ??
+    (mark || appName ? (
+      <span className="inline-flex items-center gap-2">
+        {mark}
+        {appName}
+      </span>
+    ) : null);
+  const navItems = (Array.isArray(links) && links.length > 0
+    ? links
+    : Array.isArray(navLinks) && navLinks.length > 0
+      ? navLinks
+      : Array.isArray(items)
+        ? items
+        : []) as NavLink[];
   return (
     <header className={cn("sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur", className)}>
       <Container size="xl">
         <div className="flex h-14 items-center justify-between">
-          <a href={brandHref} className="text-base font-semibold text-foreground">{brand}</a>
+          <a href={brandHref} className="text-base font-semibold text-foreground">{brandNode}</a>
           <nav className="hidden items-center gap-6 md:flex">
-            {links.map((l, i) => (
+            {navItems.map((l, i) => (
               <a key={i} href={l.href} className="text-sm text-muted-foreground transition hover:text-foreground">
                 {l.label}
               </a>
             ))}
+            {cta}
           </nav>
+
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen((v) => !v)} aria-label="Toggle menu">
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
