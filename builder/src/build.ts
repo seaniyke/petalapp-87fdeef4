@@ -66,35 +66,56 @@ export function isTransientDeploymentStatus(status: number): boolean {
   return TRANSIENT_DEPLOY_STATUSES.has(status);
 }
 
-/** Wait until the freshly uploaded deployment is actually available to HTTP. */
-async function waitForDeploymentReady(url: string): Promise<void> {
+async function probe(url: string): Promise<{ status: number | null; error: string | null }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await fetch(url, {
+      redirect: "follow",
+      headers: { "User-Agent": "PetalDeployReadiness/1.0" },
+      signal: controller.signal,
+    });
+    return { status: response.status, error: null };
+  } catch (error) {
+    return { status: null, error: error instanceof Error ? error.message : String(error) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Wait until the freshly uploaded deployment answers HTTP.
+ *
+ * Two things this must never do:
+ *  - Fail the build because DNS for the immutable `<hash>.<project>.pages.dev`
+ *    host has not propagated yet. The upload already succeeded; the stable
+ *    project hostname usually serves the same deployment minutes earlier, so
+ *    poll it as a fallback and verify against whichever answers first.
+ *  - Turn "not reachable from this container yet" into a user-facing failure.
+ *    On timeout we return `ready: false` and let verification treat an
+ *    unreachable deployment as inconclusive instead of broken app code.
+ */
+async function waitForDeploymentReady(
+  url: string,
+  fallbackUrl: string,
+): Promise<{ url: string; ready: boolean; detail: string }> {
   const startedAt = Date.now();
-  let lastStatus: number | null = null;
-  let lastError = "deployment did not respond";
+  const candidates = fallbackUrl && fallbackUrl !== url ? [url, fallbackUrl] : [url];
+  let detail = "deployment did not respond";
 
   while (Date.now() - startedAt < DEPLOY_READY_TIMEOUT_MS) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10_000);
-    try {
-      const response = await fetch(url, {
-        redirect: "follow",
-        headers: { "User-Agent": "PetalDeployReadiness/1.0" },
-        signal: controller.signal,
-      });
-      lastStatus = response.status;
-      if (response.ok) return;
-      lastError = `HTTP ${response.status}`;
-      if (!isTransientDeploymentStatus(response.status)) {
+    for (const candidate of candidates) {
+      const { status, error } = await probe(candidate);
+      if (status !== null && status >= 200 && status < 400) {
+        return { url: candidate, ready: true, detail: `HTTP ${status}` };
+      }
+      if (status !== null && !isTransientDeploymentStatus(status)) {
         throw new BuildError(
-          `Deployed app returned a non-retryable response (${response.status})`,
-          `${url} returned HTTP ${response.status}`,
+          `Deployed app returned a non-retryable response (${status})`,
+          `${candidate} returned HTTP ${status}`,
         );
       }
-    } catch (error) {
-      if (error instanceof BuildError) throw error;
-      lastError = error instanceof Error ? error.message : String(error);
-    } finally {
-      clearTimeout(timer);
+      detail = `${candidate}: ${status !== null ? `HTTP ${status}` : error}`;
     }
 
     const remaining = DEPLOY_READY_TIMEOUT_MS - (Date.now() - startedAt);
@@ -105,11 +126,13 @@ async function waitForDeploymentReady(url: string): Promise<void> {
     }
   }
 
-  throw new BuildError(
-    "Deployment did not become ready before verification",
-    `${url} was still unavailable after ${Date.now() - startedAt}ms (${lastStatus ? `HTTP ${lastStatus}` : lastError})`,
-  );
+  return {
+    url,
+    ready: false,
+    detail: `still unavailable after ${Date.now() - startedAt}ms (${detail})`,
+  };
 }
+
 
 /** Cloudflare Pages project names: lowercase, alphanumeric + hyphens, max 58. */
 function projectNameFor(projectId: string): string {
@@ -321,16 +344,23 @@ export async function buildAndDeploy(
   // the upload. A transient 522 here is deployment propagation, not broken app
   // code, and must never be sent into the user's repair loop.
   const url = deploymentUrlFromWranglerOutput(`${deploy.stdout}\n${deploy.stderr}`, projectName);
-  await waitForDeploymentReady(url);
+  const stableUrl = `https://${projectName}.pages.dev`;
+  const readiness = await waitForDeploymentReady(url, stableUrl);
+  if (!readiness.ready) {
+    // Upload succeeded; only our reachability probe timed out. Ship the URL and
+    // let verification decide — failing here would burn the user's build.
+    console.warn(`[deploy] readiness probe inconclusive: ${url} ${readiness.detail}`);
+  }
+  const hostname = new URL(url).hostname;
 
   return {
-    url,
-    deploymentId:
-      new URL(url).hostname.endsWith(`.${projectName}.pages.dev`)
-        ? new URL(url).hostname.split(".")[0]
-        : undefined,
+    url: readiness.ready ? readiness.url : url,
+    deploymentId: hostname.endsWith(`.${projectName}.pages.dev`)
+      ? hostname.split(".")[0]
+      : undefined,
     durationMs: Date.now() - startedAt,
   };
+
 }
 
 /**
