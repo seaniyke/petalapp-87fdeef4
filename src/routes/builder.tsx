@@ -5086,7 +5086,7 @@ function Builder() {
                   ? () => {
                       const prompt = proposedPlan.sourcePrompt;
                       setProposedPlan(null);
-                      void sendRef.current?.(prompt, { autoPlan: false });
+                      void sendRef.current?.(prompt, { autoPlan: false, suppressEcho: true });
                     }
                   : undefined
               }
@@ -5094,6 +5094,7 @@ function Builder() {
                 const plan = proposedPlan;
                 setProposedPlan(null);
                 void sendRef.current?.(plan.sourcePrompt, {
+                  suppressEcho: true,
                   approvedPlanId: plan.planId,
                   allowedPaths: Array.from(plan.allowedPaths),
                 });
