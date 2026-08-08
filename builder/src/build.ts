@@ -31,8 +31,13 @@ export class BuildError extends Error {
   }
 }
 
-const DEPLOY_READY_TIMEOUT_MS = 75_000;
-const DEPLOY_READY_DELAYS_MS = [0, 1_000, 2_000, 4_000, 7_000, 10_000, 15_000];
+// Pages can acknowledge a successful upload several minutes before every edge
+// can resolve the immutable hostname. A short retry ladder used to give up
+// after only ~39 seconds despite advertising a 75-second timeout, turning a
+// healthy upload into a failed deployment. Keep polling for the full five
+// minute propagation window instead.
+const DEPLOY_READY_TIMEOUT_MS = 5 * 60_000;
+const DEPLOY_READY_POLL_MS = 10_000;
 const TRANSIENT_DEPLOY_STATUSES = new Set([404, 408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524]);
 
 /**
@@ -67,10 +72,7 @@ async function waitForDeploymentReady(url: string): Promise<void> {
   let lastStatus: number | null = null;
   let lastError = "deployment did not respond";
 
-  for (const delay of DEPLOY_READY_DELAYS_MS) {
-    if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
-    if (Date.now() - startedAt >= DEPLOY_READY_TIMEOUT_MS) break;
-
+  while (Date.now() - startedAt < DEPLOY_READY_TIMEOUT_MS) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10_000);
     try {
@@ -93,6 +95,13 @@ async function waitForDeploymentReady(url: string): Promise<void> {
       lastError = error instanceof Error ? error.message : String(error);
     } finally {
       clearTimeout(timer);
+    }
+
+    const remaining = DEPLOY_READY_TIMEOUT_MS - (Date.now() - startedAt);
+    if (remaining > 0) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.min(DEPLOY_READY_POLL_MS, remaining)),
+      );
     }
   }
 
