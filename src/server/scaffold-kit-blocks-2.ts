@@ -758,8 +758,7 @@ export function FooterColumns({
                   >
                     {renderSocialIcon(s)}
                   </a>
-                  );
-                })}
+                ))}
               </div>
             )}
           </div>
