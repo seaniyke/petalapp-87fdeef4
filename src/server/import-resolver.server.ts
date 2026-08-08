@@ -269,6 +269,12 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
       const stubPath = specToStubPath(f.path, spec);
       if (!stubPath) continue;
       if (byPath.has(stubPath)) continue;
+      // Never stub a kit-owned path. The scaffold kit supplies these files
+      // later in the pipeline; writing a "Coming together" placeholder here
+      // wins the merge and turns real primitives (Toaster, auth client, utils)
+      // into a visible prose block in the middle of the app.
+      if (KIT_OWNED_PATH.test(stubPath)) continue;
+
       const stub = buildStub(spec, defaultImportName(full), namedImportNames(full));
       byPath.set(stubPath, stub);
       stubsCreated.push(stubPath);
