@@ -13,7 +13,7 @@ import type { BuildTargetId } from "@/lib/build-targets";
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { listProjects, listPublicProjects, type ProjectRow } from "@/lib/projects";
+import { listProjects, listPublicProjects, isProjectPublic, type ProjectRow } from "@/lib/projects";
 import {
   ArrowRight,
   ArrowUp,
