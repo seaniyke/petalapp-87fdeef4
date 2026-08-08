@@ -159,11 +159,59 @@ function repairLucideIcons(
   return { content: out, fixes };
 }
 
-/** Strip an import line by replacing it with an inline comment. */
-function commentOutImport(content: string, line: string, reason: string): string {
+
+/**
+ * Replace an unresolvable package import with LOCAL SAFE SHIMS.
+ *
+ * Commenting the import out on its own leaves every use site referencing an
+ * identifier that no longer exists — `ReferenceError: X is not defined` on
+ * first render, i.e. a build that compiles and an app that is blank. Instead
+ * we bind each identifier the file imported to an inert local value:
+ *   - PascalCase → a visible placeholder component (renders, never crashes)
+ *   - anything else → a callable object (safe to call, read props from, or
+ *     destructure)
+ * The build still succeeds, the app still renders, and the missing dependency
+ * is disclosed through `result.stripped` rather than as a browser crash.
+ */
+function shimImport(content: string, line: string, reason: string, pkg: string): string {
   const safe = line.trim().replace(/\n/g, " ");
-  return content.replace(line, `\n// [petal] removed unresolved import — ${reason}: ${safe}\n`);
+  const header = `\n// [petal] unresolved import replaced with a safe local shim — ${reason}: ${safe}\n`;
+
+  const clause = line.match(/import\s+([\s\S]*?)\s+from\s+["']/);
+  if (!clause) {
+    // Side-effect import (`import "pkg"`) — nothing is bound, safe to drop.
+    return content.replace(line, header);
+  }
+
+  const names: string[] = [];
+  const raw = clause[1].trim();
+  const defaultMatch = raw.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s*(?:,|$)/);
+  if (defaultMatch) names.push(defaultMatch[1]);
+  const nsMatch = raw.match(/\*\s+as\s+([A-Za-z_$][A-Za-z0-9_$]*)/);
+  if (nsMatch) names.push(nsMatch[1]);
+  const brace = raw.match(/\{([^}]*)\}/);
+  if (brace) {
+    for (const part of brace[1].split(",")) {
+      const local = part.trim().replace(/^type\s+/, "").split(/\s+as\s+/).pop()?.trim();
+      if (local && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(local)) names.push(local);
+    }
+  }
+
+  const unique = Array.from(new Set(names));
+  if (unique.length === 0) return content.replace(line, header);
+
+  const decls = unique
+    .map((n) =>
+      /^[A-Z]/.test(n)
+        ? `const ${n}: any = (props: any) => null;\n`
+        : `const ${n}: any = Object.assign(() => ({}), {});\n`,
+    )
+    .join("");
+
+  return content.replace(line, `${header}// missing package: ${pkg}\n${decls}`);
 }
+
+
 
 /** Returns the deps object from a parsed package.json, creating it if missing. */
 function getDeps(pkg: Record<string, unknown>): Record<string, string> {
@@ -320,11 +368,11 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
         continue;
       }
 
-      // Unknown package — strip the import line so Rollup doesn't bail.
-      // Usages of the identifiers in the file body will throw at runtime
-      // (caught by the runtime-contract pass later), but the BUILD will
-      // succeed and the user can iterate. This is intentionally a hard
-      // failure mode on the UI side rather than a silent build failure.
+      // Unknown package — replace the import with local safe shims so Rollup
+      // resolves AND the app still renders. Dropping the import outright left
+      // every use site throwing `ReferenceError` in the browser: a build that
+      // "succeeded" and an app that was blank. The missing package is
+      // disclosed through `result.stripped` instead.
       // We only do this on the LATEST `src` snapshot so prior rewrites
       // (alias, icon fixes) stick.
       const currentLine = src.includes(full)
@@ -335,9 +383,15 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
             ),
           )?.[0];
       if (currentLine) {
-        src = commentOutImport(src, currentLine, `package "${pkg}" is not in Petal's allow-list`);
+        src = shimImport(
+          src,
+          currentLine,
+          `package "${pkg}" is not in Petal's allow-list`,
+          pkg,
+        );
         result.stripped.push({ path: file.path, spec });
       }
+
     }
 
     byPath.set(file.path, src);

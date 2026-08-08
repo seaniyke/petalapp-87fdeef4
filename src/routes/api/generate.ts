@@ -4615,7 +4615,19 @@ Forbidden defaults
           );
         }
         let finalCharged = 0;
-        if (!body.isAutoFix) {
+        // Decide the terminal state BEFORE billing. Charging first meant a
+        // turn where the user asked for an edit, the ops all failed to apply
+        // and the project came out byte-identical still debited credits —
+        // the user paid for nothing and (correctly) called it a loop.
+        const turnChangedPaths = diffChangedPaths(turnBaselineFiles, nextFiles);
+        const failedEditTurn = turnChangedPaths.length === 0 && unappliedPaths.length > 0;
+        if (failedEditTurn) {
+          console.warn(
+            `[credits] no-op edit turn not billed project=${body.projectId ?? "none"} unapplied=${unappliedPaths.length}`,
+          );
+        }
+        if (!body.isAutoFix && !failedEditTurn) {
+
           // Single atomic settlement. `settle_build_charge` is idempotent on
           // the turn id (a retried request can never double-charge), drains
           // whatever is actually available — including the daily/monthly FREE
@@ -4768,7 +4780,7 @@ Forbidden defaults
         // Iteration Standard #1 — one turn, one terminal state, decided by a
         // byte diff against the snapshot taken when the turn began.
         {
-          const turnChanged = diffChangedPaths(turnBaselineFiles, nextFiles);
+          const turnChanged = turnChangedPaths;
           emitTurnOutcome(controller, encoder, {
             outcome: turnChanged.length > 0 ? "applied" : "answered",
             changedPaths: turnChanged,

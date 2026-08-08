@@ -80,6 +80,112 @@ function pathToMatcher(declared: string): RegExp | "wildcard" {
   return new RegExp(`^${escaped || "/"}$`);
 }
 
+/** Index of a component's declaration (function/const/class) in a module. */
+function componentDefIndex(content: string, name: string): number {
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const rx = new RegExp(`\\b(?:function|const|let|var|class)\\s+${esc}\\b`);
+  const m = rx.exec(content);
+  return m ? m.index : -1;
+}
+
+/**
+ * Given source starting at `return (`, return the offset of the ROOT JSX
+ * element's closing tag (`</div>`, `</>`), or null when the shape is not a
+ * single wrapping element we can safely insert into.
+ *
+ * This is a small JSX-aware scanner: it skips strings, comments, and
+ * `{...}` expression containers, so a `</div>` written inside a template
+ * literal or a nested conditional can never be mistaken for the root's
+ * closing tag.
+ */
+function rootCloseTagIndex(source: string): number | null {
+  const open = source.indexOf("(");
+  if (open < 0) return null;
+  let i = open + 1;
+  while (i < source.length) {
+    const ch = source[i];
+    if (/\s/.test(ch)) { i++; continue; }
+    if (ch === "/" && source[i + 1] === "/") {
+      const nl = source.indexOf("\n", i);
+      if (nl < 0) return null;
+      i = nl + 1;
+      continue;
+    }
+    if (ch === "/" && source[i + 1] === "*") {
+      const end = source.indexOf("*/", i);
+      if (end < 0) return null;
+      i = end + 2;
+      continue;
+    }
+    break;
+  }
+  // Root must be a plain element. Ternaries, fragments-in-variables, early
+  // returns and bare identifiers are ambiguous — skip rather than guess.
+  if (source[i] !== "<") return null;
+
+  let depth = 0;
+  let braces = 0;
+  let quote: string | null = null;
+
+  for (let j = i; j < source.length; j++) {
+    const ch = source[j];
+    if (quote) {
+      if (ch === "\\") { j++; continue; }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") { quote = ch; continue; }
+    if (ch === "/" && source[j + 1] === "/") {
+      const nl = source.indexOf("\n", j);
+      if (nl < 0) return null;
+      j = nl;
+      continue;
+    }
+    if (ch === "/" && source[j + 1] === "*") {
+      const end = source.indexOf("*/", j);
+      if (end < 0) return null;
+      j = end + 1;
+      continue;
+    }
+    if (ch === "{") { braces++; continue; }
+    if (ch === "}") { braces--; continue; }
+    // The root's closing tag is never inside an expression container.
+    if (braces > 0 || ch !== "<") continue;
+
+    if (source[j + 1] === "/") {
+      const end = source.indexOf(">", j);
+      if (end < 0) return null;
+      depth--;
+      if (depth === 0) return j;
+      j = end;
+      continue;
+    }
+
+    // Opening or self-closing tag: walk to its `>`, respecting attribute
+    // strings and `{...}` attribute values.
+    let k = j + 1;
+    let attrQuote: string | null = null;
+    let attrBraces = 0;
+    for (; k < source.length; k++) {
+      const c = source[k];
+      if (attrQuote) {
+        if (c === "\\") { k++; continue; }
+        if (c === attrQuote) attrQuote = null;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === "`") { attrQuote = c; continue; }
+      if (c === "{") { attrBraces++; continue; }
+      if (c === "}") { attrBraces--; continue; }
+      if (c === ">" && attrBraces === 0) break;
+    }
+    if (k >= source.length) return null;
+    if (source[k - 1] !== "/") depth++;
+    j = k;
+  }
+  return null;
+}
+
+
 export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
   const notes: string[] = [];
   const missingTargets = new Set<string>();
@@ -124,7 +230,10 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
   // <Route> children. Cheap detection: a Route opening tag with `element=`
   // that is not self-closing.
   const ROUTE_LAYOUT_RE =
-    /<Route\b[^/>]*\belement\s*=\s*\{\s*<\s*([A-Z][A-Za-z0-9_]*)\s*\/?\s*>?\s*\/?\s*\}[^/>]*>\s*<Route\b/g;
+    // `[^<>]` rather than `[^/>]`: excluding `/` meant any layout route whose
+    // own path contained a slash (`path="/"`, `path="/shop"`) was never
+    // recognised as a layout, so its missing <Outlet /> went unrepaired.
+    /<Route\b[^<>]*\belement\s*=\s*\{\s*<\s*([A-Z][A-Za-z0-9_]*)\s*\/?\s*>?\s*\/?\s*\}[^<>]*>\s*<Route\b/g;
   for (const f of files) {
     if (!isAppSource(f.path)) continue;
     let m: RegExpExecArray | null;
@@ -193,12 +302,25 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
         if (f.path !== dropFile) return f;
         // Remove the FIRST `<Route path="/" ... />` (self-closing) or
         // `<Route path="/" ...></Route>` block on this file.
-        const selfClose = /<Route\b[^>]*\bpath\s*=\s*["']\/["'][^>]*\/>\s*/;
+        // `[^<>]` (not `[^>]`): an attribute like element={<Layout />} contains
+        // a `/>` of its own, and the looser class matched a LAYOUT route's
+        // opening tag as if it were self-closing — deleting the open tag and
+        // stranding its `</Route>`.
+        const selfClose = /<Route\b[^<>]*\bpath\s*=\s*["']\/["'][^<>]*\/>\s*/;
         const blockOpen = /<Route\b[^>]*\bpath\s*=\s*["']\/["'][^>]*>[\s\S]*?<\/Route>\s*/;
         let next = f.content;
         if (selfClose.test(next)) next = next.replace(selfClose, "");
-        else if (blockOpen.test(next)) next = next.replace(blockOpen, "");
-        else return f;
+        else {
+          const m = next.match(blockOpen);
+          // A non-greedy match stops at the FIRST `</Route>`, so a layout
+          // route with children would be truncated mid-JSX and leave a
+          // dangling open tag. Only remove a block that contains exactly
+          // one `<Route` — otherwise skip; a duplicate route is a warning,
+          // unbalanced JSX is a build failure.
+          if (!m || (m[0].match(/<Route\b/g) ?? []).length !== 1) return f;
+          next = next.replace(blockOpen, "");
+        }
+
         duplicateRootsRepaired.push(dropFile);
         return { path: f.path, content: next };
       });
@@ -235,35 +357,14 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
       const idx = out.findIndex((f) => f.path === filePath);
       if (idx < 0) continue;
       const f = out[idx];
-      // Naive but safe: append a comment + Outlet inside the FIRST return's
-      // root element. We look for `return (` followed by a JSX tag and
-      // insert `<Outlet />` just before its closing tag. If we can't find
-      // a safe insertion point, skip — better blank than broken.
-      const returnIdx = f.content.indexOf("return (");
-      if (returnIdx < 0) continue;
-      // Find the matching `)` for that return — naïve paren counter.
-      let depth = 0;
-      let endIdx = -1;
-      for (let i = returnIdx + "return (".length - 1; i < f.content.length; i++) {
-        const ch = f.content[i];
-        if (ch === "(") depth++;
-        else if (ch === ")") {
-          depth--;
-          if (depth === 0) {
-            endIdx = i;
-            break;
-          }
-        }
-      }
-      if (endIdx < 0) continue;
-      // Insert `<Outlet />` just before the last `</…>` close tag inside the block.
-      const block = f.content.slice(returnIdx, endIdx);
-      const lastClose = block.lastIndexOf("</");
-      if (lastClose < 0) continue;
-      // Ensure Outlet is imported.
+
+      // Ensure Outlet is imported first, then compute the insertion point on
+      // the FINAL content so indices can never drift.
       let content = f.content;
-      if (!/from\s+["']react-router-dom["'][^;]*Outlet/.test(content) && !/Outlet[^,}\n]*}\s*from\s+["']react-router-dom["']/.test(content)) {
-        // Add import or augment existing react-router-dom import.
+      if (
+        !/from\s+["']react-router-dom["'][^;]*Outlet/.test(content) &&
+        !/Outlet[^,}\n]*}\s*from\s+["']react-router-dom["']/.test(content)
+      ) {
         const rrImport = /import\s*\{([^}]*)\}\s*from\s+["']react-router-dom["']/;
         if (rrImport.test(content)) {
           content = content.replace(rrImport, (full, inner) => {
@@ -274,31 +375,25 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
           content = `import { Outlet } from "react-router-dom";\n${content}`;
         }
       }
-      // Re-find indices on the (possibly) updated content.
-      const newReturnIdx = content.indexOf("return (", content.indexOf(`function ${name}`) >= 0 ? content.indexOf(`function ${name}`) : 0);
-      if (newReturnIdx < 0) continue;
-      let d = 0;
-      let newEndIdx = -1;
-      for (let i = newReturnIdx + "return (".length - 1; i < content.length; i++) {
-        const ch = content[i];
-        if (ch === "(") d++;
-        else if (ch === ")") {
-          d--;
-          if (d === 0) {
-            newEndIdx = i;
-            break;
-          }
-        }
-      }
-      if (newEndIdx < 0) continue;
-      const newBlock = content.slice(newReturnIdx, newEndIdx);
-      const newLastClose = newBlock.lastIndexOf("</");
-      if (newLastClose < 0) continue;
-      const insertAt = newReturnIdx + newLastClose;
+
+      // Locate this component's own `return (` — searching from the start of
+      // the file could target a different component in the same module.
+      const defIdx = componentDefIndex(content, name);
+      const returnIdx = content.indexOf("return (", defIdx >= 0 ? defIdx : 0);
+      if (returnIdx < 0) continue;
+
+      // Find the root element's closing tag with a real JSX scan. The old
+      // `lastIndexOf("</")` heuristic happily matched a `</div>` inside a
+      // string literal or a nested branch and produced unbalanced JSX — a
+      // repair pass that BROKE the build it was meant to save.
+      const closeOffset = rootCloseTagIndex(content.slice(returnIdx));
+      if (closeOffset === null) continue;
+      const insertAt = returnIdx + closeOffset;
       content = content.slice(0, insertAt) + "<Outlet />\n      " + content.slice(insertAt);
       out[idx] = { path: f.path, content };
       notes.push(`route-graph: added <Outlet /> to layout component ${name} in ${filePath}`);
     }
+
   }
 
   if (bareRouterImportsRewritten.length) {
