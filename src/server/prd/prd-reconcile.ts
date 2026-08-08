@@ -77,18 +77,43 @@ export function reconcileSurfaces(prd: Prd, predicted: string[]): PrdSurface[] {
   return kept;
 }
 
+/** Route patterns that evidence a surface the PRD may have excluded. */
+const SURFACE_ROUTE_PATTERNS: Array<[PrdSurface, RegExp]> = [
+  ["auth", /^\/(auth|login|signin|sign-in|signup|sign-up|register)/i],
+  ["dashboard", /^\/(dashboard|app)(\/|$)/i],
+  ["admin", /^\/admin(\/|$)/i],
+  ["account", /^\/(account|profile|settings\/account)(\/|$)/i],
+  ["checkout", /^\/(checkout|cart|billing)(\/|$)/i],
+];
+
 /** Templates may satisfy the PRD; they may never widen it. */
 export function filterTemplateRoutes(prd: Prd, routes: string[]): string[] {
-  const banned: Array<[PrdSurface, RegExp]> = [
-    ["auth", /^\/(auth|login|signin|sign-in|signup|sign-up|register)/i],
-    ["dashboard", /^\/(dashboard|app)(\/|$)/i],
-    ["admin", /^\/admin(\/|$)/i],
-    ["account", /^\/(account|profile|settings\/account)(\/|$)/i],
-    ["checkout", /^\/(checkout|cart|billing)(\/|$)/i],
-  ];
   const excluded = new Set(prd.excludedSurfaces);
-  return routes.filter((r) => !banned.some(([surface, rx]) => excluded.has(surface) && rx.test(r)));
+  return routes.filter(
+    (r) => !SURFACE_ROUTE_PATTERNS.some(([surface, rx]) => excluded.has(surface) && rx.test(r)),
+  );
 }
+
+/**
+ * File paths that create a surface the PRD explicitly excluded. Used by the
+ * critic so a template habit cannot bolt auth onto a calculator.
+ */
+const SURFACE_FILE_PATTERNS: Array<[PrdSurface, RegExp]> = [
+  ["auth", /^src\/(routes|pages)\/.*(auth|login|sign-?in|sign-?up|register)/i],
+  ["dashboard", /^src\/(routes|pages)\/.*(dashboard)/i],
+  ["admin", /^src\/(routes|pages)\/.*(admin)/i],
+  ["account", /^src\/(routes|pages)\/.*(account|profile)/i],
+  ["checkout", /^src\/(routes|pages)\/.*(checkout|cart|billing)/i],
+];
+
+export function excludedSurfaceForPath(prd: Prd, path: string): PrdSurface | null {
+  const excluded = new Set(prd.excludedSurfaces);
+  for (const [surface, rx] of SURFACE_FILE_PATTERNS) {
+    if (excluded.has(surface) && rx.test(path)) return surface;
+  }
+  return null;
+}
+
 
 /** True when the PRD describes a product whose core value is computation. */
 export function isComputationProduct(prd: Prd): boolean {
