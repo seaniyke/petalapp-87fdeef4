@@ -435,7 +435,12 @@ function findObviousScopeLeaks(src: string): string[] {
     for (const name of params.matchAll(/\b[A-Za-z_$][\w$]*\b/g)) declared.add(name[0]);
   }
 
-  const clean = stripNoise(src).replace(/\.[A-Za-z_$][\w$]*/g, " ");
+  // JSX text nodes are prose, not code. "your due date, and your age," would
+  // otherwise look like identifier references and produce false positives that
+  // roll back a perfectly valid build.
+  const stripJsxText = (s: string) => s.replace(/([>}])[^<>{}]*(?=<)/g, "$1 ");
+  const clean = stripJsxText(stripNoise(src)).replace(/\.[A-Za-z_$][\w$]*/g, " ");
+
   const missing: string[] = [];
   const seen = new Set<string>();
   const add = (name: string | undefined) => {
