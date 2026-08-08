@@ -70,6 +70,7 @@ function archetypeFromShape(
   // requests. If the user says "landing page", do not let a marketplace/social
   // shape upgrade it into a business app and leak dashboards into the page.
   if (webSubtype === "marketing") return "marketing";
+  if (webSubtype === "tool") return "tool";
   if (webSubtype === "fullstack") return "business-app";
 
   // Explicit user opt-outs — these short-circuit any business-app upgrade.
