@@ -73,7 +73,7 @@ export async function gradeFull(
       filesEmitted: false,
       verifierPassed: false,
       bundlePassed: false,
-      typecheckPassed: false,
+      productPassed: false,
       esbuildPassed: false,
       fixtureMissing: true,
       notes: "no fixture recorded — see fixtures/README.md",
