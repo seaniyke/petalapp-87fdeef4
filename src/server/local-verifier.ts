@@ -114,6 +114,8 @@ function maskJsxText(src: string): string {
   let inTag = false;
   let tagBraceDepth = 0;
   let tagQuote: '"' | "'" | "`" | null = null;
+  let tagClosing = false;
+  let jsxDepth = 0;
   let i = 0;
 
   while (i < src.length) {
@@ -129,6 +131,7 @@ function maskJsxText(src: string): string {
         // A JSX tag may start after an expression boundary, but not directly
         // after an identifier/closing delimiter (the TypeScript generic case).
         inTag = (next === "/" || /[A-Za-z]/.test(next)) && !/[\w$\])]/.test(prev);
+        tagClosing = inTag && next === "/";
       } else if (inTag) {
         if (tagQuote) {
           if (ch === "\\" && i + 1 < src.length) {
@@ -144,8 +147,11 @@ function maskJsxText(src: string): string {
         } else if (ch === "}") {
           tagBraceDepth = Math.max(0, tagBraceDepth - 1);
         } else if (ch === ">" && tagBraceDepth === 0) {
+          const selfClosing = src[i - 1] === "/";
+          if (tagClosing) jsxDepth = Math.max(0, jsxDepth - 1);
+          else if (!selfClosing) jsxDepth++;
           inTag = false;
-          inText = true;
+          inText = jsxDepth > 0;
         }
       }
       i++;
@@ -157,6 +163,7 @@ function maskJsxText(src: string): string {
       inTag = true;
       tagBraceDepth = 0;
       tagQuote = null;
+      tagClosing = src[i + 1] === "/";
       out += ch;
       i++;
       continue;
