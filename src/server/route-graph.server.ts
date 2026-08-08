@@ -299,7 +299,11 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
         if (f.path !== dropFile) return f;
         // Remove the FIRST `<Route path="/" ... />` (self-closing) or
         // `<Route path="/" ...></Route>` block on this file.
-        const selfClose = /<Route\b[^>]*\bpath\s*=\s*["']\/["'][^>]*\/>\s*/;
+        // `[^<>]` (not `[^>]`): an attribute like element={<Layout />} contains
+        // a `/>` of its own, and the looser class matched a LAYOUT route's
+        // opening tag as if it were self-closing — deleting the open tag and
+        // stranding its `</Route>`.
+        const selfClose = /<Route\b[^<>]*\bpath\s*=\s*["']\/["'][^<>]*\/>\s*/;
         const blockOpen = /<Route\b[^>]*\bpath\s*=\s*["']\/["'][^>]*>[\s\S]*?<\/Route>\s*/;
         let next = f.content;
         if (selfClose.test(next)) next = next.replace(selfClose, "");
