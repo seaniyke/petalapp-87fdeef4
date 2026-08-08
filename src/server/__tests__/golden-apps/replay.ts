@@ -117,6 +117,7 @@ export function isPassing(r: FullGradeResult): boolean {
     r.filesEmitted &&
     r.verifierPassed &&
     r.esbuildPassed &&
+    r.productPassed &&
     r.expectedFilesPresent !== false
   );
 }
