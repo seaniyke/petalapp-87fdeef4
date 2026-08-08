@@ -666,7 +666,7 @@ export interface FooterColumn {
 type SocialEntry = {
   href: string;
   label?: string;
-  icon?: React.ComponentType<{ className?: string }>;
+  icon?: React.ComponentType<{ className?: string }> | React.ReactNode;
   platform?: string;
 };
 
