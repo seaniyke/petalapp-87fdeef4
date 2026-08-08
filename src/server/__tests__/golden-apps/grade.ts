@@ -64,13 +64,17 @@ export function grade(app: GoldenAppPrompt, generated: GeneratedApp | null): Gra
   const productFindings = product.findings
     .filter((f) => f.severity === "blocking")
     .map((f) => `[${f.criterionId}] ${f.message}`);
+  // Partial replays (model diff only, no scaffold) cannot satisfy a whole-app
+  // contract, so acceptance is advisory there and blocking for full apps.
+  const isFullApp = generated.files.some((f) => f.path === "index.html")
+    && generated.files.some((f) => f.path === "src/main.tsx");
 
   return {
     filesEmitted: true,
     verifierPassed: allIssues.length === 0,
     // Set by the replay harness (esbuild parse pass).
     bundlePassed: false,
-    productPassed: product.passed,
+    productPassed: isFullApp ? product.passed : true,
     productFindings: productFindings.length ? productFindings : undefined,
     expectedFilesPresent,
     issues: allIssues.length > 0 ? allIssues : undefined,
