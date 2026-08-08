@@ -3501,12 +3501,33 @@ export function Form(props: any) {
   return <form className={cn("space-y-4", className)} {...rest}>{children}</form>;
 }
 
-function rhfField(control: any, name: string) {
+function getRhfValue(control: any, name: string) {
+  const values = control?._formValues ?? control?._defaultValues ?? {};
+  return name.split(".").reduce((acc: any, key: string) => (acc == null ? acc : acc[key]), values);
+}
+
+/**
+ * Controller-equivalent field binding without importing react-hook-form.
+ * Subscribes to the form's value stream so \`field.value\` stays live —
+ * callers commonly render \`value={field.value}\`, and a static value would
+ * make the input read as permanently empty.
+ */
+function useRhfField(control: any, name: string) {
+  const [, force] = React.useReducer((c: number) => c + 1, 0);
+  React.useEffect(() => {
+    const subject = control?._subjects?.values ?? control?._subjects?.state ?? control?._subjects?.watch;
+    if (!subject || typeof subject.subscribe !== "function") return;
+    const sub = subject.subscribe({ next: () => force() });
+    return () => {
+      if (sub && typeof sub.unsubscribe === "function") sub.unsubscribe();
+    };
+  }, [control, name]);
+
   if (control && typeof control.register === "function") {
     try {
       const reg = control.register(name);
-      const values = control._formValues || control._defaultValues || {};
-      return { ...reg, defaultValue: values[name] };
+      const value = getRhfValue(control, name);
+      return { ...reg, value: value === undefined || value === null ? "" : value };
     } catch {
       // fall through to the inert field below
     }
@@ -3520,6 +3541,11 @@ function rhfField(control: any, name: string) {
   };
 }
 
+function getRhfError(control: any, name: string) {
+  const errors = control?._formState?.errors ?? {};
+  return name.split(".").reduce((acc: any, key: string) => (acc == null ? acc : acc[key]), errors);
+}
+
 /**
  * FormField is dual-mode too.
  *  - Plain:  <FormField name="email" label="Email" error={...}><Input/></FormField>
@@ -3529,9 +3555,10 @@ function rhfField(control: any, name: string) {
  */
 export function FormField(props: any) {
   const { name, label, description, error, className, children, control, render } = props ?? {};
+  const field = useRhfField(control, name);
   let body: React.ReactNode = children;
   if (typeof render === "function") {
-    body = render({ field: rhfField(control, name), fieldState: { error: undefined }, formState: {} });
+    body = render({ field, fieldState: { error: getRhfError(control, name) }, formState: control?._formState ?? {} });
   }
   return (
     <div className={cn("space-y-1.5", className)}>
