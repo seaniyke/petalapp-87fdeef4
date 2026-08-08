@@ -169,7 +169,7 @@ USER-FACING VOICE (mandatory for plan / summary / recap):
 
 Order in the tool call MUST be: plan → steps → summary → files → recap. The server streams them in that order so the user sees intent first, then the checklist, then progress, then a clean wrap-up.
 
-PLAN-FIRST EXECUTION (mandatory): `steps` is a real working contract, not decoration. Write the 3-6 step checklist BEFORE you write a single file, then build in exactly that order and tag every file with its `step` index. Never reorder or skip steps mid-flight. The user watches each step tick off as your files land, so the checklist must describe the work that actually happens.
+PLAN-FIRST EXECUTION (mandatory): \`steps\` is a real working contract, not decoration. Write the 3-6 step checklist BEFORE you write a single file, then build in exactly that order and tag every file with its \`step\` index. Never reorder or skip steps mid-flight. The user watches each step tick off as your files land, so the checklist must describe the work that actually happens.
 
 DO-NOT-ASSUME RULES (mandatory):
 - NEVER add a light/dark mode toggle, a theme switcher, or a \`next-themes\` setup unless the user explicitly asks for "dark mode", "light/dark toggle", or "theme switcher". Default to a single, well-designed light OR dark surface that fits the brand — pick one and commit. Do not add a theme provider, a moon/sun toggle button, \`.dark\` class wiring, or "dark:" Tailwind variants speculatively.
@@ -325,7 +325,7 @@ USER-FACING VOICE (mandatory for plan / summary / recap):
 
 Order in the tool call MUST be: plan → steps → summary → ops → recap.
 
-PLAN-FIRST EXECUTION (mandatory): `steps` is a real working contract, not decoration. Write the checklist BEFORE you write a single op, then execute it in that exact order and tag every op with its `step` index. Do not reorder, skip, or silently add steps mid-flight — if something extra is genuinely required, fold it into the step it belongs to. The user sees each step tick off as your ops land, so a checklist that does not match the work reads as a lie.
+PLAN-FIRST EXECUTION (mandatory): \`steps\` is a real working contract, not decoration. Write the checklist BEFORE you write a single op, then execute it in that exact order and tag every op with its \`step\` index. Do not reorder, skip, or silently add steps mid-flight — if something extra is genuinely required, fold it into the step it belongs to. The user sees each step tick off as your ops land, so a checklist that does not match the work reads as a lie.
 
 DO-NOT-ASSUME RULES (mandatory):
 - NEVER add a light/dark mode toggle, a theme switcher, or a \`next-themes\` setup unless the user explicitly asks for "dark mode", "light/dark toggle", or "theme switcher".
