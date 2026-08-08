@@ -160,11 +160,12 @@ export function PublishSuccessCard({
               {display}
             </p>
           )}
-          {description && (
+          {cleanDescription && (
             <p className="mt-1.5 line-clamp-2 text-[13px] font-medium text-muted-foreground">
-              {description}
+              {cleanDescription}
             </p>
           )}
+
         </div>
         {onEditWebsiteInfo && (
           <button
