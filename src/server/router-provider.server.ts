@@ -450,13 +450,12 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
   // branch does not provide context to Routes/Link elsewhere. Only skip the
   // repair when the provider dominates the root render.
   if (entryPath && live && providerDominatesRoot(entryPath, byPath)) {
-    const normalized = removeNestedBrowserRouters(files, entryPath, live);
-    if (normalized.removed > 0) {
-      notes.push(
-        `router-provider: removed ${normalized.removed} nested <BrowserRouter> wrapper(s) below the entry provider`,
-      );
-    }
-    return { files: normalized.files, notes };
+    // The dominating provider may legitimately live at App's root below
+    // StrictMode or Petal's error boundary. It is not "nested" unless the
+    // entry itself already owns a provider. Preserve the user's valid router;
+    // moving/removing it here previously alternated between duplicate-router
+    // crashes and missing-context crashes across consecutive repair passes.
+    return { files, notes };
   }
 
   // Preferred injection point: the entry file that calls .render(...)
