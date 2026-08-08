@@ -3529,13 +3529,9 @@ function rhfField(control: any, name: string) {
  */
 export function FormField(props: any) {
   const { name, label, description, error, className, children, control, render } = props ?? {};
-  const rhfField = useRhfField(control, name);
   let body: React.ReactNode = children;
   if (typeof render === "function") {
-    const field = control && typeof control.register === "function"
-      ? { ...control.register(name), value: rhfField.value }
-      : rhfField;
-    body = render({ field, fieldState: { error: undefined }, formState: {} });
+    body = render({ field: rhfField(control, name), fieldState: { error: undefined }, formState: {} });
   }
   return (
     <div className={cn("space-y-1.5", className)}>
