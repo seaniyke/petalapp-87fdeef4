@@ -2121,6 +2121,8 @@ Forbidden defaults
       hasBackend: Boolean(backend),
       backend: backend ?? undefined,
       context: {
+        prd: resolvedPrd?.prd ?? null,
+        prdBlock,
         appShape: stagedAppShape,
         appShapeBlock: stagedAppShapeBlock,
         designDirection,

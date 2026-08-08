@@ -170,6 +170,34 @@ function hasProvider(content: string): boolean {
 function providerDominatesRoot(entryPath: string, byPath: Map<string, ProjectFile>): boolean {
   const visited = new Set<string>();
 
+  /**
+   * Follow a component imported by the current file and inspect its returned
+   * JSX. Entry shells commonly put App below a local error boundary; that
+   * boundary is transparent to router context, but the old detector stopped
+   * at the local class and then injected a second BrowserRouter above App.
+   */
+  function inspectImportedComponent(
+    path: string,
+    content: string,
+    component: string,
+    depth: number,
+  ): boolean {
+    const importRx = new RegExp(
+      `import\\s+(?:${component}|\\{[^}]*\\b${component}\\b[^}]*\\})\\s+from\\s*["']([^"']+)["']`,
+    );
+    const spec = importRx.exec(content)?.[1];
+    if (!spec) return false;
+    const target = resolveImport(path, spec, byPath);
+    if (!target) return false;
+    const targetContent = byPath.get(target)?.content ?? "";
+    const returned =
+      /return\s*\(\s*([\s\S]*?)\s*\)\s*;?/.exec(targetContent)?.[1] ??
+      /return\s+(<[^;]+>)\s*;?/.exec(targetContent)?.[1] ??
+      /=>\s*(<[^;]+>)/.exec(targetContent)?.[1] ??
+      "";
+    return returned ? inspect(target, returned, depth + 1) : false;
+  }
+
   function inspect(path: string, jsx: string, depth: number): boolean {
     if (depth > 6 || visited.has(path)) return false;
     visited.add(path);
@@ -190,20 +218,24 @@ function providerDominatesRoot(entryPath: string, byPath: Map<string, ProjectFil
       return hasProvider(file.content);
     }
 
-    const importRx = new RegExp(
-      `import\\s+(?:${root}|\\{[^}]*\\b${root}\\b[^}]*\\})\\s+from\\s*["']([^"']+)["']`,
-    );
-    const spec = importRx.exec(file.content)?.[1];
-    if (!spec) return false;
-    const target = resolveImport(path, spec, byPath);
-    if (!target) return false;
-    const targetContent = byPath.get(target)?.content ?? "";
-    const returned =
-      /return\s*\(\s*([\s\S]*?)\s*\)\s*;?/.exec(targetContent)?.[1] ??
-      /return\s+(<[^;]+>)\s*;?/.exec(targetContent)?.[1] ??
-      /=>\s*(<[^;]+>)/.exec(targetContent)?.[1] ??
-      "";
-    return returned ? inspect(target, returned, depth + 1) : false;
+    if (inspectImportedComponent(path, file.content, root, depth)) return true;
+
+    // A local root wrapper (most importantly __PetalErrorBoundary) can contain
+    // the imported App. Router context passes through it unchanged, so inspect
+    // imported children in their rendered order before concluding that no
+    // provider dominates the tree.
+    const locallyDeclared = new RegExp(
+      `\\b(?:const|let|var|function|class)\\s+${root.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\b`,
+    ).test(file.content);
+    if (locallyDeclared) {
+      for (const child of tags.slice(1)) {
+        if (PROVIDERS.includes(child as (typeof PROVIDERS)[number]) && hasProvider(file.content)) {
+          return true;
+        }
+        if (inspectImportedComponent(path, file.content, child, depth)) return true;
+      }
+    }
+    return false;
   }
 
   const entry = byPath.get(entryPath);
@@ -418,13 +450,21 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
   // branch does not provide context to Routes/Link elsewhere. Only skip the
   // repair when the provider dominates the root render.
   if (entryPath && live && providerDominatesRoot(entryPath, byPath)) {
-    const normalized = removeNestedBrowserRouters(files, entryPath, live);
-    if (normalized.removed > 0) {
-      notes.push(
-        `router-provider: removed ${normalized.removed} nested <BrowserRouter> wrapper(s) below the entry provider`,
-      );
+    const entryOwnsProvider = hasProvider(byPath.get(entryPath)?.content ?? "");
+    if (entryOwnsProvider) {
+      // Legacy/broken states may already contain the duplicate pair. Keep the
+      // entry provider and remove only descendant BrowserRouter wrappers.
+      const normalized = removeNestedBrowserRouters(files, entryPath, live);
+      if (normalized.removed > 0) {
+        notes.push(
+          `router-provider: removed ${normalized.removed} nested <BrowserRouter> wrapper(s) below the entry provider`,
+        );
+      }
+      return { files: normalized.files, notes };
     }
-    return { files: normalized.files, notes };
+    // Otherwise the dominating provider legitimately lives at App's root
+    // below StrictMode or Petal's error boundary. Preserve it in place.
+    return { files, notes };
   }
 
   // Preferred injection point: the entry file that calls .render(...)

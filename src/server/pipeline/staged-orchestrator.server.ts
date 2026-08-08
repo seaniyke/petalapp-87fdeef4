@@ -40,12 +40,18 @@ import { THEMES } from "@/server/themes.server";
 import type { AppShape } from "@/lib/app-shape-classifier";
 import type { WebSubtype } from "@/lib/web-subtype";
 import type { ProjectFile, StreamEvent } from "@/server/generate.server";
+import type { Prd } from "@/server/prd/prd-types";
+import { runPreEmitGate } from "@/server/preemit-gate.server";
 
 function sse(event: StreamEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;
 }
 
 export interface StagedPipelineContext {
+  /** Rendered internal PRD supplied to the planner. */
+  prdBlock?: string;
+  /** Parsed contract supplied to the same acceptance gate as monolithic builds. */
+  prd?: Prd | null;
   /** Rendered `## Predicted app shape` block from app-shape-classifier. */
   appShapeBlock?: string;
   /** Classified shape — drives archetype hint + token quality checks. */
@@ -214,6 +220,7 @@ export async function runStagedPipelineStream(args: {
     context: {
       appShapeBlock: ctx.appShapeBlock,
       designDirectionBlock: ctx.designDirectionBlock,
+      prdBlock: ctx.prdBlock,
       archetypeHint,
       businessDomain: ctx.appShape?.businessDomain,
       category: ctx.appShape?.category,
@@ -280,6 +287,24 @@ export async function runStagedPipelineStream(args: {
     return null;
   }
 
+  // The staged path must pass the same product-contract gate as the
+  // monolithic path. Without this, enabling plan-first silently bypassed the
+  // PRD and could report a polished but wrong product as complete.
+  const stagedPaths = wireup.files.map((file) => file.path);
+  const acceptance = await runPreEmitGate(wireup.files, stagedPaths, {
+    maxRounds: 0,
+    prd: ctx.prd ?? null,
+  });
+  if (!acceptance.report.ok) {
+    console.warn(
+      `[staged] product acceptance failed — falling back to monolithic: ${acceptance.report.issues
+        .slice(0, 8)
+        .map((issue) => `${issue.path}: ${issue.detail}`)
+        .join(" | ")}`,
+    );
+    return null;
+  }
+
   // All three stages succeeded. Replay the events as an SSE stream so the
   // client renders the same progress UI it always does.
   const encoder = new TextEncoder();
@@ -298,7 +323,7 @@ export async function runStagedPipelineStream(args: {
     { type: "status", message: "Verifying the build…" },
     {
       type: "result",
-      files: wireup.files as ProjectFile[],
+      files: acceptance.files as ProjectFile[],
       summary: wireup.summary,
     },
   ];
