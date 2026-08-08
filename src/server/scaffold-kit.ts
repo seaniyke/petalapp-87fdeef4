@@ -3441,15 +3441,15 @@ import { cn } from "@/lib/utils";
  *
  * For richer needs (async validation, arrays), graduate to react-hook-form.
  */
-export type FormErrors<T> = { [K in keyof T]?: string };
+export type FormErrorMap<T> = { [K in keyof T]?: string };
 
 export function useForm<T extends Record<string, unknown>>(opts: {
   defaults: T;
-  validate?: (values: T) => FormErrors<T>;
+  validate?: (values: T) => FormErrorMap<T>;
   onSubmit: (values: T) => void | Promise<void>;
 }) {
   const [values, setValues] = React.useState<T>(opts.defaults);
-  const [errors, setErrors] = React.useState<FormErrors<T>>({});
+  const [errors, setErrors] = React.useState<FormErrorMap<T>>({});
   const [touched, setTouched] = React.useState<Partial<Record<keyof T, boolean>>>({});
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -3486,33 +3486,121 @@ export function useForm<T extends Record<string, unknown>>(opts: {
   return { values, errors, touched, submitting, setValue, register, handleSubmit, reset };
 }
 
-export function Form({ className, ...props }: React.FormHTMLAttributes<HTMLFormElement>) {
-  return <form className={cn("space-y-4", className)} {...props} />;
+/**
+ * <Form> is dual-mode.
+ *  - Plain mode:  <Form onSubmit={form.handleSubmit}> ... </Form>  (renders <form>)
+ *  - RHF mode:    <Form {...rhfForm}><form onSubmit={...}>…</form></Form>
+ *    When it receives a react-hook-form object (it has .control/.handleSubmit)
+ *    it renders a transparent wrapper instead of a nested <form>, which would
+ *    be invalid HTML and swallow the inner submit.
+ */
+export function Form(props: any) {
+  const { className, children, control, handleSubmit, formState, watch, register, ...rest } = props ?? {};
+  const isRhf = Boolean(control || formState || (handleSubmit && watch));
+  if (isRhf) return <>{children}</>;
+  return <form className={cn("space-y-4", className)} {...rest}>{children}</form>;
 }
 
-export function FormField({
-  name,
-  label,
-  description,
-  error,
-  className,
-  children,
-}: {
-  name: string;
-  label?: string;
-  description?: string;
-  error?: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
+function getRhfValue(control: any, name: string) {
+  const values = control?._formValues ?? control?._defaultValues ?? {};
+  return name.split(".").reduce((acc: any, key: string) => (acc == null ? acc : acc[key]), values);
+}
+
+/**
+ * Controller-equivalent field binding without importing react-hook-form.
+ * Subscribes to the form's value stream so \`field.value\` stays live —
+ * callers commonly render \`value={field.value}\`, and a static value would
+ * make the input read as permanently empty.
+ */
+function useRhfField(control: any, name: string) {
+  const [, force] = React.useReducer((c: number) => c + 1, 0);
+  React.useEffect(() => {
+    const subject = control?._subjects?.values ?? control?._subjects?.state ?? control?._subjects?.watch;
+    if (!subject || typeof subject.subscribe !== "function") return;
+    const sub = subject.subscribe({ next: () => force() });
+    return () => {
+      if (sub && typeof sub.unsubscribe === "function") sub.unsubscribe();
+    };
+  }, [control, name]);
+
+  if (control && typeof control.register === "function") {
+    try {
+      const reg = control.register(name);
+      const value = getRhfValue(control, name);
+      return { ...reg, value: value === undefined || value === null ? "" : value };
+    } catch {
+      // fall through to the inert field below
+    }
+  }
+  return {
+    name,
+    value: "",
+    onChange: () => {},
+    onBlur: () => {},
+    ref: () => {},
+  };
+}
+
+function getRhfError(control: any, name: string) {
+  const errors = control?._formState?.errors ?? {};
+  return name.split(".").reduce((acc: any, key: string) => (acc == null ? acc : acc[key]), errors);
+}
+
+/**
+ * FormField is dual-mode too.
+ *  - Plain:  <FormField name="email" label="Email" error={...}><Input/></FormField>
+ *  - RHF:    <FormField control={form.control} name="email" render={({ field }) => ...} />
+ * Models write the shadcn/react-hook-form shape constantly; ignoring the
+ * render prop silently drops the whole field from the page, so both work.
+ */
+export function FormField(props: any) {
+  const { name, label, description, error, className, children, control, render } = props ?? {};
+  const field = useRhfField(control, name);
+  let body: React.ReactNode = children;
+  if (typeof render === "function") {
+    body = render({ field, fieldState: { error: getRhfError(control, name) }, formState: control?._formState ?? {} });
+  }
   return (
     <div className={cn("space-y-1.5", className)}>
       {label && <Label htmlFor={name}>{label}</Label>}
-      {children}
+      {body}
       {description && !error && <p className="text-xs text-muted-foreground">{description}</p>}
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
+}
+
+/** Summary of submit-time errors. Safe to render with no props. */
+export function FormErrors({ errors, className }: { errors?: Record<string, any>; className?: string }) {
+  const list = Object.values(errors ?? {})
+    .map((e: any) => (typeof e === "string" ? e : e?.message))
+    .filter(Boolean) as string[];
+  if (list.length === 0) return null;
+  return (
+    <div className={cn("rounded-md border border-destructive/30 bg-destructive/10 p-3", className)} role="alert">
+      {list.map((msg, i) => (
+        <p key={i} className="text-sm text-destructive">{msg}</p>
+      ))}
+    </div>
+  );
+}
+
+// shadcn-compatible aliases so generated code never hits a missing export.
+export function FormItem({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("space-y-1.5", className)} {...props} />;
+}
+export function FormLabel(props: React.ComponentProps<typeof Label>) {
+  return <Label {...props} />;
+}
+export function FormControl({ children }: { children?: React.ReactNode }) {
+  return <>{children}</>;
+}
+export function FormDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
+  return <p className={cn("text-xs text-muted-foreground", className)} {...props} />;
+}
+export function FormMessage({ className, children }: { className?: string; children?: React.ReactNode }) {
+  if (!children) return null;
+  return <p className={cn("text-xs text-destructive", className)}>{children}</p>;
 }
 `;
 
@@ -3790,6 +3878,10 @@ export const KIT_FILES: KitFile[] = [
   { path: "src/components/ui/table.tsx", content: TABLE, overwrite: true },
   { path: "src/components/ui/sheet.tsx", content: SHEET, overwrite: true },
   { path: "src/components/ui/toast.tsx", content: TOAST, overwrite: true },
+  // shadcn ships the toaster at `ui/sonner`; models import that path constantly.
+  // Without a real module the import-resolver used to stub it into a visible
+  // "Coming together" block that rendered as a bogus footer.
+  { path: "src/components/ui/sonner.tsx", content: TOAST, overwrite: true },
   { path: "src/components/ui/theme-provider.tsx", content: THEME_PROVIDER, overwrite: true },
   { path: "src/components/ui/theme-toggle.tsx", content: THEME_TOGGLE, overwrite: true },
   { path: "src/components/ui/container.tsx", content: CONTAINER, overwrite: true },

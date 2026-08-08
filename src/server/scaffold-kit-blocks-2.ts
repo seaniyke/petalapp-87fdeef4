@@ -666,7 +666,7 @@ export interface FooterColumn {
 type SocialEntry = {
   href: string;
   label?: string;
-  icon?: React.ComponentType<{ className?: string }>;
+  icon?: React.ComponentType<{ className?: string }> | React.ReactNode;
   platform?: string;
 };
 
@@ -684,10 +684,16 @@ const PLATFORM_ICONS: Record<string, React.ComponentType<{ className?: string }>
   mail: Mail,
 };
 
-function resolveSocialIcon(s: SocialEntry): React.ComponentType<{ className?: string }> {
-  if (typeof s.icon === "function") return s.icon;
+function renderSocialIcon(s: SocialEntry): React.ReactNode {
+  // \`icon\` may be a component (\`icon: Twitter\`) or an element (\`icon: <Twitter />\`).
+  if (typeof s.icon === "function") {
+    const Icon = s.icon as React.ComponentType<{ className?: string }>;
+    return <Icon className="h-4 w-4" />;
+  }
+  if (React.isValidElement(s.icon)) return s.icon;
   const key = (s.platform ?? s.label ?? "").toLowerCase();
-  return PLATFORM_ICONS[key] ?? Circle;
+  const Fallback = PLATFORM_ICONS[key] ?? Circle;
+  return <Fallback className="h-4 w-4" />;
 }
 
 /**
@@ -743,19 +749,16 @@ export function FooterColumns({
 
             {socials.length > 0 && (
               <div className="mt-5 flex gap-3">
-                {socials.map((s, i) => {
-                  const Icon = resolveSocialIcon(s);
-                  return (
-                    <a
-                      key={i}
-                      href={s.href}
-                      aria-label={s.label ?? s.platform ?? "social"}
-                      className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition hover:text-foreground"
-                    >
-                      <Icon className="h-4 w-4" />
-                    </a>
-                  );
-                })}
+                {socials.map((s, i) => (
+                  <a
+                    key={i}
+                    href={s.href}
+                    aria-label={s.label ?? s.platform ?? "social"}
+                    className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition hover:text-foreground"
+                  >
+                    {renderSocialIcon(s)}
+                  </a>
+                ))}
               </div>
             )}
           </div>
