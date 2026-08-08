@@ -20,14 +20,27 @@ import {
   DrawerContent,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Loader2, Image as ImageIcon, Upload, RotateCcw } from "lucide-react";
+import { Loader2, Image as ImageIcon, Upload, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { type ProjectRow } from "@/lib/projects";
 import { updateSiteInfo, uploadSiteImage } from "@/lib/site-info";
+import { describeAppFallback, iconPromptFor, isAssistantNarration } from "@/lib/site-info-copy";
+import { generateSiteInfo } from "@/lib/site-info.functions";
+import { supabase } from "@/integrations/supabase/client";
 import petalLogo from "@/assets/petal-logo.png";
 
 const TITLE_LIMIT = 60;
 const DESC_LIMIT = 160;
+
+/** Build-time summaries are written to the user ("I've built…"); never show
+ *  that as the site description — clean it into app-facing copy first. */
+function defaultDescription(project: ProjectRow): string {
+  const saved = (project.site_description ?? "").trim();
+  if (saved) return saved;
+  const summary = (project.summary ?? "").trim();
+  if (!summary) return "";
+  return isAssistantNarration(summary) ? describeAppFallback(summary) : summary.slice(0, DESC_LIMIT);
+}
 
 type Props = {
   open: boolean;
@@ -41,7 +54,7 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
   // i.e. the user's saved override, falling back to the project's build-time
   // title/summary. Empty string in state == "use the default".
   const initialTitle = (project.site_title ?? "").trim() || project.title || "";
-  const initialDesc = (project.site_description ?? "").trim() || project.summary || "";
+  const initialDesc = defaultDescription(project);
   const initialIcon = project.site_icon_url ?? null;
   const initialOg = project.site_og_image_url ?? null;
 
@@ -52,6 +65,8 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
   const [iconUploading, setIconUploading] = useState(false);
   const [ogUploading, setOgUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [writing, setWriting] = useState(false);
+  const [drawingIcon, setDrawingIcon] = useState(false);
 
   const iconInputRef = useRef<HTMLInputElement | null>(null);
   const ogInputRef = useRef<HTMLInputElement | null>(null);
@@ -60,10 +75,64 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
   useEffect(() => {
     if (!open) return;
     setTitle((project.site_title ?? "").trim() || project.title || "");
-    setDescription((project.site_description ?? "").trim() || project.summary || "");
+    setDescription(defaultDescription(project));
     setIconUrl(project.site_icon_url ?? null);
     setOgUrl(project.site_og_image_url ?? null);
   }, [open, project]);
+
+  /** Ask Petal to write the title + description from what the app actually is. */
+  async function writeWithAi() {
+    setWriting(true);
+    try {
+      const result = await generateSiteInfo({
+        data: {
+          title: project.title || title,
+          summary: project.summary || "",
+          prompt: description || "",
+        },
+      });
+      if (result.title) setTitle(result.title.slice(0, TITLE_LIMIT));
+      if (result.description) setDescription(result.description.slice(0, DESC_LIMIT));
+      toast.success("Petal wrote your title & description");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't write it");
+    } finally {
+      setWriting(false);
+    }
+  }
+
+  /** Generate a favicon/app icon that matches the project. */
+  async function drawIconWithAi() {
+    setDrawingIcon(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      const resp = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          prompt: iconPromptFor(title || project.title || "", description),
+          aspectRatio: "1:1",
+          projectId: project.id,
+        }),
+      });
+      if (!resp.ok) {
+        const j = (await resp.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error || `Couldn't generate icon (${resp.status})`);
+      }
+      const { url } = (await resp.json()) as { url: string };
+      setIconUrl(url);
+      toast.success("Icon generated");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't generate icon");
+    } finally {
+      setDrawingIcon(false);
+    }
+  }
+
 
   async function handleIconPick(file: File | undefined) {
     if (!file) return;
