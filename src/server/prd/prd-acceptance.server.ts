@@ -22,6 +22,7 @@
  */
 
 import type { Prd, PrdSurface } from "./prd-types";
+import { checkProductUsefulness } from "./product-acceptance.server";
 
 export interface PrdFinding {
   /** Acceptance criterion id this maps to. */
@@ -170,6 +171,13 @@ export function checkPrdStatically(prd: Prd, files: FileLike[]): PrdCheckResult 
         repairHint: "Compute every displayed result from the calculation functions; never inline an example value.",
       });
     }
+  }
+
+  // 5. Usefulness layer — can a person actually complete the workflow?
+  try {
+    findings.push(...checkProductUsefulness(prd, src));
+  } catch {
+    /* usefulness checks must never crash the gate */
   }
 
   return { passed: !findings.some((f) => f.severity === "blocking"), findings };
