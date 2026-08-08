@@ -4780,7 +4780,7 @@ Forbidden defaults
         // Iteration Standard #1 — one turn, one terminal state, decided by a
         // byte diff against the snapshot taken when the turn began.
         {
-          const turnChanged = diffChangedPaths(turnBaselineFiles, nextFiles);
+          const turnChanged = turnChangedPaths;
           emitTurnOutcome(controller, encoder, {
             outcome: turnChanged.length > 0 ? "applied" : "answered",
             changedPaths: turnChanged,
