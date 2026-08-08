@@ -132,6 +132,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
           error_message: `${probe.message} Petal kept your previous preview live instead of shipping a broken one.`,
         })
         .eq("id", payload.buildId);
+      await refundRolledBackBuild(payload.projectId, payload.buildId);
       return new Response("ok", { status: 200 });
     }
 
@@ -212,6 +213,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         );
         return new Response("Could not save build status", { status: 503 });
       }
+      await refundRolledBackBuild(payload.projectId, payload.buildId);
       return new Response("ok", {
         status: 200,
         headers: { "Content-Type": "text/plain" },
@@ -268,6 +270,30 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     status: 200,
     headers: { "Content-Type": "text/plain" },
   });
+}
+
+/**
+ * Trust hygiene: a build the user cannot use must not stay on their bill.
+ * When Petal rolls a candidate back (failed probe or a browser-check failure),
+ * hand the build's credits back. The RPC is idempotent per build id, so a
+ * retried callback can never refund twice.
+ */
+async function refundRolledBackBuild(projectId: string, buildId: string): Promise<void> {
+  try {
+    const { data, error } = await (supabaseAdmin as never as {
+      rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+    }).rpc("refund_build_charge", { _project_id: projectId, _build_id: buildId });
+    if (error) {
+      console.error("[builds/callback] rollback refund failed", buildId, error.message);
+      return;
+    }
+    const amount = Number(data ?? 0);
+    if (amount > 0) {
+      console.info(`[builds/callback] refunded ${amount} credit(s) for rolled-back build ${buildId}`);
+    }
+  } catch (e) {
+    console.error("[builds/callback] rollback refund threw", buildId, (e as Error).message);
+  }
 }
 
 export const Route = createFileRoute("/api/public/builds/callback")({
