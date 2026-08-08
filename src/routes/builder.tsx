@@ -2009,6 +2009,11 @@ function Builder() {
         allowedPaths?: string[];
         /** Plan Mode v2 — false skips Petal's automatic plan proposal. */
         autoPlan?: boolean;
+        /** Re-running a prompt that is already visible/persisted in the thread
+         *  (e.g. approving or skipping a proposed plan). Prevents a duplicate
+         *  user bubble and a duplicate DB row for the same ask. */
+        suppressEcho?: boolean;
+
       } = {},
     ) => {
       const text = content.trim();
@@ -2091,8 +2096,10 @@ function Builder() {
       // What the AI sees: full conversation including the (possibly large)
       // auto-fix prompt with the error log. What the user sees: either the
       // normal user message OR a calm system note for auto-fix runs.
-      const nextMessages: ChatMessage[] = opts.isRetry ? messages : [...messages, aiUserMsg];
-      if (!opts.isRetry) {
+      const echoSuppressed = opts.isRetry || opts.suppressEcho;
+      const nextMessages: ChatMessage[] = echoSuppressed ? messages : [...messages, aiUserMsg];
+      if (!echoSuppressed) {
+
         if (opts.isAutoFix || opts.isInternalRepair) {
           // Autofix is silent. The activity card already shows progress;
           // a chat-level "Petal noticed a build error" note was redundant
@@ -2144,7 +2151,7 @@ function Builder() {
       // single most disorienting failure mode here. The assistant reply is
       // persisted later, after a successful stream. Auto-fix runs are NOT
       // persisted (they're transient internal turns).
-      if (!opts.isRetry && !opts.isAutoFix && !opts.isInternalRepair) {
+      if (!echoSuppressed && !opts.isAutoFix && !opts.isInternalRepair) {
         try {
           await appendMessages(proj.id, [userMsg]);
         } catch (persistErr) {
@@ -5079,7 +5086,7 @@ function Builder() {
                   ? () => {
                       const prompt = proposedPlan.sourcePrompt;
                       setProposedPlan(null);
-                      void sendRef.current?.(prompt, { autoPlan: false });
+                      void sendRef.current?.(prompt, { autoPlan: false, suppressEcho: true });
                     }
                   : undefined
               }
@@ -5087,6 +5094,7 @@ function Builder() {
                 const plan = proposedPlan;
                 setProposedPlan(null);
                 void sendRef.current?.(plan.sourcePrompt, {
+                  suppressEcho: true,
                   approvedPlanId: plan.planId,
                   allowedPaths: Array.from(plan.allowedPaths),
                 });
