@@ -924,6 +924,11 @@ async function relayAndCollect(
       }
     }
   }
+  // Stream is over — every checklist item the model published is finished, so
+  // close them out rather than leaving one stuck on "active".
+  for (let i = 0; i < stepsEmitted; i++) {
+    controller.enqueue(encoder.encode(sse({ type: "step_status", index: i, status: "done" })));
+  }
   return tool;
 }
 
