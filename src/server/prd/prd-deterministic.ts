@@ -393,7 +393,7 @@ const PERSISTENCE = [
   /\bmulti[-\s]?user\b/i,
   /\bstore\s+(my|their|user)\b/i,
 ];
-const AUTH = [/\blog\s?in\b/i, /\bsign\s?(in|up)\b/i, /\baccounts?\b/i, /\bauth\w*/i, /\buser\s+profiles?\b/i];
+const AUTH = [/\blog\s?in\b/i, /\bsign\s?(in|up)\b/i, /\bsigned[-\s]?in\b/i, /\blogged[-\s]?in\b/i, /\bmembers?\s+(area|only)\b/i, /\baccounts?\b/i, /\bauth\w*/i, /\buser\s+profiles?\b/i];
 
 /* ============================================================
  * Product naming
