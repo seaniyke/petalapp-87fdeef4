@@ -205,7 +205,7 @@ function ProjectCard({ project, onDelete }: { project: ProjectRow; onDelete: () 
             className="h-28"
           />
           <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-card/90 px-2 py-0.5 text-[10px] font-medium text-muted-foreground backdrop-blur">
-            {project.is_public ? (
+            {isProjectPublic(project) ? (
               <>
                 <Globe className="h-3 w-3" /> Public
               </>
