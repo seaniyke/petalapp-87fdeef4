@@ -10,6 +10,7 @@ import { Check, Copy, ExternalLink } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { describeAppFallback, isAssistantNarration } from "@/lib/site-info-copy";
 
 export function PublishingCard({ isUpdate }: { isUpdate: boolean }) {
   return (
