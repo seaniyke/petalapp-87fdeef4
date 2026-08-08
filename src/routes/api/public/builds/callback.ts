@@ -264,6 +264,8 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       console.error("Builder callback could not mark build failed", buildUpdateError.message);
       return new Response("Could not save build status", { status: 503 });
     }
+    // The build never shipped — the user keeps their credits.
+    await refundRolledBackBuild(payload.projectId, payload.buildId);
   }
 
   return new Response("ok", {
