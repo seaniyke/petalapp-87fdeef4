@@ -416,6 +416,11 @@ function Builder() {
   // screen…"). When present, the activity card shows this instead of the
   // path-derived fallback. Cleared at the start of each turn.
   const [latestNarration, setLatestNarration] = useState<string | undefined>(undefined);
+  // Plan-first execution — the model's ordered checklist for this turn plus
+  // which item it is currently working through (0 = not started yet).
+  const [buildSteps, setBuildSteps] = useState<string[]>([]);
+  const [activeStepIndex, setActiveStepIndex] = useState<number>(-1);
+  const [doneStepIndexes, setDoneStepIndexes] = useState<number[]>([]);
   // Most recent agentic-loop progress string. Used as a fallback sub-caption
   // when no model-written narration / path narration is more recent — keeps
   // the activity card alive during silent verifier or autofix gaps.
@@ -1849,6 +1854,11 @@ function Builder() {
               );
             }
           },
+          onBuildSteps: (steps) => setBuildSteps(steps),
+          onStepStatus: (index, status) => {
+            if (status === "active") setActiveStepIndex(index);
+            else setDoneStepIndexes((prev) => (prev.includes(index) ? prev : [...prev, index]));
+          },
           onNarration: (path, text) => {
             // Only adopt narration for the currently-streaming file. Late
             // narrations for earlier files are dropped to keep the caption
@@ -2345,6 +2355,11 @@ function Builder() {
                   `Spotted an issue in ${path.split("/").pop()} — will repair after stream`,
                 );
               }
+            },
+            onBuildSteps: (steps) => setBuildSteps(steps),
+            onStepStatus: (index, status) => {
+              if (status === "active") setActiveStepIndex(index);
+              else setDoneStepIndexes((prev) => (prev.includes(index) ? prev : [...prev, index]));
             },
             onNarration: (path, text) => {
               setLatestPath((curr) => {
@@ -4933,6 +4948,9 @@ function Builder() {
                 designCaption={designCaption}
                 latestPath={latestPath}
                 latestNarration={latestNarration}
+                buildSteps={buildSteps}
+                activeStepIndex={activeStepIndex}
+                doneStepIndexes={doneStepIndexes}
                 latestCycleProgress={latestCycleProgress}
                 filesWritten={filesWritten}
                 writtenPaths={writtenPaths}
