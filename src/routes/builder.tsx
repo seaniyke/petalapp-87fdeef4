@@ -244,6 +244,7 @@ type PaletteItem = import("@/components/CommandPalette").PaletteItem;
 function isBuildFailureCardTitle(title: string | undefined): boolean {
   if (!title) return false;
   return (
+    title.startsWith("One thing is blocking the build") ||
     title.startsWith("Petal got a bit confused") ||
     title.startsWith("Petal hit a build issue") ||
     title.startsWith("Petal didn’t apply the change") ||
