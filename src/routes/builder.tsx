@@ -2096,8 +2096,10 @@ function Builder() {
       // What the AI sees: full conversation including the (possibly large)
       // auto-fix prompt with the error log. What the user sees: either the
       // normal user message OR a calm system note for auto-fix runs.
-      const nextMessages: ChatMessage[] = opts.isRetry ? messages : [...messages, aiUserMsg];
-      if (!opts.isRetry) {
+      const echoSuppressed = opts.isRetry || opts.suppressEcho;
+      const nextMessages: ChatMessage[] = echoSuppressed ? messages : [...messages, aiUserMsg];
+      if (!echoSuppressed) {
+
         if (opts.isAutoFix || opts.isInternalRepair) {
           // Autofix is silent. The activity card already shows progress;
           // a chat-level "Petal noticed a build error" note was redundant
