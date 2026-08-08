@@ -3501,23 +3501,20 @@ export function Form(props: any) {
   return <form className={cn("space-y-4", className)} {...rest}>{children}</form>;
 }
 
-function useRhfField(control: any, name: string) {
-  const [, force] = React.useReducer((n: number) => n + 1, 0);
-  React.useEffect(() => {
-    const sub = control?._subjects?.state?.subscribe?.({ next: () => force() });
-    return () => sub?.unsubscribe?.();
-  }, [control]);
-  const value = control?._formValues ? control._formValues[name] : undefined;
+function rhfField(control: any, name: string) {
+  if (control && typeof control.register === "function") {
+    try {
+      const reg = control.register(name);
+      const values = control._formValues || control._defaultValues || {};
+      return { ...reg, defaultValue: values[name] };
+    } catch {
+      // fall through to the inert field below
+    }
+  }
   return {
     name,
-    value: value === undefined || value === null ? "" : value,
-    onChange: (e: any) => {
-      const next = e && e.target ? e.target.value : e;
-      control?._subjects ? control.register?.(name) : undefined;
-      if (control?._formValues) control._formValues[name] = next;
-      control?._subjects?.state?.next?.({ name, values: control._formValues });
-      force();
-    },
+    value: "",
+    onChange: () => {},
     onBlur: () => {},
     ref: () => {},
   };
@@ -3527,8 +3524,8 @@ function useRhfField(control: any, name: string) {
  * FormField is dual-mode too.
  *  - Plain:  <FormField name="email" label="Email" error={...}><Input/></FormField>
  *  - RHF:    <FormField control={form.control} name="email" render={({ field }) => ...} />
- * Models write the shadcn/react-hook-form shape constantly; ignoring `render`
- * silently drops the whole field from the page, so both are supported.
+ * Models write the shadcn/react-hook-form shape constantly; ignoring the
+ * render prop silently drops the whole field from the page, so both work.
  */
 export function FormField(props: any) {
   const { name, label, description, error, className, children, control, render } = props ?? {};
