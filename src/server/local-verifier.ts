@@ -111,6 +111,9 @@ function stripNoise(src: string): string {
 function maskJsxText(src: string): string {
   let out = "";
   let inText = false;
+  let inTag = false;
+  let tagBraceDepth = 0;
+  let tagQuote: '"' | "'" | "`" | null = null;
   let i = 0;
 
   while (i < src.length) {
@@ -118,7 +121,33 @@ function maskJsxText(src: string): string {
 
     if (!inText) {
       out += ch;
-      if (ch === ">") inText = true;
+      if (!inTag && ch === "<") {
+        let p = i - 1;
+        while (p >= 0 && /\s/.test(src[p])) p--;
+        const prev = p >= 0 ? src[p] : "";
+        const next = src[i + 1] ?? "";
+        // A JSX tag may start after an expression boundary, but not directly
+        // after an identifier/closing delimiter (the TypeScript generic case).
+        inTag = (next === "/" || /[A-Za-z]/.test(next)) && !/[\w$\])]/.test(prev);
+      } else if (inTag) {
+        if (tagQuote) {
+          if (ch === "\\" && i + 1 < src.length) {
+            i++;
+            out += src[i];
+          } else if (ch === tagQuote) {
+            tagQuote = null;
+          }
+        } else if (ch === '"' || ch === "'" || ch === "`") {
+          tagQuote = ch;
+        } else if (ch === "{") {
+          tagBraceDepth++;
+        } else if (ch === "}") {
+          tagBraceDepth = Math.max(0, tagBraceDepth - 1);
+        } else if (ch === ">" && tagBraceDepth === 0) {
+          inTag = false;
+          inText = true;
+        }
+      }
       i++;
       continue;
     }
