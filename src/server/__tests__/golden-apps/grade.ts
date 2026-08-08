@@ -7,6 +7,8 @@
  */
 
 import { verifyFilesLocal } from "../../local-verifier";
+import { deterministicPrd } from "../../prd/prd-deterministic";
+import { checkPrdStatically } from "../../prd/prd-acceptance.server";
 import { lintRenderRisks } from "../../render-risk-linter";
 import { lintRlsSanity } from "../../rls-sanity-linter";
 import type { GoldenAppPrompt } from "./prompts";
@@ -19,10 +21,15 @@ export interface GeneratedApp {
 export interface GradeResult {
   filesEmitted: boolean;
   verifierPassed: boolean;
-  /** esbuild bundle (run separately — wired in Phase 2). */
+  /** esbuild bundle pass (set by the replay harness). */
   bundlePassed: boolean;
-  /** tsc --noEmit on changed files (Phase 2). */
-  typecheckPassed: boolean;
+  /**
+   * Product acceptance: does the app contain the product the prompt asked
+   * for? Derived from the deterministic PRD for the same prompt, so CI
+   * catches "compiles fine, useless app" the same way the live gate does.
+   */
+  productPassed: boolean;
+  productFindings?: ReadonlyArray<string>;
   expectedFilesPresent?: boolean;
   notes?: string;
   issues?: ReadonlyArray<string>;
@@ -34,7 +41,7 @@ export function grade(app: GoldenAppPrompt, generated: GeneratedApp | null): Gra
       filesEmitted: false,
       verifierPassed: false,
       bundlePassed: false,
-      typecheckPassed: false,
+      productPassed: false,
       notes: "generator returned no files",
     };
   }
@@ -52,12 +59,23 @@ export function grade(app: GoldenAppPrompt, generated: GeneratedApp | null): Gra
     ...rlsIssues.map((i) => `[${i.kind}] ${i.path}: ${i.detail}`),
   ];
 
+  const prd = deterministicPrd(app.prompt);
+  const product = checkPrdStatically(prd, [...generated.files]);
+  const productFindings = product.findings
+    .filter((f) => f.severity === "blocking")
+    .map((f) => `[${f.criterionId}] ${f.message}`);
+  // Partial replays (model diff only, no scaffold) cannot satisfy a whole-app
+  // contract, so acceptance is advisory there and blocking for full apps.
+  const isFullApp = generated.files.some((f) => f.path === "index.html")
+    && generated.files.some((f) => f.path === "src/main.tsx");
+
   return {
     filesEmitted: true,
     verifierPassed: allIssues.length === 0,
-    // Wired in Phase 2.
+    // Set by the replay harness (esbuild parse pass).
     bundlePassed: false,
-    typecheckPassed: false,
+    productPassed: isFullApp ? product.passed : true,
+    productFindings: productFindings.length ? productFindings : undefined,
     expectedFilesPresent,
     issues: allIssues.length > 0 ? allIssues : undefined,
   };

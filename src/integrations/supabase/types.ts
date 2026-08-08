@@ -3780,6 +3780,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      refund_build_charge: {
+        Args: { _build_id: string; _project_id: string; _reason?: string }
+        Returns: number
+      }
       refund_credit: {
         Args: {
           _ledger_id: string

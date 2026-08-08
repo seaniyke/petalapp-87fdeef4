@@ -132,6 +132,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
           error_message: `${probe.message} Petal kept your previous preview live instead of shipping a broken one.`,
         })
         .eq("id", payload.buildId);
+      await refundRolledBackBuild(payload.projectId, payload.buildId);
       return new Response("ok", { status: 200 });
     }
 
@@ -212,6 +213,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         );
         return new Response("Could not save build status", { status: 503 });
       }
+      await refundRolledBackBuild(payload.projectId, payload.buildId);
       return new Response("ok", {
         status: 200,
         headers: { "Content-Type": "text/plain" },
@@ -226,8 +228,11 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         error_message: null,
         ready_at: new Date().toISOString(),
         // Null when the build predates verification or the plan was empty.
+        // `evidence` is the human-readable proof Petal reports back to the
+        // user: "completed" without proof is exactly the claim we stopped
+        // trusting from the builder.
         verification: verification
-          ? ({ ...verification, ok: true } as never)
+          ? ({ ...verification, ok: true, evidence: buildEvidence(verification) } as never)
           : null,
       })
       .eq("id", payload.buildId);
@@ -262,12 +267,56 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       console.error("Builder callback could not mark build failed", buildUpdateError.message);
       return new Response("Could not save build status", { status: 503 });
     }
+    // The build never shipped — the user keeps their credits.
+    await refundRolledBackBuild(payload.projectId, payload.buildId);
   }
 
   return new Response("ok", {
     status: 200,
     headers: { "Content-Type": "text/plain" },
   });
+}
+
+/**
+ * Turn a verification report into short proof lines the UI can show under a
+ * completed build. Evidence, not adjectives.
+ */
+function buildEvidence(verification: Record<string, unknown>): string[] {
+  const out: string[] = [];
+  const routes = Array.isArray(verification.routes) ? verification.routes : [];
+  const flows = Array.isArray(verification.flows) ? verification.flows : [];
+  if (routes.length) out.push(`${routes.length} route(s) loaded without a runtime error`);
+  if (flows.length) out.push(`${flows.length} user flow(s) completed end to end`);
+  if (verification.visualChecked) out.push("Screenshots reviewed for layout and craft defects");
+  if (typeof verification.durationMs === "number") {
+    out.push(`Browser check ran for ${Math.round(verification.durationMs / 1000)}s`);
+  }
+  if (!out.length) out.push("Deployed URL served a real app on Petal's own probe");
+  return out;
+}
+
+/**
+ * Trust hygiene: a build the user cannot use must not stay on their bill.
+ * When Petal rolls a candidate back (failed probe or a browser-check failure),
+ * hand the build's credits back. The RPC is idempotent per build id, so a
+ * retried callback can never refund twice.
+ */
+async function refundRolledBackBuild(projectId: string, buildId: string): Promise<void> {
+  try {
+    const { data, error } = await (supabaseAdmin as never as {
+      rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+    }).rpc("refund_build_charge", { _project_id: projectId, _build_id: buildId });
+    if (error) {
+      console.error("[builds/callback] rollback refund failed", buildId, error.message);
+      return;
+    }
+    const amount = Number(data ?? 0);
+    if (amount > 0) {
+      console.info(`[builds/callback] refunded ${amount} credit(s) for rolled-back build ${buildId}`);
+    }
+  } catch (e) {
+    console.error("[builds/callback] rollback refund threw", buildId, (e as Error).message);
+  }
 }
 
 export const Route = createFileRoute("/api/public/builds/callback")({

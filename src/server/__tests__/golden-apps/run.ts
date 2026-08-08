@@ -70,6 +70,11 @@ function reportFailure(rec: RunRecord) {
   printGateLine("expected files present", r.expectedFilesPresent);
   printGateLine("local verifier", r.verifierPassed);
   printGateLine("esbuild parse", r.esbuildPassed);
+  printGateLine("product acceptance", r.productPassed);
+  if (r.productFindings?.length) {
+    console.log("      product findings:");
+    for (const i of r.productFindings.slice(0, 8)) console.log(`        - ${i}`);
+  }
   if (r.issues?.length) {
     console.log("      verifier issues:");
     for (const i of r.issues.slice(0, 8)) console.log(`        - ${i}`);

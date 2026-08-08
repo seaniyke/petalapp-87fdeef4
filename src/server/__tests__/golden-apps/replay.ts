@@ -73,7 +73,7 @@ export async function gradeFull(
       filesEmitted: false,
       verifierPassed: false,
       bundlePassed: false,
-      typecheckPassed: false,
+      productPassed: false,
       esbuildPassed: false,
       fixtureMissing: true,
       notes: "no fixture recorded — see fixtures/README.md",
@@ -117,6 +117,7 @@ export function isPassing(r: FullGradeResult): boolean {
     r.filesEmitted &&
     r.verifierPassed &&
     r.esbuildPassed &&
+    r.productPassed &&
     r.expectedFilesPresent !== false
   );
 }
