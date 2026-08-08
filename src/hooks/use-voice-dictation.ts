@@ -54,11 +54,15 @@ export function useVoiceDictation({
   getAuthToken?: () => Promise<string | null> | string | null;
 }) {
   const webSpeechCtor = useRef(getRecognitionCtor());
-  const [mode] = useState<"webspeech" | "whisper" | "none">(() => {
-    if (getRecognitionCtor()) return "webspeech";
-    if (hasMediaRecorder()) return "whisper";
-    return "none";
-  });
+  // Capability detection must happen after hydration. Reading browser APIs in
+  // the initializer renders `none` on the server but `webspeech`/`whisper` on
+  // the first client pass, changing the composer button tree during hydration.
+  const [mode, setMode] = useState<"webspeech" | "whisper" | "none">("none");
+  useEffect(() => {
+    const Recognition = getRecognitionCtor();
+    webSpeechCtor.current = Recognition;
+    setMode(Recognition ? "webspeech" : hasMediaRecorder() ? "whisper" : "none");
+  }, []);
   const supported = mode !== "none";
 
   const [listening, setListening] = useState(false);

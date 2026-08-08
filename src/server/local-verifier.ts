@@ -98,6 +98,113 @@ function stripNoise(src: string): string {
   return out;
 }
 
+/**
+ * Mask plain JSX text while preserving tags and expression containers.
+ *
+ * The verifier's JavaScript lexer cannot otherwise distinguish the apostrophe
+ * in `<p>it's useful</p>` from the start of a string literal. That false
+ * opening quote makes every later brace/string check drift and can send valid
+ * generated pages into a destructive repair loop. This scanner only masks text
+ * while we are between a completed JSX tag and the next tag/expression; code
+ * inside `{...}` is retained verbatim.
+ */
+function maskJsxText(src: string): string {
+  let out = "";
+  let inText = false;
+  let inTag = false;
+  let tagBraceDepth = 0;
+  let tagQuote: '"' | "'" | "`" | null = null;
+  let tagClosing = false;
+  let jsxDepth = 0;
+  let i = 0;
+
+  while (i < src.length) {
+    const ch = src[i];
+
+    if (!inText) {
+      out += ch;
+      if (!inTag && ch === "<") {
+        let p = i - 1;
+        while (p >= 0 && /\s/.test(src[p])) p--;
+        const prev = p >= 0 ? src[p] : "";
+        const next = src[i + 1] ?? "";
+        // A JSX tag may start after an expression boundary, but not directly
+        // after an identifier/closing delimiter (the TypeScript generic case).
+        inTag = (next === "/" || /[A-Za-z]/.test(next)) && !/[\w$\])]/.test(prev);
+        tagClosing = inTag && next === "/";
+      } else if (inTag) {
+        if (tagQuote) {
+          if (ch === "\\" && i + 1 < src.length) {
+            i++;
+            out += src[i];
+          } else if (ch === tagQuote) {
+            tagQuote = null;
+          }
+        } else if (ch === '"' || ch === "'" || ch === "`") {
+          tagQuote = ch;
+        } else if (ch === "{") {
+          tagBraceDepth++;
+        } else if (ch === "}") {
+          tagBraceDepth = Math.max(0, tagBraceDepth - 1);
+        } else if (ch === ">" && tagBraceDepth === 0) {
+          const selfClosing = src[i - 1] === "/";
+          if (tagClosing) jsxDepth = Math.max(0, jsxDepth - 1);
+          else if (!selfClosing) jsxDepth++;
+          inTag = false;
+          inText = jsxDepth > 0;
+        }
+      }
+      i++;
+      continue;
+    }
+
+    if (ch === "<") {
+      inText = false;
+      inTag = true;
+      tagBraceDepth = 0;
+      tagQuote = null;
+      tagClosing = src[i + 1] === "/";
+      out += ch;
+      i++;
+      continue;
+    }
+
+    if (ch === "{") {
+      let depth = 0;
+      let quote: '"' | "'" | "`" | null = null;
+      while (i < src.length) {
+        const codeCh = src[i];
+        out += codeCh;
+        if (quote) {
+          if (codeCh === "\\" && i + 1 < src.length) {
+            i++;
+            out += src[i];
+          } else if (codeCh === quote) {
+            quote = null;
+          }
+        } else if (codeCh === '"' || codeCh === "'" || codeCh === "`") {
+          quote = codeCh;
+        } else if (codeCh === "{") {
+          depth++;
+        } else if (codeCh === "}") {
+          depth--;
+          if (depth === 0) {
+            i++;
+            break;
+          }
+        }
+        i++;
+      }
+      continue;
+    }
+
+    out += ch === "\n" || ch === "\r" ? ch : " ";
+    i++;
+  }
+
+  return out;
+}
+
 /** Count component-style JSX tags: <Card> vs </Card>. Lowercase tags (html) are ignored
  *  because they're rarely the truncation point and have many self-closing edge cases.
  *
@@ -438,8 +545,7 @@ function findObviousScopeLeaks(src: string): string[] {
   // JSX text nodes are prose, not code. "your due date, and your age," would
   // otherwise look like identifier references and produce false positives that
   // roll back a perfectly valid build.
-  const stripJsxText = (s: string) => s.replace(/([>}])[^<>{}]*(?=<)/g, "$1 ");
-  const clean = stripJsxText(stripNoise(src)).replace(/\.[A-Za-z_$][\w$]*/g, " ");
+  const clean = stripNoise(maskJsxText(src)).replace(/\.[A-Za-z_$][\w$]*/g, " ");
 
   const missing: string[] = [];
   const seen = new Set<string>();
@@ -524,7 +630,8 @@ export function verifyFileLocal(path: string, content: string): LocalIssue[] {
   // as "Unterminated string literal" / "Unterminated regular expression" /
   // "Unexpected end of file". Catch it deterministically here so the
   // continuation pass kicks in before the user ever sees a build failure.
-  const unterm = findUnterminatedString(content);
+  const codeContent = maskJsxText(content);
+  const unterm = findUnterminatedString(codeContent);
   if (unterm) {
     issues.push({
       path,
@@ -542,7 +649,7 @@ export function verifyFileLocal(path: string, content: string): LocalIssue[] {
     });
   }
 
-  const clean = stripNoise(content);
+  const clean = stripNoise(codeContent);
 
   const { braces, parens, brackets } = braceBalance(clean);
   if (braces !== 0 || parens !== 0 || brackets !== 0) {
