@@ -10,6 +10,7 @@ import { Check, Copy, ExternalLink } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { describeAppFallback, isAssistantNarration } from "@/lib/site-info-copy";
 
 export function PublishingCard({ isUpdate }: { isUpdate: boolean }) {
   return (
@@ -101,6 +102,11 @@ export function PublishSuccessCard({
 }) {
   const [copied, setCopied] = useState(false);
   const shareText = isUpdate ? `Just shipped an update to ${title}` : `I just built ${title} 🌸`;
+  // Never surface Petal's own build narration ("I've built…") as the site's
+  // description — visitors want to know what the app does.
+  const raw = (description ?? "").trim();
+  const cleanDescription = raw && isAssistantNarration(raw) ? describeAppFallback(raw) : raw;
+
 
   async function copy() {
     if (!url) return;
@@ -160,11 +166,12 @@ export function PublishSuccessCard({
               {display}
             </p>
           )}
-          {description && (
+          {cleanDescription && (
             <p className="mt-1.5 line-clamp-2 text-[13px] font-medium text-muted-foreground">
-              {description}
+              {cleanDescription}
             </p>
           )}
+
         </div>
         {onEditWebsiteInfo && (
           <button
@@ -185,7 +192,7 @@ export function PublishSuccessCard({
           type="button"
           onClick={copy}
           disabled={!url}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 py-3 text-[15px] font-bold transition hover:bg-muted disabled:opacity-40"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-[14px] font-bold transition hover:bg-muted disabled:opacity-40"
         >
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           {copied ? "Copied" : "Copy link"}
@@ -194,7 +201,7 @@ export function PublishSuccessCard({
           href={url ?? "#"}
           target="_blank"
           rel="noreferrer noopener"
-          className={`inline-flex items-center justify-center gap-2 rounded-xl bg-foreground px-3 py-3 text-[15px] font-bold text-background transition hover:opacity-90 ${
+          className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-foreground px-3 text-[14px] font-bold text-background transition hover:opacity-90 ${
             url ? "" : "pointer-events-none opacity-40"
           }`}
         >
@@ -202,6 +209,7 @@ export function PublishSuccessCard({
           <ExternalLink className="h-4 w-4" />
         </a>
       </div>
+
 
       {onDismiss && (
         <button

@@ -20,14 +20,27 @@ import {
   DrawerContent,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Loader2, Image as ImageIcon, Upload, RotateCcw } from "lucide-react";
+import { Loader2, Image as ImageIcon, Upload, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { type ProjectRow } from "@/lib/projects";
 import { updateSiteInfo, uploadSiteImage } from "@/lib/site-info";
+import { describeAppFallback, iconPromptFor, isAssistantNarration } from "@/lib/site-info-copy";
+import { generateSiteInfo } from "@/lib/site-info.functions";
+import { supabase } from "@/integrations/supabase/client";
 import petalLogo from "@/assets/petal-logo.png";
 
 const TITLE_LIMIT = 60;
 const DESC_LIMIT = 160;
+
+/** Build-time summaries are written to the user ("I've built…"); never show
+ *  that as the site description — clean it into app-facing copy first. */
+function defaultDescription(project: ProjectRow): string {
+  const saved = (project.site_description ?? "").trim();
+  if (saved) return saved;
+  const summary = (project.summary ?? "").trim();
+  if (!summary) return "";
+  return isAssistantNarration(summary) ? describeAppFallback(summary) : summary.slice(0, DESC_LIMIT);
+}
 
 type Props = {
   open: boolean;
@@ -41,7 +54,7 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
   // i.e. the user's saved override, falling back to the project's build-time
   // title/summary. Empty string in state == "use the default".
   const initialTitle = (project.site_title ?? "").trim() || project.title || "";
-  const initialDesc = (project.site_description ?? "").trim() || project.summary || "";
+  const initialDesc = defaultDescription(project);
   const initialIcon = project.site_icon_url ?? null;
   const initialOg = project.site_og_image_url ?? null;
 
@@ -52,6 +65,8 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
   const [iconUploading, setIconUploading] = useState(false);
   const [ogUploading, setOgUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [writing, setWriting] = useState(false);
+  const [drawingIcon, setDrawingIcon] = useState(false);
 
   const iconInputRef = useRef<HTMLInputElement | null>(null);
   const ogInputRef = useRef<HTMLInputElement | null>(null);
@@ -60,10 +75,64 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
   useEffect(() => {
     if (!open) return;
     setTitle((project.site_title ?? "").trim() || project.title || "");
-    setDescription((project.site_description ?? "").trim() || project.summary || "");
+    setDescription(defaultDescription(project));
     setIconUrl(project.site_icon_url ?? null);
     setOgUrl(project.site_og_image_url ?? null);
   }, [open, project]);
+
+  /** Ask Petal to write the title + description from what the app actually is. */
+  async function writeWithAi() {
+    setWriting(true);
+    try {
+      const result = await generateSiteInfo({
+        data: {
+          title: project.title || title,
+          summary: project.summary || "",
+          prompt: description || "",
+        },
+      });
+      if (result.title) setTitle(result.title.slice(0, TITLE_LIMIT));
+      if (result.description) setDescription(result.description.slice(0, DESC_LIMIT));
+      toast.success("Petal wrote your title & description");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't write it");
+    } finally {
+      setWriting(false);
+    }
+  }
+
+  /** Generate a favicon/app icon that matches the project. */
+  async function drawIconWithAi() {
+    setDrawingIcon(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      const resp = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          prompt: iconPromptFor(title || project.title || "", description),
+          aspectRatio: "1:1",
+          projectId: project.id,
+        }),
+      });
+      if (!resp.ok) {
+        const j = (await resp.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error || `Couldn't generate icon (${resp.status})`);
+      }
+      const { url } = (await resp.json()) as { url: string };
+      setIconUrl(url);
+      toast.success("Icon generated");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't generate icon");
+    } finally {
+      setDrawingIcon(false);
+    }
+  }
+
 
   async function handleIconPick(file: File | undefined) {
     if (!file) return;
@@ -154,8 +223,30 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
           </p>
         </div>
 
+        {/* Let Petal write the copy and draw the icon from the project itself */}
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={writeWithAi}
+            disabled={writing}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold transition hover:bg-muted disabled:opacity-60"
+          >
+            {writing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            Write with Petal
+          </button>
+          <button
+            type="button"
+            onClick={drawIconWithAi}
+            disabled={drawingIcon}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold transition hover:bg-muted disabled:opacity-60"
+          >
+            {drawingIcon ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            Generate icon
+          </button>
+        </div>
+
         {/* Icon + title row, mirroring the Lovable publish dialog layout */}
-        <div className="mt-5 space-y-2">
+        <div className="mt-4 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Icon &amp; title</span>
             <span className="text-xs tabular-nums text-muted-foreground">
@@ -167,12 +258,12 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
             <button
               type="button"
               onClick={() => iconInputRef.current?.click()}
-              disabled={iconUploading}
-              className="grid h-[52px] w-[52px] shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-card transition hover:bg-muted disabled:opacity-60"
+              disabled={iconUploading || drawingIcon}
+              className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-card transition hover:bg-muted disabled:opacity-60"
               aria-label="Change icon"
               title="Change icon"
             >
-              {iconUploading ? (
+              {iconUploading || drawingIcon ? (
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               ) : (
                 <img
@@ -182,6 +273,7 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
                 />
               )}
             </button>
+
             <input
               ref={iconInputRef}
               type="file"
@@ -279,7 +371,7 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
             type="button"
             onClick={() => onOpenChange(false)}
             disabled={saving}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-60"
           >
             Cancel
           </button>
@@ -287,12 +379,13 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
             type="button"
             onClick={save}
             disabled={saving || iconUploading || ogUploading}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             Save
           </button>
         </div>
+
       </DrawerContent>
     </Drawer>
   );
