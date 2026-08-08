@@ -20,8 +20,13 @@
 
 export const MAX_FILE_LINES = 180;
 export const MAX_FILE_BYTES = 6 * 1024;
-export const HARD_REJECT_LINES = 280;
-export const HARD_REJECT_BYTES = 10 * 1024;
+// A complete interactive page commonly lands around 220-300 lines / 10-16 KB.
+// Keep warning early so the polish pass can split it, but only hard-reject at
+// a size that strongly indicates an unbounded or truncated generation. The old
+// 10 KB ceiling reverted valid pages while leaving their newly-created helper
+// modules in place, producing a broken mixed file graph.
+export const HARD_REJECT_LINES = 420;
+export const HARD_REJECT_BYTES = 20 * 1024;
 
 export type FileBudgetIssue = {
   path: string;
@@ -132,6 +137,7 @@ export function enforceFileBudgets(
     if (prior !== undefined) {
       // Existing file → revert to last-known-good content.
       out.push({ path: f.path, content: prior });
+      continue;
     }
     // New oversized file → keep it. The oversize issue is still sent to the
     // repair model, which can replace it with a smaller complete version.

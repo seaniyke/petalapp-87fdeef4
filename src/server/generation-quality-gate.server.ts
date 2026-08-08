@@ -4,6 +4,7 @@ import type { WebSubtype } from "@/lib/web-subtype";
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
 import { findDeadMobileNav, findDeadButtons } from "@/server/interaction-hygiene.server";
 import { lintProductPrinciples } from "@/server/product-principles.server";
+import { isScaffoldOwnedPath } from "@/server/scaffold-ownership.server";
 
 
 function appEntrypoint(files: ProjectFile[]): ProjectFile | undefined {
@@ -17,8 +18,12 @@ export function findGenerationQualityIssues(
   const issues: LocalIssue[] = [];
   if (!subtype) return issues;
 
-  const paths = files.map((f) => f.path);
-  const joined = files.map((f) => f.content).join("\n").slice(0, 180_000);
+  // Scaffold examples are reference material, not rendered product surfaces.
+  // Including them made every public tool appear to contain auth/dashboard
+  // routes and dozens of dead buttons, opening an unnecessary repair cycle.
+  const productFiles = files.filter((f) => !isScaffoldOwnedPath(f.path));
+  const paths = productFiles.map((f) => f.path);
+  const joined = productFiles.map((f) => f.content).join("\n").slice(0, 180_000);
 
   if (subtype === "marketing") {
     const offenders = paths.filter((p) => /(^|\/)(auth|login|sign-in|sign-up|dashboard)(\.|\/)/i.test(p));
@@ -96,7 +101,7 @@ export function findGenerationQualityIssues(
   // Web standards scan: dead hamburger menus and buttons wired to nothing are
   // the #1 "it looks finished but nothing works" complaint. Reported so the
   // repair loop wires them up.
-  for (const f of files) {
+  for (const f of productFiles) {
     if (!/\.(tsx|jsx)$/.test(f.path)) continue;
     const nav = findDeadMobileNav(f.path, f.content);
     if (nav) issues.push({ path: f.path, kind: "render-risk", detail: nav });
