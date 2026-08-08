@@ -4429,10 +4429,13 @@ Forbidden defaults
           earlyChangedPaths,
           controller,
           encoder,
-          // Only enforce the product contract on the turn that authored it.
-          // Later turns edit an existing product; the contract is enforced by
-          // amendment, not by re-checking the whole app on a copy tweak.
-          resolvedPrd?.authored ? resolvedPrd.prd : null,
+          // Enforce the product contract on the turn that authored it and on
+          // any turn that changed its shape. Cosmetic edits are exempt — the
+          // contract is unchanged, so re-checking the whole app is noise.
+          resolvedPrd && (resolvedPrd.authored || resolvedPrd.amendment !== "cosmetic")
+            ? resolvedPrd.prd
+            : null,
+
         );
         if (!guardOut.ok) {
           // Final-parse-guard couldn't repair this turn's edits. Revert
