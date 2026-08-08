@@ -307,11 +307,16 @@ export interface ButtonProps
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, type, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
+    // Default to type="button". A bare <button> inside a <form> defaults to
+    // "submit", so date pickers, tabs, and toggles would submit the form and
+    // reload the page. Explicit type="submit" still wins.
+    const typeProp = asChild ? {} : { type: type ?? "button" };
+    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...typeProp} {...props} />;
   }
 );
+
 Button.displayName = "Button";
 export { buttonVariants };
 `;
