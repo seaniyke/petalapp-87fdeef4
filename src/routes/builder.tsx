@@ -2151,7 +2151,7 @@ function Builder() {
       // single most disorienting failure mode here. The assistant reply is
       // persisted later, after a successful stream. Auto-fix runs are NOT
       // persisted (they're transient internal turns).
-      if (!opts.isRetry && !opts.isAutoFix && !opts.isInternalRepair) {
+      if (!echoSuppressed && !opts.isAutoFix && !opts.isInternalRepair) {
         try {
           await appendMessages(proj.id, [userMsg]);
         } catch (persistErr) {
