@@ -1316,7 +1316,12 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
   }
   if (parsed.ops) {
     parsed.ops = parsed.ops.map((o) => {
-      const { narration: _drop, ...rest } = o as FileOp & { narration?: string };
+      // `narration` and `step` are streaming-only UI fields — they must never
+      // reach the writer, verifier, or persistence layers.
+      const { narration: _drop, step: _step, ...rest } = o as FileOp & {
+        narration?: string;
+        step?: number;
+      };
       return rest as FileOp;
     });
   }
