@@ -80,6 +80,7 @@ export function findDeterministicDefects(
   ops: FileOp[],
   files: ProjectFile[],
   userPrompt: string,
+  prd?: Prd | null,
 ): CriticRejection[] {
   const byPath = new Map(files.map((f) => [f.path, f.content]));
   const prompt = (userPrompt || "").toLowerCase();
