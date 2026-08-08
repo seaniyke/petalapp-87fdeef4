@@ -1474,6 +1474,9 @@ function Builder() {
     setFilesWritten(0);
     setLatestPath(undefined);
     setLatestNarration(undefined);
+    setBuildSteps([]);
+    setActiveStepIndex(-1);
+    setDoneStepIndexes([]);
     setLatestCycleProgress(undefined);
     setWrittenPaths([]);
     setCompletedPaths(new Set());
@@ -2148,6 +2151,9 @@ function Builder() {
       setFilesWritten(0);
       setLatestPath(undefined);
       setLatestNarration(undefined);
+      setBuildSteps([]);
+      setActiveStepIndex(-1);
+      setDoneStepIndexes([]);
       setLatestCycleProgress(undefined);
       setWrittenPaths([]);
       setCompletedPaths(new Set());
