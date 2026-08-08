@@ -185,7 +185,7 @@ export function PublishSuccessCard({
           type="button"
           onClick={copy}
           disabled={!url}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 py-3 text-[15px] font-bold transition hover:bg-muted disabled:opacity-40"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-[14px] font-bold transition hover:bg-muted disabled:opacity-40"
         >
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           {copied ? "Copied" : "Copy link"}
@@ -194,7 +194,7 @@ export function PublishSuccessCard({
           href={url ?? "#"}
           target="_blank"
           rel="noreferrer noopener"
-          className={`inline-flex items-center justify-center gap-2 rounded-xl bg-foreground px-3 py-3 text-[15px] font-bold text-background transition hover:opacity-90 ${
+          className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-foreground px-3 text-[14px] font-bold text-background transition hover:opacity-90 ${
             url ? "" : "pointer-events-none opacity-40"
           }`}
         >
@@ -202,6 +202,7 @@ export function PublishSuccessCard({
           <ExternalLink className="h-4 w-4" />
         </a>
       </div>
+
 
       {onDismiss && (
         <button
