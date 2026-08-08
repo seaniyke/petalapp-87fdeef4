@@ -4432,9 +4432,13 @@ Forbidden defaults
           // Enforce the product contract on the turn that authored it and on
           // any turn that changed its shape. Cosmetic edits are exempt — the
           // contract is unchanged, so re-checking the whole app is noise.
-          resolvedPrd && (resolvedPrd.authored || resolvedPrd.amendment !== "cosmetic")
+          resolvedPrd &&
+          (resolvedPrd.authored ||
+            resolvedPrd.amendment === "additive" ||
+            resolvedPrd.amendment === "contradiction")
             ? resolvedPrd.prd
             : null,
+
 
         );
         if (!guardOut.ok) {
