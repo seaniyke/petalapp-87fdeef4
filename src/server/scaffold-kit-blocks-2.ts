@@ -698,7 +698,11 @@ function resolveSocialIcon(s: SocialEntry): React.ComponentType<{ className?: st
  */
 export function FooterColumns({
   brand,
+  brandMark,
+  logo,
+  appName,
   tagline,
+  description,
   columns,
   social,
   socialLinks,
@@ -706,7 +710,11 @@ export function FooterColumns({
   className,
 }: {
   brand?: React.ReactNode;
+  brandMark?: React.ReactNode;
+  logo?: React.ReactNode;
+  appName?: React.ReactNode;
   tagline?: React.ReactNode;
+  description?: React.ReactNode;
   columns?: FooterColumn[];
   social?: SocialEntry[];
   socialLinks?: SocialEntry[];
@@ -715,13 +723,24 @@ export function FooterColumns({
 }) {
   const socials = Array.isArray(social) && social.length > 0 ? social : Array.isArray(socialLinks) ? socialLinks : [];
   const cols = Array.isArray(columns) ? columns : [];
+  const mark = brandMark ?? logo;
+  const brandNode =
+    brand ??
+    (mark || appName ? (
+      <span className="inline-flex items-center gap-2">
+        {mark}
+        {appName}
+      </span>
+    ) : null);
+  const taglineNode = tagline ?? description;
   return (
     <footer className={cn("border-t border-border bg-muted/30 py-16", className)}>
       <Container size="xl">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="md:col-span-4">
-            {brand && <div className="text-base font-semibold text-foreground">{brand}</div>}
-            {tagline && <p className="mt-2 max-w-xs text-sm text-muted-foreground">{tagline}</p>}
+            {brandNode && <div className="text-base font-semibold text-foreground">{brandNode}</div>}
+            {taglineNode && <p className="mt-2 max-w-xs text-sm text-muted-foreground">{taglineNode}</p>}
+
             {socials.length > 0 && (
               <div className="mt-5 flex gap-3">
                 {socials.map((s, i) => {
@@ -926,40 +945,72 @@ export interface NavLink {
 }
 
 /**
- * Minimal sticky top nav with mobile sheet. No CTA — for content sites,
- * docs, blogs, portfolios. Use NavWithCta for marketing pages.
+ * Minimal sticky top nav with mobile sheet.
+ * Prop aliases are accepted so a caller can pass \`brandMark\` + \`appName\`
+ * instead of \`brand\`, and \`navLinks\`/\`items\` instead of \`links\`. Without
+ * these, an unknown prop is silently dropped and the nav renders empty.
  */
 export function NavBar({
   brand,
+  brandMark,
+  logo,
+  appName,
   links,
+  navLinks,
+  items,
+  cta,
   brandHref = "/",
   className,
 }: {
-  brand: React.ReactNode;
-  links: NavLink[];
+  brand?: React.ReactNode;
+  brandMark?: React.ReactNode;
+  logo?: React.ReactNode;
+  appName?: React.ReactNode;
+  links?: NavLink[];
+  navLinks?: NavLink[];
+  items?: NavLink[];
+  cta?: React.ReactNode;
   brandHref?: string;
   className?: string;
 }) {
   const [open, setOpen] = React.useState(false);
+  const mark = brandMark ?? logo;
+  const brandNode =
+    brand ??
+    (mark || appName ? (
+      <span className="inline-flex items-center gap-2">
+        {mark}
+        {appName}
+      </span>
+    ) : null);
+  const navItems = (Array.isArray(links) && links.length > 0
+    ? links
+    : Array.isArray(navLinks) && navLinks.length > 0
+      ? navLinks
+      : Array.isArray(items)
+        ? items
+        : []) as NavLink[];
   return (
     <header className={cn("sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur", className)}>
       <Container size="xl">
         <div className="flex h-14 items-center justify-between">
-          <a href={brandHref} className="text-base font-semibold text-foreground">{brand}</a>
+          <a href={brandHref} className="text-base font-semibold text-foreground">{brandNode}</a>
           <nav className="hidden items-center gap-6 md:flex">
-            {links.map((l, i) => (
+            {navItems.map((l, i) => (
               <a key={i} href={l.href} className="text-sm text-muted-foreground transition hover:text-foreground">
                 {l.label}
               </a>
             ))}
+            {cta}
           </nav>
+
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen((v) => !v)} aria-label="Toggle menu">
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
         {open && (
           <nav className="grid gap-1 border-t border-border py-3 md:hidden">
-            {links.map((l, i) => (
+            {navItems.map((l, i) => (
               <a
                 key={i}
                 href={l.href}
@@ -969,7 +1020,9 @@ export function NavBar({
                 {l.label}
               </a>
             ))}
+            {cta && <div className="px-2 pt-2">{cta}</div>}
           </nav>
+
         )}
       </Container>
     </header>

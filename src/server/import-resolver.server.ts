@@ -194,6 +194,10 @@ function namedImportNames(line: string): string[] {
 }
 
 
+/** Paths the scaffold kit owns and always writes — never stub these. */
+const KIT_OWNED_PATH =
+  /^src\/(components\/ui\/|components\/blocks\/|components\/examples\/|integrations\/|hooks\/|lib\/)/;
+
 export interface ImportRepairResult {
   files: ProjectFile[];
   /** Spec rewrites: per-file list of (original spec → new spec). */
@@ -269,6 +273,12 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
       const stubPath = specToStubPath(f.path, spec);
       if (!stubPath) continue;
       if (byPath.has(stubPath)) continue;
+      // Never stub a kit-owned path. The scaffold kit supplies these files
+      // later in the pipeline; writing a "Coming together" placeholder here
+      // wins the merge and turns real primitives (Toaster, auth client, utils)
+      // into a visible prose block in the middle of the app.
+      if (KIT_OWNED_PATH.test(stubPath)) continue;
+
       const stub = buildStub(spec, defaultImportName(full), namedImportNames(full));
       byPath.set(stubPath, stub);
       stubsCreated.push(stubPath);
