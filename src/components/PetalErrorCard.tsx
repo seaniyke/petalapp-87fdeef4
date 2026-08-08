@@ -9,7 +9,7 @@
  * SF-style icon glyph in a tinted circle, primary "filled" pill button
  * and secondary glass button — matches iOS 17 system alerts / banners.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RefreshCcw, Wrench, X, ChevronDown, Sparkles } from "lucide-react";
 import type { FriendlyError } from "@/lib/friendly-errors";
 
@@ -65,7 +65,38 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
   const [showDetails, setShowDetails] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [actionPending, setActionPending] = useState(false);
+  const actionLockRef = useRef(false);
+  const actionUnlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const summary = summarizeTechnicalDetail(error.technicalDetail);
+
+  // A mobile tap can dispatch twice before the parent has time to render its
+  // busy state. Lock synchronously (state alone is not synchronous), then keep
+  // the control disabled while the request starts. The timeout only restores
+  // the card if the request fails before the normal working state replaces it.
+  useEffect(() => {
+    actionLockRef.current = false;
+    setActionPending(false);
+    if (actionUnlockTimerRef.current !== null) {
+      clearTimeout(actionUnlockTimerRef.current);
+      actionUnlockTimerRef.current = null;
+    }
+    return () => {
+      if (actionUnlockTimerRef.current !== null) clearTimeout(actionUnlockTimerRef.current);
+    };
+  }, [error.title, error.message, error.actionKind]);
+
+  const runOnce = (action: (() => void) | undefined) => {
+    if (!action || actionLockRef.current) return;
+    actionLockRef.current = true;
+    setActionPending(true);
+    action();
+    actionUnlockTimerRef.current = setTimeout(() => {
+      actionLockRef.current = false;
+      setActionPending(false);
+      actionUnlockTimerRef.current = null;
+    }, 3_000);
+  };
 
   // Design Bible §10 / C7 — when Petal retries on its own, the card states it
   // and offers no button. Copy and behaviour never disagree.
@@ -138,21 +169,27 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
               {isRetry && onRetry && (
                 <button
                   type="button"
-                  onClick={onRetry}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full bg-foreground px-3.5 text-[13px] font-semibold text-background transition active:scale-[0.97]"
+                  onClick={() => runOnce(onRetry)}
+                  disabled={actionPending}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full bg-foreground px-3.5 text-[13px] font-semibold text-background transition active:scale-[0.97] disabled:cursor-wait disabled:opacity-60"
                 >
-                  <RefreshCcw className="h-3.5 w-3.5" strokeWidth={2.5} />
-                  {error.actionLabel}
+                  <RefreshCcw className={`h-3.5 w-3.5 ${actionPending ? "animate-spin motion-reduce:animate-none" : ""}`} strokeWidth={2.5} />
+                  {actionPending ? "Starting…" : error.actionLabel}
                 </button>
               )}
               {isAskFix && onAskFix && (
                 <button
                   type="button"
-                  onClick={onAskFix}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground transition active:scale-[0.97]"
+                  onClick={() => runOnce(onAskFix)}
+                  disabled={actionPending}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground transition active:scale-[0.97] disabled:cursor-wait disabled:opacity-60"
                 >
-                  <Wrench className="h-3.5 w-3.5" strokeWidth={2.5} />
-                  {error.actionLabel}
+                  {actionPending ? (
+                    <RefreshCcw className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" strokeWidth={2.5} />
+                  ) : (
+                    <Wrench className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  )}
+                  {actionPending ? "Starting…" : error.actionLabel}
                 </button>
               )}
               {isBuyCredits && onBuyCredits && (

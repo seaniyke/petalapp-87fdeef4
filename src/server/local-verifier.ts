@@ -519,6 +519,9 @@ function findUndefinedComponents(src: string, clean: string): string[] {
 const BUILTIN_GLOBALS = new Set([
   "Array", "Boolean", "Date", "Error", "Intl", "JSON", "Map", "Math", "Number", "Object", "Promise", "React", "RegExp", "Set", "String", "URL",
   "console", "document", "globalThis", "localStorage", "navigator", "sessionStorage", "window",
+  // JavaScript literals/operators can match the deliberately conservative
+  // lowercase-reference regexes below, but they are never declarations.
+  "undefined", "null", "true", "false", "NaN", "Infinity",
 ]);
 
 function findObviousScopeLeaks(src: string): string[] {
@@ -526,6 +529,17 @@ function findObviousScopeLeaks(src: string): string[] {
   let m: RegExpExecArray | null;
   const declRe = /\b(?:const|let|var|function|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/g;
   while ((m = declRe.exec(src))) declared.add(m[1]);
+  // Hook/form APIs overwhelmingly use destructuring. Treat every binding in
+  // the declaration pattern as local (`const [value, setValue] = …` and
+  // `const { watch, formState: { errors } } = …`). Without this, valid forms
+  // are rejected as scope leaks after generation.
+  const destructuredDeclRe = /\b(?:const|let|var)\s+([\[{])([\s\S]{1,500}?)[\]}]\s*=/g;
+  while ((m = destructuredDeclRe.exec(src))) {
+    const binding = m[2]
+      .replace(/\b[A-Za-z_$][\w$]*\s*:/g, " ")
+      .replace(/=[^,}\]]+/g, " ");
+    for (const name of binding.matchAll(/\b[A-Za-z_$][\w$]*\b/g)) declared.add(name[0]);
+  }
   const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
   while ((m = importRe.exec(src))) {
     if (m[1]) declared.add(m[1]);
@@ -541,6 +555,8 @@ function findObviousScopeLeaks(src: string): string[] {
     const params = (m[1] || m[2] || "").replace(/:[^,=}]+/g, "");
     for (const name of params.matchAll(/\b[A-Za-z_$][\w$]*\b/g)) declared.add(name[0]);
   }
+  const singleArrowParamRe = /(?:^|[,(]\s*)([A-Za-z_$][\w$]*)\s*=>/g;
+  while ((m = singleArrowParamRe.exec(src))) declared.add(m[1]);
 
   // JSX text nodes are prose, not code. "your due date, and your age," would
   // otherwise look like identifier references and produce false positives that

@@ -224,5 +224,22 @@ export function SectionHeader({ title }) {
   assert("undeclared `total` is flagged", scope.includes("total"), scope);
 });
 
+run("Regression — form destructuring and JS literals are valid scope", () => {
+  const form = `
+export function Calculator() {
+  const [activeTab, setActiveTab] = useState("due-date");
+  const { watch, setValue, trigger, formState: { errors } } = useForm();
+  const days = [1, 2, 3].map(day => day + 1);
+  return activeTab && watch("date") ? <div>{errors.date ?? null}{days.join(",")}</div> : undefined;
+}
+`;
+  const v = verifyFilesLocal(
+    [{ path: "src/pages/Home.tsx", content: form }],
+    ["src/pages/Home.tsx"],
+  );
+  const scope = v.issues.filter((i) => i.kind === "scope");
+  assert("destructured bindings/literals are not scope leaks", scope.length === 0, JSON.stringify(scope));
+});
+
 console.log(`\n${failed === 0 ? "✓ all assertions passed" : `✗ ${failed} assertion(s) failed`}`);
 process.exit(failed === 0 ? 0 : 1);
