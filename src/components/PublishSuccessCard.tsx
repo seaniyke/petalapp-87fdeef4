@@ -101,6 +101,11 @@ export function PublishSuccessCard({
 }) {
   const [copied, setCopied] = useState(false);
   const shareText = isUpdate ? `Just shipped an update to ${title}` : `I just built ${title} 🌸`;
+  // Never surface Petal's own build narration ("I've built…") as the site's
+  // description — visitors want to know what the app does.
+  const raw = (description ?? "").trim();
+  const cleanDescription = raw && isAssistantNarration(raw) ? describeAppFallback(raw) : raw;
+
 
   async function copy() {
     if (!url) return;
