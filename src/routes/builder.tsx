@@ -2009,6 +2009,11 @@ function Builder() {
         allowedPaths?: string[];
         /** Plan Mode v2 — false skips Petal's automatic plan proposal. */
         autoPlan?: boolean;
+        /** Re-running a prompt that is already visible/persisted in the thread
+         *  (e.g. approving or skipping a proposed plan). Prevents a duplicate
+         *  user bubble and a duplicate DB row for the same ask. */
+        suppressEcho?: boolean;
+
       } = {},
     ) => {
       const text = content.trim();
