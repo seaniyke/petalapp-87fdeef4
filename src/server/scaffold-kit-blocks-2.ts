@@ -698,7 +698,11 @@ function resolveSocialIcon(s: SocialEntry): React.ComponentType<{ className?: st
  */
 export function FooterColumns({
   brand,
+  brandMark,
+  logo,
+  appName,
   tagline,
+  description,
   columns,
   social,
   socialLinks,
@@ -706,7 +710,11 @@ export function FooterColumns({
   className,
 }: {
   brand?: React.ReactNode;
+  brandMark?: React.ReactNode;
+  logo?: React.ReactNode;
+  appName?: React.ReactNode;
   tagline?: React.ReactNode;
+  description?: React.ReactNode;
   columns?: FooterColumn[];
   social?: SocialEntry[];
   socialLinks?: SocialEntry[];
@@ -715,13 +723,24 @@ export function FooterColumns({
 }) {
   const socials = Array.isArray(social) && social.length > 0 ? social : Array.isArray(socialLinks) ? socialLinks : [];
   const cols = Array.isArray(columns) ? columns : [];
+  const mark = brandMark ?? logo;
+  const brandNode =
+    brand ??
+    (mark || appName ? (
+      <span className="inline-flex items-center gap-2">
+        {mark}
+        {appName}
+      </span>
+    ) : null);
+  const taglineNode = tagline ?? description;
   return (
     <footer className={cn("border-t border-border bg-muted/30 py-16", className)}>
       <Container size="xl">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="md:col-span-4">
-            {brand && <div className="text-base font-semibold text-foreground">{brand}</div>}
-            {tagline && <p className="mt-2 max-w-xs text-sm text-muted-foreground">{tagline}</p>}
+            {brandNode && <div className="text-base font-semibold text-foreground">{brandNode}</div>}
+            {taglineNode && <p className="mt-2 max-w-xs text-sm text-muted-foreground">{taglineNode}</p>}
+
             {socials.length > 0 && (
               <div className="mt-5 flex gap-3">
                 {socials.map((s, i) => {
