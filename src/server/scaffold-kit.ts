@@ -1878,9 +1878,10 @@ const ROUTER = `/**
  * \`isActive\` render-prop child or \`className\` callback gives you free
  * active styling.
  */
+import * as React from "react";
+import { BrowserRouter as RRBrowserRouter, useNavigate } from "react-router-dom";
+
 export {
-  BrowserRouter,
-  BrowserRouter as Router,
   Routes,
   Route,
   Link,
@@ -1896,7 +1897,54 @@ export {
   useSearchParams,
 } from "react-router-dom";
 
+/**
+ * Intercepts clicks on plain internal <a href="/x"> links and routes them
+ * client-side. Without this, any hand-written anchor in a nav, footer, or
+ * card triggers a full page reload — the app flashes white and loses state.
+ * External links, new-tab clicks, downloads, hash links, and mailto/tel are
+ * left alone.
+ */
+function InternalLinkNavigation({ children }: { children?: React.ReactNode }) {
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      const anchor = target && typeof target.closest === "function" ? (target.closest("a") as HTMLAnchorElement | null) : null;
+      if (!anchor) return;
+      if (anchor.hasAttribute("download")) return;
+      const anchorTarget = anchor.getAttribute("target");
+      if (anchorTarget && anchorTarget !== "_self") return;
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+      let url: URL;
+      try {
+        url = new URL(href, window.location.href);
+      } catch {
+        return;
+      }
+      if (url.origin !== window.location.origin) return;
+      e.preventDefault();
+      navigate(url.pathname + url.search + url.hash);
+    };
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, [navigate]);
+  return <>{children}</>;
+}
+
+export function BrowserRouter({ children, ...props }: React.ComponentProps<typeof RRBrowserRouter>) {
+  return (
+    <RRBrowserRouter {...props}>
+      <InternalLinkNavigation>{children}</InternalLinkNavigation>
+    </RRBrowserRouter>
+  );
+}
+
+export const Router = BrowserRouter;
+
 export type { RouteObject } from "react-router-dom";
+
 `;
 
 const CONTAINER = `import * as React from "react";
