@@ -131,6 +131,12 @@ export async function collectGateIssues(
         prd,
         files.map((f) => ({ path: f.path, content: f.content })),
       );
+      const { recordPrdEvent } = await import("@/server/prd/prd-telemetry.server");
+      recordPrdEvent({
+        event: result.passed ? "gate-passed" : "gate-blocked",
+        prd,
+        failedCriteria: result.findings.filter((f) => f.severity === "blocking").map((f) => f.criterionId),
+      });
       for (const f of result.findings) {
         if (f.severity !== "blocking") continue;
         issues.push({

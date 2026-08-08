@@ -1733,6 +1733,13 @@ async function handleGenerateRequestCore(request: Request): Promise<Response> {
       if (prdNote) {
         prdBlock += `\n\n### Contract change (state this to the user in one sentence before you build)\n${prdNote}\n`;
       }
+      const { recordPrdEvent } = await import("@/server/prd/prd-telemetry.server");
+      recordPrdEvent({
+        event: resolvedPrd.authored ? "authored" : "amended",
+        projectId: body.projectId ?? null,
+        prd: resolvedPrd.prd,
+        amendment: resolvedPrd.amendment,
+      });
       console.log(
         `[prd] project=${body.projectId ?? "n/a"} product="${resolvedPrd.prd.productName}" type=${resolvedPrd.prd.productType} authored=${resolvedPrd.authored} amendment=${resolvedPrd.amendment} surfaces=[${resolvedPrd.prd.requiredSurfaces.join(",")}]`,
       );
