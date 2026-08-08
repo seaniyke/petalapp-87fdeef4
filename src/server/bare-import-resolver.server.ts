@@ -373,11 +373,11 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
         continue;
       }
 
-      // Unknown package — strip the import line so Rollup doesn't bail.
-      // Usages of the identifiers in the file body will throw at runtime
-      // (caught by the runtime-contract pass later), but the BUILD will
-      // succeed and the user can iterate. This is intentionally a hard
-      // failure mode on the UI side rather than a silent build failure.
+      // Unknown package — replace the import with local safe shims so Rollup
+      // resolves AND the app still renders. Dropping the import outright left
+      // every use site throwing `ReferenceError` in the browser: a build that
+      // "succeeded" and an app that was blank. The missing package is
+      // disclosed through `result.stripped` instead.
       // We only do this on the LATEST `src` snapshot so prior rewrites
       // (alias, icon fixes) stick.
       const currentLine = src.includes(full)
@@ -388,9 +388,15 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
             ),
           )?.[0];
       if (currentLine) {
-        src = commentOutImport(src, currentLine, `package "${pkg}" is not in Petal's allow-list`);
+        src = shimImport(
+          src,
+          currentLine,
+          `package "${pkg}" is not in Petal's allow-list`,
+          pkg,
+        );
         result.stripped.push({ path: file.path, spec });
       }
+
     }
 
     byPath.set(file.path, src);
