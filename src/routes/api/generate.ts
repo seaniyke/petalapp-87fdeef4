@@ -614,6 +614,13 @@ async function relayAndCollect(
   // we instruct the model to place BEFORE `content`, so users hear what
   // Petal is about to build *before* the file body streams.
   const narratedPaths = new Set<string>();
+  // Plan-first execution. The model writes `steps` before any file, so we can
+  // show the user the whole checklist up front and then tick items off as the
+  // files tagged with each step land. `stepsEmitted` is the count already sent
+  // (the array streams element by element); `activeStep` is the 1-based item
+  // currently being worked on.
+  let stepsEmitted = 0;
+  let activeStep = 0;
 
   // Matches a completed `"path": "<value>"` occurrence (handles escaped chars).
   const PATH_RE = /"path"\s*:\s*"((?:\\.|[^"\\])*)"/g;
@@ -625,6 +632,32 @@ async function relayAndCollect(
   // a `\"` mid-stream). We pair each match with the most recent path that
   // precedes it in the buffer to know which file just finished streaming.
   const CONTENT_RE = /"content"\s*:\s*"((?:\\.|[^"\\])*)"(?=\s*[,}])/g;
+  // Per-file `"step": N` tag, paired with the nearest preceding path the same
+  // way narration is.
+  const STEP_RE = /"step"\s*:\s*(\d+)/g;
+  /**
+   * Pull the completed elements of the top-level `steps` array out of the
+   * streaming JSON. Only strings that have actually closed are returned, so a
+   * half-written step never reaches the user.
+   */
+  const partialSteps = (): string[] => {
+    const m = tool.args.match(/"steps"\s*:\s*\[([\s\S]*?)(\]|$)/);
+    if (!m) return [];
+    const out: string[] = [];
+    const ITEM_RE = /"((?:\\.|[^"\\])*)"(?=\s*[,\]]|\s*$)/g;
+    let im: RegExpExecArray | null;
+    while ((im = ITEM_RE.exec(m[1])) !== null) {
+      // Without a closing bracket the final match may still be growing, so we
+      // only trust items followed by a real delimiter.
+      const rest = m[1].slice(ITEM_RE.lastIndex);
+      if (!m[2] && !/^\s*[,\]]/.test(rest)) break;
+      let text = im[1];
+      try { text = JSON.parse(`"${im[1]}"`); } catch { /* keep raw */ }
+      const trimmed = String(text).trim().replace(/\s+/g, " ").slice(0, 90);
+      if (trimmed) out.push(trimmed);
+    }
+    return out.slice(0, 8);
+  };
   // Helper: extract the partial value of a top-level string field from the
   // streaming JSON args. Returns "" until the field appears.
   const partial = (field: string): string => {
@@ -718,6 +751,13 @@ async function relayAndCollect(
             planEmitted = planNow;
             controller.enqueue(encoder.encode(sse({ type: "plan_delta", delta: tail })));
           }
+          // Plan-first: push the checklist the moment new items close, so the
+          // user reads the whole plan before the first file arrives.
+          const stepsNow = partialSteps();
+          if (stepsNow.length > stepsEmitted) {
+            stepsEmitted = stepsNow.length;
+            controller.enqueue(encoder.encode(sse({ type: "build_steps", steps: stepsNow })));
+          }
           const summaryNow = partial("summary");
           if (summaryNow.length > summaryEmitted.length) {
             if (!designingPhaseSent) {
@@ -762,6 +802,25 @@ async function relayAndCollect(
           // giving the user a real, model-written sentence about what's
           // about to be built. Falls back gracefully when missing (the
           // client uses path-derived narration instead).
+          // Tick the checklist forward using each file's `step` tag. Steps
+          // only ever move forward; everything before the active item is done.
+          STEP_RE.lastIndex = 0;
+          let sm: RegExpExecArray | null;
+          let latestStep = activeStep;
+          while ((sm = STEP_RE.exec(tool.args)) !== null) {
+            const n = Number(sm[1]);
+            if (Number.isFinite(n) && n > latestStep) latestStep = n;
+          }
+          if (latestStep > activeStep && stepsEmitted > 0) {
+            for (let i = activeStep; i < Math.min(latestStep - 1, stepsEmitted); i++) {
+              controller.enqueue(encoder.encode(sse({ type: "step_status", index: i, status: "done" })));
+            }
+            activeStep = Math.min(latestStep, stepsEmitted);
+            controller.enqueue(
+              encoder.encode(sse({ type: "step_status", index: activeStep - 1, status: "active" })),
+            );
+          }
+
           NARRATION_RE.lastIndex = 0;
           let nm: RegExpExecArray | null;
           while ((nm = NARRATION_RE.exec(tool.args)) !== null) {
