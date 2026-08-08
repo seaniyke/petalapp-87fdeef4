@@ -223,8 +223,30 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
           </p>
         </div>
 
+        {/* Let Petal write the copy and draw the icon from the project itself */}
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={writeWithAi}
+            disabled={writing}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold transition hover:bg-muted disabled:opacity-60"
+          >
+            {writing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            Write with Petal
+          </button>
+          <button
+            type="button"
+            onClick={drawIconWithAi}
+            disabled={drawingIcon}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold transition hover:bg-muted disabled:opacity-60"
+          >
+            {drawingIcon ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            Generate icon
+          </button>
+        </div>
+
         {/* Icon + title row, mirroring the Lovable publish dialog layout */}
-        <div className="mt-5 space-y-2">
+        <div className="mt-4 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Icon &amp; title</span>
             <span className="text-xs tabular-nums text-muted-foreground">
@@ -236,12 +258,12 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
             <button
               type="button"
               onClick={() => iconInputRef.current?.click()}
-              disabled={iconUploading}
-              className="grid h-[52px] w-[52px] shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-card transition hover:bg-muted disabled:opacity-60"
+              disabled={iconUploading || drawingIcon}
+              className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-card transition hover:bg-muted disabled:opacity-60"
               aria-label="Change icon"
               title="Change icon"
             >
-              {iconUploading ? (
+              {iconUploading || drawingIcon ? (
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               ) : (
                 <img
@@ -251,6 +273,7 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
                 />
               )}
             </button>
+
             <input
               ref={iconInputRef}
               type="file"
