@@ -46,7 +46,9 @@ eq(resolveBuildTarget(null, "a landing page").source !== "header", true, "infere
 
 /* ---------------------- 2. Keyword sub-type ------------------------ */
 
-const SUBTYPES: Array<[string, "marketing" | "app" | "fullstack"]> = [
+const SUBTYPES: Array<[string, "marketing" | "app" | "fullstack" | "tool"]> = [
+  ["build a female pregnancy calculator", "tool"],
+  ["a unit converter for cooking", "tool"],
   ["landing page for a fintech", "marketing"], // Defect B
   ["a waitlist page for my new AI product", "marketing"],
   ["portfolio site for a photographer", "marketing"],
