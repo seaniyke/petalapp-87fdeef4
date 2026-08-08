@@ -244,35 +244,14 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
       const idx = out.findIndex((f) => f.path === filePath);
       if (idx < 0) continue;
       const f = out[idx];
-      // Naive but safe: append a comment + Outlet inside the FIRST return's
-      // root element. We look for `return (` followed by a JSX tag and
-      // insert `<Outlet />` just before its closing tag. If we can't find
-      // a safe insertion point, skip — better blank than broken.
-      const returnIdx = f.content.indexOf("return (");
-      if (returnIdx < 0) continue;
-      // Find the matching `)` for that return — naïve paren counter.
-      let depth = 0;
-      let endIdx = -1;
-      for (let i = returnIdx + "return (".length - 1; i < f.content.length; i++) {
-        const ch = f.content[i];
-        if (ch === "(") depth++;
-        else if (ch === ")") {
-          depth--;
-          if (depth === 0) {
-            endIdx = i;
-            break;
-          }
-        }
-      }
-      if (endIdx < 0) continue;
-      // Insert `<Outlet />` just before the last `</…>` close tag inside the block.
-      const block = f.content.slice(returnIdx, endIdx);
-      const lastClose = block.lastIndexOf("</");
-      if (lastClose < 0) continue;
-      // Ensure Outlet is imported.
+
+      // Ensure Outlet is imported first, then compute the insertion point on
+      // the FINAL content so indices can never drift.
       let content = f.content;
-      if (!/from\s+["']react-router-dom["'][^;]*Outlet/.test(content) && !/Outlet[^,}\n]*}\s*from\s+["']react-router-dom["']/.test(content)) {
-        // Add import or augment existing react-router-dom import.
+      if (
+        !/from\s+["']react-router-dom["'][^;]*Outlet/.test(content) &&
+        !/Outlet[^,}\n]*}\s*from\s+["']react-router-dom["']/.test(content)
+      ) {
         const rrImport = /import\s*\{([^}]*)\}\s*from\s+["']react-router-dom["']/;
         if (rrImport.test(content)) {
           content = content.replace(rrImport, (full, inner) => {
@@ -283,31 +262,25 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
           content = `import { Outlet } from "react-router-dom";\n${content}`;
         }
       }
-      // Re-find indices on the (possibly) updated content.
-      const newReturnIdx = content.indexOf("return (", content.indexOf(`function ${name}`) >= 0 ? content.indexOf(`function ${name}`) : 0);
-      if (newReturnIdx < 0) continue;
-      let d = 0;
-      let newEndIdx = -1;
-      for (let i = newReturnIdx + "return (".length - 1; i < content.length; i++) {
-        const ch = content[i];
-        if (ch === "(") d++;
-        else if (ch === ")") {
-          d--;
-          if (d === 0) {
-            newEndIdx = i;
-            break;
-          }
-        }
-      }
-      if (newEndIdx < 0) continue;
-      const newBlock = content.slice(newReturnIdx, newEndIdx);
-      const newLastClose = newBlock.lastIndexOf("</");
-      if (newLastClose < 0) continue;
-      const insertAt = newReturnIdx + newLastClose;
+
+      // Locate this component's own `return (` — searching from the start of
+      // the file could target a different component in the same module.
+      const defIdx = componentDefIndex(content, name);
+      const returnIdx = content.indexOf("return (", defIdx >= 0 ? defIdx : 0);
+      if (returnIdx < 0) continue;
+
+      // Find the root element's closing tag with a real JSX scan. The old
+      // `lastIndexOf("</")` heuristic happily matched a `</div>` inside a
+      // string literal or a nested branch and produced unbalanced JSX — a
+      // repair pass that BROKE the build it was meant to save.
+      const closeOffset = rootCloseTagIndex(content.slice(returnIdx));
+      if (closeOffset === null) continue;
+      const insertAt = returnIdx + closeOffset;
       content = content.slice(0, insertAt) + "<Outlet />\n      " + content.slice(insertAt);
       out[idx] = { path: f.path, content };
       notes.push(`route-graph: added <Outlet /> to layout component ${name} in ${filePath}`);
     }
+
   }
 
   if (bareRouterImportsRewritten.length) {
