@@ -154,6 +154,9 @@ function maskJsxText(src: string): string {
 
     if (ch === "<") {
       inText = false;
+      inTag = true;
+      tagBraceDepth = 0;
+      tagQuote = null;
       out += ch;
       i++;
       continue;
