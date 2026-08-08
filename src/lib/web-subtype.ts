@@ -205,12 +205,31 @@ const FULLSTACK_ADDENDUM = [
   "When the prompt names payments, end your summary with a fenced `INTEGRATION:` block recommending Stripe — don't try to wire it inline.",
 ].join("\n");
 
+
+const TOOL_ADDENDUM = [
+  "### Web sub-type (HARD CONSTRAINT): Public single-purpose tool",
+  "The user wants ONE thing that works, on a page anyone can open. Not a dashboard, not a brochure.",
+  "",
+  "MUST include:",
+  "  - The working tool itself, above the fold on `/`: real inputs, real validation, real computed output rendered the moment the inputs are valid. No fake numbers, no `TODO`, no 'coming soon'.",
+  "  - The domain logic in its own typed module under `src/lib/` (e.g. `src/lib/<domain>.ts`) with pure exported functions — never inline arithmetic buried in JSX.",
+  "  - A results surface that explains the answer, not just prints it (the number, the unit, what it means, and how it was derived).",
+  "  - Supporting content BELOW the tool: a short explainer, an example, an FAQ, and a footer. This is what makes the page shareable and indexable.",
+  "  - Sensible defaults so the page is useful on first paint, before the user types anything.",
+  "",
+  "MUST NOT include: a sidebar app shell, sign-in / sign-up routes, an `_authenticated` folder, an admin area, a dashboard route, or a fake user account. Persistence, if any, is `localStorage`.",
+  "",
+  "Craft: one focused column or a centered card on a considered background. Editorial typography, generous spacing, mobile-first (the majority of these pages are opened on a phone). Keyboard accessible, labelled inputs, inline error text.",
+].join("\n");
+
 export function getWebSubtypeAddendum(subtype: WebSubtype): string {
   switch (subtype) {
     case "marketing":
       return MARKETING_ADDENDUM;
     case "fullstack":
       return FULLSTACK_ADDENDUM;
+    case "tool":
+      return TOOL_ADDENDUM;
     case "app":
     default:
       return APP_ADDENDUM;
