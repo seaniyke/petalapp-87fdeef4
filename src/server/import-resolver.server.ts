@@ -269,7 +269,7 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
       const stubPath = specToStubPath(f.path, spec);
       if (!stubPath) continue;
       if (byPath.has(stubPath)) continue;
-      const stub = buildStub(spec, defaultImportName(full));
+      const stub = buildStub(spec, defaultImportName(full), namedImportNames(full));
       byPath.set(stubPath, stub);
       stubsCreated.push(stubPath);
     }
