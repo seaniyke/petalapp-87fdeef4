@@ -66,35 +66,56 @@ export function isTransientDeploymentStatus(status: number): boolean {
   return TRANSIENT_DEPLOY_STATUSES.has(status);
 }
 
-/** Wait until the freshly uploaded deployment is actually available to HTTP. */
-async function waitForDeploymentReady(url: string): Promise<void> {
+async function probe(url: string): Promise<{ status: number | null; error: string | null }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await fetch(url, {
+      redirect: "follow",
+      headers: { "User-Agent": "PetalDeployReadiness/1.0" },
+      signal: controller.signal,
+    });
+    return { status: response.status, error: null };
+  } catch (error) {
+    return { status: null, error: error instanceof Error ? error.message : String(error) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Wait until the freshly uploaded deployment answers HTTP.
+ *
+ * Two things this must never do:
+ *  - Fail the build because DNS for the immutable `<hash>.<project>.pages.dev`
+ *    host has not propagated yet. The upload already succeeded; the stable
+ *    project hostname usually serves the same deployment minutes earlier, so
+ *    poll it as a fallback and verify against whichever answers first.
+ *  - Turn "not reachable from this container yet" into a user-facing failure.
+ *    On timeout we return `ready: false` and let verification treat an
+ *    unreachable deployment as inconclusive instead of broken app code.
+ */
+async function waitForDeploymentReady(
+  url: string,
+  fallbackUrl: string,
+): Promise<{ url: string; ready: boolean; detail: string }> {
   const startedAt = Date.now();
-  let lastStatus: number | null = null;
-  let lastError = "deployment did not respond";
+  const candidates = fallbackUrl && fallbackUrl !== url ? [url, fallbackUrl] : [url];
+  let detail = "deployment did not respond";
 
   while (Date.now() - startedAt < DEPLOY_READY_TIMEOUT_MS) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10_000);
-    try {
-      const response = await fetch(url, {
-        redirect: "follow",
-        headers: { "User-Agent": "PetalDeployReadiness/1.0" },
-        signal: controller.signal,
-      });
-      lastStatus = response.status;
-      if (response.ok) return;
-      lastError = `HTTP ${response.status}`;
-      if (!isTransientDeploymentStatus(response.status)) {
+    for (const candidate of candidates) {
+      const { status, error } = await probe(candidate);
+      if (status !== null && status >= 200 && status < 400) {
+        return { url: candidate, ready: true, detail: `HTTP ${status}` };
+      }
+      if (status !== null && !isTransientDeploymentStatus(status)) {
         throw new BuildError(
-          `Deployed app returned a non-retryable response (${response.status})`,
-          `${url} returned HTTP ${response.status}`,
+          `Deployed app returned a non-retryable response (${status})`,
+          `${candidate} returned HTTP ${status}`,
         );
       }
-    } catch (error) {
-      if (error instanceof BuildError) throw error;
-      lastError = error instanceof Error ? error.message : String(error);
-    } finally {
-      clearTimeout(timer);
+      detail = `${candidate}: ${status !== null ? `HTTP ${status}` : error}`;
     }
 
     const remaining = DEPLOY_READY_TIMEOUT_MS - (Date.now() - startedAt);
@@ -105,11 +126,13 @@ async function waitForDeploymentReady(url: string): Promise<void> {
     }
   }
 
-  throw new BuildError(
-    "Deployment did not become ready before verification",
-    `${url} was still unavailable after ${Date.now() - startedAt}ms (${lastStatus ? `HTTP ${lastStatus}` : lastError})`,
-  );
+  return {
+    url,
+    ready: false,
+    detail: `still unavailable after ${Date.now() - startedAt}ms (${detail})`,
+  };
 }
+
 
 /** Cloudflare Pages project names: lowercase, alphanumeric + hyphens, max 58. */
 function projectNameFor(projectId: string): string {
