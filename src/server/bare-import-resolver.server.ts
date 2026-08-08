@@ -159,11 +159,6 @@ function repairLucideIcons(
   return { content: out, fixes };
 }
 
-/** Strip an import line by replacing it with an inline comment. */
-function commentOutImport(content: string, line: string, reason: string): string {
-  const safe = line.trim().replace(/\n/g, " ");
-  return content.replace(line, `\n// [petal] removed unresolved import — ${reason}: ${safe}\n`);
-}
 
 /**
  * Replace an unresolvable package import with LOCAL SAFE SHIMS.
