@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { validateRouteGraph } from "../route-graph.server";
-import { resolveBareImports } from "../bare-import-resolver.server";
+import { repairBareImports } from "../bare-import-resolver.server";
+import type { ProjectFile } from "../generate.server";
 
 describe("route-graph R2 — duplicate root routes", () => {
   it("does not truncate a layout route that has children", () => {
@@ -83,8 +84,8 @@ export default function App() {
 });
 
 describe("bare-import-resolver — unknown packages", () => {
-  it("shims identifiers instead of leaving them undefined", async () => {
-    const files = [
+  it("shims identifiers instead of leaving them undefined", () => {
+    const files: ProjectFile[] = [
       {
         path: "src/Page.tsx",
         content: `import Fancy, { useThing } from "totally-not-a-real-pkg";
@@ -95,7 +96,7 @@ export default function Page() {
       },
       { path: "package.json", content: JSON.stringify({ dependencies: {} }) },
     ];
-    const res = await resolveBareImports(files);
+    const res = repairBareImports(files);
     const page = res.files.find((f) => f.path === "src/Page.tsx")!;
     if (res.stripped.some((s) => s.path === "src/Page.tsx")) {
       expect(page.content).not.toMatch(/^import .*totally-not-a-real-pkg/m);
