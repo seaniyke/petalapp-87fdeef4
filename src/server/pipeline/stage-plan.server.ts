@@ -150,6 +150,8 @@ interface PlanContext {
    * when there is no narrow businessDomain.
    */
   category?: ShapeCategory;
+  /** Machine-authored product contract. This outranks classifier heuristics. */
+  prdBlock?: string;
 }
 
 function injectRootViewIfMissing(
@@ -353,6 +355,7 @@ export async function runStagePlan(args: {
         : "";
 
     const contextBlocks = [
+      ctx.prdBlock?.trim(),
       ctx.appShapeBlock?.trim(),
       ctx.designDirectionBlock?.trim(),
     ]
@@ -389,7 +392,7 @@ export async function runStagePlan(args: {
               `Brief: ${args.brief}\n\n` +
               `Backend connected: ${args.hasBackend ? "yes" : "no"}\n\n` +
               (contextBlocks ? `${contextBlocks}\n\n` : "") +
-              `Plan the MVP file manifest now (max ${maxFiles} files). Remember: src/App.tsx must be file #1, the archetype rules are HARD, and never plan index.html / src/main.tsx / src/styles.css.`,
+              `Plan the MVP file manifest now (max ${maxFiles} files). The internal PRD above is authoritative: every required surface and primary workflow must be represented by reachable files, and excluded surfaces must not be planned. Remember: src/App.tsx must be file #1, the archetype rules are HARD, and never plan index.html / src/main.tsx / src/styles.css.`,
           },
         ],
         tools: [planTool],
