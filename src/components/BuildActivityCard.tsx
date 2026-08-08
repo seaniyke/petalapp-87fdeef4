@@ -65,6 +65,12 @@ const PHASE_ICONS: Record<PhaseId, LucideIcon> = {
 
 type Props = {
   phases: Phase[];
+  /** Plan-first — the model's ordered checklist for this turn. */
+  buildSteps?: string[];
+  /** 0-based index of the step currently being worked on (-1 = none yet). */
+  activeStepIndex?: number;
+  /** 0-based indexes of finished steps. */
+  doneStepIndexes?: number[];
   /** True while either generation or deployment is in flight. */
   isActive: boolean;
   /** True once everything finished successfully (build is live). */
@@ -108,6 +114,9 @@ type Props = {
 
 export function BuildActivityCard({
   phases,
+  buildSteps,
+  activeStepIndex = -1,
+  doneStepIndexes,
   isActive,
   isComplete,
   error,
@@ -344,6 +353,44 @@ export function BuildActivityCard({
             )}
           </div>
         </div>
+        {/* Plan-first checklist. Petal states the steps before it starts and
+            ticks each one off as its files land, so the user can follow the
+            work instead of watching an opaque spinner. */}
+        {buildSteps && buildSteps.length > 0 && (
+          <ol className="space-y-1.5 border-t border-border/60 px-3.5 py-2.5">
+            {buildSteps.map((step, i) => {
+              const done = doneStepIndexes?.includes(i) || isComplete;
+              const active = !done && i === activeStepIndex;
+              return (
+                <li
+                  key={`${i}-${step}`}
+                  className="flex items-start gap-2 text-[12.5px] animate-fade-in motion-reduce:animate-none"
+                >
+                  <span className="mt-[3px] inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center" aria-hidden>
+                    {done ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                    ) : active ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                    ) : (
+                      <span className="h-1.5 w-1.5 rounded-full bg-border" />
+                    )}
+                  </span>
+                  <span
+                    className={
+                      done
+                        ? "font-medium text-muted-foreground line-through decoration-muted-foreground/40"
+                        : active
+                          ? "font-bold text-foreground"
+                          : "font-medium text-muted-foreground/70"
+                    }
+                  >
+                    {step}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        )}
         {isComplete && typeof creditsCharged === "number" && (
           <div className="border-t border-border/60 p-2">
             <BuildCostSummary
