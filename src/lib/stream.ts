@@ -16,6 +16,10 @@ type Handlers = {
    *  cheap local verifier found a structural issue; the post-stream
    *  autofix tier will attempt repair. */
   onFileValidated?: (path: string, ok: boolean, errors?: string[]) => void;
+  /** Plan-first — the model's ordered checklist, streamed before any file. */
+  onBuildSteps?: (steps: string[]) => void;
+  /** Plan-first — a checklist item moved to active/done. */
+  onStepStatus?: (index: number, status: "active" | "done") => void;
   /** Model-written one-liner about the file it's about to build. */
   onNarration?: (path: string, text: string) => void;
   /** Agentic-loop cycle started (initial write or a bounded fix round). */
@@ -211,6 +215,12 @@ export async function streamGenerate(
           case "file_validated":
             handlers.onFileValidated?.(evt.path, evt.ok, evt.errors);
             break;
+          case "build_steps":
+            handlers.onBuildSteps?.(evt.steps);
+            break;
+          case "step_status":
+            handlers.onStepStatus?.(evt.index, evt.status);
+            break;
           case "narration":
             handlers.onNarration?.(evt.path, evt.text);
             break;
@@ -400,6 +410,15 @@ export async function streamResumeTurn(
               (evt.path as string) ?? "",
               Boolean(evt.ok),
               evt.errors as string[] | undefined,
+            );
+            break;
+          case "build_steps":
+            handlers.onBuildSteps?.((evt.steps as string[]) ?? []);
+            break;
+          case "step_status":
+            handlers.onStepStatus?.(
+              (evt.index as number) ?? 0,
+              (evt.status as "active" | "done") ?? "done",
             );
             break;
           case "narration":

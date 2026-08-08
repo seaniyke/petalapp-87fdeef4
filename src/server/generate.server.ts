@@ -167,7 +167,9 @@ USER-FACING VOICE (mandatory for plan / summary / recap):
 - NEVER mention "build timeout", "compiler", "scanning files", "node_modules", or other meta-system reasoning. If something internal needs to be fixed, just say "resolving a setup issue" without naming files.
 - The user does not know Petal's internals exist. Talk about their product, not our plumbing.
 
-Order in the tool call MUST be: plan → summary → files → recap. The server streams them in that order so the user sees intent first, then progress, then a clean wrap-up.
+Order in the tool call MUST be: plan → steps → summary → files → recap. The server streams them in that order so the user sees intent first, then the checklist, then progress, then a clean wrap-up.
+
+PLAN-FIRST EXECUTION (mandatory): \`steps\` is a real working contract, not decoration. Write the 3-6 step checklist BEFORE you write a single file, then build in exactly that order and tag every file with its \`step\` index. Never reorder or skip steps mid-flight. The user watches each step tick off as your files land, so the checklist must describe the work that actually happens.
 
 DO-NOT-ASSUME RULES (mandatory):
 - NEVER add a light/dark mode toggle, a theme switcher, or a \`next-themes\` setup unless the user explicitly asks for "dark mode", "light/dark toggle", or "theme switcher". Default to a single, well-designed light OR dark surface that fits the brand — pick one and commit. Do not add a theme provider, a moon/sun toggle button, \`.dark\` class wiring, or "dark:" Tailwind variants speculatively.
@@ -321,7 +323,9 @@ USER-FACING VOICE (mandatory for plan / summary / recap):
 - NEVER mention "build timeout", "compiler", "scanning files", "node_modules", or other meta-system reasoning. If something internal needs to be fixed, just say "resolving a setup issue" without naming files.
 - The user does not know Petal's internals exist. Talk about their product, not our plumbing.
 
-Order in the tool call MUST be: plan → summary → ops → recap.
+Order in the tool call MUST be: plan → steps → summary → ops → recap.
+
+PLAN-FIRST EXECUTION (mandatory): \`steps\` is a real working contract, not decoration. Write the checklist BEFORE you write a single op, then execute it in that exact order and tag every op with its \`step\` index. Do not reorder, skip, or silently add steps mid-flight — if something extra is genuinely required, fold it into the step it belongs to. The user sees each step tick off as your ops land, so a checklist that does not match the work reads as a lie.
 
 DO-NOT-ASSUME RULES (mandatory):
 - NEVER add a light/dark mode toggle, a theme switcher, or a \`next-themes\` setup unless the user explicitly asks for "dark mode", "light/dark toggle", or "theme switcher".
@@ -346,6 +350,12 @@ export const WRITE_PROJECT_TOOL = {
           description:
             "1-3 short sentences written FIRST explaining what you're about to build and why. Streamed to the user before any files appear.",
         },
+        steps: {
+          type: "array",
+          description:
+            "Written SECOND, immediately after `plan` and BEFORE any file. The 3-6 step checklist you are about to work through, in the exact order you will build them. Each step is a short present-tense task in the user's language about their product — e.g. 'Set up the landing page', 'Build the due-date calculator', 'Add the results screen'. Never file paths, component names, or internal tooling. The user watches these tick off live, so they must match the order your files actually arrive in.",
+          items: { type: "string" },
+        },
         summary: {
           type: "string",
           description: "Friendly 1-2 sentence summary of what was built.",
@@ -357,6 +367,11 @@ export const WRITE_PROJECT_TOOL = {
             type: "object",
             properties: {
               path: { type: "string", description: "Relative file path, e.g. index.html" },
+              step: {
+                type: "integer",
+                description:
+                  "1-based index into `steps` telling the user which checklist item this file belongs to. Must never go backwards across files — finish a step's files before moving to the next step.",
+              },
               narration: {
                 type: "string",
                 description:
@@ -374,7 +389,7 @@ export const WRITE_PROJECT_TOOL = {
             "Markdown bulleted recap of the key files and what each does. Streamed AFTER files so the user gets a clean wrap-up.",
         },
       },
-      required: ["plan", "summary", "files", "recap"],
+      required: ["plan", "steps", "summary", "files", "recap"],
       additionalProperties: false,
     },
   },
@@ -394,6 +409,12 @@ export const PATCH_FILES_TOOL = {
           description:
             "1-3 short sentences written FIRST explaining what you're about to change and why. Streamed before any ops.",
         },
+        steps: {
+          type: "array",
+          description:
+            "Written SECOND, immediately after `plan` and BEFORE any op. The 1-4 step checklist you are about to work through, in the order you will do them, phrased in the user's language about their product (e.g. 'Tighten the hero spacing', 'Wire the contact form'). Never file paths or internal tooling. The user watches these tick off live.",
+          items: { type: "string" },
+        },
         summary: {
           type: "string",
           description: "Friendly 1-2 sentence summary of what was changed.",
@@ -406,6 +427,11 @@ export const PATCH_FILES_TOOL = {
             properties: {
               op: { type: "string", enum: ["create", "update", "replace", "delete"] },
               path: { type: "string", description: "Relative file path." },
+              step: {
+                type: "integer",
+                description:
+                  "1-based index into `steps` telling the user which checklist item this op belongs to. Must never go backwards across ops.",
+              },
               narration: {
                 type: "string",
                 description:
@@ -434,7 +460,7 @@ export const PATCH_FILES_TOOL = {
             "Markdown bulleted recap of files touched and what each change does. Streamed AFTER ops.",
         },
       },
-      required: ["plan", "summary", "ops", "recap"],
+      required: ["plan", "steps", "summary", "ops", "recap"],
       additionalProperties: false,
     },
   },
@@ -595,6 +621,14 @@ export type StreamEvent =
    * card's sub-caption, overriding the path-derived fallback.
    */
   | { type: "narration"; path: string; text: string }
+  /**
+   * Plan-first execution. `build_steps` carries the model's ordered checklist
+   * the moment it finishes writing it — before any file streams — so the user
+   * sees the whole plan up front. `step_status` then ticks each item over to
+   * active/done as the files tagged with that step land.
+   */
+  | { type: "build_steps"; steps: string[] }
+  | { type: "step_status"; index: number; status: "active" | "done" }
   /**
    * Agentic-loop cycle markers. A "cycle" is one round of write-or-fix +
    * verify within a single user turn. Cycle 1 is the initial generation;
