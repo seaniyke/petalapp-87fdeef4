@@ -14,6 +14,12 @@ import {
   type StreamEvent,
 } from "@/server/generate.server";
 import { reconcileDocumentHeadOps } from "@/server/document-head.server";
+import {
+  salvagePartialToolArgs,
+  dropUnusableOps,
+  dropUnusableFiles,
+} from "@/server/tool-args-salvage.server";
+
 
 import { detectCrossCuttingIntent, pickPinnedPaths } from "@/server/intent-targets.server";
 import { resolveEditIntent } from "@/server/edit-intent.server";
