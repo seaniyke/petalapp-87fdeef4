@@ -230,7 +230,10 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
   // <Route> children. Cheap detection: a Route opening tag with `element=`
   // that is not self-closing.
   const ROUTE_LAYOUT_RE =
-    /<Route\b[^/>]*\belement\s*=\s*\{\s*<\s*([A-Z][A-Za-z0-9_]*)\s*\/?\s*>?\s*\/?\s*\}[^/>]*>\s*<Route\b/g;
+    // `[^<>]` rather than `[^/>]`: excluding `/` meant any layout route whose
+    // own path contained a slash (`path="/"`, `path="/shop"`) was never
+    // recognised as a layout, so its missing <Outlet /> went unrepaired.
+    /<Route\b[^<>]*\belement\s*=\s*\{\s*<\s*([A-Z][A-Za-z0-9_]*)\s*\/?\s*>?\s*\/?\s*\}[^<>]*>\s*<Route\b/g;
   for (const f of files) {
     if (!isAppSource(f.path)) continue;
     let m: RegExpExecArray | null;
