@@ -115,14 +115,16 @@ function toAliasSpec(targetPath: string): string {
   return targetPath.replace(/^src\//, "@/").replace(/\.(tsx?|jsx?)$/, "");
 }
 
-function buildStub(spec: string, importedName: string | null): string {
+function buildStub(
+  spec: string,
+  importedName: string | null,
+  namedNames: string[] = [],
+): string {
   const name = importedName ?? "Stub";
   const safeName = /^[A-Z][A-Za-z0-9_]*$/.test(name) ? name : "Stub";
   const label = spec.split("/").pop() ?? "Section";
-  return (
-    `// Auto-generated stub by Petal import-resolver. The original import target\n` +
-    `// did not exist; this lets the build succeed and renders a visible marker.\n` +
-    `export default function ${safeName}() {\n` +
+  const body =
+    `function ${safeName}() {\n` +
     `  return (\n` +
     `    <section className="mx-auto max-w-3xl px-6 py-12">\n` +
     `      <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">${label}</p>\n` +
@@ -130,7 +132,31 @@ function buildStub(spec: string, importedName: string | null): string {
     `      <p className="mt-2 text-muted-foreground">This section is being assembled.</p>\n` +
     `    </section>\n` +
     `  );\n` +
-    `}\n`
+    `}\n`;
+
+  // A default-only stub is a runtime crash waiting to happen: a NAMED import
+  // from this module would resolve to `undefined` and React throws
+  // "Element type is invalid" on first render — invisible to esbuild.
+  // So we export every specifier the importing file actually asked for.
+  const named = namedNames.filter(
+    (n) => /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(n) && n !== safeName && n !== "default",
+  );
+  const uniqueNamed = Array.from(new Set(named));
+  const namedExports = uniqueNamed
+    .map((n) =>
+      /^[A-Z]/.test(n)
+        ? `export const ${n} = ${safeName};\n`
+        : `export const ${n} = (() => undefined) as never;\n`,
+    )
+    .join("");
+
+  return (
+    `// Auto-generated stub by Petal import-resolver. The original import target\n` +
+    `// did not exist; this lets the build succeed and renders a visible marker.\n` +
+    body +
+    `export default ${safeName};\n` +
+    `export { ${safeName} };\n` +
+    namedExports
   );
 }
 
@@ -150,6 +176,23 @@ function defaultImportName(line: string): string | null {
   const m = line.match(/import\s+([A-Z][A-Za-z0-9_]*)\s*[,{]?.*?from/);
   return m ? m[1] : null;
 }
+
+/**
+ * Read the named specifiers of an import line so the stub can export them.
+ * `import { Hero, useCart as cart } from "..."` → ["Hero", "useCart"].
+ * The pre-alias (exported) name is what the stub module must expose.
+ */
+function namedImportNames(line: string): string[] {
+  const brace = line.match(/import\s+(?:[A-Za-z0-9_$]+\s*,\s*)?\{([^}]*)\}\s*from/);
+  if (!brace) return [];
+  return brace[1]
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => part.replace(/^type\s+/, "").split(/\s+as\s+/)[0].trim())
+    .filter(Boolean);
+}
+
 
 export interface ImportRepairResult {
   files: ProjectFile[];
