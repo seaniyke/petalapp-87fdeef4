@@ -344,16 +344,23 @@ export async function buildAndDeploy(
   // the upload. A transient 522 here is deployment propagation, not broken app
   // code, and must never be sent into the user's repair loop.
   const url = deploymentUrlFromWranglerOutput(`${deploy.stdout}\n${deploy.stderr}`, projectName);
-  await waitForDeploymentReady(url);
+  const stableUrl = `https://${projectName}.pages.dev`;
+  const readiness = await waitForDeploymentReady(url, stableUrl);
+  if (!readiness.ready) {
+    // Upload succeeded; only our reachability probe timed out. Ship the URL and
+    // let verification decide — failing here would burn the user's build.
+    console.warn(`[deploy] readiness probe inconclusive: ${url} ${readiness.detail}`);
+  }
+  const hostname = new URL(url).hostname;
 
   return {
-    url,
-    deploymentId:
-      new URL(url).hostname.endsWith(`.${projectName}.pages.dev`)
-        ? new URL(url).hostname.split(".")[0]
-        : undefined,
+    url: readiness.ready ? readiness.url : url,
+    deploymentId: hostname.endsWith(`.${projectName}.pages.dev`)
+      ? hostname.split(".")[0]
+      : undefined,
     durationMs: Date.now() - startedAt,
   };
+
 }
 
 /**
