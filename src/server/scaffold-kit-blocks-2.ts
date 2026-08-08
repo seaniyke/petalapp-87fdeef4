@@ -749,17 +749,15 @@ export function FooterColumns({
 
             {socials.length > 0 && (
               <div className="mt-5 flex gap-3">
-                {socials.map((s, i) => {
-                  const Icon = resolveSocialIcon(s);
-                  return (
-                    <a
-                      key={i}
-                      href={s.href}
-                      aria-label={s.label ?? s.platform ?? "social"}
-                      className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition hover:text-foreground"
-                    >
-                      <Icon className="h-4 w-4" />
-                    </a>
+                {socials.map((s, i) => (
+                  <a
+                    key={i}
+                    href={s.href}
+                    aria-label={s.label ?? s.platform ?? "social"}
+                    className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition hover:text-foreground"
+                  >
+                    {renderSocialIcon(s)}
+                  </a>
                   );
                 })}
               </div>
