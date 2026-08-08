@@ -80,6 +80,8 @@ export function findGenerationQualityIssues(
       });
     }
   }
+
+  // Anti-sameness scan: flags AI-default fingerprints (indigo/purple gradients,
   // Inter typography, missing landing sections). Informational notes only —
   // never blocks. Fires on marketing + fullstack (landings can appear inside
   // fullstack apps too).
