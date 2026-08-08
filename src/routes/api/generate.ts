@@ -1289,23 +1289,56 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
   try {
     parsed = JSON.parse(collected.args) as ParsedProjectPayload["parsed"];
   } catch (e) {
-    console.error("Failed to parse tool args", e, collected.args.slice(0, 500));
-    const looksCutOff = collected.args.length > 0 && !collected.args.trimEnd().endsWith("}");
-    throw new Error(
-      looksCutOff
-        ? "AI response was cut off before the project JSON finished. Retrying with smaller files."
-        : isInitial
-          ? "AI returned invalid project data."
-          : "AI returned invalid edit data.",
+    // All-or-nothing parsing used to sink whole turns: one truncated element
+    // at the tail of a big multi-part edit discarded every complete op before
+    // it. Salvage the complete prefix instead — the user gets the work the
+    // model actually finished, and the pipeline's follow-up/verify passes
+    // handle whatever is still missing.
+    const salvaged = salvagePartialToolArgs(collected.args, collected.name);
+    if (salvaged) {
+      console.warn(
+        `[generate] salvaged ${salvaged.recovered} ${collected.name === "write_project" ? "file(s)" : "op(s)"} from a ${salvaged.truncated ? "truncated" : "malformed"} tool payload`,
+      );
+      parsed = salvaged.parsed as ParsedProjectPayload["parsed"];
+    } else {
+      console.error("Failed to parse tool args", e, collected.args.slice(0, 500));
+      const looksCutOff = collected.args.length > 0 && !collected.args.trimEnd().endsWith("}");
+      throw new Error(
+        looksCutOff
+          ? "AI response was cut off before the project JSON finished. Retrying with smaller files."
+          : isInitial
+            ? "AI returned invalid project data."
+            : "AI returned invalid edit data.",
+      );
+    }
+  }
+
+  // A single structurally-broken entry must not fail a turn that also carries
+  // good ones. Drop the unusable entries, keep the rest.
+  if (Array.isArray(parsed.files)) {
+    const { files, dropped } = dropUnusableFiles(
+      parsed.files as unknown as Record<string, unknown>[],
     );
+    if (dropped > 0) {
+      console.warn(`[generate] dropped ${dropped} unusable file entr(ies)`);
+      parsed.files = files as unknown as ParsedProjectPayload["parsed"]["files"];
+    }
+  }
+  if (Array.isArray(parsed.ops)) {
+    const { ops, dropped } = dropUnusableOps(parsed.ops as unknown as Record<string, unknown>[]);
+    if (dropped > 0) {
+      console.warn(`[generate] dropped ${dropped} unusable op(s)`);
+      parsed.ops = ops as unknown as ParsedProjectPayload["parsed"]["ops"];
+    }
   }
 
   if (collected.name === "write_project" && !parsed.files?.length) {
     throw new Error("AI returned no files.");
   }
-  if (collected.name === "patch_files" && !Array.isArray(parsed.ops)) {
+  if (collected.name === "patch_files" && (!Array.isArray(parsed.ops) || parsed.ops.length === 0)) {
     throw new Error("AI returned no ops.");
   }
+
 
   // The model is instructed to include a `narration` string per file/op for
   // live UI commentary. We've already streamed those to the client during
