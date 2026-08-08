@@ -47,7 +47,39 @@ export function findGenerationQualityIssues(
     }
   }
 
-  // Anti-sameness scan: flags AI-default fingerprints (indigo/purple gradients,
+  if (subtype === "tool") {
+    // A single-purpose tool fails in exactly two ways: the tool isn't
+    // interactive, or the maths lives nowhere. Both are checkable.
+    const hasLogicModule = files.some(
+      (f) => /^src\/lib\/.+\.(ts|tsx)$/.test(f.path) && /export\s+(function|const)\s+\w+/.test(f.content),
+    );
+    const hasInteractive = /useState|useReducer|onChange=|onSubmit=/.test(joined);
+    const entry = appEntrypoint(files);
+    if (!hasInteractive) {
+      issues.push({
+        path: entry?.path ?? "src/App.tsx",
+        kind: "render-risk",
+        detail:
+          "this product IS a tool, but nothing on the page is interactive. Add real inputs with state and a live computed result above the fold.",
+      });
+    }
+    if (!hasLogicModule) {
+      issues.push({
+        path: entry?.path ?? "src/App.tsx",
+        kind: "render-risk",
+        detail:
+          "the tool's domain logic is not in a typed module. Extract pure exported functions into `src/lib/<domain>.ts` and call them from the UI.",
+      });
+    }
+    const shellLeak = paths.some((p) => /(^|\/)(auth|login|sign-in|sign-up|dashboard|admin)(\.|\/)/i.test(p));
+    if (shellLeak) {
+      issues.push({
+        path: entry?.path ?? "src/App.tsx",
+        kind: "render-risk",
+        detail: "a public tool must not ship auth/dashboard/admin surfaces. Remove them and keep one public page.",
+      });
+    }
+  }
   // Inter typography, missing landing sections). Informational notes only —
   // never blocks. Fires on marketing + fullstack (landings can appear inside
   // fullstack apps too).
