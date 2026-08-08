@@ -296,8 +296,12 @@ const TYPE_RULES: Array<{ type: ProductType; weight: number; patterns: RegExp[] 
       /\bdashboard\b/i,
       /\bcrm\b/i,
       /\berp\b/i,
-      /\badmin\s+(panel|console)\b/i,
-      /\binternal\s+tool\b/i,
+      /\badmin\s+(panel|console|tool|dashboard)\b/i,
+      /\binternal\s+(tool|app|system|dashboard)\b/i,
+      /\bback[-\s]?office\b/i,
+      /\b(support|ops|operations)\s+team\b/i,
+      /\b(task|project|invoice|habit|expense|client)\s+manager\b/i,
+      /\bsaas\b/i,
       /\b(manage|track)\s+\w+\s+(for|across)\b/i,
       /\b(inventory|invoice|booking|appointment|project|task)\s+(management|manager|system|tracker)\b/i,
     ],
@@ -401,6 +405,53 @@ function extractExplicitName(brief: string): string | null {
     brief.match(/\b(?:called|named)\s+["“']?([A-Z][\w' -]{1,28})["”']?/) ||
     brief.match(/["“']([A-Z][\w' -]{2,28})["”']\s+(?:app|site|tool|platform)/);
   return m ? m[1].trim() : null;
+}
+
+const STOP_WORDS = new Set([
+  "a","an","the","build","create","make","me","my","our","for","with","and","that","this","app","application",
+  "website","site","web","please","i","want","need","would","like","to","of","in","on","it","where","users",
+  "user","people","can","should","simple","nice","modern","beautiful","full","new","some","their",
+]);
+
+const TYPE_LABEL: Record<ProductType, string> = {
+  utility: "tool",
+  "content-site": "site",
+  "workflow-app": "workspace",
+  marketplace: "marketplace",
+  social: "community",
+  game: "game",
+  "ai-tool": "assistant",
+  storefront: "shop",
+};
+
+/**
+ * A never-blank product identity derived from the user's own words. The model
+ * pass usually improves on this, but the floor must always be a real name —
+ * a nameless product is how "My App" placeholders reach a user's screen.
+ */
+function fallbackIdentity(brief: string, type: ProductType): {
+  productName: string;
+  purpose: string;
+  targetUser: string;
+  primaryOutcome: string;
+  domain: string;
+} {
+  const words = (brief.toLowerCase().match(/[a-z][a-z'-]{2,}/g) ?? []).filter((w) => !STOP_WORDS.has(w));
+  const seen: string[] = [];
+  for (const w of words) {
+    if (!seen.includes(w)) seen.push(w);
+    if (seen.length === 2) break;
+  }
+  const title = seen.map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
+  const subject = seen.join(" ") || "the job at hand";
+  const label = TYPE_LABEL[type];
+  return {
+    productName: title ? `${title} ${label[0].toUpperCase()}${label.slice(1)}` : `Petal ${label[0].toUpperCase()}${label.slice(1)}`,
+    purpose: `A ${label} for ${subject}, built from the user's request: "${brief.trim().slice(0, 140)}".`,
+    targetUser: `Someone who needs to handle ${subject} without extra tooling.`,
+    primaryOutcome: `Complete the main job around ${subject} and see a real result.`,
+    domain: subject,
+  };
 }
 
 /* ============================================================
@@ -597,12 +648,19 @@ export function deterministicPrd(brief: string): Prd {
     return true;
   });
   if (needsAuth && !required.includes("auth")) required.push("auth");
+  // A product that is described as having a public front door gets one, even
+  // when its type defaults to a signed-in shell. This is the fix for "SaaS
+  // with a marketing landing page and a dashboard" shipping only the shell.
+  if (/\b(landing\s*page|marketing\s+(page|site)|home\s*page|public\s+site)\b/i.test(b) && !required.includes("landing")) {
+    required.unshift("landing");
+  }
   if (needsPersistence && type === "utility" && !required.includes("account")) required.push("account");
 
   const workflow = calc ? utilityWorkflow(calc, b) : genericWorkflow(type, b);
   const formulas = calc?.formulas ?? [];
 
   const explicitName = extractExplicitName(b);
+  const fallback = fallbackIdentity(b, type);
 
   const states = calc?.states ?? [
     "empty — meaningful first-run content, never a blank panel",
@@ -613,12 +671,12 @@ export function deterministicPrd(brief: string): Prd {
 
   return {
     version: 1,
-    productName: explicitName ?? calc?.productName ?? "",
-    purpose: calc?.purpose ?? "",
-    targetUser: calc?.targetUser ?? "",
-    primaryOutcome: calc?.primaryOutcome ?? "",
+    productName: explicitName ?? calc?.productName ?? fallback.productName,
+    purpose: calc?.purpose ?? fallback.purpose,
+    targetUser: calc?.targetUser ?? fallback.targetUser,
+    primaryOutcome: calc?.primaryOutcome ?? fallback.primaryOutcome,
     productType: type,
-    domain: calc?.domain ?? "",
+    domain: calc?.domain ?? fallback.domain,
     primaryWorkflow: workflow,
     secondaryWorkflows: [],
     formulas,
