@@ -4,6 +4,17 @@ import type { Database } from "@/integrations/supabase/types";
 
 export type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 
+/**
+ * A project is "public" to viewers if EITHER share-preview is on (`is_public`)
+ * OR it was published publicly (`published_visibility === 'public'`).
+ * Card badges must use this so Settings/Publish and the grid never disagree.
+ */
+export function isProjectPublic(
+  project: Pick<ProjectRow, "is_public"> & { published_visibility?: string | null }
+): boolean {
+  return Boolean(project.is_public) || project.published_visibility === "public";
+}
+
 export type ProjectBackend = {
   status: "connecting" | "ready" | "failed" | "paused" | "provisioning";
   provider: "byo_supabase" | "managed_petal" | "managed_supabase" | "shared_petal";

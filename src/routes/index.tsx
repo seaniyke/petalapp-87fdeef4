@@ -13,7 +13,7 @@ import type { BuildTargetId } from "@/lib/build-targets";
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { listProjects, listPublicProjects, type ProjectRow } from "@/lib/projects";
+import { listProjects, listPublicProjects, isProjectPublic, type ProjectRow } from "@/lib/projects";
 import {
   ArrowRight,
   ArrowUp,
@@ -891,7 +891,7 @@ function Landing() {
                             />
                             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
                             <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground backdrop-blur">
-                              {p.is_public ? (
+                              {isProjectPublic(p) ? (
                                 <>
                                   <Globe className="h-3 w-3" /> Public
                                 </>
