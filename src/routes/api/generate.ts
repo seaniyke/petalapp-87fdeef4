@@ -1524,7 +1524,10 @@ async function runFinalParseGuard(
 }
 
 
-async function handleGenerateRequestCore(request: Request): Promise<Response> {
+async function handleGenerateRequestCore(
+  request: Request,
+  turnId?: string,
+): Promise<Response> {
   const authResult = await authorize(request);
   if (authResult instanceof Response) return authResult;
   const userId = authResult;
@@ -4633,7 +4636,7 @@ Forbidden defaults
           // whatever is actually available — including the daily/monthly FREE
           // buckets a brand-new user has — and books any remainder as debt
           // instead of failing the charge and silently losing the revenue.
-          const settleTurnId = request.headers.get("x-petal-turn-id");
+          const settleTurnId = turnId;
           try {
             const { data: settled, error: settleErr } = await supabaseAdmin.rpc(
               "settle_build_charge",
@@ -5031,19 +5034,6 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
     // Recording is best-effort. Never block the build because of it.
   }
 
-  // The turn id has to reach the inner core so post-build settlement can be
-  // idempotent on it. Rebuild the request with the id as a header rather than
-  // threading it through every call signature.
-  const coreRequest = recorder
-    ? new Request(request, {
-        headers: (() => {
-          const h = new Headers(request.headers);
-          h.set("x-petal-turn-id", recorder.turnId);
-          return h;
-        })(),
-      })
-    : request;
-
   // Exactly-once terminal write. `cancel()` (client closed the tab, the SSE
   // socket dropped) and `start()`'s `finally` can both fire, and on Cloudflare
   // only one of them may ever run. Without this guard the turn row stayed
@@ -5131,7 +5121,10 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           statusIdx++;
         }, 14_000);
 
-        const response = await handleGenerateRequestCore(coreRequest);
+        // Pass the turn id directly. Reconstructing TanStack's incoming
+        // Request with `new Request(request, ...)` crosses runtime realms and
+        // crashes Undici while reading its internal `window` slot.
+        const response = await handleGenerateRequestCore(request, recorder?.turnId);
         if (!response.ok || !response.body) {
           const raw = await response.text().catch(() => `Request failed (${response.status})`);
           terminalStatus = "failed";
