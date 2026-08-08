@@ -369,6 +369,17 @@ function dedupeProjectFiles(files: ProjectFile[]): ProjectFile[] {
  *  this prefix is treated as a plain text message. */
 const STRUCTURED_PREFIX = "@@petal/v1:";
 
+/** Machine-authored repair instructions are not conversation. Older clients
+ * briefly persisted them as user messages, so hide those legacy rows too. */
+function isInternalRepairPrompt(message: ChatMessage): boolean {
+  if (message.role !== "user") return false;
+  const content = message.content.trim();
+  return (
+    content.startsWith("The build failed but no error log was captured.") ||
+    content.startsWith("The build just failed with this error from the bundler:")
+  );
+}
+
 function encodeAssistantContent(m: ChatMessage): string {
   if (
     m.role !== "assistant" ||
@@ -420,7 +431,9 @@ export async function loadProjectMessages(projectId: string): Promise<ChatMessag
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((r) => decodeAssistantContent(r.role, r.content));
+  return (data ?? [])
+    .map((r) => decodeAssistantContent(r.role, r.content))
+    .filter((message) => !isInternalRepairPrompt(message));
 }
 
 /**

@@ -1011,6 +1011,8 @@ function Builder() {
   // it can invoke either variant without stale-closure issues.
   const askPetalToFixRef = useRef<(() => void) | null>(null);
   const askPetalToFixManualRef = useRef<(() => void) | null>(null);
+  // Survives error-card remounts, so one tap can start only one repair turn.
+  const repairActionInFlightRef = useRef(false);
   // Phase 3 — track the build id we last surfaced an "Update available" toast
   // for, so a single ready build only nudges the user once.
   const pushUpdateToastedBuildIdRef = useRef<string | null>(null);
@@ -1986,6 +1988,9 @@ function Builder() {
          *  Suppresses the giant error-log prompt from the visible chat and is
          *  paid by Petal rather than charging the user again. */
         isAutoFix?: boolean;
+        /** Machine-authored repair instruction. It reaches the model but must
+         * never appear in or be persisted to the user's conversation. */
+        isInternalRepair?: boolean;
         /** Internal recovery run after the model produced no usable edits.
          *  Petal escalates automatically; the user should not have to pick a
          *  different path manually. */
@@ -2006,7 +2011,8 @@ function Builder() {
       } = {},
     ) => {
       const text = content.trim();
-      const internalRetry = opts.isRetry || opts.isAutoFix || opts.isAutoContinue;
+      const internalRetry =
+        opts.isRetry || opts.isAutoFix || opts.isInternalRepair || opts.isAutoContinue;
       // A genuinely new user turn refills the automatic-recovery budget.
       if (!internalRetry) beginUserTurn(projectIdRef.current);
       if (!text || (busy && !internalRetry)) return;
@@ -2066,6 +2072,7 @@ function Builder() {
       const shouldFold =
         !opts.isRetry &&
         !opts.isAutoFix &&
+        !opts.isInternalRepair &&
         !opts.isAutoContinue &&
         !opts.forceBuild &&
         looksLikeQuestion &&
@@ -2085,7 +2092,7 @@ function Builder() {
       // normal user message OR a calm system note for auto-fix runs.
       const nextMessages: ChatMessage[] = opts.isRetry ? messages : [...messages, aiUserMsg];
       if (!opts.isRetry) {
-        if (opts.isAutoFix) {
+        if (opts.isAutoFix || opts.isInternalRepair) {
           // Autofix is silent. The activity card already shows progress;
           // a chat-level "Petal noticed a build error" note was redundant
           // noise that made our seams visible. The AI still receives the
@@ -2107,7 +2114,9 @@ function Builder() {
       // Don't overwrite lastUserPrompt during an auto-fix / auto-continue —
       // the "Retry last prompt" affordance should still replay the user's
       // real ask, not our internal prompts.
-      if (!opts.isAutoFix && !opts.isAutoContinue) setLastUserPrompt(text);
+      if (!opts.isAutoFix && !opts.isInternalRepair && !opts.isAutoContinue) {
+        setLastUserPrompt(text);
+      }
       setInput("");
       setPendingAttachments([]);
       initialAttachmentsRef.current = [];
@@ -2118,7 +2127,7 @@ function Builder() {
       // Snapshot files BEFORE the turn mutates them, so the post-turn
       // "Review changes" diff drawer has a clean baseline. Skip on auto-fix
       // / auto-continue — those aren't user-visible turns.
-      if (!opts.isAutoFix && !opts.isAutoContinue) {
+      if (!opts.isAutoFix && !opts.isInternalRepair && !opts.isAutoContinue) {
         preTurnFilesRef.current = files.map((f) => ({ path: f.path, content: f.content }));
       }
       // Clear any stale "couldn't auto-fix" / build-failure card the moment
@@ -2134,7 +2143,7 @@ function Builder() {
       // single most disorienting failure mode here. The assistant reply is
       // persisted later, after a successful stream. Auto-fix runs are NOT
       // persisted (they're transient internal turns).
-      if (!opts.isRetry && !opts.isAutoFix) {
+      if (!opts.isRetry && !opts.isAutoFix && !opts.isInternalRepair) {
         try {
           await appendMessages(proj.id, [userMsg]);
         } catch (persistErr) {
@@ -3242,6 +3251,8 @@ function Builder() {
 
   const askPetalToFix = useCallback(
     (opts: { isAuto?: boolean } = {}) => {
+      if (repairActionInFlightRef.current) return;
+      repairActionInFlightRef.current = true;
       setFriendlyError(null);
       setMessages(removeBuildFailureCards);
       // Feed the actual build error/log back into the next prompt so the AI
@@ -3272,7 +3283,13 @@ function Builder() {
           retryNote;
       // Auto-fix runs are silent; both automatic and manual repairs are
       // credit-gated like every other AI turn.
-      void send(prompt, { isRetry: false, isAutoFix: opts.isAuto === true });
+      void send(prompt, {
+        isRetry: false,
+        isAutoFix: opts.isAuto === true,
+        isInternalRepair: true,
+      }).finally(() => {
+        repairActionInFlightRef.current = false;
+      });
     },
     [send, effectiveBuildSnap],
   );
