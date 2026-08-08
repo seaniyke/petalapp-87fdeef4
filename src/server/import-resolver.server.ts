@@ -146,7 +146,7 @@ function buildStub(
     .map((n) =>
       /^[A-Z]/.test(n)
         ? `export const ${n} = ${safeName};\n`
-        : `export const ${n} = (() => undefined) as never;\n`,
+        : `export const ${n} = Object.assign(() => ({}), {}) as any;\n`,
     )
     .join("");
 
