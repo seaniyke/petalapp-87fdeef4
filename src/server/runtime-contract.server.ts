@@ -15,11 +15,9 @@
  *      becomes locked and clicks do nothing. Inject a `noop` handler so it
  *      degrades to read-only rather than mysteriously dead.
  *
- *   D. Context providers — for every `createContext()` declared in the
- *      project, ensure at least one `<X.Provider>` exists somewhere in the
- *      tree. If not, wrap App.tsx with a default-value provider. (We
- *      intentionally don't try to deduce provider position — wrapping App
- *      is always safe.)
+ * Context providers are intentionally not synthesized. Their value is an
+ * application contract; guessing it can turn a missing-provider issue into a
+ * production crash that still passes TypeScript and Vite.
  *
  * Pure ProjectFile[] → ProjectFile[]. Regex-based (no Babel) for the same
  * sub-5ms-per-file budget as the other passes.
@@ -121,83 +119,6 @@ function injectSelectNoop(file: ProjectFile): { file: ProjectFile; count: number
   return { file: { path: file.path, content: next }, count };
 }
 
-// ---------- D. Context providers ----------
-
-const CREATE_CONTEXT_RE =
-  /(?:export\s+)?(?:const|let|var)\s+([A-Z][A-Za-z0-9_]*)\s*=\s*(?:React\.)?createContext\b/g;
-
-function findUnwrappedContexts(files: ProjectFile[]): Array<{ name: string; from: string }> {
-  const created = new Map<string, string>(); // name → defining file
-  for (const f of files) {
-    if (!ANY_TS.test(f.path)) continue;
-    let m: RegExpExecArray | null;
-    const re = new RegExp(CREATE_CONTEXT_RE.source, "g");
-    while ((m = re.exec(f.content))) created.set(m[1], f.path);
-  }
-  if (created.size === 0) return [];
-  // Check whether ANY file uses `<Name.Provider`. Cheap, but accurate
-  // enough — covers wrapper components defined separately from App.tsx.
-  const unwrapped: Array<{ name: string; from: string }> = [];
-  for (const [name, from] of created) {
-    const re = new RegExp(`<${name}\\.Provider\\b`);
-    const used = files.some((f) => ANY_TS.test(f.path) && re.test(f.content));
-    if (!used) unwrapped.push({ name, from });
-  }
-  return unwrapped;
-}
-
-function wrapAppWithProviders(
-  files: ProjectFile[],
-  unwrapped: Array<{ name: string; from: string }>,
-): { files: ProjectFile[]; wrapped: string[] } {
-  if (unwrapped.length === 0) return { files, wrapped: [] };
-  const appIdx = files.findIndex((f) => f.path === "src/App.tsx" || f.path === "src/main.tsx");
-  if (appIdx < 0) return { files, wrapped: [] };
-  const app = files[appIdx];
-  let content = app.content;
-  const wrapped: string[] = [];
-
-  // Ensure each context is imported into App.tsx.
-  for (const { name, from } of unwrapped) {
-    // Skip when already referenced.
-    if (new RegExp(`\\b${name}\\b`).test(content)) continue;
-    const alias = `@/${from.replace(/^src\//, "").replace(/\.(tsx?|jsx?)$/, "")}`;
-    content = `import { ${name} } from "${alias}";\n${content}`;
-  }
-
-  // Find the JSX root inside App's return and wrap it.
-  const returnIdx = content.indexOf("return (");
-  if (returnIdx < 0) return { files, wrapped: [] };
-  let depth = 0;
-  let start = -1;
-  let end = -1;
-  for (let i = returnIdx + "return (".length - 1; i < content.length; i++) {
-    const ch = content[i];
-    if (ch === "(") {
-      if (depth === 0) start = i + 1;
-      depth++;
-    } else if (ch === ")") {
-      depth--;
-      if (depth === 0) {
-        end = i;
-        break;
-      }
-    }
-  }
-  if (start < 0 || end < 0) return { files, wrapped: [] };
-  const inner = content.slice(start, end).trim();
-  let wrappedJsx = inner;
-  for (const { name } of unwrapped) {
-    wrappedJsx = `<${name}.Provider value={undefined as any}>\n${wrappedJsx}\n</${name}.Provider>`;
-    wrapped.push(name);
-  }
-  content = content.slice(0, start) + "\n" + wrappedJsx + "\n" + content.slice(end);
-
-  const out = files.slice();
-  out[appIdx] = { path: app.path, content };
-  return { files: out, wrapped };
-}
-
 // ---------- composition ----------
 
 export function enforceRuntimeContracts(input: ProjectFile[]): RuntimeContractResult {
@@ -216,9 +137,9 @@ export function enforceRuntimeContracts(input: ProjectFile[]): RuntimeContractRe
     return c.file;
   });
 
-  const unwrapped = findUnwrappedContexts(files);
-  const wrap = wrapAppWithProviders(files, unwrapped);
-  files = wrap.files;
+  // Never inject an invented context value. Targeted generation/repair owns
+  // provider construction because it knows the required state shape.
+  const providersWrapped: string[] = [];
 
   const notes: string[] = [];
   if (windowGuards) notes.push(`runtime-contract: guarded ${windowGuards} module-scope DOM read(s)`);
@@ -226,15 +147,12 @@ export function enforceRuntimeContracts(input: ProjectFile[]): RuntimeContractRe
     notes.push(`runtime-contract: injected ${dialogTitlesInjected} missing Dialog/AlertDialog Title(s)`);
   if (selectNoopsInjected)
     notes.push(`runtime-contract: stubbed onValueChange on ${selectNoopsInjected} controlled <Select>`);
-  if (wrap.wrapped.length)
-    notes.push(`runtime-contract: wrapped App with ${wrap.wrapped.length} unwrapped Provider(s) (${wrap.wrapped.join(", ")})`);
-
   return {
     files,
     notes,
     windowGuards,
     dialogTitlesInjected,
     selectNoopsInjected,
-    providersWrapped: wrap.wrapped,
+    providersWrapped,
   };
 }

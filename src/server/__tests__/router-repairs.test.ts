@@ -241,6 +241,46 @@ assert.doesNotMatch(
   "the entry must not receive a second router",
 );
 
+// Exact production shape: Petal's deterministic shell wraps App in both
+// StrictMode and its local error boundary while App aliases BrowserRouter to
+// `Router`. The local alias is still a real provider and must dominate root.
+const aliasedProviderInPetalShell = fixMissingRouterProvider([
+  {
+    path: "src/main.tsx",
+    content:
+      'import ReactDOM from "react-dom/client";\nimport App from "./App";\nclass __PetalErrorBoundary extends React.Component { render(){ return this.props.children; } }\nReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><__PetalErrorBoundary><App /></__PetalErrorBoundary></React.StrictMode>);',
+  },
+  {
+    path: "src/App.tsx",
+    content:
+      'import { BrowserRouter as Router, Routes, Route } from "react-router-dom";\nexport default function App(){ return <Router><Routes><Route path="/" element={<main>Store</main>} /></Routes></Router>; }',
+  },
+]);
+assert.equal(aliasedProviderInPetalShell.notes.length, 0);
+assert.doesNotMatch(
+  aliasedProviderInPetalShell.files.find((f) => f.path === "src/main.tsx")?.content ?? "",
+  /<BrowserRouter>/,
+  "an aliased BrowserRouter below Petal's error boundary must prevent duplicate injection",
+);
+
+// Heal already-persisted builds containing an entry BrowserRouter plus an
+// aliased descendant provider, not only builds generated after this fix.
+const legacyAliasedDuplicate = fixMissingRouterProvider([
+  {
+    path: "src/main.tsx",
+    content:
+      'import { BrowserRouter } from "react-router-dom";\nimport App from "./App";\nroot.render(<BrowserRouter><App /></BrowserRouter>);',
+  },
+  {
+    path: "src/App.tsx",
+    content:
+      'import { BrowserRouter as Router, Routes } from "@/components/ui/router";\nexport default function App(){ return <Router><Routes /></Router>; }',
+  },
+]);
+const healedLegacyApp = legacyAliasedDuplicate.files.find((f) => f.path === "src/App.tsx")?.content ?? "";
+assert.doesNotMatch(healedLegacyApp, /<Router>/, "legacy aliased nested provider must be removed");
+assert.doesNotMatch(healedLegacyApp, /BrowserRouter\s+as\s+Router/, "unused aliased provider import must be removed");
+
 // A provider in a reachable descendant/sibling is not an ancestor of Routes.
 // Reachability alone previously suppressed the repair and shipped the exact
 // `basename`/useContext(null) crash seen in production.
