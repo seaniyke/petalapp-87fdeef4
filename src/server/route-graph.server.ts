@@ -80,6 +80,112 @@ function pathToMatcher(declared: string): RegExp | "wildcard" {
   return new RegExp(`^${escaped || "/"}$`);
 }
 
+/** Index of a component's declaration (function/const/class) in a module. */
+function componentDefIndex(content: string, name: string): number {
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const rx = new RegExp(`\\b(?:function|const|let|var|class)\\s+${esc}\\b`);
+  const m = rx.exec(content);
+  return m ? m.index : -1;
+}
+
+/**
+ * Given source starting at `return (`, return the offset of the ROOT JSX
+ * element's closing tag (`</div>`, `</>`), or null when the shape is not a
+ * single wrapping element we can safely insert into.
+ *
+ * This is a small JSX-aware scanner: it skips strings, comments, and
+ * `{...}` expression containers, so a `</div>` written inside a template
+ * literal or a nested conditional can never be mistaken for the root's
+ * closing tag.
+ */
+function rootCloseTagIndex(source: string): number | null {
+  const open = source.indexOf("(");
+  if (open < 0) return null;
+  let i = open + 1;
+  while (i < source.length) {
+    const ch = source[i];
+    if (/\s/.test(ch)) { i++; continue; }
+    if (ch === "/" && source[i + 1] === "/") {
+      const nl = source.indexOf("\n", i);
+      if (nl < 0) return null;
+      i = nl + 1;
+      continue;
+    }
+    if (ch === "/" && source[i + 1] === "*") {
+      const end = source.indexOf("*/", i);
+      if (end < 0) return null;
+      i = end + 2;
+      continue;
+    }
+    break;
+  }
+  // Root must be a plain element. Ternaries, fragments-in-variables, early
+  // returns and bare identifiers are ambiguous — skip rather than guess.
+  if (source[i] !== "<") return null;
+
+  let depth = 0;
+  let braces = 0;
+  let quote: string | null = null;
+
+  for (let j = i; j < source.length; j++) {
+    const ch = source[j];
+    if (quote) {
+      if (ch === "\\") { j++; continue; }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") { quote = ch; continue; }
+    if (ch === "/" && source[j + 1] === "/") {
+      const nl = source.indexOf("\n", j);
+      if (nl < 0) return null;
+      j = nl;
+      continue;
+    }
+    if (ch === "/" && source[j + 1] === "*") {
+      const end = source.indexOf("*/", j);
+      if (end < 0) return null;
+      j = end + 1;
+      continue;
+    }
+    if (ch === "{") { braces++; continue; }
+    if (ch === "}") { braces--; continue; }
+    // The root's closing tag is never inside an expression container.
+    if (braces > 0 || ch !== "<") continue;
+
+    if (source[j + 1] === "/") {
+      const end = source.indexOf(">", j);
+      if (end < 0) return null;
+      depth--;
+      if (depth === 0) return j;
+      j = end;
+      continue;
+    }
+
+    // Opening or self-closing tag: walk to its `>`, respecting attribute
+    // strings and `{...}` attribute values.
+    let k = j + 1;
+    let attrQuote: string | null = null;
+    let attrBraces = 0;
+    for (; k < source.length; k++) {
+      const c = source[k];
+      if (attrQuote) {
+        if (c === "\\") { k++; continue; }
+        if (c === attrQuote) attrQuote = null;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === "`") { attrQuote = c; continue; }
+      if (c === "{") { attrBraces++; continue; }
+      if (c === "}") { attrBraces--; continue; }
+      if (c === ">" && attrBraces === 0) break;
+    }
+    if (k >= source.length) return null;
+    if (source[k - 1] !== "/") depth++;
+    j = k;
+  }
+  return null;
+}
+
+
 export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
   const notes: string[] = [];
   const missingTargets = new Set<string>();
