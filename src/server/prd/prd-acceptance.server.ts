@@ -51,7 +51,16 @@ interface FileLike {
 
 /** Route/file patterns that evidence each surface. */
 const SURFACE_EVIDENCE: Record<PrdSurface, RegExp[]> = {
-  landing: [/src\/routes\/index\.tsx$/, /src\/pages\/(Home|Index|Landing)\.tsx$/],
+  // A landing surface is whatever renders "/". Generators name it Home.tsx,
+  // HomePage.tsx, index.tsx, Landing.tsx… anchoring on two exact filenames
+  // made valid builds fail the gate, so match the family instead.
+  landing: [
+    /src\/(routes|pages)\/(index|home|landing|welcome|start)(-?page)?\.(tsx|jsx)$/i,
+    /src\/(routes|pages)\/(Home|Index|Landing|Welcome)[A-Za-z]*\.(tsx|jsx)$/,
+    /path=["']\/["']/,
+    /<Route\s+index\b/,
+  ],
+
   tool: [/(calculator|converter|tool|form|generator|game|playground|chat)/i],
   results: [/(result|output|summary|breakdown|timeline)/i],
   content: [/(about|guide|article|blog|faq|learn|resources?|content)/i],
