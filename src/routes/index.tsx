@@ -303,6 +303,14 @@ function Landing() {
   // reload) but the prompt + mode are by far the most painful losses.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // If the visitor started typing into the server-rendered textarea before
+    // React hydrated, the DOM already holds text that state doesn't know
+    // about. Adopt it instead of blanking the box out from under them.
+    const typedBeforeHydration = textareaRef.current?.value ?? "";
+    if (typedBeforeHydration.length > 0) {
+      setPrompt(typedBeforeHydration);
+      return;
+    }
     try {
       const raw = sessionStorage.getItem(DRAFT_KEY);
       if (!raw) return;
@@ -317,6 +325,7 @@ function Landing() {
       /* ignore corrupt draft */
     }
   }, []);
+
 
   // Persist the draft as the user types/changes mode. Cleared on submit().
   useEffect(() => {
