@@ -3138,7 +3138,7 @@ function Builder() {
 
   // Auto-dequeue the next prompt as soon as Petal frees up.
   useEffect(() => {
-    if (busy || discussBusy) return;
+    if (busy || discussBusy || turnLockRef.current) return;
     if (pendingQueue.length === 0) return;
     const [next, ...rest] = pendingQueue;
     setPendingQueue(rest);
