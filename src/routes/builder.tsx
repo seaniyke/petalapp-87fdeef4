@@ -895,6 +895,9 @@ function Builder() {
   // turn: duplicate builds, duplicate charges. This ref engages BEFORE any
   // await, so the second caller is rejected in the same tick.
   const turnLockRef = useRef(false);
+  /** Last composer submission, for the identical-double-tap guard. */
+  const lastSubmitRef = useRef<{ text: string; at: number }>({ text: "", at: 0 });
+
   const releaseTurnLock = useCallback(() => {
     turnLockRef.current = false;
   }, []);
