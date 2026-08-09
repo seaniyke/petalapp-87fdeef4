@@ -91,7 +91,79 @@ export interface KitDepClosureResult {
   files: ProjectFile[];
   /** Packages added to package.json, pinned. */
   added: Record<string, string>;
+  /** Every project file reachable from the app entry. */
+  reached: Set<string>;
+  /** Reachable imports we could not pin (no curated version). */
+  unpinned: string[];
   notes: string[];
+}
+
+/**
+ * On-demand kit areas. These ship into every project but are only compiled
+ * when something actually imports them, so the scaffold tsconfig excludes them
+ * by default. `syncTsconfigExcludes` narrows that list to the parts the app
+ * really doesn't touch — anything the user's code reaches gets typechecked
+ * like first-party code instead of being silently skipped.
+ */
+export const ON_DEMAND_KIT_PATHS = [
+  "src/components/examples",
+  "src/components/motion",
+  "src/components/fx",
+  "src/components/three",
+  "src/components/scroll",
+  "src/components/content",
+  "src/components/image",
+  "src/hooks/use-scroll-scene.ts",
+  "src/hooks/use-horizontal-scroll.ts",
+  "src/hooks/use-axe.ts",
+  "src/lib/a11y.ts",
+  "src/lib/confetti.ts",
+];
+
+function isUnder(path: string, prefix: string): boolean {
+  return path === prefix || path.startsWith(`${prefix}/`);
+}
+
+/**
+ * Rewrite tsconfig `exclude` so it only lists on-demand kit areas that nothing
+ * in the app imports. Reached kit files are typechecked — their dependencies
+ * are installed by `closeKitDependencies`, so they compile for real rather
+ * than being hidden from the compiler.
+ */
+export function syncTsconfigExcludes(
+  files: ProjectFile[],
+  reached: Set<string>,
+): { files: ProjectFile[]; notes: string[] } {
+  const tsconfig = files.find((f) => f.path === "tsconfig.json");
+  if (!tsconfig) return { files, notes: [] };
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(tsconfig.content) as Record<string, unknown>;
+  } catch {
+    return { files, notes: [] };
+  }
+  const reachedList = [...reached];
+  const nextExclude = ON_DEMAND_KIT_PATHS.filter(
+    (prefix) => !reachedList.some((p) => isUnder(p, prefix)),
+  );
+  const current = Array.isArray(parsed.exclude) ? (parsed.exclude as string[]) : [];
+  // Keep any project-specific excludes we didn't author.
+  const foreign = current.filter((e) => !ON_DEMAND_KIT_PATHS.includes(e));
+  const merged = [...foreign, ...nextExclude];
+  if (merged.length === current.length && merged.every((e, i) => e === current[i])) {
+    return { files, notes: [] };
+  }
+  parsed.exclude = merged;
+  const removed = current.filter((e) => !merged.includes(e));
+  return {
+    files: files.map((f) =>
+      f.path === "tsconfig.json" ? { ...f, content: `${JSON.stringify(parsed, null, 2)}\n` } : f,
+    ),
+    notes:
+      removed.length > 0
+        ? [`kit-dep-closure: now typechecking imported kit areas (${removed.join(", ")})`]
+        : [],
+  };
 }
 
 /**
@@ -99,10 +171,17 @@ export interface KitDepClosureResult {
  * reachable from the app entry. Idempotent and side-effect free.
  */
 export function closeKitDependencies(files: ProjectFile[]): KitDepClosureResult {
+  const empty = (): KitDepClosureResult => ({
+    files,
+    added: {},
+    reached: new Set<string>(),
+    unpinned: [],
+    notes: [],
+  });
   const byPath = new Map(files.map((f) => [f.path, f] as const));
   const paths = new Set(byPath.keys());
   const pkgFile = byPath.get("package.json");
-  if (!pkgFile) return { files, added: {}, notes: [] };
+  if (!pkgFile) return empty();
 
   let pkg: Record<string, unknown>;
   try {
@@ -110,13 +189,13 @@ export function closeKitDependencies(files: ProjectFile[]): KitDepClosureResult 
   } catch {
     // A malformed package.json is somebody else's failure to report; don't
     // compound it by throwing here.
-    return { files, added: {}, notes: [] };
+    return empty();
   }
   const deps = (pkg.dependencies as Record<string, string> | undefined) ?? {};
   const devDeps = (pkg.devDependencies as Record<string, string> | undefined) ?? {};
 
   const entries = ENTRY_CANDIDATES.filter((p) => paths.has(p));
-  if (entries.length === 0) return { files, added: {}, notes: [] };
+  if (entries.length === 0) return empty();
 
   const seen = new Set<string>();
   const queue = [...entries];
@@ -145,14 +224,22 @@ export function closeKitDependencies(files: ProjectFile[]): KitDepClosureResult 
   }
 
   const added: Record<string, string> = {};
+  const unpinned: string[] = [];
   for (const name of bare) {
     if (!name || deps[name] || devDeps[name]) continue;
     const pin = KNOWN_PACKAGES[name];
-    if (!pin) continue; // unknown packages remain the bare-import resolver's job
+    if (!pin) {
+      // No curated pin — the bare-import resolver owns emitted files, but a
+      // reachable KIT file with an unknown dep would break the build silently.
+      unpinned.push(name);
+      continue;
+    }
     deps[name] = pin;
     added[name] = pin;
   }
-  if (Object.keys(added).length === 0) return { files, added: {}, notes: [] };
+  if (Object.keys(added).length === 0) {
+    return { files, added: {}, reached: seen, unpinned, notes: [] };
+  }
 
   pkg.dependencies = deps;
   const nextFiles = files.map((f) =>
@@ -161,6 +248,8 @@ export function closeKitDependencies(files: ProjectFile[]): KitDepClosureResult 
   return {
     files: nextFiles,
     added,
+    reached: seen,
+    unpinned,
     notes: [
       `kit-dep-closure: installed ${Object.keys(added).join(", ")} for imported scaffold modules`,
     ],
