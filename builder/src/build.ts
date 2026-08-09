@@ -423,6 +423,8 @@ export async function buildAndDeploy(
       ? hostname.split(".")[0]
       : undefined,
     durationMs: Date.now() - startedAt,
+    ...(verification ? { verification } : {}),
+
   };
 
 }
