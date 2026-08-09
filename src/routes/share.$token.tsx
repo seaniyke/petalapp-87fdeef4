@@ -78,11 +78,22 @@ function SharePage() {
         return;
       }
       // Look up the project to find its preview / published URL.
-      const { data: proj } = await supabase
+      let { data: proj } = await supabase
         .from("projects")
         .select("primary_domain_id, latest_build_id")
         .eq("id", share.project_id)
         .maybeSingle();
+      if (!proj) {
+        const { data: pub } = await (
+          supabase as unknown as { from: (t: string) => any }
+        )
+          .from("public_projects")
+          .select("primary_domain_id, latest_build_id")
+          .eq("id", share.project_id)
+          .maybeSingle();
+        proj = pub ?? null;
+      }
+
       const resolved = await resolvePublishedUrl(
         share.project_id,
         proj?.primary_domain_id ?? null,
