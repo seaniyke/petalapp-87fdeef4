@@ -285,9 +285,16 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
 
   // 6. Route-graph validator — wildcard 404, layout Outlet, dedupe "/", react-router→-dom.
 
+  // 5d. Orphan-page wiring — a page file no router imports is an unreachable
+  //     page. Wire it up BEFORE the route-graph pass so it sees the new routes.
+  const orphan = wireOrphanPages(files);
+  files = orphan.files;
+  for (const n of orphan.notes) notes.push(n);
+
   const route = validateRouteGraph(files);
   files = route.files;
   for (const n of route.notes) notes.push(n);
+
 
   // ── end of STAGE 1: RESOLVE ───────────────────────────────────────────
   // Everything above answers "does this code parse and does every import
