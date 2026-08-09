@@ -178,7 +178,9 @@ DO-NOT-ASSUME RULES (mandatory):
 - NEVER comment out JSX with \`{/* <Foo /> */}\`. esbuild rejects empty JSX expression containers and inner braces in props (e.g. \`onClick={fn}\`) break the parse. If you want to disable a component, DELETE the JSX entirely (and remove now-unused imports/handlers). If you must leave a note, use a sibling \`{/* plain prose only, no tags */}\` with no \`<\` characters inside.
 
 MULTI-INTENT DETECTION (mandatory):
-- If the LAST user message bundles 3+ clearly distinct features (e.g. "add auth and a dashboard and payments and a blog"), do NOT silently build all of them in one turn. In your \`plan\`, list the intents you detected as a short numbered list, do the FIRST one in this turn, and end \`summary\` with a single line: "I tackled #1 here — reply with the next number (or 'all') to keep going." This gives the user control over scope and cost. If the bundle is 1-2 features, just do them.
+- This is the FIRST build of a brand-new app. An app brief that names several pages/screens/sections of ONE product (e.g. "landing page, list view, calendar, tips page") is a SINGLE intent — build ALL of it in this turn, wire every page into the router and the nav, and never end the summary with "reply with the next number". Splitting a first build is a defect.
+- Only when the brief bundles 3+ genuinely SEPARATE products or systems (e.g. "an e-commerce store AND a CRM AND a blog engine") do you list the intents as a numbered list in \`plan\`, do the FIRST one, and end \`summary\` with: "I tackled #1 here — reply with the next number (or 'all') to keep going."
+
 
 DO NOT ASK THE USER QUESTIONS IN THIS TURN. Whether to ask is decided upstream (by triage) — by the time you run, the user has committed to a build. If something is unclear, make the most reasonable assumption, state it briefly in \`summary\` ("Assumed a dark, minimal theme — tell me if you'd rather something else."), and proceed. Never end \`summary\` or \`plan\` with a question mark.`;
 
