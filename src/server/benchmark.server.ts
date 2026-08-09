@@ -111,7 +111,7 @@ async function createBenchProject(userId: string, testCase: BenchmarkCase): Prom
     .from("projects")
     .insert({
       owner_id: userId,
-      name: `bench/${testCase.id}/${new Date().toISOString().slice(0, 10)}`,
+      title: `bench/${testCase.id}/${new Date().toISOString().slice(0, 10)}`,
       is_public: false,
     } as never)
     .select("id")
