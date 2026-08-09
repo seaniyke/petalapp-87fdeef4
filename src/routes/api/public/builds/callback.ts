@@ -289,17 +289,23 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
           }).catch(() => [])
         : [];
       const { visual: _shots, ...rest } = payload.verification;
-      const defects = sanitizeVerificationDefects([
+      const rawDefects = sanitizeVerificationDefects([
         ...(payload.verification.defects ?? []),
         ...visualDefects,
       ]);
+      const judged = await judgeDefects({
+        defects: rawDefects,
+        projectId: payload.projectId,
+      });
+      const defects = rawDefects.filter((defect) => !judged.noise.includes(defect));
       failedVerification = {
         ...rest,
         visualChecked: Boolean(payload.verification.visual?.length),
         defects,
         ok: false,
-        blocking: partitionVerificationDefects(defects).blocking,
+        blocking: judged.blocking,
       };
+
     }
 
     const { error: buildUpdateError } = await supabaseAdmin
