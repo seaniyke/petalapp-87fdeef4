@@ -20,7 +20,7 @@ const EDIT_VERBS =
   /\b(add|change|update|edit|remove|delete|rename|replace|move|swap|increase|decrease|reduce|shrink|enlarge|tweak|adjust|set|use|apply|hide|show|reorder|align|center|wire|connect|hook up|implement|enable|disable|translate|rewrite|reword|shorten|expand)\b/i;
 
 const FIX_VERBS =
-  /\b(fix|repair|broken|doesn'?t work|not working|isn'?t working|crash(?:es|ing)?|error|bug|blank|stuck|fails?|failing)\b/i;
+  /\b(fix|repair|broken|(?:doesn'?t|does not|won'?t|will not|can'?t|cannot)\s+\w+|not working|isn'?t working|crash(?:es|ing)?|error|bug|stuck|fails?|failing)\b/i;
 
 const REDESIGN_VERBS =
   /\b(redesign|revamp|overhaul|restyle|re-?theme|modernize|make it (?:look|feel) (?:better|premium|modern))\b/i;
@@ -68,8 +68,9 @@ export function fastTriage(input: FastTriageInput): FastTriageHit | null {
     };
   }
 
-  // A question about existing state must be answered, not built.
-  if (/\?\s*$/.test(text) && !FIX_VERBS.test(text)) return null;
+  // Anything phrased as a question may be asking ABOUT the app rather than
+  // asking for a change — let the model read it.
+  if (/\?/.test(text)) return null;
   // Multiple questions or hedging language ⇒ let the model read it.
   if (/\b(should i|which one|what do you think|not sure|maybe|or should)\b/i.test(text)) {
     return null;
