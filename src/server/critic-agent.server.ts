@@ -116,6 +116,7 @@ export function findDeterministicDefects(
           path: op.path,
           op: op.op,
           deterministic: true,
+          silent: true,
           reason: "replacement text is byte-identical to the search text — the edit would do nothing",
         });
         continue;
