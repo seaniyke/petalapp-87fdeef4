@@ -1592,7 +1592,13 @@ async function runFinalParseGuard(
 async function handleGenerateRequestCore(
   request: Request,
   turnId?: string,
+  // Work signal — deliberately NOT `request.signal`. Closing the tab must
+  // never kill an in-flight build: the caller passes a detached controller
+  // that only aborts on an explicit user stop, so the pipeline runs to
+  // completion server-side and the client can reattach via the turn id.
+  workSignal?: AbortSignal,
 ): Promise<Response> {
+  const abortSignal = workSignal ?? request.signal;
   const authResult = await authorize(request);
   if (authResult instanceof Response) return authResult;
   const userId = authResult;
@@ -1727,7 +1733,7 @@ async function handleGenerateRequestCore(
             userPrompt: lastContent,
             history: messages,
             currentFiles,
-            signal: request.signal,
+            signal: abortSignal,
           });
           const planId = await savePlan({
             projectId: body.projectId!,
@@ -2723,7 +2729,7 @@ Forbidden defaults
       files: currentFiles,
       projectId: body.projectId ?? "unknown",
       userId,
-      signal: request.signal,
+      signal: abortSignal,
     });
     if (agentLoop.steps.length > 0) {
       console.info(
@@ -2763,7 +2769,7 @@ Forbidden defaults
     // Propagate client-cancel: if the user closes the tab / hits Stop, the
     // SSE Response is aborted and we want the upstream provider call to
     // stop too — otherwise it runs (and bills) until the wall-clock cap.
-    signal: request.signal,
+    signal: abortSignal,
     meta: {
       phase: phaseTag.phase,
       promptChars: lastUserContent.length,
@@ -2887,7 +2893,7 @@ Forbidden defaults
               ? Math.min(24_000, Math.max(18_000, Math.round(maxCompletionTokens * 1.35)))
               : Math.max(maxCompletionTokens, 8_000),
             crossCuttingIntent: isCrossCutting,
-            signal: request.signal,
+            signal: abortSignal,
             meta: {
               phase: phaseTag.phase,
               promptChars: lastUserContent.length,
@@ -2917,7 +2923,7 @@ Forbidden defaults
                   hasVisionTurn,
                   crossCuttingIntent: isCrossCutting,
                   backend,
-                  signal: request.signal,
+                  signal: abortSignal,
                   controller,
                   encoder,
                   projectId: body.projectId ?? null,
@@ -3067,7 +3073,7 @@ Forbidden defaults
                   tool,
                   maxTokens: req.maxTokens,
                   crossCuttingIntent: isCrossCutting,
-                  signal: request.signal,
+                  signal: abortSignal,
                   meta: {
                     phase: phaseTag.phase,
                     promptChars: lastUserContent.length,
@@ -3302,7 +3308,7 @@ Forbidden defaults
                 tool: PATCH_FILES_TOOL,
                 maxTokens: Math.max(maxCompletionTokens, 12_000),
                 crossCuttingIntent: isCrossCutting,
-                signal: request.signal,
+                signal: abortSignal,
                 meta: {
                   phase: phaseTag.phase,
                   promptChars: lastUserContent.length,
@@ -3484,7 +3490,7 @@ Forbidden defaults
               userPrompt: lastUserContent,
               projectId: body.projectId ?? "unknown",
               userId,
-              signal: request.signal,
+              signal: abortSignal,
               prd: resolvedPrd?.prd ?? null,
             });
             if (verdict.rejections.length > 0) {
@@ -3522,7 +3528,7 @@ Forbidden defaults
                   userPrompt: lastUserContent,
                   projectId: body.projectId ?? "unknown",
                   userId,
-                  signal: request.signal,
+                  signal: abortSignal,
                 });
                 if (second.ops.length > 0) {
                   console.info(`[op-repair] critic accepted ${second.ops.length} reworked op(s)`);
@@ -3677,7 +3683,7 @@ Forbidden defaults
                   tool: PATCH_FILES_TOOL,
                   maxTokens: Math.max(maxCompletionTokens, 12_000),
                   crossCuttingIntent: isCrossCutting,
-                  signal: request.signal,
+                  signal: abortSignal,
                   meta: {
                     phase: phaseTag.phase,
                     promptChars: lastUserContent.length,
@@ -5116,7 +5122,7 @@ Forbidden defaults
         // user intent from prose like "aborted" / "cancelled", which
         // appear in many upstream-failure messages too. See
         // classifyRawError for the full rationale.
-        const userCancelled = request.signal?.aborted === true;
+        const userCancelled = abortSignal?.aborted === true;
         let kind = userCancelled ? "aborted" : classifyRawError(raw);
         // A gateway 402 during this turn explains every downstream symptom
         // ("no files", "no edits", unknown). Attribute it to Petal's own AI
@@ -5304,6 +5310,10 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
   };
 
   const encoder = new TextEncoder();
+  // Detached from `request.signal` on purpose — see the `cancel()` note below.
+  const workController = new AbortController();
+  // Flipped when the browser goes away; the build keeps running regardless.
+  let clientGone = false;
   const stream = new ReadableStream<Uint8Array>({
 
     async start(controller) {
@@ -5327,12 +5337,25 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       const recordEvent = recorder
         ? makeSseTap((type, payload) => recorder!.record(type, payload))
         : null;
-      const emit = (event: StreamEvent) => {
-        const bytes = encoder.encode(sse(event));
-        controller.enqueue(bytes);
-        lastByteAt = Date.now();
+      // The browser can vanish at any moment (tab closed, phone locked,
+      // proxy timeout). When it does, `controller.enqueue` starts throwing —
+      // but the build itself must keep going and keep recording turn_events
+      // so the user gets the finished result when they come back. So every
+      // write is best-effort, and `clientGone` just stops us from trying.
+      const push = (bytes: Uint8Array) => {
         if (recordEvent) recordEvent(bytes);
+        if (clientGone) return;
+        try {
+          controller.enqueue(bytes);
+          lastByteAt = Date.now();
+        } catch {
+          clientGone = true;
+        }
       };
+      const emit = (event: StreamEvent) => {
+        push(encoder.encode(sse(event)));
+      };
+
 
       let terminalStatus: "succeeded" | "failed" | "aborted" = "succeeded";
       let terminalError: string | null = null;
@@ -5351,19 +5374,14 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // never reaches the UI — it just stops Cloudflare / proxies from
         // closing an "idle" stream during legit long verifier passes.
         pingTimer = setInterval(() => {
-          if (request.signal.aborted) return;
-          try {
-            controller.enqueue(encoder.encode(": ping\n\n"));
-          } catch {
-            /* controller may have closed mid-tick */
-          }
+          if (clientGone) return;
+          push(encoder.encode(": ping\n\n"));
         }, 8_000);
 
         // User-visible heartbeat: rotates phrasing and only fires after
         // 14s of silence so it never overwrites real model narration or
         // file events. Picks the next line in STATUS_ROTATION each tick.
         statusTimer = setInterval(() => {
-          if (request.signal.aborted) return;
           if (Date.now() - lastByteAt < 14_000) return;
           emit({
             type: "status",
@@ -5375,7 +5393,13 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // Pass the turn id directly. Reconstructing TanStack's incoming
         // Request with `new Request(request, ...)` crosses runtime realms and
         // crashes Undici while reading its internal `window` slot.
-        const response = await handleGenerateRequestCore(request, recorder?.turnId);
+        // `workController` is intentionally detached from `request.signal`:
+        // a closed tab must not cancel a build the user already paid for.
+        const response = await handleGenerateRequestCore(
+          request,
+          recorder?.turnId,
+          workController.signal,
+        );
         if (!response.ok || !response.body) {
           const raw = await response.text().catch(() => `Request failed (${response.status})`);
           terminalStatus = "failed";
@@ -5393,14 +5417,13 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
-          controller.enqueue(value);
-          // Inner-stream bytes count as activity too — silences the ticker.
-          lastByteAt = Date.now();
-          if (recordEvent) recordEvent(value);
+          // Keep draining even after the client is gone: the bytes still go
+          // to the turn recorder, which is what a reconnecting tab replays.
+          push(value);
         }
       } catch (e) {
         const raw = e instanceof Error ? e.message : "Generation failed.";
-        terminalStatus = request.signal.aborted ? "aborted" : "failed";
+        terminalStatus = workController.signal.aborted ? "aborted" : "failed";
         terminalError = raw.slice(0, 500);
         emit({
           type: "error",
@@ -5412,24 +5435,28 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         if (pingTimer) clearInterval(pingTimer);
         if (statusTimer) clearInterval(statusTimer);
         // Always emit a terminal `done` event so resumers know to stop tailing.
-        try {
-          emit({ type: "done", status: terminalStatus });
-        } catch {
-          /* controller may already be closed */
-        }
+        emit({ type: "done", status: terminalStatus });
         // Persist the terminal state before the request ends. A fire-and-forget
         // write is dropped by serverless runtimes once the response closes,
         // leaving turns permanently "running" and inviting reconnect loops.
         await finishTurnOnce(terminalStatus, terminalError);
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          /* already closed by a client disconnect */
+        }
       }
     },
     // Fires when the consumer goes away mid-build (tab closed, socket
-    // dropped, proxy timeout). `start()`'s `finally` is NOT guaranteed to run
-    // in that case, so this is where most zombie turns were being created.
-    async cancel() {
-      await finishTurnOnce("aborted", "client disconnected");
+    // dropped, proxy timeout). This is NOT a cancellation: the pipeline keeps
+    // running on the detached work signal and `start()`'s finally block still
+    // writes the terminal turn state, so a reconnecting tab replays the whole
+    // turn from turn_events. Marking the turn "aborted" here was what made
+    // closed tabs look like killed builds.
+    cancel() {
+      clientGone = true;
     },
+
   });
 
 
