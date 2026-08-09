@@ -24,7 +24,7 @@ import { partitionVerificationDefects } from "./verification-report.js";
  * Result of the pre-deploy browser check. Kept structural rather than importing
  * `VerifyReport` so `build.ts` does not depend on the verifier's shape.
  */
-export type PreDeployReport = { defects?: string[] } & Record<string, unknown>;
+export type PreDeployReport = { defects?: string[] };
 
 /**
  * Runs against a local static server over `dist/`, before anything is uploaded.
@@ -35,8 +35,6 @@ export type BuildResult = {
   url: string;            // immutable deployment URL when Wrangler provides one
   deploymentId?: string;  // optional, parsed from wrangler output if available
   durationMs: number;
-  /** Browser-check report produced before the deploy, when one was requested. */
-  verification?: PreDeployReport;
 };
 
 export class BuildError extends Error {
@@ -423,7 +421,6 @@ export async function buildAndDeploy(
       ? hostname.split(".")[0]
       : undefined,
     durationMs: Date.now() - startedAt,
-    ...(verification ? { verification } : {}),
 
   };
 
