@@ -95,6 +95,7 @@ import { tryParseQuickEdit, applyQuickEditToFile } from "@/lib/quick-edit";
 
 import {
   appendMessages,
+  appendUserPrompt,
   createProject,
   deleteAssistantErrorMessages,
   getProject,
@@ -2256,7 +2257,7 @@ function Builder() {
       // persisted (they're transient internal turns).
       if (!echoSuppressed && !opts.isAutoFix && !opts.isInternalRepair) {
         try {
-          await appendMessages(proj.id, [userMsg]);
+          await appendUserPrompt(proj.id, userMsg);
         } catch (persistErr) {
           // Non-fatal: the message still lives in local state for this session.
           console.warn("Could not persist user message early:", persistErr);
@@ -3083,7 +3084,7 @@ function Builder() {
       // on failure, roll the prompt back out of the DB) below.
       let userMsgPersisted = false;
       try {
-        await appendMessages(proj.id, [userMsg]);
+        await appendUserPrompt(proj.id, userMsg);
         userMsgPersisted = true;
       } catch (persistErr) {
         console.warn("Could not persist discuss prompt early:", persistErr);
