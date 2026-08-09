@@ -124,6 +124,12 @@ import {
   renderBuildBlueprintBlock,
   saveProjectBlueprint,
 } from "@/server/build-blueprint.server";
+import {
+  loadProjectArchitecture,
+  renderArchitectureBlock,
+  saveProjectArchitecture,
+} from "@/server/architecture-doc.server";
+
 import { findGenerationQualityIssues } from "@/server/generation-quality-gate.server";
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import { isScaffoldAbsorbedPath, isScaffoldOwnedPath } from "@/server/scaffold-ownership.server";
