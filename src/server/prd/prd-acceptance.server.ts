@@ -31,6 +31,8 @@ export interface PrdFinding {
   message: string;
   /** Concrete instruction for the repair pass. */
   repairHint: string;
+  /** Exact file responsible when the finding comes from a concrete route. */
+  path?: string;
 }
 
 export interface PrdCheckResult {
@@ -122,7 +124,7 @@ export function checkPrdStatically(
 
   // 2. Excluded surfaces are absent.
   for (const surface of prd.excludedSurfaces) {
-    const routeHit = src.some(
+    const routeHit = src.find(
       (f) =>
         isRouteFile(f.path) &&
         (!changed || changed.has(f.path)) &&
@@ -134,14 +136,16 @@ export function checkPrdStatically(
         severity: "blocking",
         message: `A ${surface} surface was generated, but the PRD excludes it — the user never asked for it.`,
         repairHint: `Remove the ${surface} routes and any navigation entries pointing at them.`,
+        path: routeHit.path,
       });
     }
   }
 
   // 3. Public products must not ship a sidebar app shell.
+  const sidebarHit = src.find((f) => (!changed || changed.has(f.path)) && SIDEBAR_SHELL.test(f.content));
   if (
     (prd.productType === "utility" || prd.productType === "content-site" || prd.productType === "game") &&
-    src.some((f) => (!changed || changed.has(f.path)) && SIDEBAR_SHELL.test(f.content))
+    sidebarHit
   ) {
     findings.push({
       criterionId: "primary-action-visible",
@@ -149,6 +153,7 @@ export function checkPrdStatically(
       message: `This is a ${prd.productType}, but the build ships a dashboard sidebar shell.`,
       repairHint:
         "Replace the sidebar shell with a public page layout: top navigation, the product's primary tool above the fold on `/`, supporting sections below.",
+      path: sidebarHit.path,
     });
   }
 

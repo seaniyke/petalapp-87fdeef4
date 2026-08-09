@@ -106,6 +106,9 @@ describe("PRD acceptance gate", () => {
     const result = checkPrdStatically(prd, files);
     expect(result.passed).toBe(false);
     expect(result.findings.some((f) => f.criterionId === "no-dashboard")).toBe(true);
+    expect(result.findings.find((f) => f.criterionId === "no-dashboard")?.path).toBe(
+      "src/routes/dashboard.tsx",
+    );
     expect(result.findings.some((f) => f.criterionId === "primary-action-visible")).toBe(true);
   });
 
