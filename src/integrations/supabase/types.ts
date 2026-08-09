@@ -848,13 +848,6 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "domain_slots_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
-            referencedColumns: ["id"]
-          },
         ]
       }
       email_send_log: {
@@ -1079,13 +1072,6 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "message_drafts_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: true
-            referencedRelation: "public_projects"
-            referencedColumns: ["id"]
-          },
         ]
       }
       messages: {
@@ -1116,13 +1102,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1356,13 +1335,6 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "page_views_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
-            referencedColumns: ["id"]
-          },
         ]
       }
       page_views_daily: {
@@ -1390,13 +1362,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "page_views_daily_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1535,13 +1500,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "paystack_transactions_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1723,13 +1681,6 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "petal_email_suppressions_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
-            referencedColumns: ["id"]
-          },
         ]
       }
       petal_email_usage: {
@@ -1880,13 +1831,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "petal_runtime_errors_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -2111,13 +2055,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "preview_comments_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "preview_comments_share_id_fkey"
             columns: ["share_id"]
             isOneToOne: false
@@ -2163,13 +2100,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "preview_shares_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -2237,13 +2167,6 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "project_backend_migrations_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
-            referencedColumns: ["id"]
-          },
         ]
       }
       project_backend_secrets: {
@@ -2268,13 +2191,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: true
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_backend_secrets_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: true
-            referencedRelation: "public_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -2333,13 +2249,6 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "project_backends_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: true
-            referencedRelation: "public_projects"
-            referencedColumns: ["id"]
-          },
         ]
       }
       project_blueprints: {
@@ -2390,13 +2299,6 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "project_blueprints_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: true
-            referencedRelation: "public_projects"
-            referencedColumns: ["id"]
-          },
         ]
       }
       project_builds: {
@@ -2442,13 +2344,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_builds_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -2510,13 +2405,6 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "project_domains_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
-            referencedColumns: ["id"]
-          },
         ]
       }
       project_files: {
@@ -2547,13 +2435,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_files_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -2607,13 +2488,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: true
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_git_links_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: true
-            referencedRelation: "public_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -2776,13 +2650,6 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "project_versions_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
-            referencedColumns: ["id"]
-          },
         ]
       }
       projects: {
@@ -2885,13 +2752,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "projects_latest_build_id_fkey"
-            columns: ["latest_build_id"]
-            isOneToOne: false
-            referencedRelation: "public_project_builds"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "projects_primary_domain_id_fkey"
             columns: ["primary_domain_id"]
             isOneToOne: false
@@ -2903,13 +2763,6 @@ export type Database = {
             columns: ["remixed_from_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projects_remixed_from_id_fkey"
-            columns: ["remixed_from_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -3000,13 +2853,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "purchased_domains_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -3119,13 +2965,6 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "shared_app_records_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
-            referencedColumns: ["id"]
-          },
         ]
       }
       shared_app_users: {
@@ -3164,13 +3003,6 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "shared_app_users_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
-            referencedColumns: ["id"]
-          },
         ]
       }
       shared_backends: {
@@ -3207,13 +3039,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: true
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shared_backends_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: true
-            referencedRelation: "public_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -3775,143 +3600,6 @@ export type Database = {
         }
         Relationships: []
       }
-      public_project_builds: {
-        Row: {
-          created_at: string | null
-          dist_path: string | null
-          id: string | null
-          project_id: string | null
-          ready_at: string | null
-          status: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_builds_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_builds_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      public_projects: {
-        Row: {
-          created_at: string | null
-          hide_petal_badge: boolean | null
-          id: string | null
-          is_featured: boolean | null
-          is_public: boolean | null
-          latest_build_id: string | null
-          owner_id: string | null
-          primary_domain_id: string | null
-          published_at: string | null
-          published_build_id: string | null
-          published_visibility: string | null
-          remix_count: number | null
-          remixed_from_id: string | null
-          site_description: string | null
-          site_icon_url: string | null
-          site_og_image_url: string | null
-          site_title: string | null
-          slug: string | null
-          subdomain: string | null
-          summary: string | null
-          title: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          hide_petal_badge?: boolean | null
-          id?: string | null
-          is_featured?: boolean | null
-          is_public?: boolean | null
-          latest_build_id?: string | null
-          owner_id?: string | null
-          primary_domain_id?: string | null
-          published_at?: string | null
-          published_build_id?: string | null
-          published_visibility?: string | null
-          remix_count?: number | null
-          remixed_from_id?: string | null
-          site_description?: string | null
-          site_icon_url?: string | null
-          site_og_image_url?: string | null
-          site_title?: string | null
-          slug?: string | null
-          subdomain?: string | null
-          summary?: string | null
-          title?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          hide_petal_badge?: boolean | null
-          id?: string | null
-          is_featured?: boolean | null
-          is_public?: boolean | null
-          latest_build_id?: string | null
-          owner_id?: string | null
-          primary_domain_id?: string | null
-          published_at?: string | null
-          published_build_id?: string | null
-          published_visibility?: string | null
-          remix_count?: number | null
-          remixed_from_id?: string | null
-          site_description?: string | null
-          site_icon_url?: string | null
-          site_og_image_url?: string | null
-          site_title?: string | null
-          slug?: string | null
-          subdomain?: string | null
-          summary?: string | null
-          title?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "projects_latest_build_id_fkey"
-            columns: ["latest_build_id"]
-            isOneToOne: false
-            referencedRelation: "project_builds"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projects_latest_build_id_fkey"
-            columns: ["latest_build_id"]
-            isOneToOne: false
-            referencedRelation: "public_project_builds"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projects_primary_domain_id_fkey"
-            columns: ["primary_domain_id"]
-            isOneToOne: false
-            referencedRelation: "project_domains"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projects_remixed_from_id_fkey"
-            columns: ["remixed_from_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projects_remixed_from_id_fkey"
-            columns: ["remixed_from_id"]
-            isOneToOne: false
-            referencedRelation: "public_projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       v_build_costs: {
         Row: {
           entries: number | null
@@ -4195,6 +3883,71 @@ export type Database = {
           source_queue: string
         }
         Returns: number
+      }
+      public_project_build_get: {
+        Args: { p_id: string }
+        Returns: {
+          created_at: string
+          dist_path: string
+          id: string
+          project_id: string
+          ready_at: string
+          status: string
+        }[]
+      }
+      public_project_get: {
+        Args: { p_id?: string; p_slug?: string }
+        Returns: {
+          created_at: string
+          hide_petal_badge: boolean
+          id: string
+          is_featured: boolean
+          is_public: boolean
+          latest_build_id: string
+          owner_id: string
+          primary_domain_id: string
+          published_at: string
+          published_build_id: string
+          published_visibility: string
+          remix_count: number
+          remixed_from_id: string
+          site_description: string
+          site_icon_url: string
+          site_og_image_url: string
+          site_title: string
+          slug: string
+          subdomain: string
+          summary: string
+          title: string
+          updated_at: string
+        }[]
+      }
+      public_projects_list: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          hide_petal_badge: boolean
+          id: string
+          is_featured: boolean
+          is_public: boolean
+          latest_build_id: string
+          owner_id: string
+          primary_domain_id: string
+          published_at: string
+          published_build_id: string
+          published_visibility: string
+          remix_count: number
+          remixed_from_id: string
+          site_description: string
+          site_icon_url: string
+          site_og_image_url: string
+          site_title: string
+          slug: string
+          subdomain: string
+          summary: string
+          title: string
+          updated_at: string
+        }[]
       }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
