@@ -522,7 +522,21 @@ const BUILTIN_GLOBALS = new Set([
   // JavaScript literals/operators can match the deliberately conservative
   // lowercase-reference regexes below, but they are never declarations.
   "undefined", "null", "true", "false", "NaN", "Infinity",
+  // TypeScript type keywords. `Record<string, number>` and `Map<string, Foo>`
+  // put `string`/`number` right before a comma, which the candidate regexes
+  // read as a value reference. Treating them as leaks rolled back otherwise
+  // perfectly valid builds, so they are always in scope.
+  "string", "number", "boolean", "bigint", "symbol", "object", "any", "unknown",
+  "never", "void", "this", "self",
+  // Reserved words and TS modifiers that can appear in the same positions.
+  "typeof", "keyof", "infer", "asserts", "is", "as", "in", "of", "out",
+  "readonly", "declare", "abstract", "satisfies", "extends", "implements",
+  "new", "delete", "await", "yield", "return", "throw", "case", "default",
+  "if", "else", "for", "while", "do", "switch", "break", "continue",
+  "try", "catch", "finally", "export", "import", "from", "async", "static",
+  "public", "private", "protected", "get", "set", "instanceof",
 ]);
+
 
 function findObviousScopeLeaks(src: string): string[] {
   const declared = new Set<string>(BUILTIN_GLOBALS);
