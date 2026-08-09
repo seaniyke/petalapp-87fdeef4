@@ -63,6 +63,7 @@ import { Route as AdminDigestRouteImport } from './routes/admin.digest'
 import { Route as AdminCloudCostRouteImport } from './routes/admin.cloud-cost'
 import { Route as AdminBuilderRouteImport } from './routes/admin.builder'
 import { Route as AdminBillingRouteImport } from './routes/admin.billing'
+import { Route as AdminBenchmarkRouteImport } from './routes/admin.benchmark'
 import { Route as AdminAiSpendRouteImport } from './routes/admin.ai-spend'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -105,6 +106,7 @@ import { Route as ApiPublicCronSelfLearningDigestRouteImport } from './routes/ap
 import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/api/public/cron/runtime-backend-hour'
 import { Route as ApiPublicCronMobileCertExpiryRouteImport } from './routes/api/public/cron/mobile-cert-expiry'
 import { Route as ApiPublicCronCryptoVerifyRouteImport } from './routes/api/public/cron/crypto-verify'
+import { Route as ApiPublicCronBenchmarkRouteImport } from './routes/api/public/cron/benchmark'
 import { Route as ApiPublicCronBackendHibernateRouteImport } from './routes/api/public/cron/backend-hibernate'
 import { Route as ApiPublicCoffeeVerifyRouteImport } from './routes/api/public/coffee/verify'
 import { Route as ApiPublicCoffeeInitializeRouteImport } from './routes/api/public/coffee/initialize'
@@ -385,6 +387,11 @@ const AdminBillingRoute = AdminBillingRouteImport.update({
   path: '/admin/billing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminBenchmarkRoute = AdminBenchmarkRouteImport.update({
+  id: '/admin/benchmark',
+  path: '/admin/benchmark',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminAiSpendRoute = AdminAiSpendRouteImport.update({
   id: '/admin/ai-spend',
   path: '/admin/ai-spend',
@@ -606,6 +613,11 @@ const ApiPublicCronCryptoVerifyRoute =
     path: '/api/public/cron/crypto-verify',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronBenchmarkRoute = ApiPublicCronBenchmarkRouteImport.update({
+  id: '/api/public/cron/benchmark',
+  path: '/api/public/cron/benchmark',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCronBackendHibernateRoute =
   ApiPublicCronBackendHibernateRouteImport.update({
     id: '/api/public/cron/backend-hibernate',
@@ -678,6 +690,7 @@ export interface FileRoutesByFullPath {
   '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
+  '/admin/benchmark': typeof AdminBenchmarkRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/builder': typeof AdminBuilderRoute
   '/admin/cloud-cost': typeof AdminCloudCostRoute
@@ -747,6 +760,7 @@ export interface FileRoutesByFullPath {
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
+  '/api/public/cron/benchmark': typeof ApiPublicCronBenchmarkRoute
   '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
@@ -785,6 +799,7 @@ export interface FileRoutesByTo {
   '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
+  '/admin/benchmark': typeof AdminBenchmarkRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/builder': typeof AdminBuilderRoute
   '/admin/cloud-cost': typeof AdminCloudCostRoute
@@ -854,6 +869,7 @@ export interface FileRoutesByTo {
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
+  '/api/public/cron/benchmark': typeof ApiPublicCronBenchmarkRoute
   '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
@@ -893,6 +909,7 @@ export interface FileRoutesById {
   '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
+  '/admin/benchmark': typeof AdminBenchmarkRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/builder': typeof AdminBuilderRoute
   '/admin/cloud-cost': typeof AdminCloudCostRoute
@@ -962,6 +979,7 @@ export interface FileRoutesById {
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
+  '/api/public/cron/benchmark': typeof ApiPublicCronBenchmarkRoute
   '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
@@ -1002,6 +1020,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
+    | '/admin/benchmark'
     | '/admin/billing'
     | '/admin/builder'
     | '/admin/cloud-cost'
@@ -1071,6 +1090,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
     | '/api/public/cron/backend-hibernate'
+    | '/api/public/cron/benchmark'
     | '/api/public/cron/crypto-verify'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
@@ -1109,6 +1129,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
+    | '/admin/benchmark'
     | '/admin/billing'
     | '/admin/builder'
     | '/admin/cloud-cost'
@@ -1178,6 +1199,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
     | '/api/public/cron/backend-hibernate'
+    | '/api/public/cron/benchmark'
     | '/api/public/cron/crypto-verify'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
@@ -1216,6 +1238,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
+    | '/admin/benchmark'
     | '/admin/billing'
     | '/admin/builder'
     | '/admin/cloud-cost'
@@ -1285,6 +1308,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
     | '/api/public/cron/backend-hibernate'
+    | '/api/public/cron/benchmark'
     | '/api/public/cron/crypto-verify'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
@@ -1324,6 +1348,7 @@ export interface RootRouteChildren {
   WaitlistRoute: typeof WaitlistRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminAiSpendRoute: typeof AdminAiSpendRoute
+  AdminBenchmarkRoute: typeof AdminBenchmarkRoute
   AdminBillingRoute: typeof AdminBillingRoute
   AdminBuilderRoute: typeof AdminBuilderRoute
   AdminCloudCostRoute: typeof AdminCloudCostRoute
@@ -1389,6 +1414,7 @@ export interface RootRouteChildren {
   ApiPublicCoffeeInitializeRoute: typeof ApiPublicCoffeeInitializeRoute
   ApiPublicCoffeeVerifyRoute: typeof ApiPublicCoffeeVerifyRoute
   ApiPublicCronBackendHibernateRoute: typeof ApiPublicCronBackendHibernateRoute
+  ApiPublicCronBenchmarkRoute: typeof ApiPublicCronBenchmarkRoute
   ApiPublicCronCryptoVerifyRoute: typeof ApiPublicCronCryptoVerifyRoute
   ApiPublicCronMobileCertExpiryRoute: typeof ApiPublicCronMobileCertExpiryRoute
   ApiPublicCronRuntimeBackendHourRoute: typeof ApiPublicCronRuntimeBackendHourRoute
@@ -1787,6 +1813,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBillingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/benchmark': {
+      id: '/admin/benchmark'
+      path: '/admin/benchmark'
+      fullPath: '/admin/benchmark'
+      preLoaderRoute: typeof AdminBenchmarkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/ai-spend': {
       id: '/admin/ai-spend'
       path: '/admin/ai-spend'
@@ -2081,6 +2114,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronCryptoVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/benchmark': {
+      id: '/api/public/cron/benchmark'
+      path: '/api/public/cron/benchmark'
+      fullPath: '/api/public/cron/benchmark'
+      preLoaderRoute: typeof ApiPublicCronBenchmarkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/backend-hibernate': {
       id: '/api/public/cron/backend-hibernate'
       path: '/api/public/cron/backend-hibernate'
@@ -2212,6 +2252,7 @@ const rootRouteChildren: RootRouteChildren = {
   WaitlistRoute: WaitlistRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminAiSpendRoute: AdminAiSpendRoute,
+  AdminBenchmarkRoute: AdminBenchmarkRoute,
   AdminBillingRoute: AdminBillingRoute,
   AdminBuilderRoute: AdminBuilderRoute,
   AdminCloudCostRoute: AdminCloudCostRoute,
@@ -2277,6 +2318,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCoffeeInitializeRoute: ApiPublicCoffeeInitializeRoute,
   ApiPublicCoffeeVerifyRoute: ApiPublicCoffeeVerifyRoute,
   ApiPublicCronBackendHibernateRoute: ApiPublicCronBackendHibernateRoute,
+  ApiPublicCronBenchmarkRoute: ApiPublicCronBenchmarkRoute,
   ApiPublicCronCryptoVerifyRoute: ApiPublicCronCryptoVerifyRoute,
   ApiPublicCronMobileCertExpiryRoute: ApiPublicCronMobileCertExpiryRoute,
   ApiPublicCronRuntimeBackendHourRoute: ApiPublicCronRuntimeBackendHourRoute,
