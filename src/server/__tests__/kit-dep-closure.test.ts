@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { closeKitDependencies } from "@/server/kit-dep-closure.server";
+import {
+  closeKitDependencies,
+  syncTsconfigExcludes,
+  ON_DEMAND_KIT_PATHS,
+} from "@/server/kit-dep-closure.server";
 import type { ProjectFile } from "@/server/generate.server";
 
 function pkg(deps: Record<string, string> = {}): ProjectFile {
@@ -42,5 +46,31 @@ describe("closeKitDependencies", () => {
     expect(once.added).toEqual({});
     const twice = closeKitDependencies(once.files);
     expect(twice.added).toEqual({});
+  });
+});
+
+describe("syncTsconfigExcludes", () => {
+  const tsconfig = (exclude: string[]): ProjectFile => ({
+    path: "tsconfig.json",
+    content: JSON.stringify({ include: ["src"], exclude }, null, 2),
+  });
+
+  it("stops excluding kit areas the app imports", () => {
+    const files: ProjectFile[] = [
+      tsconfig([...ON_DEMAND_KIT_PATHS]),
+      { path: "src/components/motion/fade-in.tsx", content: "" },
+    ];
+    const res = syncTsconfigExcludes(files, new Set(["src/components/motion/fade-in.tsx"]));
+    const next = JSON.parse(res.files.find((f) => f.path === "tsconfig.json")!.content);
+    expect(next.exclude).not.toContain("src/components/motion");
+    expect(next.exclude).toContain("src/components/three");
+  });
+
+  it("keeps project-specific excludes and is a no-op when nothing changes", () => {
+    const files: ProjectFile[] = [tsconfig(["dist", ...ON_DEMAND_KIT_PATHS])];
+    const res = syncTsconfigExcludes(files, new Set(["src/App.tsx"]));
+    expect(res.files).toBe(files);
+    const parsed = JSON.parse(files[0]!.content);
+    expect(parsed.exclude[0]).toBe("dist");
   });
 });

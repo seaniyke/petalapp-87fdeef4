@@ -25,7 +25,7 @@ import { fixMissingShadcnImports } from "./shadcn-imports.server";
 import { fixArraySafety } from "./array-safety-fixer.server";
 import { repairUnresolvedImports } from "./import-resolver.server";
 import { repairBareImports } from "./bare-import-resolver.server";
-import { closeKitDependencies } from "./kit-dep-closure.server";
+import { closeKitDependencies, syncTsconfigExcludes } from "./kit-dep-closure.server";
 
 import { normalizeJsxExtensions } from "./extension-normalizer.server";
 import { validateRouteGraph } from "./route-graph.server";
@@ -248,6 +248,19 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   const kitDeps = closeKitDependencies(files);
   files = kitDeps.files;
   for (const n of kitDeps.notes) notes.push(n);
+  if (kitDeps.unpinned.length > 0) {
+    notes.push(
+      `kit-dep-closure: no curated pin for ${kitDeps.unpinned.join(", ")} (reachable import)`,
+    );
+  }
+  // 5a-ii. Now that every reachable module's package is installed, stop hiding
+  //        those modules from the compiler. tsconfig only excludes on-demand
+  //        kit areas the app genuinely never imports.
+  if (kitDeps.reached.size > 0) {
+    const tsc = syncTsconfigExcludes(files, kitDeps.reached);
+    files = tsc.files;
+    for (const n of tsc.notes) notes.push(n);
+  }
 
 
   // 5b. Sibling resolution (Quality Push A3) — the file the import meant IS
