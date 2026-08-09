@@ -693,6 +693,9 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   const t0 = Date.now();
   const primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
   const latency = Date.now() - t0;
+  if (primary.status === 402) {
+    (globalThis as Record<string, unknown>)["__petalLastProviderPaymentFailureAt"] = Date.now();
+  }
 
   // Decide whether to retry on fallback model (same provider).
   // Retry on 5xx, 429 (rate-limit), 402 (credits), AND 400/404 — the latter
@@ -791,6 +794,30 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
  * first wins (AbortSignal.any is supported in Workers + Node ≥ 20).
  */
 const DEFAULT_TIMEOUT_MS = 120_000;
+
+/**
+ * Last time an upstream model call came back HTTP 402 ("not enough credits").
+ *
+ * That is PETAL's gateway account running dry, not the end user's wallet. When
+ * it happens the generation pipeline usually surfaces downstream as "the model
+ * returned no files", which we then humanized into "that might be too complex
+ * for me" — blaming the user's prompt for our own billing outage. Recording
+ * the signal here lets the failure classifier attribute it correctly.
+ */
+// Stored on globalThis, not a module-scope binding: this file gets split into
+// multiple server chunks, and a plain `let` is not guaranteed to be shared (or
+// even reachable) from every chunk that touches it.
+const PAYMENT_FAILURE_KEY = "__petalLastProviderPaymentFailureAt";
+
+export function markProviderPaymentFailure(): void {
+  (globalThis as Record<string, unknown>)[PAYMENT_FAILURE_KEY] = Date.now();
+}
+
+/** True when a provider 402 happened recently enough to explain this failure. */
+export function hadRecentProviderPaymentFailure(withinMs = 5 * 60_000): boolean {
+  const at = (globalThis as Record<string, unknown>)[PAYMENT_FAILURE_KEY];
+  return typeof at === "number" && at > 0 && Date.now() - at < withinMs;
+}
 /**
  * Hard wall-clock ceiling for streamed turns. Deliberately very long — users
  * would rather wait for a large build to finish than see it cut off mid-file.

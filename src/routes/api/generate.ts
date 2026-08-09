@@ -72,6 +72,7 @@ import {
   aiChatCompletions,
   markLastCallFailure,
   updateLastCallUsage,
+  hadRecentProviderPaymentFailure,
 } from "@/server/ai-provider.server";
 import { priceTurn, BUILD_FLOOR } from "@/server/credit-pricing.server";
 import type { GatewayUsage } from "@/server/credit-pricing.server";
@@ -5072,7 +5073,18 @@ Forbidden defaults
         // appear in many upstream-failure messages too. See
         // classifyRawError for the full rationale.
         const userCancelled = request.signal?.aborted === true;
-        const kind = userCancelled ? "aborted" : classifyRawError(raw);
+        let kind = userCancelled ? "aborted" : classifyRawError(raw);
+        // A gateway 402 during this turn explains every downstream symptom
+        // ("no files", "no edits", unknown). Attribute it to Petal's own AI
+        // account instead of telling the user their prompt was too complex —
+        // they cannot fix our billing, and "Try a simpler app" is a lie.
+        if (
+          !userCancelled &&
+          (kind === "no_files_emitted" || kind === "no_edit_emitted" || kind === "unknown") &&
+          hadRecentProviderPaymentFailure()
+        ) {
+          kind = "provider_credits_exhausted";
+        }
         // Layer 5 — humanize the raw error before showing it. No credits
         // were taken — nothing to refund. The friendly rewrite gives the
         // user a clear next step (retry, simplify, top up, …) instead
@@ -5083,10 +5095,17 @@ Forbidden defaults
               message: "You stopped Petal. Send a new message when you're ready.",
               suggestions: [] as string[],
             }
-          : await humanizeBuildError({
-              rawMessage: raw,
-              brief: lastUserContent,
-            });
+          : kind === "provider_credits_exhausted"
+            ? {
+                // Never let the humanizer blame the prompt for OUR outage.
+                message:
+                  "Petal's AI is temporarily unavailable — this is on our side, not your prompt. Nothing was charged. Please try again shortly.",
+                suggestions: ["Try again"] as string[],
+              }
+            : await humanizeBuildError({
+                rawMessage: raw,
+                brief: lastUserContent,
+              });
         // Always log the raw server-side so we can root-cause without
         // depending on client telemetry (which only sees the humanized
         // copy). Cheap, fire-and-forget.
