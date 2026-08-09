@@ -44,11 +44,20 @@ export async function resolvePublishedUrl(
   }
 
   // 2) Petal subdomain (`<slug>.buildwithpetal.com`) — single round-trip read.
-  const { data: project } = await supabase
+  const loose = supabase as unknown as { from: (t: string) => any };
+  let { data: project } = await supabase
     .from("projects")
     .select("subdomain")
     .eq("id", projectId)
     .maybeSingle();
+  if (!project) {
+    // Signed-out / non-owner viewer: read the public, column-restricted view.
+    const { data: pub } = await loose.from("public_projects")
+      .select("subdomain")
+      .eq("id", projectId)
+      .maybeSingle();
+    project = pub ?? null;
+  }
   if (project?.subdomain) {
     const hostname = `${project.subdomain}.${PETAL_ROOT_DOMAIN}`;
     return {
@@ -60,17 +69,25 @@ export async function resolvePublishedUrl(
 
   // 3) Latest successful build's deployment URL.
   if (latestBuildId) {
-    const { data: build } = await supabase
+    let { data: build } = await supabase
       .from("project_builds")
       .select("status, dist_path")
       .eq("id", latestBuildId)
       .maybeSingle();
+    if (!build) {
+      const { data: pub } = await loose.from("public_project_builds")
+        .select("status, dist_path")
+        .eq("id", latestBuildId)
+        .maybeSingle();
+      build = pub ?? null;
+    }
     if (build?.status === "ready" && build.dist_path) {
       // Strip protocol for display.
       const display = build.dist_path.replace(/^https?:\/\//, "").replace(/\/$/, "");
       return { url: build.dist_path, source: "deployment", display };
     }
   }
+
 
   return { url: null, source: "none", display: null };
 }

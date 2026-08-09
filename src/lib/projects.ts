@@ -213,14 +213,26 @@ export async function createProject(
   return data;
 }
 
+/** Public, column-restricted projection of `projects`. Anonymous visitors read
+ *  this view instead of the table so owner-only configuration (custom
+ *  instructions, spend caps, runtime controls) is never exposed. */
+const PUBLIC_PROJECTS_VIEW = "public_projects";
+
+type LooseQuery = {
+  select: (cols: string) => any;
+};
+
+function publicView(name: string): LooseQuery {
+  return (supabase as unknown as { from: (t: string) => LooseQuery }).from(name);
+}
+
+
 /** Public list for /gallery — featured first, then by remix_count, then recency.
  *  Excludes projects that have never been built (no published build) or that
  *  still carry the default "Untitled project" title — they look broken in the grid. */
 export async function listPublicProjects(limit = 60): Promise<ProjectRow[]> {
-  const { data, error } = await supabase
-    .from("projects")
+  const { data, error } = await publicView(PUBLIC_PROJECTS_VIEW)
     .select("*")
-    .eq("is_public", true)
     .not("published_build_id", "is", null)
     .not("title", "is", null)
     .neq("title", "")
@@ -230,8 +242,9 @@ export async function listPublicProjects(limit = 60): Promise<ProjectRow[]> {
     .order("updated_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as unknown as ProjectRow[];
 }
+
 
 /** Admin-only: flip is_featured. RLS + trigger guard enforce server-side. */
 export async function setProjectFeatured(id: string, is_featured: boolean): Promise<ProjectRow> {
@@ -336,14 +349,26 @@ export async function updateProject(
 export async function getProject(id: string): Promise<ProjectRow | null> {
   const { data, error } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
-  return data;
+  if (data) return data;
+  // Not the owner (or signed out): fall back to the public, column-restricted view.
+  const { data: pub } = await publicView(PUBLIC_PROJECTS_VIEW)
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  return (pub ?? null) as ProjectRow | null;
 }
 
 export async function getProjectBySlug(slug: string): Promise<ProjectRow | null> {
   const { data, error } = await supabase.from("projects").select("*").eq("slug", slug).maybeSingle();
   if (error) throw error;
-  return data;
+  if (data) return data;
+  const { data: pub } = await publicView(PUBLIC_PROJECTS_VIEW)
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+  return (pub ?? null) as ProjectRow | null;
 }
+
 
 export async function loadProjectFiles(projectId: string): Promise<ProjectFile[]> {
   const { data, error } = await supabase
