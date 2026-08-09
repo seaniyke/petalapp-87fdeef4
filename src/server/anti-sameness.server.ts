@@ -42,11 +42,80 @@ function scanLandingSections(joined: string): string[] {
   return missing;
 }
 
-export function findAntiSamenessIssues(files: ProjectFile[]): LocalIssue[] {
+/**
+ * Design contract — the checks that decide whether the locked direction
+ * actually reached the browser. These are backstops: `design-finisher`
+ * repairs most of them deterministically before we get here, so anything
+ * that still trips is a real miss worth reporting.
+ */
+function findDesignContractIssues(files: ProjectFile[]): LocalIssue[] {
   const issues: LocalIssue[] = [];
-  const indexRoute =
-    files.find((f) => f.path === "src/routes/index.tsx") ??
-    files.find((f) => f.path === "src/App.tsx");
+  const styles =
+    files.find((f) => f.path === "src/styles.css") ?? files.find((f) => f.path === "src/index.css");
+  const shell = files.find((f) => f.path === "index.html");
+
+  // 1. Fonts declared but never loaded → the app renders in system sans.
+  if (styles) {
+    const declared = Array.from(
+      styles.content.matchAll(/--font-(?:display|body)\s*:\s*["']([^"',]+)["']/g),
+    ).map((m) => (m[1] ?? "").trim());
+    if (declared.length) {
+      const everything = files.map((f) => f.content).join("\n").replace(/\+/g, " ").toLowerCase();
+      const loadsFonts = /fonts\.googleapis\.com|@fontsource/i.test(everything);
+      const missing = declared.filter((fam) => !everything.includes(fam.toLowerCase()) || !loadsFonts);
+      if (missing.length) {
+        issues.push({
+          path: shell?.path ?? styles.path,
+          kind: "render-risk",
+          detail: `design-contract: ${missing.join(", ")} is declared in CSS but never loaded, so the app renders in the system font. Add the Google Fonts <link> tags to the <head> of index.html.`,
+        });
+      }
+    }
+    // 2. No base typography binding — the pair exists but nothing uses it.
+    if (/--font-display\s*:/.test(styles.content) && !/font-family:\s*var\(--font-(display|body)\)/.test(styles.content)) {
+      const usesUtility = files.some((f) => /\bfont-(display|body)\b/.test(f.content));
+      if (!usesUtility) {
+        issues.push({
+          path: styles.path,
+          kind: "render-risk",
+          detail:
+            "design-contract: the locked type pair is declared but no element uses it. Bind body to var(--font-body) and h1–h3 to var(--font-display).",
+        });
+      }
+    }
+  }
+
+  // 3. Interior pages built from raw divs with no design system.
+  const interior = files.filter(
+    (f) =>
+      /^src\/(pages|routes)\/[^/]+\.(tsx|jsx)$/.test(f.path) &&
+      !/(home|index|landing|__root)/i.test(f.path) &&
+      f.content.length > 600,
+  );
+  const bare = interior.filter(
+    (f) =>
+      !/@\/components\//.test(f.content) &&
+      !/\b(bg-card|bg-muted|bg-background|text-muted-foreground|border-border|shadow-|rounded-(xl|2xl|3xl))\b/.test(
+        f.content,
+      ),
+  );
+  if (bare.length) {
+    issues.push({
+      path: bare[0]!.path,
+      kind: "render-risk",
+      detail: `design-contract: ${bare.length} interior page(s) (${bare
+        .slice(0, 3)
+        .map((f) => f.path)
+        .join(", ")}) are raw unstyled markup — no kit components, no semantic tokens, no elevation. Rebuild them with the same design system as the landing: page header, elevated cards, empty states.`,
+    });
+  }
+
+  return issues;
+}
+
+export function findAntiSamenessIssues(files: ProjectFile[]): LocalIssue[] {
+  const issues: LocalIssue[] = [...findDesignContractIssues(files)];
+
 
   const joined = files
     .filter((f) => /\.(tsx|css)$/.test(f.path))
