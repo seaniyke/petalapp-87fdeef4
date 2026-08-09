@@ -2345,7 +2345,16 @@ function Builder() {
         // committed to the action by tapping it, so re-classifying as
         // "clarify" or "chat" would feel broken.
         if (!opts.forceBuild) {
-          const triage = await streamTriage(
+          // The server emits the `intent` event as soon as it knows the mode —
+          // usually well before the warm reply finishes streaming. When that
+          // intent is "build" we don't wait for the rest of triage: generation
+          // starts immediately and the preamble keeps filling in behind it.
+          let resolveEarlyBuild: (() => void) | null = null;
+          const earlyBuild = new Promise<"early-build">((resolve) => {
+            resolveEarlyBuild = () => resolve("early-build");
+          });
+
+          const triagePromise = streamTriage(
             {
               messages: nextMessages,
               currentFiles: files,
@@ -2357,35 +2366,50 @@ function Builder() {
                 partialPreamble += d;
                 setStreamingPreamble((s) => s + d);
               },
+              onIntent: (intent) => {
+                if (intent === "build") resolveEarlyBuild?.();
+              },
             },
             controller.signal,
           );
+          // Never let an unhandled rejection escape the background promise —
+          // the awaited path below still surfaces the error.
+          triagePromise.catch(() => {});
+
+          const winner = await Promise.race([
+            triagePromise.then(() => "done" as const),
+            earlyBuild,
+          ]);
 
           if (controller.signal.aborted) return;
 
           // ── Step 2a: chat / clarify — no build, just promote the warm
           //            reply (plus any clickable suggestion chips) into a
           //            real assistant message and stop here.
-          if (triage.intent !== "build") {
-            const replyText = (triage.reply || partialPreamble).trim();
-            const suggestions = triage.meta?.suggestions ?? [];
-            const assistantMsg: ChatMessage = {
-              role: "assistant",
-              content:
-                replyText.length > 0
-                  ? replyText
-                  : "Hi! What would you like to build?",
-              ...(suggestions.length > 0 ? { suggestions } : {}),
-            };
-            setMessages((prev) => [...prev, assistantMsg]);
-            setStreamingPreamble("");
-            setLastUserPrompt(null);
-            try {
-              await appendMessages(proj.id, [assistantMsg]);
-            } catch (persistErr) {
-              console.warn("Could not persist assistant chat reply:", persistErr);
+          if (winner !== "early-build") {
+            const triage = await triagePromise;
+            if (controller.signal.aborted) return;
+            if (triage.intent !== "build") {
+              const replyText = (triage.reply || partialPreamble).trim();
+              const suggestions = triage.meta?.suggestions ?? [];
+              const assistantMsg: ChatMessage = {
+                role: "assistant",
+                content:
+                  replyText.length > 0
+                    ? replyText
+                    : "Hi! What would you like to build?",
+                ...(suggestions.length > 0 ? { suggestions } : {}),
+              };
+              setMessages((prev) => [...prev, assistantMsg]);
+              setStreamingPreamble("");
+              setLastUserPrompt(null);
+              try {
+                await appendMessages(proj.id, [assistantMsg]);
+              } catch (persistErr) {
+                console.warn("Could not persist assistant chat reply:", persistErr);
+              }
+              return;
             }
-            return;
           }
         } else {
           // Forced build — clear any preamble state we'd normally fill from triage.

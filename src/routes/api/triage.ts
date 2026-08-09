@@ -42,6 +42,7 @@ import { aiChatCompletions } from "@/server/ai-provider.server";
 import { detectHighStakesIntent, highStakesClarifyInstruction } from "@/lib/high-stakes-intent";
 import { detectLanguage, renderLanguageHint } from "@/server/lang-detect.server";
 import { checkCreditBalance } from "@/server/credits.server";
+import { fastTriage } from "@/server/fast-triage.server";
 
 type Body = {
   messages: ChatMessage[];
@@ -372,6 +373,44 @@ export const Route = createFileRoute("/api/triage")({
         const langHint = detectLanguage(lastUserText);
         const langBlock = renderLanguageHint(langHint);
 
+        // ── Fast path ────────────────────────────────────────────────────
+        // Unambiguous turns ("build me a hiking journal", "make the hero
+        // bigger", "the form doesn't submit") don't need a model call. We
+        // answer in ~1ms so the build pipeline starts immediately instead of
+        // after a 30–60s classification round-trip.
+        const fast = fastTriage({
+          text: lastUserText,
+          fileCount,
+          highStakes: highStakes.detected,
+          hasAttachment: typeof lastUser?.content !== "string",
+          language: langHint.lang === "unknown" ? "en" : langHint.lang,
+        });
+        if (fast) {
+          const meta: TriageMeta = {
+            mode: fast.mode,
+            confidence: 0.9,
+            language: "en",
+            audience_level: "non_technical",
+            scope: fast.scope,
+            brief: fast.brief,
+            unknowns: [],
+            suggestions:
+              fast.mode === "chat" ? ["Build something for me", "Show me an example"] : [],
+          };
+          const enc = new TextEncoder();
+          const body =
+            sse({ type: "reply_delta", delta: fast.reply }) +
+            sse({ type: "meta", meta }) +
+            sse({ type: "intent", intent: modeToIntent(fast.mode) });
+          return new Response(enc.encode(body), {
+            headers: {
+              "Content-Type": "text/event-stream",
+              "Cache-Control": "no-cache, no-transform",
+              "X-Accel-Buffering": "no",
+            },
+          });
+        }
+
         const chatMessages = [
           {
             role: "system",
@@ -393,7 +432,9 @@ export const Route = createFileRoute("/api/triage")({
         const upstream = await aiChatCompletions({
           feature: "triage",
           body: {
-            model: "google/gemini-3-flash-preview",
+            // Classification is a small, well-specified job — the lite model
+            // is materially faster to first token and just as accurate here.
+            model: "google/gemini-3.1-flash-lite",
             messages: chatMessages,
             stream: true,
             tools: [TRIAGE_TOOL],
@@ -417,6 +458,7 @@ export const Route = createFileRoute("/api/triage")({
             let buf = "";
             let argsBuf = ""; // accumulating tool-call arguments JSON
             let replyEmitted = "";
+            let earlyIntentSent = false;
 
             try {
               while (true) {
@@ -447,6 +489,24 @@ export const Route = createFileRoute("/api/triage")({
                     const toolPiece = delta?.tool_calls?.[0]?.function?.arguments;
                     if (typeof toolPiece === "string" && toolPiece.length > 0) {
                       argsBuf += toolPiece;
+                      // Early intent: `mode` is the first field the model
+                      // emits, so the client can start generating while the
+                      // warm reply is still streaming. Only for unambiguous
+                      // build-ish modes — clarify/chat must wait for the
+                      // full record (and the bare-question downgrade).
+                      if (!earlyIntentSent) {
+                        const modeNow = partialField(argsBuf, "mode");
+                        if (
+                          /^(build|edit|fix|redesign)$/.test(modeNow) &&
+                          /"mode"\s*:\s*"[a-z]+"/.test(argsBuf) &&
+                          !looksLikeBareQuestion(lastUserText)
+                        ) {
+                          earlyIntentSent = true;
+                          controller.enqueue(
+                            encoder.encode(sse({ type: "intent", intent: "build" })),
+                          );
+                        }
+                      }
                       const replyNow = partialField(argsBuf, "reply");
                       if (replyNow.length > replyEmitted.length) {
                         const tail = replyNow.slice(replyEmitted.length);
