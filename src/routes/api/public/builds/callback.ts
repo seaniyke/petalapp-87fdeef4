@@ -62,7 +62,11 @@ const CallbackSchema = z.discriminatedUnion("status", [
     projectId: z.string().uuid(),
     errorMessage: z.string().min(1).max(2000),
     logs: z.string().max(8000).optional(),
+    // Present when the pre-deploy browser check is what stopped the build.
+    // Carries the exact defects so a repair can be aimed at them.
+    verification: VerificationSchema.optional(),
   }),
+
 ]);
 
 export async function handleBuildCallback(request: Request): Promise<Response> {
