@@ -1685,7 +1685,7 @@ async function handleGenerateRequestCore(
   // all get delivered while only the first can be paid for. One build in
   // flight per user closes that window. The lock is TTL-based so a crashed or
   // aborted turn can never lock a user out permanently.
-  if (!acquireBuildLock(userId)) {
+  if (!(await acquireBuildLock(userId, body.projectId))) {
     return new Response(
       JSON.stringify({
         error:
@@ -1774,7 +1774,7 @@ async function handleGenerateRequestCore(
             );
           }
         } finally {
-          releaseBuildLock(userId);
+          releaseBuildLock(userId, body.projectId);
           controller.close();
         }
       },
@@ -5212,7 +5212,7 @@ Forbidden defaults
         // Phase 6 — flush per-tier telemetry in a single insert.
         // Idempotent and never throws; safe in finally.
         void recorder.flush();
-        releaseBuildLock(userId);
+        releaseBuildLock(userId, body.projectId);
         controller.close();
       }
     },
@@ -5461,7 +5461,7 @@ function buildLockKey(userId: string, projectId: string | null | undefined): str
  */
 async function hasLiveTurn(userId: string, projectId: string | null | undefined): Promise<boolean> {
   if (!projectId) return false;
-  const client = getAdminClient();
+  const client = supabaseAdmin;
   if (!client) return false;
   const cutoff = new Date(Date.now() - TURN_STALE_MS).toISOString();
   try {
