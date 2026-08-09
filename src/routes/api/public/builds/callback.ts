@@ -18,6 +18,8 @@ import {
   sanitizeVerificationDefects,
 } from "@/lib/verification-report";
 import { verifySignature } from "@/server/builder.server";
+import { judgeDefects } from "@/server/defect-judge.server";
+
 import { probeDeployedUrl } from "@/server/deploy-verify.server";
 import { scoreVisualQA } from "@/server/visual-qa.server";
 
