@@ -1444,7 +1444,24 @@ function Builder() {
         return;
       }
 
+      // The pre-deploy browser check is what stopped this build: nothing was
+      // uploaded, and the failure carries the exact runtime defects. That is a
+      // different repair than a bundler error — the browser-check effect below
+      // owns it and writes a prompt aimed at the findings. Claiming it here
+      // would spend the same budget twice and hand the model a log tail that
+      // only restates "verification blocked".
+      if (
+        effectiveBuildSnap.verification &&
+        effectiveBuildSnap.verification.ok === false &&
+        sanitizeVerificationDefects(effectiveBuildSnap.verification.defects).length > 0
+      ) {
+        if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
+        persistRecovery(project?.id);
+        return;
+      }
+
       const shouldAutoFix =
+
         !!buildId &&
         startedBuildIdsRef.current.has(buildId) &&
         !autoFixRef.current.handledBuildIds.has(buildId);
