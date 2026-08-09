@@ -2196,7 +2196,13 @@ Forbidden defaults
     console.warn("[staged] orchestrator returned null — falling back to monolithic path");
   }
   const persistedBlueprint = !isInitial ? await loadProjectBlueprint(body.projectId) : null;
-  const blueprintBlock = renderBuildBlueprintBlock(persistedBlueprint);
+  // W4 — persisted architecture: what the code actually contains today
+  // (routes + owning files, shared components, committed libraries). Keeps
+  // follow-up turns from re-deriving (and drifting from) the structure.
+  const persistedArchitecture = !isInitial ? await loadProjectArchitecture(body.projectId) : null;
+  const blueprintBlock =
+    renderBuildBlueprintBlock(persistedBlueprint) + renderArchitectureBlock(persistedArchitecture);
+
 
   // Hero Contract — committed hero composition rules for initial landing-page
   // builds. Addresses the "PipelinePilot" failure where SaaS briefs shipped
