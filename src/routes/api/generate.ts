@@ -4694,6 +4694,21 @@ Forbidden defaults
           console.warn(
             `[final-parse-guard] reverting turn — unrepairable: ${guardOut.detail}`,
           );
+          // Surface the technical reason on the wire too. Worker stdout is not
+          // retained, so without this the only signal is a console line nobody
+          // can read after the fact.
+          controller.enqueue(
+            encoder.encode(
+              sse({
+                type: "timeline",
+                step: "final_parse_guard",
+                outcome: "failed",
+                message: `Blocked: ${guardOut.detail}`.slice(0, 500),
+                ts: Date.now(),
+              }),
+            ),
+          );
+
           emitConversationalFallback(controller, encoder, {
             files: currentFiles,
             summary:
