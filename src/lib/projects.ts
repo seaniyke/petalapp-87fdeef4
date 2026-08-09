@@ -349,14 +349,26 @@ export async function updateProject(
 export async function getProject(id: string): Promise<ProjectRow | null> {
   const { data, error } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
-  return data;
+  if (data) return data;
+  // Not the owner (or signed out): fall back to the public, column-restricted view.
+  const { data: pub } = await publicView(PUBLIC_PROJECTS_VIEW)
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  return (pub ?? null) as ProjectRow | null;
 }
 
 export async function getProjectBySlug(slug: string): Promise<ProjectRow | null> {
   const { data, error } = await supabase.from("projects").select("*").eq("slug", slug).maybeSingle();
   if (error) throw error;
-  return data;
+  if (data) return data;
+  const { data: pub } = await publicView(PUBLIC_PROJECTS_VIEW)
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+  return (pub ?? null) as ProjectRow | null;
 }
+
 
 export async function loadProjectFiles(projectId: string): Promise<ProjectFile[]> {
   const { data, error } = await supabase
