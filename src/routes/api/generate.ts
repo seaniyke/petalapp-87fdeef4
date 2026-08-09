@@ -3003,7 +3003,7 @@ Forbidden defaults
             // same unfinished build as a planned route that never shipped.
             const emittedSource = [
               ...(parsed.files ?? []).map((f) => f.content ?? ""),
-              ...(parsed.ops ?? []).map((o: { content?: string }) => o.content ?? ""),
+              ...(parsed.ops ?? []).map((o) => ("content" in o ? String(o.content ?? "") : "")),
             ].join("\n");
             const linkRoutes = [
               ...Array.from(emittedSource.matchAll(/\bto\s*=\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
