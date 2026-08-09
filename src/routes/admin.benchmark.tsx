@@ -72,7 +72,7 @@ function scoreTone(value: number | null | undefined): string {
 }
 
 function AdminBenchmarkPage() {
-  const { ready, isAdmin } = useAdminGuard();
+  const { ready, isAdmin } = useAdminGuard("/admin/benchmark");
   const [runs, setRuns] = useState<RunRow[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [cases, setCases] = useState<CaseRow[]>([]);
