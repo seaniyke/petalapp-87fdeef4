@@ -73,6 +73,16 @@ describe("amendPrd", () => {
     expect(out.prd.needsPersistence).toBe(true);
   });
 
+  it("recognizes imperative page lists as explicit surface requests", () => {
+    const out = amendPrd(
+      base,
+      "Create the missing pages (Home, Calculator, Cycle Log, Insights, About, Privacy) and wire them with client-side routing",
+    );
+    expect(["additive", "contradiction"]).toContain(out.kind);
+    expect(out.prd.requiredSurfaces).toContain("about");
+    expect(out.prd.excludedSurfaces).not.toContain("about");
+  });
+
   it("records removals as exclusions with an absence criterion", () => {
     const added = amendPrd(base, "add a dashboard").prd;
     const out = amendPrd(added, "remove the dashboard");
@@ -96,6 +106,9 @@ describe("PRD acceptance gate", () => {
     const result = checkPrdStatically(prd, files);
     expect(result.passed).toBe(false);
     expect(result.findings.some((f) => f.criterionId === "no-dashboard")).toBe(true);
+    expect(result.findings.find((f) => f.criterionId === "no-dashboard")?.path).toBe(
+      "src/routes/dashboard.tsx",
+    );
     expect(result.findings.some((f) => f.criterionId === "primary-action-visible")).toBe(true);
   });
 
@@ -121,6 +134,22 @@ describe("PRD acceptance gate", () => {
       { path: "src/routes/about.tsx", content: "export default function A(){ return <main>about</main> }" },
     ];
     expect(checkPrdStatically(prd, files).passed).toBe(true);
+  });
+
+  it("does not reject pre-existing excluded routes during an unrelated edit", () => {
+    const files = [
+      {
+        path: "src/lib/pregnancy.ts",
+        content: "export function dueDate(lmp: Date){ return new Date(lmp.getTime() + 280 * 86400000); }",
+      },
+      {
+        path: "src/routes/index.tsx",
+        content: "export default function I(){ return <main><form>calculator</form><section>result</section></main> }",
+      },
+      { path: "src/routes/account.tsx", content: "export default function A(){ return <main>account</main> }" },
+    ];
+    const result = checkPrdStatically(prd, files, ["src/routes/index.tsx"]);
+    expect(result.findings.some((f) => f.criterionId === "no-account")).toBe(false);
   });
 
   it("derives browser scenarios including a mobile pass and the worked example", () => {

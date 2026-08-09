@@ -31,6 +31,8 @@ export interface PrdFinding {
   message: string;
   /** Concrete instruction for the repair pass. */
   repairHint: string;
+  /** Exact file responsible when the finding comes from a concrete route. */
+  path?: string;
 }
 
 export interface PrdCheckResult {
@@ -99,9 +101,14 @@ const HARD_CODED_RESULT =
 
 const SIDEBAR_SHELL = /(SidebarProvider|<Sidebar\b|AppSidebar)/;
 
-export function checkPrdStatically(prd: Prd, files: FileLike[]): PrdCheckResult {
+export function checkPrdStatically(
+  prd: Prd,
+  files: FileLike[],
+  changedPaths?: string[],
+): PrdCheckResult {
   const findings: PrdFinding[] = [];
   const src = files.filter((f) => f.path.startsWith("src/"));
+  const changed = changedPaths ? new Set(changedPaths) : null;
 
   // 1. Required surfaces exist.
   for (const surface of prd.requiredSurfaces) {
@@ -117,8 +124,11 @@ export function checkPrdStatically(prd: Prd, files: FileLike[]): PrdCheckResult 
 
   // 2. Excluded surfaces are absent.
   for (const surface of prd.excludedSurfaces) {
-    const routeHit = src.some(
-      (f) => isRouteFile(f.path) && (SURFACE_EVIDENCE[surface] ?? []).some((p) => p.test(f.path)),
+    const routeHit = src.find(
+      (f) =>
+        isRouteFile(f.path) &&
+        (!changed || changed.has(f.path)) &&
+        (SURFACE_EVIDENCE[surface] ?? []).some((p) => p.test(f.path)),
     );
     if (routeHit) {
       findings.push({
@@ -126,14 +136,16 @@ export function checkPrdStatically(prd: Prd, files: FileLike[]): PrdCheckResult 
         severity: "blocking",
         message: `A ${surface} surface was generated, but the PRD excludes it — the user never asked for it.`,
         repairHint: `Remove the ${surface} routes and any navigation entries pointing at them.`,
+        path: routeHit.path,
       });
     }
   }
 
   // 3. Public products must not ship a sidebar app shell.
+  const sidebarHit = src.find((f) => (!changed || changed.has(f.path)) && SIDEBAR_SHELL.test(f.content));
   if (
     (prd.productType === "utility" || prd.productType === "content-site" || prd.productType === "game") &&
-    src.some((f) => SIDEBAR_SHELL.test(f.content))
+    sidebarHit
   ) {
     findings.push({
       criterionId: "primary-action-visible",
@@ -141,6 +153,7 @@ export function checkPrdStatically(prd: Prd, files: FileLike[]): PrdCheckResult 
       message: `This is a ${prd.productType}, but the build ships a dashboard sidebar shell.`,
       repairHint:
         "Replace the sidebar shell with a public page layout: top navigation, the product's primary tool above the fold on `/`, supporting sections below.",
+      path: sidebarHit.path,
     });
   }
 

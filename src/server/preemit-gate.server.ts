@@ -130,6 +130,7 @@ export async function collectGateIssues(
       const result = checkPrdStatically(
         prd,
         files.map((f) => ({ path: f.path, content: f.content })),
+        changedPaths,
       );
       const { recordPrdEvent } = await import("@/server/prd/prd-telemetry.server");
       recordPrdEvent({
@@ -140,7 +141,7 @@ export async function collectGateIssues(
       for (const f of result.findings) {
         if (f.severity !== "blocking") continue;
         issues.push({
-          path: "src/routes/index.tsx",
+          path: f.path ?? "src/routes/index.tsx",
           kind: "prd-contract",
           detail: `${f.message} → ${f.repairHint}`,
           source: "prd",
