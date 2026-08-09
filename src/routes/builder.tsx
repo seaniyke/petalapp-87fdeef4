@@ -3459,8 +3459,11 @@ function Builder() {
       ).catch(() => {});
       setActivityVisible(true);
 
+      const blockedBeforeDeploy = snap?.status === "failed";
       const prompt = [
-        "I opened the deployed app in a real browser and it does not work correctly. Findings:",
+        blockedBeforeDeploy
+          ? "Petal ran the built app in a real browser before publishing it and it does not work correctly, so the release was held back. Findings:"
+          : "I opened the deployed app in a real browser and it does not work correctly. Findings:",
         "",
         ...defects.slice(0, 15).map((d) => `- ${d}`),
         "",
@@ -3513,7 +3516,11 @@ function Builder() {
       ).catch(() => {});
       persistFriendlyError({
         title: VERIFICATION_CARD_TITLE,
-        message: `Your app is live, but a browser check found: ${defects
+        message: `${
+          snap.status === "failed"
+            ? "Petal held this release back because a browser check found"
+            : "Your app is live, but a browser check found"
+        }: ${defects
           .slice(0, 3)
           .join("; ")}. Petal paused automatic fixes for this request — tap below to keep going.`,
         actionLabel: "Ask Petal to fix it",
