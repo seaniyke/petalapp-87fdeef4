@@ -15,9 +15,41 @@
 import { partitionVerificationDefects } from "@/lib/verification-report";
 import { aiChatCompletions } from "@/server/ai-provider.server";
 
-const MODEL = "google/gemini-2.5-flash";
+/**
+ * W3 — inverted model spend. The deterministic prior is the default verdict;
+ * a model is only paid for when the prior's answer actually decides whether a
+ * preview goes live. Two tiers:
+ *  - ESCALATED_MODEL: something is (or might be) blocking — a rollback or a
+ *    shipped-broken app is on the line, so buy the better reader.
+ *  - CHEAP_MODEL: only ambiguous non-blocking findings — a light second look.
+ * Purely low-risk reports (visual craft notes, known-benign advisories) never
+ * reach a model at all.
+ */
+const ESCALATED_MODEL = "google/gemini-3.6-flash";
+const CHEAP_MODEL = "google/gemini-3.1-flash-lite";
 const MAX_DEFECTS = 24;
 const TIMEOUT_MS = 20_000;
+
+/**
+ * Advisory findings whose wording already proves they are cosmetic or
+ * peripheral. These never justify a model call on their own.
+ */
+const KNOWN_BENIGN_ADVISORY = [
+  /favicon/i,
+  /\bapple-touch-icon\b/i,
+  /robots\.txt|sitemap\.xml|manifest\.json/i,
+  /source ?map/i,
+  /console (?:warn|warning|info|debug)/i,
+  /slow (?:request|response|load)/i,
+  /\bpreload\b.*\bnot used\b/i,
+  /third[- ]party (?:cookie|script)/i,
+  /deprecat(?:ed|ion)/i,
+];
+
+function isKnownBenign(defect: string): boolean {
+  return KNOWN_BENIGN_ADVISORY.some((pattern) => pattern.test(defect));
+}
+
 
 export type DefectSeverity = "blocking" | "visual" | "advisory" | "noise";
 
@@ -29,6 +61,8 @@ export interface JudgedDefects {
   noise: string[];
   /** True when a model actually produced the verdict. */
   judged: boolean;
+  /** Which spend tier produced the verdict (W3). */
+  tier: "prior" | "cheap" | "escalated";
   reasons: Record<string, string>;
 }
 
@@ -62,7 +96,7 @@ function safeParse(content: string): { i: unknown; severity: unknown; why: unkno
 
 function fallback(defects: unknown): JudgedDefects {
   const p = partitionVerificationDefects(defects);
-  return { ...p, noise: [], judged: false, reasons: {} };
+  return { ...p, noise: [], judged: false, tier: "prior", reasons: {} };
 }
 
 /**
@@ -78,8 +112,19 @@ export async function judgeDefects(args: {
 }): Promise<JudgedDefects> {
   const prior = partitionVerificationDefects(args.defects);
   const all = [...prior.blocking, ...prior.visual, ...prior.advisory];
-  if (all.length === 0) return { ...prior, noise: [], judged: false, reasons: {} };
+  if (all.length === 0)
+    return { ...prior, noise: [], judged: false, tier: "prior" as const, reasons: {} };
   if (all.length > MAX_DEFECTS) return fallback(args.defects);
+
+  // W3 triage — spend nothing when the prior's verdict cannot change the
+  // outcome. Nothing blocking means the preview ships either way, and purely
+  // cosmetic or known-benign findings just ride along for a later polish pass.
+  const ambiguousAdvisories = prior.advisory.filter((defect) => !isKnownBenign(defect));
+  const escalate = prior.blocking.length > 0;
+  if (!escalate && ambiguousAdvisories.length === 0) {
+    return { ...prior, noise: [], judged: false, tier: "prior" as const, reasons: {} };
+  }
+  const model = escalate ? ESCALATED_MODEL : CHEAP_MODEL;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -89,9 +134,10 @@ export async function judgeDefects(args: {
       feature: "design",
       budgetAware: true,
       body: {
-        model: MODEL,
+        model,
         temperature: 0,
         max_tokens: 800,
+
         messages: [
           { role: "system", content: RULES },
           {
@@ -123,6 +169,7 @@ export async function judgeDefects(args: {
       advisory: [],
       noise: [],
       judged: true,
+      tier: escalate ? "escalated" : "cheap",
       reasons: {},
     };
     const seen = new Set<number>();

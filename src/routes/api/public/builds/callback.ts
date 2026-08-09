@@ -185,6 +185,10 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       defects: verification?.defects,
       projectId: payload.projectId,
     });
+    console.info(
+      `[builds/callback] severity tier=${partitioned.tier} blocking=${partitioned.blocking.length} visual=${partitioned.visual.length} advisory=${partitioned.advisory.length} for ${payload.buildId}`,
+    );
+
     if (partitioned.noise.length > 0 && verification) {
       console.warn(
         `[builds/callback] judge dropped ${partitioned.noise.length} checker-artefact finding(s) for ${payload.buildId}`,
