@@ -29,7 +29,8 @@ export interface ChunkAssessment {
     | "none"
     | "truncated_output"
     | "unclosed_payload"
-    | "steps_incomplete";
+    | "steps_incomplete"
+    | "coverage_incomplete";
   /** Steps declared by the model that no emitted op/file claimed yet. */
   remainingSteps: string[];
   /** Paths the model already emitted this turn. */
