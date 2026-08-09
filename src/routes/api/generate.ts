@@ -1014,7 +1014,9 @@ async function structuredRetryCompletion(args: {
     feature: "generate",
     body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY },
     timeoutTier,
-    providerOverride: "lovable",
+    // No providerOverride: follow the resolved provider (DB → env → OpenRouter
+    // when its key is set). Pinning "lovable" here meant a funded OpenRouter
+    // account was never used and every turn died on the Lovable gateway's 402.
     lockCallerModel: true,
     signal: args.signal,
     meta: args.meta,
@@ -1036,7 +1038,9 @@ async function structuredRetryCompletion(args: {
     feature: "generate",
     body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY_BACKUP },
     timeoutTier,
-    providerOverride: "lovable",
+    // No providerOverride: follow the resolved provider (DB → env → OpenRouter
+    // when its key is set). Pinning "lovable" here meant a funded OpenRouter
+    // account was never used and every turn died on the Lovable gateway's 402.
     lockCallerModel: true,
     signal: args.signal,
     meta: { ...args.meta, chosenBy: `${args.meta.chosenBy}_backup` },

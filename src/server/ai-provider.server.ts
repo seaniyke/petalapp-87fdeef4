@@ -181,8 +181,14 @@ async function resolveProvider(feature: AiFeature): Promise<Provider> {
 
   const envOverride = process.env[featureOverrideEnv(feature)]?.toLowerCase();
   const envGlobal = process.env.AI_PROVIDER?.toLowerCase();
-  const choice = envOverride || envGlobal || "lovable";
-  return choice === "openrouter" ? "openrouter" : "lovable";
+  const explicit = envOverride || envGlobal;
+  if (explicit) return explicit === "openrouter" ? "openrouter" : "lovable";
+
+  // No explicit configuration: prefer OpenRouter whenever its key is present.
+  // The old default was an unconditional "lovable", which meant a funded
+  // OpenRouter account was never touched and every call died on the Lovable
+  // gateway's own credit balance (HTTP 402) — an outage users could not fix.
+  return process.env.OPENROUTER_API_KEY ? "openrouter" : "lovable";
 }
 
 /** Public: resolve which provider a given feature is configured to use.
@@ -691,10 +697,52 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
 
 
   const t0 = Date.now();
-  const primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
-  const latency = Date.now() - t0;
+  let primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
+  let latency = Date.now() - t0;
+  let effectiveProvider = provider;
   if (primary.status === 402) {
     (globalThis as Record<string, unknown>)["__petalLastProviderPaymentFailureAt"] = Date.now();
+  }
+
+  // Cross-provider failover. A 402 (out of credits) or 401/403 (bad key) is a
+  // BILLING/AUTH problem with that specific gateway, not with the model or the
+  // request — retrying the same gateway with a different model cannot help. If
+  // the other gateway is configured, use it instead of failing the whole turn.
+  const gatewayDown =
+    primary.status === 402 || primary.status === 401 || primary.status === 403;
+  const altProvider: Provider = provider === "lovable" ? "openrouter" : "lovable";
+  const altKeyPresent =
+    altProvider === "openrouter" ? !!process.env.OPENROUTER_API_KEY : !!process.env.LOVABLE_API_KEY;
+  if (gatewayDown && altKeyPresent) {
+    console.warn(
+      `[ai-provider] ${provider} returned HTTP ${primary.status} (billing/auth) — failing over to ${altProvider}`,
+    );
+    try {
+      await primary.text();
+    } catch {
+      /* ignore */
+    }
+    const tAlt = Date.now();
+    const alt = await dispatch(altProvider, body, opts.signal, opts.timeoutTier);
+    void recordTelemetry({
+      feature: opts.feature,
+      provider: altProvider,
+      model: primaryModel,
+      status: alt.status,
+      latencyMs: Date.now() - tAlt,
+      fallbackUsed: true,
+      errorMessage: alt.ok ? null : `HTTP ${alt.status}`,
+      phase: opts.meta?.phase ?? null,
+      promptChars: opts.meta?.promptChars ?? null,
+      hadAttachments: opts.meta?.hadAttachments ?? false,
+      chosenBy: `${opts.meta?.chosenBy ?? "unknown"}_provider_failover`,
+      projectId: opts.meta?.projectId ?? null,
+      userId: opts.meta?.userId ?? null,
+    });
+    if (alt.ok) return alt;
+    primary = alt;
+    latency = Date.now() - tAlt;
+    effectiveProvider = altProvider;
   }
 
   // Decide whether to retry on fallback model (same provider).
@@ -715,7 +763,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     // Fire-and-forget telemetry; do NOT await — keep latency tight.
     void recordTelemetry({
       feature: opts.feature,
-      provider,
+      provider: effectiveProvider,
       model: primaryModel,
       status: primary.status,
       latencyMs: latency,
@@ -740,7 +788,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
 
   void recordTelemetry({
     feature: opts.feature,
-    provider,
+    provider: effectiveProvider,
     model: primaryModel,
     status: primary.status,
     latencyMs: latency,
@@ -756,12 +804,12 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
 
   const fallbackBody = { ...opts.body, model: fallback };
   const t1 = Date.now();
-  const retried = await dispatch(provider, fallbackBody, opts.signal, opts.timeoutTier);
+  const retried = await dispatch(effectiveProvider, fallbackBody, opts.signal, opts.timeoutTier);
   const retryLatency = Date.now() - t1;
 
   void recordTelemetry({
     feature: opts.feature,
-    provider,
+    provider: effectiveProvider,
     model: fallback,
     status: retried.status,
     latencyMs: retryLatency,
