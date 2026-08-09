@@ -488,6 +488,24 @@ export const Route = createFileRoute("/api/triage")({
                     const toolPiece = delta?.tool_calls?.[0]?.function?.arguments;
                     if (typeof toolPiece === "string" && toolPiece.length > 0) {
                       argsBuf += toolPiece;
+                      // Early intent: `mode` is the first field the model
+                      // emits, so the client can start generating while the
+                      // warm reply is still streaming. Only for unambiguous
+                      // build-ish modes — clarify/chat must wait for the
+                      // full record (and the bare-question downgrade).
+                      if (!earlyIntentSent) {
+                        const modeNow = partialField(argsBuf, "mode");
+                        if (
+                          /^(build|edit|fix|redesign)$/.test(modeNow) &&
+                          /"mode"\s*:\s*"[a-z]+"/.test(argsBuf) &&
+                          !looksLikeBareQuestion(lastUserText)
+                        ) {
+                          earlyIntentSent = true;
+                          controller.enqueue(
+                            encoder.encode(sse({ type: "intent", intent: "build" })),
+                          );
+                        }
+                      }
                       const replyNow = partialField(argsBuf, "reply");
                       if (replyNow.length > replyEmitted.length) {
                         const tail = replyNow.slice(replyEmitted.length);
