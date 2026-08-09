@@ -109,6 +109,7 @@ import { runLocalVerifyTier } from "@/server/pipeline/tier-local-verify";
 import { runContinuationTier } from "@/server/pipeline/tier-continuation";
 import {
   assessChunking,
+  assessRouteCoverage,
   parseStepsFromArgs,
   runChunkedGeneration,
 } from "@/server/chunked-generation.server";
