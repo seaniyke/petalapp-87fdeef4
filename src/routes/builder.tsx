@@ -2970,9 +2970,15 @@ function Builder() {
   const discuss = useCallback(
     async (content: string, opts: { attachments?: ChatAttachment[] } = {}) => {
       const text = content.trim();
-      if (!text || busy || discussBusy) return;
+      if (!text || busy || discussBusy || turnLockRef.current) return;
+      // Same synchronous lock as send() — engaged before project setup.
+      turnLockRef.current = true;
       const proj = await ensureProject();
-      if (!proj) return;
+      if (!proj) {
+        releaseTurnLock();
+        return;
+      }
+
       setError(null);
       setFriendlyError(null);
       const attachments =
