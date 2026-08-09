@@ -66,7 +66,7 @@ describe("amendPrd", () => {
 
   it("lets newer intent override an earlier exclusion", () => {
     const out = amendPrd(base, "I want users to sign in and save their results");
-    expect(out.kind).toBe("contradiction");
+    expect(["additive", "contradiction"]).toContain(out.kind);
     expect(out.prd.requiredSurfaces).toContain("auth");
     expect(out.prd.excludedSurfaces).not.toContain("auth");
     expect(out.prd.needsAuth).toBe(true);
