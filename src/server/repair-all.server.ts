@@ -342,10 +342,19 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   files = brand.files;
   for (const n of brand.notes) notes.push(n);
 
+  // 9c. Design finisher — the locked type pair is loaded (not just declared),
+  //     headings/body actually use it, depth tokens exist, and the page has
+  //     one honest entrance animation. Without this every build renders in
+  //     system sans and reads as "plain" no matter what the director picked.
+  const designFinish = enforceDesignFinish(files);
+  files = designFinish.files;
+  for (const n of designFinish.notes) notes.push(n);
+
   // 10. Runtime contract pass — DOM guard, Dialog Title, Select onValueChange, Providers.
   const rt = enforceRuntimeContracts(files);
   files = rt.files;
   for (const n of rt.notes) notes.push(n);
+
 
   // ── end of STAGE 2: HYGIENE ───────────────────────────────────────────
   // Everything between the two markers answers "will this render correctly
