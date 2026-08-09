@@ -5371,19 +5371,14 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // never reaches the UI — it just stops Cloudflare / proxies from
         // closing an "idle" stream during legit long verifier passes.
         pingTimer = setInterval(() => {
-          if (request.signal.aborted) return;
-          try {
-            controller.enqueue(encoder.encode(": ping\n\n"));
-          } catch {
-            /* controller may have closed mid-tick */
-          }
+          if (clientGone) return;
+          push(encoder.encode(": ping\n\n"));
         }, 8_000);
 
         // User-visible heartbeat: rotates phrasing and only fires after
         // 14s of silence so it never overwrites real model narration or
         // file events. Picks the next line in STATUS_ROTATION each tick.
         statusTimer = setInterval(() => {
-          if (request.signal.aborted) return;
           if (Date.now() - lastByteAt < 14_000) return;
           emit({
             type: "status",
@@ -5395,7 +5390,13 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // Pass the turn id directly. Reconstructing TanStack's incoming
         // Request with `new Request(request, ...)` crosses runtime realms and
         // crashes Undici while reading its internal `window` slot.
-        const response = await handleGenerateRequestCore(request, recorder?.turnId);
+        // `workController` is intentionally detached from `request.signal`:
+        // a closed tab must not cancel a build the user already paid for.
+        const response = await handleGenerateRequestCore(
+          request,
+          recorder?.turnId,
+          workController.signal,
+        );
         if (!response.ok || !response.body) {
           const raw = await response.text().catch(() => `Request failed (${response.status})`);
           terminalStatus = "failed";
@@ -5413,14 +5414,13 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
-          controller.enqueue(value);
-          // Inner-stream bytes count as activity too — silences the ticker.
-          lastByteAt = Date.now();
-          if (recordEvent) recordEvent(value);
+          // Keep draining even after the client is gone: the bytes still go
+          // to the turn recorder, which is what a reconnecting tab replays.
+          push(value);
         }
       } catch (e) {
         const raw = e instanceof Error ? e.message : "Generation failed.";
-        terminalStatus = request.signal.aborted ? "aborted" : "failed";
+        terminalStatus = workController.signal.aborted ? "aborted" : "failed";
         terminalError = raw.slice(0, 500);
         emit({
           type: "error",
@@ -5432,24 +5432,28 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         if (pingTimer) clearInterval(pingTimer);
         if (statusTimer) clearInterval(statusTimer);
         // Always emit a terminal `done` event so resumers know to stop tailing.
-        try {
-          emit({ type: "done", status: terminalStatus });
-        } catch {
-          /* controller may already be closed */
-        }
+        emit({ type: "done", status: terminalStatus });
         // Persist the terminal state before the request ends. A fire-and-forget
         // write is dropped by serverless runtimes once the response closes,
         // leaving turns permanently "running" and inviting reconnect loops.
         await finishTurnOnce(terminalStatus, terminalError);
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          /* already closed by a client disconnect */
+        }
       }
     },
     // Fires when the consumer goes away mid-build (tab closed, socket
-    // dropped, proxy timeout). `start()`'s `finally` is NOT guaranteed to run
-    // in that case, so this is where most zombie turns were being created.
-    async cancel() {
-      await finishTurnOnce("aborted", "client disconnected");
+    // dropped, proxy timeout). This is NOT a cancellation: the pipeline keeps
+    // running on the detached work signal and `start()`'s finally block still
+    // writes the terminal turn state, so a reconnecting tab replays the whole
+    // turn from turn_events. Marking the turn "aborted" here was what made
+    // closed tabs look like killed builds.
+    cancel() {
+      clientGone = true;
     },
+
   });
 
 
