@@ -2044,9 +2044,16 @@ function Builder() {
       const text = content.trim();
       const internalRetry =
         opts.isRetry || opts.isAutoFix || opts.isInternalRepair || opts.isAutoContinue;
+      if (!text) return;
+      // Engage the lock synchronously, before any await, so a second tap can
+      // never slip through while the first is still creating the project.
+      if (!internalRetry) {
+        if (busy || turnLockRef.current) return;
+        turnLockRef.current = true;
+      }
       // A genuinely new user turn refills the automatic-recovery budget.
       if (!internalRetry) beginUserTurn(projectIdRef.current);
-      if (!text || (busy && !internalRetry)) return;
+
       // Hard stop at zero credits. The server 402s every AI route, but the
       // composer must not even accept the message — otherwise the user sees
       // their turn "go through" and then fail. This includes automatic and
