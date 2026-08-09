@@ -5333,12 +5333,26 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       const recordEvent = recorder
         ? makeSseTap((type, payload) => recorder!.record(type, payload))
         : null;
-      const emit = (event: StreamEvent) => {
-        const bytes = encoder.encode(sse(event));
-        controller.enqueue(bytes);
-        lastByteAt = Date.now();
+      // The browser can vanish at any moment (tab closed, phone locked,
+      // proxy timeout). When it does, `controller.enqueue` starts throwing —
+      // but the build itself must keep going and keep recording turn_events
+      // so the user gets the finished result when they come back. So every
+      // write is best-effort, and `clientGone` just stops us from trying.
+      let clientGone = false;
+      const push = (bytes: Uint8Array) => {
         if (recordEvent) recordEvent(bytes);
+        if (clientGone) return;
+        try {
+          controller.enqueue(bytes);
+          lastByteAt = Date.now();
+        } catch {
+          clientGone = true;
+        }
       };
+      const emit = (event: StreamEvent) => {
+        push(encoder.encode(sse(event)));
+      };
+
 
       let terminalStatus: "succeeded" | "failed" | "aborted" = "succeeded";
       let terminalError: string | null = null;
