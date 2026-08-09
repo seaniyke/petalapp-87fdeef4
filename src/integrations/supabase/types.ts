@@ -274,6 +274,131 @@ export type Database = {
         }
         Relationships: []
       }
+      benchmark_cases: {
+        Row: {
+          build_completed: boolean
+          build_id: string | null
+          case_id: string
+          created_at: string
+          criteria: Json
+          defects: Json
+          duration_ms: number | null
+          error_message: string | null
+          functional_correctness: number | null
+          id: string
+          project_id: string | null
+          prompt: string
+          regression_safety: number | null
+          run_id: string
+          spec_adherence: number | null
+          status: string
+          title: string
+          visual_quality: number | null
+        }
+        Insert: {
+          build_completed?: boolean
+          build_id?: string | null
+          case_id: string
+          created_at?: string
+          criteria?: Json
+          defects?: Json
+          duration_ms?: number | null
+          error_message?: string | null
+          functional_correctness?: number | null
+          id?: string
+          project_id?: string | null
+          prompt: string
+          regression_safety?: number | null
+          run_id: string
+          spec_adherence?: number | null
+          status?: string
+          title: string
+          visual_quality?: number | null
+        }
+        Update: {
+          build_completed?: boolean
+          build_id?: string | null
+          case_id?: string
+          created_at?: string
+          criteria?: Json
+          defects?: Json
+          duration_ms?: number | null
+          error_message?: string | null
+          functional_correctness?: number | null
+          id?: string
+          project_id?: string | null
+          prompt?: string
+          regression_safety?: number | null
+          run_id?: string
+          spec_adherence?: number | null
+          status?: string
+          title?: string
+          visual_quality?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "benchmark_cases_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "benchmark_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      benchmark_runs: {
+        Row: {
+          build_completion: number | null
+          completed_cases: number
+          error_message: string | null
+          finished_at: string | null
+          functional_correctness: number | null
+          id: string
+          overall_score: number | null
+          regression_safety: number | null
+          regressions: Json
+          spec_adherence: number | null
+          started_at: string
+          status: string
+          total_cases: number
+          trigger: string
+          visual_quality: number | null
+        }
+        Insert: {
+          build_completion?: number | null
+          completed_cases?: number
+          error_message?: string | null
+          finished_at?: string | null
+          functional_correctness?: number | null
+          id?: string
+          overall_score?: number | null
+          regression_safety?: number | null
+          regressions?: Json
+          spec_adherence?: number | null
+          started_at?: string
+          status?: string
+          total_cases?: number
+          trigger?: string
+          visual_quality?: number | null
+        }
+        Update: {
+          build_completion?: number | null
+          completed_cases?: number
+          error_message?: string | null
+          finished_at?: string | null
+          functional_correctness?: number | null
+          id?: string
+          overall_score?: number | null
+          regression_safety?: number | null
+          regressions?: Json
+          spec_adherence?: number | null
+          started_at?: string
+          status?: string
+          total_cases?: number
+          trigger?: string
+          visual_quality?: number | null
+        }
+        Relationships: []
+      }
       billing_addons: {
         Row: {
           code: string
