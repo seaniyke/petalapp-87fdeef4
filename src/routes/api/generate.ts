@@ -4726,6 +4726,12 @@ Forbidden defaults
           }),
         );
 
+        // W4 — refresh the persisted architecture doc from the files we are
+        // about to ship, so the next turn plans against reality. Runs after
+        // the blueprint save (which merges sibling keys) and never throws.
+        await saveProjectArchitecture(body.projectId, nextFiles);
+
+
 
         // Charge ONCE, after the build succeeds. Cost is computed from
         // the MAIN generate call's token usage only — `collected.usage`
