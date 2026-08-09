@@ -115,7 +115,11 @@ function findDesignContractIssues(files: ProjectFile[]): LocalIssue[] {
 
 export function findAntiSamenessIssues(files: ProjectFile[]): LocalIssue[] {
   const issues: LocalIssue[] = [...findDesignContractIssues(files)];
-
+  const indexRoute =
+    files.find((f) => f.path === "src/routes/index.tsx") ??
+    files.find((f) => f.path === "src/App.tsx") ??
+    files.find((f) => f.path === "src/pages/Index.tsx") ??
+    files.find((f) => f.path === "src/pages/Home.tsx");
 
   const joined = files
     .filter((f) => /\.(tsx|css)$/.test(f.path))
