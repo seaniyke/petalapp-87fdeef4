@@ -37,6 +37,8 @@ import { enforceRuntimeContracts } from "./runtime-contract.server";
 import { enforceLayoutHygiene } from "./layout-hygiene.server";
 import { enforceInteractionHygiene } from "./interaction-hygiene.server";
 import { enforceFrontendQuality } from "./frontend-quality.server";
+import { enforceDesignFinish } from "./design-finisher.server";
+
 import { resolveSiblingImports } from "./sibling-resolver.server";
 import { repairScopeLeaks } from "./scope-repair.server";
 
