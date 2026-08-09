@@ -218,11 +218,14 @@ export async function createProject(
  *  instructions, spend caps, runtime controls) is never exposed. */
 const PUBLIC_PROJECTS_VIEW = "public_projects";
 
-function publicView(name: string) {
-  return (supabase as unknown as {
-    from: (t: string) => ReturnType<typeof supabase.from>;
-  }).from(name);
+type LooseQuery = {
+  select: (cols: string) => any;
+};
+
+function publicView(name: string): LooseQuery {
+  return (supabase as unknown as { from: (t: string) => LooseQuery }).from(name);
 }
+
 
 /** Public list for /gallery — featured first, then by remix_count, then recency.
  *  Excludes projects that have never been built (no published build) or that
