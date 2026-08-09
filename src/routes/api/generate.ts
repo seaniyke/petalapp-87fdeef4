@@ -106,6 +106,12 @@ import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-cla
 // Phase D one-round autofix cap, so it only added latency + tokens.
 import { runLocalVerifyTier } from "@/server/pipeline/tier-local-verify";
 import { runContinuationTier } from "@/server/pipeline/tier-continuation";
+import {
+  assessChunking,
+  parseStepsFromArgs,
+  runChunkedGeneration,
+} from "@/server/chunked-generation.server";
+
 import { runEsbuildTier } from "@/server/pipeline/tier-esbuild";
 import { runRenderRiskTier } from "@/server/pipeline/tier-render-risk";
 import { runRlsSanityTier } from "@/server/pipeline/tier-rls-sanity";
@@ -2947,6 +2953,105 @@ Forbidden defaults
         }
 
         let { parsed, summary, plan, recap } = payload;
+
+        // ── Chunked generation ────────────────────────────────────────────
+        // Large multi-page edits routinely hit the model's output ceiling:
+        // the payload truncates and the turn ships only the prefix the model
+        // finished. Instead of failing (or silently under-delivering), ask
+        // for the REST of its own plan in bounded follow-up chunks and stage
+        // them onto the accumulating op/file list, which the existing applier
+        // then applies in order. Best-effort: any failure here leaves the
+        // already-usable payload untouched.
+        try {
+          const chunkAssessment = assessChunking({
+            rawArgs: collected.args,
+            finishReason: collected.finishReason,
+            ops: parsed.ops,
+            files: parsed.files,
+          });
+          if (chunkAssessment.needed) {
+            console.warn(
+              `[chunked-generation] reason=${chunkAssessment.reason} delivered=${chunkAssessment.deliveredPaths.length} remainingSteps=${chunkAssessment.remainingSteps.length}`,
+            );
+            controller.enqueue(
+              encoder.encode(
+                sse({
+                  type: "status",
+                  message: "This edit is large — continuing it in smaller chunks…",
+                }),
+              ),
+            );
+            const chunked = await runChunkedGeneration({
+              isInitial,
+              assessment: chunkAssessment,
+              ops: parsed.ops ?? [],
+              files: parsed.files ?? [],
+              chunkMaxTokens: isInitial ? 12_000 : 8_000,
+              onRound: (round, added) => {
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "status",
+                      message: `Chunk ${round}: added ${added} more change${added === 1 ? "" : "s"}.`,
+                    }),
+                  ),
+                );
+              },
+              request: async (req) => {
+                const res = await structuredRetryCompletion({
+                  messages: [
+                    ...finalMessages,
+                    { role: "assistant", content: assistantTextFromCollected(collected).slice(0, 4_000) },
+                    { role: "user", content: req.instruction },
+                  ],
+                  isInitial,
+                  problem: "output_truncated_chunk",
+                  hasBackend: Boolean(backend),
+                  tool,
+                  maxTokens: req.maxTokens,
+                  crossCuttingIntent: isCrossCutting,
+                  signal: request.signal,
+                  meta: {
+                    phase: phaseTag.phase,
+                    promptChars: lastUserContent.length,
+                    hadAttachments: hasVisionTurn,
+                    chosenBy: `chunk_round_${req.round}`,
+                    projectId: body.projectId ?? null,
+                    userId,
+                  },
+                });
+                if (!res.ok || !res.body) return null;
+                const chunkCollected = await relayAndCollect(res, controller, encoder);
+                try {
+                  const chunkPayload = parseCollectedProject(chunkCollected, isInitial);
+                  return {
+                    ops: chunkPayload.parsed.ops,
+                    files: chunkPayload.parsed.files,
+                    summary: chunkPayload.summary,
+                    finishReason: chunkCollected.finishReason,
+                    steps: parseStepsFromArgs(chunkCollected.args),
+                  };
+                } catch {
+                  // "no ops" simply means the model considers the plan done.
+                  return { ops: [], finishReason: chunkCollected.finishReason };
+                }
+              },
+            });
+            if (chunked.added > 0) {
+              if (isInitial) parsed.files = chunked.files;
+              else parsed.ops = chunked.ops;
+              console.log(
+                `[chunked-generation] rounds=${chunked.rounds} added=${chunked.added} — ${chunked.notes.join("; ")}`,
+              );
+            }
+          }
+        } catch (chunkErr) {
+          console.warn(
+            "[chunked-generation] skipped:",
+            chunkErr instanceof Error ? chunkErr.message : String(chunkErr),
+          );
+        }
+
         // Honesty ledger — paths the model asked to change that end up
         // byte-identical after apply + recovery.
         const unappliedPaths: string[] = [];
@@ -2954,6 +3059,7 @@ Forbidden defaults
         const criticRejections: CriticRejection[] = [];
         // v3 Phase B — writes refused at the parse gate, disclosed at end of turn.
         const writeGateRejections: WriteRejection[] = [];
+
 
 
         // (Question-first guard removed — see comment near the top of this
