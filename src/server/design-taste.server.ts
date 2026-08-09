@@ -87,13 +87,14 @@ Typography pair: "${pick.fontPair.label}"
   - Display heading font: "${pick.fontPair.display}"
   - Body font: "${pick.fontPair.body}"
 
-Load both via a single <link> tag in \`src/routes/__root.tsx\` head():
+MANDATORY — the fonts must be LOADED, not just declared. Add these three tags inside the <head> of \`index.html\` (that file is the app shell; there is NO \`src/routes/__root.tsx\` in this scaffold). Declaring the CSS variable without this <link> ships the app in system sans and is a build defect:
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(pick.fontPair.display).replace(/%20/g, "+")}:wght@400;500;600;700;800&family=${encodeURIComponent(pick.fontPair.body).replace(/%20/g, "+")}:wght@400;500;600;700&display=swap"
   />
+
 
 In \`src/styles.css\`, expose them:
   :root {
