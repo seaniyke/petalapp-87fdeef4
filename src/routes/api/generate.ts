@@ -2799,6 +2799,10 @@ Forbidden defaults
   }
 
   const encoder = new TextEncoder();
+  // Detached from `request.signal` on purpose — see the `cancel()` note below.
+  const workController = new AbortController();
+  // Flipped when the browser goes away; the build keeps running regardless.
+  let clientGone = false;
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       // Phase 6 — per-tier telemetry. One row per tier per turn,
@@ -5338,7 +5342,6 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       // but the build itself must keep going and keep recording turn_events
       // so the user gets the finished result when they come back. So every
       // write is best-effort, and `clientGone` just stops us from trying.
-      let clientGone = false;
       const push = (bytes: Uint8Array) => {
         if (recordEvent) recordEvent(bytes);
         if (clientGone) return;
