@@ -166,6 +166,39 @@ export async function streamGenerate(
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
   let buf = "";
+  let turnId: string | null = null;
+  let sawResult = false;
+  let sawDone = false;
+
+  /**
+   * A mobile browser may tear down the original fetch after the server has
+   * accepted the turn. Re-run neither the prompt nor the billing path: attach
+   * to the already-running turn and replay its persisted events instead.
+   */
+  const resumeAcceptedTurn = async (): Promise<boolean> => {
+    if (!turnId || signal?.aborted) return false;
+    // Mobile Safari can fail both the original fetch and the first reconnect
+    // while switching radio/network state. Retry only this idempotent replay
+    // endpoint; never POST /api/generate again.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const completed = await streamResumeTurn(turnId, 0, handlers, signal);
+        if (completed) return true;
+      } catch (resumeError) {
+        if (signal?.aborted) return false;
+        if (attempt === 2) {
+          // The accepted turn remains persisted and server-owned. Returning
+          // here lets the builder's visibility/mount reconnect try again;
+          // throwing would create the false red "Load failed" card even
+          // though generation is still running safely in the background.
+          console.warn("Turn reconnect deferred until network recovery", resumeError);
+          return true;
+        }
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+    }
+    return false;
+  };
 
   try {
     while (true) {
@@ -235,6 +268,7 @@ export async function streamGenerate(
             handlers.onCycleEnd?.(evt.cycle, evt.outcome);
             break;
           case "result":
+            sawResult = true;
             handlers.onResult?.(evt.files, evt.summary, {
               plan: evt.plan,
               recap: evt.recap,
@@ -275,9 +309,11 @@ export async function streamGenerate(
             handlers.onError?.(evt.message, evt.suggestions, evt.kind, evt.raw);
             break;
           case "turn_id":
+            turnId = evt.turnId;
             handlers.onTurnId?.(evt.turnId);
             break;
           case "done":
+            sawDone = true;
             handlers.onDone?.(evt.status);
             break;
           case "plan_proposed":
@@ -308,8 +344,23 @@ export async function streamGenerate(
     }
   } catch (e) {
     if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
+    // If a result already arrived, the edit completed. Losing only the final
+    // transport frame must never turn that success into a red error card or a
+    // second charged build. Otherwise, resume this same accepted turn.
+    if (sawResult) {
+      if (!sawDone) handlers.onDone?.("succeeded");
+      return;
+    }
+    if (await resumeAcceptedTurn()) return;
     throw e;
   }
+
+  // A clean EOF without `done` is still an interrupted SSE response. Resume
+  // the accepted server-owned turn rather than returning to the caller, where
+  // it would otherwise be mistaken for an empty result and retried as a new
+  // turn.
+  if (!sawDone && !sawResult && (await resumeAcceptedTurn())) return;
+  if (sawResult && !sawDone) handlers.onDone?.("succeeded");
 }
 
 /**
@@ -328,7 +379,7 @@ export async function streamResumeTurn(
   afterSeq: number,
   handlers: Handlers,
   signal?: AbortSignal,
-): Promise<void> {
+): Promise<boolean> {
   const token = await getSupabaseAccessToken();
   if (!token) throw new Error("Not signed in");
 
@@ -340,13 +391,13 @@ export async function streamResumeTurn(
       signal,
     });
   } catch (e) {
-    if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
+    if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return false;
     throw e;
   }
 
   if (!resp.ok || !resp.body) {
     // 404 / 403 / 410 — caller treats as "no in-flight turn", nothing to do.
-    return;
+    return false;
   }
 
   const reader = resp.body.getReader();
@@ -458,12 +509,13 @@ export async function streamResumeTurn(
             break;
           case "done":
             handlers.onDone?.((evt.status as "succeeded" | "failed" | "aborted") ?? "succeeded");
-            return;
+            return true;
         }
       }
     }
   } catch (e) {
-    if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
+    if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return false;
     throw e;
   }
+  return false;
 }
