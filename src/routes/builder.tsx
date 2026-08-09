@@ -886,6 +886,19 @@ function Builder() {
   // pass startedBuildIdsRef + handledBuildIds gating.
   const MAX_AUTO_FIX_ATTEMPTS = 3;
   const startedBuildIdsRef = useRef<Set<string>>(new Set());
+  // Synchronous submission lock.
+  //
+  // `busy` is React state, so it only flips a render AFTER `send()` has
+  // already awaited `ensureProject()` (a network round-trip on the first
+  // message). Two fast taps — or a tap plus an auto-dequeued queued prompt —
+  // both saw `busy === false`, both created a project, and both started a
+  // turn: duplicate builds, duplicate charges. This ref engages BEFORE any
+  // await, so the second caller is rejected in the same tick.
+  const turnLockRef = useRef(false);
+  const releaseTurnLock = useCallback(() => {
+    turnLockRef.current = false;
+  }, []);
+
   // Build ids whose browser-verification defects we already fed back once.
   const verifyFixRef = useRef<{ projectId: string | null; handled: Set<string> }>({
     projectId: null,
