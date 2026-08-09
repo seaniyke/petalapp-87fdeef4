@@ -130,6 +130,7 @@ export async function collectGateIssues(
       const result = checkPrdStatically(
         prd,
         files.map((f) => ({ path: f.path, content: f.content })),
+        changedPaths,
       );
       const { recordPrdEvent } = await import("@/server/prd/prd-telemetry.server");
       recordPrdEvent({

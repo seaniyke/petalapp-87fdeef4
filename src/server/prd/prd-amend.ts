@@ -40,17 +40,17 @@ const COSMETIC = [
 
 /** Phrases that add a named surface to the product. */
 const SURFACE_REQUESTS: Array<[PrdSurface, RegExp]> = [
-  ["auth", /\b(add|need|want)\b[^.]*\b(log ?in|sign ?in|sign ?up|auth|accounts?)\b/i],
-  ["account", /\b(add|need|want)\b[^.]*\b(profile|my account|saved (results|history))\b/i],
-  ["dashboard", /\b(add|need|want)\b[^.]*\b(dashboard|admin view|overview screen)\b/i],
-  ["admin", /\b(add|need|want)\b[^.]*\badmin (panel|area|console)\b/i],
-  ["checkout", /\b(add|need|want)\b[^.]*\b(checkout|cart|payments?|stripe|subscriptions?)\b/i],
-  ["content", /\b(add|need|want)\b[^.]*\b(blog|articles?|guides?|faq|resources?)\b/i],
-  ["catalog", /\b(add|need|want)\b[^.]*\b(listings?|catalog|products? page|browse)\b/i],
-  ["contact", /\b(add|need|want)\b[^.]*\bcontact (page|form)\b/i],
-  ["about", /\b(add|need|want)\b[^.]*\babout (page|us)\b/i],
-  ["settings", /\b(add|need|want)\b[^.]*\bsettings\b/i],
-  ["results", /\b(add|need|want)\b[^.]*\b(results? (page|view)|history)\b/i],
+  ["auth", /\b(?:add|create|build|include|make|need|want|wire)\b[^.]*\b(log ?in|sign ?in|sign ?up|auth|accounts?)\b/i],
+  ["account", /\b(?:add|create|build|include|make|need|want|wire)\b[^.]*\b(profile|my account|saved (results|history))\b/i],
+  ["dashboard", /\b(?:add|create|build|include|make|need|want|wire)\b[^.]*\b(dashboard|admin view|overview screen)\b/i],
+  ["admin", /\b(?:add|create|build|include|make|need|want|wire)\b[^.]*\badmin (panel|area|console)\b/i],
+  ["checkout", /\b(?:add|create|build|include|make|need|want|wire)\b[^.]*\b(checkout|cart|payments?|stripe|subscriptions?)\b/i],
+  ["content", /\b(?:add|create|build|include|make|need|want|wire)\b[^.]*\b(blog|articles?|guides?|faq|resources?)\b/i],
+  ["catalog", /\b(?:add|create|build|include|make|need|want|wire)\b[^.]*\b(listings?|catalog|products? page|browse)\b/i],
+  ["contact", /\b(?:add|create|build|include|make|need|want|wire)\b[^.]*\bcontact (page|form)\b/i],
+  ["about", /\b(?:add|create|build|include|make|need|want|wire)\b[^.]*\babout(?: page| us)?\b/i],
+  ["settings", /\b(?:add|create|build|include|make|need|want|wire)\b[^.]*\bsettings\b/i],
+  ["results", /\b(?:add|create|build|include|make|need|want|wire)\b[^.]*\b(results? (page|view)|history)\b/i],
 ];
 
 const REMOVAL = /\b(remove|delete|drop|get rid of|take out|don'?t want|no longer want)\b/i;
