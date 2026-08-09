@@ -85,13 +85,11 @@ function SharePage() {
         .maybeSingle();
       if (!proj) {
         const { data: pub } = await (
-          supabase as unknown as { from: (t: string) => any }
-        )
-          .from("public_projects")
-          .select("primary_domain_id, latest_build_id")
-          .eq("id", share.project_id)
-          .maybeSingle();
-        proj = pub ?? null;
+          supabase as unknown as {
+            rpc: (n: string, a: Record<string, unknown>) => Promise<any>;
+          }
+        ).rpc("public_project_get", { p_id: share.project_id });
+        proj = (pub ?? [])[0] ?? null;
       }
 
       const resolved = await resolvePublishedUrl(
