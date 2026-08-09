@@ -456,10 +456,53 @@ export async function loadProjectMessages(projectId: string): Promise<ChatMessag
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data ?? [])
+  const decoded = (data ?? [])
     .map((r) => decodeAssistantContent(r.role, r.content))
     .filter((message) => !isInternalRepairPrompt(message));
+  // Collapse back-to-back identical user prompts. These are orphans from an
+  // attempt that died before it ever produced a reply (tab closed, stream
+  // dropped, credit pre-check bounce) — the prompt was persisted up-front and
+  // the next attempt persisted it again. Two copies of your own message with
+  // nothing in between is never something the user typed on purpose.
+  const out: ChatMessage[] = [];
+  for (const m of decoded) {
+    const prev = out[out.length - 1];
+    if (
+      prev &&
+      prev.role === "user" &&
+      m.role === "user" &&
+      prev.content.trim() === m.content.trim()
+    ) {
+      continue;
+    }
+    out.push(m);
+  }
+  return out;
 }
+
+/**
+ * Persist a user prompt exactly once. If the last stored message for this
+ * project is the same user prompt with no assistant reply after it, the
+ * previous attempt already wrote it — writing again is what produced the
+ * duplicate bubbles users saw after a dropped build.
+ */
+export async function appendUserPrompt(projectId: string, msg: ChatMessage) {
+  const { data } = await supabase
+    .from("messages")
+    .select("role, content")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const last = (data ?? [])[0];
+  if (last) {
+    const decoded = decodeAssistantContent(last.role, last.content);
+    if (decoded.role === "user" && decoded.content.trim() === msg.content.trim()) {
+      return;
+    }
+  }
+  await appendMessages(projectId, [msg]);
+}
+
 
 /**
  * Atomically replace all files for a project with the given set.
