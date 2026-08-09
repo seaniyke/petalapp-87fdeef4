@@ -186,7 +186,14 @@ export async function streamGenerate(
         if (completed) return true;
       } catch (resumeError) {
         if (signal?.aborted) return false;
-        if (attempt === 2) throw resumeError;
+        if (attempt === 2) {
+          // The accepted turn remains persisted and server-owned. Returning
+          // here lets the builder's visibility/mount reconnect try again;
+          // throwing would create the false red "Load failed" card even
+          // though generation is still running safely in the background.
+          console.warn("Turn reconnect deferred until network recovery", resumeError);
+          return true;
+        }
       }
       await new Promise<void>((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
     }
