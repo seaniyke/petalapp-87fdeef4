@@ -151,7 +151,6 @@ import { recordAiOutcome } from "@/server/ai-outcomes.server";
 import { applyContextBudget, type BudgetMessage } from "@/server/context-budget.server";
 import { expandBriefIfVague } from "@/server/brief-expander.server";
 import { loadLabsFlagsForRequest } from "@/server/labs-flags.server";
-import { runStagedPipelineStream } from "@/server/pipeline/staged-orchestrator.server";
 import { ensureRenderableShell } from "@/server/renderable-shell.server";
 import { runAllRepairs } from "@/server/repair-all.server";
 import { TurnCostMeter } from "@/server/turn-cost-ceiling.server";
@@ -2158,55 +2157,6 @@ Forbidden defaults
       : null;
   const designBlock = designDirection ? renderDesignDirectionBlock(designDirection) : "";
 
-  // Staged pipeline (Labs). When the user has the staged_pipeline flag on,
-  // initial builds run through Plan → parallel-Scaffold → Wire-up instead
-  // of the monolithic write_project call. The orchestrator returns null
-  // on any pre-stream failure so we can fall through to the existing
-  // path with no behavior change for everyone else.
-  if (isInitial && labsFlags.staged_pipeline) {
-    // Compute the app-shape block here too (the monolithic path computes
-    // it again ~100 lines below; cheap pure function, OK to call twice).
-    let stagedAppShape: import("@/lib/app-shape-classifier").AppShape | undefined;
-    let stagedAppShapeBlock = "";
-    try {
-      const { classifyAppShape, renderShapeBlock } = await import("@/lib/app-shape-classifier");
-      stagedAppShape = classifyAppShape(lastUserContent);
-      stagedAppShapeBlock = renderShapeBlock(stagedAppShape);
-    } catch {
-      /* classifier failure must never block the build */
-    }
-    // Hero Contract — also injected on the staged path so SaaS/B2B initial
-    // builds get the same composition discipline as the monolithic path.
-    let stagedHeroContract = "";
-    try {
-      const { renderHeroContractBlock } = await import("@/server/hero-contract.server");
-      stagedHeroContract = renderHeroContractBlock({
-        isInitial: true,
-        webSubtype: detectedWebSubtype,
-        brief: lastUserContent,
-      });
-      const { renderBrandContractBlock } = await import("@/server/brand-contract.server");
-      stagedHeroContract += renderBrandContractBlock({ isInitial: true });
-    } catch {
-      /* never block */
-    }
-    const stagedResp = await runStagedPipelineStream({
-      brief: lastUserContent,
-      hasBackend: Boolean(backend),
-      backend: backend ?? undefined,
-      context: {
-        prd: resolvedPrd?.prd ?? null,
-        prdBlock,
-        appShape: stagedAppShape,
-        appShapeBlock: stagedAppShapeBlock,
-        designDirection,
-        designDirectionBlock: designBlock + stagedHeroContract,
-        webSubtype: detectedWebSubtype,
-      },
-    });
-    if (stagedResp) return stagedResp;
-    console.warn("[staged] orchestrator returned null — falling back to monolithic path");
-  }
   const persistedBlueprint = !isInitial ? await loadProjectBlueprint(body.projectId) : null;
   // W4 — persisted architecture: what the code actually contains today
   // (routes + owning files, shared components, committed libraries). Keeps
