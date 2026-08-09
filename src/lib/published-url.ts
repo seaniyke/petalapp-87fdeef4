@@ -52,7 +52,7 @@ export async function resolvePublishedUrl(
     .maybeSingle();
   if (!project) {
     // Signed-out / non-owner viewer: read the public, column-restricted view.
-    const { data: pub } = await loose("public_projects")
+    const { data: pub } = await loose.from("public_projects")
       .select("subdomain")
       .eq("id", projectId)
       .maybeSingle();
@@ -75,7 +75,7 @@ export async function resolvePublishedUrl(
       .eq("id", latestBuildId)
       .maybeSingle();
     if (!build) {
-      const { data: pub } = await loose("public_project_builds")
+      const { data: pub } = await loose.from("public_project_builds")
         .select("status, dist_path")
         .eq("id", latestBuildId)
         .maybeSingle();
