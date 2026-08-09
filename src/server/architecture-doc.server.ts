@@ -61,8 +61,12 @@ const isAppSource = (p: string) =>
   !p.startsWith("src/components/ui/") &&
   !p.startsWith("src/components/examples/");
 
-const ROUTE_DECL_RE =
-  /<Route\b[^>]*\bpath\s*=\s*(?:["']([^"']+)["']|\{\s*["']([^"']+)["']\s*\})[^>]*?(?:\belement\s*=\s*\{\s*<\s*([A-Z][A-Za-z0-9_]*))?/g;
+// Whole `<Route ... >` opening tag; path + element are parsed out of it so a
+// lazy optional group can never silently drop the element component.
+const ROUTE_DECL_RE = /<Route\b[^>]*>/g;
+const ROUTE_PATH_ATTR_RE = /\bpath\s*=\s*(?:["']([^"']+)["']|\{\s*["']([^"']+)["']\s*\})/;
+const ROUTE_ELEMENT_ATTR_RE = /\belement\s*=\s*\{\s*<\s*([A-Z][A-Za-z0-9_]*)/;
+
 const LINK_TO_RE = /<(?:Link|NavLink|Navigate)\b[^>]*\bto\s*=\s*["']([^"'#?]+)/g;
 const NAVIGATE_CALL_RE = /\bnavigate\s*\(\s*["']([^"'#?]+)/g;
 const IMPORT_RE = /from\s+["']([^"']+)["']/g;
