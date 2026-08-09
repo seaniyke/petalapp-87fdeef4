@@ -909,16 +909,23 @@ export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivEl
 const SWITCH = `import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export interface SwitchProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {}
+export interface SwitchProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {
+  /** shadcn-compatible alias — receives the next checked value. */
+  onCheckedChange?: (checked: boolean) => void;
+}
 
 export const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
-  ({ className, checked, onChange, ...props }, ref) => (
+  ({ className, checked, onChange, onCheckedChange, ...props }, ref) => (
     <label className={cn("relative inline-flex h-6 w-11 cursor-pointer items-center", className)}>
       <input
         type="checkbox"
         ref={ref}
         checked={checked}
-        onChange={onChange}
+        readOnly={checked !== undefined && !onChange && !onCheckedChange}
+        onChange={(e) => {
+          onChange?.(e);
+          onCheckedChange?.(e.target.checked);
+        }}
         className="peer sr-only"
         {...props}
       />
