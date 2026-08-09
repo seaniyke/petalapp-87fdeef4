@@ -92,6 +92,12 @@ const themeInitScript = `(function(){try{var k='petal:theme';var v=localStorage.
 // load and forced a wasteful full reload of the builder.
 const stylesheetRecoveryScript = `(function(){var key='petal:reloaded-after-style-miss';function reload(){try{if(sessionStorage.getItem(key)==='1')return;sessionStorage.setItem(key,'1');}catch(e){}var u=new URL(location.href);u.searchParams.set('__petal_css_recover',Date.now().toString(36));location.replace(u.toString());}function styled(){try{var v=getComputedStyle(document.documentElement).getPropertyValue('--background');if(v&&v.trim())return true;}catch(e){}try{var sheets=[].slice.call(document.styleSheets||[]);for(var i=0;i<sheets.length;i++){try{if(sheets[i].cssRules&&sheets[i].cssRules.length)return true;}catch(e){return true;}}}catch(e){}return false;}window.addEventListener('error',function(e){var t=e&&e.target;if(!t||t.tagName!=='LINK')return;var rel=(t.getAttribute('rel')||'').toLowerCase();var href=t.getAttribute('href')||'';if(rel.indexOf('stylesheet')!==-1&&(href.indexOf('/assets/')===0||href.indexOf(location.origin+'/assets/')===0)&&!styled())reload();},true);window.addEventListener('load',function(){setTimeout(function(){if(!styled()){reload();return;}try{sessionStorage.removeItem(key);}catch(e){}},1200);});})();`;
 
+// AuthProvider lives in the SHELL, not in `component`. The shell wraps every
+// router state — including the error and not-found components, which render
+// OUTSIDE `component`. Providing auth only in `component` meant any route that
+// errored during SSR re-rendered its error UI without a provider, and any
+// consumer there threw "useAuthReady must be used inside <AuthProvider>",
+// turning a recoverable route error into a full server-render crash.
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -101,7 +107,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <AuthProvider>
+          {children}
+          <Toaster />
+        </AuthProvider>
         <Scripts />
       </body>
     </html>
@@ -109,10 +118,5 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  return (
-    <AuthProvider>
-      <Outlet />
-      <Toaster />
-    </AuthProvider>
-  );
+  return <Outlet />;
 }

@@ -386,24 +386,19 @@ function AuthPage() {
                 </label>
 
                 {mode !== "forgot" && (
-                  <label className="block">
+                  <div className="block">
                     <div className="mb-1.5 flex items-center justify-between">
-                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <label
+                        htmlFor="petal-password"
+                        className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                      >
                         Password
-                      </span>
-                      {mode === "signin" && (
-                        <button
-                          type="button"
-                          onClick={() => switchMode("forgot")}
-                          className="text-xs font-medium text-foreground hover:underline"
-                        >
-                          Forgot?
-                        </button>
-                      )}
+                      </label>
                     </div>
                     <div className="flex items-center gap-2 rounded-2xl border border-border bg-background px-3.5 transition focus-within:border-primary focus-within:shadow-[0_0_0_4px_oklch(0.78_0.13_25/0.12)]">
                       <Lock className="h-4 w-4 text-muted-foreground" />
                       <input
+                        id="petal-password"
                         type={showPw ? "text" : "password"}
                         required
                         minLength={mode === "signup" ? 8 : 6}
@@ -416,15 +411,27 @@ function AuthPage() {
                       <button
                         type="button"
                         onClick={() => setShowPw((v) => !v)}
-                        className="text-muted-foreground hover:text-foreground"
+                        className="-mr-1.5 inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
                         aria-label={showPw ? "Hide password" : "Show password"}
                       >
                         {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                     {mode === "signup" && <StrengthMeter password={password} />}
-                  </label>
+                    {mode === "signin" && (
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => switchMode("forgot")}
+                          className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
+
 
                 <button
                   type="submit"

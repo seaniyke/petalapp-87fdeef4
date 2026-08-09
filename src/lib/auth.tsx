@@ -105,9 +105,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// A missing provider must never be able to crash a render. Before, this threw,
+// so a single consumer rendered outside the tree (an error component, a portal
+// during SSR) took the whole server render down instead of degrading to a
+// signed-out shell. Fall back to a stable, never-ready, signed-out context.
+const FALLBACK_AUTH: AuthContextValue = {
+  user: null,
+  session: null,
+  loading: true,
+  isReady: false,
+  signOut: async () => {
+    await supabase.auth.signOut();
+  },
+};
+
 export function useAuthReady() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuthReady must be used inside <AuthProvider>");
+  if (!ctx) {
+    if (typeof window !== "undefined") {
+      console.warn("useAuthReady used outside <AuthProvider> — falling back to signed-out state");
+    }
+    return FALLBACK_AUTH;
+  }
   return ctx;
 }
 
