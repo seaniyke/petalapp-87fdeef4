@@ -109,6 +109,7 @@ import { runLocalVerifyTier } from "@/server/pipeline/tier-local-verify";
 import { runContinuationTier } from "@/server/pipeline/tier-continuation";
 import {
   assessChunking,
+  assessRouteCoverage,
   parseStepsFromArgs,
   runChunkedGeneration,
 } from "@/server/chunked-generation.server";
@@ -2391,6 +2392,9 @@ Forbidden defaults
   // examples into ONE structured blueprint. Replaces the legacy archetype-
   // only block. Falls back silently if no confident match.
   let archetypeBlock = "";
+  // Routes the blueprint planned for this build. Used after the stream to
+  // detect a turn that shipped only the landing page and deferred the rest.
+  const plannedRoutes: string[] = [];
   try {
     const { buildBlueprintFor, renderBlueprintBlock } = await import("@/server/app-composer.server");
     const composed = buildBlueprintFor(lastUserText, { hasBackend: Boolean(backend) });
@@ -2418,6 +2422,7 @@ Forbidden defaults
         narrowed = true;
       }
       archetypeBlock = narrowed ? renderBlueprintBlock(composed.blueprint) : composed.promptBlock;
+      for (const r of composed.blueprint.routes ?? []) if (r) plannedRoutes.push(r);
     }
   } catch {
     // Never block a build on composer failure.
@@ -2980,12 +2985,32 @@ Forbidden defaults
         // then applies in order. Best-effort: any failure here leaves the
         // already-usable payload untouched.
         try {
-          const chunkAssessment = assessChunking({
+          let chunkAssessment = assessChunking({
             rawArgs: collected.args,
             finishReason: collected.finishReason,
             ops: parsed.ops,
             files: parsed.files,
           });
+
+          // Coverage continuation: a clean stop that shipped only the landing
+          // page is still an unfinished app. If the build planned routes that
+          // no emitted file provides, finish them in THIS turn.
+          if (!chunkAssessment.needed && isInitial) {
+            const stepRoutes = parseStepsFromArgs(collected.args)
+              .flatMap((s) => s.match(/\/[a-z][a-z0-9-]{1,24}/gi) ?? []);
+            const expectedRoutes = Array.from(
+              new Set([...plannedRoutes, ...stepRoutes].map((r) => r.toLowerCase())),
+            ).filter((r) => r !== "/");
+            if (expectedRoutes.length) {
+              const coverage = assessRouteCoverage({
+                expectedRoutes,
+                ops: parsed.ops,
+                files: parsed.files,
+              });
+              if (coverage.needed) chunkAssessment = coverage;
+            }
+          }
+
           if (chunkAssessment.needed) {
             console.warn(
               `[chunked-generation] reason=${chunkAssessment.reason} delivered=${chunkAssessment.deliveredPaths.length} remainingSteps=${chunkAssessment.remainingSteps.length}`,
@@ -2994,7 +3019,10 @@ Forbidden defaults
               encoder.encode(
                 sse({
                   type: "status",
-                  message: "This edit is large — continuing it in smaller chunks…",
+                  message:
+                    chunkAssessment.reason === "coverage_incomplete"
+                      ? "Building the remaining pages so the whole app ships in one go…"
+                      : "This edit is large — continuing it in smaller chunks…",
                 }),
               ),
             );
