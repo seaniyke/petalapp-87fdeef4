@@ -54,8 +54,15 @@ export function classifyRawError(rawMessage: string): ErrorKind {
   // wired, "aborted" is only emitted when the catch site sets it explicitly.
   if (/\b401\b|unauthori[sz]ed|not signed in/i.test(t)) return "unauthorized";
   if (/rate.?limit|\b429\b/i.test(t)) return "rate_limit";
+  // Provider-side exhaustion FIRST. When Petal's own model gateway runs dry
+  // it says "AI credits exhausted … Settings → Workspace → Usage" — that is
+  // OUR account, not the user's wallet. Telling the user to buy credits for
+  // an outage we caused is both wrong and unfixable by them.
+  if (/settings\s*(?:→|->|>)\s*workspace\s*(?:→|->|>)\s*usage|ai credits exhausted/i.test(t))
+    return "provider_credits_exhausted";
   if (/credits?.*(exhaust|out|empty|low)|\b402\b|insufficient.*(credit|balance)/i.test(t))
     return "credits_exhausted";
+
   // Worker / fetch wall-clock timeout. AbortSignal.timeout fires a
   // TimeoutError whose message is "The operation was aborted due to
   // timeout"; some runtimes also surface "signal timed out". This is

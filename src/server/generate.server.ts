@@ -756,6 +756,9 @@ export type ErrorKind =
   | "truncated_response"
   | "rate_limit"
   | "credits_exhausted"
+  /** Petal's own model gateway is out of credit — a platform outage, not the
+   *  user's wallet. Never renders a "Buy credits" CTA. */
+  | "provider_credits_exhausted"
   | "upstream_unavailable"
   | "upstream_timeout"
   | "unauthorized"

@@ -146,6 +146,14 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
     actionKind: "buy-credits",
     technicalDetail: raw,
   }),
+  provider_credits_exhausted: (raw) => ({
+    title: "Petal's AI is temporarily unavailable",
+    message:
+      "This one is on us, not you — Petal's model provider is briefly out of capacity. Nothing was charged and your project is untouched. Try again shortly.",
+    actionLabel: "Try again",
+    actionKind: "retry",
+    technicalDetail: raw,
+  }),
   upstream_unavailable: (raw) => ({
     title: "The AI was briefly unreachable",
     message:
@@ -195,6 +203,13 @@ const PATTERNS: Array<{
   test: RegExp;
   build: (raw: string) => FriendlyError;
 }> = [
+  {
+    // Platform-side exhaustion must be matched BEFORE the user-wallet
+    // pattern below, otherwise our own gateway outage renders a "Buy
+    // credits" CTA that cannot possibly fix it.
+    test: /settings\s*(?:→|->|>)\s*workspace\s*(?:→|->|>)\s*usage|ai credits exhausted/i,
+    build: (raw) => KIND_TO_FRIENDLY.provider_credits_exhausted(raw),
+  },
   {
     // Credit-exhaustion safety net. Most credit-out paths now throw
     // PipelineError("credits_exhausted") via throwIfCreditsExhausted, but
