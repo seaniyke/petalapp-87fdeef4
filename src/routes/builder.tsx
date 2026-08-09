@@ -1970,26 +1970,38 @@ function Builder() {
 
   // Lazily create the underlying project row on first use, so /builder visits
   // that never send a message don't leave behind empty "Untitled project" rows.
+  const ensureProjectInFlightRef = useRef<Promise<ProjectRow | null> | null>(null);
   const ensureProject = useCallback(async (): Promise<ProjectRow | null> => {
     if (!isReady || !user) {
       navigate({ to: "/auth", search: { mode: "signin", redirect: window.location.pathname + window.location.search } });
       return null;
     }
     if (project) return project;
-    try {
-      const p = await createProject();
-      setProject(p);
-      navigate({
-        to: "/builder",
-        search: { id: p.id, mode: initialMode, attachKey: undefined },
-        replace: true,
-      });
-      return p;
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not start project");
-      return null;
-    }
+    // Concurrent callers share one creation — otherwise a second caller that
+    // arrives while the first is still awaiting `createProject()` orphans a
+    // duplicate "Untitled project" row.
+    if (ensureProjectInFlightRef.current) return ensureProjectInFlightRef.current;
+    const run = (async () => {
+      try {
+        const p = await createProject();
+        setProject(p);
+        navigate({
+          to: "/builder",
+          search: { id: p.id, mode: initialMode, attachKey: undefined },
+          replace: true,
+        });
+        return p;
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Could not start project");
+        return null;
+      } finally {
+        ensureProjectInFlightRef.current = null;
+      }
+    })();
+    ensureProjectInFlightRef.current = run;
+    return run;
   }, [isReady, user, project, navigate, initialMode]);
+
 
   const send = useCallback(
     async (
