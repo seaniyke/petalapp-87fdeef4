@@ -2999,9 +2999,11 @@ Forbidden defaults
           });
 
           // Coverage continuation: a clean stop that shipped only the landing
-          // page is still an unfinished app. If the build planned routes that
-          // no emitted file provides, finish them in THIS turn.
-          if (!chunkAssessment.needed && isInitial) {
+          // page is still an unfinished app — and an EDIT that promised three
+          // new pages but shipped one is the same failure. If the turn planned
+          // routes that neither the emitted files nor the existing project
+          // provide, finish them in THIS turn.
+          if (!chunkAssessment.needed) {
             const stepRoutes = parseStepsFromArgs(collected.args)
               .flatMap((s) => s.match(/\/[a-z][a-z0-9-]{1,24}/gi) ?? []);
             // Nav/link targets the app itself declares are promises to the
@@ -3024,10 +3026,13 @@ Forbidden defaults
                 expectedRoutes,
                 ops: parsed.ops,
                 files: parsed.files,
+                // Edit turns build on top of what already shipped.
+                existingPaths: isInitial ? [] : currentFiles.map((f) => f.path),
               });
               if (coverage.needed) chunkAssessment = coverage;
             }
           }
+
 
           if (chunkAssessment.needed) {
             console.warn(
