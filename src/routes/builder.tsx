@@ -3099,6 +3099,19 @@ function Builder() {
     (text: string, _opts: { bypassQuestionGate?: boolean } = {}) => {
       const trimmed = text.trim();
       if (!trimmed || bootstrapping) return;
+      // Double-tap / double-Enter guard: the exact same prompt fired twice in
+      // quick succession is one intent, not two. Without this the second tap
+      // lands in the queue and runs a whole second (billed) turn.
+      const now = Date.now();
+      if (
+        lastSubmitRef.current.text === trimmed &&
+        now - lastSubmitRef.current.at < 3000
+      ) {
+        setInput("");
+        return;
+      }
+      lastSubmitRef.current = { text: trimmed, at: now };
+
       // Non-blocking question UX: if Petal asked something, the user can
       // still type freely. Typing past the chips is treated as a free-text
       // answer/continuation — we just dismiss the checklist so it doesn't
