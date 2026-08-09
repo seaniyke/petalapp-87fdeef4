@@ -259,12 +259,39 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     const message = payload.logs
       ? `${payload.errorMessage}\n\n--- logs ---\n${payload.logs}`
       : payload.errorMessage;
+
+    // A pre-deploy browser check failure arrives with structured defects.
+    // Score its screenshots too, then persist the report so the client can
+    // start a targeted repair instead of guessing from a log tail.
+    let failedVerification: Record<string, unknown> | null = null;
+    if (payload.verification) {
+      const visualDefects = payload.verification.visual?.length
+        ? await scoreVisualQA({
+            shots: payload.verification.visual,
+            projectId: payload.projectId,
+          }).catch(() => [])
+        : [];
+      const { visual: _shots, ...rest } = payload.verification;
+      const defects = sanitizeVerificationDefects([
+        ...(payload.verification.defects ?? []),
+        ...visualDefects,
+      ]);
+      failedVerification = {
+        ...rest,
+        visualChecked: Boolean(payload.verification.visual?.length),
+        defects,
+        ok: false,
+        blocking: partitionVerificationDefects(defects).blocking,
+      };
+    }
+
     const { error: buildUpdateError } = await supabaseAdmin
       .from("project_builds")
       .update({
         status: "failed",
         error_message: message.slice(0, 8000),
         ready_at: new Date().toISOString(),
+        ...(failedVerification ? { verification: failedVerification as never } : {}),
       })
       .eq("id", payload.buildId);
     if (buildUpdateError) {
@@ -274,6 +301,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     // The build never shipped — the user keeps their credits.
     await refundRolledBackBuild(payload.projectId, payload.buildId);
   }
+
 
   return new Response("ok", {
     status: 200,
