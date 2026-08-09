@@ -90,6 +90,15 @@ export async function loadProjectBlueprint(projectId?: string | null): Promise<B
 export async function saveProjectBlueprint(projectId: string | undefined, blueprint: BuildBlueprint): Promise<void> {
   if (!projectId) return;
   try {
+    // The `blueprint` JSON column also carries sibling keys written by other
+    // subsystems (`prd`, `architecture`). Merge instead of overwriting, or
+    // saving the blueprint silently wipes them.
+    const { data: existing } = await (supabaseAdmin as any)
+      .from("project_blueprints")
+      .select("blueprint")
+      .eq("project_id", projectId)
+      .maybeSingle();
+    const merged = { ...(existing?.blueprint ?? {}), ...blueprint };
     await (supabaseAdmin as any).from("project_blueprints").upsert(
       {
         project_id: projectId,
@@ -99,10 +108,11 @@ export async function saveProjectBlueprint(projectId: string | undefined, bluepr
         design_language: blueprint.designLanguage,
         backend: blueprint.backend,
         files: blueprint.files,
-        blueprint,
+        blueprint: merged,
       },
       { onConflict: "project_id" },
     );
+
   } catch (e) {
     console.warn("[blueprint] save skipped:", e instanceof Error ? e.message : String(e));
   }
