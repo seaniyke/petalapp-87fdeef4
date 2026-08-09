@@ -85,8 +85,23 @@ const TSCONFIG = `{
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": [
+    "src/components/examples",
+    "src/components/motion",
+    "src/components/fx",
+    "src/components/three",
+    "src/components/scroll",
+    "src/components/content",
+    "src/components/image",
+    "src/hooks/use-scroll-scene.ts",
+    "src/hooks/use-horizontal-scroll.ts",
+    "src/hooks/use-axe.ts",
+    "src/lib/a11y.ts",
+    "src/lib/confetti.ts"
+  ]
 }
+
 `;
 
 export const STYLES_CSS = `@import "tailwindcss";
