@@ -113,6 +113,16 @@ export async function judgeDefects(args: {
   if (all.length === 0) return { ...prior, noise: [], judged: false, reasons: {} };
   if (all.length > MAX_DEFECTS) return fallback(args.defects);
 
+  // W3 triage — spend nothing when the prior's verdict cannot change the
+  // outcome. Nothing blocking means the preview ships either way, and purely
+  // cosmetic or known-benign findings just ride along for a later polish pass.
+  const ambiguousAdvisories = prior.advisory.filter((defect) => !isKnownBenign(defect));
+  const escalate = prior.blocking.length > 0;
+  if (!escalate && ambiguousAdvisories.length === 0) {
+    return { ...prior, noise: [], judged: false, reasons: {} };
+  }
+  const model = escalate ? ESCALATED_MODEL : CHEAP_MODEL;
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -121,9 +131,10 @@ export async function judgeDefects(args: {
       feature: "design",
       budgetAware: true,
       body: {
-        model: MODEL,
+        model,
         temperature: 0,
         max_tokens: 800,
+
         messages: [
           { role: "system", content: RULES },
           {
