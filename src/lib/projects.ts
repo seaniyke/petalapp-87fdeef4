@@ -213,17 +213,15 @@ export async function createProject(
   return data;
 }
 
-/** Public, column-restricted projection of `projects`. Anonymous visitors read
- *  this view instead of the table so owner-only configuration (custom
- *  instructions, spend caps, runtime controls) is never exposed. */
-const PUBLIC_PROJECTS_VIEW = "public_projects";
-
-type LooseQuery = {
-  select: (cols: string) => any;
-};
-
-function publicView(name: string): LooseQuery {
-  return (supabase as unknown as { from: (t: string) => LooseQuery }).from(name);
+/** Public, column-restricted read of `projects`. Visitors who don't own the
+ *  project (signed out or signed in) go through these read-only lookups so
+ *  owner-only configuration — custom instructions, spend caps, starred state,
+ *  backend type, runtime controls — is never returned. The lookups themselves
+ *  hard-code the "published + public" filter, so they can't be widened from
+ *  the client the way a table policy could. */
+function publicRpc(name: string, args: Record<string, unknown>): Promise<any> {
+  return (supabase as unknown as { rpc: (n: string, a: Record<string, unknown>) => Promise<any> })
+    .rpc(name, args);
 }
 
 
@@ -231,16 +229,7 @@ function publicView(name: string): LooseQuery {
  *  Excludes projects that have never been built (no published build) or that
  *  still carry the default "Untitled project" title — they look broken in the grid. */
 export async function listPublicProjects(limit = 60): Promise<ProjectRow[]> {
-  const { data, error } = await publicView(PUBLIC_PROJECTS_VIEW)
-    .select("*")
-    .not("published_build_id", "is", null)
-    .not("title", "is", null)
-    .neq("title", "")
-    .neq("title", "Untitled project")
-    .order("is_featured", { ascending: false })
-    .order("remix_count", { ascending: false })
-    .order("updated_at", { ascending: false })
-    .limit(limit);
+  const { data, error } = await publicRpc("public_projects_list", { p_limit: limit });
   if (error) throw error;
   return (data ?? []) as unknown as ProjectRow[];
 }
@@ -351,22 +340,16 @@ export async function getProject(id: string): Promise<ProjectRow | null> {
   if (error) throw error;
   if (data) return data;
   // Not the owner (or signed out): fall back to the public, column-restricted view.
-  const { data: pub } = await publicView(PUBLIC_PROJECTS_VIEW)
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  return (pub ?? null) as ProjectRow | null;
+  const { data: pub } = await publicRpc("public_project_get", { p_id: id });
+  return ((pub ?? [])[0] ?? null) as ProjectRow | null;
 }
 
 export async function getProjectBySlug(slug: string): Promise<ProjectRow | null> {
   const { data, error } = await supabase.from("projects").select("*").eq("slug", slug).maybeSingle();
   if (error) throw error;
   if (data) return data;
-  const { data: pub } = await publicView(PUBLIC_PROJECTS_VIEW)
-    .select("*")
-    .eq("slug", slug)
-    .maybeSingle();
-  return (pub ?? null) as ProjectRow | null;
+  const { data: pub } = await publicRpc("public_project_get", { p_slug: slug });
+  return ((pub ?? [])[0] ?? null) as ProjectRow | null;
 }
 
 

@@ -44,19 +44,18 @@ export async function resolvePublishedUrl(
   }
 
   // 2) Petal subdomain (`<slug>.buildwithpetal.com`) — single round-trip read.
-  const loose = supabase as unknown as { from: (t: string) => any };
+  const loose = supabase as unknown as {
+    rpc: (n: string, a: Record<string, unknown>) => Promise<any>;
+  };
   let { data: project } = await supabase
     .from("projects")
     .select("subdomain")
     .eq("id", projectId)
     .maybeSingle();
   if (!project) {
-    // Signed-out / non-owner viewer: read the public, column-restricted view.
-    const { data: pub } = await loose.from("public_projects")
-      .select("subdomain")
-      .eq("id", projectId)
-      .maybeSingle();
-    project = pub ?? null;
+    // Signed-out / non-owner viewer: read the public, column-restricted lookup.
+    const { data: pub } = await loose.rpc("public_project_get", { p_id: projectId });
+    project = (pub ?? [])[0] ?? null;
   }
   if (project?.subdomain) {
     const hostname = `${project.subdomain}.${PETAL_ROOT_DOMAIN}`;
@@ -75,11 +74,10 @@ export async function resolvePublishedUrl(
       .eq("id", latestBuildId)
       .maybeSingle();
     if (!build) {
-      const { data: pub } = await loose.from("public_project_builds")
-        .select("status, dist_path")
-        .eq("id", latestBuildId)
-        .maybeSingle();
-      build = pub ?? null;
+      const { data: pub } = await loose.rpc("public_project_build_get", {
+        p_id: latestBuildId,
+      });
+      build = (pub ?? [])[0] ?? null;
     }
     if (build?.status === "ready" && build.dist_path) {
       // Strip protocol for display.
