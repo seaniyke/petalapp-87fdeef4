@@ -169,19 +169,70 @@ export function assessChunking(args: {
   };
 }
 
+/**
+ * Route-coverage assessment for INITIAL builds.
+ *
+ * A clean `stop` is not proof the app is complete: the model routinely ships a
+ * gorgeous landing page and defers "browse / detail / journal / stats" to a
+ * follow-up turn the user never asked for. When the turn planned or promised
+ * routes that no emitted file provides, continue in the same turn instead of
+ * shipping a one-page app.
+ */
+export function assessRouteCoverage(args: {
+  expectedRoutes: string[];
+  files?: ProjectFile[];
+  ops?: FileOp[];
+}): ChunkAssessment {
+  const deliveredPaths = pathsOf(args);
+  const emitted = deliveredPaths.length;
+
+  const routeFiles = deliveredPaths.filter((p) => /^src\/(routes|pages)\//i.test(p));
+  const haystack = routeFiles.map((p) => p.toLowerCase()).join("\n");
+
+  const missing: string[] = [];
+  for (const raw of args.expectedRoutes) {
+    const route = String(raw ?? "").trim();
+    if (!route) continue;
+    // "/" is covered by any index/home route file; other routes match on slug.
+    const slug = route.replace(/^\/+|\/+$/g, "").split("/")[0]?.toLowerCase() ?? "";
+    if (!slug) {
+      if (!/\/(index|home|landing)\.(t|j)sx?$/i.test(haystack) && !/index/.test(haystack)) {
+        missing.push("/");
+      }
+      continue;
+    }
+    if (/[:$*]/.test(slug)) continue; // dynamic params — covered by their parent
+    if (!haystack.includes(slug)) missing.push(route);
+  }
+
+  const unique = Array.from(new Set(missing)).slice(0, 8);
+  return {
+    needed: unique.length > 0 && emitted > 0,
+    reason: unique.length > 0 ? "coverage_incomplete" : "none",
+    remainingSteps: unique.map(
+      (r) => `Build the "${r}" page as its own route file and link it from the nav and footer.`,
+    ),
+    deliveredPaths,
+  };
+}
+
 /** Build the follow-up user turn for one continuation chunk. */
 export function buildChunkInstruction(args: {
   round: number;
   isInitial: boolean;
   deliveredPaths: string[];
   remainingSteps: string[];
+  reason?: ChunkAssessment["reason"];
 }): string {
   const tool = args.isInitial ? "write_project" : "patch_files";
   const done = args.deliveredPaths.slice(0, 40);
   const todo = args.remainingSteps.slice(0, 12);
+  const coverage = args.reason === "coverage_incomplete";
 
   return [
-    `Your previous ${tool} call was cut off by the output limit, so the work is only partly done.`,
+    coverage
+      ? `Your previous ${tool} call shipped only part of the app: pages you planned are still missing. Finish them NOW, in this turn — never defer a planned page to a later turn.`
+      : `Your previous ${tool} call was cut off by the output limit, so the work is only partly done.`,
     done.length
       ? `Already applied (do NOT resend these unless a remaining step must change them): ${done.join(", ")}.`
       : "No files were applied yet.",
