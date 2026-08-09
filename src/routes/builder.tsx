@@ -1444,7 +1444,24 @@ function Builder() {
         return;
       }
 
+      // The pre-deploy browser check is what stopped this build: nothing was
+      // uploaded, and the failure carries the exact runtime defects. That is a
+      // different repair than a bundler error — the browser-check effect below
+      // owns it and writes a prompt aimed at the findings. Claiming it here
+      // would spend the same budget twice and hand the model a log tail that
+      // only restates "verification blocked".
+      if (
+        effectiveBuildSnap.verification &&
+        effectiveBuildSnap.verification.ok === false &&
+        sanitizeVerificationDefects(effectiveBuildSnap.verification.defects).length > 0
+      ) {
+        if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
+        persistRecovery(project?.id);
+        return;
+      }
+
       const shouldAutoFix =
+
         !!buildId &&
         startedBuildIdsRef.current.has(buildId) &&
         !autoFixRef.current.handledBuildIds.has(buildId);
@@ -1477,7 +1494,7 @@ function Builder() {
       persistFriendlyError(friendlyBuildFailure(effectiveBuildSnap.errorMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, project?.id, project?.latest_build_id, project?.published_build_id, busy, awaitingBuild]);
+  }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, effectiveBuildSnap?.verification, project?.id, project?.latest_build_id, project?.published_build_id, busy, awaitingBuild]);
 
   // Auto-hide the success card a little after the app goes live so the chat
   // returns to a calm state. The card itself also self-collapses.
@@ -3442,8 +3459,11 @@ function Builder() {
       ).catch(() => {});
       setActivityVisible(true);
 
+      const blockedBeforeDeploy = snap?.status === "failed";
       const prompt = [
-        "I opened the deployed app in a real browser and it does not work correctly. Findings:",
+        blockedBeforeDeploy
+          ? "Petal ran the built app in a real browser before publishing it and it does not work correctly, so the release was held back. Findings:"
+          : "I opened the deployed app in a real browser and it does not work correctly. Findings:",
         "",
         ...defects.slice(0, 15).map((d) => `- ${d}`),
         "",
@@ -3496,7 +3516,11 @@ function Builder() {
       ).catch(() => {});
       persistFriendlyError({
         title: VERIFICATION_CARD_TITLE,
-        message: `Your app is live, but a browser check found: ${defects
+        message: `${
+          snap.status === "failed"
+            ? "Petal held this release back because a browser check found"
+            : "Your app is live, but a browser check found"
+        }: ${defects
           .slice(0, 3)
           .join("; ")}. Petal paused automatic fixes for this request — tap below to keep going.`,
         actionLabel: "Ask Petal to fix it",
