@@ -962,7 +962,7 @@ function assistantTextFromCollected(collected: ParsedTool): string {
 
 function isMissingToolOutputError(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error);
-  return /AI did not return (?:a project|usable edits)|AI tried to (?:rewrite|patch)|response was cut off/i.test(msg);
+  return /AI did not return (?:a project|usable edits)|AI tried to (?:rewrite|patch)|response was cut off|AI returned (?:no (?:files|ops)|invalid (?:project|edit) data)/i.test(msg);
 }
 
 async function structuredRetryCompletion(args: {
@@ -1272,11 +1272,6 @@ function validateTargetShape(
 
 
 function parseCollectedProject(collected: ParsedTool, isInitial: boolean): ParsedProjectPayload {
-  if (isTruncatedFinishReason(collected.finishReason)) {
-    throw new Error(
-      `AI response was cut off before it finished (${collected.finishReason}). Retrying with a smaller structured response.`,
-    );
-  }
   if (!collected.name || !collected.args) {
     throw new Error(
       isInitial
@@ -1317,6 +1312,19 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
             : "AI returned invalid edit data.",
       );
     }
+  }
+
+  // A provider can report `length` / `max_tokens` after already closing valid
+  // tool JSON, or after closing several complete ops and truncating only the
+  // tail. The old early finish-reason guard rejected both cases before the
+  // parser and per-op salvage above could inspect them. At this point we have
+  // either parsed the complete payload or recovered its complete prefix, so it
+  // is safe to continue. A genuinely unusable truncation still throws from the
+  // catch above and enters the structured retry path.
+  if (isTruncatedFinishReason(collected.finishReason)) {
+    console.warn(
+      `[generate] accepting usable ${collected.name} payload despite finish reason ${collected.finishReason}`,
+    );
   }
 
   // A single structurally-broken entry must not fail a turn that also carries
