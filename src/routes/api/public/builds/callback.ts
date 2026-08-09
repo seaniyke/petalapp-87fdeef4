@@ -14,10 +14,12 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   allBlockingDefectsAreTransientEdge,
-  partitionVerificationDefects,
+  
   sanitizeVerificationDefects,
 } from "@/lib/verification-report";
 import { verifySignature } from "@/server/builder.server";
+import { judgeDefects } from "@/server/defect-judge.server";
+
 import { probeDeployedUrl } from "@/server/deploy-verify.server";
 import { scoreVisualQA } from "@/server/visual-qa.server";
 
@@ -177,12 +179,27 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     // healthy build keep showing the previous working preview. Visual-only
     // craft findings remain attached for a later polish pass without taking a
     // functioning app offline.
-    const partitioned = partitionVerificationDefects(verification?.defects);
+    // Severity is judged semantically (W2) with the regex partition as the
+    // deterministic prior and fallback — see `defect-judge.server.ts`.
+    const partitioned = await judgeDefects({
+      defects: verification?.defects,
+      projectId: payload.projectId,
+    });
+    if (partitioned.noise.length > 0 && verification) {
+      console.warn(
+        `[builds/callback] judge dropped ${partitioned.noise.length} checker-artefact finding(s) for ${payload.buildId}`,
+      );
+      verification.defects = verification.defects.filter(
+        (defect) => !partitioned.noise.includes(defect),
+      );
+      verification.ok = verification.defects.length === 0;
+    }
     // The browser check can run while the hosting edge is still propagating,
     // producing 52x on every route. Petal's own probe above already fetched
     // this exact URL and got a real app, so an all-edge-transient report is
     // inconclusive, not a build failure — never fail a healthy deploy on it.
     const edgeNoiseOnly = allBlockingDefectsAreTransientEdge(partitioned.blocking);
+
     if (edgeNoiseOnly) {
       console.warn(
         `[builds/callback] ignoring ${partitioned.blocking.length} transient edge finding(s) for ${payload.buildId}; server probe succeeded`,
@@ -272,17 +289,23 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
           }).catch(() => [])
         : [];
       const { visual: _shots, ...rest } = payload.verification;
-      const defects = sanitizeVerificationDefects([
+      const rawDefects = sanitizeVerificationDefects([
         ...(payload.verification.defects ?? []),
         ...visualDefects,
       ]);
+      const judged = await judgeDefects({
+        defects: rawDefects,
+        projectId: payload.projectId,
+      });
+      const defects = rawDefects.filter((defect) => !judged.noise.includes(defect));
       failedVerification = {
         ...rest,
         visualChecked: Boolean(payload.verification.visual?.length),
         defects,
         ok: false,
-        blocking: partitionVerificationDefects(defects).blocking,
+        blocking: judged.blocking,
       };
+
     }
 
     const { error: buildUpdateError } = await supabaseAdmin
