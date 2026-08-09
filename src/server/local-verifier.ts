@@ -501,6 +501,19 @@ function findUndefinedComponents(src: string, clean: string): string[] {
   const declRe = /(?:^|\n)\s*(?:export\s+)?(?:default\s+)?(?:const|let|var|function|class)\s+([A-Z][A-Za-z0-9_]*)/g;
   while ((m = declRe.exec(src))) declared.add(m[1]);
 
+  // Destructured bindings, including the extremely common dynamic-icon idiom:
+  //   const { icon: Icon } = habit;         →  <Icon />
+  //   habits.map(({ icon: Icon }) => ...)   →  <Icon />
+  //   function Row({ Icon }) { ... }
+  // These are real bindings, and missing them used to roll back whole builds.
+  const aliasRe = /(?:[:,{(]|\.\.\.)\s*([A-Z][A-Za-z0-9_]*)\s*(?=[,}\]=)])/g;
+  while ((m = aliasRe.exec(src))) declared.add(m[1]);
+  // `const Icon = x ? A : B;` style assignments already covered by declRe, but
+  // also allow any capitalized name that is assigned to anywhere in the file.
+  const assignRe = /(?:^|[\s,({[])([A-Z][A-Za-z0-9_]*)\s*=[^=>]/g;
+  while ((m = assignRe.exec(src))) declared.add(m[1]);
+
+
   // React intrinsics + namespace shortcuts that don't need imports.
   const builtins = new Set(["Fragment", "StrictMode", "Suspense", "Profiler", "Children"]);
 
