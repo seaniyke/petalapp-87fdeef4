@@ -350,6 +350,9 @@ async function runBuildInner(body: BuildBody): Promise<void> {
   log.info("Build started");
   let dir: string | null = null;
   let warmed = false;
+  // Declared outside the try so the failure path can forward the exact
+  // defects that blocked the deploy.
+  let verification: VerifyReport | undefined;
   try {
     if (WARM_WORKSPACES) {
       try {
@@ -380,7 +383,6 @@ async function runBuildInner(body: BuildBody): Promise<void> {
     //
     // A verifier that cannot run is not a build failure — the bundle is real
     // either way, so we record it as skipped and let the deploy proceed.
-    let verification: VerifyReport | undefined;
     const preDeployCheck = body.verify
       ? async (baseUrl: string): Promise<VerifyReport> => {
           const plan: VerifyPlan = { baseUrl, ...body.verify! };
