@@ -1592,7 +1592,13 @@ async function runFinalParseGuard(
 async function handleGenerateRequestCore(
   request: Request,
   turnId?: string,
+  // Work signal — deliberately NOT `request.signal`. Closing the tab must
+  // never kill an in-flight build: the caller passes a detached controller
+  // that only aborts on an explicit user stop, so the pipeline runs to
+  // completion server-side and the client can reattach via the turn id.
+  workSignal?: AbortSignal,
 ): Promise<Response> {
+  const abortSignal = workSignal ?? request.signal;
   const authResult = await authorize(request);
   if (authResult instanceof Response) return authResult;
   const userId = authResult;
@@ -1727,7 +1733,7 @@ async function handleGenerateRequestCore(
             userPrompt: lastContent,
             history: messages,
             currentFiles,
-            signal: request.signal,
+            signal: abortSignal,
           });
           const planId = await savePlan({
             projectId: body.projectId!,
@@ -2723,7 +2729,7 @@ Forbidden defaults
       files: currentFiles,
       projectId: body.projectId ?? "unknown",
       userId,
-      signal: request.signal,
+      signal: abortSignal,
     });
     if (agentLoop.steps.length > 0) {
       console.info(
@@ -2763,7 +2769,7 @@ Forbidden defaults
     // Propagate client-cancel: if the user closes the tab / hits Stop, the
     // SSE Response is aborted and we want the upstream provider call to
     // stop too — otherwise it runs (and bills) until the wall-clock cap.
-    signal: request.signal,
+    signal: abortSignal,
     meta: {
       phase: phaseTag.phase,
       promptChars: lastUserContent.length,
@@ -2887,7 +2893,7 @@ Forbidden defaults
               ? Math.min(24_000, Math.max(18_000, Math.round(maxCompletionTokens * 1.35)))
               : Math.max(maxCompletionTokens, 8_000),
             crossCuttingIntent: isCrossCutting,
-            signal: request.signal,
+            signal: abortSignal,
             meta: {
               phase: phaseTag.phase,
               promptChars: lastUserContent.length,
@@ -2917,7 +2923,7 @@ Forbidden defaults
                   hasVisionTurn,
                   crossCuttingIntent: isCrossCutting,
                   backend,
-                  signal: request.signal,
+                  signal: abortSignal,
                   controller,
                   encoder,
                   projectId: body.projectId ?? null,
@@ -3067,7 +3073,7 @@ Forbidden defaults
                   tool,
                   maxTokens: req.maxTokens,
                   crossCuttingIntent: isCrossCutting,
-                  signal: request.signal,
+                  signal: abortSignal,
                   meta: {
                     phase: phaseTag.phase,
                     promptChars: lastUserContent.length,
@@ -3302,7 +3308,7 @@ Forbidden defaults
                 tool: PATCH_FILES_TOOL,
                 maxTokens: Math.max(maxCompletionTokens, 12_000),
                 crossCuttingIntent: isCrossCutting,
-                signal: request.signal,
+                signal: abortSignal,
                 meta: {
                   phase: phaseTag.phase,
                   promptChars: lastUserContent.length,
@@ -3484,7 +3490,7 @@ Forbidden defaults
               userPrompt: lastUserContent,
               projectId: body.projectId ?? "unknown",
               userId,
-              signal: request.signal,
+              signal: abortSignal,
               prd: resolvedPrd?.prd ?? null,
             });
             if (verdict.rejections.length > 0) {
@@ -3522,7 +3528,7 @@ Forbidden defaults
                   userPrompt: lastUserContent,
                   projectId: body.projectId ?? "unknown",
                   userId,
-                  signal: request.signal,
+                  signal: abortSignal,
                 });
                 if (second.ops.length > 0) {
                   console.info(`[op-repair] critic accepted ${second.ops.length} reworked op(s)`);
@@ -3677,7 +3683,7 @@ Forbidden defaults
                   tool: PATCH_FILES_TOOL,
                   maxTokens: Math.max(maxCompletionTokens, 12_000),
                   crossCuttingIntent: isCrossCutting,
-                  signal: request.signal,
+                  signal: abortSignal,
                   meta: {
                     phase: phaseTag.phase,
                     promptChars: lastUserContent.length,
@@ -5116,7 +5122,7 @@ Forbidden defaults
         // user intent from prose like "aborted" / "cancelled", which
         // appear in many upstream-failure messages too. See
         // classifyRawError for the full rationale.
-        const userCancelled = request.signal?.aborted === true;
+        const userCancelled = abortSignal?.aborted === true;
         let kind = userCancelled ? "aborted" : classifyRawError(raw);
         // A gateway 402 during this turn explains every downstream symptom
         // ("no files", "no edits", unknown). Attribute it to Petal's own AI
