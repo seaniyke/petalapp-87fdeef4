@@ -4701,7 +4701,7 @@ Forbidden defaults
             encoder.encode(
               sse({
                 type: "timeline",
-                step: "final_parse_guard",
+                step: "esbuild_parse",
                 outcome: "failed",
                 message: `Blocked: ${guardOut.detail}`.slice(0, 500),
                 ts: Date.now(),
