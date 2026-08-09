@@ -30,6 +30,12 @@ export interface CriticRejection {
   reason: string;
   /** true when a deterministic rule caught it (no model involved). */
   deterministic: boolean;
+  /**
+   * Dropped for hygiene, not because anything the user wanted was lost.
+   * A no-op edit changes nothing whether it lands or not — telling the user
+   * "a change was blocked" makes a clean turn look partially failed.
+   */
+  silent?: boolean;
 }
 
 export interface CriticVerdict {
@@ -110,6 +116,7 @@ export function findDeterministicDefects(
           path: op.path,
           op: op.op,
           deterministic: true,
+          silent: true,
           reason: "replacement text is byte-identical to the search text — the edit would do nothing",
         });
         continue;
@@ -375,15 +382,21 @@ export async function runCritic(args: {
   };
 }
 
-/** One-line-per-rejection note for the turn summary. */
+/**
+ * One-line-per-rejection note for the turn summary.
+ *
+ * `silent` rejections (no-op edits) are omitted: nothing the user asked for was
+ * lost, so reporting them makes a fully successful turn read as partly blocked.
+ */
 export function criticDisclosure(rejections: CriticRejection[]): string {
-  if (rejections.length === 0) return "";
-  const lines = rejections.map((r) => `- \`${r.path}\` — ${r.reason}`);
+  const visible = rejections.filter((r) => !r.silent);
+  if (visible.length === 0) return "";
+  const lines = visible.map((r) => `- \`${r.path}\` — ${r.reason}`);
   return [
     "",
-    rejections.length === 1
+    visible.length === 1
       ? "**One proposed change was blocked before it was applied:**"
-      : `**${rejections.length} proposed changes were blocked before they were applied:**`,
+      : `**${visible.length} proposed changes were blocked before they were applied:**`,
     ...lines,
     "",
     "Everything else went through. Tell me if you want me to retry the blocked part differently.",
