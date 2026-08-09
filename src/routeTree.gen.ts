@@ -63,6 +63,7 @@ import { Route as AdminDigestRouteImport } from './routes/admin.digest'
 import { Route as AdminCloudCostRouteImport } from './routes/admin.cloud-cost'
 import { Route as AdminBuilderRouteImport } from './routes/admin.builder'
 import { Route as AdminBillingRouteImport } from './routes/admin.billing'
+import { Route as AdminBenchmarkRouteImport } from './routes/admin.benchmark'
 import { Route as AdminAiSpendRouteImport } from './routes/admin.ai-spend'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -386,6 +387,11 @@ const AdminBillingRoute = AdminBillingRouteImport.update({
   path: '/admin/billing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminBenchmarkRoute = AdminBenchmarkRouteImport.update({
+  id: '/admin/benchmark',
+  path: '/admin/benchmark',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminAiSpendRoute = AdminAiSpendRouteImport.update({
   id: '/admin/ai-spend',
   path: '/admin/ai-spend',
@@ -684,6 +690,7 @@ export interface FileRoutesByFullPath {
   '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
+  '/admin/benchmark': typeof AdminBenchmarkRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/builder': typeof AdminBuilderRoute
   '/admin/cloud-cost': typeof AdminCloudCostRoute
@@ -792,6 +799,7 @@ export interface FileRoutesByTo {
   '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
+  '/admin/benchmark': typeof AdminBenchmarkRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/builder': typeof AdminBuilderRoute
   '/admin/cloud-cost': typeof AdminCloudCostRoute
@@ -901,6 +909,7 @@ export interface FileRoutesById {
   '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
+  '/admin/benchmark': typeof AdminBenchmarkRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/builder': typeof AdminBuilderRoute
   '/admin/cloud-cost': typeof AdminCloudCostRoute
@@ -1011,6 +1020,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
+    | '/admin/benchmark'
     | '/admin/billing'
     | '/admin/builder'
     | '/admin/cloud-cost'
@@ -1119,6 +1129,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
+    | '/admin/benchmark'
     | '/admin/billing'
     | '/admin/builder'
     | '/admin/cloud-cost'
@@ -1227,6 +1238,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
+    | '/admin/benchmark'
     | '/admin/billing'
     | '/admin/builder'
     | '/admin/cloud-cost'
@@ -1336,6 +1348,7 @@ export interface RootRouteChildren {
   WaitlistRoute: typeof WaitlistRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminAiSpendRoute: typeof AdminAiSpendRoute
+  AdminBenchmarkRoute: typeof AdminBenchmarkRoute
   AdminBillingRoute: typeof AdminBillingRoute
   AdminBuilderRoute: typeof AdminBuilderRoute
   AdminCloudCostRoute: typeof AdminCloudCostRoute
@@ -1800,6 +1813,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBillingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/benchmark': {
+      id: '/admin/benchmark'
+      path: '/admin/benchmark'
+      fullPath: '/admin/benchmark'
+      preLoaderRoute: typeof AdminBenchmarkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/ai-spend': {
       id: '/admin/ai-spend'
       path: '/admin/ai-spend'
@@ -2232,6 +2252,7 @@ const rootRouteChildren: RootRouteChildren = {
   WaitlistRoute: WaitlistRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminAiSpendRoute: AdminAiSpendRoute,
+  AdminBenchmarkRoute: AdminBenchmarkRoute,
   AdminBillingRoute: AdminBillingRoute,
   AdminBuilderRoute: AdminBuilderRoute,
   AdminCloudCostRoute: AdminCloudCostRoute,
