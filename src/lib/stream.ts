@@ -177,8 +177,20 @@ export async function streamGenerate(
    */
   const resumeAcceptedTurn = async (): Promise<boolean> => {
     if (!turnId || signal?.aborted) return false;
-    await streamResumeTurn(turnId, 0, handlers, signal);
-    return true;
+    // Mobile Safari can fail both the original fetch and the first reconnect
+    // while switching radio/network state. Retry only this idempotent replay
+    // endpoint; never POST /api/generate again.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const completed = await streamResumeTurn(turnId, 0, handlers, signal);
+        if (completed) return true;
+      } catch (resumeError) {
+        if (signal?.aborted) return false;
+        if (attempt === 2) throw resumeError;
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+    }
+    return false;
   };
 
   try {
@@ -360,7 +372,7 @@ export async function streamResumeTurn(
   afterSeq: number,
   handlers: Handlers,
   signal?: AbortSignal,
-): Promise<void> {
+): Promise<boolean> {
   const token = await getSupabaseAccessToken();
   if (!token) throw new Error("Not signed in");
 
@@ -372,13 +384,13 @@ export async function streamResumeTurn(
       signal,
     });
   } catch (e) {
-    if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
+    if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return false;
     throw e;
   }
 
   if (!resp.ok || !resp.body) {
     // 404 / 403 / 410 — caller treats as "no in-flight turn", nothing to do.
-    return;
+    return false;
   }
 
   const reader = resp.body.getReader();
@@ -490,12 +502,13 @@ export async function streamResumeTurn(
             break;
           case "done":
             handlers.onDone?.((evt.status as "succeeded" | "failed" | "aborted") ?? "succeeded");
-            return;
+            return true;
         }
       }
     }
   } catch (e) {
-    if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
+    if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return false;
     throw e;
   }
+  return false;
 }
