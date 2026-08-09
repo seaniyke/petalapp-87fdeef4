@@ -2421,6 +2421,7 @@ Forbidden defaults
         narrowed = true;
       }
       archetypeBlock = narrowed ? renderBlueprintBlock(composed.blueprint) : composed.promptBlock;
+      for (const r of composed.blueprint.routes ?? []) if (r) plannedRoutes.push(r);
     }
   } catch {
     // Never block a build on composer failure.
