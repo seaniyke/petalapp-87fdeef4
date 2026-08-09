@@ -25,6 +25,8 @@ import { fixMissingShadcnImports } from "./shadcn-imports.server";
 import { fixArraySafety } from "./array-safety-fixer.server";
 import { repairUnresolvedImports } from "./import-resolver.server";
 import { repairBareImports } from "./bare-import-resolver.server";
+import { closeKitDependencies } from "./kit-dep-closure.server";
+
 import { normalizeJsxExtensions } from "./extension-normalizer.server";
 import { validateRouteGraph } from "./route-graph.server";
 import { sweepTailwindTokens } from "./tailwind-token-sweep.server";
@@ -238,6 +240,15 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
     if (bare.stripped.length) parts.push(`stripped ${bare.stripped.length} unknown import(s)`);
     notes.push(`bare-imports: ${parts.join("; ")}`);
   }
+
+  // 5a. Kit dependency closure — the model's page imports a scaffold module
+  //     (e.g. "@/components/motion") whose kit file imports framer-motion.
+  //     `repairBareImports` never sees kit files, so the package was missing
+  //     from package.json and vite died on an import the user never wrote.
+  const kitDeps = closeKitDependencies(files);
+  files = kitDeps.files;
+  for (const n of kitDeps.notes) notes.push(n);
+
 
   // 5b. Sibling resolution (Quality Push A3) — the file the import meant IS
   //     in this pass, the specifier just has the wrong case/folder/extension.

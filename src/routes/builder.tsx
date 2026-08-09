@@ -50,6 +50,11 @@ import {
   readPersistedTurn,
   bumpTurnSeq,
 } from "@/lib/turn-persistence";
+import {
+  persistPendingPlan,
+  clearPendingPlan,
+  readPendingPlan,
+} from "@/lib/pending-plan";
 import { streamTriage } from "@/lib/triage";
 import { requestDiscussion } from "@/lib/discuss";
 import { emitServiceEnabled, onServiceEnabled } from "@/lib/service-events";
@@ -805,6 +810,46 @@ function Builder() {
     /** Petal proposed this on its own (Plan Mode v2) rather than on request. */
     auto: boolean;
   } | null>(null);
+  // Plan Mode survives reloads: the proposal is written to localStorage while
+  // it waits for approval. Without this, closing the tab (or a phone locking)
+  // silently killed the turn — the prompt stayed in the thread with no build
+  // running and no card to approve.
+  const planRestoredForRef = useRef<string | null>(null);
+  useEffect(() => {
+    const pid = project?.id;
+    if (!pid) return;
+    if (planRestoredForRef.current !== pid) {
+      planRestoredForRef.current = pid;
+      if (!proposedPlan) {
+        const stored = readPendingPlan(pid);
+        if (stored) {
+          setProposedPlan({
+            planId: stored.planId,
+            summary: stored.summary,
+            risk: stored.risk,
+            files: stored.files,
+            allowedPaths: new Set(stored.allowedPaths),
+            sourcePrompt: stored.sourcePrompt,
+            auto: stored.auto,
+          });
+        }
+        return;
+      }
+    }
+    if (proposedPlan) {
+      persistPendingPlan(pid, {
+        planId: proposedPlan.planId,
+        summary: proposedPlan.summary,
+        risk: proposedPlan.risk,
+        files: proposedPlan.files,
+        allowedPaths: Array.from(proposedPlan.allowedPaths),
+        sourcePrompt: proposedPlan.sourcePrompt,
+        auto: proposedPlan.auto,
+      });
+    } else {
+      clearPendingPlan(pid);
+    }
+  }, [project?.id, proposedPlan]);
   const composerFileInputRef = useRef<HTMLInputElement>(null);
   const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
   // Voice dictation — Web Speech API. Streams interim words into the textarea
