@@ -337,7 +337,35 @@ export async function buildAndDeploy(
   const headersFile = `/*\n  Cross-Origin-Resource-Policy: cross-origin\n  Access-Control-Allow-Origin: *\n`;
   await writeFile(join(distDir, "_headers"), headersFile, "utf8");
 
+  // 2c) Pre-deploy browser check. The verifier drives the real built output
+  //     over a throwaway localhost server, so a runtime failure is caught
+  //     before anything is uploaded and before the user ever sees it. Running
+  //     it here also means CDN propagation can no longer masquerade as an app
+  //     defect — there is no CDN in front of 127.0.0.1.
+  //
+  //     A verifier that cannot run is not a build failure: the bundle is real
+  //     either way, so we deploy and report the check as skipped.
+  let verification: PreDeployReport | undefined;
+  if (options.preDeployCheck) {
+    const preview = await startPreviewServer(distDir);
+    try {
+      verification = await options.preDeployCheck(preview.baseUrl);
+    } finally {
+      await preview.close().catch(() => {});
+    }
+    const blocking = partitionVerificationDefects(verification?.defects).blocking;
+    if (blocking.length > 0) {
+      throw new VerificationBlockedError(
+        "The app built successfully, but Petal's browser check found a runtime failure before deploying.",
+        blocking.map((defect) => `- ${defect}`).join("\n"),
+        verification ?? {},
+        blocking,
+      );
+    }
+  }
+
   // 3) Ensure the Cloudflare Pages project exists. We hit the Cloudflare REST
+
   //    API directly instead of `wrangler pages project create` because wrangler
   //    surfaces the "already exists" case as an opaque `code: 8000000` unknown
   //    error on some accounts, which is indistinguishable from a real failure.
