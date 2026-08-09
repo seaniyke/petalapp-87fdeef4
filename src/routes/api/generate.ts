@@ -1719,6 +1719,7 @@ async function handleGenerateRequestCore(
 
   if ((body.planFirst || autoPlanWanted) && !body.approvedPlanId) {
     if (!body.projectId) {
+      releaseBuildLock(userId, body.projectId);
       return new Response(
         JSON.stringify({ error: "Plan mode requires a saved project. Save and try again." }),
         { status: 400, headers: { "Content-Type": "application/json" } },
@@ -2745,6 +2746,7 @@ Forbidden defaults
         /* ignore */
       }
     }
+    releaseBuildLock(userId, body.projectId);
     return new Response(msg, { status: upstream.status === 402 ? 402 : 502 });
   }
 
