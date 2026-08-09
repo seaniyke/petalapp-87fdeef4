@@ -3106,7 +3106,9 @@ function Builder() {
       if (pendingQuestion) {
         setAnsweredQuestionAt(messages.length);
       }
-      if (busy || discussBusy) {
+      // `turnLockRef` covers the window where a turn has started but `busy`
+      // hasn't rendered yet — queue instead of dropping the message.
+      if (busy || discussBusy || turnLockRef.current) {
         setPendingQueue((q) => [
           ...q,
           { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text: trimmed, mode },
