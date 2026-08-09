@@ -84,7 +84,9 @@ export function FirstRunTour({ suppressed = false }: { suppressed?: boolean }) {
     }
   };
 
-  if (!open) return null;
+  // `suppressed` can flip true after mount (messages load async), so gate the
+  // render too — not just the open timer.
+  if (!open || suppressed) return null;
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
 
