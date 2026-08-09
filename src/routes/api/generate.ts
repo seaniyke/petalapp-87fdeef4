@@ -2391,6 +2391,9 @@ Forbidden defaults
   // examples into ONE structured blueprint. Replaces the legacy archetype-
   // only block. Falls back silently if no confident match.
   let archetypeBlock = "";
+  // Routes the blueprint planned for this build. Used after the stream to
+  // detect a turn that shipped only the landing page and deferred the rest.
+  const plannedRoutes: string[] = [];
   try {
     const { buildBlueprintFor, renderBlueprintBlock } = await import("@/server/app-composer.server");
     const composed = buildBlueprintFor(lastUserText, { hasBackend: Boolean(backend) });
