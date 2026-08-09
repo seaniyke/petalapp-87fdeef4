@@ -107,12 +107,15 @@ export function deriveArchitectureDoc(files: ProjectFile[]): ArchitectureDoc {
     const re = new RegExp(ROUTE_DECL_RE.source, "g");
     let m: RegExpExecArray | null;
     while ((m = re.exec(f.content))) {
-      const path = normalizePath(m[1] ?? m[2] ?? "");
+      const tag = m[0];
+      const pm = ROUTE_PATH_ATTR_RE.exec(tag);
+      const path = normalizePath(pm?.[1] ?? pm?.[2] ?? "");
       if (!path) continue;
-      const component = m[3];
+      const component = ROUTE_ELEMENT_ATTR_RE.exec(tag)?.[1];
       const owner = component ? componentFile.get(component) : undefined;
       if (!routes.has(path)) routes.set(path, { path, file: owner, component });
     }
+
   }
   // TanStack file routes.
   for (const f of files) {
