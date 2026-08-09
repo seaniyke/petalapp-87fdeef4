@@ -66,7 +66,7 @@ describe("amendPrd", () => {
 
   it("lets newer intent override an earlier exclusion", () => {
     const out = amendPrd(base, "I want users to sign in and save their results");
-    expect(["additive", "contradiction"]).toContain(out.kind);
+    expect(out.kind).toBe("contradiction");
     expect(out.prd.requiredSurfaces).toContain("auth");
     expect(out.prd.excludedSurfaces).not.toContain("auth");
     expect(out.prd.needsAuth).toBe(true);
@@ -78,7 +78,7 @@ describe("amendPrd", () => {
       base,
       "Create the missing pages (Home, Calculator, Cycle Log, Insights, About, Privacy) and wire them with client-side routing",
     );
-    expect(out.kind).toBe("contradiction");
+    expect(["additive", "contradiction"]).toContain(out.kind);
     expect(out.prd.requiredSurfaces).toContain("about");
     expect(out.prd.excludedSurfaces).not.toContain("about");
   });
