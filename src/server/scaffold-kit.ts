@@ -1239,12 +1239,26 @@ const CHECKBOX = `import * as React from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {}
+export interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {
+  /** shadcn-compatible alias — receives the next checked value. */
+  onCheckedChange?: (checked: boolean) => void;
+}
 
 export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
-  ({ className, checked, onChange, ...props }, ref) => (
+  ({ className, checked, onChange, onCheckedChange, ...props }, ref) => (
     <label className={cn("relative inline-flex h-4 w-4 items-center justify-center", className)}>
-      <input type="checkbox" ref={ref} checked={checked} onChange={onChange} className="peer sr-only" {...props} />
+      <input
+        type="checkbox"
+        ref={ref}
+        checked={checked}
+        readOnly={checked !== undefined && !onChange && !onCheckedChange}
+        onChange={(e) => {
+          onChange?.(e);
+          onCheckedChange?.(e.target.checked);
+        }}
+        className="peer sr-only"
+        {...props}
+      />
       <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-primary bg-background peer-checked:bg-primary peer-checked:text-primary-foreground peer-disabled:opacity-50">
         {checked ? <Check className="h-3 w-3" /> : null}
       </span>
