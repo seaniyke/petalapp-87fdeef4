@@ -28,7 +28,7 @@ import {
   withProjectLock,
   type ProjectFile,
 } from "./fs-helpers.js";
-import { buildAndDeploy, BuildError } from "./build.js";
+import { buildAndDeploy, BuildError, VerificationBlockedError } from "./build.js";
 import { runExecSession, ExecError, MAX_COMMANDS_PER_SESSION } from "./exec.js";
 import {
   runInstallSession,
