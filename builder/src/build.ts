@@ -244,8 +244,10 @@ export async function buildAndDeploy(
 
   projectDir: string,
   projectId: string,
-  cloudflare: { apiToken: string; accountId: string }
+  cloudflare: { apiToken: string; accountId: string },
+  options: { preDeployCheck?: PreDeployCheck } = {},
 ): Promise<BuildResult> {
+
   const startedAt = Date.now();
   const projectName = projectNameFor(projectId);
 
