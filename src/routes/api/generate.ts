@@ -106,6 +106,12 @@ import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-cla
 // Phase D one-round autofix cap, so it only added latency + tokens.
 import { runLocalVerifyTier } from "@/server/pipeline/tier-local-verify";
 import { runContinuationTier } from "@/server/pipeline/tier-continuation";
+import {
+  assessChunking,
+  parseStepsFromArgs,
+  runChunkedGeneration,
+} from "@/server/chunked-generation.server";
+
 import { runEsbuildTier } from "@/server/pipeline/tier-esbuild";
 import { runRenderRiskTier } from "@/server/pipeline/tier-render-risk";
 import { runRlsSanityTier } from "@/server/pipeline/tier-rls-sanity";
