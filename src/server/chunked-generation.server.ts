@@ -324,6 +324,7 @@ export async function runChunkedGeneration(args: {
           isInitial: args.isInitial,
           deliveredPaths,
           remainingSteps,
+          reason: args.assessment.reason,
         }),
         maxTokens: args.chunkMaxTokens ?? 8_000,
       });
