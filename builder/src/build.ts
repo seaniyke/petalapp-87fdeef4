@@ -68,7 +68,7 @@ export class VerificationBlockedError extends BuildError {
 // after only ~39 seconds despite advertising a 75-second timeout, turning a
 // healthy upload into a failed deployment. Keep polling for the full five
 // minute propagation window instead.
-const DEPLOY_READY_TIMEOUT_MS = 5 * 60_000;
+const DEPLOY_READY_TIMEOUT_MS = 10 * 60_000;
 const DEPLOY_READY_POLL_MS = 10_000;
 const TRANSIENT_DEPLOY_STATUSES = new Set([404, 408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524]);
 

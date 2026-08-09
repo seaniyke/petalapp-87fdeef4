@@ -55,7 +55,7 @@ const CALLBACK_URL = process.env.PETAL_CALLBACK_URL; // https://app.example.com/
 const MAX_CONCURRENT = Number(process.env.MAX_CONCURRENT_BUILDS ?? 3);
 const MAX_QUEUE = Number(process.env.MAX_QUEUE ?? 50);
 /** Hard ceiling on a single job so a wedged install can never leak a slot. */
-const JOB_TIMEOUT_MS = Number(process.env.JOB_TIMEOUT_MS ?? 12 * 60 * 1000);
+const JOB_TIMEOUT_MS = Number(process.env.JOB_TIMEOUT_MS ?? 22 * 60 * 1000);
 /** Inspection/codemod sessions get their own pool so they never starve deploys. */
 const MAX_CONCURRENT_EXEC = Number(process.env.MAX_CONCURRENT_EXEC ?? 4);
 const MAX_EXEC_QUEUE = Number(process.env.MAX_EXEC_QUEUE ?? 30);

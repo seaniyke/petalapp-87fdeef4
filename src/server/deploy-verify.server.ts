@@ -24,7 +24,7 @@ export interface DeployProbeResult {
   message: string;
 }
 
-const TIMEOUT_MS = 12_000;
+const TIMEOUT_MS = 30_000;
 
 /** Below this a "page" is a host error page or an empty shell, not an app. */
 const MIN_BODY_BYTES = 200;

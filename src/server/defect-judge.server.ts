@@ -28,7 +28,7 @@ import { aiChatCompletions } from "@/server/ai-provider.server";
 const ESCALATED_MODEL = "google/gemini-3.6-flash";
 const CHEAP_MODEL = "google/gemini-3.1-flash-lite";
 const MAX_DEFECTS = 24;
-const TIMEOUT_MS = 20_000;
+const TIMEOUT_MS = 45_000;
 
 /**
  * Advisory findings whose wording already proves they are cosmetic or

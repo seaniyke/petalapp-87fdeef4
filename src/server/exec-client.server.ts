@@ -43,10 +43,10 @@ export function isExecConfigured(): boolean {
   return Boolean(process.env.BUILDER_URL && process.env.BUILDER_SHARED_SECRET);
 }
 
-/** Wall clock for the whole round trip; the builder caps the session at 60s. */
-const REQUEST_TIMEOUT_MS = 90_000;
+/** Wall clock for the whole round trip; must exceed the builder's session cap. */
+const REQUEST_TIMEOUT_MS = 240_000;
 /** Installs and test runs are minutes-scale by nature, so they get their own budget. */
-const LONG_REQUEST_TIMEOUT_MS = 10 * 60_000;
+const LONG_REQUEST_TIMEOUT_MS = 15 * 60_000;
 
 export async function runExecSession(args: {
   projectId: string;

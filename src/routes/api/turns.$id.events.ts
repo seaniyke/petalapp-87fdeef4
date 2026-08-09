@@ -39,12 +39,14 @@ type EventRow = {
 
 const POLL_INTERVAL_MS = 800;
 /** Hard ceiling on how long the resume stream stays open even if nothing
- *  arrives. Build pipeline timeout is ~4min; we allow 6 to be safe. */
-const MAX_STREAM_MS = 6 * 60_000;
+ *  arrives. The build pipeline can legitimately run ~15min on a large first
+ *  build, so the resume stream must outlive it — cutting the reconnect early
+ *  is what made long turns look "stuck" in the UI. */
+const MAX_STREAM_MS = 25 * 60_000;
 /** A turn older than the pipeline's absolute ceiling cannot still be doing
  * useful work. Treat legacy rows left "running" by a dropped final write as
- * aborted instead of reconnecting the UI to them for another six minutes. */
-const STALE_TURN_MS = 15 * 60_000;
+ * aborted instead of reconnecting the UI to them indefinitely. */
+const STALE_TURN_MS = 40 * 60_000;
 const SSE_HEADERS = {
   "Content-Type": "text/event-stream",
   "Cache-Control": "no-cache, no-transform",

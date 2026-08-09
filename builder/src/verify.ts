@@ -145,12 +145,12 @@ export interface VerifyReport {
 export const MAX_ROUTES = 12;
 export const MAX_FLOWS = 4;
 export const MAX_STEPS_PER_FLOW = 20;
-const NAV_TIMEOUT_MS = 25_000;
+const NAV_TIMEOUT_MS = 45_000;
 const SETTLE_MS = 1_200;
-const STEP_TIMEOUT_MS = 8_000;
-const MAX_WAIT_MS = 5_000;
-export const VERIFY_TIMEOUT_MS = Number(process.env.VERIFY_TIMEOUT_MS ?? 4 * 60 * 1000);
-const ROUTE_RETRY_DELAYS_MS = [2_000, 4_000];
+const STEP_TIMEOUT_MS = 15_000;
+const MAX_WAIT_MS = 8_000;
+export const VERIFY_TIMEOUT_MS = Number(process.env.VERIFY_TIMEOUT_MS ?? 8 * 60 * 1000);
+const ROUTE_RETRY_DELAYS_MS = [2_000, 4_000, 8_000];
 
 /** Console noise that says nothing about whether the app works. */
 const IGNORED_CONSOLE = [

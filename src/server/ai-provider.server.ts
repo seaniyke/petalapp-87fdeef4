@@ -790,7 +790,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
  * If the caller passes its own `signal`, we honor BOTH — whichever fires
  * first wins (AbortSignal.any is supported in Workers + Node ≥ 20).
  */
-const DEFAULT_TIMEOUT_MS = 45_000;
+const DEFAULT_TIMEOUT_MS = 120_000;
 /**
  * Hard wall-clock ceiling for streamed turns. Deliberately very long — users
  * would rather wait for a large build to finish than see it cut off mid-file.

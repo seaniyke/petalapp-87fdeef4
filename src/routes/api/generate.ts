@@ -601,7 +601,7 @@ function isTruncatedFinishReason(reason: string | null | undefined): boolean {
  * thinking between file emits — the real signal of a wedged provider is
  * "nothing for several minutes", not "nothing for 75s".
  */
-const STREAM_IDLE_TIMEOUT_MS = 300_000;
+const STREAM_IDLE_TIMEOUT_MS = 480_000;
 
 async function relayAndCollect(
   upstream: Response,
@@ -4512,7 +4512,7 @@ Forbidden defaults
         {
 
           const AGENT_LOOP_MAX_CYCLES = 3;
-          const AGENT_LOOP_WALL_MS = 90_000;
+          const AGENT_LOOP_WALL_MS = 300_000;
           const loopT0 = Date.now();
           const { verifyFilesLocal: lvFn } = await import("@/server/local-verifier");
           // Shared with the pre-emit gate so "what blocks a turn" has exactly
@@ -4701,7 +4701,9 @@ Forbidden defaults
             encoder.encode(
               sse({
                 type: "timeline",
-                step: "esbuild_parse",
+                step: guardOut.detail?.includes("prd-contract")
+                  ? "prd_contract"
+                  : "esbuild_parse",
                 outcome: "failed",
                 message: `Blocked: ${guardOut.detail}`.slice(0, 500),
                 ts: Date.now(),
@@ -5394,7 +5396,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
  * they can only pay for once. Entries carry a TTL so an aborted or crashed
  * turn always frees itself.
  */
-const BUILD_LOCK_TTL_MS = 6 * 60 * 1000;
+const BUILD_LOCK_TTL_MS = 20 * 60 * 1000;
 const buildLocks = new Map<string, number>();
 
 function acquireBuildLock(userId: string): boolean {

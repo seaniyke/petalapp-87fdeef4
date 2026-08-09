@@ -75,8 +75,8 @@ export const ALLOWED_BINS = new Set([
 /** Binaries that may write. Everything else runs read-only by convention. */
 const WRITE_CAPABLE = new Set(["node", "python3", "sed"]);
 
-export const PER_COMMAND_TIMEOUT_MS = 20_000;
-export const PER_SESSION_TIMEOUT_MS = 60_000;
+export const PER_COMMAND_TIMEOUT_MS = 60_000;
+export const PER_SESSION_TIMEOUT_MS = 180_000;
 export const OUTPUT_CAP_BYTES = 32 * 1024;
 export const MAX_COMMANDS_PER_SESSION = 12;
 

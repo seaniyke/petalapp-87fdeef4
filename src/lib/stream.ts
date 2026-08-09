@@ -58,6 +58,7 @@ type Handlers = {
       | "file_budget"
       | "post_stream_autofix"
       | "image_resolve"
+      | "prd_contract"
       | "agent_tool";
     outcome: "ok" | "fixed" | "skipped" | "failed";
     message: string;

@@ -1,0 +1,1 @@
+insert into public.projects (owner_id, title, slug, is_public) values ('0478356d-9937-49ae-9a10-73c57e8d0d0e', 'Trailmark QA', 'trailmark-qa-' || substr(md5(random()::text),1,8), true);

@@ -709,6 +709,7 @@ export type StreamEvent =
         | "file_budget"
         | "post_stream_autofix"
         | "image_resolve"
+        | "prd_contract"
       | "agent_tool";
       /** "ok" = ran clean, "fixed" = ran and changed something, "skipped" = gated off. */
       outcome: "ok" | "fixed" | "skipped" | "failed";
