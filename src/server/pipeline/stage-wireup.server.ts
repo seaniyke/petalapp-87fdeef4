@@ -53,36 +53,19 @@ export async function runStageWireup(args: {
 
   const allPaths = files.map((f) => f.path);
 
-  // 1. Local verifier — parse + imports + exports.
-  const localVerdict = verifyFilesLocal(files, allPaths);
-  if (!localVerdict.ok) {
-    const fatal = localVerdict.issues.filter(
-      (i) =>
-        i.kind === "truncation" ||
-        i.kind === "unterminated-string" ||
-        i.kind === "braces" ||
-        // Undefined components survived the shadcn autofix — they will
-        // crash at render. Fail the stage so the orchestrator falls back
-        // to the monolithic path (which has continuation + model autofix).
-        i.kind === "undefined",
-    );
-    if (fatal.length > 0) {
-      return {
-        ok: false,
-        reason: fatal.some((i) => i.kind === "undefined")
-          ? "undefined_components"
-          : "local_verifier_fatal",
-        blockingIssues: fatal.map((i) => `${i.path}: ${i.kind} — ${i.detail ?? ""}`).slice(0, 8),
-      };
-    }
-    notes.push(
-      `local-verifier: ${localVerdict.issues.length} non-fatal issue(s) deferred to autofix`,
-    );
-  }
+  // Petal-owned scaffold files (the kit under src/components/{ui,fx,blocks,
+  // mobile,content}) are shipped constants, not model output. Judging them
+  // here was rejecting every staged build over regex false positives in code
+  // that esbuild parses fine — the whole staged pipeline then silently fell
+  // back to the monolithic path on EVERY build. Only verify authored files.
+  const isKitFile = (p: string) =>
+    /^src\/components\/(ui|fx|blocks|mobile|content)\//.test(p);
+  const authored = files.filter((f) => !isKitFile(f.path));
 
-  // 2. Esbuild verifier — real parser.
+  // 1. Esbuild verifier FIRST — it is the real parser and the only honest
+  //    authority on whether a file compiles.
   try {
-    const esbuildVerdict = await verifyFilesEsbuild(files, allPaths);
+    const esbuildVerdict = await verifyFilesEsbuild(authored, allPaths);
     if (!esbuildVerdict.ok) {
       return {
         ok: false,
@@ -95,6 +78,26 @@ export async function runStageWireup(args: {
   } catch (e) {
     notes.push(`esbuild-verifier threw: ${e instanceof Error ? e.message : String(e)}`);
   }
+
+  // 2. Local verifier — imports/exports/undefined components. Its regex-based
+  //    syntax kinds (braces / unterminated-string / truncation) are advisory
+  //    now that esbuild has already parsed these files successfully.
+  const localVerdict = verifyFilesLocal(authored, allPaths);
+  if (!localVerdict.ok) {
+    const fatal = localVerdict.issues.filter((i) => i.kind === "undefined");
+    if (fatal.length > 0) {
+      return {
+        ok: false,
+        reason: "undefined_components",
+        blockingIssues: fatal.map((i) => `${i.path}: ${i.kind} — ${i.detail ?? ""}`).slice(0, 8),
+      };
+    }
+    notes.push(
+      `local-verifier: ${localVerdict.issues.length} non-fatal issue(s) deferred to autofix`,
+    );
+  }
+
+
 
   // 3. Entry trio + root view. index.html / src/main.tsx are safe to inject
   // unconditionally — Petal owns them. src/App.tsx is the contract: if the

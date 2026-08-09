@@ -434,18 +434,48 @@ export async function pickDesignDirection(args: {
     fontHint +
     `\nPick one bold direction and call set_design_direction now.`;
 
+  /**
+   * Deterministic fallback direction.
+   *
+   * Returning `null` when the model is slow was the single biggest cause of
+   * "the app looks plain": with no direction, no font pair reaches the
+   * prompt, `styles.css` gets no `--font-display`, and the build renders in
+   * system sans with default taste. A picked-by-rule direction is always
+   * better than no direction, so a timeout now degrades instead of failing.
+   */
+  const fallbackDirection = (): DesignDirection => {
+    const theme = pickThemeForBrief(trimmedBrief);
+    const pair = fontDefault ?? { display: "Sora", body: "Manrope", reason: "general app" };
+    const motion: MotionIntensity = "subtle";
+    return {
+      vibe: `${theme}-modern`,
+      rationale: "Deterministic direction (the design model did not respond in time).",
+      display_font: pair.display,
+      body_font: pair.body,
+      palette_mood: `${theme} palette with one confident accent`,
+      density: "balanced",
+      motion,
+      fx_recipe: pickFxRecipe(trimmedBrief, motion),
+      design_moves: [
+        "oversized display headline with tight tracking",
+        "layered surfaces: gradient hero, elevated cards, soft shadows",
+      ],
+      theme,
+      template: pickTemplateForBrief(trimmedBrief),
+    };
+  };
+
   let direction: DesignDirection | null = null;
   try {
-    // HARD TIMEOUT (8s). The director is a NICE-TO-HAVE pre-stream pass.
-    // If the gateway / preview model is slow or hangs, we MUST NOT block the
-    // whole build — that causes the worker to hit its CPU/wall budget and
-    // return an empty response (status 0 in CF logs → "Something went wrong"
-    // in the UI). On timeout we fall through to null and the build proceeds
-    // with the model's default taste.
+    // SOFT TIMEOUT (18s). The director must not block the whole build — that
+    // burns the worker's CPU/wall budget and returns an empty response. But
+    // on timeout we now fall back to a deterministic direction rather than
+    // shipping with no design system at all.
     const resp = await aiChatCompletions({
       feature: "design",
       body: {
         model: DIRECTOR_MODEL,
+
         messages: [
           { role: "system", content: DIRECTOR_SYSTEM },
           { role: "user", content: userPrompt },
@@ -453,11 +483,11 @@ export async function pickDesignDirection(args: {
         tools: [DIRECTOR_TOOL],
         tool_choice: { type: "function", function: { name: "set_design_direction" } },
       },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(18_000),
     });
     if (!resp.ok) {
-      console.warn("[design-director] http error", resp.status);
-      return null;
+      console.warn("[design-director] http error", resp.status, "— using deterministic direction");
+      return fallbackDirection();
     }
     const json = (await resp.json()) as {
       choices?: Array<{
@@ -465,7 +495,7 @@ export async function pickDesignDirection(args: {
       }>;
     };
     const argsStr = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    if (!argsStr) return null;
+    if (!argsStr) return fallbackDirection();
     const parsed = JSON.parse(argsStr) as DesignDirection;
     // Validate the bare minimum so a malformed call can't poison the prompt.
     if (
@@ -476,7 +506,7 @@ export async function pickDesignDirection(args: {
       !Array.isArray(parsed.design_moves) ||
       parsed.design_moves.length < 2
     ) {
-      return null;
+      return fallbackDirection();
     }
     // Part B — substitute generic font choices with the domain default.
     // Triggers when the model returned display == body, both generic, or
@@ -518,8 +548,8 @@ export async function pickDesignDirection(args: {
     }
     direction = parsed;
   } catch (e) {
-    console.warn("[design-director] threw:", e);
-    return null;
+    console.warn("[design-director] threw:", e, "— using deterministic direction");
+    return fallbackDirection();
   }
 
   // Best-effort persistence — never blocks.
