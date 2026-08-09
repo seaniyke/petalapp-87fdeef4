@@ -2984,12 +2984,32 @@ Forbidden defaults
         // then applies in order. Best-effort: any failure here leaves the
         // already-usable payload untouched.
         try {
-          const chunkAssessment = assessChunking({
+          let chunkAssessment = assessChunking({
             rawArgs: collected.args,
             finishReason: collected.finishReason,
             ops: parsed.ops,
             files: parsed.files,
           });
+
+          // Coverage continuation: a clean stop that shipped only the landing
+          // page is still an unfinished app. If the build planned routes that
+          // no emitted file provides, finish them in THIS turn.
+          if (!chunkAssessment.needed && isInitial) {
+            const stepRoutes = parseStepsFromArgs(collected.args)
+              .flatMap((s) => s.match(/\/[a-z][a-z0-9-]{1,24}/gi) ?? []);
+            const expectedRoutes = Array.from(
+              new Set([...plannedRoutes, ...stepRoutes].map((r) => r.toLowerCase())),
+            ).filter((r) => r !== "/");
+            if (expectedRoutes.length) {
+              const coverage = assessRouteCoverage({
+                expectedRoutes,
+                ops: parsed.ops,
+                files: parsed.files,
+              });
+              if (coverage.needed) chunkAssessment = coverage;
+            }
+          }
+
           if (chunkAssessment.needed) {
             console.warn(
               `[chunked-generation] reason=${chunkAssessment.reason} delivered=${chunkAssessment.deliveredPaths.length} remainingSteps=${chunkAssessment.remainingSteps.length}`,
