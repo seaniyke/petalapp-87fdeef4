@@ -2066,10 +2066,15 @@ function Builder() {
           actionLabel: "Buy credits",
           actionKind: "buy-credits",
         });
+        releaseTurnLock();
         return;
       }
       const proj = await ensureProject();
-      if (!proj) return;
+      if (!proj) {
+        releaseTurnLock();
+        return;
+      }
+
       supersedeBuildId(proj.latest_build_id);
       setError(null);
       setFriendlyError(null);
