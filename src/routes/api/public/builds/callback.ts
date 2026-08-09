@@ -14,7 +14,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   allBlockingDefectsAreTransientEdge,
-  partitionVerificationDefects,
+  
   sanitizeVerificationDefects,
 } from "@/lib/verification-report";
 import { verifySignature } from "@/server/builder.server";
