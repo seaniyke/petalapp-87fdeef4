@@ -2998,9 +2998,21 @@ Forbidden defaults
           if (!chunkAssessment.needed && isInitial) {
             const stepRoutes = parseStepsFromArgs(collected.args)
               .flatMap((s) => s.match(/\/[a-z][a-z0-9-]{1,24}/gi) ?? []);
+            // Nav/link targets the app itself declares are promises to the
+            // user: a header link to /plants with no page behind it is the
+            // same unfinished build as a planned route that never shipped.
+            const emittedSource = [
+              ...(parsed.files ?? []).map((f) => f.content ?? ""),
+              ...(parsed.ops ?? []).map((o: { content?: string }) => o.content ?? ""),
+            ].join("\n");
+            const linkRoutes = [
+              ...Array.from(emittedSource.matchAll(/\bto\s*=\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
+              ...Array.from(emittedSource.matchAll(/\bhref\s*:\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
+            ].map((m) => m[1] ?? "");
             const expectedRoutes = Array.from(
-              new Set([...plannedRoutes, ...stepRoutes].map((r) => r.toLowerCase())),
+              new Set([...plannedRoutes, ...stepRoutes, ...linkRoutes].map((r) => r.toLowerCase())),
             ).filter((r) => r !== "/");
+
             if (expectedRoutes.length) {
               const coverage = assessRouteCoverage({
                 expectedRoutes,
