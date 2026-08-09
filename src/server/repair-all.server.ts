@@ -29,6 +29,8 @@ import { closeKitDependencies, syncTsconfigExcludes } from "./kit-dep-closure.se
 
 import { normalizeJsxExtensions } from "./extension-normalizer.server";
 import { validateRouteGraph } from "./route-graph.server";
+import { wireOrphanPages } from "./orphan-page-wiring.server";
+
 import { sweepTailwindTokens } from "./tailwind-token-sweep.server";
 import { stubMissingAssets } from "./asset-stubber.server";
 import { enforceRuntimeContracts } from "./runtime-contract.server";
