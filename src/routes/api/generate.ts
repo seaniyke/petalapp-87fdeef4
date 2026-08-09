@@ -1685,7 +1685,7 @@ async function handleGenerateRequestCore(
   // all get delivered while only the first can be paid for. One build in
   // flight per user closes that window. The lock is TTL-based so a crashed or
   // aborted turn can never lock a user out permanently.
-  if (!acquireBuildLock(userId)) {
+  if (!(await acquireBuildLock(userId, body.projectId))) {
     return new Response(
       JSON.stringify({
         error:
@@ -1719,6 +1719,7 @@ async function handleGenerateRequestCore(
 
   if ((body.planFirst || autoPlanWanted) && !body.approvedPlanId) {
     if (!body.projectId) {
+      releaseBuildLock(userId, body.projectId);
       return new Response(
         JSON.stringify({ error: "Plan mode requires a saved project. Save and try again." }),
         { status: 400, headers: { "Content-Type": "application/json" } },
@@ -1774,7 +1775,7 @@ async function handleGenerateRequestCore(
             );
           }
         } finally {
-          releaseBuildLock(userId);
+          releaseBuildLock(userId, body.projectId);
           controller.close();
         }
       },
@@ -2745,6 +2746,7 @@ Forbidden defaults
         /* ignore */
       }
     }
+    releaseBuildLock(userId, body.projectId);
     return new Response(msg, { status: upstream.status === 402 ? 402 : 502 });
   }
 
@@ -5212,7 +5214,7 @@ Forbidden defaults
         // Phase 6 — flush per-tier telemetry in a single insert.
         // Idempotent and never throws; safe in finally.
         void recorder.flush();
-        releaseBuildLock(userId);
+        releaseBuildLock(userId, body.projectId);
         controller.close();
       }
     },
@@ -5433,31 +5435,88 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
  * balance can be reconciled instead of disappearing.
  */
 /**
- * One-build-at-a-time lock, keyed by user.
+ * One-build-at-a-time lock, keyed by user AND project.
  *
  * Builds are priced from token usage AFTER generation, so the pre-flight floor
- * check cannot know the final bill. Without this lock a user can fire several
- * requests that all clear the floor simultaneously and receive several builds
- * they can only pay for once. Entries carry a TTL so an aborted or crashed
- * turn always frees itself.
+ * check cannot know the final bill. The lock exists to stop the SAME project
+ * being built twice from a double submit — it is not a per-account throttle:
+ * working on project A must never refuse a build on project B, and settlement
+ * drains the remaining wallet, so a concurrent build can't slip through free.
+ *
+ * The in-memory entry is only a hint. Before refusing anything we confirm
+ * against the database that a turn is genuinely still running for that
+ * project; a crashed worker, an aborted stream or a redeployed instance leaves
+ * a stale hint, and a stale hint must never cost the user a build.
  */
-const BUILD_LOCK_TTL_MS = 20 * 60 * 1000;
+const BUILD_LOCK_TTL_MS = 5 * 60 * 1000;
+/** A turn that hasn't finished in this long is dead, not running. */
+const TURN_STALE_MS = 10 * 60 * 1000;
 const buildLocks = new Map<string, number>();
 
-function acquireBuildLock(userId: string): boolean {
+function buildLockKey(userId: string, projectId: string | null | undefined): string {
+  return `${userId}::${projectId ?? "new"}`;
+}
+
+/**
+ * Is a turn for this exact project genuinely in flight right now?
+ * Also retires stale `running` rows so history stops showing phantom builds.
+ */
+async function hasLiveTurn(userId: string, projectId: string | null | undefined): Promise<boolean> {
+  if (!projectId) return false;
+  const client = supabaseAdmin;
+  if (!client) return false;
+  const cutoff = new Date(Date.now() - TURN_STALE_MS).toISOString();
+  try {
+    // Retire anything that can no longer be running.
+    await client
+      .from("turns")
+      .update({
+        status: "failed",
+        ended_at: new Date().toISOString(),
+        error_message: "Turn ended without completing.",
+      })
+      .eq("user_id", userId)
+      .eq("status", "running")
+      .lt("created_at", cutoff);
+
+    const { data } = await client
+      .from("turns")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("project_id", projectId)
+      .eq("status", "running")
+      .gte("created_at", cutoff)
+      .limit(1);
+    return Boolean(data && data.length > 0);
+  } catch (e) {
+    // Never refuse a build because the liveness probe failed.
+    console.warn("[build-lock] liveness probe failed:", (e as Error).message);
+    return false;
+  }
+}
+
+async function acquireBuildLock(
+  userId: string,
+  projectId: string | null | undefined,
+): Promise<boolean> {
   const now = Date.now();
-  const heldUntil = buildLocks.get(userId);
-  if (heldUntil && heldUntil > now) return false;
-  buildLocks.set(userId, now + BUILD_LOCK_TTL_MS);
+  const key = buildLockKey(userId, projectId);
+  const heldUntil = buildLocks.get(key);
+  if (heldUntil && heldUntil > now) {
+    // Held in memory — but only a real running turn justifies a refusal.
+    if (await hasLiveTurn(userId, projectId)) return false;
+    buildLocks.delete(key);
+  }
+  buildLocks.set(key, now + BUILD_LOCK_TTL_MS);
   // Opportunistic sweep so the map can't grow unbounded on a long-lived worker.
   if (buildLocks.size > 200) {
-    for (const [key, expiry] of buildLocks) if (expiry <= now) buildLocks.delete(key);
+    for (const [k, expiry] of buildLocks) if (expiry <= now) buildLocks.delete(k);
   }
   return true;
 }
 
-function releaseBuildLock(userId: string): void {
-  buildLocks.delete(userId);
+function releaseBuildLock(userId: string, projectId?: string | null): void {
+  buildLocks.delete(buildLockKey(userId, projectId));
 }
 
 async function recordUnpaidBuild(
