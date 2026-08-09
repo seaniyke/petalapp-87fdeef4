@@ -3019,7 +3019,10 @@ Forbidden defaults
               encoder.encode(
                 sse({
                   type: "status",
-                  message: "This edit is large — continuing it in smaller chunks…",
+                  message:
+                    chunkAssessment.reason === "coverage_incomplete"
+                      ? "Building the remaining pages so the whole app ships in one go…"
+                      : "This edit is large — continuing it in smaller chunks…",
                 }),
               ),
             );
