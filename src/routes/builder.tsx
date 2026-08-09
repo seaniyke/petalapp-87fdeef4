@@ -1482,6 +1482,7 @@ function Builder() {
     lastProjectKeyRef.current = key;
     if (previous === null || previous === key) return;
     setBusy(false);
+    releaseTurnLock();
     setError(null);
     setFriendlyError(null);
     setPhases(defaultPhases());
@@ -2926,6 +2927,7 @@ function Builder() {
         if (abortRef.current === controller) abortRef.current = null;
         if (stillCurrent) {
           setBusy(false);
+          releaseTurnLock();
           // Drop any partial streaming text — either it became a real message
           // above, or the run failed/aborted and we don't want a stale bubble.
           setStreamingAssistant("");
@@ -3055,6 +3057,7 @@ function Builder() {
         }
       } finally {
         setDiscussBusy(false);
+        releaseTurnLock();
       }
     },
     [busy, discussBusy, project, messages, files, ensureProject, pendingAttachments],
@@ -3250,6 +3253,7 @@ function Builder() {
     abortRef.current?.abort();
     abortRef.current = null;
     setBusy(false);
+    releaseTurnLock();
     setActivityVisible(false);
   }, []);
 
