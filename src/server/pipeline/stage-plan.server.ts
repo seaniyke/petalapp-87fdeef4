@@ -401,7 +401,9 @@ export async function runStagePlan(args: {
         stream: false,
       },
       timeoutTier: "default",
-      providerOverride: "lovable",
+      // No providerOverride: follow the resolved provider (DB → env → OpenRouter
+    // when its key is set). Pinning "lovable" here meant a funded OpenRouter
+    // account was never used and every turn died on the Lovable gateway's 402.
       lockCallerModel: true,
       meta: { phase: "plan", promptChars: args.brief.length },
     });
