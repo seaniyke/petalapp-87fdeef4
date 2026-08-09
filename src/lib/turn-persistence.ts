@@ -14,9 +14,9 @@
 
 const KEY_PREFIX = "petal:turn:";
 /** Anything older than this is treated as stale on mount and cleared.
- *  Build pipelines top out at ~5 minutes; anything older means the user
- *  came back hours later and the turn long-since ended. */
-const MAX_AGE_MS = 15 * 60_000;
+ *  Must stay >= the server's STALE_TURN_MS so a genuinely long build is
+ *  still resumable when the user comes back to the tab. */
+const MAX_AGE_MS = 40 * 60_000;
 
 export type ResumableTurn = {
   turnId: string;

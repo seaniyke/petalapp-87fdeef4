@@ -63,23 +63,36 @@ const SURFACE_EVIDENCE: Record<PrdSurface, RegExp[]> = {
 
   tool: [/(calculator|converter|tool|form|generator|game|playground|chat)/i],
   results: [/(result|output|summary|breakdown|timeline)/i],
-  content: [/(about|guide|article|blog|faq|learn|resources?|content)/i],
-  catalog: [/(catalog|listings?|products?|browse|shop|explore|search)/i],
-  detail: [/(\$|:)(id|slug)|detail/i],
-  dashboard: [/(dashboard|overview|analytics|admin\/index)/i],
-  auth: [/(auth|login|sign-?in|sign-?up|register)/i],
-  account: [/(account|profile|me\.tsx)/i],
-  admin: [/admin/i],
-  checkout: [/(checkout|cart|payment|billing)/i],
-  settings: [/settings/i],
-  about: [/about/i],
-  contact: [/contact/i],
+  content: [/\b(about|guide|article|blog|faq|learn|resources?|content)\b/i],
+  catalog: [/\b(catalog|listings?|products?|browse|shop|explore|search)\b/i],
+  detail: [/(\$|:)(id|slug)|\bdetail/i],
+  dashboard: [/\b(dashboard|overview|analytics)\b|admin\/index/i],
+  auth: [/\b(auth|login|sign-?in|sign-?up|register)\b/i],
+  // Anchored to a path segment: an unanchored /me\.tsx/ matched "Home.tsx"
+  // and made every build with a home page look like it shipped an account
+  // page the user never asked for.
+  account: [/(^|[/\-_.])(account|profile|me)([/\-_.]|\.(tsx|jsx)$)/i],
+  admin: [/(^|[/\-_.])admin([/\-_.]|\.(tsx|jsx)$)/i],
+  checkout: [/\b(checkout|cart|payment|billing)\b/i],
+  settings: [/(^|[/\-_.])settings([/\-_.]|\.(tsx|jsx)$)/i],
+  about: [/(^|[/\-_.])about([/\-_.]|\.(tsx|jsx)$)/i],
+  contact: [/(^|[/\-_.])contact([/\-_.]|\.(tsx|jsx)$)/i],
 };
 
 /** Surfaces whose presence we can assert from route files, not components. */
 const ROUTE_SURFACES: PrdSurface[] = [
   "auth", "dashboard", "admin", "checkout", "account", "settings", "about", "contact", "catalog",
 ];
+
+/**
+ * Surfaces the product cannot work without. Everything else is informational
+ * scaffolding (about/contact/content pages): worth repairing, never worth
+ * throwing away twelve good files for. A build that ships the whole product
+ * minus an About page is a working app, not a failed turn.
+ */
+const CORE_SURFACES = new Set<PrdSurface>([
+  "landing", "tool", "results", "catalog", "detail", "dashboard", "auth", "checkout",
+]);
 
 function isRouteFile(path: string): boolean {
   return /^src\/(routes|pages)\//.test(path);
@@ -119,19 +132,22 @@ export function checkPrdStatically(
   const src = files.filter((f) => f.path.startsWith("src/"));
   const changed = changedPaths ? new Set(changedPaths) : null;
 
-  // 1. Required surfaces exist.
+  // 1. Required surfaces exist. Only core surfaces can block: a missing
+  //    About page is a repair hint, not a reason to discard a working build.
   for (const surface of prd.requiredSurfaces) {
     if (!hasSurface(src, surface)) {
       findings.push({
         criterionId: `surface-${surface}`,
-        severity: "blocking",
+        severity: CORE_SURFACES.has(surface) ? "blocking" : "warning",
         message: `The PRD requires a ${surface} surface, but nothing in the emitted files provides one.`,
         repairHint: `Add the ${surface} surface described in the PRD. Wire it into the app's navigation so it is reachable.`,
       });
     }
   }
 
-  // 2. Excluded surfaces are absent.
+  // 2. Excluded surfaces are absent. An extra page never breaks the app, so
+  //    this is advisory — it reaches the repair prompt without rolling the
+  //    whole turn back.
   for (const surface of prd.excludedSurfaces) {
     const routeHit = src.find(
       (f) =>
@@ -142,7 +158,7 @@ export function checkPrdStatically(
     if (routeHit) {
       findings.push({
         criterionId: `no-${surface}`,
-        severity: "blocking",
+        severity: "warning",
         message: `A ${surface} surface was generated, but the PRD excludes it — the user never asked for it.`,
         repairHint: `Remove the ${surface} routes and any navigation entries pointing at them.`,
         path: routeHit.path,

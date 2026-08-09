@@ -196,7 +196,7 @@ describe("the loop", () => {
   it("re-runs deterministic repairs on the model's output via afterRepair", async () => {
     vi.mocked(verifyFilesEsbuild).mockResolvedValue({ ok: true, issues: [], checkedPaths: [] });
     vi.mocked(lintRenderRisks).mockReturnValue([]);
-    vi.mocked(verifyFilesLocal).mockReturnValue({ ok: true, issues: [], checkedPaths: [] });
+    vi.mocked(verifyFilesLocal).mockReturnValue({ ok: true, issues: [] });
     vi.mocked(verifyFilesLocal).mockReturnValueOnce(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { ok: false, issues: [{ path: "src/App.tsx", kind: "jsx", detail: "bad" }] } as any,
@@ -213,7 +213,7 @@ describe("the loop", () => {
     vi.mocked(lintRenderRisks).mockReturnValue([]);
     vi.mocked(verifyFilesLocal).mockImplementation((candidate) => {
       const content = candidate.find((file) => file.path === "src/App.tsx")?.content;
-      if (content === "model-fixed") return { ok: true, issues: [], checkedPaths: [] };
+      if (content === "model-fixed") return { ok: true, issues: [] };
       return {
         ok: false,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

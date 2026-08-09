@@ -41,9 +41,9 @@ export interface DepsSessionResult {
 export class DepsError extends Error {}
 
 export const MAX_PACKAGES_PER_INSTALL = 12;
-export const INSTALL_TIMEOUT_MS = 4 * 60 * 1000;
-export const TEST_INSTALL_TIMEOUT_MS = 4 * 60 * 1000;
-export const TEST_TIMEOUT_MS = 5 * 60 * 1000;
+export const INSTALL_TIMEOUT_MS = 8 * 60 * 1000;
+export const TEST_INSTALL_TIMEOUT_MS = 8 * 60 * 1000;
+export const TEST_TIMEOUT_MS = 8 * 60 * 1000;
 const OUTPUT_CAP_BYTES = 48 * 1024;
 
 /**
