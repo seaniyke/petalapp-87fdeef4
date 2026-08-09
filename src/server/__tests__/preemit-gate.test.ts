@@ -39,10 +39,13 @@ function setVerifiers(opts: {
   esbuild?: { path: string; line: number; column: number; message: string }[];
   local?: { path: string; kind: string; detail: string }[];
   render?: { path: string; kind: string; detail: string }[];
+  esbuildCheckedPaths?: string[];
 }) {
   vi.mocked(verifyFilesEsbuild).mockResolvedValue({
     ok: (opts.esbuild ?? []).length === 0,
     issues: (opts.esbuild ?? []).map((i) => ({ ...i, kind: "parse" as const })),
+    // Default: no parser verdict, so heuristic syntax issues stay blocking.
+    checkedPaths: opts.esbuildCheckedPaths ?? [],
   });
   vi.mocked(verifyFilesLocal).mockReturnValue({
     ok: (opts.local ?? []).length === 0,
@@ -138,9 +141,9 @@ describe("the loop", () => {
       return call === 1
         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ({ ok: false, issues: [{ path: "src/App.tsx", kind: "braces", detail: "bad" }] } as any)
-        : { ok: true, issues: [] };
+        : { ok: true, issues: [], checkedPaths: [] };
     });
-    vi.mocked(verifyFilesEsbuild).mockResolvedValue({ ok: true, issues: [] });
+    vi.mocked(verifyFilesEsbuild).mockResolvedValue({ ok: true, issues: [], checkedPaths: [] });
     vi.mocked(lintRenderRisks).mockReturnValue([]);
     const fixed = [{ path: "src/App.tsx", content: "fixed" }];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -167,7 +170,7 @@ describe("the loop", () => {
 
   it("keeps the best state seen rather than a regressed repair", async () => {
     let call = 0;
-    vi.mocked(verifyFilesEsbuild).mockResolvedValue({ ok: true, issues: [] });
+    vi.mocked(verifyFilesEsbuild).mockResolvedValue({ ok: true, issues: [], checkedPaths: [] });
     vi.mocked(lintRenderRisks).mockReturnValue([]);
     vi.mocked(verifyFilesLocal).mockImplementation(() => {
       call += 1;
@@ -191,9 +194,9 @@ describe("the loop", () => {
   });
 
   it("re-runs deterministic repairs on the model's output via afterRepair", async () => {
-    vi.mocked(verifyFilesEsbuild).mockResolvedValue({ ok: true, issues: [] });
+    vi.mocked(verifyFilesEsbuild).mockResolvedValue({ ok: true, issues: [], checkedPaths: [] });
     vi.mocked(lintRenderRisks).mockReturnValue([]);
-    vi.mocked(verifyFilesLocal).mockReturnValue({ ok: true, issues: [] });
+    vi.mocked(verifyFilesLocal).mockReturnValue({ ok: true, issues: [], checkedPaths: [] });
     vi.mocked(verifyFilesLocal).mockReturnValueOnce(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { ok: false, issues: [{ path: "src/App.tsx", kind: "jsx", detail: "bad" }] } as any,
@@ -206,11 +209,11 @@ describe("the loop", () => {
   });
 
   it("keeps a successful model repair when deterministic repair regresses it", async () => {
-    vi.mocked(verifyFilesEsbuild).mockResolvedValue({ ok: true, issues: [] });
+    vi.mocked(verifyFilesEsbuild).mockResolvedValue({ ok: true, issues: [], checkedPaths: [] });
     vi.mocked(lintRenderRisks).mockReturnValue([]);
     vi.mocked(verifyFilesLocal).mockImplementation((candidate) => {
       const content = candidate.find((file) => file.path === "src/App.tsx")?.content;
-      if (content === "model-fixed") return { ok: true, issues: [] };
+      if (content === "model-fixed") return { ok: true, issues: [], checkedPaths: [] };
       return {
         ok: false,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -254,5 +257,24 @@ describe("reporting", () => {
       1,
     );
     expect(text).toBe("a.tsx (parse): one");
+  });
+});
+
+describe("parser beats heuristics", () => {
+  it("ignores a heuristic JSX imbalance when esbuild parsed the file cleanly", async () => {
+    setVerifiers({
+      esbuildCheckedPaths: ["src/App.tsx"],
+      local: [{ path: "src/App.tsx", kind: "jsx", detail: "<Sidebar>: 7 open vs 1 close" }],
+    });
+    const issues = await collectGateIssues(files, changed);
+    expect(issues).toHaveLength(0);
+  });
+
+  it("still blocks when esbuild did not check the file", async () => {
+    setVerifiers({
+      local: [{ path: "src/App.tsx", kind: "jsx", detail: "<Sidebar>: 7 open vs 1 close" }],
+    });
+    const issues = await collectGateIssues(files, changed);
+    expect(issues).toHaveLength(1);
   });
 });

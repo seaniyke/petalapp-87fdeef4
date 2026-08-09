@@ -30,6 +30,12 @@ export type EsbuildIssue = {
 export type EsbuildVerdict = {
   ok: boolean;
   issues: EsbuildIssue[];
+  /**
+   * Paths this pass actually parsed. Empty when the pass was skipped (init
+   * failure, nothing changed), which callers must treat as "no verdict" —
+   * NOT as "everything parsed fine".
+   */
+  checkedPaths: string[];
 };
 
 const SCANNABLE = /\.(tsx?|jsx?)$/;
@@ -78,13 +84,13 @@ export async function verifyFilesEsbuild(
 ): Promise<EsbuildVerdict> {
   const changed = new Set(changedPaths);
   const targets = files.filter((f) => changed.has(f.path) && !shouldSkip(f.path));
-  if (targets.length === 0) return { ok: true, issues: [] };
+  if (targets.length === 0) return { ok: true, issues: [], checkedPaths: [] };
 
   try {
     await ensureInit();
   } catch (err) {
     console.warn("[esbuild-verifier] init failed, skipping pass:", err);
-    return { ok: true, issues: [] };
+    return { ok: true, issues: [], checkedPaths: [] };
   }
 
   const issues: EsbuildIssue[] = [];
@@ -129,5 +135,5 @@ export async function verifyFilesEsbuild(
     }),
   );
 
-  return { ok: issues.length === 0, issues };
+  return { ok: issues.length === 0, issues, checkedPaths: targets.map((f) => f.path) };
 }

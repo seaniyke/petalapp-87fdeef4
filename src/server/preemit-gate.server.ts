@@ -96,6 +96,12 @@ export const BLOCKING_KINDS = new Set([
  * v3 Phase C — the list itself lives in `scaffold-ownership.server.ts` so the
  * write allowlist and the verifier exemptions can never drift apart.
  */
+/**
+ * Local-verifier kinds that are pure syntax heuristics. A real parser verdict
+ * always beats them.
+ */
+const HEURISTIC_SYNTAX_KINDS = new Set(["jsx", "braces", "unterminated-string"]);
+
 export function isScaffoldOwned(path: string): boolean {
   return isVerifierExempt(path);
 }
@@ -153,8 +159,15 @@ export async function collectGateIssues(
   }
 
 
+  // Paths a real parser read end-to-end without complaint. esbuild is ground
+  // truth for syntax; our regex heuristics are not. Anything it cleared is
+  // immune to the heuristic syntax checks below.
+  const parsedClean = new Set<string>();
+
   try {
     const verdict = await verifyFilesEsbuild(files, changedPaths);
+    const failed = new Set(verdict.issues.map((i) => i.path));
+    for (const p of verdict.checkedPaths) if (!failed.has(p)) parsedClean.add(p);
     for (const i of verdict.issues) {
       issues.push({
         path: i.path,
@@ -170,11 +183,22 @@ export async function collectGateIssues(
   try {
     const verdict = verifyFilesLocal(files, changedPaths);
     for (const i of verdict.issues) {
+      // A file esbuild parsed cleanly cannot have unbalanced JSX, braces or
+      // an unterminated string. When the heuristic disagrees with the parser,
+      // the heuristic is wrong — and blocking on it rolls back a perfectly
+      // good build for nothing (real case: `<Sidebar>: 7 open vs 1 close`).
+      if (HEURISTIC_SYNTAX_KINDS.has(i.kind) && parsedClean.has(i.path)) {
+        console.warn(
+          `[preemit-gate] ignoring heuristic ${i.kind} on ${i.path} — esbuild parsed it cleanly: ${i.detail}`,
+        );
+        continue;
+      }
       issues.push({ path: i.path, kind: i.kind, detail: i.detail, source: "local" });
     }
   } catch (e) {
     console.warn("[preemit-gate] local verifier errored, skipping:", e);
   }
+
 
   try {
     for (const i of lintRenderRisks(files, changedPaths)) {
