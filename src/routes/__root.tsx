@@ -54,11 +54,6 @@ export const Route = createRootRoute({
       // TanStack concatenates head() across matched routes and a root og:image
       // would override every leaf route's own image. Each shareable leaf route
       // (/, /gallery, /p/$slug, etc.) sets its own when appropriate.
-      { name: "description", content: "Chat Build Studio is a platform for building real apps through conversational AI." },
-      { property: "og:description", content: "Chat Build Studio is a platform for building real apps through conversational AI." },
-      { name: "twitter:description", content: "Chat Build Studio is a platform for building real apps through conversational AI." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/dnn5UC7sBgddckI5x1vWL1uUQpH3/social-images/social-1777427283960-IMG_7512.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/dnn5UC7sBgddckI5x1vWL1uUQpH3/social-images/social-1777427283960-IMG_7512.webp" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

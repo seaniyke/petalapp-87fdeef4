@@ -69,8 +69,9 @@ function loaderFor(path: string): "ts" | "tsx" | "js" | "jsx" {
   return "js";
 }
 
-function shouldSkip(path: string): boolean {
+function shouldSkip(path: string, includeScaffoldOwned: boolean): boolean {
   if (!SCANNABLE.test(path)) return true;
+  if (includeScaffoldOwned) return false;
   // Same skip-list as local-verifier — these are scaffold-managed.
   if (path.startsWith("src/components/ui/")) return true;
   if (path.startsWith("src/integrations/")) return true;
@@ -81,9 +82,12 @@ function shouldSkip(path: string): boolean {
 export async function verifyFilesEsbuild(
   files: { path: string; content: string }[],
   changedPaths: string[],
+  options: { includeScaffoldOwned?: boolean } = {},
 ): Promise<EsbuildVerdict> {
   const changed = new Set(changedPaths);
-  const targets = files.filter((f) => changed.has(f.path) && !shouldSkip(f.path));
+  const targets = files.filter(
+    (f) => changed.has(f.path) && !shouldSkip(f.path, options.includeScaffoldOwned === true),
+  );
   if (targets.length === 0) return { ok: true, issues: [], checkedPaths: [] };
 
   try {
