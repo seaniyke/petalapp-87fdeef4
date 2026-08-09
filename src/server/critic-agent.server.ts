@@ -382,15 +382,21 @@ export async function runCritic(args: {
   };
 }
 
-/** One-line-per-rejection note for the turn summary. */
+/**
+ * One-line-per-rejection note for the turn summary.
+ *
+ * `silent` rejections (no-op edits) are omitted: nothing the user asked for was
+ * lost, so reporting them makes a fully successful turn read as partly blocked.
+ */
 export function criticDisclosure(rejections: CriticRejection[]): string {
-  if (rejections.length === 0) return "";
-  const lines = rejections.map((r) => `- \`${r.path}\` — ${r.reason}`);
+  const visible = rejections.filter((r) => !r.silent);
+  if (visible.length === 0) return "";
+  const lines = visible.map((r) => `- \`${r.path}\` — ${r.reason}`);
   return [
     "",
-    rejections.length === 1
+    visible.length === 1
       ? "**One proposed change was blocked before it was applied:**"
-      : `**${rejections.length} proposed changes were blocked before they were applied:**`,
+      : `**${visible.length} proposed changes were blocked before they were applied:**`,
     ...lines,
     "",
     "Everything else went through. Tell me if you want me to retry the blocked part differently.",
