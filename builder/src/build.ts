@@ -17,11 +17,26 @@ import { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { healMaterializedProject } from "./fs-helpers.js";
+import { startPreviewServer } from "./preview-server.js";
+import { partitionVerificationDefects } from "./verification-report.js";
+
+/**
+ * Result of the pre-deploy browser check. Kept structural rather than importing
+ * `VerifyReport` so `build.ts` does not depend on the verifier's shape.
+ */
+export type PreDeployReport = { defects?: string[] } & Record<string, unknown>;
+
+/**
+ * Runs against a local static server over `dist/`, before anything is uploaded.
+ */
+export type PreDeployCheck = (baseUrl: string) => Promise<PreDeployReport | undefined>;
 
 export type BuildResult = {
   url: string;            // immutable deployment URL when Wrangler provides one
   deploymentId?: string;  // optional, parsed from wrangler output if available
   durationMs: number;
+  /** Browser-check report produced before the deploy, when one was requested. */
+  verification?: PreDeployReport;
 };
 
 export class BuildError extends Error {
@@ -30,6 +45,25 @@ export class BuildError extends Error {
     this.name = "BuildError";
   }
 }
+
+/**
+ * The app compiled and bundled, but the browser check found a runtime failure
+ * while driving the built output locally. Nothing was deployed. Carries the
+ * full report so the caller can hand the specific defects to a repair pass
+ * instead of dead-ending the user on an opaque failure.
+ */
+export class VerificationBlockedError extends BuildError {
+  constructor(
+    message: string,
+    logs: string,
+    public readonly report: PreDeployReport,
+    public readonly blocking: string[],
+  ) {
+    super(message, logs);
+    this.name = "VerificationBlockedError";
+  }
+}
+
 
 // Pages can acknowledge a successful upload several minutes before every edge
 // can resolve the immutable hostname. A short retry ladder used to give up
