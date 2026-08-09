@@ -42,6 +42,7 @@ import { aiChatCompletions } from "@/server/ai-provider.server";
 import { detectHighStakesIntent, highStakesClarifyInstruction } from "@/lib/high-stakes-intent";
 import { detectLanguage, renderLanguageHint } from "@/server/lang-detect.server";
 import { checkCreditBalance } from "@/server/credits.server";
+import { fastTriage } from "@/server/fast-triage.server";
 
 type Body = {
   messages: ChatMessage[];
@@ -382,7 +383,7 @@ export const Route = createFileRoute("/api/triage")({
           fileCount,
           highStakes: highStakes.detected,
           hasAttachment: typeof lastUser?.content !== "string",
-          language: langHint?.code ?? "en",
+          language: langHint.lang === "unknown" ? "en" : langHint.lang,
         });
         if (fast) {
           const meta: TriageMeta = {
