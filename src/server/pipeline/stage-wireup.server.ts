@@ -53,11 +53,9 @@ export async function runStageWireup(args: {
 
   const allPaths = files.map((f) => f.path);
 
-  // Petal-owned scaffold files (the kit under src/components/{ui,fx,blocks,
-  // mobile,content}) are shipped constants, not model output. Judging them
-  // here was rejecting every staged build over regex false positives in code
-  // that esbuild parses fine — the whole staged pipeline then silently fell
-  // back to the monolithic path on EVERY build. Only verify authored files.
+  // Petal-owned kit files bypass heuristic repairs, but they do not bypass the
+  // real parser. A broken shipped constant is our defect and must be caught
+  // here before it can break every generated app.
   const isKitFile = (p: string) =>
     /^src\/components\/(ui|fx|blocks|mobile|content)\//.test(p);
   const authored = files.filter((f) => !isKitFile(f.path));
@@ -65,7 +63,9 @@ export async function runStageWireup(args: {
   // 1. Esbuild verifier FIRST — it is the real parser and the only honest
   //    authority on whether a file compiles.
   try {
-    const esbuildVerdict = await verifyFilesEsbuild(authored, allPaths);
+    const esbuildVerdict = await verifyFilesEsbuild(files, allPaths, {
+      includeScaffoldOwned: true,
+    });
     if (!esbuildVerdict.ok) {
       return {
         ok: false,

@@ -81,7 +81,7 @@ function TemplatesPage() {
     return map;
   }, []);
 
-  function useTemplate(idea: StartIdea) {
+  function handleUseTemplate(idea: StartIdea) {
     const target = `/builder?prompt=${encodeURIComponent(idea.prompt)}&source=template`;
     if (isReady && user) {
       window.location.href = target;
@@ -188,7 +188,7 @@ function TemplatesPage() {
                     </p>
                     <button
                       type="button"
-                      onClick={() => useTemplate(idea)}
+                      onClick={() => handleUseTemplate(idea)}
                       className="mt-5 inline-flex items-center justify-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition hover:brightness-110"
                     >
                       Use this template
