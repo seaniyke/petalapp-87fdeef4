@@ -61,6 +61,8 @@ export interface JudgedDefects {
   noise: string[];
   /** True when a model actually produced the verdict. */
   judged: boolean;
+  /** Which spend tier produced the verdict (W3). */
+  tier: "prior" | "cheap" | "escalated";
   reasons: Record<string, string>;
 }
 
@@ -94,7 +96,7 @@ function safeParse(content: string): { i: unknown; severity: unknown; why: unkno
 
 function fallback(defects: unknown): JudgedDefects {
   const p = partitionVerificationDefects(defects);
-  return { ...p, noise: [], judged: false, reasons: {} };
+  return { ...p, noise: [], judged: false, tier: "prior", reasons: {} };
 }
 
 /**
@@ -110,7 +112,8 @@ export async function judgeDefects(args: {
 }): Promise<JudgedDefects> {
   const prior = partitionVerificationDefects(args.defects);
   const all = [...prior.blocking, ...prior.visual, ...prior.advisory];
-  if (all.length === 0) return { ...prior, noise: [], judged: false, reasons: {} };
+  if (all.length === 0)
+    return { ...prior, noise: [], judged: false, tier: "prior" as const, reasons: {} };
   if (all.length > MAX_DEFECTS) return fallback(args.defects);
 
   // W3 triage — spend nothing when the prior's verdict cannot change the
@@ -119,7 +122,7 @@ export async function judgeDefects(args: {
   const ambiguousAdvisories = prior.advisory.filter((defect) => !isKnownBenign(defect));
   const escalate = prior.blocking.length > 0;
   if (!escalate && ambiguousAdvisories.length === 0) {
-    return { ...prior, noise: [], judged: false, reasons: {} };
+    return { ...prior, noise: [], judged: false, tier: "prior" as const, reasons: {} };
   }
   const model = escalate ? ESCALATED_MODEL : CHEAP_MODEL;
 
@@ -166,6 +169,7 @@ export async function judgeDefects(args: {
       advisory: [],
       noise: [],
       judged: true,
+      tier: escalate ? "escalated" : "cheap",
       reasons: {},
     };
     const seen = new Set<number>();
