@@ -30,6 +30,12 @@ export interface CriticRejection {
   reason: string;
   /** true when a deterministic rule caught it (no model involved). */
   deterministic: boolean;
+  /**
+   * Dropped for hygiene, not because anything the user wanted was lost.
+   * A no-op edit changes nothing whether it lands or not — telling the user
+   * "a change was blocked" makes a clean turn look partially failed.
+   */
+  silent?: boolean;
 }
 
 export interface CriticVerdict {
