@@ -380,6 +380,7 @@ async function runBuildInner(body: BuildBody): Promise<void> {
     //
     // A verifier that cannot run is not a build failure — the bundle is real
     // either way, so we record it as skipped and let the deploy proceed.
+    let verification: VerifyReport | undefined;
     const preDeployCheck = body.verify
       ? async (baseUrl: string): Promise<VerifyReport> => {
           const plan: VerifyPlan = { baseUrl, ...body.verify! };
@@ -389,11 +390,12 @@ async function runBuildInner(body: BuildBody): Promise<void> {
               { ok: report.ok, defects: report.defects.length },
               "Pre-deploy verification finished",
             );
-            return stripScreenshots(report);
+            verification = stripScreenshots(report);
+            return verification;
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             log.warn({ err: message }, "Verification could not run");
-            return {
+            verification = {
               ok: true,
               baseUrl,
               durationMs: 0,
@@ -402,6 +404,7 @@ async function runBuildInner(body: BuildBody): Promise<void> {
               defects: [],
               skipped: message.slice(0, 300),
             } as VerifyReport & { skipped: string };
+            return verification;
           }
         }
       : undefined;
@@ -423,7 +426,7 @@ async function runBuildInner(body: BuildBody): Promise<void> {
       projectId: body.projectId,
       status: "ready",
       url: result.url,
-      ...(result.verification ? { verification: result.verification as VerifyReport } : {}),
+      ...(verification ? { verification } : {}),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -432,15 +435,13 @@ async function runBuildInner(body: BuildBody): Promise<void> {
     // A blocked verification carries the exact defects that stopped the
     // deploy. Forward them structurally so the app can aim a repair at them
     // rather than re-deriving intent from a log blob.
-    const verification =
-      err instanceof VerificationBlockedError ? (err.report as VerifyReport) : undefined;
     await postCallback({
       buildId: body.buildId,
       projectId: body.projectId,
       status: "failed",
       errorMessage: message,
       logs,
-      ...(verification ? { verification } : {}),
+      ...(err instanceof VerificationBlockedError && verification ? { verification } : {}),
     }).catch((e) => log.error({ err: String(e) }, "Callback also failed"));
   } finally {
     if (warmed) {

@@ -343,8 +343,8 @@ export async function buildAndDeploy(
   //
   //     A verifier that cannot run is not a build failure: the bundle is real
   //     either way, so we deploy and report the check as skipped.
-  let verification: PreDeployReport | undefined;
   if (options.preDeployCheck) {
+    let verification: PreDeployReport | undefined;
     const preview = await startPreviewServer(distDir);
     try {
       verification = await options.preDeployCheck(preview.baseUrl);
