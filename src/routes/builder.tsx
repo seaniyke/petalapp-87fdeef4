@@ -886,6 +886,22 @@ function Builder() {
   // pass startedBuildIdsRef + handledBuildIds gating.
   const MAX_AUTO_FIX_ATTEMPTS = 3;
   const startedBuildIdsRef = useRef<Set<string>>(new Set());
+  // Synchronous submission lock.
+  //
+  // `busy` is React state, so it only flips a render AFTER `send()` has
+  // already awaited `ensureProject()` (a network round-trip on the first
+  // message). Two fast taps — or a tap plus an auto-dequeued queued prompt —
+  // both saw `busy === false`, both created a project, and both started a
+  // turn: duplicate builds, duplicate charges. This ref engages BEFORE any
+  // await, so the second caller is rejected in the same tick.
+  const turnLockRef = useRef(false);
+  /** Last composer submission, for the identical-double-tap guard. */
+  const lastSubmitRef = useRef<{ text: string; at: number }>({ text: "", at: 0 });
+
+  const releaseTurnLock = useCallback(() => {
+    turnLockRef.current = false;
+  }, []);
+
   // Build ids whose browser-verification defects we already fed back once.
   const verifyFixRef = useRef<{ projectId: string | null; handled: Set<string> }>({
     projectId: null,
@@ -1469,6 +1485,7 @@ function Builder() {
     lastProjectKeyRef.current = key;
     if (previous === null || previous === key) return;
     setBusy(false);
+    releaseTurnLock();
     setError(null);
     setFriendlyError(null);
     setPhases(defaultPhases());
@@ -1957,26 +1974,38 @@ function Builder() {
 
   // Lazily create the underlying project row on first use, so /builder visits
   // that never send a message don't leave behind empty "Untitled project" rows.
+  const ensureProjectInFlightRef = useRef<Promise<ProjectRow | null> | null>(null);
   const ensureProject = useCallback(async (): Promise<ProjectRow | null> => {
     if (!isReady || !user) {
       navigate({ to: "/auth", search: { mode: "signin", redirect: window.location.pathname + window.location.search } });
       return null;
     }
     if (project) return project;
-    try {
-      const p = await createProject();
-      setProject(p);
-      navigate({
-        to: "/builder",
-        search: { id: p.id, mode: initialMode, attachKey: undefined },
-        replace: true,
-      });
-      return p;
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not start project");
-      return null;
-    }
+    // Concurrent callers share one creation — otherwise a second caller that
+    // arrives while the first is still awaiting `createProject()` orphans a
+    // duplicate "Untitled project" row.
+    if (ensureProjectInFlightRef.current) return ensureProjectInFlightRef.current;
+    const run = (async () => {
+      try {
+        const p = await createProject();
+        setProject(p);
+        navigate({
+          to: "/builder",
+          search: { id: p.id, mode: initialMode, attachKey: undefined },
+          replace: true,
+        });
+        return p;
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Could not start project");
+        return null;
+      } finally {
+        ensureProjectInFlightRef.current = null;
+      }
+    })();
+    ensureProjectInFlightRef.current = run;
+    return run;
   }, [isReady, user, project, navigate, initialMode]);
+
 
   const send = useCallback(
     async (
@@ -2019,9 +2048,16 @@ function Builder() {
       const text = content.trim();
       const internalRetry =
         opts.isRetry || opts.isAutoFix || opts.isInternalRepair || opts.isAutoContinue;
+      if (!text) return;
+      // Engage the lock synchronously, before any await, so a second tap can
+      // never slip through while the first is still creating the project.
+      if (!internalRetry) {
+        if (busy || turnLockRef.current) return;
+        turnLockRef.current = true;
+      }
       // A genuinely new user turn refills the automatic-recovery budget.
       if (!internalRetry) beginUserTurn(projectIdRef.current);
-      if (!text || (busy && !internalRetry)) return;
+
       // Hard stop at zero credits. The server 402s every AI route, but the
       // composer must not even accept the message — otherwise the user sees
       // their turn "go through" and then fail. This includes automatic and
@@ -2034,10 +2070,15 @@ function Builder() {
           actionLabel: "Buy credits",
           actionKind: "buy-credits",
         });
+        releaseTurnLock();
         return;
       }
       const proj = await ensureProject();
-      if (!proj) return;
+      if (!proj) {
+        releaseTurnLock();
+        return;
+      }
+
       supersedeBuildId(proj.latest_build_id);
       setError(null);
       setFriendlyError(null);
@@ -2889,6 +2930,7 @@ function Builder() {
         if (abortRef.current === controller) abortRef.current = null;
         if (stillCurrent) {
           setBusy(false);
+          releaseTurnLock();
           // Drop any partial streaming text — either it became a real message
           // above, or the run failed/aborted and we don't want a stale bubble.
           setStreamingAssistant("");
@@ -2931,9 +2973,15 @@ function Builder() {
   const discuss = useCallback(
     async (content: string, opts: { attachments?: ChatAttachment[] } = {}) => {
       const text = content.trim();
-      if (!text || busy || discussBusy) return;
+      if (!text || busy || discussBusy || turnLockRef.current) return;
+      // Same synchronous lock as send() — engaged before project setup.
+      turnLockRef.current = true;
       const proj = await ensureProject();
-      if (!proj) return;
+      if (!proj) {
+        releaseTurnLock();
+        return;
+      }
+
       setError(null);
       setFriendlyError(null);
       const attachments =
@@ -3018,6 +3066,7 @@ function Builder() {
         }
       } finally {
         setDiscussBusy(false);
+        releaseTurnLock();
       }
     },
     [busy, discussBusy, project, messages, files, ensureProject, pendingAttachments],
@@ -3053,6 +3102,19 @@ function Builder() {
     (text: string, _opts: { bypassQuestionGate?: boolean } = {}) => {
       const trimmed = text.trim();
       if (!trimmed || bootstrapping) return;
+      // Double-tap / double-Enter guard: the exact same prompt fired twice in
+      // quick succession is one intent, not two. Without this the second tap
+      // lands in the queue and runs a whole second (billed) turn.
+      const now = Date.now();
+      if (
+        lastSubmitRef.current.text === trimmed &&
+        now - lastSubmitRef.current.at < 3000
+      ) {
+        setInput("");
+        return;
+      }
+      lastSubmitRef.current = { text: trimmed, at: now };
+
       // Non-blocking question UX: if Petal asked something, the user can
       // still type freely. Typing past the chips is treated as a free-text
       // answer/continuation — we just dismiss the checklist so it doesn't
@@ -3060,7 +3122,9 @@ function Builder() {
       if (pendingQuestion) {
         setAnsweredQuestionAt(messages.length);
       }
-      if (busy || discussBusy) {
+      // `turnLockRef` covers the window where a turn has started but `busy`
+      // hasn't rendered yet — queue instead of dropping the message.
+      if (busy || discussBusy || turnLockRef.current) {
         setPendingQueue((q) => [
           ...q,
           { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text: trimmed, mode },
@@ -3090,7 +3154,7 @@ function Builder() {
 
   // Auto-dequeue the next prompt as soon as Petal frees up.
   useEffect(() => {
-    if (busy || discussBusy) return;
+    if (busy || discussBusy || turnLockRef.current) return;
     if (pendingQueue.length === 0) return;
     const [next, ...rest] = pendingQueue;
     setPendingQueue(rest);
@@ -3213,6 +3277,7 @@ function Builder() {
     abortRef.current?.abort();
     abortRef.current = null;
     setBusy(false);
+    releaseTurnLock();
     setActivityVisible(false);
   }, []);
 
@@ -3668,7 +3733,7 @@ function Builder() {
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
       {/* First-run product tour. Self-gates on localStorage so it shows once per browser. */}
       <Suspense fallback={null}>
-        <FirstRunTour />
+        <FirstRunTour suppressed={busy || discussBusy || messages.length > 0} />
       </Suspense>
       {/* Top bar — iOS-style translucent material, never moves */}
       <div className="safe-top safe-x z-sticky sticky top-0 shrink-0 border-b border-border/60 bg-card/80 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65">

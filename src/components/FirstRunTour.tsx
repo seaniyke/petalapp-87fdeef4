@@ -49,7 +49,7 @@ const STEPS: Step[] = [
   },
 ];
 
-export function FirstRunTour() {
+export function FirstRunTour({ suppressed = false }: { suppressed?: boolean }) {
   const [step, setStep] = useState(0);
   const [open, setOpen] = useState(false);
 
@@ -58,6 +58,9 @@ export function FirstRunTour() {
   // skeleton, which feels jarring.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // Never cover a thread that's already working — a user who arrived from
+    // the landing page with a prompt is watching a build, not onboarding.
+    if (suppressed) return;
     try {
       if (window.localStorage.getItem(STORAGE_KEY)) return;
     } catch {
@@ -67,7 +70,8 @@ export function FirstRunTour() {
     }
     const t = window.setTimeout(() => setOpen(true), 700);
     return () => window.clearTimeout(t);
-  }, []);
+  }, [suppressed]);
+
 
   const close = (markComplete: boolean) => {
     setOpen(false);
