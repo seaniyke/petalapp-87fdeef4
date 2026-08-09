@@ -182,12 +182,21 @@ export function assessRouteCoverage(args: {
   expectedRoutes: string[];
   files?: ProjectFile[];
   ops?: FileOp[];
+  /**
+   * Paths that already exist in the project. On an EDIT turn a nav link to
+   * an existing page is not a missing page, so those routes count as covered.
+   */
+  existingPaths?: string[];
 }): ChunkAssessment {
   const deliveredPaths = pathsOf(args);
   const emitted = deliveredPaths.length;
 
-  const routeFiles = deliveredPaths.filter((p) => /^src\/(routes|pages)\//i.test(p));
+  const routeFiles = [
+    ...deliveredPaths,
+    ...(args.existingPaths ?? []),
+  ].filter((p) => /^src\/(routes|pages)\//i.test(p));
   const haystack = routeFiles.map((p) => p.toLowerCase()).join("\n");
+
 
   const missing: string[] = [];
   for (const raw of args.expectedRoutes) {

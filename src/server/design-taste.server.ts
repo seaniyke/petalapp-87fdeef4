@@ -18,7 +18,7 @@ Petal is being judged on whether the landing looks like it was made by a person 
 
 1. Commit to ONE direction. Pick brutally-minimal OR maximalist OR retro-futuristic OR playful OR editorial OR brutalist OR art-deco OR organic — and execute it with conviction across every section. Never blend three neutral styles into "safe SaaS mush".
 
-2. Distinctive typography, always. Never Inter + Inter. Never Poppins for both heading and body. Use the LOCKED FONT PAIR (below) verbatim — load it from Google Fonts via a \`<link>\` tag in \`src/routes/__root.tsx\`, expose it as \`--font-display\` and \`--font-body\` in \`src/styles.css\`, then use \`font-display\` and \`font-body\` in components. Display headings are DISPLAY-scale (text-5xl → text-8xl on hero), tight tracking, tight leading. Never accept default browser typography.
+2. Distinctive typography, always. Never Inter + Inter. Never Poppins for both heading and body. Use the LOCKED FONT PAIR (below) verbatim — load it from Google Fonts via a \`<link rel="stylesheet">\` in the \`<head>\` of \`index.html\`, expose it as \`--font-display\` and \`--font-body\` inside the \`@theme\` block in \`src/styles.css\`, set \`body { font-family: var(--font-body) }\` and \`h1,h2,h3 { font-family: var(--font-display) }\`, then use \`font-display\` and \`font-body\` in components. A declared font variable with no <link> renders in system sans — that is a defect, not a style choice. Display headings are DISPLAY-scale (text-5xl → text-8xl on hero), tight tracking, tight leading. Never accept default browser typography.
 
 3. Locked palette. Use the LOCKED PALETTE (below) verbatim. Define these four hex values as semantic tokens in \`src/styles.css\` (\`--background\`, \`--surface\`, \`--primary\`, \`--primary-glow\`) using oklch conversion where possible; derive \`--foreground\`, \`--muted\`, \`--border\`, \`--card\` from them. Never inject a random indigo, purple, or blue-500 into the palette.
 
@@ -87,13 +87,14 @@ Typography pair: "${pick.fontPair.label}"
   - Display heading font: "${pick.fontPair.display}"
   - Body font: "${pick.fontPair.body}"
 
-Load both via a single <link> tag in \`src/routes/__root.tsx\` head():
+MANDATORY — the fonts must be LOADED, not just declared. Add these three tags inside the <head> of \`index.html\` (that file is the app shell; there is NO \`src/routes/__root.tsx\` in this scaffold). Declaring the CSS variable without this <link> ships the app in system sans and is a build defect:
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(pick.fontPair.display).replace(/%20/g, "+")}:wght@400;500;600;700;800&family=${encodeURIComponent(pick.fontPair.body).replace(/%20/g, "+")}:wght@400;500;600;700&display=swap"
   />
+
 
 In \`src/styles.css\`, expose them:
   :root {
