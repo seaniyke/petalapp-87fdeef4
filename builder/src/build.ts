@@ -17,6 +17,19 @@ import { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { healMaterializedProject } from "./fs-helpers.js";
+import { startPreviewServer } from "./preview-server.js";
+import { partitionVerificationDefects } from "./verification-report.js";
+
+/**
+ * Result of the pre-deploy browser check. Kept structural rather than importing
+ * `VerifyReport` so `build.ts` does not depend on the verifier's shape.
+ */
+export type PreDeployReport = { defects?: string[] };
+
+/**
+ * Runs against a local static server over `dist/`, before anything is uploaded.
+ */
+export type PreDeployCheck = (baseUrl: string) => Promise<PreDeployReport | undefined>;
 
 export type BuildResult = {
   url: string;            // immutable deployment URL when Wrangler provides one
@@ -30,6 +43,25 @@ export class BuildError extends Error {
     this.name = "BuildError";
   }
 }
+
+/**
+ * The app compiled and bundled, but the browser check found a runtime failure
+ * while driving the built output locally. Nothing was deployed. Carries the
+ * full report so the caller can hand the specific defects to a repair pass
+ * instead of dead-ending the user on an opaque failure.
+ */
+export class VerificationBlockedError extends BuildError {
+  constructor(
+    message: string,
+    logs: string,
+    public readonly report: PreDeployReport,
+    public readonly blocking: string[],
+  ) {
+    super(message, logs);
+    this.name = "VerificationBlockedError";
+  }
+}
+
 
 // Pages can acknowledge a successful upload several minutes before every edge
 // can resolve the immutable hostname. A short retry ladder used to give up
@@ -210,8 +242,10 @@ export async function buildAndDeploy(
 
   projectDir: string,
   projectId: string,
-  cloudflare: { apiToken: string; accountId: string }
+  cloudflare: { apiToken: string; accountId: string },
+  options: { preDeployCheck?: PreDeployCheck } = {},
 ): Promise<BuildResult> {
+
   const startedAt = Date.now();
   const projectName = projectNameFor(projectId);
 
@@ -301,7 +335,35 @@ export async function buildAndDeploy(
   const headersFile = `/*\n  Cross-Origin-Resource-Policy: cross-origin\n  Access-Control-Allow-Origin: *\n`;
   await writeFile(join(distDir, "_headers"), headersFile, "utf8");
 
+  // 2c) Pre-deploy browser check. The verifier drives the real built output
+  //     over a throwaway localhost server, so a runtime failure is caught
+  //     before anything is uploaded and before the user ever sees it. Running
+  //     it here also means CDN propagation can no longer masquerade as an app
+  //     defect — there is no CDN in front of 127.0.0.1.
+  //
+  //     A verifier that cannot run is not a build failure: the bundle is real
+  //     either way, so we deploy and report the check as skipped.
+  if (options.preDeployCheck) {
+    let verification: PreDeployReport | undefined;
+    const preview = await startPreviewServer(distDir);
+    try {
+      verification = await options.preDeployCheck(preview.baseUrl);
+    } finally {
+      await preview.close().catch(() => {});
+    }
+    const blocking = partitionVerificationDefects(verification?.defects).blocking;
+    if (blocking.length > 0) {
+      throw new VerificationBlockedError(
+        "The app built successfully, but Petal's browser check found a runtime failure before deploying.",
+        blocking.map((defect) => `- ${defect}`).join("\n"),
+        verification ?? {},
+        blocking,
+      );
+    }
+  }
+
   // 3) Ensure the Cloudflare Pages project exists. We hit the Cloudflare REST
+
   //    API directly instead of `wrangler pages project create` because wrangler
   //    surfaces the "already exists" case as an opaque `code: 8000000` unknown
   //    error on some accounts, which is indistinguishable from a real failure.
@@ -359,6 +421,7 @@ export async function buildAndDeploy(
       ? hostname.split(".")[0]
       : undefined,
     durationMs: Date.now() - startedAt,
+
   };
 
 }

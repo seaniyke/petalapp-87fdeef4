@@ -28,7 +28,7 @@ import {
   withProjectLock,
   type ProjectFile,
 } from "./fs-helpers.js";
-import { buildAndDeploy, BuildError } from "./build.js";
+import { buildAndDeploy, BuildError, VerificationBlockedError } from "./build.js";
 import { runExecSession, ExecError, MAX_COMMANDS_PER_SESSION } from "./exec.js";
 import {
   runInstallSession,
@@ -350,6 +350,9 @@ async function runBuildInner(body: BuildBody): Promise<void> {
   log.info("Build started");
   let dir: string | null = null;
   let warmed = false;
+  // Declared outside the try so the failure path can forward the exact
+  // defects that blocked the deploy.
+  let verification: VerifyReport | undefined;
   try {
     if (WARM_WORKSPACES) {
       try {
@@ -373,62 +376,74 @@ async function runBuildInner(body: BuildBody): Promise<void> {
       }
     }
     if (!dir) dir = await materializeProject(body.buildId, body.files);
+    // Browser verification now runs BEFORE the deploy, against a throwaway
+    // localhost server over the built `dist/`. A runtime failure therefore
+    // aborts the upload instead of being discovered after the fact, and CDN
+    // propagation can no longer be mistaken for an app defect.
+    //
+    // A verifier that cannot run is not a build failure — the bundle is real
+    // either way, so we record it as skipped and let the deploy proceed.
+    const preDeployCheck = body.verify
+      ? async (baseUrl: string): Promise<VerifyReport> => {
+          const plan: VerifyPlan = { baseUrl, ...body.verify! };
+          try {
+            const report = await withTimeout(runVerification(plan), VERIFY_TIMEOUT_MS);
+            log.info(
+              { ok: report.ok, defects: report.defects.length },
+              "Pre-deploy verification finished",
+            );
+            verification = stripScreenshots(report);
+            return verification;
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            log.warn({ err: message }, "Verification could not run");
+            verification = {
+              ok: true,
+              baseUrl,
+              durationMs: 0,
+              routes: [],
+              flows: [],
+              defects: [],
+              skipped: message.slice(0, 300),
+            } as VerifyReport & { skipped: string };
+            return verification;
+          }
+        }
+      : undefined;
+
     const result = await withTimeout(
-      buildAndDeploy(dir, body.projectId, {
-        apiToken: CF_API_TOKEN!,
-        accountId: CF_ACCOUNT_ID!,
-      }),
+      buildAndDeploy(
+        dir,
+        body.projectId,
+        { apiToken: CF_API_TOKEN!, accountId: CF_ACCOUNT_ID! },
+        preDeployCheck ? { preDeployCheck } : {},
+      ),
       JOB_TIMEOUT_MS,
     );
 
     log.info({ url: result.url, durationMs: result.durationMs }, "Build succeeded");
-
-    // Post-deploy browser verification. Blocking by design: the build is not
-    // reported ready until we know whether the deployed app actually renders,
-    // signs a user in, and survives its core write flows. A verifier failure is
-    // never a build failure — the deploy is real either way, so we report the
-    // URL with whatever report we managed to produce.
-    let verification: VerifyReport | undefined;
-    if (body.verify) {
-      const plan: VerifyPlan = { baseUrl: result.url, ...body.verify };
-      try {
-        verification = await withTimeout(runVerification(plan), VERIFY_TIMEOUT_MS);
-        log.info(
-          { ok: verification.ok, defects: verification.defects.length },
-          "Verification finished",
-        );
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        log.warn({ err: message }, "Verification could not run");
-        verification = {
-          ok: true,
-          baseUrl: result.url,
-          durationMs: 0,
-          routes: [],
-          flows: [],
-          defects: [],
-          skipped: message.slice(0, 300),
-        } as VerifyReport & { skipped: string };
-      }
-    }
 
     await postCallback({
       buildId: body.buildId,
       projectId: body.projectId,
       status: "ready",
       url: result.url,
-      ...(verification ? { verification: stripScreenshots(verification) } : {}),
+      ...(verification ? { verification } : {}),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const logs = err instanceof BuildError ? err.logs.slice(-4000) : message;
     log.error({ err: message }, "Build failed");
+    // A blocked verification carries the exact defects that stopped the
+    // deploy. Forward them structurally so the app can aim a repair at them
+    // rather than re-deriving intent from a log blob.
     await postCallback({
       buildId: body.buildId,
       projectId: body.projectId,
       status: "failed",
       errorMessage: message,
       logs,
+      ...(err instanceof VerificationBlockedError && verification ? { verification } : {}),
     }).catch((e) => log.error({ err: String(e) }, "Callback also failed"));
   } finally {
     if (warmed) {
@@ -461,7 +476,15 @@ type Callback =
       url: string;
       verification?: VerifyReport;
     }
-  | { buildId: string; projectId: string; status: "failed"; errorMessage: string; logs: string };
+  | {
+      buildId: string;
+      projectId: string;
+      status: "failed";
+      errorMessage: string;
+      logs: string;
+      verification?: VerifyReport;
+    };
+
 
 async function postCallback(payload: Callback): Promise<void> {
   const body = JSON.stringify(payload);
