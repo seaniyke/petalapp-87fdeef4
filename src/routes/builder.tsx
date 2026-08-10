@@ -177,8 +177,6 @@ import {
 } from "@/lib/build-targets";
 
 import { detectDomainIntentInTurn } from "@/lib/domain-intent";
-import { detectEmailIntentInTurn } from "@/lib/email-intent";
-import { detectPaymentIntentInTurn } from "@/lib/payment-intent";
 import { detectSeoIntentInTurn } from "@/lib/seo-intent";
 import { detectAddPageIntentInTurn } from "@/lib/add-page-intent";
 import { detectMobileIntentInTurn } from "@/lib/mobile-intent";
