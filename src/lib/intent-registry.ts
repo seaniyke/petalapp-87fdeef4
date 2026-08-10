@@ -382,3 +382,68 @@ export function detectIntents(
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Capability asks (backend / payment / email)
+//
+// These three used to render coloured "Enable X" banners under the last
+// assistant message. Banners fired on weak signals — including matches found
+// in Petal's OWN reply — so users saw "Take payments for 'store'" after
+// simply mentioning a store page. They are now replaced by a plain inline
+// question in chat, and the bar to ask at all is much higher:
+//
+//   1. The signal must come from what the USER wrote, never from Petal's reply.
+//   2. The sentence must not be negated, deferred, or hypothetical.
+//   3. The user must not merely be asking a question about the capability.
+//
+// If any check fails we stay silent. Saying nothing is always better than
+// interrupting with an offer the user did not ask for.
+// ---------------------------------------------------------------------------
+
+export type CapabilityIntentId = Extract<SimpleIntentId, "backend" | "payment" | "email">;
+
+/** "no payments", "without a backend", "don't email", "not now", "later". */
+const NEGATED =
+  /\b(?:no|without|don'?t|do not|doesn'?t|does not|never|skip|avoid|remove|drop|disable|except|other than)\b[^.!?]{0,40}$/i;
+
+const DEFERRED =
+  /\b(?:later|for now|not (?:yet|now)|eventually|down the (?:road|line)|in (?:the )?future|next (?:time|phase|version)|phase 2|v2)\b/i;
+
+/** "can petal do payments?", "do you support email?" — a question, not a request. */
+const ASKING_ABOUT =
+  /^(?:can|could|does|do|is|are|will|would|should|what|which|how|why|who|when)\b/i;
+
+/** Fake/placeholder builds never need a real capability wired up. */
+const PRETEND =
+  /\b(?:mock|fake|dummy|placeholder|simulated?|pretend|sample|demo(?:-| )?only|hard ?cod(?:e|ed))\b/i;
+
+/**
+ * Decide whether Petal should ask the user about enabling a capability.
+ * Only reads the user's own message. Returns null when we should stay quiet.
+ */
+export function detectCapabilityAsk(
+  id: CapabilityIntentId,
+  userText: string | null | undefined,
+): IntentResult | null {
+  if (!userText) return null;
+  const t = userText.trim();
+  if (!t) return null;
+
+  const hit = detectIntent(id, t);
+  if (!hit.detected) return null;
+
+  // Look at the sentence the signal actually landed in, so an unrelated
+  // "no" elsewhere in a long brief does not suppress a genuine request.
+  const reason = hit.reason ?? "";
+  const sentence =
+    t
+      .split(/(?<=[.!?\n])\s+/)
+      .find((s) => reason && s.toLowerCase().includes(reason)) ?? t;
+
+  if (NEGATED.test(sentence)) return null;
+  if (DEFERRED.test(sentence)) return null;
+  if (PRETEND.test(sentence)) return null;
+  if (t.endsWith("?") && ASKING_ABOUT.test(t)) return null;
+
+  return hit;
+}
