@@ -141,11 +141,13 @@ import { BillingSheet } from "@/components/BillingSheet";
 import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
-import { EnableBackendSuggestionChip } from "@/components/EnableBackendSuggestionChip";
+// Backend / email / payments no longer use banner chips — Petal asks inline.
+import { CapabilityAskInline } from "@/components/CapabilityAskInline";
+import { detectCapabilityAsk } from "@/lib/intent-registry";
 // ContinueBuildingChip removed — see retired completion-UI cleanup.
 import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
-import { EnableEmailSuggestionChip } from "@/components/EnableEmailSuggestionChip";
-import { EnablePaymentsSuggestionChip } from "@/components/EnablePaymentsSuggestionChip";
+import { EnableSeoSuggestionChip } from "@/components/EnableSeoSuggestionChip";
+
 import { EnableSeoSuggestionChip } from "@/components/EnableSeoSuggestionChip";
 import { AddPageSuggestionChip } from "@/components/AddPageSuggestionChip";
 import { EnableMobileSuggestionChip } from "@/components/EnableMobileSuggestionChip";
