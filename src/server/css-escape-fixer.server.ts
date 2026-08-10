@@ -160,11 +160,7 @@ function fixUtilityNames(css: string): { out: string; fixed: string[] } {
       replacement = `@utility ${stripped} {${body}}`;
       fixed.push(`${raw} → ${stripped}`);
     } else {
-      const selector = raw.startsWith(".")
-        ? raw
-        : raw.startsWith("&")
-          ? `.custom${raw.slice(1)}`
-          : `.${raw}`;
+      const selector = raw.startsWith(".") ? raw : raw.startsWith("&") ? `.custom${raw.slice(1)}` : `.${raw}`;
       replacement = `${selector} {${body}}`;
       fixed.push(`${raw} → ${selector}`);
     }
