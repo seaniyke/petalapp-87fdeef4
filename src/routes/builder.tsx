@@ -4488,10 +4488,11 @@ function Builder() {
                             the recap and "Your app is live" success line.
                             The user can simply ask for the next step in the
                             composer; no chip needed. */}
-                        {/* "You'll need a backend" inline suggestion. Only on
-                            the most recent assistant message, only when no
-                            backend exists yet, and only when the heuristic
-                            fires on either the user prompt or Petal's reply. */}
+                        {/* Backend: Petal asks in plain chat, never a banner.
+                            `detectCapabilityAsk` only reads the USER's own
+                            message and refuses negated / deferred / merely
+                            curious phrasing, so this stays quiet unless the
+                            person genuinely asked for persistence. */}
                         {project &&
                           i === messages.length - 1 &&
                           !petalIsWorking && !pendingQuestion &&
@@ -4503,25 +4504,32 @@ function Builder() {
                             const prevUser = messages[i - 1]?.role === "user"
                               ? messages[i - 1]?.content
                               : null;
-                            const intent = detectBackendIntentInTurn(prevUser, m.content);
-                            if (!intent.detected) return null;
+                            const intent = detectCapabilityAsk("backend", prevUser);
+                            if (!intent) return null;
+                            const dismiss = () =>
+                              setDismissedBackendChips((prev) => {
+                                const next = new Set(prev);
+                                next.add(i);
+                                return next;
+                              });
                             return (
-                              <EnableBackendSuggestionChip
-                                projectId={project.id}
-                                isPaidPlan={isPaidPlan}
+                              <CapabilityAskInline
+                                kind="backend"
                                 reason={intent.reason}
-                                onEnabled={() => waitForBackendReadyAndResume(project.id)}
-                                onUpgrade={() => setBillingOpen(true)}
-                                onDismiss={() =>
-                                  setDismissedBackendChips((prev) => {
-                                    const next = new Set(prev);
-                                    next.add(i);
-                                    return next;
-                                  })
-                                }
+                                onConfirm={() => {
+                                  dismiss();
+                                  if (!isPaidPlan) {
+                                    setBillingOpen(true);
+                                    return;
+                                  }
+                                  setSettingsScrollTo("backend");
+                                  setSettingsOpen(true);
+                                }}
+                                onDismiss={dismiss}
                               />
                             );
                           })()}
+
                         {/* Domain suggestion — same rules as backend chip. */}
                         {project &&
                           i === messages.length - 1 &&
