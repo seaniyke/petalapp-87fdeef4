@@ -8,9 +8,9 @@ function repair(css: string): string {
 
 describe("Tailwind v4 utility-name repair", () => {
   it("strips selector syntax from a simple utility name", () => {
-    expect(
-      repair("@utility .tabular-nums { font-variant-numeric: tabular-nums; }"),
-    ).toBe("@utility tabular-nums { font-variant-numeric: tabular-nums; }");
+    expect(repair("@utility .tabular-nums { font-variant-numeric: tabular-nums; }")).toBe(
+      "@utility tabular-nums { font-variant-numeric: tabular-nums; }",
+    );
   });
 
   it("turns pseudo-selectors into valid plain CSS", () => {
