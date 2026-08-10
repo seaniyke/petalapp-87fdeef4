@@ -4444,11 +4444,7 @@ function Builder() {
                              starting, which reads like "I'm done!" before
                              the app is actually live. */}
                          {i === messages.length - 1 &&
-                           !petalIsWorking &&
-                           !pendingQuestion &&
-                           isLive &&
-                           !friendlyError &&
-                           files.length > 0 &&
+                           showNextSteps &&
                            // (m.handoff guard removed — handoff was retired.)
                            !m.error && (
                              <NextStepsCard
