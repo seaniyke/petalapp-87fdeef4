@@ -2300,6 +2300,7 @@ function Builder() {
       let resultPlan: string | undefined;
       let resultRecap: string | undefined;
       let planFallbackStarted = false;
+      let planFallbackRequested = false;
       let resultNoFileChanges = false;
       // Iteration Standard — the server's byte-diffed verdict for this turn.
       let turnOutcome: {
@@ -2579,11 +2580,7 @@ function Builder() {
               // duplicated stream event is delivered after reconnecting.
               if (planFallbackStarted) return;
               planFallbackStarted = true;
-              void sendRef.current?.(text, {
-                ...opts,
-                isRetry: true,
-                autoPlan: false,
-              });
+              planFallbackRequested = true;
             },
             onPlanScopeViolation: (dropped) => {
               setLatestCycleProgress(
@@ -2603,6 +2600,7 @@ function Builder() {
         );
 
         if (controller.signal.aborted) return;
+        if (planFallbackRequested) return;
         if (streamError) {
           // Preserve the server-classified kind across the throw boundary so
           // toFriendlyError can render the right card without regexing the
@@ -3010,6 +3008,20 @@ function Builder() {
           setStreamingPlan("");
           setStreamingRecap("");
           setStreamingPreamble("");
+          // Start an auto-plan fallback only after this propose-only request
+          // has fully finalized. Recursing from inside the SSE callback used
+          // to abort the active controller and flash the entire build surface.
+          if (planFallbackRequested) {
+            window.setTimeout(
+              () =>
+                void sendRef.current?.(text, {
+                  ...opts,
+                  isRetry: true,
+                  autoPlan: false,
+                }),
+              0,
+            );
+          }
         }
         // Tear down the streaming-draft writer and wipe the row so the next
         // refresh doesn't resurrect a reply that's already been promoted into
