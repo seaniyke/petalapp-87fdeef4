@@ -71,10 +71,22 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
     const startedAt = Date.now();
     let watchdogPokedAt = 0;
 
-    // A previous build's terminal state and observedAt must not survive while
-    // this new row is loading. `awaitingBuild` bridges this brief null state in
-    // the builder UI, so resetting is both accurate and flicker-free.
-    setSnap(null);
+    // Never expose an all-null frame while a new row is loading. Background
+    // build-id changes do not always set the builder's `awaitingBuild` bridge,
+    // so nulling here briefly rendered idle/success UI between two builds.
+    // Switch atomically to an honest pending snapshot for the new build.
+    setSnap((prev) =>
+      prev?.buildId === latestBuildId
+        ? prev
+        : {
+            buildId: latestBuildId,
+            status: "pending",
+            distPath: null,
+            errorMessage: null,
+            observedAt: Date.now(),
+            verification: null,
+          },
+    );
 
     const pokeWatchdog = async () => {
       // Throttle: at most once every 60s per build to avoid hammering.

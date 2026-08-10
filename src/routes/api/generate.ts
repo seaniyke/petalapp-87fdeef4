@@ -2156,15 +2156,18 @@ Forbidden defaults
   // the staged branch and the staged path got a generic plan with no
   // committed aesthetic — the root cause of "every Petal app looks the
   // same / sidebar + dashboard for a feed prompt".
-  const designDirection =
-    isInitial && userJwt
-      ? await pickDesignDirection({
-          jwt: userJwt,
-          projectId: body.projectId,
-          brief: lastUserContent,
-          memoryEntries,
-        })
-      : null;
+  // Re-render the full committed direction on every turn. The director reads
+  // the persisted value first, so edits retain density, motion, FX recipe and
+  // concrete design moves instead of degrading to the blueprint's one-line
+  // visual summary.
+  const designDirection = userJwt
+    ? await pickDesignDirection({
+        jwt: userJwt,
+        projectId: body.projectId,
+        brief: lastUserContent,
+        memoryEntries,
+      })
+    : null;
   const designBlock = designDirection ? renderDesignDirectionBlock(designDirection) : "";
 
   const persistedBlueprint = !isInitial ? await loadProjectBlueprint(body.projectId) : null;
