@@ -2324,6 +2324,7 @@ function Builder() {
       let partialPlan = "";
       let partialRecap = "";
       let partialPreamble = "";
+      let canonicalIntentBrief = "";
 
       // Persist Petal's in-flight reply to the DB at most every ~600ms so a
       // browser refresh during the build rehydrates the streaming bubble
@@ -2347,16 +2348,10 @@ function Builder() {
         // committed to the action by tapping it, so re-classifying as
         // "clarify" or "chat" would feel broken.
         if (!opts.forceBuild) {
-          // The server emits the `intent` event as soon as it knows the mode —
-          // usually well before the warm reply finishes streaming. When that
-          // intent is "build" we don't wait for the rest of triage: generation
-          // starts immediately and the preamble keeps filling in behind it.
-          let resolveEarlyBuild: (() => void) | null = null;
-          const earlyBuild = new Promise<"early-build">((resolve) => {
-            resolveEarlyBuild = () => resolve("early-build");
-          });
-
-          const triagePromise = streamTriage(
+          // Finish classification before generation. Starting from the early
+          // `intent` frame allowed an auto-plan decision to arrive after the
+          // activity card, making Petal appear to build before asking approval.
+          const triage = await streamTriage(
             {
               messages: nextMessages,
               currentFiles: files,
@@ -2368,30 +2363,13 @@ function Builder() {
                 partialPreamble += d;
                 setStreamingPreamble((s) => s + d);
               },
-              onIntent: (intent) => {
-                if (intent === "build") resolveEarlyBuild?.();
-              },
             },
             controller.signal,
           );
-          // Never let an unhandled rejection escape the background promise —
-          // the awaited path below still surfaces the error.
-          triagePromise.catch(() => {});
-
-          const winner = await Promise.race([
-            triagePromise.then(() => "done" as const),
-            earlyBuild,
-          ]);
-
           if (controller.signal.aborted) return;
-
-          // ── Step 2a: chat / clarify — no build, just promote the warm
-          //            reply (plus any clickable suggestion chips) into a
-          //            real assistant message and stop here.
-          if (winner !== "early-build") {
-            const triage = await triagePromise;
-            if (controller.signal.aborted) return;
-            if (triage.intent !== "build") {
+          canonicalIntentBrief = triage.meta?.brief?.trim() ?? "";
+          // ── Step 2a: chat / clarify — no build. ────────────────────────
+          if (triage.intent !== "build") {
               const replyText = (triage.reply || partialPreamble).trim();
               const suggestions = triage.meta?.suggestions ?? [];
               const assistantMsg: ChatMessage = {
@@ -2411,16 +2389,16 @@ function Builder() {
                 console.warn("Could not persist assistant chat reply:", persistErr);
               }
               return;
-            }
           }
         } else {
           // Forced build — clear any preamble state we'd normally fill from triage.
           setStreamingPreamble("");
         }
 
-        // ── Step 2b: build — show the activity card now and continue. ────
+        // ── Step 2b: build. The activity card becomes visible only on the
+        // first genuine work event. A propose-only turn therefore shows the
+        // approval plan as its first substantial surface. ─────────────────
         setIntentBuild(true);
-        setActivityVisible(true);
 
         await streamGenerate(
           {
@@ -2442,14 +2420,17 @@ function Builder() {
             approvedPlanId: opts.approvedPlanId,
             allowedPaths: opts.allowedPaths,
             autoPlan: opts.autoPlan,
+            intentBrief: canonicalIntentBrief || text,
             buildTarget,
 
           },
           {
             onPhase: (phase: PhaseId) => {
+              setActivityVisible(true);
               setPhases((p) => advanceTo(p, phase));
             },
             onStatus: (message) => {
+              setActivityVisible(true);
               setLatestCycleProgress(sanitizeNarrative(message));
             },
             onPlanDelta: (d) => {
@@ -2509,7 +2490,10 @@ function Builder() {
                 );
               }
             },
-            onBuildSteps: (steps) => setBuildSteps(steps),
+            onBuildSteps: (steps) => {
+              setActivityVisible(true);
+              setBuildSteps(steps);
+            },
             onStepStatus: (index, status) => {
               if (status === "active") setActiveStepIndex(index);
               else setDoneStepIndexes((prev) => (prev.includes(index) ? prev : [...prev, index]));
@@ -5224,7 +5208,7 @@ function Builder() {
             <div ref={chatEndRef} />
 
           </div>
-          {proposedPlan && !petalIsWorking && (
+          {proposedPlan && !discussBusy && !isDeploying && !awaitingBuild && (
             <PlanProposalCard
               plan={proposedPlan}
               onToggle={(path, checked) =>
