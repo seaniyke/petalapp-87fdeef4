@@ -3812,7 +3812,7 @@ Forbidden defaults
                 failed_ops: initiallyFailedOps,
                 rewritten_paths: rewrittenPaths,
                 changed_paths: changedPaths.slice(0, 20),
-                turn_id: turnId,
+                turn_id: logicalTurnId,
               },
             });
 
