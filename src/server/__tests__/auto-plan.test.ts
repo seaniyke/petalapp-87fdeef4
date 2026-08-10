@@ -14,6 +14,7 @@ assert.equal(shouldAutoPlan({ ...base, fileCount: 2, prompt: "add a pricing page
 assert.equal(shouldAutoPlan({ ...base, prompt: "make the header blue" }), false);
 assert.equal(shouldAutoPlan({ ...base, prompt: "fix the typo in the footer" }), false);
 assert.equal(shouldAutoPlan({ ...base, prompt: "change the button text to Start" }), false);
+assert.equal(shouldAutoPlan({ ...base, prompt: "fix the blank page when I add a habit" }), false);
 
 // 4. Structural work plans.
 assert.equal(shouldAutoPlan({ ...base, prompt: "add a checkout flow with payments" }), true);

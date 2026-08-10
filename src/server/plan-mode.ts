@@ -103,6 +103,8 @@ Always call the tool. Never reply in prose.`;
 
 export type ProposePlanArgs = {
   userPrompt: string;
+  /** Triage's canonical restatement of the requested outcome. */
+  intentBrief?: string;
   history: ChatMessage[];
   currentFiles: ProjectFile[];
   signal?: AbortSignal;
@@ -145,6 +147,9 @@ export async function proposeChangePlan(args: ProposePlanArgs): Promise<PlanProp
     "",
     "## New user request",
     args.userPrompt,
+    args.intentBrief ? "" : "",
+    args.intentBrief ? "## Canonical requested outcome" : "",
+    args.intentBrief ?? "",
     "",
     "Call propose_change_plan with the smallest viable scope.",
   ]

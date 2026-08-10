@@ -86,16 +86,13 @@ export function findGenerationQualityIssues(
     }
   }
 
-  // Anti-sameness scan: flags AI-default fingerprints (indigo/purple gradients,
-  // Inter typography, missing landing sections). Informational notes only —
-  // never blocks. Fires on marketing + fullstack (landings can appear inside
-  // fullstack apps too).
-  if (subtype === "marketing" || subtype === "fullstack") {
-    try {
-      issues.push(...findAntiSamenessIssues(files));
-    } catch {
-      /* never block on scan failure */
-    }
+  // The design-contract scan applies to every web product. Its landing
+  // checklist self-gates, while apps/tools still receive typography, brand,
+  // interior-page and banned-default checks.
+  try {
+    issues.push(...findAntiSamenessIssues(files));
+  } catch {
+    /* never block on scan failure */
   }
 
   // Web standards scan: dead hamburger menus and buttons wired to nothing are
