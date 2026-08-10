@@ -18,7 +18,7 @@ describe("Tailwind v4 utility-name repair", () => {
       ".card:hover { transform: translateY(-1px); }",
     );
     expect(repair("@utility &::after { content: ''; }")).toBe(
-      ".::after { content: ''; }",
+      ".custom::after { content: ''; }",
     );
   });
 

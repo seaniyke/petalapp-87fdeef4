@@ -163,7 +163,7 @@ function fixUtilityNames(css: string): { out: string; fixed: string[] } {
       const selector = raw.startsWith(".")
         ? raw
         : raw.startsWith("&")
-          ? `.${raw.slice(1)}`
+          ? `.custom${raw.slice(1)}`
           : `.${raw}`;
       replacement = `${selector} {${body}}`;
       fixed.push(`${raw} → ${selector}`);

@@ -1,0 +1,15 @@
+import { defineConfig } from "vitest/config";
+import tsconfigPaths from "vite-tsconfig-paths";
+
+export default defineConfig({
+  plugins: [tsconfigPaths()],
+  test: {
+    // Some older regression harnesses are standalone Bun scripts. Let
+    // Vitest run only files that use an actual test-runner API instead of
+    // importing scripts that call process.exit at module scope.
+    include: [
+      "src/lib/preview-state.test.ts",
+      "src/server/__tests__/{app-ui-library,backend-quality,billing-fairness,builder-deployment-readiness,chunked-generation,css-escape-fixer,document-head,file-budget,frontend-quality,html-injectors-integration,kit-dep-closure,prd-engine,prd-golden-corpus,preemit-gate,preview-guard-markup,product-principles,renderable-shell,repair-safety,scope-jsx-prose,scope-repair,sibling-resolver,tier-local-verify,tool-args-salvage,verify-plan,visual-qa,write-gate}.test.ts",
+    ],
+  },
+});
