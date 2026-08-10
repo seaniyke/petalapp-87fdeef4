@@ -40,7 +40,6 @@ export const getProjectGitLink = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<GitLink> => {
     await assertOwnsProject(context.supabase, data.projectId, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { encryptSecret } = await import("@/server/secrets/crypto.server");
     const { data: row } = await supabaseAdmin
       .from("project_git_links")
       .select("repo_full_name, branch, auto_sync, last_synced_at, last_commit_sha, last_error")
@@ -84,6 +83,7 @@ export const connectProjectGitRepo = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { encryptSecret } = await import("@/server/secrets/crypto.server");
     const { error } = await supabaseAdmin.from("project_git_links").upsert(
       {
         project_id: data.projectId,

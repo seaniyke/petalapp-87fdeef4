@@ -3170,10 +3170,10 @@ Forbidden defaults
               outcome: "failed",
               duration_ms: 0,
               issue_count: 1,
-              details: { reason: "empty_ops", tool: collected.name, turn_id: turnId },
+              details: { reason: "empty_ops", tool: collected.name, turn_id: logicalTurnId },
             });
             recordEditFailureDiagnostic({
-              turnId,
+              turnId: logicalTurnId,
               projectId: body.projectId ?? null,
               userId,
               model,
@@ -3405,11 +3405,11 @@ Forbidden defaults
                 safe_ops: safeOps.length,
                 protected_ops: violations.map(opDigest),
                 ast_dropped_ops: astDroppedOps,
-                turn_id: turnId,
+                turn_id: logicalTurnId,
               },
             });
             recordEditFailureDiagnostic({
-              turnId,
+              turnId: logicalTurnId,
               projectId: body.projectId ?? null,
               userId,
               model,
@@ -3705,11 +3705,11 @@ Forbidden defaults
                     protected_ops: violations.map(opDigest),
                     ast_dropped_ops: astDroppedOps,
                     failed_ops: initiallyFailedOps,
-                    turn_id: turnId,
+                    turn_id: logicalTurnId,
                   },
                 });
                 recordEditFailureDiagnostic({
-                  turnId,
+                  turnId: logicalTurnId,
                   projectId: body.projectId ?? null,
                   userId,
                   model,
@@ -3772,11 +3772,11 @@ Forbidden defaults
                   applied_ops: initiallyAppliedOps,
                   failed_ops: initiallyFailedOps,
                   rewritten_paths: rewrittenPaths,
-                  turn_id: turnId,
+                  turn_id: logicalTurnId,
                 },
               });
               recordEditFailureDiagnostic({
-                turnId,
+                turnId: logicalTurnId,
                 projectId: body.projectId ?? null,
                 userId,
                 model,
