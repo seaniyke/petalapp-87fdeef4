@@ -148,7 +148,6 @@ import { detectCapabilityAsk } from "@/lib/intent-registry";
 import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
 import { EnableSeoSuggestionChip } from "@/components/EnableSeoSuggestionChip";
 
-import { EnableSeoSuggestionChip } from "@/components/EnableSeoSuggestionChip";
 import { AddPageSuggestionChip } from "@/components/AddPageSuggestionChip";
 import { EnableMobileSuggestionChip } from "@/components/EnableMobileSuggestionChip";
 import { EnableAnalyticsSuggestionChip } from "@/components/EnableAnalyticsSuggestionChip";
