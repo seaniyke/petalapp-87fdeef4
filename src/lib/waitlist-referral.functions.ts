@@ -114,10 +114,12 @@ export const claimWaitlistReferral = createServerFn({ method: "POST" })
       const referral = edge as { id: string; referred_credited_at: string | null } | null;
 
       if (referral && !referral.referred_credited_at) {
-        const { error } = await supabaseAdmin.rpc("admin_grant_credit" as never, {
-          _target_user_id: context.userId,
+        const { error } = await supabaseAdmin.rpc("grant_credits" as never, {
+          _user_id: context.userId,
           _amount: REFERRED_CREDITS,
-          _note: "Referral welcome bonus",
+          _bucket: "topup",
+          _reason: "referral_welcome_bonus",
+          _metadata: { referral_id: referral.id },
         } as never);
         if (!error) {
           welcomeCredits = REFERRED_CREDITS;
@@ -145,10 +147,12 @@ export const claimWaitlistReferral = createServerFn({ method: "POST" })
 
     let earned = 0;
     if (pending.length > 0) {
-      const { error } = await supabaseAdmin.rpc("admin_grant_credit" as never, {
-        _target_user_id: context.userId,
+      const { error } = await supabaseAdmin.rpc("grant_credits" as never, {
+        _user_id: context.userId,
         _amount: pending.length * REFERRER_CREDITS,
-        _note: `Referral reward — ${pending.length} friend${pending.length === 1 ? "" : "s"}`,
+        _bucket: "topup",
+        _reason: "referral_reward",
+        _metadata: { referral_ids: pending.map((row) => row.id) },
       } as never);
       if (!error) {
         earned = pending.length * REFERRER_CREDITS;
