@@ -435,12 +435,12 @@ function decodeAssistantContent(role: string, raw: string): ChatMessage {
 export async function loadProjectMessages(projectId: string): Promise<ChatMessage[]> {
   const { data, error } = await supabase
     .from("messages")
-    .select("role, content, created_at")
+    .select("id, role, content, created_at")
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
   if (error) throw error;
   const decoded = (data ?? [])
-    .map((r) => decodeAssistantContent(r.role, r.content))
+    .map((r) => ({ ...decodeAssistantContent(r.role, r.content), id: r.id }))
     .filter((message) => !isInternalRepairPrompt(message));
   // Collapse back-to-back identical user prompts. These are orphans from an
   // attempt that died before it ever produced a reply (tab closed, stream

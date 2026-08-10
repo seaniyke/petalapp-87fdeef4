@@ -120,8 +120,9 @@ function sanitizeThemeBlocks(css: string): { out: string; removed: string[] } {
  * `foo::after`, `.a .b`) after `@utility`. Repair it mechanically:
  *   - strip a leading `.`
  *   - if what remains is still a valid identifier, keep the utility
- *   - otherwise demote the rule to a plain class rule inside
- *     `@layer utilities { … }`, which is always valid CSS.
+ *   - otherwise demote the rule to a plain CSS selector. Tailwind v4 does not
+ *     register v3-style `@layer utilities` rules as custom utilities, while a
+ *     normal selector is valid CSS and preserves the authored behavior.
  */
 const VALID_UTILITY_NAME = /^[a-z][a-zA-Z0-9-]*$/;
 
@@ -159,9 +160,13 @@ function fixUtilityNames(css: string): { out: string; fixed: string[] } {
       replacement = `@utility ${stripped} {${body}}`;
       fixed.push(`${raw} → ${stripped}`);
     } else {
-      const selector = raw.startsWith(".") || raw.startsWith("&") ? raw : `.${raw}`;
-      replacement = `@layer utilities {\n  ${selector} {${body}}\n}`;
-      fixed.push(`${raw} → @layer utilities { ${selector} }`);
+      const selector = raw.startsWith(".")
+        ? raw
+        : raw.startsWith("&")
+          ? `.custom${raw.slice(1)}`
+          : `.${raw}`;
+      replacement = `${selector} {${body}}`;
+      fixed.push(`${raw} → ${selector}`);
     }
 
     result = result.slice(0, match.index) + replacement + result.slice(endIdx + 1);

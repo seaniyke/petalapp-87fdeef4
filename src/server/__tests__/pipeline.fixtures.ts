@@ -46,7 +46,7 @@ export default function Home() {
     <Container>
       <h1 className="text-4xl font-bold text-foreground">Hello, this string never clo`;
 
-// 320 lines of valid TSX → triggers HARD reject (>280).
+// 440 lines of valid TSX → triggers HARD reject (>420).
 const oversize = (() => {
   const lines: string[] = [
     `import { Container } from "@/components/ui/container";`,
@@ -55,7 +55,7 @@ const oversize = (() => {
     `  return (`,
     `    <Container>`,
   ];
-  for (let i = 0; i < 310; i++) {
+  for (let i = 0; i < 430; i++) {
     lines.push(`      <p className="text-foreground">Line ${i}</p>`);
   }
   lines.push(`    </Container>`, `  );`, `}`, ``);

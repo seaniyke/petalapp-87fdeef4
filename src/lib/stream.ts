@@ -187,12 +187,8 @@ export async function streamGenerate(
       } catch (resumeError) {
         if (signal?.aborted) return false;
         if (attempt === 2) {
-          // The accepted turn remains persisted and server-owned. Returning
-          // here lets the builder's visibility/mount reconnect try again;
-          // throwing would create the false red "Load failed" card even
-          // though generation is still running safely in the background.
           console.warn("Turn reconnect deferred until network recovery", resumeError);
-          return true;
+          return false;
         }
       }
       await new Promise<void>((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
@@ -361,6 +357,9 @@ export async function streamGenerate(
   // turn.
   if (!sawDone && !sawResult && (await resumeAcceptedTurn())) return;
   if (sawResult && !sawDone) handlers.onDone?.("succeeded");
+  if (!sawDone && !sawResult) {
+    throw new Error("The build is still running, but Petal could not reconnect to its progress stream.");
+  }
 }
 
 /**
