@@ -103,6 +103,8 @@ Always call the tool. Never reply in prose.`;
 
 export type ProposePlanArgs = {
   userPrompt: string;
+  /** Triage's canonical restatement of the requested outcome. */
+  intentBrief?: string;
   history: ChatMessage[];
   currentFiles: ProjectFile[];
   signal?: AbortSignal;
@@ -145,6 +147,9 @@ export async function proposeChangePlan(args: ProposePlanArgs): Promise<PlanProp
     "",
     "## New user request",
     args.userPrompt,
+    args.intentBrief ? "" : "",
+    args.intentBrief ? "## Canonical requested outcome" : "",
+    args.intentBrief ?? "",
     "",
     "Call propose_change_plan with the smallest viable scope.",
   ]
@@ -344,6 +349,16 @@ export function shouldAutoPlan(args: {
 
   // Explicit "just do it" always wins over the heuristic.
   if (/\b(just do it|no plan|don'?t plan|skip the plan|quick(ly)?)\b/.test(p)) return false;
+
+  // A focused bug report should enter repair immediately. Planning a known,
+  // single broken interaction adds ceremony after the user already described
+  // the exact failure (and was the source of the late plan card).
+  const focusedRepair =
+    /^(fix|repair|resolve|stop)\b/.test(p) &&
+    raw.length < 140 &&
+    !/\b(and|also|plus)\b/.test(p) &&
+    !/\b(auth|database|schema|payment|checkout|migration|redesign|architecture)\b/.test(p);
+  if (focusedRepair) return false;
 
   // Small, well-understood tweaks never plan, even when phrased at length.
   const trivial =

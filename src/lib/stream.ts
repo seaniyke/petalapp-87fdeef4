@@ -129,6 +129,9 @@ export async function streamGenerate(
     allowedPaths?: string[];
     /** Plan Mode v2 — set false to skip the automatic plan proposal. */
     autoPlan?: boolean;
+    /** Canonical restatement produced by triage. Planning, generation and QA
+     * use this same contract so the turn cannot drift from the user's ask. */
+    intentBrief?: string;
     /** Build target chip (web / android / ios / backend / extension). */
     buildTarget?: string;
   },

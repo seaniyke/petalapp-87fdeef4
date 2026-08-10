@@ -17,7 +17,7 @@ const BUILD_VERBS =
   /\b(build|create|make|design|generate|scaffold|start|launch|develop)\b/i;
 
 const EDIT_VERBS =
-  /\b(add|change|update|edit|remove|delete|rename|replace|move|swap|increase|decrease|reduce|shrink|enlarge|tweak|adjust|set|use|apply|hide|show|reorder|align|center|wire|connect|hook up|implement|enable|disable|translate|rewrite|reword|shorten|expand)\b/i;
+  /\b(add|change|update|edit|remove|delete|rename|replace|move|swap|increase|decrease|reduce|shrink|enlarge|tweak|adjust|hide|show|reorder|align|center|implement|enable|disable|translate|rewrite|reword|shorten|expand)\b/i;
 
 const FIX_VERBS =
   /\b(fix|repair|broken|(?:doesn'?t|does not|won'?t|will not|can'?t|cannot)\s+\w+|not working|isn'?t working|crash(?:es|ing)?|error|bug|stuck|fails?|failing)\b/i;

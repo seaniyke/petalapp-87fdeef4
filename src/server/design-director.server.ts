@@ -369,13 +369,14 @@ async function saveDirectionToMemory(args: {
       global: { headers: { Authorization: `Bearer ${jwt}` } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    // Stored as compact JSON in the value column. Capped well under 400 chars
-    // by the structured shape (short strings + 2-4 short moves).
+    // Preserve the complete direction. Truncating this JSON made the memory
+    // unparsable whenever richer design moves pushed it past the old cap,
+    // silently discarding the project's visual contract on later edits.
     await supabase.from("project_memory").upsert(
       {
         project_id: projectId,
         key: "design_direction",
-        value: JSON.stringify(direction).slice(0, 400),
+        value: JSON.stringify(direction).slice(0, 4000),
       },
       { onConflict: "project_id,key" },
     );

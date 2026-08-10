@@ -203,6 +203,9 @@ type Body = {
    *  (the composer sends this when the user picked "Just build it", or when
    *  they turned auto-plan off in settings). Defaults to true. */
   autoPlan?: boolean;
+  /** Canonical restatement from triage. Supplementary context only; the
+   * original user message remains authoritative for detail. */
+  intentBrief?: string;
 };
 
 const PATCH_CONTEXT_FILE_LIMIT = 24;
@@ -1658,6 +1661,7 @@ async function handleGenerateRequestCore(
   // chars (~2000 tokens) which is generous for any plausible prompt.
   const MAX_PROMPT_CHARS = 8000;
   const lastContent = latestUserMessage(messages);
+  const intentBrief = (body.intentBrief ?? "").trim().slice(0, 600);
   if (lastContent.length > MAX_PROMPT_CHARS) {
     return new Response(
       JSON.stringify({
@@ -1735,6 +1739,7 @@ async function handleGenerateRequestCore(
         try {
           const plan = await proposeChangePlan({
             userPrompt: lastContent,
+            intentBrief,
             history: messages,
             currentFiles,
             signal: abortSignal,
@@ -2151,15 +2156,18 @@ Forbidden defaults
   // the staged branch and the staged path got a generic plan with no
   // committed aesthetic — the root cause of "every Petal app looks the
   // same / sidebar + dashboard for a feed prompt".
-  const designDirection =
-    isInitial && userJwt
-      ? await pickDesignDirection({
-          jwt: userJwt,
-          projectId: body.projectId,
-          brief: lastUserContent,
-          memoryEntries,
-        })
-      : null;
+  // Re-render the full committed direction on every turn. The director reads
+  // the persisted value first, so edits retain density, motion, FX recipe and
+  // concrete design moves instead of degrading to the blueprint's one-line
+  // visual summary.
+  const designDirection = userJwt
+    ? await pickDesignDirection({
+        jwt: userJwt,
+        projectId: body.projectId,
+        brief: lastUserContent,
+        memoryEntries,
+      })
+    : null;
   const designBlock = designDirection ? renderDesignDirectionBlock(designDirection) : "";
 
   const persistedBlueprint = !isInitial ? await loadProjectBlueprint(body.projectId) : null;
@@ -2490,6 +2498,9 @@ Forbidden defaults
 
   const dynamicSuffixText =
     dateBlock +
+    (intentBrief
+      ? `\n\n### Canonical turn intent (HARD CONTRACT)\n${intentBrief}\nSatisfy this exact outcome. Use the original user message for detail, but do not substitute a different feature, page, or product. Before emitting files, verify every planned change directly supports this intent.\n`
+      : "") +
     suggestionsBlock +
     resolvedBlock +
     groundingBlock +

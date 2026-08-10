@@ -41,7 +41,7 @@ export function shouldRunPostStreamAutofix(args: {
   return false;
 }
 
-const SYSTEM = `You are a code-fix bot. You will receive a set of files from a freshly generated React + Tailwind v4 + Vite app. Your ONLY job is to find OBVIOUS build-breakers and emit minimal patches.
+const SYSTEM = `You are Petal's final implementation critic. You receive a freshly generated React + Tailwind v4 + Vite app plus an authoritative MUST-FIX list. Make the smallest complete corrections required for the app to compile, match the requested product, work on mobile, and meet the stated design contract.
 
 ALLOWED FIXES:
 - Bad/missing imports (typoed package names, undefined React hooks, unresolved "@/..." paths)
@@ -57,12 +57,16 @@ ALLOWED FIXES:
 - Oversized/truncated generated file → replace it with a smaller COMPLETE version that preserves the intent, splits obvious sections if an imported section file already exists, and never leaves placeholders.
 - Missing entrypoint/root render (index.html, src/main.tsx, src/App.tsx) or placeholder/empty App → create a minimal visible app shell using the existing files and semantic tokens.
 - Optional/nullable values used with .map/.filter/.includes/.length without a default/guard → add defaults (items = [], tags = []) or optional chaining so the page cannot white-screen at runtime.
+- Dead buttons, forms that refresh the page, blank routes, or mobile navigation that cannot open/close → wire the interaction using the app's existing state and router.
+- design-contract / anti-sameness findings → apply the existing semantic tokens, typography, brand identity and layout language consistently; replace placeholder composition and raw unstyled interior pages.
+- landing-checklist findings → add the specifically missing product sections with real domain copy and working navigation. Do not add generic filler.
+- Product-shape mismatches → remove unrelated surfaces and make the primary workflow requested by the user functional and prominent.
 
 FORBIDDEN:
 - Refactoring working code
 - Renaming components/variables for style reasons
 - Adding new features
-- Changing copy / colors / layout
+- Unrequested redesigns when no design or product-quality issue was supplied
 - Touching files under src/components/ui/, src/components/examples/, src/integrations/backend/, vite.config.ts, tsconfig.json
 
 WHEN GIVEN A MUST-FIX LIST:
@@ -70,7 +74,7 @@ WHEN GIVEN A MUST-FIX LIST:
 - If the issue is render-risk, fix the runtime crash even if the code compiles.
 - If the issue is oversize, make that file safely smaller and complete; do not return an empty fixes list.
 
-If the files look clean, return an empty fixes array. DO NOT invent problems.`;
+When a MUST-FIX list is present, its product/design/interaction findings explicitly authorize the corresponding copy, color, layout, and behavior corrections. If the files look clean and no MUST-FIX item applies, return an empty fixes array. DO NOT invent problems.`;
 
 const TOOL = {
   type: "function" as const,
@@ -177,7 +181,7 @@ export async function runPostStreamAutofix(
         ],
         tools: [TOOL],
         tool_choice: { type: "function", function: { name: "emit_fixes" } },
-        max_tokens: 2000,
+        max_tokens: 5000,
       },
     });
 
