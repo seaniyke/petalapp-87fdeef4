@@ -1188,6 +1188,29 @@ function Builder() {
     answeredQuestionAt !== messages.length &&
     !petalIsWorking;
 
+  // "Ready — what's next?" latch.
+  //
+  // The card used to be rendered directly off live state (isLive && files &&
+  // !petalIsWorking). Any transient blip in that state — a build row poll that
+  // momentarily reports a newer `pending` row, a realtime reconnect, a file
+  // list re-hydrate — made a finished turn's card vanish and pop back a few
+  // seconds later. Once a turn is genuinely done we latch it to that message
+  // index; only a NEW turn (a new message) or a real error clears it.
+  const [nextStepsLatchAt, setNextStepsLatchAt] = useState<number | null>(null);
+  const nextStepsEligible =
+    !petalIsWorking && !pendingQuestion && isLive && !friendlyError && files.length > 0;
+  useEffect(() => {
+    if (nextStepsEligible) setNextStepsLatchAt(messages.length);
+  }, [nextStepsEligible, messages.length]);
+  // A brand-new turn invalidates the latch (it belongs to the previous reply).
+  useEffect(() => {
+    if (busy || discussBusy) setNextStepsLatchAt(null);
+  }, [busy, discussBusy]);
+  const showNextSteps =
+    !friendlyError &&
+    !pendingQuestion &&
+    (nextStepsEligible || (nextStepsLatchAt !== null && nextStepsLatchAt === messages.length && !petalIsWorking));
+
   // Long-wait escalation for the deploy phase. We escalate copy at 60s/90s
   // and surface a friendly "deploy stalled" card at 150s so the user always
   // has a way to retry or keep working — never a stranded spinner.
