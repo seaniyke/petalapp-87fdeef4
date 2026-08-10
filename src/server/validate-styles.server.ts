@@ -165,8 +165,24 @@ export function validateStylesCss(raw: string): ValidationResult {
     }
   }
 
+  // 5) `@utility` name must be a bare lowercase identifier. Selector syntax
+  //    (`@utility .foo`, `@utility foo:hover`) aborts the Tailwind v4 build
+  //    with "defines an invalid utility name".
+  {
+    for (const m of noStrings.matchAll(/@utility\s+([^{]+)\{/g)) {
+      const name = m[1].trim();
+      if (!/^[a-z][a-zA-Z0-9-]*$/.test(name)) {
+        return {
+          ok: false,
+          reason: `invalid \`@utility ${truncate(name, 40)}\` — the name must be a bare lowercase identifier (no leading \`.\`, no pseudo-classes). Write \`@utility ${name.replace(/^\./, "").split(/[:\s]/)[0] || "custom"} { … }\` and put pseudo-selectors inside the body with \`&\`.`,
+        };
+      }
+    }
+  }
+
   return { ok: true };
 }
+
 
 /**
  * Return the list of custom class names referenced by `@apply` that are NOT
