@@ -4560,11 +4560,10 @@ function Builder() {
                               />
                             );
                           })()}
-                        {/* Email suggestion — same rules as backend/domain chips.
-                            If the project has no backend yet, swap to a
-                            friendly "set up your app's home first" nudge
-                            that opens the backend setup flow, since email
-                            sending needs a backend. Non-techie copy. */}
+                        {/* Email — asked in chat, gated on the user's own words.
+                            If there's no backend yet the question becomes
+                            "set up the backend first", since sending needs
+                            somewhere to run. */}
                         {project &&
                           i === messages.length - 1 &&
                           !petalIsWorking && !pendingQuestion &&
@@ -4573,51 +4572,41 @@ function Builder() {
                             const prevUser = messages[i - 1]?.role === "user"
                               ? messages[i - 1]?.content
                               : null;
-                            const intent = detectEmailIntentInTurn(prevUser, m.content);
-                            if (!intent.detected) return null;
-                            // Avoid double-chip if the backend chip is
-                            // already showing for the same turn.
-                            const backendIntent = detectBackendIntentInTurn(prevUser, m.content);
-                            const backendChipShowing =
+                            const intent = detectCapabilityAsk("email", prevUser);
+                            if (!intent) return null;
+                            // Defer to the backend question when it's already
+                            // asking about the same turn.
+                            if (
                               hasBackend === false &&
-                              backendIntent.detected &&
-                              !dismissedBackendChips.has(i);
-                            if (hasBackend === false && backendChipShowing) return null;
+                              detectCapabilityAsk("backend", prevUser) &&
+                              !dismissedBackendChips.has(i)
+                            ) {
+                              return null;
+                            }
                             const needsBackendFirst = hasBackend === false;
+                            const dismiss = () =>
+                              setDismissedEmailChips((prev) => {
+                                const next = new Set(prev);
+                                next.add(i);
+                                return next;
+                              });
                             return (
-                              <EnableEmailSuggestionChip
+                              <CapabilityAskInline
+                                kind="email"
                                 reason={intent.reason}
                                 needsBackendFirst={needsBackendFirst}
-                                onOpenEmail={() => {
-                                  setSettingsScrollTo("email");
+                                onConfirm={() => {
+                                  dismiss();
+                                  setSettingsScrollTo(
+                                    needsBackendFirst ? "backend" : "email",
+                                  );
                                   setSettingsOpen(true);
                                 }}
-                                onSetupBackend={() => {
-                                  // Reuse the backend chip path: dismiss the
-                                  // email nudge and surface the backend chip
-                                  // by clearing its dismissal, then open
-                                  // settings as a fallback affordance.
-                                  setDismissedBackendChips((prev) => {
-                                    const next = new Set(prev);
-                                    next.delete(i);
-                                    return next;
-                                  });
-                                  setSettingsScrollTo("backend");
-                                  setSettingsOpen(true);
-                                }}
-                                onDismiss={() =>
-                                  setDismissedEmailChips((prev) => {
-                                    const next = new Set(prev);
-                                    next.add(i);
-                                    return next;
-                                  })
-                                }
+                                onDismiss={dismiss}
                               />
                             );
                           })()}
-                        {/* Payment suggestion — same rules as email chip.
-                            If no backend yet, swap to backend-first nudge,
-                            since checkout webhooks need somewhere to run. */}
+                        {/* Payments — same contract as email. */}
                         {project &&
                           i === messages.length - 1 &&
                           !petalIsWorking && !pendingQuestion &&
@@ -4626,51 +4615,44 @@ function Builder() {
                             const prevUser = messages[i - 1]?.role === "user"
                               ? messages[i - 1]?.content
                               : null;
-                            const intent = detectPaymentIntentInTurn(prevUser, m.content);
-                            if (!intent.detected) return null;
-                            // Avoid double-chip: if the backend chip is
-                            // already showing for the same turn, defer to it.
-                            const backendIntent = detectBackendIntentInTurn(prevUser, m.content);
-                            const backendChipShowing =
+                            const intent = detectCapabilityAsk("payment", prevUser);
+                            if (!intent) return null;
+                            if (
                               hasBackend === false &&
-                              backendIntent.detected &&
-                              !dismissedBackendChips.has(i);
-                            if (hasBackend === false && backendChipShowing) return null;
+                              detectCapabilityAsk("backend", prevUser) &&
+                              !dismissedBackendChips.has(i)
+                            ) {
+                              return null;
+                            }
                             const needsBackendFirst = hasBackend === false;
+                            const dismiss = () =>
+                              setDismissedPaymentChips((prev) => {
+                                const next = new Set(prev);
+                                next.add(i);
+                                return next;
+                              });
                             return (
-                              <EnablePaymentsSuggestionChip
+                              <CapabilityAskInline
+                                kind="payment"
                                 reason={intent.reason}
                                 needsBackendFirst={needsBackendFirst}
-                                onOpenPayments={() => {
+                                onConfirm={() => {
+                                  dismiss();
+                                  if (needsBackendFirst) {
+                                    setSettingsScrollTo("backend");
+                                    setSettingsOpen(true);
+                                    return;
+                                  }
                                   const prompt = intent.reason
                                     ? `Enable payments for "${intent.reason}" using Petal's built-in payments. Recommend the right provider and set it up end-to-end — no manual API keys.`
                                     : `Enable payments for this project using Petal's built-in payments. Recommend the right provider and set it up end-to-end — no manual API keys.`;
-                                  setDismissedPaymentChips((prev) => {
-                                    const next = new Set(prev);
-                                    next.add(i);
-                                    return next;
-                                  });
                                   void send(prompt, { forceBuild: true });
                                 }}
-                                onSetupBackend={() => {
-                                  setDismissedBackendChips((prev) => {
-                                    const next = new Set(prev);
-                                    next.delete(i);
-                                    return next;
-                                  });
-                                  setSettingsScrollTo("backend");
-                                  setSettingsOpen(true);
-                                }}
-                                onDismiss={() =>
-                                  setDismissedPaymentChips((prev) => {
-                                    const next = new Set(prev);
-                                    next.add(i);
-                                    return next;
-                                  })
-                                }
+                                onDismiss={dismiss}
                               />
                             );
                           })()}
+
                         {/* SEO suggestion — pure frontend, no backend gate. */}
                         {project &&
                           i === messages.length - 1 &&
