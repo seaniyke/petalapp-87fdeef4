@@ -2001,9 +2001,11 @@ function Builder() {
     return () => {
       cancelled = true;
       document.removeEventListener("visibilitychange", onVisible);
-      // Don't abort `controller` here — leaving a project should let the
-      // resume finish in the background harmlessly. AbortController is
-      // garbage-collected with the closure.
+      // The server owns the build, so aborting only this replay request is
+      // safe. It also prevents project A's controller from blocking project
+      // B's reconnect when users switch projects quickly.
+      controller?.abort();
+      if (abortRef.current === controller) abortRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, bootstrapping]);
@@ -2217,10 +2219,10 @@ function Builder() {
             content:
               "✨ Picking the build back up — wiring your app to the new backend.",
           };
-          setMessages([...messages, note]);
+          setMessages((prev) => [...prev, note]);
         } else {
           // Visible thread always shows the user's real text, never the folded prompt.
-          setMessages([...messages, userMsg]);
+          setMessages((prev) => [...prev, userMsg]);
         }
       }
       // Don't overwrite lastUserPrompt during an auto-fix / auto-continue —
@@ -3092,7 +3094,7 @@ function Builder() {
           : {}),
       };
       const nextMessages: ChatMessage[] = [...messages, userMsg];
-      setMessages(nextMessages);
+      setMessages((prev) => [...prev, userMsg]);
       setInput("");
       setPendingAttachments([]);
       initialAttachmentsRef.current = [];
@@ -4298,7 +4300,7 @@ function Builder() {
               // status updates, not part of the conversation.
               if (m.role === "system" || m.system) {
                 return (
-                  <div key={i} className="my-1 flex justify-center">
+                  <div key={m.id ?? `${m.role}:${m.content}`} className="my-1 flex justify-center">
                     <div className="inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-3 py-1 text-[11px] font-medium text-muted-foreground">
                       {m.content}
                     </div>
@@ -4311,7 +4313,10 @@ function Builder() {
               const hasReply = isUser && messages[i + 1]?.role === "assistant";
               const canRevert = hasReply && !petalIsWorking;
               return (
-                <div key={i} className={`group min-w-0 ${isUser ? "flex justify-end" : ""}`}>
+                <div
+                  key={m.id ?? `${m.role}:${m.content}:${m.plan ?? ""}:${m.recap ?? ""}`}
+                  className={`group min-w-0 ${isUser ? "flex justify-end" : ""}`}
+                >
                   <div
                     className={`relative min-w-0 wrap-anywhere ${
                       isUser

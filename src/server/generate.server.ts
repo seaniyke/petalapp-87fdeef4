@@ -479,6 +479,9 @@ export type ChatAttachmentRef = {
 };
 
 export type ChatMessage = {
+  /** Stable database/local identity used to preserve component state when
+   * transient error messages are removed from the thread. */
+  id?: string;
   role: "user" | "assistant" | "system";
   content: string;
   /** Optional structured narrative that powers the Plan / Recap segments

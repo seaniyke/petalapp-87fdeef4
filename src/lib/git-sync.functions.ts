@@ -40,6 +40,7 @@ export const getProjectGitLink = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<GitLink> => {
     await assertOwnsProject(context.supabase, data.projectId, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { encryptSecret } = await import("@/server/secrets/crypto.server");
     const { data: row } = await supabaseAdmin
       .from("project_git_links")
       .select("repo_full_name, branch, auto_sync, last_synced_at, last_commit_sha, last_error")
@@ -89,7 +90,7 @@ export const connectProjectGitRepo = createServerFn({ method: "POST" })
         provider: "github",
         repo_full_name: data.repoFullName,
         branch,
-        access_token: data.token,
+        access_token: encryptSecret(data.token),
         auto_sync: data.autoSync,
         last_error: null,
       },
@@ -150,6 +151,10 @@ export const pushProjectToGit = createServerFn({ method: "POST" })
         .eq("project_id", data.projectId)
         .maybeSingle();
       if (!link) return { ok: false, error: "No repository connected yet." };
+      const { decryptSecret } = await import("@/server/secrets/crypto.server");
+      // Backward compatibility for links created before token encryption was
+      // introduced. Every new/updated link is encrypted at rest.
+      const token = decryptSecret(link.access_token) ?? link.access_token;
 
       const { data: files, error: filesErr } = await supabaseAdmin
         .from("project_files")
@@ -161,7 +166,7 @@ export const pushProjectToGit = createServerFn({ method: "POST" })
       const { syncProjectToRepo } = await import("@/server/git-sync.server");
       try {
         const result = await syncProjectToRepo({
-          token: link.access_token,
+          token,
           fullName: link.repo_full_name,
           branch: link.branch,
           files: files.map((f) => ({ path: f.path, content: f.content ?? "" })),

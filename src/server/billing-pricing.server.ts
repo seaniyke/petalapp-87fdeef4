@@ -92,7 +92,10 @@ export async function resolvePrice(
     throw new Error(`Currency not available: ${cur}`);
   }
   const rate = Number(cur_row.usd_rate);
-  const decimals = CURRENCY_DECIMALS[cur] ?? 2;
+  const decimals = CURRENCY_DECIMALS[cur];
+  if (decimals === undefined) {
+    throw new Error(`Currency decimal precision is not configured: ${cur}`);
+  }
   // usdCents * rate gives "minor units of target currency" only if both have 2 decimals.
   // We assume 2-decimal target currencies (NGN/GHS/KES/ZAR all use 2). For safety:
   const usdMajor = usdCents / 100;

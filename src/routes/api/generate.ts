@@ -1598,6 +1598,10 @@ async function handleGenerateRequestCore(
   workSignal?: AbortSignal,
 ): Promise<Response> {
   const abortSignal = workSignal ?? request.signal;
+  // One durable identity must follow the logical turn through telemetry,
+  // reconnects and billing. Creating a second id inside the stream broke the
+  // database's exactly-once settlement guarantee on transport retries.
+  const logicalTurnId = turnId ?? crypto.randomUUID();
   const authResult = await authorize(request);
   if (authResult instanceof Response) return authResult;
   const userId = authResult;
@@ -2756,9 +2760,8 @@ Forbidden defaults
       // Phase 6 — per-tier telemetry. One row per tier per turn,
       // flushed at end-of-turn (success OR failure path) in a single
       // insert. Fire-and-forget; never blocks or throws.
-      const turnId = crypto.randomUUID();
       const recorder = new TurnRecorder({
-        turnId,
+        turnId: logicalTurnId,
         projectId: body.projectId ?? null,
         messageId: null,
         model,
@@ -4520,7 +4523,7 @@ Forbidden defaults
         {
 
           const AGENT_LOOP_MAX_CYCLES = 3;
-          const AGENT_LOOP_WALL_MS = 300_000;
+          const AGENT_LOOP_WALL_MS = 90_000;
           const loopT0 = Date.now();
           const { verifyFilesLocal: lvFn } = await import("@/server/local-verifier");
           // Shared with the pre-emit gate so "what blocks a turn" has exactly
@@ -4832,7 +4835,7 @@ Forbidden defaults
           // whatever is actually available — including the daily/monthly FREE
           // buckets a brand-new user has — and books any remainder as debt
           // instead of failing the charge and silently losing the revenue.
-          const settleTurnId = turnId;
+          const settleTurnId = logicalTurnId;
           try {
             const { data: settled, error: settleErr } = await supabaseAdmin.rpc(
               "settle_build_charge",
