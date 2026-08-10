@@ -276,7 +276,7 @@ STYLES.CSS SAFETY RULES (Tailwind v4 aborts the build on ANY invalid CSS):
 
 DECLARE-BEFORE-USE (read carefully — this is the #1 source of broken edits):
 You may invent names — custom utilities, CSS variables, components, routes, image slugs. But every name you REFERENCE in this turn must also be DEFINED in this turn (or already exist in the project files shown above). No "I'll add it next turn".
-- Custom Tailwind utility (\`neo-border\`, \`glass-panel\`, …) → also emit \`@utility <name> { … }\` in \`src/styles.css\`. Tailwind v4 has NO \`tailwind.config.js\`.
+- Custom Tailwind utility (\`neo-border\`, \`glass-panel\`, …) → also emit \`@utility <name> { … }\` in \`src/styles.css\`. Tailwind v4 has NO \`tailwind.config.js\`. The name must be a bare lowercase identifier — never \`@utility .foo\`, never \`@utility foo:hover\` or \`foo::after\`; put pseudo-selectors inside the body with \`&\` (\`@utility grain { &::after { … } }\`). An invalid name aborts the whole production build.
 - Custom CSS variable → declare it inside \`@theme { … }\` first.
 - Component import → the imported file must be emitted in the same turn, with a matching export.
 - Route (\`<Link to="/x">\`) → the page file must exist and be wired in the router this turn.
