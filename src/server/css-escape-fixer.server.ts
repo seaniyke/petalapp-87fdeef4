@@ -110,6 +110,67 @@ function sanitizeThemeBlocks(css: string): { out: string; removed: string[] } {
   return { out: result, removed };
 }
 
+/**
+ * Tailwind v4 hard-fails the whole build when an `@utility` name is not a
+ * bare lowercase identifier:
+ *
+ *   `@utility .tabular-nums` defines an invalid utility name.
+ *
+ * The model routinely writes CSS-selector syntax (`.foo`, `foo:hover`,
+ * `foo::after`, `.a .b`) after `@utility`. Repair it mechanically:
+ *   - strip a leading `.`
+ *   - if what remains is still a valid identifier, keep the utility
+ *   - otherwise demote the rule to a plain class rule inside
+ *     `@layer utilities { … }`, which is always valid CSS.
+ */
+const VALID_UTILITY_NAME = /^[a-z][a-zA-Z0-9-]*$/;
+
+function findBlockEnd(css: string, openBraceIdx: number): number {
+  let depth = 0;
+  for (let i = openBraceIdx; i < css.length; i++) {
+    const ch = css[i];
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+function fixUtilityNames(css: string): { out: string; fixed: string[] } {
+  const fixed: string[] = [];
+  let result = css;
+  const rx = /@utility\s+([^{]+)\{/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = rx.exec(result)) !== null) {
+    const raw = match[1].trim();
+    if (VALID_UTILITY_NAME.test(raw)) continue;
+
+    const openIdx = match.index + match[0].length - 1;
+    const endIdx = findBlockEnd(result, openIdx);
+    if (endIdx === -1) break;
+    const body = result.slice(openIdx + 1, endIdx);
+
+    const stripped = raw.replace(/^\./, "").trim();
+    let replacement: string;
+    if (VALID_UTILITY_NAME.test(stripped)) {
+      replacement = `@utility ${stripped} {${body}}`;
+      fixed.push(`${raw} → ${stripped}`);
+    } else {
+      const selector = raw.startsWith(".") || raw.startsWith("&") ? raw : `.${raw}`;
+      replacement = `@layer utilities {\n  ${selector} {${body}}\n}`;
+      fixed.push(`${raw} → @layer utilities { ${selector} }`);
+    }
+
+    result = result.slice(0, match.index) + replacement + result.slice(endIdx + 1);
+    rx.lastIndex = match.index + replacement.length;
+  }
+
+  return { out: result, fixed };
+}
+
 export function fixCssEscapes(files: ProjectFile[]): CssEscapeFixResult {
   const notes: string[] = [];
   const out = files.map((f) => {
@@ -117,8 +178,9 @@ export function fixCssEscapes(files: ProjectFile[]): CssEscapeFixResult {
 
     const unescaped = unescapeLiterals(f.content);
     const themed = sanitizeThemeBlocks(unescaped.out);
+    const utils = fixUtilityNames(themed.out);
 
-    if (unescaped.count === 0 && themed.removed.length === 0) return f;
+    if (unescaped.count === 0 && themed.removed.length === 0 && utils.fixed.length === 0) return f;
 
     if (unescaped.count > 0) {
       notes.push(`css-escape: decoded ${unescaped.count} literal escape(s) in ${f.path}`);
@@ -130,8 +192,16 @@ export function fixCssEscapes(files: ProjectFile[]): CssEscapeFixResult {
           .join(" | ")})`,
       );
     }
-    return { ...f, content: themed.out };
+    if (utils.fixed.length > 0) {
+      notes.push(
+        `css-utility: normalized ${utils.fixed.length} invalid @utility name(s) in ${f.path} (${utils.fixed
+          .slice(0, 2)
+          .join(" | ")})`,
+      );
+    }
+    return { ...f, content: utils.out };
   });
 
   return { files: out, notes };
 }
+
