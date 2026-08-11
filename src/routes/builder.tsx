@@ -1576,12 +1576,17 @@ function Builder() {
   }, [buildSnap?.buildId, project?.latest_build_id]);
 
   // Cancel any in-flight generation on unmount or when switching projects.
+  // Exception: the id appearing for a project we just created inside the
+  // current send() is not a switch — aborting there would kill the user's
+  // very first prompt.
   useEffect(() => {
     return () => {
+      if (lazyCreatedProjectIdRef.current) return;
       abortRef.current?.abort();
       abortRef.current = null;
     };
   }, [searchId]);
+
 
   // Phase 4 #22 — per-turn progress state is global to the builder, so a
   // project switch has to wipe it. Without this the new project inherits the
