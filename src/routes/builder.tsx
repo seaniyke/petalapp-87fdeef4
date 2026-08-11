@@ -1698,6 +1698,13 @@ function Builder() {
   }, [files, isMobile, mobileTab]);
 
   // Bootstrap: load existing project, or create a new one if no id in URL.
+  // Runs at most once per (user, project) pair. Re-running it is destructive —
+  // it flips `bootstrapping` back on (which hard-disables the composer) and
+  // replaces messages/files with whatever is in the database, wiping an
+  // in-flight stream. Two things used to trigger exactly that: lazily creating
+  // the project row on the first prompt, and Supabase handing back a refreshed
+  // session object. Both now short-circuit here.
+  const bootstrappedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     if (!isReady) return;
@@ -1705,7 +1712,19 @@ function Builder() {
       navigate({ to: "/auth", search: { mode: "signin", redirect: window.location.pathname + window.location.search } });
       return;
     }
+    // The project we just created inside send() is already in local state and
+    // is mid-stream — re-loading it from the database would clobber the turn.
+    if (searchId && lazyCreatedProjectIdRef.current === searchId) {
+      lazyCreatedProjectIdRef.current = null;
+      bootstrappedKeyRef.current = `${user.id}:${searchId}`;
+      setBootstrapping(false);
+      return;
+    }
+    const bootstrapKey = `${user.id}:${searchId ?? "new"}`;
+    if (bootstrappedKeyRef.current === bootstrapKey) return;
+    bootstrappedKeyRef.current = bootstrapKey;
     setBootstrapping(true);
+
     (async () => {
       try {
         if (searchId) {
