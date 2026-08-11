@@ -515,6 +515,13 @@ function Builder() {
   // render cycle (stream handlers, async catches) so we don't re-create them
   // every time the project state object swaps reference.
   const projectIdRef = useRef<string | null>(null);
+  // Set the moment we lazily create a project row mid-send (first prompt from
+  // a bare /builder). The URL then gains an `?id=`, which looks exactly like a
+  // project *switch* to the effects below — they would abort the request we
+  // just started and re-bootstrap over the live stream, which is why the very
+  // first prompt appeared to do nothing until the user reloaded and resent it.
+  const lazyCreatedProjectIdRef = useRef<string | null>(null);
+
   // Wraps setFriendlyError + persists the error as an assistant message so the
   // "Petal got confused" card survives a page refresh. Use this for genuine
   // failures the user should still see after reload — NOT for transient
@@ -943,9 +950,26 @@ function Builder() {
   /** Last composer submission, for the identical-double-tap guard. */
   const lastSubmitRef = useRef<{ text: string; at: number }>({ text: "", at: 0 });
 
-  const releaseTurnLock = useCallback(() => {
-    turnLockRef.current = false;
+  // The lock lives in a ref (it must engage synchronously, before any await),
+  // but effects can't watch a ref. Without a companion render signal, a lock
+  // that is released while `busy` is already false leaves the auto-dequeue
+  // effect with no dependency change to react to — every subsequent prompt
+  // silently lands in the queue and the user has to reload the page to send
+  // anything. Bumping this tick on every transition gives those effects
+  // something to depend on.
+  const [turnLockTick, setTurnLockTick] = useState(0);
+
+  const engageTurnLock = useCallback(() => {
+    turnLockRef.current = true;
+    setTurnLockTick((n) => n + 1);
   }, []);
+
+  const releaseTurnLock = useCallback(() => {
+    if (!turnLockRef.current) return;
+    turnLockRef.current = false;
+    setTurnLockTick((n) => n + 1);
+  }, []);
+
 
   // Build ids whose browser-verification defects we already fed back once.
   const verifyFixRef = useRef<{ projectId: string | null; handled: Set<string> }>({
@@ -1552,12 +1576,17 @@ function Builder() {
   }, [buildSnap?.buildId, project?.latest_build_id]);
 
   // Cancel any in-flight generation on unmount or when switching projects.
+  // Exception: the id appearing for a project we just created inside the
+  // current send() is not a switch — aborting there would kill the user's
+  // very first prompt.
   useEffect(() => {
     return () => {
+      if (lazyCreatedProjectIdRef.current) return;
       abortRef.current?.abort();
       abortRef.current = null;
     };
   }, [searchId]);
+
 
   // Phase 4 #22 — per-turn progress state is global to the builder, so a
   // project switch has to wipe it. Without this the new project inherits the
@@ -1669,6 +1698,13 @@ function Builder() {
   }, [files, isMobile, mobileTab]);
 
   // Bootstrap: load existing project, or create a new one if no id in URL.
+  // Runs at most once per (user, project) pair. Re-running it is destructive —
+  // it flips `bootstrapping` back on (which hard-disables the composer) and
+  // replaces messages/files with whatever is in the database, wiping an
+  // in-flight stream. Two things used to trigger exactly that: lazily creating
+  // the project row on the first prompt, and Supabase handing back a refreshed
+  // session object. Both now short-circuit here.
+  const bootstrappedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     if (!isReady) return;
@@ -1676,7 +1712,19 @@ function Builder() {
       navigate({ to: "/auth", search: { mode: "signin", redirect: window.location.pathname + window.location.search } });
       return;
     }
+    // The project we just created inside send() is already in local state and
+    // is mid-stream — re-loading it from the database would clobber the turn.
+    if (searchId && lazyCreatedProjectIdRef.current === searchId) {
+      lazyCreatedProjectIdRef.current = null;
+      bootstrappedKeyRef.current = `${user.id}:${searchId}`;
+      setBootstrapping(false);
+      return;
+    }
+    const bootstrapKey = `${user.id}:${searchId ?? "new"}`;
+    if (bootstrappedKeyRef.current === bootstrapKey) return;
+    bootstrappedKeyRef.current = bootstrapKey;
     setBootstrapping(true);
+
     (async () => {
       try {
         if (searchId) {
@@ -1737,6 +1785,9 @@ function Builder() {
           setProject(null);
         }
       } catch (e) {
+        // Let a later render retry — a failed load must not be remembered as
+        // "already bootstrapped".
+        bootstrappedKeyRef.current = null;
         toast.error(e instanceof Error ? e.message : "Could not open project");
       } finally {
         if (!cancelled) setBootstrapping(false);
@@ -1745,8 +1796,12 @@ function Builder() {
     return () => {
       cancelled = true;
     };
+    // Depend on the user *id*, not the session-bound user object: a token
+    // refresh hands back a new object and used to re-run this whole effect
+    // mid-build.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReady, user, searchId]);
+  }, [isReady, user?.id, searchId]);
+
 
   // Look up whether this project already has a backend connected. Done once
   // per project; the chip only appears when this resolves to false.
@@ -2076,12 +2131,18 @@ function Builder() {
       try {
         const p = await createProject();
         setProject(p);
+        projectIdRef.current = p.id;
+        // Mark this id as "ours" before the URL changes, so the bootstrap and
+        // abort effects treat the incoming `?id=` as the same session rather
+        // than a project switch.
+        lazyCreatedProjectIdRef.current = p.id;
         navigate({
           to: "/builder",
           search: { id: p.id, mode: initialMode, attachKey: undefined },
           replace: true,
         });
         return p;
+
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Could not start project");
         return null;
@@ -2140,7 +2201,8 @@ function Builder() {
       // never slip through while the first is still creating the project.
       if (!internalRetry) {
         if (busy || turnLockRef.current) return;
-        turnLockRef.current = true;
+        engageTurnLock();
+
       }
       // A genuinely new user turn refills the automatic-recovery budget.
       if (!internalRetry) beginUserTurn(projectIdRef.current);
@@ -3021,9 +3083,16 @@ function Builder() {
         // killed the *new* project's spinner and wiped its streaming text.
         const stillCurrent = projectIdRef.current === proj.id;
         if (abortRef.current === controller) abortRef.current = null;
+        // The turn lock is global to the builder, not scoped to a project, so
+        // it must ALWAYS be released here. Gating it behind `stillCurrent`
+        // stranded the lock whenever a turn finished after the project id
+        // moved on (including the lazy project creation on the very first
+        // prompt) — after that every message the user typed was silently
+        // queued forever and only a page reload could unstick the composer.
+        releaseTurnLock();
         if (stillCurrent) {
           setBusy(false);
-          releaseTurnLock();
+
           // Drop any partial streaming text — either it became a real message
           // above, or the run failed/aborted and we don't want a stale bubble.
           setStreamingAssistant("");
@@ -3082,7 +3151,8 @@ function Builder() {
       const text = content.trim();
       if (!text || busy || discussBusy || turnLockRef.current) return;
       // Same synchronous lock as send() — engaged before project setup.
-      turnLockRef.current = true;
+      engageTurnLock();
+
       const proj = await ensureProject();
       if (!proj) {
         releaseTurnLock();
@@ -3259,7 +3329,10 @@ function Builder() {
   );
 
 
-  // Auto-dequeue the next prompt as soon as Petal frees up.
+  // Auto-dequeue the next prompt as soon as Petal frees up. `turnLockTick`
+  // is in the dep list on purpose: the lock is a ref, so releasing it while
+  // `busy` is already false would otherwise leave this effect with nothing to
+  // re-run on and the queue would never drain.
   useEffect(() => {
     if (busy || discussBusy || turnLockRef.current) return;
     if (pendingQueue.length === 0) return;
@@ -3268,7 +3341,25 @@ function Builder() {
     if (next.mode === "discuss") void discuss(next.text);
     else void send(next.text);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busy, discussBusy, pendingQueue]);
+  }, [busy, discussBusy, pendingQueue, turnLockTick]);
+
+  // Deadlock watchdog. The turn lock is engaged synchronously before any
+  // await, so any unexpected throw between engaging it and the guarded try
+  // block would leave the composer permanently swallowing prompts. If nothing
+  // is actually running and no request is in flight, the lock is stale —
+  // clear it rather than making the user reload the page.
+  useEffect(() => {
+    if (busy || discussBusy) return;
+    if (!turnLockRef.current) return;
+    const t = window.setTimeout(() => {
+      if (busy || discussBusy || abortRef.current) return;
+      if (!turnLockRef.current) return;
+      console.warn("[builder] releasing a stale turn lock");
+      releaseTurnLock();
+    }, 4000);
+    return () => window.clearTimeout(t);
+  }, [busy, discussBusy, turnLockTick, releaseTurnLock]);
+
 
   const removeFromQueue = useCallback((id: string) => {
     setPendingQueue((q) => q.filter((m) => m.id !== id));

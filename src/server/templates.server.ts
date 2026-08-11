@@ -710,8 +710,22 @@ export function renderTemplatePlanBlock(key: TemplateKey): string {
   );
 }
 
-/** Pick a template from a brief using cheap keyword scoring. Returns null below threshold. */
-export function pickTemplateForBrief(brief: string): TemplateKey | null {
+/** Stable 32-bit hash so a given seed always resolves to the same variation. */
+function seedHash(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h);
+}
+
+/**
+ * Pick a template from a brief using cheap keyword scoring. Returns null below
+ * threshold. `seed` (typically the project id) breaks ties so two projects that
+ * match the same set of templates don't always get the first-declared one.
+ */
+export function pickTemplateForBrief(brief: string, seed?: string): TemplateKey | null {
   const b = brief.toLowerCase();
   const score: Record<TemplateKey, number> = Object.keys(TEMPLATES).reduce(
     (acc, k) => ({ ...acc, [k]: 0 }),
@@ -720,12 +734,12 @@ export function pickTemplateForBrief(brief: string): TemplateKey | null {
   for (const t of Object.values(TEMPLATES)) {
     for (const re of t.keywords) if (re.test(b)) score[t.key] += 2;
   }
-  let best: TemplateKey | null = null;
-  let bestScore = 0;
-  for (const k of Object.keys(score) as TemplateKey[]) {
-    if (score[k] > bestScore) { best = k; bestScore = score[k]; }
-  }
+  const keys = Object.keys(score) as TemplateKey[];
+  const bestScore = Math.max(0, ...keys.map((k) => score[k]));
   // Confidence threshold: at least one strong keyword match. Otherwise fall
   // through to the model's default plan rather than misclassify.
-  return bestScore >= 2 ? best : null;
+  if (bestScore < 2) return null;
+  const tied = keys.filter((k) => score[k] === bestScore);
+  return tied[seedHash(seed ?? brief) % tied.length];
 }
+
