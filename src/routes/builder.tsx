@@ -2131,12 +2131,18 @@ function Builder() {
       try {
         const p = await createProject();
         setProject(p);
+        projectIdRef.current = p.id;
+        // Mark this id as "ours" before the URL changes, so the bootstrap and
+        // abort effects treat the incoming `?id=` as the same session rather
+        // than a project switch.
+        lazyCreatedProjectIdRef.current = p.id;
         navigate({
           to: "/builder",
           search: { id: p.id, mode: initialMode, attachKey: undefined },
           replace: true,
         });
         return p;
+
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Could not start project");
         return null;
