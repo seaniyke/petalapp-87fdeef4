@@ -18,11 +18,12 @@ describe("design variety", () => {
   it("still honours strong keyword signals", () => {
     const seeds = ["p1", "p2", "p3", "p4", "p5"];
     for (const s of seeds) {
-      expect(pickThemeForBrief("a terminal CLI devtool for sysadmins", s)).toBe(
-        "terminal-green",
+      expect(pickThemeForBrief("an arcade pixel game jam site", s)).toBe(
+        "retro-arcade",
       );
     }
   });
+
 
   it("returns null templates for briefs with no strong match", () => {
     expect(pickTemplateForBrief("something entirely unclear", "seed")).toBeNull();
