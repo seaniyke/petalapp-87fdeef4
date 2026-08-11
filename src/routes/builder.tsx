@@ -1785,6 +1785,9 @@ function Builder() {
           setProject(null);
         }
       } catch (e) {
+        // Let a later render retry — a failed load must not be remembered as
+        // "already bootstrapped".
+        bootstrappedKeyRef.current = null;
         toast.error(e instanceof Error ? e.message : "Could not open project");
       } finally {
         if (!cancelled) setBootstrapping(false);
@@ -1793,8 +1796,12 @@ function Builder() {
     return () => {
       cancelled = true;
     };
+    // Depend on the user *id*, not the session-bound user object: a token
+    // refresh hands back a new object and used to re-run this whole effect
+    // mid-build.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReady, user, searchId]);
+  }, [isReady, user?.id, searchId]);
+
 
   // Look up whether this project already has a backend connected. Done once
   // per project; the chip only appears when this resolves to false.
