@@ -943,9 +943,26 @@ function Builder() {
   /** Last composer submission, for the identical-double-tap guard. */
   const lastSubmitRef = useRef<{ text: string; at: number }>({ text: "", at: 0 });
 
-  const releaseTurnLock = useCallback(() => {
-    turnLockRef.current = false;
+  // The lock lives in a ref (it must engage synchronously, before any await),
+  // but effects can't watch a ref. Without a companion render signal, a lock
+  // that is released while `busy` is already false leaves the auto-dequeue
+  // effect with no dependency change to react to — every subsequent prompt
+  // silently lands in the queue and the user has to reload the page to send
+  // anything. Bumping this tick on every transition gives those effects
+  // something to depend on.
+  const [turnLockTick, setTurnLockTick] = useState(0);
+
+  const engageTurnLock = useCallback(() => {
+    turnLockRef.current = true;
+    setTurnLockTick((n) => n + 1);
   }, []);
+
+  const releaseTurnLock = useCallback(() => {
+    if (!turnLockRef.current) return;
+    turnLockRef.current = false;
+    setTurnLockTick((n) => n + 1);
+  }, []);
+
 
   // Build ids whose browser-verification defects we already fed back once.
   const verifyFixRef = useRef<{ projectId: string | null; handled: Set<string> }>({
@@ -2140,7 +2157,8 @@ function Builder() {
       // never slip through while the first is still creating the project.
       if (!internalRetry) {
         if (busy || turnLockRef.current) return;
-        turnLockRef.current = true;
+        engageTurnLock();
+
       }
       // A genuinely new user turn refills the automatic-recovery budget.
       if (!internalRetry) beginUserTurn(projectIdRef.current);
@@ -3021,9 +3039,16 @@ function Builder() {
         // killed the *new* project's spinner and wiped its streaming text.
         const stillCurrent = projectIdRef.current === proj.id;
         if (abortRef.current === controller) abortRef.current = null;
+        // The turn lock is global to the builder, not scoped to a project, so
+        // it must ALWAYS be released here. Gating it behind `stillCurrent`
+        // stranded the lock whenever a turn finished after the project id
+        // moved on (including the lazy project creation on the very first
+        // prompt) — after that every message the user typed was silently
+        // queued forever and only a page reload could unstick the composer.
+        releaseTurnLock();
         if (stillCurrent) {
           setBusy(false);
-          releaseTurnLock();
+
           // Drop any partial streaming text — either it became a real message
           // above, or the run failed/aborted and we don't want a stale bubble.
           setStreamingAssistant("");
@@ -3082,7 +3107,8 @@ function Builder() {
       const text = content.trim();
       if (!text || busy || discussBusy || turnLockRef.current) return;
       // Same synchronous lock as send() — engaged before project setup.
-      turnLockRef.current = true;
+      engageTurnLock();
+
       const proj = await ensureProject();
       if (!proj) {
         releaseTurnLock();
@@ -3259,7 +3285,10 @@ function Builder() {
   );
 
 
-  // Auto-dequeue the next prompt as soon as Petal frees up.
+  // Auto-dequeue the next prompt as soon as Petal frees up. `turnLockTick`
+  // is in the dep list on purpose: the lock is a ref, so releasing it while
+  // `busy` is already false would otherwise leave this effect with nothing to
+  // re-run on and the queue would never drain.
   useEffect(() => {
     if (busy || discussBusy || turnLockRef.current) return;
     if (pendingQueue.length === 0) return;
@@ -3268,7 +3297,25 @@ function Builder() {
     if (next.mode === "discuss") void discuss(next.text);
     else void send(next.text);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busy, discussBusy, pendingQueue]);
+  }, [busy, discussBusy, pendingQueue, turnLockTick]);
+
+  // Deadlock watchdog. The turn lock is engaged synchronously before any
+  // await, so any unexpected throw between engaging it and the guarded try
+  // block would leave the composer permanently swallowing prompts. If nothing
+  // is actually running and no request is in flight, the lock is stale —
+  // clear it rather than making the user reload the page.
+  useEffect(() => {
+    if (busy || discussBusy) return;
+    if (!turnLockRef.current) return;
+    const t = window.setTimeout(() => {
+      if (busy || discussBusy || abortRef.current) return;
+      if (!turnLockRef.current) return;
+      console.warn("[builder] releasing a stale turn lock");
+      releaseTurnLock();
+    }, 4000);
+    return () => window.clearTimeout(t);
+  }, [busy, discussBusy, turnLockTick, releaseTurnLock]);
+
 
   const removeFromQueue = useCallback((id: string) => {
     setPendingQueue((q) => q.filter((m) => m.id !== id));
