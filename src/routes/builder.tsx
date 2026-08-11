@@ -515,6 +515,13 @@ function Builder() {
   // render cycle (stream handlers, async catches) so we don't re-create them
   // every time the project state object swaps reference.
   const projectIdRef = useRef<string | null>(null);
+  // Set the moment we lazily create a project row mid-send (first prompt from
+  // a bare /builder). The URL then gains an `?id=`, which looks exactly like a
+  // project *switch* to the effects below — they would abort the request we
+  // just started and re-bootstrap over the live stream, which is why the very
+  // first prompt appeared to do nothing until the user reloaded and resent it.
+  const lazyCreatedProjectIdRef = useRef<string | null>(null);
+
   // Wraps setFriendlyError + persists the error as an assistant message so the
   // "Petal got confused" card survives a page refresh. Use this for genuine
   // failures the user should still see after reload — NOT for transient
