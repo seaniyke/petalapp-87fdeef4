@@ -723,8 +723,43 @@ export function renderThemeTokensBlock(key: ThemeKey): string {
   );
 }
 
-/** Pick a theme from a brief using cheap keyword scoring. Best-effort. */
-export function pickThemeForBrief(brief: string): ThemeKey {
+/** Stable 32-bit hash so a given seed always resolves to the same variation. */
+function seedHash(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h);
+}
+
+/**
+ * Themes that read as a sane default for a brief the keyword table doesn't
+ * recognise. Previously an unmatched brief always fell through to the first
+ * key in the score object ("editorial"), which is the single biggest reason
+ * unrelated projects kept shipping with the same look.
+ */
+const NEUTRAL_THEME_POOL: ThemeKey[] = [
+  "editorial",
+  "saas-cool",
+  "nordic-minimal",
+  "warm-brand",
+  "aperture",
+  "monolith",
+  "soft-pastel",
+  "glass-morphism",
+];
+
+/**
+ * Pick a theme from a brief using cheap keyword scoring. Best-effort.
+ *
+ * `seed` (typically the project id) breaks ties and drives the unmatched-brief
+ * fallback, so two different projects with equally generic briefs don't get
+ * byte-identical design systems. The same seed always resolves the same way,
+ * so re-running a turn on one project stays consistent.
+ */
+export function pickThemeForBrief(brief: string, seed?: string): ThemeKey {
+
   const b = brief.toLowerCase();
   const score: Record<ThemeKey, number> = {
     editorial: 0, "saas-cool": 0, "warm-brand": 0,
