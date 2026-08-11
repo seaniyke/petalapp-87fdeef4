@@ -404,6 +404,10 @@ export async function pickDesignDirection(args: {
   if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return null;
 
   const trimmedBrief = (args.brief ?? "").trim().slice(0, 1500);
+  // Seed for tie-breaking theme/template picks. Per-project, so two different
+  // projects with similarly generic briefs don't land on an identical design
+  // system, while re-running a turn on one project stays consistent.
+  const designSeed = args.projectId ?? trimmedBrief;
   if (trimmedBrief.length < 4) return null;
 
   // Compact memory context — only the keys that actually inform aesthetic choices.
@@ -445,7 +449,7 @@ export async function pickDesignDirection(args: {
    * better than no direction, so a timeout now degrades instead of failing.
    */
   const fallbackDirection = (): DesignDirection => {
-    const theme = pickThemeForBrief(trimmedBrief);
+    const theme = pickThemeForBrief(trimmedBrief, designSeed);
     const pair = fontDefault ?? { display: "Sora", body: "Manrope", reason: "general app" };
     const motion: MotionIntensity = "subtle";
     return {
@@ -462,7 +466,7 @@ export async function pickDesignDirection(args: {
         "layered surfaces: gradient hero, elevated cards, soft shadows",
       ],
       theme,
-      template: pickTemplateForBrief(trimmedBrief),
+      template: pickTemplateForBrief(trimmedBrief, designSeed),
     };
   };
 
@@ -526,13 +530,13 @@ export async function pickDesignDirection(args: {
     // model didn't pick one. Drives concrete oklch tokens via
     // renderThemeTokensBlock().
     if (!parsed.theme || !(parsed.theme in THEMES)) {
-      parsed.theme = pickThemeForBrief(trimmedBrief);
+      parsed.theme = pickThemeForBrief(trimmedBrief, designSeed);
     }
     // Workstream C2: assign a hidden template key from the brief so the
     // builder model scaffolds the right routes/sections instead of
     // defaulting to a generic landing page.
     if (parsed.template === undefined) {
-      parsed.template = pickTemplateForBrief(trimmedBrief);
+      parsed.template = pickTemplateForBrief(trimmedBrief, designSeed);
     }
     // Phase 18 — fx_recipe fallback + cinematic ↔ awwwards-3d coherence.
     // If the model omitted fx_recipe (or picked one that contradicts a
