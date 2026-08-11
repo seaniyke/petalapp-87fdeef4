@@ -799,10 +799,20 @@ export function pickThemeForBrief(brief: string, seed?: string): ThemeKey {
     ["bloom", [/family|community|celebration|birthday|event site|greeting|gifting|dating app|creator hub/]],
   ];
   for (const [k, regs] of bumps) for (const r of regs) if (r.test(b)) score[k] += 2;
-  let best: ThemeKey = "saas-cool";
-  let bestScore = -1;
-  for (const k of Object.keys(score) as ThemeKey[]) {
-    if (score[k] > bestScore) { best = k; bestScore = score[k]; }
+
+  const keys = Object.keys(score) as ThemeKey[];
+  const bestScore = Math.max(...keys.map((k) => score[k]));
+  const rand = seedHash(seed ?? brief);
+
+  // Nothing matched: rotate through a neutral pool instead of always
+  // returning the first declared theme.
+  if (bestScore <= 0) {
+    return NEUTRAL_THEME_POOL[rand % NEUTRAL_THEME_POOL.length];
   }
-  return best;
+
+  // Several themes matched equally well — pick one by seed rather than by
+  // declaration order.
+  const tied = keys.filter((k) => score[k] === bestScore);
+  return tied[rand % tied.length];
 }
+
